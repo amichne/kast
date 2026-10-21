@@ -28,9 +28,7 @@ internal fun ImpactCallFrameDocument.admits(basis: ImpactSemanticBasisDocument):
         admitsTarget(basis)
 
 private fun ImpactExecutionReferenceDocument.admits(basis: ImpactSemanticBasisDocument): Boolean =
-    enclosing.basis == basis &&
-        enclosing.validValueDeclaration() &&
-        executionOwner.admits(enclosing, enclosing.range)
+    enclosing.basis == basis && enclosing.validValueDeclaration() && executionOwner.admits(enclosing, enclosing.range)
 
 internal fun ImpactFormalParameterDocument.admits(): Boolean =
     callable.validValueDeclaration() &&

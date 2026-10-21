@@ -32,8 +32,12 @@ private fun ImpactSourceRangeDocument.containsExecutionRange(other: ImpactSource
     other.start.value < other.end.value && other.start.value >= start.value && other.end.value <= end.value
 
 internal fun ImpactExecutionOwnerDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
-    when (this) {
-        ImpactExecutionOwnerDocument.Declaration -> true
+    when (basis) {
+        is ImpactSemanticBasisDocument.Published,
+        is ImpactSemanticBasisDocument.Live ->
+            when (this) {
+                ImpactExecutionOwnerDocument.Declaration -> true
+            }
     }
 
 internal fun ImpactInvocationReferenceDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
