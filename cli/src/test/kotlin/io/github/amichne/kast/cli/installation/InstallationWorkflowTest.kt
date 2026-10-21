@@ -237,6 +237,7 @@ class InstallationWorkflowTest {
     @Test
     fun `prior retirement reconstructs only historical enabled owner overrides`() {
         val prior = Path.of("/fixture/versions/1.2.3-payload")
+        val javaHome = (InstallationPath.parse("/fixture/selected-idea/jbr/Contents/Home") as Refinement.Refined).value
         for (saved in listOf("", "KAST_ENABLE_APP_SERVER=0\n", "KAST_ENABLE_APP_SERVER=1\n")) {
             val configuration = (SavedConfigurationDocument.parse(saved.toByteArray()) as Refinement.Refined).value
             val baseline =
@@ -244,6 +245,8 @@ class InstallationWorkflowTest {
                     "HOME" to "/fixture/home",
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_HOME" to "/fixture/codex",
+                    "JAVA_HOME" to "/fixture/selected-idea/jbr/Contents/Home",
+                    "JAVA" to "/fixture/selected-idea/jbr/Contents/Home/bin/java",
                     "KAST_CONFIGURATION_FILE" to "/fixture/versions/1.2.3-payload/config/environment",
                 )
             val expected = if (saved.isEmpty()) baseline else baseline + ("KAST_ENABLE_APP_SERVER" to "1")
@@ -254,6 +257,7 @@ class InstallationWorkflowTest {
                     Path.of("/fixture/home"),
                     Path.of("/fixture/codex"),
                     "/usr/bin:/bin",
+                    javaHome,
                     configuration,
                 ),
             )

@@ -99,7 +99,7 @@ class InstallationLiveStateRecoveryTest {
     }
 
     @Test
-    fun `failed retirement restarts the still selected prior service`(@TempDir temporary: Path) {
+    fun `failed retirement restores the prior with selected IDEA Java`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val first = request(root, "1.2.3")
         val installation = first.installRoot.value
@@ -112,6 +112,7 @@ class InstallationLiveStateRecoveryTest {
                 |[ "${'$'}#" = 1 ] || exit 81
                 |config="${'$'}{KAST_CONFIGURATION_FILE%/*}"
                 |printf '%s\n' "${'$'}1" >> "${'$'}config/service-actions"
+                |printf '%s\n' "${'$'}{JAVA_HOME-}" "${'$'}{JAVA-}" >> "${'$'}config/service-java"
                 |case "${'$'}1" in disable) exit 17 ;; bootstrap) exit 0 ;; *) exit 82 ;; esac
                 |"""
                     .trimMargin(),
@@ -132,6 +133,11 @@ class InstallationLiveStateRecoveryTest {
 
         assertEquals(InstallationOutcome.RolledBack(InstallationFailure.PRIOR_RETIREMENT_EXIT_REJECTED), outcome)
         assertEquals(listOf("disable", "bootstrap"), Files.readAllLines(prior.resolve("config/service-actions")))
+        assertEquals(
+            List(2) { listOf(second.javaHome.value.toString(), second.javaHome.value.resolve("bin/java").toString()) }
+                .flatten(),
+            Files.readAllLines(prior.resolve("config/service-java")),
+        )
         assertEquals(manifest, Files.readString(prior.resolve("installation.json")))
     }
 

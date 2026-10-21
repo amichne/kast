@@ -78,6 +78,7 @@ private constructor(
                             home = request.home.value,
                             codexHome = request.codexHome.value,
                             path = System.getenv("PATH") ?: "/usr/bin:/bin",
+                            javaHome = request.javaHome,
                             configuration = configuration,
                         )) + ("KAST_OPTS" to request.jvmUserHomeOption.value),
                 )
