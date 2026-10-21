@@ -96,6 +96,9 @@ enum class ProtocolCollectionFailure {
 /** An immutable public collection proven to remain within the transport result bound. */
 @Serializable(with = BoundedProtocolListSerializer::class)
 class BoundedProtocolList<Value> private constructor(val values: List<Value>) {
+    fun <Result> map(transform: (Value) -> Result): BoundedProtocolList<Result> =
+        BoundedProtocolList(java.util.List.copyOf(values.map(transform)))
+
     companion object {
         /**
          * Proof transition: `List<Value> -> Refinement<BoundedProtocolList<Value>, ProtocolCollectionFailure>`.

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument
+import io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.JsonArray
@@ -14,18 +16,34 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
 class PublicImpactSourceSchemaTest {
+    private val metadata = setOf("x-kotlin-type", "default", "discriminator", "description")
+
     @Test
-    fun `public impact model and seed syntax reuse canonical serializer constraints`() {
+    fun `public impact syntax matches its input serializer owners`() {
         val expected = generatedRequestSchema(QueryImpactSourceDocument.serializer()).getValue("properties").jsonObject
         val definitions = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS).getValue("\$defs").jsonObject
         val impact = definitions["ImpactSource"]
         assertNotNull(impact, expected.toString())
         val actual = impact!!.jsonObject.getValue("properties").jsonObject
-        for (property in listOf("seeds", "declarations", "models")) {
+        for (property in listOf("seeds", "declarations")) {
             assertSchemaEquals(expected.getValue(property), actual.getValue(property), definitions, property)
         }
+        val expectedModels = expected.getValue("models").jsonObject
+        val actualModels = actual.getValue("models").jsonObject
+        assertEquals(expectedModels.keys - metadata, actualModels.keys - metadata, "models")
+        expectedModels
+            .filterKeys { it != "items" }
+            .forEach { (key, value) ->
+                assertSchemaEquals(value, actualModels.getValue(key), definitions, "models.$key")
+            }
         assertSchemaEquals(
-            expected.getValue("requestedSites").jsonObject.getValue("items"),
+            generatedRequestSchema(ImpactRequestedModelDocument.serializer()),
+            actual.getValue("models").jsonObject.getValue("items"),
+            definitions,
+            "models.items",
+        )
+        assertSchemaEquals(
+            generatedRequestSchema(ImpactRequestedValueSiteDocument.serializer()),
             actual.getValue("requestedSites").jsonObject.getValue("items"),
             definitions,
             "requestedSites.items",
@@ -46,7 +64,6 @@ class PublicImpactSourceSchemaTest {
                 }
             }
             is JsonObject -> {
-                val metadata = setOf("x-kotlin-type", "default", "discriminator", "description")
                 assertEquals(
                     expected.keys.filter { it !in metadata }.toSet(),
                     actual.jsonObject.keys.filter { it !in metadata }.toSet(),

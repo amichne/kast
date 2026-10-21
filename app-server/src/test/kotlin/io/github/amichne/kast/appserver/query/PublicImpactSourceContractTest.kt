@@ -13,6 +13,7 @@ import io.github.amichne.kast.protocol.contract.ImpactModelValuePositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelVersionDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedInvocationDocument
+import io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
@@ -72,7 +73,10 @@ class PublicImpactSourceContractTest {
         val question = (run.from as QueryFromDocument.Impact).investigation
         assertEquals(seeds, question.seeds)
         assertEquals(declarations, question.declarations)
-        assertEquals(listOf(model), question.models.values)
+        assertEquals(
+            listOf(ImpactModelDocument.Representation(model.schemaVersion, model.model, model.states, model.rules)),
+            question.models.values,
+        )
         assertEquals(QueryImpactFlowDocument.KOTLIN_FORWARD_V1, question.flow)
         assertEquals(
             QueryExpansionScopeDocument.Sources(
@@ -283,7 +287,7 @@ class PublicImpactSourceContractTest {
         )
 
     private fun originModel(declaration: ImpactDeclarationReferenceDocument) =
-        ImpactModelDocument.Representation(
+        ImpactRequestedModelDocument.Representation(
             schemaVersion = ImpactModelFormatDocument.Current,
             model =
                 ImpactModelIdentityDocument(
