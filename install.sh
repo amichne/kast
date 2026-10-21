@@ -338,19 +338,24 @@ discover_idea_home() {
 }
 
 resolve_latest_version() {
-  local component="${1:-control}"
-  curl --fail --location --silent --show-error --max-filesize 4194304 \
+  local metadata
+  metadata="$(curl --fail --location --silent --show-error --max-filesize 4194304 \
     --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    "https://api.github.com/repos/$REPOSITORY/releases?per_page=100" | python3 -c '
+    "https://api.github.com/repos/$REPOSITORY/releases/latest")" || fail "latest release is unavailable"
+  printf '%s' "$metadata" | python3 -c '
 import json, re, sys
-component = sys.argv[1]
-for release in json.load(sys.stdin):
-    match = re.fullmatch(component + r"-v([0-9]+\.[0-9]+\.[0-9]+)", release.get("tag_name", ""))
-    if match and not release.get("draft") and not release.get("prerelease"):
-        print(match.group(1)); break
-else:
-    sys.exit("kast-install: selected component has no observed stable release")
-' "$component"
+try:
+    release = json.load(sys.stdin)
+except (json.JSONDecodeError, UnicodeDecodeError):
+    sys.exit("kast-install: latest release metadata is invalid")
+if not isinstance(release, dict):
+    sys.exit("kast-install: latest release metadata is invalid")
+tag = release.get("tag_name")
+match = re.fullmatch(r"v([0-9]+\.[0-9]+\.[0-9]+)", tag) if isinstance(tag, str) else None
+if not match or release.get("draft") is not False or release.get("prerelease") is not False:
+    sys.exit("kast-install: latest release is not stable")
+print(match.group(1))
+'
 }
 
 resolve_developer_latest() {
@@ -711,11 +716,11 @@ PYTHON
       if [[ -z "$version" || "$version" == latest ]]; then
         [[ -z "${KAST_RELEASE_BASE_URL:-}" && -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
           fail "recovery assets require an exact KAST_VERSION"
-        version="$(resolve_latest_version control)"
+        version="$(resolve_latest_version)"
       fi
       validate_version "$version"
       release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
-      release_url="${release_url%/}/control-v$version"
+      release_url="${release_url%/}/v$version"
       recovery_directory="$(mktemp -d "${TMPDIR:-/tmp}/kast-uninstall-recovery.XXXXXX")"
       trap 'rm -rf -- "$recovery_directory"' EXIT
       recovery_name="kast-control-v$version-macos-aarch64.tar.gz"
@@ -834,16 +839,15 @@ if [[ "$developer_latest" == 1 ]]; then
 elif [[ -z "$version" || "$version" == latest ]]; then
   [[ -z "${KAST_RELEASE_BASE_URL:-}" ]] || fail "KAST_RELEASE_BASE_URL requires KAST_VERSION"
   [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] || fail "local assets require KAST_VERSION"
-  version="$(resolve_latest_version "$([[ "$component" == host ]] && printf host || printf control)")"
+  version="$(resolve_latest_version)"
 else
   validate_version "$version"
 fi
 
-release="${release:-$([[ "$component" == host ]] && printf host || printf control)-v$version}"
+release="${release:-v$version}"
 if [[ "$component" == host ]]; then host_version="$version"; fi
 if [[ "$component" != control && -z "$host_version" ]]; then
-  if [[ "$developer_latest" == 1 || -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then host_version="$version"
-  else host_version="$(resolve_latest_version host)"; fi
+  host_version="$version"
 fi
 if [[ "$component" != control ]]; then validate_version "$host_version"; fi
 base_release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
@@ -902,7 +906,7 @@ if [[ "$component" != host ]]; then
 fi
 if [[ "$component" != control ]]; then
   control_release_url="$release_url"
-  if [[ "$developer_latest" == 0 ]]; then release_url="${base_release_url%/}/host-v$host_version"; fi
+  if [[ "$developer_latest" == 0 ]]; then release_url="${base_release_url%/}/v$host_version"; fi
   note "downloading Kast Host $host_version for IDEA ${idea_build%%.*}"
   idea_mismatch="not installing Kast Host: release $host_version has no matching IDEA ${idea_build%%.*} plugin for IntelliJ IDEA $idea_version (build $idea_build)"
   fetch_asset "$plugin_name" "$temporary_root/$plugin_name" "$idea_mismatch"
