@@ -60,7 +60,9 @@ import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -114,7 +116,12 @@ class HostedQueryRetainedPresentationTest {
                 .getValue("result")
                 .jsonObject
         assertFalse("presentationWindow" in result)
-        assertFalse("presentation_window" in result)
+        val window = result.getValue("presentation_window").jsonObject
+        assertEquals(setOf("reference", "start", "end", "result_end"), window.keys)
+        assertEquals(reference.value, window.getValue("reference").jsonPrimitive.content)
+        assertEquals(115, window.getValue("start").jsonPrimitive.int)
+        assertEquals(117, window.getValue("end").jsonPrimitive.int)
+        assertEquals(120, window.getValue("result_end").jsonPrimitive.int)
     }
 
     @Test
