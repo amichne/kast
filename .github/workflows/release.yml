@@ -80,9 +80,15 @@ jobs:
           distribution: graalvm
           java-version: 25.0.2
 
-      - name: Install host protocol test dependencies for a missing candidate
+      - name: Install host protocol and semantic test tools for a missing candidate
         if: steps.ci_candidate.outputs.candidate == 'MISSING'
-        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
+        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+
+      - name: Set up documentation parser runtime for a missing candidate
+        if: steps.ci_candidate.outputs.candidate == 'MISSING'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.21.0"
 
       - name: Set up Gradle for a missing candidate
         if: steps.ci_candidate.outputs.candidate == 'MISSING'
