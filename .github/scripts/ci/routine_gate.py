@@ -16,6 +16,7 @@ REQUIRED = frozenset({
     ":verifyKastArchitecture", ":verifyConfigurationIngress", ":installedProductTest",
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
     ":localInstallationTest", ":installerFixtureTest",
+    ":documentationToolingTest", ":verifyDocumentationGlossary", ":verifyDocumentationMarkdown",
 })
 
 

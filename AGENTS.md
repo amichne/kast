@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-15T19:04:53Z"
-source_revision: 0b95306caef9f314f4419bd73ed0171bc67da230
+timestamp: "2026-10-22T03:38:55Z"
+source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -64,6 +64,8 @@ This guide owns repository rules and routes source investigation.
 ## Entry Points
 
 - Build and tests: `./gradlew build`.
+- Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
+- Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. The full pre-push gate remains necessary.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - Public native command: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.

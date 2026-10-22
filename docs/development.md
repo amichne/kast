@@ -103,6 +103,42 @@ then run the repository-required guards for changed contracts, architecture and
 documentation. Full build/release gates remain separate evidence; these focused
 checks do not replace them.
 
+### Use the scoped edit loop
+
+Run the module's `scopedCheck` task with `--continue` to collect independent failures:
+
+```shell
+mise exec -- ./gradlew :distribution:cli:scopedCheck --continue
+```
+
+The task includes formatting, both file-length guards, `Detekt`, and the module's unit tests.
+It does not assemble the product or compile the native command.
+Use fully qualified task paths to select modules.
+Repeat the same command after each source change.
+
+For a change to prose, include the glossary task and select files for Vale:
+
+```shell
+mise exec -- ./gradlew :distribution:cli:scopedCheck \
+  verifyDocumentationGlossary verifyScopedProse \
+  -PkastProsePaths=docs/development.md,docs/tooling/README.md --continue
+```
+
+`kastProsePaths` accepts distinct repository-relative `.md`, `.mdx`, and `.txt` paths separated by commas.
+Absolute paths, parent traversal, empty entries, and duplicate entries reject before Vale starts.
+The pinned prose assessment remains a separate necessary step for changed prose.
+
+The glossary task examines current prose and generated views without the tooling tests.
+The full `check` and `productBuildGate` tasks still include `documentationToolingTest`.
+Reports for deterministic script tasks reside in `build/reports/validation/`.
+Unchanged inputs reuse their reports through Gradle task history.
+Source, policy, tool, environment, and report changes rerun their consumers.
+Failed commands preserve their diagnostics and remain failures on later invocations.
+
+The scoped loop supplies local evidence for selected owners.
+Before a push, the existing hook still runs the full product gate on the committed source.
+Live installation and release-catalog reads keep their existing freshness rules.
+
 Run all offline packaging suites in an isolated Linux container with:
 
 ```shell
