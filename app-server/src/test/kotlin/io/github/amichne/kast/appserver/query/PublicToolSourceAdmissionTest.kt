@@ -92,7 +92,14 @@ class PublicToolSourceAdmissionTest {
         for (fields in invalid) {
             val raw =
                 Json.parseToJsonElement(
-                    """{"request":{"type":"READ_SOURCE","candidateRef":"candidate:v5:AAAAAAAAAAAAAAAAAAAAAA",$fields}}"""
+                    """
+                    {"request":{
+                      "type":"READ_SOURCE",
+                      "candidateRef":"candidate:v5:AAAAAAAAAAAAAAAAAAAAAA",
+                      $fields
+                    }}
+                    """
+                        .trimIndent()
                 )
             assertTrue(PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw) is Refinement.Rejected, fields)
         }
