@@ -58,6 +58,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompil
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
@@ -143,7 +144,12 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
             )
         val before = workflow.run(SourceContextStrategy.FILE_RECONSTRUCTION)
         val after = workflow.run(SourceContextStrategy.STRUCTURAL_VIEW)
-        assertEquals(before.nativeCounters, after.nativeCounters)
+        assertEquals(
+            before.nativeCounters - IntellijReadCounter.SOURCE_REGION_SELECTED,
+            after.nativeCounters - IntellijReadCounter.SOURCE_REGION_SELECTED,
+        )
+        assertEquals(1L, before.nativeCounters[IntellijReadCounter.SOURCE_REGION_SELECTED])
+        assertEquals(2L, after.nativeCounters[IntellijReadCounter.SOURCE_REGION_SELECTED])
         assertTrue("The focused view did not reduce encoded output: $before / $after", after.bytes < before.bytes)
         println("SOURCE_CONTEXT_WORKFLOW before=$before after=$after counters=${fixture.observation.snapshot()}")
     }
@@ -168,6 +174,50 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
             val outcome = fixture.sourceProtocol().execute(sourceRequest(focus, anchor), fixture.lease, sourceBudget)
             assertEquals(OperationOutcome.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH), outcome)
         }
+    }
+
+    fun testAWindowAcrossSiblingDeclarationsCannotSelectItsFirstCallable() = runBlocking {
+        val (fixture, _) = prepare("fun first() {\n    helper()\n}\nfun second() = 2\nfun helper() = 1\n")
+        val request =
+            search("helper")
+                .copy(
+                    steps = bounded(listOf(QueryStepDocument.Related(RelationKindDocument.REFERENCES, domain))),
+                    output = QueryOutputDocument.Occurrences,
+                )
+        val occurrence =
+            (query(fixture, fixture.protocol(), request).items.values.single()
+                    as QueryResultItemDocument.ReferenceOccurrence)
+                .occurrence
+                .occurrence
+        val window =
+            read(
+                fixture = fixture,
+                focus = SourceReadAnchorDocument.Candidate(occurrence.candidateSelector),
+                region = SourceRegionSelectionDocument.File,
+                text =
+                    SourceTextRequestDocument.Window(
+                        SourceLineCountDocument.parse(0).traceRefined(),
+                        SourceLineCountDocument.parse(2).traceRefined(),
+                    ),
+            )
+        assertEquals("    helper()\n}\nfun second() = 2\n", returned(window).text.value)
+        val focus = SourceReadAnchorDocument.Source(returned(window).selection.selector)
+        for (region in
+            listOf(
+                body,
+                enclosingBody,
+                SourceRegionSelectionDocument.Enclosing(SourceEnclosingRegionKindDocument.DECLARATION),
+            )) {
+            val outcome = fixture.sourceProtocol().execute(sourceRequest(focus, region), fixture.lease, sourceBudget)
+            assertEquals(
+                "$region failures=${fixture.observation.unexpectedFailures} counters=${fixture.observation.snapshot()}",
+                OperationOutcome.Rejected(SourceReadRejection.REGION_ABSENT),
+                outcome,
+            )
+        }
+        assertTrue(fixture.observation.unexpectedFailures.isEmpty())
+        assertEquals(EXPECTED_OWNER_REJECTIONS, fixture.observation[IntellijReadCounter.SOURCE_REGION_ABSENT])
+        assertEquals(1L, fixture.observation[IntellijReadCounter.SOURCE_REGION_SELECTED])
     }
 
     private suspend fun query(
@@ -221,7 +271,7 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
             execution = execution,
         )
 
-    private fun prepare(): Pair<NativeScopedTraceFixture, VirtualFile> {
+    private fun prepare(text: String = source): Pair<NativeScopedTraceFixture, VirtualFile> {
         lateinit var result: Pair<NativeScopedTraceFixture, VirtualFile>
         ApplicationManager.getApplication().invokeAndWait {
             val base = getOrCreateProjectBaseDir()
@@ -242,7 +292,7 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
             }
             val file =
                 WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
-                    directory.createChildData(this, "Owners.kt").also { it.setBinaryContent(source.toByteArray()) }
+                    directory.createChildData(this, "Owners.kt").also { it.setBinaryContent(text.toByteArray()) }
                 }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
@@ -298,6 +348,7 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
         private const val targetBody = "{\n        val adjusted = value + 1\n        return adjusted\n    }"
         private const val firstBody = "{\n        target(1)\n        target(2)\n    }"
         private const val nestedBody = "{\n            Outer().target(3)\n        }"
+        private const val EXPECTED_OWNER_REJECTIONS = 3L
         private const val EXPECTED_OVERLOADS = 3
         private const val EXPECTED_OCCURRENCES = 3
         private val source =

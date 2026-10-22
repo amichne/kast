@@ -43,6 +43,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -174,6 +175,11 @@ internal class NativeScopedTraceFixture(
 internal class NativeTraceCounters : IntellijReadObservation {
     private val counts = mutableMapOf<IntellijReadCounter, Long>()
     val terminations = mutableListOf<IntellijReadTermination>()
+    val unexpectedFailures = mutableListOf<IntellijReadUnexpectedFailure>()
+
+    override fun unexpected(failure: IntellijReadUnexpectedFailure) {
+        unexpectedFailures += failure
+    }
 
     override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
         counts[counter] = (counts[counter] ?: 0L) + amount

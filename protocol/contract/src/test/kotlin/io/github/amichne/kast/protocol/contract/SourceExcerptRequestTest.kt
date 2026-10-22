@@ -1,9 +1,11 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -14,7 +16,10 @@ class SourceExcerptRequestTest {
     fun `canonical excerpt encodes its discriminator and positive count independently of its region`() {
         val request = request(7)
         val encoded = Json.encodeToJsonElement(SourceReadRequest.serializer(), request)
-        assertEquals(Json.parseToJsonElement("""{"type":"excerpt","maxLines":7}"""), encoded.jsonObject["text"])
+        val text = encoded.jsonObject.getValue("text").jsonObject
+        assertEquals(setOf("type", "maxLines"), text.keys)
+        assertEquals("excerpt", text.getValue("type").jsonPrimitive.content)
+        assertEquals("7", text.getValue("maxLines").jsonPrimitive.content)
         assertEquals(Refinement.Refined(request), SourceRequestIngress.decode(encoded, Json))
     }
 
@@ -27,21 +32,23 @@ class SourceExcerptRequestTest {
 
     @Test
     fun `canonical ingress rejects absent zero and excess excerpt limits`() {
-        for (text in
-            listOf(
-                """{"type":"excerpt"}""",
-                """{"type":"excerpt","maxLines":0}""",
-                """{"type":"excerpt","maxLines":1001}""",
-            )) {
+        val valid = request(7)
+        val json = Json {
+            encodeDefaults = true
+            explicitNulls = false
+        }
+        for (lines in listOf(null, 0, 1001)) {
             val raw =
-                Json.parseToJsonElement(
-                    """
-                {"anchor":{"type":"symbol-snapshot","selector":"exact:v5:AAAAAAAAAAAAAAAAAAAAAA"},
-                 "region":{"type":"body","kind":"callable"},"entities":{"type":"none"},"text":$text}
-                """
-                        .trimIndent()
+                json.encodeToJsonElement(
+                    UncheckedSourceExcerpt.serializer(),
+                    UncheckedSourceExcerpt(
+                        anchor = valid.anchor,
+                        region = valid.region,
+                        entities = valid.entities,
+                        text = UncheckedExcerptText(lines),
+                    ),
                 )
-            assertTrue(SourceRequestIngress.decode(raw, Json) is Refinement.Rejected, text)
+            assertTrue(SourceRequestIngress.decode(raw, Json) is Refinement.Rejected, "maxLines=$lines")
         }
     }
 
@@ -57,3 +64,14 @@ class SourceExcerptRequestTest {
                 SourceTextRequestDocument.Excerpt((SourceLineCountDocument.parse(lines) as Refinement.Refined).value),
         )
 }
+
+/** The negative fixture deliberately bypasses the positive line-count contract. */
+@Serializable
+private data class UncheckedSourceExcerpt(
+    val anchor: SourceReadAnchorDocument,
+    val region: SourceRegionSelectionDocument,
+    val entities: SourceEntitySelectionDocument,
+    val text: UncheckedExcerptText,
+)
+
+@Serializable private data class UncheckedExcerptText(val maxLines: Int?, val type: String = "excerpt")

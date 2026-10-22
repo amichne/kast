@@ -204,6 +204,8 @@ Exact focus reads restore the original authority and reject stale references wit
 `ENCLOSING_DECLARATION`, `ENCLOSING_CALLABLE_BODY`, and `ENCLOSING_CLASS_BODY` select the smallest strict enclosing region of that kind.
 `CALLABLE_BODY` and `CLASS_BODY` select the nearest matching body, which can belong to the anchor itself.
 `ANCHOR` keeps the exact anchor, and `FILE` selects its file.
+A structural owner must contain the full focus.
+A window across sibling declarations cannot select just its first callable.
 
 Omission or `null` selects `ANCHOR` and `COMPLETE` text.
 `EXCERPT` returns at most `maxLines` around the anchor start, clipped to the selected region.

@@ -2,6 +2,9 @@ package io.github.amichne.kast.workspace.intellij.read
 
 /** Bounded vocabulary at the native effect boundary. No names, paths, references, or PSI. */
 enum class IntellijReadCounter {
+    /** Structural selection only; no source framing or publication claim. */
+    SOURCE_REGION_SELECTED,
+    SOURCE_REGION_ABSENT,
     DEPENDENCY_TREE_ENTRIES_VISITED,
     DEPENDENCY_SDK_PLANNED_FILES,
     /** Proven minimum of future stream reads; never an actual-work or byte counter. */

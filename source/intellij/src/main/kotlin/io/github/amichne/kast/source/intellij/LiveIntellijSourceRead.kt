@@ -18,16 +18,13 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.source.contract.BodyKind
 import io.github.amichne.kast.source.contract.CompilerUnresolvedReason
 import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationSemanticIdentity
 import io.github.amichne.kast.source.contract.DeclarationVisibility
-import io.github.amichne.kast.source.contract.EnclosingRegionKind
 import io.github.amichne.kast.source.contract.EntityFilter
 import io.github.amichne.kast.source.contract.EntitySelection
 import io.github.amichne.kast.source.contract.NonEmptySourceRange
-import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.source.contract.RevalidatedSourceSelector
 import io.github.amichne.kast.source.contract.SourceEntity
 import io.github.amichne.kast.source.contract.SourceEntityKind
@@ -59,6 +56,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -67,12 +65,9 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.KtCallElement
-import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtConstructorCalleeExpression
-import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.psi.KtDeclarationWithBody
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
@@ -158,8 +153,12 @@ internal class LiveIntellijSourceRegionAccess(
                 is LiveSourceAnchorResult.Rejected -> return regionRejected(anchor.reason)
             }
         val selected =
-            deriveRegion(admittedAnchor, request.region)
-                ?: return regionRejected(IntellijSourceReadRejection.REGION_ABSENT)
+            selectSourceRegion(admittedAnchor.element, admittedAnchor.selector, request.region)
+                ?: run {
+                    observation.count(IntellijReadCounter.SOURCE_REGION_ABSENT)
+                    return regionRejected(IntellijSourceReadRejection.REGION_ABSENT)
+                }
+        observation.count(IntellijReadCounter.SOURCE_REGION_SELECTED)
         val selectedRange =
             document.snapshot.sourceRange(selected.range)
                 ?: return regionRejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
@@ -405,89 +404,6 @@ private sealed interface LiveSourceAnchorResult {
 
     data class Rejected(val reason: IntellijSourceReadRejection) : LiveSourceAnchorResult
 }
-
-internal data class NativeSourceRegion(
-    val range: TextRange,
-    val kind: SourceRegionKind,
-    val element: PsiElement,
-)
-
-private fun deriveRegion(
-    anchor: LiveSourceAnchor,
-    selection: RegionSelection,
-): NativeSourceRegion? =
-    when (selection) {
-        RegionSelection.Anchor -> {
-            val range =
-                TextRange(
-                    anchor.selector.range.startInclusive.value,
-                    anchor.selector.range.endExclusive.value,
-                )
-            anchor.element?.let { element ->
-                NativeSourceRegion(
-                    range,
-                    anchor.selector.nativeRegionKind(),
-                    element.exactRegionElement(range),
-                )
-            }
-        }
-        RegionSelection.File ->
-            anchor.element?.containingFile?.let { file ->
-                NativeSourceRegion(
-                    TextRange(0, anchor.selector.snapshot.length.value),
-                    SourceRegionKind.FILE,
-                    file,
-                )
-            }
-        is RegionSelection.Body ->
-            when (selection.kind) {
-                BodyKind.CALLABLE ->
-                    anchor.element.nearestCallable()?.bodyExpression?.let {
-                        NativeSourceRegion(it.textRange, SourceRegionKind.CALLABLE_BODY, it)
-                    }
-                BodyKind.CLASS ->
-                    anchor.element.nearestClass()?.body?.let {
-                        NativeSourceRegion(it.textRange, SourceRegionKind.CLASS_BODY, it)
-                    }
-            }
-        is RegionSelection.Enclosing ->
-            when (selection.kind) {
-                EnclosingRegionKind.DECLARATION ->
-                    anchor.element
-                        .strictAncestors(anchor.selector)
-                        .filterIsInstance<KtDeclaration>()
-                        .firstOrNull()
-                        ?.let { NativeSourceRegion(it.textRange, SourceRegionKind.DECLARATION, it) }
-                EnclosingRegionKind.CALLABLE_BODY ->
-                    anchor.element
-                        .strictAncestors(anchor.selector)
-                        .filterIsInstance<KtExpression>()
-                        .firstOrNull { expression ->
-                            (expression.parent as? KtDeclarationWithBody)?.bodyExpression === expression
-                        }
-                        ?.let { NativeSourceRegion(it.textRange, SourceRegionKind.CALLABLE_BODY, it) }
-                EnclosingRegionKind.CLASS_BODY ->
-                    anchor.element.strictAncestors(anchor.selector).filterIsInstance<KtClassBody>().firstOrNull()?.let {
-                        NativeSourceRegion(it.textRange, SourceRegionKind.CLASS_BODY, it)
-                    }
-            }
-    }
-
-private fun PsiElement.exactRegionElement(range: TextRange): PsiElement =
-    generateSequence(this) { it.parent }.firstOrNull { element -> element.textRange == range } ?: this
-
-private fun PsiElement?.nearestCallable(): KtDeclarationWithBody? =
-    generateSequence(this) { it.parent }.filterIsInstance<KtDeclarationWithBody>().firstOrNull()
-
-private fun PsiElement?.nearestClass(): KtClassOrObject? =
-    generateSequence(this) { it.parent }.filterIsInstance<KtClassOrObject>().firstOrNull()
-
-private fun PsiElement?.strictAncestors(selector: SourceSelector): Sequence<PsiElement> =
-    generateSequence(this) { it.parent }
-        .filter { element ->
-            element.textRange.startOffset < selector.range.startInclusive.value ||
-                element.textRange.endOffset > selector.range.endExclusive.value
-        }
 
 internal enum class NativeVisibilityTarget {
     DECLARATION,
