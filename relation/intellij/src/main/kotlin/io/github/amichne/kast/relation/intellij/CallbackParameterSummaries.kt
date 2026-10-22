@@ -38,7 +38,7 @@ internal class CallbackParameterSummaries(
             )
         },
 ) {
-    val retention = CallbackFlowRetention(budget, observation)
+    val retention = CallbackFlowRetention(budget.resources.resultLimit, observation)
     val bodyReads = CallbackBodyReads()
     private val summaries = linkedMapOf<CallbackParameterIdentity, RequestCallbackSummary>()
 

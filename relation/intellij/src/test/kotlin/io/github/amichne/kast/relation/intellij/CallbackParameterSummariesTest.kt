@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
@@ -43,21 +44,21 @@ class CallbackParameterSummariesTest {
         assertTrue(summaries.retain(summary) is Refinement.Refined)
         assertSame(summary, summaries.find(summary.formal))
         assertTrue(summaries.retain(summary) is Refinement.Refined)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), summaries.retention.admit(1L))
+        assertEquals(Refinement.Refined(Unit), summaries.retention.admit(1L))
     }
 
     @Test
-    fun `cache storage and scan facts share admission and failed cache entry stays absent`() {
+    fun `cache storage and scan facts share the result grant and rejected entries stay absent`() {
         val summary = summary()
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources,
+                    request.budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()),
                     RelationByteLimit.parse(summary.retainedBytes).refined(),
                 )
             )
         assertTrue(summaries.retention.admit(1L) is Refinement.Refined)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), summaries.retain(summary))
+        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED), summaries.retain(summary))
         assertNull(summaries.find(summary.formal))
     }
 
@@ -97,9 +98,13 @@ class CallbackParameterSummariesTest {
         val cache = ObservedCache(summary)
         val summaries =
             CallbackParameterSummaries(
-                RelationBudget(request.budget.resources, RelationByteLimit.parse(1L).refined()),
+                RelationBudget(
+                    request.budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()),
+                    RelationByteLimit.parse(1L).refined(),
+                ),
                 cache = cache,
             )
+        summaries.retention.admit(0L).refined()
         assertNull(summaries.find(summary.formal))
         summaries.used(summary)
         assertEquals(0, cache.admissions)
@@ -134,7 +139,7 @@ class CallbackParameterSummariesTest {
     }
 
     @Test
-    fun `supplier project hit shares request byte admission and counts only consumed inventory once`() {
+    fun `supplier project hit ignores the output byte allowance and counts consumed inventory once`() {
         val inventory = suppliers()
         val cache = ObservedSupplierCache(inventory)
         val summaries =
@@ -144,7 +149,7 @@ class CallbackParameterSummariesTest {
             )
         assertSame(inventory, summaries.findSupplierInventory(inventory.root, inventory.domain))
         assertEquals(0, cache.admissions)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), summaries.retention.admit(1L))
+        assertEquals(Refinement.Refined(Unit), summaries.retention.admit(1L))
         summaries.supplierUsed(inventory)
         summaries.supplierUsed(inventory)
         assertSame(inventory, summaries.findSupplierInventory(inventory.root, inventory.domain))
@@ -159,11 +164,12 @@ class CallbackParameterSummariesTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources,
+                    request.budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()),
                     RelationByteLimit.parse(inventory.retainedBytes - 1).refined(),
                 ),
                 cache = cache,
             )
+        summaries.retention.admit(0L).refined()
         assertNull(summaries.findSupplierInventory(inventory.root, inventory.domain))
         summaries.supplierUsed(inventory)
         assertEquals(0, cache.admissions)

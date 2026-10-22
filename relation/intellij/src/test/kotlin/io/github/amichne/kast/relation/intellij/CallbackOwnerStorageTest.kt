@@ -26,10 +26,12 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CallbackOwnerStorageTest {
-    private val fixture = OwnerStorageFixture()
+    private val observation = CallbackStorageObservation()
+    private val fixture = OwnerStorageFixture(observation)
 
     @Test
     fun `an owned nested execution consumes its reference cost instead of a second execution footprint`() {
@@ -39,11 +41,11 @@ class CallbackOwnerStorageTest {
         val retention = fixture.retention(allowance)
         retention.admitOwner(outer).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(allowance, observation.retainedBytes)
     }
 
     @Test
-    fun `an equal rebuilt child does not inherit another objects byte admission`() {
+    fun `an equal rebuilt child keeps its complete diagnostic estimate`() {
         val outer = fixture.outer()
         val rebuilt = fixture.outer()
         assertEquals(outer, rebuilt)
@@ -52,8 +54,8 @@ class CallbackOwnerStorageTest {
         val allowance = outer.retainedBytes + inner.retainedBytes - outer.execution.retainedBytes
         val retention = fixture.retention(allowance)
         retention.admitOwner(outer).refined()
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admitOwner(inner))
-        assertEquals(Refinement.Refined(Unit), retention.admit(inner.retainedBytes - outer.execution.retainedBytes))
+        assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
+        assertEquals(outer.retainedBytes + inner.retainedBytes, observation.retainedBytes)
     }
 
     @Test
@@ -62,8 +64,8 @@ class CallbackOwnerStorageTest {
         val inner = fixture.inner(outer)
         fixture.retention(outer.retainedBytes).admitOwner(outer).refined()
         val retention = fixture.retention(inner.retainedBytes - 1L)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admitOwner(inner))
-        assertEquals(Refinement.Refined(Unit), retention.admit(inner.retainedBytes - 1L))
+        assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
+        assertEquals(inner.retainedBytes, observation.retainedBytes)
     }
 
     @Test
@@ -73,7 +75,7 @@ class CallbackOwnerStorageTest {
         val retention = fixture.retention(inner.retainedBytes)
         retention.admitOwner(outer).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(inner.retainedBytes, observation.retainedBytes)
     }
 
     @Test
@@ -85,7 +87,8 @@ class CallbackOwnerStorageTest {
         val inner = fixture.immutableInner(rebuilt)
         val retention = fixture.retention(inner.retainedBytes)
         retention.admitOwner(outer).refined()
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admitOwner(inner))
+        assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
+        assertEquals(outer.retainedBytes + inner.retainedBytes, observation.retainedBytes)
     }
 
     @Test
@@ -97,11 +100,11 @@ class CallbackOwnerStorageTest {
         retention.admitOwner(outer).refined()
         retention.admitImmutableValue(value).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(inner.retainedBytes - value.source.retainedBytes, observation.retainedBytes)
     }
 
     @Test
-    fun `an equal rebuilt terminal value does not inherit byte admission`() {
+    fun `an equal rebuilt terminal value keeps its complete diagnostic estimate`() {
         val outer = fixture.outer()
         val inner = fixture.immutableInner(outer)
         val rebuilt = fixture.immutableInner(outer)
@@ -112,7 +115,8 @@ class CallbackOwnerStorageTest {
         val retention = fixture.retention(inner.retainedBytes - value.source.retainedBytes)
         retention.admitOwner(outer).refined()
         retention.admitImmutableValue(copy).refined()
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admitOwner(inner))
+        assertEquals(Refinement.Refined(Unit), retention.admitOwner(inner))
+        assertTrue(observation.retainedBytes > inner.retainedBytes - value.source.retainedBytes)
     }
 
     @Test
@@ -122,7 +126,7 @@ class CallbackOwnerStorageTest {
         val retention = fixture.retention(value.retainedBytes - value.source.retainedBytes + 64L)
         retention.admitImmutableValue(value).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitImmutableValue(value))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(value.retainedBytes - value.source.retainedBytes + 64L, observation.retainedBytes)
     }
 
     @Test
@@ -137,13 +141,14 @@ class CallbackOwnerStorageTest {
         val retention = fixture.retention(value.retainedBytes - value.source.retainedBytes + 64L)
         retention.admitImmutableValue(value).refined()
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             retention.admitImmutableValue(copy),
         )
+        assertTrue(observation.retainedBytes > value.retainedBytes - value.source.retainedBytes + 64L)
     }
 }
 
-private class OwnerStorageFixture {
+private class OwnerStorageFixture(private val observation: CallbackStorageObservation) {
     private val request = RelationReadTest().request(RelationMeaning.Callees)
     private val file = request.subject.file
     private val named =
@@ -163,7 +168,10 @@ private class OwnerStorageFixture {
             .refined()
 
     fun retention(bytes: Long) =
-        CallbackFlowRetention(request.budget.copy(returnedBytes = RelationByteLimit.parse(bytes).refined()))
+        CallbackFlowRetention(
+            request.budget.copy(returnedBytes = RelationByteLimit.parse(bytes).refined()).resources.resultLimit,
+            observation,
+        )
 
     fun outer() = owner(body(20, 180), named, 10, 190, emptyList())
 
