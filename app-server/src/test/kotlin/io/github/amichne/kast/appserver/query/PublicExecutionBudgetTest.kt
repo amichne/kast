@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -48,6 +49,8 @@ class PublicExecutionBudgetTest {
                                 steps = null,
                                 terminalStep = PublicToolEmit(),
                                 executionBudget = publicBudget,
+                                executionMode =
+                                    io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED,
                             )
                         )
                     )
@@ -133,6 +136,7 @@ class PublicExecutionBudgetTest {
                                 source = PublicToolReferenceSource(refs),
                                 steps = null,
                                 terminalStep = PublicToolEmit(),
+                                executionMode = QueryExecutionModeDocument.BOUNDED,
                                 executionBudget = publicBudget,
                             )
                         )

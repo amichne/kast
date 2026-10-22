@@ -3,6 +3,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.AdmittedExecutionBudget
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -65,6 +66,10 @@ sealed interface ExecutionBudgetReport {
     private constructor(
         @SerialName("max_results") override val results: ExecutionLimitDocument,
         @SerialName("max_returned_bytes") override val returnedBytes: ExecutionLimitDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("max_elapsed_ms")
+        @Serializable(with = ExecutionElapsedSerializer::class)
+        val timeout: ElapsedTimeLimitMillis? = null,
     ) : ExecutionBudgetReport {
         companion object {
             internal fun admit(
@@ -72,13 +77,15 @@ sealed interface ExecutionBudgetReport {
             ): Refinement<RunnerControlled, ExecutionBudgetReportFailure> =
                 when (val output = admitOutput(input.results, input.returnedBytes)) {
                     is Refinement.Rejected -> output
-                    is Refinement.Refined -> Refinement.Refined(RunnerControlled(input.results, input.returnedBytes))
+                    is Refinement.Refined ->
+                        Refinement.Refined(RunnerControlled(input.results, input.returnedBytes, input.timeout))
                 }
 
             internal fun from(grant: AdmittedExecutionBudget.RunnerControlled) =
                 RunnerControlled(
                     ExecutionLimitDocument.from(grant.results) { it.value.toLong() },
                     ExecutionLimitDocument.from(grant.returnedBytes) { it.value },
+                    grant.timeout,
                 )
         }
     }
@@ -116,6 +123,10 @@ internal data class BoundedExecutionBudgetReportInput(
 internal data class RunnerControlledExecutionBudgetReportInput(
     @SerialName("max_results") val results: ExecutionLimitDocument,
     @SerialName("max_returned_bytes") val returnedBytes: ExecutionLimitDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("max_elapsed_ms")
+    @Serializable(with = ExecutionElapsedSerializer::class)
+    val timeout: ElapsedTimeLimitMillis? = null,
 )
 
 internal object BoundedExecutionBudgetReportSerializer : KSerializer<ExecutionBudgetReport.Bounded> {
@@ -137,7 +148,10 @@ internal object RunnerControlledExecutionBudgetReportSerializer : KSerializer<Ex
     override val descriptor = delegate.descriptor
 
     override fun serialize(encoder: Encoder, value: ExecutionBudgetReport.RunnerControlled) =
-        delegate.serialize(encoder, RunnerControlledExecutionBudgetReportInput(value.results, value.returnedBytes))
+        delegate.serialize(
+            encoder,
+            RunnerControlledExecutionBudgetReportInput(value.results, value.returnedBytes, value.timeout),
+        )
 
     override fun deserialize(decoder: Decoder): ExecutionBudgetReport.RunnerControlled =
         ExecutionBudgetReport.RunnerControlled.admit(delegate.deserialize(decoder)).admittedReport()

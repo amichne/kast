@@ -40,7 +40,11 @@ data class ExecutionBudgetDocument(
         )
 
     internal fun runnerControlled() =
-        RequestedExecutionBudget.RunnerControlled(maxResults.allowance(), maxReturnedBytes.allowance())
+        RequestedExecutionBudget.RunnerControlled(
+            maxResults.allowance(),
+            maxReturnedBytes.allowance(),
+            maxElapsedMillis,
+        )
 }
 
 fun QueryRunRequest.Run.requestedExecutionBudget(): RequestedExecutionBudget =

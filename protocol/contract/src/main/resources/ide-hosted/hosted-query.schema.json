@@ -134,7 +134,8 @@
                               "enum": [
                                 "OBSERVATION_FAILED",
                                 "RUNTIME",
-                                "LINKAGE"
+                                "LINKAGE",
+                                "CALLER_TIMEOUT"
                               ]
                             },
                             "field": {
@@ -586,6 +587,21 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["kind", "instruction"],
+          "properties": {
+            "kind": {
+              "enum": ["increase_host_deadline", "increase_caller_timeout"]
+            },
+            "instruction": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
             "kind",
             "check",
@@ -1020,6 +1036,17 @@
               ],
               "type": "string"
             },
+            "max_elapsed_ms": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "max_results": {
               "type": "object",
               "additionalProperties": false,
@@ -1204,7 +1231,6 @@
     "readLimitParameter": {
       "enum": [
         "KAST_READ_MODEL_CACHED_GRADLE_MODELS",
-        "KAST_READ_MODEL_MODULES",
         "KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE",
         "KAST_READ_MODEL_CLASSPATH_ENTRIES_PER_MODULE",
         "KAST_READ_MODEL_IDENTITY_CHARACTERS",

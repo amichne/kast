@@ -36,6 +36,7 @@ fun interface HostedReadPublicationAdmission {
 private val containmentFailures =
     listOf(
         HostedQueryFailure.BUDGET_EXCEEDED,
+        HostedQueryFailure.CALLER_TIMEOUT,
         HostedQueryFailure.CANCELLED,
         HostedQueryFailure.READ_PREEMPTED,
         HostedQueryFailure.RETIRED,

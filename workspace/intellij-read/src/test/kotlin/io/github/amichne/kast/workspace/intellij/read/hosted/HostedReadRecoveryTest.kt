@@ -95,6 +95,29 @@ class HostedReadRecoveryTest {
     }
 
     @Test
+    fun `caller capture timeout preserves provenance without inventing an admitted grant`() {
+        val document =
+            Json.parseToJsonElement(
+                    HostedQueryWire.encode(
+                        HostedQueryResult.Rejected(HostedQueryFailure.CALLER_TIMEOUT, HostedQueryStage.MODEL_CAPTURE)
+                    )
+                )
+                .jsonObject
+        assertEquals("BUDGET_EXCEEDED", document.getValue("failure").jsonPrimitive.content)
+        assertEquals("CALLER_TIMEOUT", document.getValue("detail").jsonObject.getValue("cause").jsonPrimitive.content)
+        assertEquals("MODEL_CAPTURE", document.getValue("stage").jsonPrimitive.content)
+        assertEquals(false, document.containsKey("execution_budget"))
+        val recovery = document.getValue("recovery").jsonObject
+        assertEquals("increase_caller_timeout", recovery.getValue("kind").jsonPrimitive.content)
+        assertEquals(
+            "The explicitly requested maxElapsedMs expired, including admission, indexing waits, and model capture. " +
+                "Increase or omit executionBudget.maxElapsedMs for a new RUN. " +
+                "Host deadline settings do not extend this caller timeout.",
+            recovery.getValue("instruction").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun `exhaustion and cancellation have different actionable recovery`() {
         for ((failure, expected) in
             listOf(

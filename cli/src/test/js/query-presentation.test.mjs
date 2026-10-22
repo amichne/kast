@@ -17,16 +17,22 @@ const owner = new SourceTextModule(readFileSync(new URL('../../main/js/query-del
 await owner.link(() => { throw new Error('Pure delivery presentation must not import effects'); });
 await owner.evaluate();
 const { queryPresentation, awaitQueryDelivery, createQueryDeliveryEnvelope } = owner.namespace;
-test('runner-controlled semantics outlive the bounded transport deadline', async () => {
+for (const executionMode of [undefined, null, 'RUNNER_CONTROLLED', 'BOUNDED'])
+test(`RUN executionMode=${executionMode} selects the normalized transport lifetime`, async () => {
   let time = 0;
   const modes = [];
-  const initial = native.cases.empty.reply;
+  const initial = native.cases.retainedEvidence.reply;
   const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
-    terminalStep: { type: 'EMIT' }, executionMode: 'RUNNER_CONTROLLED' } },
-    async (_request, policy) => { modes.push(policy.executionMode); time = 10000; return initial; },
+    terminalStep: { type: 'EMIT' }, ...(executionMode === undefined ? {} : { executionMode }) } },
+    async (request, policy) => {
+      modes.push(policy.executionMode); time = 10000;
+      return request.request.type === 'RUN' ? initial : native.cases.empty.reply;
+    },
     { callTimeoutMillis: 100 }, undefined, () => time);
-  assert.equal(modes[0], 'RUNNER_CONTROLLED');
-  assert.equal(result.delivery?.stop ?? 'DELIVERED', 'DELIVERED');
+  assert.equal(modes[0], executionMode === 'BOUNDED' ? undefined : 'RUNNER_CONTROLLED');
+  assert.equal(modes.length, executionMode === 'BOUNDED' ? 1 : 2);
+  if (modes.length === 2) assert.equal(modes[1], 'RUNNER_CONTROLLED');
+  assert.equal(result.delivery.stop === 'TIME_LIMIT', executionMode === 'BOUNDED');
 });
 const refs = Array.from({ length: 43 }, (_, index) => `exact:v2:fixture-${index}`);
 const nativeDocumentHashes = {

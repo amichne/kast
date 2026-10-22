@@ -4,8 +4,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import io.github.amichne.kast.kernel.ReadLimitParameter
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.SemanticModuleDependencies
 import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
@@ -20,10 +18,7 @@ internal class SemanticNativeModuleGraph(
     val graph: SemanticModuleDependencies,
 )
 
-internal class SemanticNativeModuleGraphCapture(
-    private val limits: ReadLimits,
-    private val budget: DependencyCaptureBudget,
-) {
+internal class SemanticNativeModuleGraphCapture(private val budget: DependencyCaptureBudget) {
     fun capture(project: Project, model: WorkspaceSearchScopeModel): SemanticCapture<SemanticNativeModuleGraph> {
         val selected =
             when (val modules = modules(project, model)) {
@@ -48,8 +43,6 @@ internal class SemanticNativeModuleGraphCapture(
     ): SemanticCapture<Map<WorkspaceModuleIdentity, Module>> {
         val modules =
             budget.observation.call(IntellijReadCall.MODULE_INVENTORY) { ModuleManager.getInstance(project).modules }
-        if (modules.size > limits[ReadLimitParameter.MODEL_MODULES].value)
-            return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
         val byName = modules.groupBy(Module::getName)
         val selected = linkedMapOf<WorkspaceModuleIdentity, Module>()
         for (identity in model.sourceRoots.mapTo(linkedSetOf(), ModelOwnedSourceRoot::module)) {
@@ -85,8 +78,6 @@ internal class SemanticNativeModuleGraphCapture(
                 names += settings.dependsOnModuleNames
                 names += settings.implementedModuleNames
             }
-        if (names.size > limits[ReadLimitParameter.MODEL_MODULES].value)
-            return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
         val dependencies = linkedSetOf<WorkspaceModuleIdentity>()
         for (name in names) dependencies +=
             identities[name] ?: return captureRejected(SemanticDependencyCaptureFailure.DEPENDENCY_MODULE_UNMODELED)

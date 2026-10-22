@@ -55,11 +55,6 @@ class DetachedModelNegativeTest {
     @Test
     fun `oversized observations reject instead of truncating into authority`() {
         assertFailures(
-            DetachedModelObservation.Observed(detachedModelBoundary(modules = (0..256).map(::detachedModuleBoundary))),
-            DetachedModelCaptureFailure.TOO_MANY_MODULES,
-            "module limit",
-        )
-        assertFailures(
             observationWithModule(
                 detachedModuleBoundary(
                     sourceRoots =

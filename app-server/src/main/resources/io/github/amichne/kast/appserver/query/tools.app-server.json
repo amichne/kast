@@ -698,10 +698,10 @@
               "object",
               "null"
             ],
-            "description": "Optional positive controls use configured defaults. BOUNDED mode clamps each control. RUNNER_CONTROLLED accepts only output controls.",
+            "description": "RUNNER_CONTROLLED has no implicit semantic work or time limit. It accepts an explicit timeout and output page controls. Legacy BOUNDED mode uses configured grants and ceilings.",
             "properties": {
               "maxElapsedMs": {
-                "description": "Elapsed allowance in milliseconds. Omission uses KAST_READ_SEMANTIC_MILLIS. Host time can reduce this grant.",
+                "description": "Explicit timeout in milliseconds for RUNNER_CONTROLLED execution, including model capture. Omission adds no timeout. Legacy BOUNDED mode uses KAST_READ_SEMANTIC_MILLIS and host clamps.",
                 "type": [
                   "integer",
                   "null"
@@ -3418,7 +3418,7 @@
               null
             ],
             "default": null,
-            "description": "RUNNER_CONTROLLED accepts only output controls and runs until completion or caller cancellation."
+            "description": "RUNNER_CONTROLLED is the default. It runs until completion, caller cancellation, or an explicit maxElapsedMs timeout, without semantic work quotas. BOUNDED is an explicit legacy opt-in."
           }
         }
       },
@@ -3482,10 +3482,10 @@
               "object",
               "null"
             ],
-            "description": "Optional positive controls use configured defaults. BOUNDED mode clamps each control. RUNNER_CONTROLLED accepts only output controls.",
+            "description": "RUNNER_CONTROLLED has no implicit semantic work or time limit. It accepts an explicit timeout and output page controls. Legacy BOUNDED mode uses configured grants and ceilings.",
             "properties": {
               "maxElapsedMs": {
-                "description": "Elapsed allowance in milliseconds. Omission uses KAST_READ_SEMANTIC_MILLIS. Host time can reduce this grant.",
+                "description": "Explicit timeout in milliseconds for RUNNER_CONTROLLED execution, including model capture. Omission adds no timeout. Legacy BOUNDED mode uses KAST_READ_SEMANTIC_MILLIS and host clamps.",
                 "type": [
                   "integer",
                   "null"

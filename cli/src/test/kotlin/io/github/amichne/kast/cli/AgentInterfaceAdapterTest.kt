@@ -14,8 +14,9 @@ import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.AgentInterfaceDiscoveryFixture
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.io.BufferedInputStream
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -95,12 +96,23 @@ class AgentInterfaceAdapterTest {
 
     private fun assertMcp(exit: CliExit, arguments: JsonObject): String {
         var calls = 0
-        val output = ByteArrayOutputStream()
         val input =
             adapterJson.encodeToString(AdapterInitialize()) +
                 "\n" +
                 adapterJson.encodeToString(AdapterCall(params = AdapterCallParameters(arguments = arguments))) +
                 "\n"
+        val writer = PipedOutputStream()
+        val source = PipedInputStream(writer, input.toByteArray(Charsets.UTF_8).size + 1)
+        val output =
+            object : ByteArrayOutputStream() {
+                override fun write(bytes: ByteArray, offset: Int, length: Int) {
+                    super.write(bytes, offset, length)
+                    // A real MCP caller keeps input open until the response; EOF would cancel the default RUN.
+                    if (toString(Charsets.UTF_8).count { it == '\n' } == 2) writer.close()
+                }
+            }
+        writer.write(input.toByteArray(Charsets.UTF_8))
+        writer.flush()
         KastMcpServer(
                 catalog,
                 { name, supplied ->
@@ -113,7 +125,9 @@ class AgentInterfaceAdapterTest {
                 { FilesystemCanonicalRootDiscovery.discover(temporary) },
                 diagnostic = PrintStream(ByteArrayOutputStream()),
             )
-            .run(BufferedInputStream(ByteArrayInputStream(input.toByteArray(Charsets.UTF_8))), PrintStream(output))
+            .run(BufferedInputStream(source), PrintStream(output))
+        source.close()
+        writer.close()
         assertEquals(1, calls)
         val lines = output.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).toList()
         assertEquals(2, lines.size)

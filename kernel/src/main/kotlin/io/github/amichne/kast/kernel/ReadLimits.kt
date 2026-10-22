@@ -13,7 +13,6 @@ enum class ReadLimitUnit {
 
 enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, val minimum: Int = 1) {
     MODEL_CACHED_GRADLE_MODELS(8, ReadLimitUnit.COUNT),
-    MODEL_MODULES(256, ReadLimitUnit.COUNT),
     MODEL_SOURCE_ROOTS_PER_MODULE(256, ReadLimitUnit.COUNT),
     MODEL_CLASSPATH_ENTRIES_PER_MODULE(2_048, ReadLimitUnit.COUNT),
     MODEL_IDENTITY_CHARACTERS(512, ReadLimitUnit.CHARACTERS),

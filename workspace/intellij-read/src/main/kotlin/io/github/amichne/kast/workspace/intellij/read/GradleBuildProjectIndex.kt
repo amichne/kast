@@ -39,13 +39,8 @@ private constructor(
             val selected = GradleBuildIdentity.selected(root)
             val indexed = LinkedHashMap<GradleProjectDirectory, MutableList<CachedGradleProject>>()
             val pending = ArrayDeque<PendingGradleProject>().apply { add(PendingGradleProject(imported, selected)) }
-            var count = 0
             while (pending.isNotEmpty()) {
                 ProgressManager.checkCanceled()
-                if (++count > limits[ReadLimitParameter.MODEL_MODULES].value) {
-                    observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
-                    return Refinement.Rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
-                }
                 val next = pending.removeFirst()
                 val project = next.project
                 val owner =
@@ -58,12 +53,6 @@ private constructor(
                 }
                 indexed.getOrPut(owner.directory) { mutableListOf() }.add(owner)
                 observation.count(IntellijReadCounter.IMPORTED_PROJECTS)
-                if (
-                    count + pending.size + project.childProjects.size > limits[ReadLimitParameter.MODEL_MODULES].value
-                ) {
-                    observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
-                    return Refinement.Rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
-                }
                 pending.addAll(project.childProjects.values.map { PendingGradleProject(it, owner.build) })
             }
             return Refinement.Refined(

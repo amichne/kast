@@ -6,6 +6,16 @@ import org.junit.jupiter.api.Test
 
 class ReadLimitConfigurationTest {
     @Test
+    fun `module count setting is absent from installed configuration`() {
+        assertFalse(KastConfigurationCatalogue.declarations.any { it.key == "KAST_READ_MODEL_MODULES" })
+        assertTrue(
+            ResolvedKastConfiguration.resolve(
+                ConfigurationSources(savedInstallation = listOf("KAST_READ_MODEL_MODULES" to "512"))
+            ) is Refinement.Rejected
+        )
+    }
+
+    @Test
     fun `execution settings distinguish defaults from ceilings in configuration help`() {
         val declarations = KastConfigurationCatalogue.declarations.associateBy { it.key }
         for ((key, expected) in mapOf("KAST_READ_SEMANTIC_MILLIS" to "15000", "KAST_READ_SEMANTIC_WORK" to "2000000")) {
@@ -53,15 +63,23 @@ class ReadLimitConfigurationTest {
         }
         val configured =
             (ResolvedKastConfiguration.resolve(
-                    ConfigurationSources(savedInstallation = listOf("KAST_READ_MODEL_MODULES" to "1024"))
+                    ConfigurationSources(
+                        savedInstallation = listOf("KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE" to "1024")
+                    )
                 ) as Refinement.Refined)
                 .value
-        assertEquals(1024, configured.readLimits[ReadLimitParameter.MODEL_MODULES].value)
-        assertEquals(ReadLimitSource.SAVED_INSTALLATION, configured.readLimits[ReadLimitParameter.MODEL_MODULES].source)
-        assertEquals("1024", configured.childEnvironment(ConfigurationChild.BROKER)["KAST_READ_MODEL_MODULES"])
+        assertEquals(1024, configured.readLimits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value)
+        assertEquals(
+            ReadLimitSource.SAVED_INSTALLATION,
+            configured.readLimits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].source,
+        )
+        assertEquals(
+            "1024",
+            configured.childEnvironment(ConfigurationChild.BROKER)["KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE"],
+        )
         assertEquals(
             ConfigurationSemanticAdmission.ADMITTED,
-            configured.inspection().single { it.key == "KAST_READ_MODEL_MODULES" }.semanticAdmission,
+            configured.inspection().single { it.key == "KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE" }.semanticAdmission,
         )
     }
 
@@ -70,8 +88,8 @@ class ReadLimitConfigurationTest {
         assertTrue(
             ResolvedKastConfiguration.resolve(
                 ConfigurationSources(
-                    environment = mapOf("KAST_READ_MODEL_MODULES" to "1024"),
-                    savedInstallation = listOf("KAST_READ_MODEL_MODULES" to "private-invalid-value"),
+                    environment = mapOf("KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE" to "1024"),
+                    savedInstallation = listOf("KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE" to "private-invalid-value"),
                 )
             ) is Refinement.Rejected
         )

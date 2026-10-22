@@ -18,7 +18,6 @@ enum class DetachedModelCaptureFailure {
     GRADLE_MODEL_INCOMPLETE,
     TOO_MANY_GRADLE_MODELS,
     NO_MODULES,
-    TOO_MANY_MODULES,
     MODULE_DISPOSED,
     INVALID_MODULE_NAME,
     IDENTITY_TOO_LONG,
@@ -243,7 +242,6 @@ private fun <Value> immutableList(values: List<Value>): List<Value> = Collection
 
 internal object DetachedModelLimits {
     const val MAX_CACHED_GRADLE_MODELS = 8
-    const val MAX_MODULES = 256
     const val MAX_SOURCE_ROOTS_PER_MODULE = 256
     const val MAX_CLASSPATH_ENTRIES_PER_MODULE = 2_048
     const val MAX_IDENTITY_CHARS = 512

@@ -14,6 +14,7 @@ import java.nio.file.Path
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.jps.model.module.JpsModuleSourceRoot
+import org.jetbrains.jps.model.module.JpsModuleSourceRootType
 
 /** Runs the real ExternalSystemApiUtil against the module's external-system service boundary. */
 internal fun gradleModule(name: String, build: String?, project: String?, system: String = "GRADLE"): Module {
@@ -83,19 +84,21 @@ internal fun sourceFolder(
     path: Path,
     available: Boolean = true,
     resource: Boolean = false,
+    rootType: JpsModuleSourceRootType<*> =
+        if (resource) org.jetbrains.jps.model.java.JavaResourceRootType.RESOURCE else JavaSourceRootType.SOURCE,
+    generated: Boolean = false,
     mapping: () -> Path = { path },
 ): SourceFolder = fixtureProxy { method, _ ->
     when (method) {
         "getUrl" -> "file://$path"
-        "getRootType" ->
-            if (resource) org.jetbrains.jps.model.java.JavaResourceRootType.RESOURCE else JavaSourceRootType.SOURCE
+        "getRootType" -> rootType
         "getFile" ->
             if (available)
                 object : LightVirtualFile(path.fileName.toString()) {
                     override fun toNioPath() = mapping()
                 }
             else null
-        "getJpsElement" -> sourceProperties()
+        "getJpsElement" -> sourceProperties(generated)
         else -> error("Unexpected source-folder observation $method")
     }
 }
@@ -110,9 +113,9 @@ internal inline fun <reified T> fixtureProxy(crossinline call: (String, Array<ou
         }
     } as T
 
-private fun sourceProperties(): JpsModuleSourceRoot = fixtureProxy { name, _ ->
+private fun sourceProperties(generated: Boolean): JpsModuleSourceRoot = fixtureProxy { name, _ ->
     when (name) {
-        "getProperties" -> JavaSourceRootProperties("", false)
+        "getProperties" -> JavaSourceRootProperties("", generated)
         else -> error("Unexpected JPS observation $name")
     }
 }

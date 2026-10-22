@@ -5,6 +5,18 @@ import org.junit.jupiter.api.Test
 
 class ReadLimitsTest {
     @Test
+    fun `removed module count setting is not an admitted limit`() {
+        assertEquals(
+            Refinement.Rejected(ReadLimitFailure.UnknownParameter),
+            ReadLimits.resolve(environment = mapOf("KAST_READ_MODEL_MODULES" to "512")),
+        )
+        assertEquals(
+            Refinement.Rejected(ReadLimitFailure.UnknownParameter),
+            ReadLimits.resolve(properties = mapOf("kast.read.model.modules" to "512")),
+        )
+    }
+
+    @Test
     fun `execution defaults provide headroom without larger responses or retention stores`() {
         val limits = (ReadLimits.resolve() as Refinement.Refined).value
         val expected =
@@ -61,14 +73,14 @@ class ReadLimitsTest {
     fun `defaults are complete and overrides preserve parameter identity and provenance`() {
         val limits =
             ReadLimits.resolve(
-                mapOf(ReadLimitParameter.MODEL_MODULES.environmentKey to "768"),
-                mapOf(ReadLimitParameter.MODEL_MODULES.propertyKey to "1024"),
+                mapOf(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE.environmentKey to "768"),
+                mapOf(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE.propertyKey to "1024"),
             ) as Refinement.Refined
         assertEquals(ReadLimitParameter.entries.size, limits.value.values.size)
-        val modules = limits.value[ReadLimitParameter.MODEL_MODULES]
-        assertEquals(ReadLimitParameter.MODEL_MODULES, modules.parameter)
-        assertEquals(1024, modules.value)
-        assertEquals(ReadLimitSource.JVM_PROPERTY, modules.source)
+        val roots = limits.value[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE]
+        assertEquals(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE, roots.parameter)
+        assertEquals(1024, roots.value)
+        assertEquals(ReadLimitSource.JVM_PROPERTY, roots.source)
         assertEquals(2_000_000, limits.value[ReadLimitParameter.SEMANTIC_WORK].value)
     }
 
@@ -76,7 +88,7 @@ class ReadLimitsTest {
     fun `unknown malformed out of range and inconsistent bounds never fall back`() {
         for (value in listOf("", "0", "-1", "+2", "1.5", "999999999999999999999999999999999")) {
             assertTrue(
-                ReadLimits.resolve(mapOf(ReadLimitParameter.MODEL_MODULES.environmentKey to value))
+                ReadLimits.resolve(mapOf(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE.environmentKey to value))
                     is Refinement.Rejected
             )
         }
@@ -87,8 +99,8 @@ class ReadLimitsTest {
         )
         assertTrue(
             ReadLimits.resolve(
-                mapOf(ReadLimitParameter.MODEL_MODULES.environmentKey to "secret"),
-                mapOf(ReadLimitParameter.MODEL_MODULES.propertyKey to "1024"),
+                mapOf(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE.environmentKey to "secret"),
+                mapOf(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE.propertyKey to "1024"),
             ) is Refinement.Rejected
         )
     }
@@ -118,10 +130,11 @@ class ReadLimitsTest {
     @Test
     fun `rejections reveal the parameter and finite condition without supplied data`() {
         val result =
-            ReadLimits.resolve(mapOf(ReadLimitParameter.MODEL_MODULES.environmentKey to "private-value"))
-                as Refinement.Rejected
+            ReadLimits.resolve(
+                mapOf(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE.environmentKey to "private-value")
+            ) as Refinement.Rejected
         val failure = result.failure as ReadLimitFailure.InvalidValue
-        assertEquals(ReadLimitParameter.MODEL_MODULES, failure.parameter)
+        assertEquals(ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE, failure.parameter)
         assertEquals(ReadLimitValueFailure.INVALID_NUMBER, failure.kind)
         assertFalse(result.failure.toString().contains("private-value"))
     }

@@ -12,6 +12,7 @@ import java.io.BufferedInputStream
 import java.io.PrintStream
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -327,7 +328,7 @@ private fun McpToolCall.executionPolicy(): QueryExecutionModeDocument =
         val request = arguments?.get("request") as? JsonObject
         if (
             request?.get("type") == JsonPrimitive("RUN") &&
-                request["executionMode"] == JsonPrimitive("RUNNER_CONTROLLED")
+                request["executionMode"] in listOf(null, JsonNull, JsonPrimitive("RUNNER_CONTROLLED"))
         )
             QueryExecutionModeDocument.RUNNER_CONTROLLED
         else QueryExecutionModeDocument.BOUNDED

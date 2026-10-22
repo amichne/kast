@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.AdmittedExecutionBudget
@@ -20,25 +22,30 @@ import org.junit.jupiter.api.Test
 class RunnerControlledBudgetReportTest {
     @Test
     fun `runner report emits only finite output grants with explicit mode`() {
-        val elapsed = ElapsedTimeLimitMillis.parse(1).proven()
-        val results = ResultLimit.parse(2).proven()
-        val bytes = ReturnedByteLimit.parse(2000).proven()
-        val resources = ResourceBudget(results, WorkUnitLimit.parse(1).proven(), elapsed)
-        val grant =
-            AdmittedExecutionBudget.admit(
-                RequestedExecutionBudget.RunnerControlled(),
-                resources,
-                bytes,
-                resources,
-                bytes,
-                ExecutionBudgetCapacity(elapsed, results, bytes),
-            )
-        val report = ExecutionBudgetReport.from(grant)
-        val json = Json { encodeDefaults = true }
-        val expected = json.encodeToString(ExpectedRunnerReport.serializer(), ExpectedRunnerReport())
-        val actual = json.encodeToString(ExecutionBudgetReport.serializer(), report)
-        assertEquals(json.parseToJsonElement(expected), json.parseToJsonElement(actual))
-        assertEquals(report, json.decodeFromString(ExecutionBudgetReport.serializer(), expected))
+        for (timeout in listOf(null, 60001L)) {
+            val elapsed = ElapsedTimeLimitMillis.parse(1).proven()
+            val results = ResultLimit.parse(2).proven()
+            val bytes = ReturnedByteLimit.parse(2000).proven()
+            val resources = ResourceBudget(results, WorkUnitLimit.parse(1).proven(), elapsed)
+            val grant =
+                AdmittedExecutionBudget.admit(
+                    RequestedExecutionBudget.RunnerControlled(
+                        timeout = timeout?.let { ElapsedTimeLimitMillis.parse(it).proven() }
+                    ),
+                    resources,
+                    bytes,
+                    resources,
+                    bytes,
+                    ExecutionBudgetCapacity(elapsed, results, bytes),
+                )
+            val report = ExecutionBudgetReport.from(grant)
+            val json = Json { encodeDefaults = true }
+            val expected =
+                json.encodeToString(ExpectedRunnerReport.serializer(), ExpectedRunnerReport(timeout = timeout))
+            val actual = json.encodeToString(ExecutionBudgetReport.serializer(), report)
+            assertEquals(json.parseToJsonElement(expected), json.parseToJsonElement(actual))
+            assertEquals(report, json.decodeFromString(ExecutionBudgetReport.serializer(), expected))
+        }
     }
 
     @Test
@@ -59,6 +66,9 @@ private data class ExpectedRunnerReport(
     val mode: String = "RUNNER_CONTROLLED",
     @SerialName("max_results") val results: ExpectedOutputGrant = ExpectedOutputGrant(2),
     @SerialName("max_returned_bytes") val bytes: ExpectedOutputGrant = ExpectedOutputGrant(2000),
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("max_elapsed_ms")
+    val timeout: Long? = null,
 )
 
 @Serializable

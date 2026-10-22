@@ -73,8 +73,8 @@ private fun PublicToolReadSourceAction.lowerReadSource(): Refinement<PublicToolC
 
 private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, PublicToolInputFailure> {
     if (
-        executionMode == QueryExecutionModeDocument.RUNNER_CONTROLLED &&
-            (executionBudget?.maxElapsedMs != null || executionBudget?.maxWorkUnits != null)
+        (executionMode ?: PublicToolDefaults.executionMode) == QueryExecutionModeDocument.RUNNER_CONTROLLED &&
+            executionBudget?.maxWorkUnits != null
     ) {
         return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
     }

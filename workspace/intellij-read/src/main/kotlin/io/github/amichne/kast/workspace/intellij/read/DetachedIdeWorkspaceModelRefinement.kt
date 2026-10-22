@@ -8,7 +8,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Path
 
 /**
- * Non-empty, bounded detached modules with unique names and unambiguous source-root ownership.
+ * Non-empty detached modules with unique names and unambiguous source-root ownership.
  *
  * Construction is confined to [refine], which also deterministically orders the retained values.
  */
@@ -20,10 +20,9 @@ internal class RefinedDetachedModules private constructor(values: List<DetachedI
          * Proof transition: `(Path, List<DetachedModuleBoundary>) -> Refinement<RefinedDetachedModules,
          * DetachedModelCaptureFailure>`.
          *
-         * Establishes a non-empty, bounded, deterministically ordered aggregate of refined modules with unique names
-         * and exactly one module owner per source-root location. The closed expected failure is
-         * [DetachedModelCaptureFailure]. Raw module extraction is permitted only at the live IntelliJ observation
-         * boundary.
+         * Establishes a non-empty, deterministically ordered aggregate of refined modules with unique names and exactly
+         * one module owner per source-root location. The closed expected failure is [DetachedModelCaptureFailure]. Raw
+         * module extraction is permitted only at the live IntelliJ observation boundary.
          */
         internal fun refine(
             root: Path,
@@ -31,9 +30,6 @@ internal class RefinedDetachedModules private constructor(values: List<DetachedI
             limits: ReadLimits = ReadLimits.Default,
         ): Refinement<RefinedDetachedModules, DetachedModelCaptureFailure> {
             if (boundaries.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_MODULES)
-            if (boundaries.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
-                return rejected(DetachedModelCaptureFailure.TOO_MANY_MODULES)
-            }
             val modules = ArrayList<DetachedIdeModule>(boundaries.size)
             for (boundary in boundaries) {
                 when (val refined = refineModule(root, boundary, limits = limits)) {

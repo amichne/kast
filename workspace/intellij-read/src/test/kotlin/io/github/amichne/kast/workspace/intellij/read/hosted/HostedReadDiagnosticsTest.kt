@@ -131,7 +131,7 @@ class HostedReadDiagnosticsTest {
                 .value
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
-            HostedQueryExecutor(backgroundScope) { policy ->
+            HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000 }) { policy ->
                 HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, policy, publish = receipts::add)
             }
         val result =
@@ -190,7 +190,7 @@ class HostedReadDiagnosticsTest {
         executor.execute(executor.endpoint) { progress ->
             progress.advance(HostedQueryStage.MODEL_CAPTURE)
             progress.observation.count(IntellijReadCounter.IDEA_MODULES, amount = 259)
-            progress.observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
+            progress.observation.terminated(IntellijReadTermination.SOURCE_ROOT_ADMISSION_LIMIT)
             HostedSemanticRead.Rejected(
                 HostedQueryFailure.NamedSourceScope(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
             )

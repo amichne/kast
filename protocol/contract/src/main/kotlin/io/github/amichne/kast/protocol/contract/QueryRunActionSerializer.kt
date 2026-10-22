@@ -28,10 +28,7 @@ private fun QueryRunRequest.Run.requireCanonicalSyntax(): QueryRunRequest.Run =
     else throw SerializationException("QueryRunRequest rejected non-canonical query syntax")
 
 private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
-    if (
-        executionMode == QueryExecutionModeDocument.RUNNER_CONTROLLED &&
-            (executionBudget?.maxElapsedMillis != null || executionBudget?.maxWorkUnits != null)
-    )
+    if (executionMode == QueryExecutionModeDocument.RUNNER_CONTROLLED && executionBudget?.maxWorkUnits != null)
         return false
     val sourceIsCanonical =
         when (val source = from) {

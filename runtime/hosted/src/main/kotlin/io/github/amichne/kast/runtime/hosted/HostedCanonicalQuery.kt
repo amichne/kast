@@ -7,6 +7,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -27,8 +28,52 @@ import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDeadline
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import kotlinx.coroutines.currentCoroutineContext
+
+/** One request deadline owns both presemantic recovery and the admitted canonical evaluation. */
+internal suspend fun HostedQueryService.dispatchRead(
+    project: Project,
+    request: HostedRequest.Read,
+    trace: HostedTransportTrace,
+    limits: ReadLimits,
+): HostedResponse {
+    val budget = request.executionBudget()
+    val deadline = HostedReadDeadline(limits, System::nanoTime, budget, hostedReadPublicationAdmission)
+    return when (
+        val result =
+            retryPresemanticIndexing(
+                read = {
+                    read(
+                        endpoint,
+                        request.root,
+                        outcome = { it.outcome },
+                        executionBudget = budget,
+                        publication = hostedReadPublicationAdmission,
+                        completion = request.completionPolicy(),
+                        observeReadIdentity = trace::readIdentity,
+                        deadline = deadline,
+                        replay = HostedReadReplayPolicy.SINGLE_EVALUATION,
+                    ) { context ->
+                        evaluateHostedCanonicalQuery(project, context, request)
+                            .withReadBudget(
+                                ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(context.executionBudget))
+                            )
+                    }
+                },
+                wait = { awaitHostedSmartMode(project, trace::smartModeWait, deadline) },
+                deadline = deadline,
+            )
+    ) {
+        is HostedSemanticReadResult.Completed -> result.value
+        is HostedSemanticReadResult.Rejected ->
+            HostedResponse.ReadRejected(result.failure, result.stage, result.executionBudget)
+    }
+}
 
 /** Only the admitted project's pure query service and its bounded read ports enter this graph. */
 internal suspend fun evaluateHostedCanonicalQuery(

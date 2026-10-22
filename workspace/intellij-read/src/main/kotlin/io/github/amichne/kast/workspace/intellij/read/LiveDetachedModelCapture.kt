@@ -26,6 +26,10 @@ import org.jetbrains.jps.model.java.JavaResourceRootProperties
 import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.kotlin.config.ResourceKotlinRootType
+import org.jetbrains.kotlin.config.SourceKotlinRootType
+import org.jetbrains.kotlin.config.TestResourceKotlinRootType
+import org.jetbrains.kotlin.config.TestSourceKotlinRootType
 
 /** Live IDEA 262 adapter for one bounded detached-model observation. */
 internal class LiveDetachedModelCapture private constructor(private val limits: ReadLimits) {
@@ -140,9 +144,6 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
         }
         val liveModules = ModuleManager.getInstance(project).modules
         if (liveModules.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_MODULES)
-        if (liveModules.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
-            return rejected(DetachedModelCaptureFailure.TOO_MANY_MODULES)
-        }
         val modules = ArrayList<DetachedModuleBoundary>(liveModules.size)
         for (module in liveModules) {
             ProgressManager.checkCanceled()
@@ -275,10 +276,14 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
                         path = path,
                         kind =
                             when (folder.rootType) {
-                                JavaSourceRootType.SOURCE -> DetachedSourceRootKind.PRODUCTION
-                                JavaSourceRootType.TEST_SOURCE -> DetachedSourceRootKind.TEST
-                                JavaResourceRootType.RESOURCE -> DetachedSourceRootKind.RESOURCE
-                                JavaResourceRootType.TEST_RESOURCE -> DetachedSourceRootKind.TEST_RESOURCE
+                                JavaSourceRootType.SOURCE,
+                                SourceKotlinRootType -> DetachedSourceRootKind.PRODUCTION
+                                JavaSourceRootType.TEST_SOURCE,
+                                TestSourceKotlinRootType -> DetachedSourceRootKind.TEST
+                                JavaResourceRootType.RESOURCE,
+                                ResourceKotlinRootType -> DetachedSourceRootKind.RESOURCE
+                                JavaResourceRootType.TEST_RESOURCE,
+                                TestResourceKotlinRootType -> DetachedSourceRootKind.TEST_RESOURCE
                                 else -> null
                             },
                         provenance =

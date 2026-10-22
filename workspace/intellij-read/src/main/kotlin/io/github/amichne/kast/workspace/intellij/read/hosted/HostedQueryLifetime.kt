@@ -145,6 +145,8 @@ sealed interface HostedQueryFailure {
 
     data object BUDGET_EXCEEDED : HostedQueryFailure
 
+    data object CALLER_TIMEOUT : HostedQueryFailure
+
     data class Platform(val cause: HostedPlatformFailureCause) : HostedQueryFailure
 
     data class Publication(val cause: HostedPublicationFailureCause) : HostedQueryFailure

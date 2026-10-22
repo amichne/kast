@@ -17,10 +17,26 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 sealed interface HostedReadRecovery {
     @Serializable
     @SerialName("increase_host_deadline")
-    data object IncreaseHostDeadline : HostedReadRecovery {
+    class IncreaseHostDeadline private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = IncreaseHostDeadline()
+        }
+
         @kotlinx.serialization.EncodeDefault
         val instruction: String =
             "The host deadline expired during project admission or cached Gradle model capture, before semantic search. Inspect the kast_semantic_read stage and elapsed time; narrow search scope only after semantic search begins. Increase the host query, connection, and client exchange deadlines together if this project consistently needs more preparation time."
+    }
+
+    @Serializable
+    @SerialName("increase_caller_timeout")
+    class IncreaseCallerTimeout private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = IncreaseCallerTimeout()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The explicitly requested maxElapsedMs expired, including admission, indexing waits, and model capture. Increase or omit executionBudget.maxElapsedMs for a new RUN. Host deadline settings do not extend this caller timeout."
     }
 
     @Serializable
@@ -168,6 +184,7 @@ internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
                 LiveSemanticReadFailure.RETIRED -> HostedReadRecovery.ReviewFailure
             }
         HostedQueryFailure.BUDGET_EXCEEDED -> HostedReadRecovery.ReduceReadWork.Required
+        HostedQueryFailure.CALLER_TIMEOUT -> HostedReadRecovery.IncreaseCallerTimeout.Required
         HostedQueryFailure.CANCELLED -> HostedReadRecovery.Cancelled.Required
         HostedQueryFailure.DIRTY_DOCUMENTS,
         HostedQueryFailure.UNCOMMITTED_DOCUMENTS -> HostedReadRecovery.SaveSource.Required
@@ -182,7 +199,7 @@ internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
 
 internal fun HostedQueryFailure.recovery(stage: HostedQueryStage): HostedReadRecovery =
     if (this == HostedQueryFailure.BUDGET_EXCEEDED && stage.ordinal <= HostedQueryStage.MODEL_CAPTURE.ordinal)
-        HostedReadRecovery.IncreaseHostDeadline
+        HostedReadRecovery.IncreaseHostDeadline.Required
     else recovery()
 
 private fun HostedQueryFailure.Publication.specificRecovery(): HostedReadRecovery =

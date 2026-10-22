@@ -9,6 +9,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** The admitted variant preserves whether semantic execution has a time limit. */
 sealed interface HostedSemanticTimeAllowance {
@@ -82,19 +83,40 @@ sealed interface HostedSemanticTimeAllowance {
     }
 }
 
-/** The bounded deadline includes dispatch and model work before semantic admission. */
-internal class HostedReadDeadline(
+/** One deadline includes admission, indexing recovery, model capture, and semantic completion. */
+class HostedReadDeadline(
     private val limits: ReadLimits,
     private val clock: () -> Long,
     private val request: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
     private val publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
 ) {
     private val started = clock()
+    val timeoutMillis: Long? =
+        when (val requested = request.requested) {
+            is RequestedExecutionBudget.Bounded -> limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()
+            is RequestedExecutionBudget.RunnerControlled -> requested.timeout?.value
+        }
+    val timeoutFailure: HostedQueryFailure =
+        if (request.requested is RequestedExecutionBudget.RunnerControlled) HostedQueryFailure.CALLER_TIMEOUT
+        else HostedQueryFailure.BUDGET_EXCEEDED
+
     // Bounded execution reserves time for cooperative overrun, freshness revalidation, and detachment.
     private val completionReserveMillis =
         minOf(250L, (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value / 8L).coerceAtLeast(1L))
 
-    fun admit(diagnostics: HostedReadDiagnostics?): Refinement<HostedSemanticTimeAllowance, HostedQueryFailure> {
+    /** Re-entry consumes the original lifetime; it never replenishes time for a retry. */
+    suspend fun <Value> run(computation: suspend () -> Value): Refinement<Value, HostedQueryFailure> {
+        if (timeoutMillis == null) return Refinement.Refined(computation())
+        val remaining = remainingMillis()
+        if (remaining == 0L) return Refinement.Rejected(timeoutFailure)
+        val result = withTimeoutOrNull(remaining) { Refinement.Refined(computation()) }
+        val callerExpired = request.requested is RequestedExecutionBudget.RunnerControlled && remainingMillis() == 0L
+        return if (result == null || callerExpired) Refinement.Rejected(timeoutFailure) else result
+    }
+
+    internal fun admit(
+        diagnostics: HostedReadDiagnostics?
+    ): Refinement<HostedSemanticTimeAllowance, HostedQueryFailure> {
         val initialRemaining = remainingMillis()
         if (request.requested is RequestedExecutionBudget.RunnerControlled)
             return admitRunnerControlled(initialRemaining, diagnostics)
@@ -166,11 +188,13 @@ internal class HostedReadDeadline(
         return result
     }
 
-    fun admitCompletion(allowance: HostedSemanticTimeAllowance, policy: HostedReadCompletionPolicy) =
+    internal fun admitCompletion(allowance: HostedSemanticTimeAllowance, policy: HostedReadCompletionPolicy) =
         HostedAdmittedRead(
             allowance,
             when (allowance) {
-                is HostedSemanticTimeAllowance.RunnerControlled -> HostedReadCompletion.RunnerControlled
+                is HostedSemanticTimeAllowance.RunnerControlled ->
+                    allowance.executionBudget.timeout?.let { HostedReadCompletion.CallerElapsed(started, it) }
+                        ?: HostedReadCompletion.RunnerControlled
                 is HostedSemanticTimeAllowance.Bounded ->
                     when (policy) {
                         HostedReadCompletionPolicy.HOST_CONTAINMENT -> HostedReadCompletion.HostContainment
@@ -180,22 +204,23 @@ internal class HostedReadDeadline(
             },
         )
 
-    fun validateCompletion(completion: HostedReadCompletion): Refinement<Unit, HostedQueryFailure> =
+    internal fun validateCompletion(completion: HostedReadCompletion): Refinement<Unit, HostedQueryFailure> =
         when (completion) {
             HostedReadCompletion.HostContainment,
             HostedReadCompletion.RunnerControlled -> Refinement.Refined(Unit)
             is HostedReadCompletion.CallerElapsed -> {
                 val elapsed = clock() - completion.startedNanos
                 if (elapsed < 0L || TimeUnit.NANOSECONDS.toMillis(elapsed) >= completion.limit.value)
-                    Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
+                    Refinement.Rejected(timeoutFailure)
                 else Refinement.Refined(Unit)
             }
         }
 
     private fun remainingMillis(): Long {
+        val timeout = timeoutMillis ?: return Long.MAX_VALUE
         val elapsedNanos = (clock() - started).coerceAtLeast(0L)
         val elapsedMillis = elapsedNanos / 1_000_000L + if (elapsedNanos % 1_000_000L == 0L) 0L else 1L
-        return (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value - elapsedMillis).coerceAtLeast(0L)
+        return (timeout - elapsedMillis).coerceAtLeast(0L)
     }
 
     private fun admitPublication(candidate: HostedSemanticTimeAllowance): Refinement<Unit, HostedQueryFailure> {

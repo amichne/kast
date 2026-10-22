@@ -43,7 +43,7 @@ class PublicRunnerControlledExecutionTest {
     }
 
     @Test
-    fun `runner controlled mode accepts output controls and rejects semantic limits`() {
+    fun `runner controlled mode accepts output and timeout controls but rejects work limits`() {
         val reference = (ProtocolText.parse("exact:v2:opaque") as Refinement.Refined).value
         val references = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
         val run =
@@ -60,24 +60,33 @@ class PublicRunnerControlledExecutionTest {
                 Json.encodeToJsonElement(PublicToolQuerySymbols(run)),
             ),
         )
-        for (budget in
-            listOf(PublicToolExecutionBudget(maxElapsedMs = 1), PublicToolExecutionBudget(maxWorkUnits = 1))) {
-            assertInstanceOf(
-                Refinement.Rejected::class.java,
-                PublicToolContract.admit(
-                    PublicToolIdentity.QUERY_SYMBOLS,
-                    Json.encodeToJsonElement(PublicToolQuerySymbols(run.copy(executionBudget = budget))),
+        val timed =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols(run.copy(executionBudget = PublicToolExecutionBudget(maxElapsedMs = 60001)))
                 ),
-            )
-        }
+            ) as Refinement.Refined
+        val timedRun = (timed.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        val budget = timedRun.requestedExecutionBudget() as RequestedExecutionBudget.RunnerControlled
+        assertEquals(60001L, budget.timeout?.value)
+        assertInstanceOf(
+            Refinement.Rejected::class.java,
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols(run.copy(executionBudget = PublicToolExecutionBudget(maxWorkUnits = 1)))
+                ),
+            ),
+        )
     }
 
     @Test
-    fun `omitted or null execution mode preserves bounded admission`() {
+    fun `omitted or null execution mode has no implicit semantic quotas`() {
         val reference = (ProtocolText.parse("exact:v2:opaque") as Refinement.Refined).value
         val references = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
         val source = PublicToolReferenceSource(references)
-        for (mode in listOf(null, QueryExecutionModeDocument.BOUNDED)) {
+        for (mode in listOf(null, QueryExecutionModeDocument.RUNNER_CONTROLLED)) {
             val input =
                 Json.encodeToJsonElement(
                     PublicToolQuerySymbols(
@@ -86,13 +95,13 @@ class PublicRunnerControlledExecutionTest {
                 )
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined
             val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-            assertEquals(QueryExecutionModeDocument.BOUNDED, run.executionMode)
-            assertInstanceOf(RequestedExecutionBudget.Bounded::class.java, run.requestedExecutionBudget())
+            assertEquals(QueryExecutionModeDocument.RUNNER_CONTROLLED, run.executionMode)
+            assertInstanceOf(RequestedExecutionBudget.RunnerControlled::class.java, run.requestedExecutionBudget())
         }
         val explicitNull = Json.encodeToJsonElement(ModeInput(ExplicitNullableModeRun(source)))
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, explicitNull) as Refinement.Refined
         val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-        assertEquals(QueryExecutionModeDocument.BOUNDED, run.executionMode)
+        assertEquals(QueryExecutionModeDocument.RUNNER_CONTROLLED, run.executionMode)
     }
 
     @Test

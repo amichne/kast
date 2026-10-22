@@ -90,7 +90,8 @@ const producedQueryDelivery = (initial, pages, delivery) => {
 async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now) {
   params = JSON.parse(JSON.stringify(params));
   const started = now();
-  const runnerControlled = params.request?.type === 'RUN' && params.request.executionMode === 'RUNNER_CONTROLLED';
+  const runnerControlled = params.request?.type === 'RUN' &&
+    (params.request.executionMode ?? 'RUNNER_CONTROLLED') === 'RUNNER_CONTROLLED';
   const expired = () => !runnerControlled && now() - started >= policy.callTimeoutMillis;
   let rpcCount = 0, requestBytes = 0, responseBytes = 0, presentationBytes = 0;
   const pages = [], seenContinuations = new Set();

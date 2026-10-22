@@ -5,7 +5,6 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.workspace.contract.WorkspaceNativeReadSettlement
@@ -13,9 +12,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceReadOperationIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
@@ -25,9 +22,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 
 internal sealed interface HostedExecution<out Value> {
     data class Completed<Value>(
@@ -63,6 +58,7 @@ internal class HostedQueryExecutor(
         publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
         observeReadIdentity: (HostedReadTraceIdentity) -> Unit = {},
+        deadline: HostedReadDeadline = HostedReadDeadline(limits, clock, executionBudget, publication),
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
         // Export is optional; request-owned work accounting exists even when diagnostics are not exported.
@@ -82,28 +78,24 @@ internal class HostedQueryExecutor(
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
-        val progress = HostedQueryProgress(limits, clock, executionBudget, publication, completion)
+        val progress = HostedQueryProgress(limits, clock, executionBudget, publication, completion, deadline)
         progress.observe(diagnostic)
         val operation = scope.async {
             ensureActive()
-            when (executionBudget.requested) {
-                is RequestedExecutionBudget.Bounded ->
-                    withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) { computation(progress) }
-                is RequestedExecutionBudget.RunnerControlled -> computation(progress)
-            }
+            deadline.run { computation(progress) }
         }
         val result =
             try {
-                val value =
-                    when (executionBudget.requested) {
-                        is RequestedExecutionBudget.Bounded -> operation.await()
-                        is RequestedExecutionBudget.RunnerControlled ->
-                            awaitPreparedExecution(operation, progress, limits)
-                    }
+                val value = operation.await()
                 currentCoroutineContext().ensureActive()
-                HostedExecution.Completed(value, progress.stage, progress.executionBudget)
+                when (value) {
+                    is Refinement.Refined ->
+                        HostedExecution.Completed(value.value, progress.stage, progress.executionBudget)
+                    is Refinement.Rejected ->
+                        HostedExecution.Rejected(value.failure, progress.stage, progress.executionBudget)
+                }
             } catch (_: TimeoutCancellationException) {
-                HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED, progress.stage, progress.executionBudget)
+                HostedExecution.Rejected(deadline.timeoutFailure, progress.stage, progress.executionBudget)
             } catch (_: ReadAction.CannotReadException) {
                 HostedExecution.Rejected(HostedQueryFailure.READ_PREEMPTED, progress.stage, progress.executionBudget)
             } catch (_: ProcessCanceledException) {
@@ -171,24 +163,6 @@ internal class HostedQueryExecutor(
         return final
     }
 
-    private suspend fun <Value> awaitPreparedExecution(
-        operation: Deferred<Value>,
-        progress: HostedQueryProgress,
-        limits: ReadLimits,
-    ): Value =
-        when (
-            val prepared =
-                withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) {
-                    select {
-                        operation.onAwait { HostedPreparedExecution.Completed(it) }
-                        progress.semanticAdmission.onAwait { HostedPreparedExecution.SemanticAdmitted }
-                    }
-                }
-        ) {
-            is HostedPreparedExecution.Completed -> prepared.value
-            HostedPreparedExecution.SemanticAdmitted -> operation.await()
-        }
-
     private fun requestDiagnostics(limits: ReadLimits): HostedReadDiagnostics =
         diagnostics(limits) ?: HostedReadDiagnostics(clock, limits, publish = {})
 
@@ -202,12 +176,6 @@ internal class HostedQueryExecutor(
     suspend fun drain() {
         job.cancelAndJoin()
     }
-}
-
-private sealed interface HostedPreparedExecution<out Value> {
-    data class Completed<Value>(val value: Value) : HostedPreparedExecution<Value>
-
-    data object SemanticAdmitted : HostedPreparedExecution<Nothing>
 }
 
 /** Publication runs only after native drainage and lifetime admission have both completed. */
@@ -256,12 +224,8 @@ internal class HostedQueryProgress(
     executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
     publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
     private val completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
+    private val deadline: HostedReadDeadline = HostedReadDeadline(limits, clock, executionBudget, publication),
 ) {
-    private val deadline = HostedReadDeadline(limits, clock, executionBudget, publication)
-    private val admitted = CompletableDeferred<Unit>()
-    val semanticAdmission: Deferred<Unit>
-        get() = admitted
-
     val publicationEffects = HostedReadPublicationOwner { observation }
 
     @Volatile
@@ -273,7 +237,6 @@ internal class HostedQueryProgress(
             if (admitted is Refinement.Refined) {
                 executionBudget =
                     ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(admitted.value.executionBudget))
-                this.admitted.complete(Unit)
             }
         }
 

@@ -177,7 +177,7 @@ class IntellijSemanticDependencyCapture(
             budget,
             captureGraph = {
                 observeSemanticInputCapture(limits, observation) {
-                    SemanticNativeModuleGraphCapture(limits, budget).capture(project, model)
+                    SemanticNativeModuleGraphCapture(budget).capture(project, model)
                 }
             },
             captureModule = { modules, closure, identity ->

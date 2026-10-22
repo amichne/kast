@@ -5,7 +5,6 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.*
@@ -40,10 +39,6 @@ internal object LiveNamedGradleSourceScopeCapture {
                 stage = NamedGradleCaptureStage.MODULES
                 val modules = ModuleManager.getInstance(project).modules
                 observation.count(IntellijReadCounter.IDEA_MODULES, amount = modules.size)
-                if (modules.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
-                    observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
-                    return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
-                }
                 NamedGradleModuleScopeCapture(index, observation, limits)
                     .capture(
                         modules.toList(),

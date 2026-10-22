@@ -30,6 +30,7 @@ sealed interface RequestedExecutionBudget {
     data class RunnerControlled(
         override val results: ExecutionAllowance<ResultLimit> = ExecutionAllowance.Default,
         override val returnedBytes: ExecutionAllowance<ReturnedByteLimit> = ExecutionAllowance.Default,
+        val timeout: ElapsedTimeLimitMillis? = null,
     ) : RequestedExecutionBudget
 
     companion object {
@@ -88,6 +89,7 @@ sealed interface AdmittedExecutionBudget {
     internal constructor(
         override val results: AdmittedExecutionLimit<ResultLimit>,
         override val returnedBytes: AdmittedExecutionLimit<ReturnedByteLimit>,
+        val timeout: ElapsedTimeLimitMillis? = null,
     ) : AdmittedExecutionBudget {
         override val resources = ResourceBudget.RunnerControlled
     }
@@ -124,6 +126,7 @@ sealed interface AdmittedExecutionBudget {
                         ) {
                             it.value
                         },
+                        request.timeout,
                     )
             }
 
@@ -155,6 +158,7 @@ sealed interface AdmittedExecutionBudget {
                 ) {
                     it.value
                 },
+                request.timeout,
             )
 
         fun admit(

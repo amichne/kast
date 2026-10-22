@@ -3,6 +3,7 @@ package io.github.amichne.kast.protocol.contract
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,13 +35,21 @@ class RunnerControlledCanonicalRequestTest {
         assertEquals(run, Json.decodeFromString(QueryRunRequest.serializer(), encoded))
         assertInstanceOf(RequestedExecutionBudget.RunnerControlled::class.java, run.requestedExecutionBudget())
         val contradictory =
-            run.copy(
-                executionBudget =
-                    ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(1).requestFixture())
-            )
+            run.copy(executionBudget = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(1).requestFixture()))
         assertThrows(SerializationException::class.java) {
             Json.encodeToString(QueryRunRequest.serializer(), contradictory)
         }
+        val timed =
+            run.copy(
+                executionBudget =
+                    ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(60001).requestFixture())
+            )
+        val timedEncoded = Json.encodeToString(QueryRunRequest.serializer(), timed)
+        assertEquals(timed, Json.decodeFromString(QueryRunRequest.serializer(), timedEncoded))
+        assertEquals(
+            60001L,
+            (timed.requestedExecutionBudget() as RequestedExecutionBudget.RunnerControlled).timeout?.value,
+        )
     }
 }
 

@@ -5,7 +5,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 
-private const val ROOT_MARKER = "settings.gradle.kts"
+private val ROOT_MARKERS = listOf("settings.gradle.kts", "settings.gradle")
 
 /** A canonical directory proven to own the repository's Gradle settings marker. */
 class CanonicalRoot internal constructor(val path: Path) {
@@ -57,13 +57,16 @@ object FilesystemCanonicalRootDiscovery : CanonicalRootDiscoverer {
 
         var candidate = canonicalStart
         while (true) {
-            val marker = candidate.resolve(ROOT_MARKER)
-            if (Files.exists(marker, LinkOption.NOFOLLOW_LINKS)) {
-                return if (Files.isRegularFile(marker, LinkOption.NOFOLLOW_LINKS)) {
-                    CanonicalRootDiscovery.Discovered(CanonicalRoot(candidate))
-                } else {
-                    CanonicalRootDiscovery.Rejected(CanonicalRootFailure.INVALID_ROOT_MARKER)
-                }
+            val markers = ROOT_MARKERS.map(candidate::resolve).filter { Files.exists(it, LinkOption.NOFOLLOW_LINKS) }
+            if (markers.any { !Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }) {
+                return CanonicalRootDiscovery.Rejected(CanonicalRootFailure.INVALID_ROOT_MARKER)
+            }
+            if (markers.isNotEmpty()) {
+                return CanonicalRootDiscovery.Discovered(CanonicalRoot(candidate))
+            }
+            // A nested checkout or worktree must never inherit another repository's settings.
+            if (Files.exists(candidate.resolve(".git"), LinkOption.NOFOLLOW_LINKS)) {
+                return CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND)
             }
             when (val parent = parentOf(candidate)) {
                 is CanonicalParent.Parent -> candidate = parent.path

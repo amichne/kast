@@ -69,9 +69,11 @@ separate in the admitted syntax. The public `RESUME` schema admits only the
 retained-result tokens reject before canonical lowering. `RESUME` only delivers already-produced output.
 It cannot continue semantic execution or change its grant. Schema admission does not establish issued authority.
 
-`RUN.executionMode` defaults to `BOUNDED`.
+`RUN.executionMode` defaults to `RUNNER_CONTROLLED`.
 `RUNNER_CONTROLLED` uses caller cancellation to stop semantic execution.
-Its request accepts output grants and rejects `maxElapsedMs` or `maxWorkUnits`.
+Its request accepts output grants and an optional explicit `maxElapsedMs` timeout, including model capture.
+It rejects `maxWorkUnits`. Omitted time has no semantic deadline.
+`BOUNDED` remains an explicit selection for legacy configured work and time grants.
 Keep finite output pages separate from semantic execution.
 
 The intent tools in `tools.schema.json` allow default controls to be omitted;

@@ -11,9 +11,10 @@ const adapter=readFileSync(new URL('../../../../copilot/extension.mjs',import.me
 const decoder=adapter.slice(adapter.indexOf('function isToolResult('),adapter.indexOf('\nconst reply = await run(["catalog"]);'));
 const failures=adapter.match(/const TOOL_RPC_FAILURES = \[[\s\S]*?\];/)[0];
 const source=readFileSync(new URL('../../main/js/query-session.mjs',import.meta.url),'utf8');
+const delivery=readFileSync(new URL('../../main/js/query-delivery.mjs',import.meta.url),'utf8');
 async function fixture(onWrite){
   const timers=[],children=[],writes=[],observed=[];
-  const module=new SourceTextModule(failures+'\n'+decoder+'\n'+source+'\nexport {createQuerySession};',{context:createContext({
+  const module=new SourceTextModule(failures+'\n'+decoder+'\n'+source+'\n'+delivery+'\nexport {createQuerySession,awaitQueryDelivery};',{context:createContext({
     Buffer,TextDecoder,setTimeout:(callback,millis)=>{const timer={callback,millis};timers.push(timer);return timer;},
     clearTimeout:timer=>{if(timer)timer.cleared=true;},
   })});
@@ -28,7 +29,7 @@ async function fixture(onWrite){
   };
   const controller=new AbortController(),environment={KAST_TOOL_RPC_COMMAND:'/selected',KAST_EVALUATION_DEADLINE_MS:'private',JAVA_HOME:'/owned/jbr'};
   const session=module.namespace.createQuerySession('/selected','/owned/root',{callTimeoutMillis:100,maxResponseBytes:262144},controller.signal,spawn,environment);
-  return {session,controller,children,writes,timers,observed,environment};
+  return {session,controller,children,writes,timers,observed,environment,awaitQueryDelivery:module.namespace.awaitQueryDelivery};
 }
 const policy={callTimeoutMillis:100,maxResponseBytes:262144};
 const send=(child,value=reply)=>child.stdout.emit('data',Buffer.from(JSON.stringify(value)+'\n'));
@@ -71,6 +72,22 @@ test('runner-controlled invocation has no timer and cancellation kills its one c
   await assert.rejects(pending,/CANCELLED/);
   await f.session.close();
   assert.equal(f.writes.length,1);assert.deepEqual(f.observed,['killed']);
+});
+for(const executionMode of [undefined,null,'RUNNER_CONTROLLED','BOUNDED'])
+test(`delivery RUN executionMode=${executionMode} preserves subprocess lifetime and cancellation without retry`,async()=>{
+  const f=await fixture();
+  const request={type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'},
+    ...(executionMode===undefined?{}:{executionMode})};
+  const pending=f.awaitQueryDelivery({request},f.session.invoke,policy,f.controller.signal);
+  const bounded=executionMode==='BOUNDED';
+  // Capture the timer evidence before cleanup installs its separate finite reap timer.
+  const deadlines=f.timers.map(timer=>timer.millis);
+  if(bounded)f.timers[0].callback();else f.controller.abort();
+  await assert.rejects(pending,bounded?/TIMEOUT/:/CANCELLED/);
+  await f.session.close();
+  assert.deepEqual(deadlines,bounded?[100]:[]);
+  assert.equal(f.children.length,1);assert.deepEqual(f.writes,[{request}]);
+  assert.deepEqual(f.observed,['killed']);
 });
 for(const stop of ['cancel','timeout'])test(`${stop} while awaiting is bounded and does not resubmit`,async()=>{
   const f=await fixture();const pending=f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy);

@@ -23,7 +23,7 @@ class HostedWireDescriptorCollisionTest {
         val expected =
             listOf(
                 setOf("max_elapsed_ms", "max_work_units", "max_results", "max_returned_bytes"),
-                setOf("max_results", "max_returned_bytes"),
+                setOf("max_elapsed_ms", "max_results", "max_returned_bytes"),
                 setOf("maxElapsedMillis", "maxWorkUnits", "maxResults", "maxReturnedBytes"),
                 setOf("maxResults", "maxReturnedBytes"),
             )

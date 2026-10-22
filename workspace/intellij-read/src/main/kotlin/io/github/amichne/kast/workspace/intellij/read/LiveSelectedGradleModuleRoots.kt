@@ -18,6 +18,8 @@ import kotlinx.coroutines.CancellationException
 import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.kotlin.config.KotlinResourceRootType
+import org.jetbrains.kotlin.config.KotlinSourceRootType
 import org.jetbrains.plugins.gradle.model.ExternalProject
 import org.jetbrains.plugins.gradle.model.ExternalSourceSet
 
@@ -206,12 +208,18 @@ internal class LiveSelectedGradleModuleRoots(
         evidence: IdeSourceRootEvidence,
     ): Refinement<CapturedIdeFolder, NamedGradleSourceScopeFailure> {
         val type = folder.rootType
-        if (type !is JavaSourceRootType && type !is JavaResourceRootType)
-            return rejected(IdeRootMappingFailure.UnsupportedRootType(evidence))
+        when (type) {
+            is JavaSourceRootType,
+            is JavaResourceRootType,
+            is KotlinSourceRootType,
+            is KotlinResourceRootType -> Unit
+            else -> return rejected(IdeRootMappingFailure.UnsupportedRootType(evidence))
+        }
         // Gradle permits declared source directories that do not exist on disk. IDEA has no file
         // to classify or search in that case; retain the observation and admit the remaining roots.
         val file = folder.file ?: return Refinement.Refined(CapturedIdeFolder.Absent(evidence))
-        if (type is JavaResourceRootType) return Refinement.Refined(CapturedIdeFolder.Resource(file.toNioPath()))
+        if (type is JavaResourceRootType || type is KotlinResourceRootType)
+            return Refinement.Refined(CapturedIdeFolder.Resource(file.toNioPath()))
         val properties =
             folder.jpsElement.properties as? JavaSourceRootProperties
                 ?: return rejected(IdeRootMappingFailure.SourcePropertiesUnavailable(evidence))
@@ -219,9 +227,7 @@ internal class LiveSelectedGradleModuleRoots(
             CapturedIdeFolder.Code(
                 IdeCodeSourceRoot(
                     path = file.toNioPath(),
-                    kind =
-                        if (type == JavaSourceRootType.TEST_SOURCE) WorkspaceSourceRootKind.TEST
-                        else WorkspaceSourceRootKind.PRODUCTION,
+                    kind = if (type.isForTests) WorkspaceSourceRootKind.TEST else WorkspaceSourceRootKind.PRODUCTION,
                     provenance =
                         if (properties.isForGeneratedSources) WorkspaceSourceRootProvenance.GENERATED
                         else WorkspaceSourceRootProvenance.AUTHORED,

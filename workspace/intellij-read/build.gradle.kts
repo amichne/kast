@@ -99,6 +99,8 @@ dependencies {
     testImplementation(catalog.findLibrary("serialization-json").get())
     testImplementation(testFixtures(project(":workspace:contract")))
     testFixturesApi(project(":workspace:contract"))
+    testFixturesApi(project(":protocol:contract"))
+    testFixturesApi(catalog.findLibrary("coroutines-core").get())
     testFixturesImplementation(project(":symbol:contract"))
     testFixturesImplementation(testFixtures(project(":workspace:contract")))
 }

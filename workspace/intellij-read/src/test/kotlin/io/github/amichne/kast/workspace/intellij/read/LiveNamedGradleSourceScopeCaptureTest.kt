@@ -36,6 +36,54 @@ class LiveNamedGradleSourceScopeCaptureTest {
         }
 
     @Test
+    fun `all projects beyond former module capacity retain ownership`() {
+        val projects =
+            (0..258).map { index ->
+                DefaultExternalProject().apply {
+                    projectDir = Path.of("/workspace/project$index").toFile()
+                    path = ":project$index"
+                }
+            }
+        val index = gradleProjectIndex(root, projects)
+        for (project in projects) {
+            val owner = index.owner(project.projectDir.path) as Refinement.Refined
+            assertSame(project, owner.value.project)
+        }
+    }
+
+    @Test
+    fun `cancellation beyond former module capacity remains observable`() {
+        val cancellation = com.intellij.openapi.progress.ProcessCanceledException()
+        val projects =
+            (0..258).map { index ->
+                DefaultExternalProject().apply {
+                    projectDir = Path.of("/workspace/project$index").toFile()
+                    path = ":project$index"
+                }
+            }
+        val imported =
+            DefaultExternalProject().apply {
+                path = ":"
+                projectDir = Path.of(root.value).toFile()
+                childProjects = projects.associateBy { it.path }
+            }
+        var observed = 0
+        val observation =
+            object : IntellijReadObservation by IntellijReadObservation.None {
+                override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
+                    if (counter == IntellijReadCounter.IMPORTED_PROJECTS && ++observed == 259) throw cancellation
+                }
+            }
+        assertSame(
+            cancellation,
+            org.junit.jupiter.api.assertThrows<com.intellij.openapi.progress.ProcessCanceledException> {
+                GradleBuildProjectIndex.capture(root, imported, observation)
+            },
+        )
+        assertEquals(259, observed)
+    }
+
+    @Test
     fun `selected build modules remain searchable`() {
         val result =
             capture()

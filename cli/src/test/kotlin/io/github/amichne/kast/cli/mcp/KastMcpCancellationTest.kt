@@ -34,7 +34,7 @@ class KastMcpCancellationTest {
         assertInterruptibleQuery(root, CancellationTrigger.NOTIFICATION)
 
     @Test
-    fun `input EOF interrupts runner socket and drains its worker`(@TempDir root: Path) =
+    fun `input EOF interrupts default runner socket and drains its worker`(@TempDir root: Path) =
         assertInterruptibleQuery(root, CancellationTrigger.END_OF_INPUT)
 
     private fun assertInterruptibleQuery(root: Path, trigger: CancellationTrigger) {
@@ -67,7 +67,19 @@ class KastMcpCancellationTest {
                 McpRequest(
                     id = JsonPrimitive(1),
                     method = "tools/call",
-                    params = mcpWire.encodeToJsonElement(CancellationTestCall()),
+                    params =
+                        mcpWire.encodeToJsonElement(
+                            CancellationTestCall(
+                                arguments =
+                                    CancellationTestArguments(
+                                        CancellationTestRun(
+                                            executionMode =
+                                                if (trigger == CancellationTrigger.END_OF_INPUT) null
+                                                else "RUNNER_CONTROLLED"
+                                        )
+                                    )
+                            )
+                        ),
                 )
             )
             assertTrue(started.await(5, TimeUnit.SECONDS), "The invocation must start")
@@ -166,7 +178,9 @@ private data class CancellationTestRun(
     val type: String = "RUN",
     val source: CancellationTestSource = CancellationTestSource(),
     val terminalStep: CancellationTestTerminal = CancellationTestTerminal(),
-    val executionMode: String = "RUNNER_CONTROLLED",
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionMode: String? = null,
 )
 
 @Serializable private data class CancellationTestTerminal(val type: String = "EMIT")

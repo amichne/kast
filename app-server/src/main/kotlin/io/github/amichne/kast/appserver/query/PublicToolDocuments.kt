@@ -349,7 +349,7 @@ internal object PublicToolDefaults {
     const val sourceBeforeLines = 5
     const val sourceAfterLines = 5
     val nameMatch = PublicToolNameMatch.EXACT
-    val executionMode = QueryExecutionModeDocument.BOUNDED
+    val executionMode = QueryExecutionModeDocument.RUNNER_CONTROLLED
     const val includeSubdirectories = true
     const val includeSubpackages = true
     const val maximumEdgesPerNode = 32

@@ -31,7 +31,6 @@
     <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE$2_048</ID>
     <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_CLASSPATH_URL_CHARACTERS$8_192</ID>
     <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_IDENTITY_CHARACTERS$512</ID>
-    <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_MODULES$256</ID>
     <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_PATH_CHARACTERS$4_096</ID>
     <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE$256</ID>
     <ID>MagicNumber:ReadLimits.kt:ReadLimitParameter.PROCESS_INPUT_BYTES$1_024</ID>

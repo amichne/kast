@@ -3,10 +3,15 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.progress.ProcessCanceledException
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.RequestedExecutionBudget
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedExecutionBudgetRequest
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDeadline
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -18,6 +23,34 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class HostedSmartModeWaitTest {
+    @Test
+    fun `runner indexing wait has no independent fifteen second timeout`() = runTest {
+        val events = mutableListOf<HostedSmartModeWaitObservation>()
+        val deadline =
+            HostedReadDeadline(
+                limits = ReadLimits.Default,
+                clock = { testScheduler.currentTime * NANOS_PER_MILLI },
+                request = HostedExecutionBudgetRequest(RequestedExecutionBudget.RunnerControlled()),
+            )
+        val result =
+            waitForHostedSmartMode(
+                state = {
+                    delay(20_000L)
+                    HostedIndexingState.SMART
+                },
+                observe = events::add,
+                clock = { testScheduler.currentTime * NANOS_PER_MILLI },
+                deadline = deadline,
+            )
+        assertEquals(IndexingWait.Ready, result)
+        assertEquals(20_000L, testScheduler.currentTime)
+        assertEquals(
+            listOf(HostedSmartModeWaitOutcome.STARTED, HostedSmartModeWaitOutcome.READY),
+            events.map { it.outcome },
+        )
+        assertEquals(listOf(null, null), events.map { it.limitMillis })
+    }
+
     @Test
     fun `already smart records one status poll and no wait`() = runTest {
         val events = mutableListOf<HostedSmartModeWaitObservation>()

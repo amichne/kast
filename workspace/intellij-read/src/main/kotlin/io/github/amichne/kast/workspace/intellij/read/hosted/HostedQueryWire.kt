@@ -173,7 +173,8 @@ internal fun HostedQueryFailure.code(): String =
         HostedQueryFailure.AMBIGUOUS_SCOPE -> "AMBIGUOUS_SCOPE"
         HostedQueryFailure.READ_PREEMPTED -> "READ_PREEMPTED"
         HostedQueryFailure.CANCELLED -> "CANCELLED"
-        HostedQueryFailure.BUDGET_EXCEEDED -> "BUDGET_EXCEEDED"
+        HostedQueryFailure.BUDGET_EXCEEDED,
+        HostedQueryFailure.CALLER_TIMEOUT -> "BUDGET_EXCEEDED"
         is HostedQueryFailure.Platform -> "PLATFORM_FAILURE"
         is HostedQueryFailure.Publication -> "PUBLICATION_REJECTED"
         is HostedQueryFailure.ProjectAdmission -> "PROJECT_ADMISSION_REJECTED"
@@ -187,6 +188,7 @@ internal fun HostedQueryFailure.code(): String =
 /** Closed, bounded diagnostic data; never exception text or compiler/source objects. */
 internal fun HostedQueryFailure.detail(): JsonElement =
     when (this) {
+        HostedQueryFailure.CALLER_TIMEOUT -> Json.encodeToJsonElement(CauseDetail("CALLER_TIMEOUT"))
         is HostedQueryFailure.Configuration ->
             when (val failure = cause) {
                 io.github.amichne.kast.kernel.ReadLimitFailure.UnknownParameter ->

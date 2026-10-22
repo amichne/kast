@@ -88,6 +88,7 @@ private constructor(
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
         replay: HostedReadReplayPolicy = HostedReadReplayPolicy.SINGLE_EVALUATION,
         observeReadIdentity: (HostedReadTraceIdentity) -> Unit = {},
+        deadline: HostedReadDeadline? = null,
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (
@@ -110,6 +111,8 @@ private constructor(
                 publication = publication,
                 completion = completion,
                 observeReadIdentity = observeReadIdentity,
+                deadline =
+                    deadline ?: HostedReadDeadline(configured.limits, System::nanoTime, executionBudget, publication),
                 outcome = { result: HostedSemanticRead<Value> ->
                     when (result) {
                         is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(result.failure)

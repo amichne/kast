@@ -1,6 +1,9 @@
 # Configure semantic reads and diagnose limits
 
-Semantic queries default to 15,000 milliseconds and 2,000,000 work units. Responses keep the defaults of 128 results and 49,152 bytes.
+Public query `RUN` defaults to `RUNNER_CONTROLLED`: no implicit semantic time or work limit.
+Caller cancellation stops execution. An explicit `executionBudget.maxElapsedMs` timeout includes hosted model capture and semantic execution.
+The explicit `BOUNDED` mode retains configured defaults of 15,000 milliseconds and 2,000,000 work units.
+Responses keep the defaults of 128 results per page and 49,152 bytes.
 The elapsed allowance is a ceiling. It does not impose a wait. More work does not force a larger response.
 
 The existing-IDE read path admits an immutable policy when its project service starts.
@@ -13,13 +16,13 @@ Semantic and host query limits can be equal because hosted admission reserves co
 
 ## Apply a setting
 
-Every row below has an environment key `KAST_READ_<NAME>` and an IDE JVM property `kast.read.<name with lowercase words separated by dots>`. For example, 512 IDEA modules can be admitted with `KAST_READ_MODEL_MODULES=512` in the IDE launch environment, or this line in the IDE's custom VM options:
+Every row below has an environment key `KAST_READ_<NAME>` and an IDE JVM property `kast.read.<name with lowercase words separated by dots>`. For example, the per-module source-root capacity can be set with `KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE=512` in the IDE launch environment, or this line in the IDE's custom VM options:
 
 ```text
--Dkast.read.model.modules=512
+-Dkast.read.model.source.roots.per.module=512
 ```
 
-Restart the IDE to activate changed JVM settings. Explicit plugin reactivation also creates fresh project services; the native regression check uses this route. Editing settings during a query cannot change that query's admitted policy or its epoch authority. IDEA module counts include source-set modules and can exceed Gradle project counts.
+Restart the IDE to activate changed JVM settings. Explicit plugin reactivation also creates fresh project services; the native regression check uses this route. Editing settings during a query cannot change that query's admitted policy or its epoch authority. IDEA module counts include source-set modules and can exceed Gradle project counts. Module counts have no artificial capacity limit. Remove the obsolete `KAST_READ_MODEL_MODULES` setting and `kast.read.model.modules` JVM property; unknown reserved settings reject configuration.
 
 CLI and provider settings accept environment values or literal assignments in the installation's selected `config/environment` file.
 Preserve other assignments in that file.
@@ -40,7 +43,7 @@ The existing-IDE route admits configuration before it opens the socket.
 
 JVM properties take precedence over the IDE environment. CLI precedence is command-line settings, process environment, saved workspace settings where supported, saved installation settings, then defaults. Shadowed supplied values are still validated. Unknown reserved keys, nondecimal numbers, zero, overflow and inconsistent paired limits reject configuration; they never silently fall back. Rejections expose parameter identities and finite conditions, without echoing raw values.
 
-To select execution defaults explicitly, use these IDE JVM properties:
+To select `BOUNDED` execution defaults explicitly, use these IDE JVM properties:
 
 ```text
 -Dkast.read.semantic.millis=15000
@@ -72,7 +75,6 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | Name (append to `KAST_READ_`) | Default | Unit |
 |---|---:|---|
 | `MODEL_CACHED_GRADLE_MODELS` | 8 | count |
-| `MODEL_MODULES` | 256 | count |
 | `MODEL_SOURCE_ROOTS_PER_MODULE` | 256 | count |
 | `MODEL_CLASSPATH_ENTRIES_PER_MODULE` | 2,048 | count |
 | `MODEL_IDENTITY_CHARACTERS` | 512 | characters |
@@ -169,13 +171,13 @@ and unavailable source. These explain a public `partition-unavailable` or
 
 Unexpected native exceptions retain only the exception class and bounded Kast adapter class/method/line frames. Exception messages, causes, source payloads, file paths and opaque references are excluded. Counter and exception collection capacities are configurable too. A hosted `completed` outcome means execution returned; inspect the canonical response and termination reasons for semantic completeness. For example, `NAME_CAP` and `CANDIDATE_CAP` can both produce public `work-limit-reached`, while the log preserves the actual cause.
 
-`CONFIGURATION_REJECTED` precedes semantic execution. `MODULE_ADMISSION_LIMIT` occurs during model capture, before the semantic budget starts. `TIME_LIMIT`, `WORK_LIMIT`, `RESULT_LIMIT` and `BYTE_LIMIT` identify different exhausted resources. `LIBRARY_POLICY_EXCLUSION` records an intentionally excluded library target; unresolved project targets still qualify coverage.
+`CONFIGURATION_REJECTED` precedes semantic execution. `TIME_LIMIT`, `WORK_LIMIT`, `RESULT_LIMIT` and `BYTE_LIMIT` identify different exhausted resources in bounded execution. `LIBRARY_POLICY_EXCLUSION` records an intentionally excluded library target; unresolved project targets still qualify coverage.
 
 The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates native setup, artifact pinning and replay. Its settings evidence reads the loaded service's admitted policy rather than assuming static defaults. The [review](reviews/hosted-semantic-reproduction.md) retains baseline findings and subsequent fixes separately.
 
 ## Deadline admission and search ordering
 
-The host deadline covers admission, model capture, semantic evaluation, freshness
+In `BOUNDED` mode, the host deadline covers admission, model capture, semantic evaluation, freshness
 revalidation and detachment. Its default is 30,000 ms. Semantic work has a
 15,000 ms default. Caller allowances can raise that default within the operator and
 host limits. At semantic entry, the host subtracts elapsed request time.
@@ -226,10 +228,14 @@ Query continuations retain detached pipeline state and encoded-output suffixes i
 
 Public `query_symbols` accepts an optional `executionBudget` object inside `request`.
 Its fields are `maxElapsedMs`, `maxWorkUnits`, `maxResults`, and `maxReturnedBytes`.
+Default `RUNNER_CONTROLLED` queries accept an optional exact `maxElapsedMs` timeout and output grants, but reject `maxWorkUnits`.
+They bypass configured semantic work, host query time, traversal depth and frontier limits; cancellation and proof obligations remain enforced.
+Output pages, retention, configuration admission and workspace preparation retain their separate constraints.
 The `READ_SOURCE` action uses the source profile and its separate work and entity defaults.
 
 ```json
 {
+  "executionMode": "BOUNDED",
   "executionBudget": {
     "maxElapsedMs": 15000,
     "maxWorkUnits": 2000000
@@ -238,7 +244,7 @@ The `READ_SOURCE` action uses the source profile and its separate work and entit
 ```
 
 This fragment explicitly selects query execution defaults. Response defaults remain unchanged.
-Supplied numbers must be positive integers. Omitted controls select configured
+Supplied numbers must be positive integers. In `BOUNDED` mode, omitted controls select configured
 defaults. Intent tools also normalize null controls to defaults. The IDE admits each dimension against the corresponding
 `KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
 These ceilings and transport byte capacities default to 2,147,483,646, leaving
@@ -250,7 +256,7 @@ frames. The broker also uses the representation ceiling for semantic messages,
 process I/O and client messages; tool payloads reserve 4,096 bytes within it for
 the existing RPC envelope. This ceiling is not a promise that a near-ceiling
 payload fits available memory. Result paging, retention quotas, schema admission,
-concurrency and remaining hosted deadlines still apply. Raising a caller allowance cannot extend the configured host or client
+concurrency and bounded hosted deadlines still apply. In `BOUNDED` mode, raising a caller allowance cannot extend the configured host or client
 deadline. The admitted time excludes already elapsed model work and reserves
 publication headroom.
 

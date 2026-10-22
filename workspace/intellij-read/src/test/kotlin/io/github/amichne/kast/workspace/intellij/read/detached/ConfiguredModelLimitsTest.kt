@@ -6,17 +6,10 @@ import org.junit.jupiter.api.Test
 
 class ConfiguredModelLimitsTest {
     @Test
-    fun `configured module capacity admits the same complete model that defaults reject`() {
+    fun `complete imported model admits more than 256 modules without configuration`() {
         val observation =
             DetachedModelObservation.Observed(detachedModelBoundary(modules = (0..258).map(::detachedModuleBoundary)))
-        val defaults = DetachedIdeWorkspaceModel.admit(FIXTURE_ROOT, DETACHED_FIXTURE_COMPATIBILITY, observation)
-        assertEquals(
-            DetachedModelCaptureFailure.TOO_MANY_MODULES,
-            (defaults as DetachedModelCapture.Rejected).failures.single(),
-        )
-        val limits = (ReadLimits.resolve(mapOf("KAST_READ_MODEL_MODULES" to "512")) as Refinement.Refined).value
-        val admitted =
-            DetachedIdeWorkspaceModel.admit(FIXTURE_ROOT, DETACHED_FIXTURE_COMPATIBILITY, observation, limits)
+        val admitted = DetachedIdeWorkspaceModel.admit(FIXTURE_ROOT, DETACHED_FIXTURE_COMPATIBILITY, observation)
         assertEquals(259, (admitted as DetachedModelCapture.Captured).model.modules.size)
     }
 

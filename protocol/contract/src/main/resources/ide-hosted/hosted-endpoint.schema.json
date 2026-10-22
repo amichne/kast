@@ -1213,7 +1213,8 @@
                         "enum": [
                           "OBSERVATION_FAILED",
                           "RUNTIME",
-                          "LINKAGE"
+                          "LINKAGE",
+                          "CALLER_TIMEOUT"
                         ]
                       },
                       "field": {
@@ -1242,6 +1243,21 @@
     },
     "readRecovery": {
       "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "instruction"],
+          "properties": {
+            "kind": {
+              "enum": ["increase_host_deadline", "increase_caller_timeout"]
+            },
+            "instruction": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        },
         {
           "type": "object",
           "additionalProperties": false,
@@ -1851,6 +1867,17 @@
                 "RUNNER_CONTROLLED"
               ],
               "type": "string"
+            },
+            "max_elapsed_ms": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_results": {
               "type": "object",

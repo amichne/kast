@@ -6,15 +6,12 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
-import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshInspectionDocument
 import io.github.amichne.kast.runtime.hosted.lifecycle.inspectionDocument
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryResult
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryWire
-import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.*
@@ -310,40 +307,9 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             is HostedRequest.PlanChange ->
                 observeHostedChange(HostedChangeStage.PLANNING) { planHostedChange(project, query, request) }
-            is HostedRequest.Read -> dispatchRead(request, trace)
+            is HostedRequest.Read -> query.dispatchRead(project, request, trace, limits)
         }
     }
-
-    private suspend fun dispatchRead(request: HostedRequest.Read, trace: HostedTransportTrace): HostedResponse =
-        when (
-            val result =
-                retryPresemanticIndexing(
-                    read = {
-                        query.read(
-                            query.endpoint,
-                            request.root,
-                            outcome = { it.outcome },
-                            executionBudget = request.executionBudget(),
-                            publication = hostedReadPublicationAdmission,
-                            completion = request.completionPolicy(),
-                            observeReadIdentity = trace::readIdentity,
-                            replay =
-                                io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
-                                    .SINGLE_EVALUATION,
-                        ) { context ->
-                            evaluateHostedCanonicalQuery(project, context, request)
-                                .withReadBudget(
-                                    ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(context.executionBudget))
-                                )
-                        }
-                    },
-                    wait = { awaitHostedSmartMode(project, trace::smartModeWait) },
-                )
-        ) {
-            is HostedSemanticReadResult.Completed -> result.value
-            is HostedSemanticReadResult.Rejected ->
-                HostedResponse.ReadRejected(result.failure, result.stage, result.executionBudget)
-        }
 
     override fun dispose() {
         query.dispose()

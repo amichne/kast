@@ -636,7 +636,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
   });
   test('shared production delivery deadline is one aggregate allowance', async () => {
     let time = 0; const allowances = []; const replies = [fixture.prefix,fixture.rows];
-    const result = await awaitDelivery(params, async (_, budget) => {
+    const result = await awaitDelivery({...params, request:{...params.request, executionMode:'BOUNDED'}}, async (_, budget) => {
       allowances.push(budget.callTimeoutMillis);time += allowances.length === 1 ? 30 : 70;
       return replies.shift();
     }, policy, undefined, () => time);

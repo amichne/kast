@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
@@ -73,7 +74,7 @@ class HostedRunnerControlledExecutionTest {
     }
 
     @Test
-    fun `runner-controlled preparation keeps its host deadline`() = runTest {
+    fun `runner-controlled preparation has no implicit host deadline`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
         try {
             val result =
@@ -84,11 +85,42 @@ class HostedRunnerControlledExecutionTest {
                 ) {
                     delay(20_000L)
                 }
-            assertEquals(HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), result)
-            assertEquals(4_000L, testScheduler.currentTime)
+            assertEquals(HostedExecution.Completed(Unit), result)
+            assertEquals(20_000L, testScheduler.currentTime)
         } finally {
             executor.retire()
             executor.drain()
+        }
+    }
+
+    @Test
+    fun `only caller timeout bounds preparation without a hidden host clamp`() = runTest {
+        for (timeout in listOf(100L, 10_000L)) {
+            val executor = HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000L })
+            val request =
+                RequestedExecutionBudget.RunnerControlled(
+                    timeout = (ElapsedTimeLimitMillis.parse(timeout) as Refinement.Refined).value
+                )
+            try {
+                val result =
+                    executor.execute(
+                        executor.endpoint,
+                        shortHostLimits(),
+                        executionBudget = HostedExecutionBudgetRequest(request),
+                    ) { progress ->
+                        progress.advance(HostedQueryStage.MODEL_CAPTURE)
+                        delay(5_000L)
+                        42
+                    }
+                val expected =
+                    if (timeout == 100L)
+                        HostedExecution.Rejected(HostedQueryFailure.CALLER_TIMEOUT, HostedQueryStage.MODEL_CAPTURE)
+                    else HostedExecution.Completed(42, HostedQueryStage.MODEL_CAPTURE)
+                assertEquals(expected, result)
+            } finally {
+                executor.retire()
+                executor.drain()
+            }
         }
     }
 

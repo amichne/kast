@@ -87,7 +87,7 @@ class HostedNamedGradleSourceScopeTest {
         val retained = HostedNamedGradleSourceScope()
         val smaller =
             assertInstanceOf<Refinement.Refined<ReadLimits>>(
-                    ReadLimits.resolve(environment = mapOf("KAST_READ_MODEL_MODULES" to "128"))
+                    ReadLimits.resolve(environment = mapOf("KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE" to "128"))
                 )
                 .value
         val rejection =

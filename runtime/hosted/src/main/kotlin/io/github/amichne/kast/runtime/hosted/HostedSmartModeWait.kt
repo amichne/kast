@@ -1,6 +1,8 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.progress.ProcessCanceledException
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDeadline
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
@@ -30,7 +32,7 @@ internal data class HostedSmartModeWaitObservation(
     val outcome: HostedSmartModeWaitOutcome,
     val elapsedNanos: Long,
     val statusPolls: Long,
-    val limitMillis: Long,
+    val limitMillis: Long?,
 )
 
 @Serializable
@@ -45,12 +47,19 @@ internal suspend fun waitForHostedSmartMode(
     state: suspend () -> HostedIndexingState,
     observe: (HostedSmartModeWaitObservation) -> Unit,
     clock: () -> Long = System::nanoTime,
+    deadline: HostedReadDeadline? = null,
 ): IndexingWait {
     val started = clock()
+    val limitMillis = if (deadline == null) INDEXING_WAIT_MILLIS else deadline.timeoutMillis
     var polls = 0L
     fun record(outcome: HostedSmartModeWaitOutcome) =
         observe(
-            HostedSmartModeWaitObservation(outcome, (clock() - started).coerceAtLeast(0), polls, INDEXING_WAIT_MILLIS)
+            HostedSmartModeWaitObservation(
+                outcome,
+                (clock() - started).coerceAtLeast(0),
+                polls,
+                limitMillis,
+            )
         )
     suspend fun awaitStatus(): IndexingWait {
         while (true) {
@@ -64,10 +73,8 @@ internal suspend fun waitForHostedSmartMode(
     }
     val result =
         try {
-            withTimeoutOrNull(INDEXING_WAIT_MILLIS) {
-                record(HostedSmartModeWaitOutcome.STARTED)
-                awaitStatus()
-            } ?: IndexingWait.TimedOut
+            record(HostedSmartModeWaitOutcome.STARTED)
+            awaitIndexingWithDeadline(deadline, ::awaitStatus)
         } catch (failure: RuntimeException) {
             record(
                 when (failure) {
@@ -90,6 +97,18 @@ internal suspend fun waitForHostedSmartMode(
     )
     return result
 }
+
+/** Reads share their request lifetime; mutation readiness retains its separate bounded wait. */
+private suspend fun awaitIndexingWithDeadline(
+    deadline: HostedReadDeadline?,
+    awaitStatus: suspend () -> IndexingWait,
+): IndexingWait =
+    if (deadline == null) withTimeoutOrNull(INDEXING_WAIT_MILLIS) { awaitStatus() } ?: IndexingWait.TimedOut
+    else
+        when (val waited = deadline.run { awaitStatus() }) {
+            is Refinement.Refined -> waited.value
+            is Refinement.Rejected -> IndexingWait.TimedOut
+        }
 
 private const val INDEXING_WAIT_MILLIS = 15_000L
 private const val INDEXING_POLL_MILLIS = 100L
