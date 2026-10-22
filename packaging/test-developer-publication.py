@@ -114,6 +114,10 @@ class GhCall:
     upload: bool = False
     retained_validation: str | None = None
 
+    @classmethod
+    def observation(cls, endpoint: str, document: Run | GitCommit | ArtifactListing | GitReference) -> GhCall:
+        return cls(["api", "--include", endpoint], "HTTP/2.0 200 OK\r\n\r\n" + json.dumps(asdict(document)))
+
 
 @dataclass
 class GhScript:
@@ -232,14 +236,14 @@ class DeveloperPublicationTest(unittest.TestCase):
     def admission_calls(self) -> list[GhCall]:
         main = replace(Run(), id=456, run_number=124, event="push", head_sha=MERGED, head_branch="main")
         return [
-            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/456"], json.dumps(asdict(main))),
-            GhCall(["api", f"repos/{REPOSITORY}/git/commits/{MERGED}"], json.dumps(asdict(GitCommit(MERGED)))),
-            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/456/artifacts?per_page=100"],
-                   json.dumps(asdict(ArtifactListing(1, (ValidationArtifact(),))))),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456", main),
+            GhCall.observation(f"repos/{REPOSITORY}/git/commits/{MERGED}", GitCommit(MERGED)),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456/artifacts?per_page=100",
+                               ArtifactListing(1, (ValidationArtifact(),))),
             GhCall(["run", "download", "456", "--repo", REPOSITORY, "--name", ValidationArtifact().name, "--dir"],
                    retained_validation=str(self.validation)),
-            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/123"], json.dumps(asdict(Run()))),
-            GhCall(["api", f"repos/{REPOSITORY}/git/commits/{REVISION}"], json.dumps(asdict(GitCommit(REVISION)))),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/123", Run()),
+            GhCall.observation(f"repos/{REPOSITORY}/git/commits/{REVISION}", GitCommit(REVISION)),
         ]
 
     def published_calls(self, damaged: bool = False) -> list[GhCall]:
@@ -252,8 +256,8 @@ class DeveloperPublicationTest(unittest.TestCase):
         ]
 
     def current_main_call(self, current: bool = True) -> GhCall:
-        return GhCall(["api", f"repos/{REPOSITORY}/git/ref/heads/main"],
-                      json.dumps(asdict(GitReference(GitTree(MERGED if current else REVISION)))))
+        return GhCall.observation(f"repos/{REPOSITORY}/git/ref/heads/main",
+                                  GitReference(GitTree(MERGED if current else REVISION)))
 
     def pointer_calls(self) -> list[GhCall]:
         pointer = base64.b64encode(f"{TAG} {VERSION} {REVISION}\n".encode()).decode()
@@ -317,8 +321,7 @@ class DeveloperPublicationTest(unittest.TestCase):
 
     def test_missing_validation_rejects_before_release_or_pointer_effects(self):
         calls = self.admission_calls()[:2] + [
-            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/456/artifacts?per_page=100"],
-                   json.dumps(asdict(ArtifactListing(0, ())))),
+            GhCall.observation(f"repos/{REPOSITORY}/actions/runs/456/artifacts?per_page=100", ArtifactListing(0, ())),
         ]
         result = self.run_publisher(calls)
         self.assertNotEqual(0, result.returncode)
