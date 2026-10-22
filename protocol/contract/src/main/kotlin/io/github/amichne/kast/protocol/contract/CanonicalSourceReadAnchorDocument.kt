@@ -16,11 +16,24 @@ enum class SourceReadAnchorDocumentFailure {
 
 @Serializable
 sealed interface SourceReadAnchorDocument {
-    @Serializable @SerialName("candidate") data class Candidate(val selector: ProtocolText) : SourceReadAnchorDocument
+    val selector: ProtocolText
 
-    @Serializable @SerialName("symbol") data class Symbol(val selector: ProtocolText) : SourceReadAnchorDocument
+    @Serializable
+    @SerialName("candidate")
+    data class Candidate(override val selector: ProtocolText) : SourceReadAnchorDocument
 
-    @Serializable @SerialName("source") data class Source(val selector: ProtocolText) : SourceReadAnchorDocument
+    @Serializable
+    @SerialName("symbol")
+    data class Symbol(override val selector: ProtocolText) : SourceReadAnchorDocument
+
+    /** This anchor requests strict restoration of the original exact reference without reacquisition. */
+    @Serializable
+    @SerialName("symbol-snapshot")
+    data class SnapshotSymbol(override val selector: ProtocolText) : SourceReadAnchorDocument
+
+    @Serializable
+    @SerialName("source")
+    data class Source(override val selector: ProtocolText) : SourceReadAnchorDocument
 
     companion object {
         private val hostedPrefixes = listOf("exact:v4:", "candidate:v4:", "exact:v5:", "candidate:v5:")

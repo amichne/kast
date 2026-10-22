@@ -766,6 +766,16 @@
           }
         }
       }
+    },
+    "readSourceExactSymbol": {
+      "summary": "Read the body of an issued exact declaration under its original authority.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+          "region": "CALLABLE_BODY"
+        }
+      }
     }
   },
   "invalidExamples": {
@@ -1052,15 +1062,6 @@
         }
       }
     },
-    "readSourceExactSymbol": {
-      "summary": "READ_SOURCE requires an issued candidate reference, distinct from an exact symbol reference.",
-      "value": {
-        "request": {
-          "type": "READ_SOURCE",
-          "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
-        }
-      }
-    },
     "traceUnknownDepth": {
       "summary": "TRACE has a fixed topology; arbitrary depth controls are not accepted.",
       "value": {
@@ -1110,6 +1111,15 @@
           "executionBudget": {
             "maxResults": 20
           }
+        }
+      }
+    },
+    "readSourceTruncatedExactSymbol": {
+      "summary": "Truncated exact references reject before source selection.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "exact:v5:truncated"
         }
       }
     }

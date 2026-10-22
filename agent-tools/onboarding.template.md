@@ -75,7 +75,7 @@ Minimal interface query:
 - Relation enums are `{{RELATIONS}}`. Read the schema before other steps or output variants.
 - The host can reduce the numeric `executionBudget` grant. Preserve `COMPLETE_ONLY` rejection and recovery evidence.
 - `retention=RETAIN` keeps evidence for `READ_RESULT` with an issued result reference and cursors.
-- `RESUME` only presents produced output with an issued `query-output:v1` token. `READ_SOURCE` accepts an issued candidate or source selector through `candidateRef`, with separate `region` and `text` choices.
+- `RESUME` only presents produced output with an issued `query-output:v1` token. `READ_SOURCE` accepts an issued candidate, exact symbol, or source selector through `candidateRef`, with separate `region` and `text` choices.
 - Never invent references, exchange token families, or resubmit a query to recover lost output.
 - Diagnostic paths are workspace-relative. Changes need the user's request and an issued `exactTarget`.
 

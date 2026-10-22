@@ -2975,9 +2975,9 @@
     "SourceCandidateReference": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?:candidate:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
+      "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
       "x-kotlin-type": "ProtocolText",
-      "description": "Issued candidate or source selector with its original workspace, source scope, and read authority. Copy the reference unchanged."
+      "description": "Issued candidate, exact symbol, or source selector under its original workspace, source scope, and read authority. Copy the reference unchanged."
     },
     "ReadSourceAction": {
       "type": "object",
@@ -3030,7 +3030,7 @@
         "candidateRef"
       ],
       "additionalProperties": false,
-      "description": "Read source from an issued candidate or source selector without coordinates. Select the region and text view independently. The source owner admits scope and freshness. This action does not replay query stages."
+      "description": "Read source from an issued focus without coordinates. Select the region and text view independently. Stale references reject without reacquisition. This action does not replay query stages."
     },
     "Trace": {
       "type": "object",
@@ -4096,6 +4096,16 @@
               }
             }
           }
+        },
+        "readSourceExactSymbol": {
+          "summary": "Read the body of an issued exact declaration under its original authority.",
+          "value": {
+            "request": {
+              "type": "READ_SOURCE",
+              "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+              "region": "CALLABLE_BODY"
+            }
+          }
         }
       },
       "invalidExamples": {
@@ -4382,15 +4392,6 @@
             }
           }
         },
-        "readSourceExactSymbol": {
-          "summary": "READ_SOURCE requires an issued candidate reference, distinct from an exact symbol reference.",
-          "value": {
-            "request": {
-              "type": "READ_SOURCE",
-              "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
-            }
-          }
-        },
         "traceUnknownDepth": {
           "summary": "TRACE has a fixed topology; arbitrary depth controls are not accepted.",
           "value": {
@@ -4440,6 +4441,15 @@
               "executionBudget": {
                 "maxResults": 20
               }
+            }
+          }
+        },
+        "readSourceTruncatedExactSymbol": {
+          "summary": "Truncated exact references reject before source selection.",
+          "value": {
+            "request": {
+              "type": "READ_SOURCE",
+              "candidateRef": "exact:v5:truncated"
             }
           }
         }

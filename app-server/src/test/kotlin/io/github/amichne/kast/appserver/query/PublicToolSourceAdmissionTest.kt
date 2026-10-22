@@ -6,11 +6,40 @@ import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PublicToolSourceAdmissionTest {
+    @Test
+    fun `exact declaration focus uses strict snapshot admission without changing its identity`() {
+        val reference = text("exact:v5:AAAAAAAAAAAAAAAAAAAAAA")
+        val raw =
+            Json.encodeToJsonElement(
+                PublicToolQuerySymbols(PublicToolReadSourceAction(reference, PublicToolRegion.CALLABLE_BODY))
+            )
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw)
+        assertTrue(admitted is Refinement.Refined, admitted.toString())
+        val request = ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Source).request
+        val encoded =
+            Json.encodeToJsonElement(
+                    io.github.amichne.kast.protocol.contract.SourceReadRequest.serializer(),
+                    request,
+                )
+                .jsonObject
+        val anchor = encoded.getValue("anchor").jsonObject
+        assertEquals("symbol-snapshot", anchor.getValue("type").jsonPrimitive.content)
+        assertEquals(reference.value, anchor.getValue("selector").jsonPrimitive.content)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument.Body(
+                io.github.amichne.kast.protocol.contract.SourceBodyKindDocument.CALLABLE
+            ),
+            request.region,
+        )
+    }
+
     @Test
     fun `every source region lowers to its existing canonical selection`() {
         val candidate = text("candidate:v5:AAAAAAAAAAAAAAAAAAAAAA")

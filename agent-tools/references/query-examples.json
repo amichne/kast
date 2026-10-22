@@ -793,5 +793,16 @@
         }
       }
     }
+  },
+  {
+    "name": "readSourceExactSymbol",
+    "summary": "Read the body of an issued exact declaration under its original authority.",
+    "arguments": {
+      "request": {
+        "type": "READ_SOURCE",
+        "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+        "region": "CALLABLE_BODY"
+      }
+    }
   }
 ]

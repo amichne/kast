@@ -275,14 +275,10 @@ private fun SourceReadRequest.requireCanonicalSyntax(): SourceReadRequest =
     else throw SerializationException("SourceReadRequest rejected non-canonical request syntax")
 
 private fun SourceReadAnchorDocument.hasCanonicalSyntax(): Boolean {
-    val selector =
-        when (this) {
-            is SourceReadAnchorDocument.Candidate -> selector
-            is SourceReadAnchorDocument.Symbol -> selector
-            is SourceReadAnchorDocument.Source -> selector
-        }
     return when (val admitted = SourceReadAnchorDocument.admit(selector)) {
-        is Refinement.Refined -> admitted.value::class == this::class
+        is Refinement.Refined ->
+            if (this is SourceReadAnchorDocument.SnapshotSymbol) admitted.value is SourceReadAnchorDocument.Symbol
+            else admitted.value::class == this::class
         is Refinement.Rejected -> false
     }
 }

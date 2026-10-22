@@ -51,25 +51,24 @@ private fun PublicToolReadSourceAction.lowerReadSource(): Refinement<PublicToolC
     when (val anchor = SourceReadAnchorDocument.admit(candidateRef)) {
         is Refinement.Rejected -> Refinement.Rejected(PublicToolInputFailure.SourceAnchor(anchor.failure))
         is Refinement.Refined ->
-            when (val admitted = anchor.value) {
-                is SourceReadAnchorDocument.Candidate,
-                is SourceReadAnchorDocument.Source ->
-                    Refinement.Refined(
-                        PublicToolCanonical.Source(
-                            SourceReadRequest(
-                                anchor = admitted,
-                                region = region.lowerSourceRegion(),
-                                entities = SourceEntitySelectionDocument.None,
-                                text = text.lowerSourceText(),
-                                executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
-                            )
-                        )
+            Refinement.Refined(
+                PublicToolCanonical.Source(
+                    SourceReadRequest(
+                        anchor =
+                            when (val admitted = anchor.value) {
+                                is SourceReadAnchorDocument.Symbol ->
+                                    SourceReadAnchorDocument.SnapshotSymbol(admitted.selector)
+                                is SourceReadAnchorDocument.Candidate,
+                                is SourceReadAnchorDocument.Source,
+                                is SourceReadAnchorDocument.SnapshotSymbol -> admitted
+                            },
+                        region = region.lowerSourceRegion(),
+                        entities = SourceEntitySelectionDocument.None,
+                        text = text.lowerSourceText(),
+                        executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
                     )
-                is SourceReadAnchorDocument.Symbol ->
-                    Refinement.Rejected(
-                        PublicToolInputFailure.SourceAnchor(SourceReadAnchorDocumentFailure.UNKNOWN_TOKEN_FAMILY)
-                    )
-            }
+                )
+            )
     }
 
 private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, PublicToolInputFailure> =

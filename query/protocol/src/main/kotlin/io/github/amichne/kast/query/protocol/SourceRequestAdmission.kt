@@ -216,7 +216,8 @@ private fun SourceReadAnchorDocument.admit(
                 is CanonicalSelectorDecoding.Rejected ->
                     return Refinement.Rejected(lookup.sourceRejection(SourceReferenceRole.CANDIDATE))
             }
-        is SourceReadAnchorDocument.Symbol ->
+        is SourceReadAnchorDocument.Symbol,
+        is SourceReadAnchorDocument.SnapshotSymbol ->
             when (val lookup = authority.restoreExact(requested.selector, current)) {
                 is CanonicalSelectorDecoding.Decoded -> Refinement.Refined(DomainSourceReadAnchor.Symbol(lookup.value))
                 is CanonicalSelectorDecoding.Rejected ->

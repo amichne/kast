@@ -287,7 +287,8 @@ sealed interface SourceRequestExpectation {
 
 private fun SourceRequestRule.expectation(): SourceRequestExpectation =
     when (this) {
-        SourceRequestRule.ANCHOR_TYPE -> SourceRequestExpectation.Alternatives(listOf("candidate", "symbol", "source"))
+        SourceRequestRule.ANCHOR_TYPE ->
+            SourceRequestExpectation.Alternatives(listOf("candidate", "symbol", "symbol-snapshot", "source"))
         SourceRequestRule.REGION_TYPE ->
             SourceRequestExpectation.Alternatives(listOf("anchor", "body", "file", "enclosing"))
         SourceRequestRule.BODY_KIND -> SourceRequestExpectation.Alternatives(listOf("callable", "class"))

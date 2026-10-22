@@ -34,10 +34,14 @@ request admits exactly one of four actions:
 - `RUN` accepts a source and optional ordered steps.
 - `RESUME` accepts a typed retained-output continuation and an optional presentation budget.
 - `READ_RESULT` accepts a retained-result reference and a distinct presentation cursor.
-- `READ_SOURCE` accepts an issued candidate or source selector, with separate structural and text choices.
+- `READ_SOURCE` accepts an issued candidate, exact symbol, or source selector, with separate structural and text choices.
 
 `READ_SOURCE` keeps the `candidateRef` field for compatibility.
-The field accepts an issued candidate or source selector and preserves its exact bytes.
+The field accepts an issued candidate, exact symbol, or source selector and preserves its exact bytes.
+Public exact-symbol focus uses the canonical `SnapshotSymbol` anchor.
+It restores the original authority and rejects stale or ambiguous references without reacquisition.
+The private canonical `Symbol` anchor keeps its explicit first-page reacquisition behavior.
+
 The `region` choice selects the anchor, body, file, or smallest strict enclosing region.
 The `text` choice selects complete text, a line window, or no text.
 The source owner keeps the region selector distinct from the text selector.
