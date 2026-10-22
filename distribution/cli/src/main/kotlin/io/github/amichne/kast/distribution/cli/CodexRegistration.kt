@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -9,7 +10,15 @@ import kotlinx.serialization.json.Json
 @Serializable internal data class CodexServer(val name: String, val transport: CodexTransport)
 
 @Serializable
-internal data class CodexTransport(val type: String, val command: String = "", val args: List<String> = emptyList())
+internal data class CodexTransport(
+    val type: String,
+    val command: String = "",
+    val args: List<String> = emptyList(),
+    // Codex owns the environment variable names and values in this dynamic field.
+    val env: Map<String, String>? = null,
+    @SerialName("env_vars") val envVars: List<String> = emptyList(),
+    val cwd: String? = null,
+)
 
 private val codexJson = Json { ignoreUnknownKeys = true }
 private const val CODEX_DEADLINE_SECONDS = 8L

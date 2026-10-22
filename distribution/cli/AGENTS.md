@@ -4,8 +4,8 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and Codex plugin installation."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-10-16T06:50:12Z"
-source_revision: c63215981504766de0d3b861c801414e05768f57
+timestamp: "2026-10-21T22:40:00Z"
+source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
@@ -13,6 +13,8 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginBundle.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
 ---
 
 # Native management CLI
@@ -38,6 +40,11 @@ The exterior lock stays stable across directory deletion and later reset tries.
 `kast connect codex` and `kast connect codex mcp` select that same plugin owner.
 Reject new App Server registration before effects. Keep legacy receipt variants only for exact owned cleanup and plugin migration.
 Preserve unrecorded or foreign MCP entries. Reject their conflict before plugin installation.
+The exact transport from the manifest-admitted plugin bundle needs no legacy receipt.
+Codex's merged MCP list can contain that transport during repeated installation.
+
+Public reset removes the fixed historical paths in `PublicResetScope` and known launcher backups after process retirement.
+Keep unrelated extensions and stable locks. Reject ancestor aliases before destructive effects.
 
 The managed root contains one ordinary `installation` directory. Its stable `bin`, `share`, `config`, and `state` paths survive replacement. Ordinary installation locks and the management receipt remain in the managed root; the destructive reset fence and stable lock live beside it. Do not introduce version directories, selection links, or native legacy-layout fallback; the installer owns admitted migration and transaction recovery.
 
