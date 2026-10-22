@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.SourceBodyKindDocument
+import io.github.amichne.kast.protocol.contract.SourceEnclosingRegionKindDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceLineCountDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
@@ -59,10 +60,53 @@ internal class NativeSourceContextWorkflow(
             SourceContextStrategy.STRUCTURAL_VIEW ->
                 assertEquals(expectedBody, returned(reads.last().result).text.value)
         }
-        return SourceContextCost(
+        return cost(
+            started = started,
+            counters = counters,
+            prefixBytes = prefix.document.value.toByteArray().size,
+            reads = reads,
+        )
+    }
+
+    suspend fun runOccurrences(strategy: SourceContextStrategy): SourceContextCost {
+        val counters = fixture.observation.snapshot()
+        val started = System.nanoTime()
+        val outcome =
+            fixture.protocol().execute(request = request, lease = fixture.lease, budget = budget, policy = policy)
+        assertTrue(outcome.toString(), outcome is OperationOutcome.Complete)
+        val rows =
+            (outcome as OperationOutcome.Complete).evidence.payload.items.values.map {
+                (it as QueryResultItemDocument.ReferenceOccurrence).occurrence.occurrence
+            }
+        assertEquals(EXPECTED_REFERENCES, rows.size)
+        assertEquals(EXPECTED_REFERENCES, rows.map { it.candidateSelector }.distinct().size)
+        val focus = rows.single { it.range.startInclusive.value == expectedOffset }.candidateSelector
+        val reads = occurrenceViews(strategy, focus)
+        when (strategy) {
+            SourceContextStrategy.FILE_RECONSTRUCTION ->
+                assertTrue(returned(reads.last().result).text.value.contains(expectedBody))
+            SourceContextStrategy.STRUCTURAL_VIEW ->
+                assertEquals(expectedBody, returned(reads.last().result).text.value)
+        }
+        val prefix = CanonicalQueryCliDocuments.project(outcome) as ProjectedOperationOutcome.Complete
+        return cost(
+            started = started,
+            counters = counters,
+            prefixBytes = prefix.document.value.toByteArray().size,
+            reads = reads,
+        )
+    }
+
+    private fun cost(
+        started: Long,
+        counters: Map<IntellijReadCounter, Long>,
+        prefixBytes: Int,
+        reads: List<MeasuredSource>,
+    ): SourceContextCost =
+        SourceContextCost(
             calls = 1 + reads.size,
             sourceReads = reads.size,
-            bytes = prefix.document.value.toByteArray().size + reads.sumOf { it.bytes },
+            bytes = prefixBytes + reads.sumOf { it.bytes },
             sourceBytes = reads.sumOf { it.sourceBytes },
             elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started),
             nativeCounters =
@@ -71,7 +115,35 @@ internal class NativeSourceContextWorkflow(
                     .mapValues { (counter, value) -> value - (counters[counter] ?: 0L) }
                     .filterValues { it > 0 },
         )
-    }
+
+    private suspend fun occurrenceViews(
+        strategy: SourceContextStrategy,
+        focus: io.github.amichne.kast.protocol.contract.ProtocolText,
+    ): List<MeasuredSource> =
+        when (strategy) {
+            SourceContextStrategy.FILE_RECONSTRUCTION ->
+                listOf(
+                    measuredRead(
+                        sourceRequest(SourceReadAnchorDocument.Candidate(focus), SourceRegionSelectionDocument.File)
+                    )
+                )
+            SourceContextStrategy.STRUCTURAL_VIEW -> {
+                val initial =
+                    measuredRead(
+                        sourceRequest(
+                            SourceReadAnchorDocument.Candidate(focus),
+                            SourceRegionSelectionDocument.Enclosing(SourceEnclosingRegionKindDocument.CALLABLE_BODY),
+                            excerpt,
+                        )
+                    )
+                assertTrue(returned(initial.result).text.value.contains("Outer().target(3)"))
+                val expanded =
+                    measuredRead(
+                        sourceRequest(SourceReadAnchorDocument.Source(initial.result.region.selection.selector), anchor)
+                    )
+                listOf(initial, expanded)
+            }
+        }
 
     private suspend fun sourceViews(
         strategy: SourceContextStrategy,
@@ -122,7 +194,14 @@ internal class NativeSourceContextWorkflow(
     private val anchor = SourceRegionSelectionDocument.Anchor
     private val excerpt = SourceTextRequestDocument.Excerpt(SourceLineCountDocument.parse(2).traceRefined())
     private val sourceBudget =
-        SourceProtocolBudget(NativeScopedTraceFixture.resources, SourceTextByteLimit.parse(65536).traceRefined())
+        SourceProtocolBudget(
+            NativeScopedTraceFixture.resources,
+            SourceTextByteLimit.parse(65536).traceRefined(),
+        )
+
+    companion object {
+        private const val EXPECTED_REFERENCES = 3
+    }
 }
 
 private data class MeasuredSource(val result: SourceReadResult, val bytes: Int, val sourceBytes: Int)

@@ -1,15 +1,11 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.projectRoots.JavaSdk
-import com.intellij.openapi.roots.ModuleRootModificationUtil
-import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
-import com.intellij.testFramework.IndexingTestUtil
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -51,15 +47,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.QueryInvocationPolicy
 import io.github.amichne.kast.query.protocol.SourceProtocolBudget
 import io.github.amichne.kast.source.contract.SourceTextByteLimit
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
-import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
-import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
-import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
-import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
 /** Real K2 selection and native source reads under one case-owned source basis. */
@@ -152,6 +140,39 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
         assertEquals(2L, after.nativeCounters[IntellijReadCounter.SOURCE_REGION_SELECTED])
         assertTrue("The focused view did not reduce encoded output: $before / $after", after.bytes < before.bytes)
         println("SOURCE_CONTEXT_WORKFLOW before=$before after=$after counters=${fixture.observation.snapshot()}")
+    }
+
+    fun testMatchedOccurrenceSourceViews() = runBlocking {
+        val (fixture, _) = prepare()
+        val workflow =
+            NativeSourceContextWorkflow(
+                fixture = fixture,
+                request =
+                    search("first")
+                        .copy(
+                            steps =
+                                bounded(
+                                    listOf(
+                                        QueryStepDocument.Related(RelationKindDocument.CALLEES, domain),
+                                        QueryStepDocument.Distinct,
+                                        QueryStepDocument.Related(RelationKindDocument.REFERENCES, domain),
+                                    )
+                                ),
+                            output = QueryOutputDocument.Occurrences,
+                        ),
+                budget = budget,
+                policy = policy,
+                expectedOffset = source.indexOf("target(3)"),
+                expectedBody = nestedBody,
+            )
+        val before = workflow.runOccurrences(SourceContextStrategy.FILE_RECONSTRUCTION)
+        val after = workflow.runOccurrences(SourceContextStrategy.STRUCTURAL_VIEW)
+        assertEquals(
+            before.nativeCounters - IntellijReadCounter.SOURCE_REGION_SELECTED,
+            after.nativeCounters - IntellijReadCounter.SOURCE_REGION_SELECTED,
+        )
+        assertTrue("The focused occurrence did not reduce encoded output: $before / $after", after.bytes < before.bytes)
+        println("SOURCE_OCCURRENCE_WORKFLOW before=$before after=$after")
     }
 
     fun testChangedSourceRejectsTheOriginalExactAndRegionFocus() = runBlocking {
@@ -272,52 +293,18 @@ class NativeSourceContextTest : NativeSmartModeFixtureTest() {
         )
 
     private fun prepare(text: String = source): Pair<NativeScopedTraceFixture, VirtualFile> {
-        lateinit var result: Pair<NativeScopedTraceFixture, VirtualFile>
+        lateinit var sdk: com.intellij.openapi.projectRoots.Sdk
         ApplicationManager.getApplication().invokeAndWait {
-            val base = getOrCreateProjectBaseDir()
-            val directory =
-                WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
-                    base.createChildDirectory(this, "src")
-                }
-            val sdk = JavaSdk.getInstance().createJdk("source-context-jdk", System.getProperty("java.home"), false)
+            sdk = JavaSdk.getInstance().createJdk("source-context-jdk", System.getProperty("java.home"), false)
             registerTestProjectJdk(sdk)
-            ModuleRootModificationUtil.updateModel(module) { native ->
-                native.sdk = sdk
-                native.addContentEntry(base).addSourceFolder(directory, false)
-                val library = native.moduleLibraryTable.createLibrary("source-context-stdlib")
-                val roots = library.modifiableModel
-                val jar = Path.of(PathManager.getHomePath(), "plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar")
-                roots.addRoot("jar://$jar!/", OrderRootType.CLASSES)
-                roots.commit()
-            }
-            val file =
-                WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
-                    directory.createChildData(this, "Owners.kt").also { it.setBinaryContent(text.toByteArray()) }
-                }
-            PsiDocumentManager.getInstance(project).commitAllDocuments()
-            IndexingTestUtil.waitUntilIndexesAreReady(project)
-            val root = CanonicalWorkspaceRoot.fromCanonicalPath(base.toNioPath()).traceRefined()
-            val model =
-                WorkspaceSearchScopeModel.compile(
-                    root,
-                    ImportedWorkspaceModelState.COMPLETE,
-                    listOf(
-                        WorkspaceSourceRootBoundary(
-                            ideaModuleName = module.name,
-                            linkedBuildRoot = base.toNioPath(),
-                            gradleProjectPath = ":",
-                            sourceSetName = "main",
-                            sourceRoot = directory.toNioPath(),
-                            sourceKind = WorkspaceSourceRootKind.PRODUCTION,
-                            provenance = WorkspaceSourceRootProvenance.AUTHORED,
-                        )
-                    ),
-                ) as WorkspaceSearchScopeModelCompilation.Compiled
-            result =
-                NativeScopedTraceFixture(project = project, root = root, model = model.model, files = listOf(file)) to
-                    file
         }
-        return result
+        return NativeSourceContextFixture(
+                project = project,
+                base = getOrCreateProjectBaseDir(),
+                module = module,
+                sdk = sdk,
+            )
+            .prepare(text)
     }
 
     private val execution =
