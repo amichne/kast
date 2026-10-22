@@ -71,4 +71,27 @@ class DetektBaselineTest {
 
         assertEquals(listOf(":detekt SKIPPED"), detektTasks, result.output)
     }
+
+    @Test
+    fun `scoped check includes module quality and tests without native assembly`() {
+        temporaryDirectory.resolve("settings.gradle").writeText("rootProject.name = 'scoped-check-fixture'\n")
+        temporaryDirectory.resolve("build.gradle").writeText(
+            """
+            plugins {
+                id 'org.jetbrains.kotlin.jvm'
+                id 'kast.kotlin-quality'
+            }
+            tasks.register('nativeCompile') { throw new GradleException('native assembly entered the edit loop') }
+            """.trimIndent(),
+        )
+        val result = GradleRunner.create()
+            .withProjectDir(temporaryDirectory.toFile())
+            .withPluginClasspath()
+            .withArguments("scopedCheck", "--dry-run", "--console=plain")
+            .build()
+        val scheduled = result.output.lineSequence().filter { it.endsWith(" SKIPPED") }.toSet()
+        listOf("spotlessCheck", "checkMainKotlinFileLength", "checkTestKotlinFileLength", "detekt", "test")
+            .forEach { task -> assertTrue(":$task SKIPPED" in scheduled, result.output) }
+        assertTrue(":nativeCompile SKIPPED" !in scheduled, result.output)
+    }
 }

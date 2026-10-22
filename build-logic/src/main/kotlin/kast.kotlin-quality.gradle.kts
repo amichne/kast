@@ -61,3 +61,9 @@ tasks.named("check") {
         checkTestKotlinFileLength,
     )
 }
+
+tasks.register("scopedCheck") {
+    group = "verification"
+    description = "Examines this module's format, structure, Detekt findings and unit tests without product assembly."
+    dependsOn("spotlessCheck", checkMainKotlinFileLength, checkTestKotlinFileLength, "detekt", "test")
+}

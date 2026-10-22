@@ -4,10 +4,12 @@ title: "Kast build-logic"
 description: "Defines Gradle conventions, effect ownership, architecture gates, generated contracts, and installed knowledge projections."
 resource: "repo://build-logic"
 tags: [kast, navigation]
-timestamp: "2026-10-15T06:18:36Z"
-source_revision: 3e843eb6eb7c45ff402ba4b1103821afee059408
+timestamp: "2026-10-22T03:38:55Z"
+source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
 code_sources:
   - path: build-logic/build.gradle.kts
+  - path: build-logic/src/main/kotlin/support/tasks/VerificationReportTask.kt
+  - path: build-logic/src/test/kotlin/VerificationReportTaskTest.kt
   - path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
   - path: build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt
   - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt
@@ -32,12 +34,13 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 
 ## Key Files
 
-- [kast.architecture.gradle.kts](src/main/kotlin/kast.architecture.gradle.kts) - module architecture and installed guide wiring.
+- [Architecture convention](src/main/kotlin/kast.architecture.gradle.kts) - module architecture and installed guide wiring.
 - [ModuleImpact.kt](src/main/kotlin/support/architecture/ModuleImpact.kt) - selection and shortest dependency paths over the declared production graph.
 - [TopologyImpactTask.kt](src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt) - opt-in report without source compilation or compiler authority.
 - [KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - the admitted module topology.
-- [kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - format, Detekt, and file-length gates.
-- [kast.public-query-contract.gradle.kts](src/main/kotlin/kast.public-query-contract.gradle.kts) - public schema generation parity and its regression gate.
+- [Kotlin quality convention](src/main/kotlin/kast.kotlin-quality.gradle.kts) - format, `Detekt`, and file-length gates.
+- [VerificationReportTask.kt](src/main/kotlin/support/tasks/VerificationReportTask.kt) - explicit process inputs, local task history, and diagnostic reports.
+- [Public query convention](src/main/kotlin/kast.public-query-contract.gradle.kts) - public schema generation parity and its regression gate.
 - [VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed requests for the isolated JSON syntax scanner.
 - [KnowledgeSymbolsMain.kt](src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt) - Kotlin declaration evidence for OpenWiki citations.
 - [GenerateKnowledgeDocsTask.kt](src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt) - isolated Kotlin documentation extraction.
@@ -56,6 +59,7 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 
 - Root `settings.gradle.kts` includes this separate Gradle build.
 - Run `./gradlew verifyJsonContracts` from the repository root for the JSON syntax gate.
+- Run `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue` for one module's quality guards and unit tests. Keep product assembly in the full gate.
 - Run `./gradlew topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.
 - Set `kastTopologyEnabled=false` to disable that report. Read [the command guide](../docs/topology-impact.md) for evidence limits.
 - `generateInstalledKnowledgeBundle` projects tracked `AGENTS.md` files into the installed knowledge bundle.
