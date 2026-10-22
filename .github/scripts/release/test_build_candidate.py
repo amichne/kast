@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Candidate admission preserves build identity and rejects unproven promotion."""
+from contextlib import redirect_stderr
 from dataclasses import asdict, dataclass, replace
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -316,14 +318,60 @@ class EffectBoundaryTest(unittest.TestCase):
                 else:
                     download.assert_not_called()
 
-    def test_failed_or_incomplete_observation_is_finite_failure(self):
-        for result in (subprocess.CompletedProcess([], 1, "", ""),
-                       subprocess.CompletedProcess([], 0, "{", "")):
-            with self.subTest(result=result), patch.object(candidate.subprocess, "run", return_value=result), \
+    def test_transient_api_failure_retries_and_retains_bounded_stage_evidence(self):
+        responses = [subprocess.CompletedProcess([], 1, "HTTP/2.0 503 Service Unavailable\r\n\r\nsecret body", "secret error"),
+                     subprocess.CompletedProcess([], 0, "HTTP/2.0 200 OK\r\n\r\n" + json.dumps(asdict(Run())), "")]
+        evidence = io.StringIO()
+        with patch.object(candidate.subprocess, "run", side_effect=responses) as execute, \
+                patch.object(candidate.time, "sleep"), redirect_stderr(evidence):
+            self.assertEqual(asdict(Run()), candidate.observe("repos/amichne/kast/actions/runs/123",
+                                                            candidate.ObservationStage.WORKFLOW_RUN))
+        self.assertEqual(len(responses), execute.call_count)
+        self.assertEqual([
+            {"stage": "WORKFLOW_RUN", "outcome": "HTTP_REJECTED", "attempt": 1, "httpStatus": 503},
+            {"stage": "WORKFLOW_RUN", "outcome": "OBSERVED", "attempt": 2, "httpStatus": 200},
+        ], [json.loads(line) for line in evidence.getvalue().splitlines()])
+
+    def test_api_rejection_never_becomes_a_missing_candidate(self):
+        for status, attempts in ((403, 1), (404, 1), (429, 3), (502, 3)):
+            responses = [subprocess.CompletedProcess([], 1, f"HTTP/2.0 {status} Rejected\n\nsecret", "secret")] * attempts
+            evidence = io.StringIO()
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temporary, \
+                    patch.object(candidate.subprocess, "run", side_effect=responses) as execute, \
+                    patch.object(candidate.time, "sleep"), redirect_stderr(evidence), \
                     self.assertRaises(candidate.Rejected) as rejection:
-                candidate.observe("repos/amichne/kast")
-            self.assertIn(rejection.exception.failure, {candidate.Failure.OBSERVATION_FAILED,
-                                                        candidate.Failure.INCOMPLETE_OBSERVATION})
+                candidate.reuse(REPOSITORY, MERGED, Path(temporary) / "bundle")
+            self.assertEqual(candidate.Failure.OBSERVATION_FAILED, rejection.exception.failure)
+            self.assertEqual(attempts, execute.call_count)
+            self.assertEqual([
+                {"stage": "ASSOCIATED_PULLS", "outcome": "HTTP_REJECTED", "attempt": attempt, "httpStatus": status}
+                for attempt in range(1, attempts + 1)
+            ], [json.loads(line) for line in evidence.getvalue().splitlines()])
+
+    def test_timeout_recovers_but_unavailable_process_and_invalid_response_reject(self):
+        success = subprocess.CompletedProcess([], 0, "HTTP/2.0 200 OK\n\n" + json.dumps(asdict(Run())), "")
+        evidence = io.StringIO()
+        with patch.object(candidate.subprocess, "run", side_effect=[subprocess.TimeoutExpired("gh", 180), success]) as execute, \
+                patch.object(candidate.time, "sleep"), redirect_stderr(evidence):
+            self.assertEqual(asdict(Run()), candidate.observe("unused", candidate.ObservationStage.WORKFLOW_RUN))
+        self.assertEqual(2, execute.call_count)
+        self.assertEqual("TIMED_OUT", json.loads(evidence.getvalue().splitlines()[0])["outcome"])
+        for response, failure, outcome in (
+                (OSError("secret"), candidate.Failure.OBSERVATION_FAILED, "UNAVAILABLE"),
+                (subprocess.CompletedProcess([], 1, "", "secret"),
+                 candidate.Failure.OBSERVATION_FAILED, "PROCESS_FAILED"),
+                (subprocess.CompletedProcess([], 0, "HTTP/2.0 200 OK\n\n{", ""),
+                 candidate.Failure.INCOMPLETE_OBSERVATION, "INVALID_RESPONSE"),
+                (subprocess.CompletedProcess([], 0, "{}", ""),
+                 candidate.Failure.INCOMPLETE_OBSERVATION, "INVALID_RESPONSE")):
+            evidence = io.StringIO()
+            with self.subTest(outcome=outcome), patch.object(candidate.subprocess, "run", side_effect=[response]) as execute, \
+                    redirect_stderr(evidence), self.assertRaises(candidate.Rejected) as rejection:
+                candidate.observe("unused", candidate.ObservationStage.WORKFLOW_RUN)
+            self.assertEqual(failure, rejection.exception.failure)
+            self.assertEqual(1, execute.call_count)
+            self.assertEqual(outcome, json.loads(evidence.getvalue())["outcome"])
+            self.assertNotIn("secret", evidence.getvalue())
 
     def test_delayed_publication_cannot_rewind_latest(self):
         for observed, expected in ((MERGED, "CURRENT"), (BUILD, "SUPERSEDED")):

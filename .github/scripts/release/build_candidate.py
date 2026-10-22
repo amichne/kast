@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from urllib.parse import urlencode
 
 SPEC = importlib.util.spec_from_file_location("ci_candidate", Path(__file__).with_name("ci-candidate.py"))
@@ -42,6 +43,32 @@ class PublicationState(str, Enum):
 class MainState(str, Enum):
     CURRENT = "CURRENT"
     SUPERSEDED = "SUPERSEDED"
+
+
+class ObservationStage(str, Enum):
+    ASSOCIATED_PULLS = "ASSOCIATED_PULLS"
+    SOURCE_TREE = "SOURCE_TREE"
+    WORKFLOW_RUNS = "WORKFLOW_RUNS"
+    RUN_ARTIFACTS = "RUN_ARTIFACTS"
+    WORKFLOW_RUN = "WORKFLOW_RUN"
+    MAIN_HEAD = "MAIN_HEAD"
+
+
+class ObservationOutcome(str, Enum):
+    OBSERVED = "OBSERVED"
+    HTTP_REJECTED = "HTTP_REJECTED"
+    PROCESS_FAILED = "PROCESS_FAILED"
+    TIMED_OUT = "TIMED_OUT"
+    UNAVAILABLE = "UNAVAILABLE"
+    INVALID_RESPONSE = "INVALID_RESPONSE"
+
+
+@dataclass(frozen=True)
+class ObservationEvidence:
+    stage: ObservationStage
+    outcome: ObservationOutcome
+    attempt: int
+    httpStatus: int | None
 
 
 class Failure(str, Enum):
@@ -193,12 +220,41 @@ def execute(command: list[str], failure: Failure, **kwargs) -> subprocess.Comple
     return result
 
 
-def observe(endpoint: str):
-    result = execute(["gh", "api", endpoint], Failure.OBSERVATION_FAILED, capture_output=True, text=True)
-    try:
-        return json.loads(result.stdout)
-    except ValueError:
-        raise Rejected(Failure.INCOMPLETE_OBSERVATION) from None
+def observe(endpoint: str, stage: ObservationStage):
+    for attempt in range(1, 4):
+        status = None
+        retry = False
+        try:
+            result = subprocess.run(["gh", "api", "--include", endpoint], check=False, timeout=180,
+                                    capture_output=True, text=True)
+            headers, separator, payload = result.stdout.replace("\r\n", "\n").partition("\n\n")
+            match = re.match(r"HTTP/\S+ ([1-5][0-9]{2})\b", headers)
+            status = int(match[1]) if match else None
+            if status is None or not separator:
+                outcome = ObservationOutcome.PROCESS_FAILED if result.returncode else ObservationOutcome.INVALID_RESPONSE
+            elif result.returncode or not 200 <= status < 300:
+                outcome = ObservationOutcome.HTTP_REJECTED
+                retry = status in {408, 429} or 500 <= status < 600
+            else:
+                try:
+                    document = json.loads(payload)
+                    outcome = ObservationOutcome.OBSERVED
+                except ValueError:
+                    outcome = ObservationOutcome.INVALID_RESPONSE
+        except subprocess.TimeoutExpired:
+            outcome = ObservationOutcome.TIMED_OUT
+            retry = True
+        except OSError:
+            outcome = ObservationOutcome.UNAVAILABLE
+        # Do not retain response bodies, headers, endpoints or process stderr.
+        print(json.dumps(asdict(ObservationEvidence(stage, outcome, attempt, status))), file=sys.stderr, flush=True)
+        if outcome is ObservationOutcome.OBSERVED:
+            return document
+        if outcome is ObservationOutcome.INVALID_RESPONSE:
+            raise Rejected(Failure.INCOMPLETE_OBSERVATION)
+        if not retry or attempt == 3:
+            raise Rejected(Failure.OBSERVATION_FAILED)
+        time.sleep(attempt)
 
 
 def listing(document: dict, field: str) -> tuple[dict, ...]:
@@ -211,7 +267,7 @@ def listing(document: dict, field: str) -> tuple[dict, ...]:
 
 
 def tree(repository: str, revision: str) -> str:
-    document = observe(f"repos/{repository}/git/commits/{revision}")
+    document = observe(f"repos/{repository}/git/commits/{revision}", ObservationStage.SOURCE_TREE)
     value = document.get("tree", {}).get("sha") if isinstance(document, dict) else None
     if not isinstance(value, str) or not SHA.fullmatch(value) or document.get("sha") != revision:
         raise Rejected(Failure.INCOMPLETE_OBSERVATION)
@@ -247,7 +303,7 @@ def empty(bundle: Path) -> None:
 def download(repository: str, run: dict, revision: str, bundle: Path) -> Candidate:
     empty(bundle)
     name = f"ci-build-candidate-{revision}-{run['run_attempt']}"
-    artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100"), "artifacts")
+    artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
     matches = tuple(artifact for artifact in artifacts if artifact.get("name") == name and artifact.get("expired") is False)
     if len(matches) != 1:
         raise Rejected(Failure.INVALID_RECORD)
@@ -268,7 +324,7 @@ def reuse(repository: str, revision: str, bundle: Path) -> CandidateState:
     """Only same-repository merged PRs authorize pre-merge payload reuse."""
     identity(repository, revision)
     empty(bundle)
-    pulls = observe(f"repos/{repository}/commits/{revision}/pulls?per_page=100")
+    pulls = observe(f"repos/{repository}/commits/{revision}/pulls?per_page=100", ObservationStage.ASSOCIATED_PULLS)
     if not isinstance(pulls, list) or len(pulls) >= 100 or any(not isinstance(pull, dict) for pull in pulls):
         raise Rejected(Failure.INCOMPLETE_OBSERVATION)
     sources = tuple(pull["head"]["sha"] for pull in pulls
@@ -280,11 +336,11 @@ def reuse(repository: str, revision: str, bundle: Path) -> CandidateState:
     for source in sources:
         identity(repository, source)
         query = urlencode({"head_sha": source, "event": "pull_request", "per_page": 100})
-        runs = listing(observe(f"repos/{repository}/actions/workflows/ci.yml/runs?{query}"), "workflow_runs")
+        runs = listing(observe(f"repos/{repository}/actions/workflows/ci.yml/runs?{query}", ObservationStage.WORKFLOW_RUNS), "workflow_runs")
         for run in sorted(runs, key=lambda value: value.get("id", 0), reverse=True):
             if not reusable_run(run, repository, source):
                 continue
-            artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100"), "artifacts")
+            artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
             if not any(item.get("name") == f"ci-build-candidate-{source}-{run['run_attempt']}" and item.get("expired") is False for item in artifacts):
                 continue
             # A changed integration tree authorizes a fresh build, never promotion.
@@ -325,7 +381,7 @@ def seal(repository: str, revision: str, run_id: int, number: int, attempt: int,
 
 def admit_validation(repository: str, revision: str, run: dict, expected_tree: str):
     name = f"ci-validation-outcome-{revision}-{run['run_attempt']}"
-    artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100"), "artifacts")
+    artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
     matches = tuple(artifact for artifact in artifacts if artifact.get("name") == name and artifact.get("expired") is False)
     if len(matches) != 1:
         raise Rejected(Failure.INVALID_RECORD)
@@ -353,7 +409,7 @@ def promote(repository: str, revision: str, main_run_id: int, bundle: Path, reco
     identity(repository, revision)
     if not positive(main_run_id):
         raise Rejected(Failure.INVALID_IDENTITY)
-    run = observe(f"repos/{repository}/actions/runs/{main_run_id}")
+    run = observe(f"repos/{repository}/actions/runs/{main_run_id}", ObservationStage.WORKFLOW_RUN)
     if not reusable_run(run, repository, revision) or run.get("event") != "push" or run.get("head_branch") != "main":
         raise Rejected(Failure.PRODUCER_NOT_SUCCESSFUL)
     expected_tree = tree(repository, revision)
@@ -364,7 +420,7 @@ def promote(repository: str, revision: str, main_run_id: int, bundle: Path, reco
             raise Rejected(Failure.DESTINATION_NOT_EMPTY)
         return outcome
     candidate = download(repository, run, revision, bundle)
-    producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}")
+    producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}", ObservationStage.WORKFLOW_RUN)
     admitted = refine(candidate, producer, repository, expected_tree)
     if isinstance(admitted, Failure):
         raise Rejected(admitted)
@@ -398,7 +454,7 @@ def verify_publication(repository: str, revision: str, version: str, bundle: Pat
             or not positive(promotion.mainRunId) or not positive(promotion.mainRunAttempt)):
         raise Rejected(Failure.INVALID_RECORD)
     identity(repository, promotion.mergedRevision)
-    main_run = observe(f"repos/{repository}/actions/runs/{promotion.mainRunId}")
+    main_run = observe(f"repos/{repository}/actions/runs/{promotion.mainRunId}", ObservationStage.WORKFLOW_RUN)
     if (not reusable_run(main_run, repository, promotion.mergedRevision)
             or main_run.get("event") != "push" or main_run.get("head_branch") != "main"
             or main_run.get("run_attempt") != promotion.mainRunAttempt):
@@ -406,7 +462,7 @@ def verify_publication(repository: str, revision: str, version: str, bundle: Pat
     expected_tree = tree(repository, promotion.mergedRevision)
     if not isinstance(admit_validation(repository, promotion.mergedRevision, main_run, expected_tree), validation.ProductValidated):
         raise Rejected(Failure.INVALID_RECORD)
-    producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}")
+    producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}", ObservationStage.WORKFLOW_RUN)
     admitted = refine(candidate, producer, repository, expected_tree)
     if isinstance(admitted, Failure):
         raise Rejected(admitted)
@@ -417,7 +473,7 @@ def verify_publication(repository: str, revision: str, version: str, bundle: Pat
 
 def current_main(repository: str, revision: str) -> MainState:
     identity(repository, revision)
-    document = observe(f"repos/{repository}/git/ref/heads/main")
+    document = observe(f"repos/{repository}/git/ref/heads/main", ObservationStage.MAIN_HEAD)
     observed = document.get("object", {}).get("sha") if isinstance(document, dict) else None
     if not isinstance(observed, str) or not SHA.fullmatch(observed):
         raise Rejected(Failure.INCOMPLETE_OBSERVATION)
