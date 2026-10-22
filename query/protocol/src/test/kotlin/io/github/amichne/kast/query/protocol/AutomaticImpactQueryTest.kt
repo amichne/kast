@@ -104,7 +104,8 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                         QueryRunRequest.ReadResult.impactWitness(retained.reference, section),
                         fixture.authority,
                         case.allowance.copy(
-                            resources = case.allowance.resources.copy(resultLimit = ResultLimit.parse(20).refined())
+                            resources =
+                                case.allowance.resources.bounded().copy(resultLimit = ResultLimit.parse(20).refined())
                         ),
                     )
                 val full = assertInstanceOf(OperationOutcome.Complete::class.java, read)
@@ -148,7 +149,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 QueryRunRequest.ReadResult.valuePaths(retained.result),
                 fixture.authority,
                 case.allowance.copy(
-                    resources = case.allowance.resources.copy(resultLimit = ResultLimit.parse(20).refined())
+                    resources = case.allowance.resources.bounded().copy(resultLimit = ResultLimit.parse(20).refined())
                 ),
             )
         val qualified = assertInstanceOf(OperationOutcome.Qualified::class.java, read)
@@ -178,7 +179,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 QueryRunRequest.ReadResult.valuePaths(retained.result),
                 fixture.authority,
                 case.allowance.copy(
-                    resources = case.allowance.resources.copy(resultLimit = ResultLimit.parse(20).refined())
+                    resources = case.allowance.resources.bounded().copy(resultLimit = ResultLimit.parse(20).refined())
                 ),
             )
         val qualified = assertInstanceOf(OperationOutcome.Qualified::class.java, read)
@@ -203,10 +204,12 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
         val allowance =
             budget.copy(
                 resources =
-                    budget.resources.copy(
-                        resultLimit = ResultLimit.parse(pageRows).refined(),
-                        workUnitLimit = WorkUnitLimit.parse(work).refined(),
-                    ),
+                    budget.resources
+                        .bounded()
+                        .copy(
+                            resultLimit = ResultLimit.parse(pageRows).refined(),
+                            workUnitLimit = WorkUnitLimit.parse(work).refined(),
+                        ),
                 returnedBytes = QueryByteLimit.parse(1_000_000).refined(),
                 checkpointBytes = QueryByteLimit.parse(5_000_000).refined(),
             )
@@ -285,10 +288,10 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                     error("Unexpected traversal")
                 },
                 TraversalBudget(
-                    allowance.resources.resultLimit,
+                    allowance.resources.bounded().resultLimit,
                     TraversalByteLimit.parse(1_000_000).refined(),
-                    allowance.resources.workUnitLimit,
-                    allowance.resources.elapsedTimeLimit,
+                    allowance.resources.bounded().workUnitLimit,
+                    allowance.resources.bounded().elapsedTimeLimit,
                     TraversalDepthLimit.parse(1).refined(),
                     TraversalFrontierLimit.parse(100).refined(),
                     fixture.budget,
@@ -394,7 +397,9 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 protocol.executePage(
                     QueryRunRequest.ReadResult.valuePaths(reference),
                     fixture.authority,
-                    allowance.copy(resources = allowance.resources.copy(resultLimit = ResultLimit.parse(20).refined())),
+                    allowance.copy(
+                        resources = allowance.resources.bounded().copy(resultLimit = ResultLimit.parse(20).refined())
+                    ),
                 )
             val full = assertInstanceOf(OperationOutcome.Complete::class.java, read)
             assertDrained()

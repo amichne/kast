@@ -25,7 +25,7 @@ class RelationTimeAdmissionTest {
         var retained = detachedRelationInventory(request, listOf("item-0", "item-1"))
         if (prefixSize > 0) collector.retainProviderState(retained, preparedPartition = true)
         for (position in 0..1) {
-            if (position == prefixSize) now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+            if (position == prefixSize) now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
             when (collector.beginProviderItem(fixture.providerItem("item-$position"))) {
                 IntellijRelationProviderItemAdmission.READY -> {
                     compilerCalls += 1

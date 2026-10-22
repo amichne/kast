@@ -98,7 +98,12 @@ private fun hostedEffect(
     operation: CanonicalOperation,
     request: OperationRequest,
 ): HostedRequestEffect =
-    if (operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest) {
+    if (
+        operation == CanonicalOperation.QUERY_RUN &&
+            request is io.github.amichne.kast.protocol.contract.QueryRunRequest.Run
+    ) {
+        HostedRequestEffect.QueryRun(request.executionMode)
+    } else if (operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest) {
         HostedRequestEffect.ChangePlan(request.intent)
     } else if (
         operation == CanonicalOperation.CHANGE_APPLY &&

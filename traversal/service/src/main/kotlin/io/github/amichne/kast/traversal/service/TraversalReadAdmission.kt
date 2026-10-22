@@ -27,18 +27,23 @@ internal fun admitTraversalRead(
     accounting: TraversalAccounting,
 ): TraversalReadAdmission {
     val remainingRecords = plan.budget.records.value - accounting.retainedResultCount
-    val remainingBytes = plan.budget.returnedBytes.value - accounting.encodedBytes
-    val remainingWork = plan.budget.workUnits.value - accounting.examinedWorkUnits
-    val remainingTime = plan.budget.elapsedTime.value - accounting.elapsedMillis
+    val remainingBytes =
+        when (val budget = plan.budget) {
+            is io.github.amichne.kast.traversal.contract.TraversalBudget.RunnerControlled -> budget.returnedBytes.value
+            is io.github.amichne.kast.traversal.contract.TraversalBudget.Bounded ->
+                budget.returnedBytes.value - accounting.encodedBytes
+        }
     return when {
         !plan.budget.extent.permitsExpansion(next.depth) ->
             TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
-        accounting.expandedFrontier >= plan.budget.frontier.value ->
+        !plan.budget.hasFrontierCapacity(accounting.expandedFrontier) ->
             TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
         remainingRecords <= 0 -> TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)
         remainingBytes <= 0L -> TraversalReadAdmission.Limited(TraversalLimitation.BYTE_LIMIT_REACHED)
-        remainingWork <= 0L -> TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
-        remainingTime <= 0L -> TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
+        !plan.budget.resources.hasWorkCapacity(accounting.examinedWorkUnits) ->
+            TraversalReadAdmission.Limited(TraversalLimitation.WORK_LIMIT_REACHED)
+        !plan.budget.resources.hasTimeRemaining(accounting.elapsedMillis) ->
+            TraversalReadAdmission.Limited(TraversalLimitation.TIME_LIMIT_REACHED)
         else ->
             attenuatedBudget(
                 plan.budget.oneHop,
@@ -47,40 +52,83 @@ internal fun admitTraversalRead(
                     is TraversalStrategy.BoundedFanOut -> minOf(remainingRecords, strategy.maximumEdgesPerNode.value)
                 },
                 remainingBytes,
-                remainingWork,
-                remainingTime,
+                plan.budget.resources,
+                accounting,
             )
     }
 }
 
-/**
- * Proof transition: `(RelationBudget, positive remaining aggregate capacity) -> TraversalReadAdmission`.
- *
- * Establishes a one-hop budget that cannot exceed either its configured ceiling or the traversal capacity still
- * available. [TraversalReadAdmission.Rejected] is the closed internal refinement failure. Raw remaining counters may be
- * extracted only here.
- */
 private fun attenuatedBudget(
     ceiling: RelationBudget,
     remainingRecords: Int,
     remainingBytes: Long,
+    aggregate: ResourceBudget,
+    accounting: TraversalAccounting,
+): TraversalReadAdmission =
+    when (val records = ResultLimit.parse(minOf(ceiling.outputResults.value, remainingRecords))) {
+        is Refinement.Rejected -> TraversalReadAdmission.Rejected
+        is Refinement.Refined ->
+            when (val bytes = RelationByteLimit.parse(minOf(ceiling.returnedBytes.value, remainingBytes))) {
+                is Refinement.Rejected -> TraversalReadAdmission.Rejected
+                is Refinement.Refined ->
+                    attenuatedResources(
+                        resources = ceiling.resources,
+                        records = records.value,
+                        bytes = bytes.value,
+                        aggregate = aggregate,
+                        accounting = accounting,
+                    )
+            }
+    }
+
+private fun attenuatedResources(
+    resources: ResourceBudget,
+    records: ResultLimit,
+    bytes: RelationByteLimit,
+    aggregate: ResourceBudget,
+    accounting: TraversalAccounting,
+): TraversalReadAdmission =
+    when (resources) {
+        ResourceBudget.RunnerControlled -> TraversalReadAdmission.Admitted(RelationBudget(resources, bytes, records))
+        is ResourceBudget.Bounded ->
+            when (aggregate) {
+                ResourceBudget.RunnerControlled ->
+                    boundedBudget(
+                        ceiling = resources,
+                        records = records,
+                        bytes = bytes,
+                        remainingWork = resources.workUnitLimit.value,
+                        remainingTime = resources.elapsedTimeLimit.value,
+                    )
+                is ResourceBudget.Bounded ->
+                    boundedBudget(
+                        ceiling = resources,
+                        records = records,
+                        bytes = bytes,
+                        remainingWork = aggregate.workUnitLimit.value - accounting.examinedWorkUnits,
+                        remainingTime = aggregate.elapsedTimeLimit.value - accounting.elapsedMillis,
+                    )
+            }
+    }
+
+private fun boundedBudget(
+    ceiling: ResourceBudget.Bounded,
+    records: ResultLimit,
+    bytes: RelationByteLimit,
     remainingWork: Long,
     remainingTime: Long,
-): TraversalReadAdmission {
-    val records =
-        ResultLimit.parse(minOf(ceiling.resources.resultLimit.value, remainingRecords)).refinedOrNull()
-            ?: return TraversalReadAdmission.Rejected
-    val bytes =
-        RelationByteLimit.parse(minOf(ceiling.returnedBytes.value, remainingBytes)).refinedOrNull()
-            ?: return TraversalReadAdmission.Rejected
-    val work =
-        WorkUnitLimit.parse(minOf(ceiling.resources.workUnitLimit.value, remainingWork)).refinedOrNull()
-            ?: return TraversalReadAdmission.Rejected
-    val time =
-        ElapsedTimeLimitMillis.parse(minOf(ceiling.resources.elapsedTimeLimit.value, remainingTime)).refinedOrNull()
-            ?: return TraversalReadAdmission.Rejected
-    return TraversalReadAdmission.Admitted(RelationBudget(ResourceBudget(records, work, time), bytes))
-}
+): TraversalReadAdmission =
+    when (val work = WorkUnitLimit.parse(minOf(ceiling.workUnitLimit.value, remainingWork))) {
+        is Refinement.Rejected -> TraversalReadAdmission.Rejected
+        is Refinement.Refined ->
+            when (val time = ElapsedTimeLimitMillis.parse(minOf(ceiling.elapsedTimeLimit.value, remainingTime))) {
+                is Refinement.Rejected -> TraversalReadAdmission.Rejected
+                is Refinement.Refined ->
+                    TraversalReadAdmission.Admitted(
+                        RelationBudget(ResourceBudget(records, work.value, time.value), bytes)
+                    )
+            }
+    }
 
 /**
  * Proof transition: `(OneHopRelationRequest, RelationBatch) -> ReaderBatchAdmission`.

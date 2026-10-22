@@ -97,8 +97,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
         expected = {
-            "query_symbols.parameters.json": "a8609cefc6fcf78aae5e7c80fb7d255c3bb392f3e5329b32e3739a1b59d0d420",
-            "query_symbols.openai-parameters.json": "890f7f7c411572e4e313b9a24fec6d8b4f431d80e9c818a2e98de14484ac7703",
+            "query_symbols.parameters.json": "b9ac76e01f39a9f3ec54f5ce2f2ee555c9e43a79ef8438e53e39e6c5e9c567a9",
+            "query_symbols.openai-parameters.json": "d072015c507c73a656255e339000841c22ca803039424ec7a7e77dc439a2e3f0",
         }
         generated = generator.render_tools(self.authority)
         for name, digest in expected.items():

@@ -26,7 +26,7 @@ private sealed interface HostedEpochAttempt {
     data class Retry(val counter: IntellijReadCounter) : HostedEpochAttempt
 }
 
-/** Waits for write preemption or a moving epoch within the enclosing host deadline. */
+/** Waits for write preemption or a moving epoch under the request execution mode. */
 internal suspend fun awaitHostedEpochAdmission(
     observe: () -> ProjectReadEpochObservation,
     admit: (ProjectReadEpoch<*>) -> VfsPassiveReadAdmission,

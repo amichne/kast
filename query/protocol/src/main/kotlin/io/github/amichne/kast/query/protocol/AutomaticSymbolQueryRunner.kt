@@ -1,10 +1,9 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
@@ -20,6 +19,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryInvestigationCompletion
+import io.github.amichne.kast.query.contract.QueryStorageAllowance
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -80,7 +80,7 @@ internal class AutomaticSymbolQueryRunner(
     private inner class Invocation(private val request: QueryRunRequest.Run, private val allowance: QueryBudget) {
         private val facts = QueryInvocationFacts(lease, policy)
         private val started = policy.nanoTime()
-        private var remainingWork = allowance.resources.workUnitLimit.value
+        private var consumedWork = 0L
         private val consumed = mutableSetOf<QueryExecutionContinuation.Pipeline>()
         private val issued = mutableSetOf<QueryExecutionContinuation>()
         private var pending: QueryExecutionContinuation.Pipeline? = null
@@ -127,11 +127,15 @@ internal class AutomaticSymbolQueryRunner(
                     is Refinement.Rejected -> return admitted.failure
                 }
             page.issuedToken?.let(issued::add)
-            if (page.work.count.value > remainingWork) return invalidInvocation()
-            remainingWork -= page.work.count.value
+            consumedWork = consumedWork.saturatedAdd(page.work.count.value)
+            if (!allowance.resources.permitsWork(consumedWork)) return invalidInvocation()
             val capacity =
                 when (val admitted = retentionAdmission(QueryInvocationRetentionStage.BEFORE_FACTS).capacity) {
-                    is QueryInvocationRetentionCapacity.Available -> admitted.bytes.value + facts.retainedBytes
+                    is QueryInvocationRetentionCapacity.Available ->
+                        QueryStorageAllowance.Bounded(
+                            QueryByteLimit.parse(admitted.bytes.value + facts.retainedBytes).required()
+                        )
+                    QueryInvocationRetentionCapacity.Unlimited -> QueryStorageAllowance.Unlimited
                     QueryInvocationRetentionCapacity.Exhausted ->
                         return QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
                 }
@@ -143,45 +147,61 @@ internal class AutomaticSymbolQueryRunner(
                     return appended.failure
                 }
             }
-            return advance(page)
+            return afterCancellation(advance(page))
         }
+
+        private fun afterCancellation(next: QueryInvocationTransition): QueryInvocationTransition =
+            when (next) {
+                is QueryInvocationTransition.Continue ->
+                    if (policy.cancelled()) QueryInvocationTransition.Stopped(QueryInvocationStop.CANCELLED) else next
+                is QueryInvocationTransition.Stopped ->
+                    if (next.reason == QueryInvocationStop.COMPLETED && policy.cancelled())
+                        QueryInvocationTransition.Stopped(QueryInvocationStop.CANCELLED)
+                    else next
+                is QueryInvocationTransition.Rejected -> next
+            }
 
         private fun nextBudget(): Refinement<QueryBudget, QueryInvocationTransition.Stopped> {
             if (policy.cancelled()) return stopped(QueryInvocationStop.CANCELLED)
             val elapsed = (policy.nanoTime() - started).coerceAtLeast(0L) / 1_000_000L
-            val millis = allowance.resources.elapsedTimeLimit.value - elapsed
-            if (millis <= 0L) return stopped(QueryInvocationStop.TIME_LIMIT)
-            if (remainingWork <= 1L) return stopped(QueryInvocationStop.WORK_LIMIT)
-            val bytes =
-                when (val admitted = retentionAdmission(QueryInvocationRetentionStage.BEFORE_EXECUTION).capacity) {
-                    is QueryInvocationRetentionCapacity.Available -> admitted.bytes.value
-                    QueryInvocationRetentionCapacity.Exhausted ->
-                        return stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
+            if (!allowance.resources.hasTimeRemaining(elapsed)) return stopped(QueryInvocationStop.TIME_LIMIT)
+            consumedWork = consumedWork.saturatedAdd(1L)
+            if (!allowance.resources.hasWorkCapacity(consumedWork)) return stopped(QueryInvocationStop.WORK_LIMIT)
+            val resources =
+                when (val remaining = allowance.resources.remainingAfter(consumedWork, elapsed)) {
+                    is Refinement.Refined -> remaining.value
+                    is Refinement.Rejected -> return stopped(QueryInvocationStop.WORK_LIMIT)
                 }
-            val checkpoint = bytes / 2
-            val output = (bytes - checkpoint - QUERY_PAGE_RESERVATION_OVERHEAD) / QUERY_PAGE_RESERVATION_MULTIPLIER
-            if (output < 1L || checkpoint < 1L) return stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
-            remainingWork-- // One unit pays for every runner transition, including empty or replayed pages.
-            return Refinement.Refined(
-                allowance.copy(
-                    resources =
-                        allowance.resources.copy(
-                            workUnitLimit = WorkUnitLimit.parse(remainingWork).required(),
-                            // Native inventory preparation cannot checkpoint an unfinished search. Preserve the
-                            // invocation's remaining grant through that effect and charge every successor below.
-                            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(millis).required(),
-                        ),
-                    returnedBytes = QueryByteLimit.parse(minOf(allowance.returnedBytes.value, output)).required(),
-                    checkpointBytes =
-                        QueryByteLimit.parse(minOf(allowance.checkpointBytes.value, checkpoint)).required(),
-                )
-            )
+            return when (val admitted = retentionAdmission(QueryInvocationRetentionStage.BEFORE_EXECUTION).capacity) {
+                QueryInvocationRetentionCapacity.Unlimited -> Refinement.Refined(allowance.copy(resources = resources))
+                QueryInvocationRetentionCapacity.Exhausted -> stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
+                is QueryInvocationRetentionCapacity.Available -> {
+                    val checkpoint = admitted.bytes.value / 2
+                    val output =
+                        (admitted.bytes.value - checkpoint - QUERY_PAGE_RESERVATION_OVERHEAD) /
+                            QUERY_PAGE_RESERVATION_MULTIPLIER
+                    if (output < 1L || checkpoint < 1L) stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
+                    else
+                        Refinement.Refined(
+                            allowance.copy(
+                                resources = resources,
+                                returnedBytes =
+                                    QueryByteLimit.parse(minOf(allowance.returnedBytes.value, output)).required(),
+                                checkpointBytes =
+                                    QueryByteLimit.parse(minOf(allowance.checkpointBytes.value, checkpoint)).required(),
+                            )
+                        )
+                }
+            }
         }
 
         private fun retentionAdmission(stage: QueryInvocationRetentionStage): QueryInvocationRetentionAdmission =
             QueryInvocationRetentionAdmission(
                     stage,
-                    policy.retainedBytes,
+                    when (allowance.resources) {
+                        ResourceBudget.RunnerControlled -> QueryStorageAllowance.Unlimited
+                        is ResourceBudget.Bounded -> QueryStorageAllowance.Bounded(policy.retainedBytes)
+                    },
                     QueryRetentionByteCount.measured(facts.retainedBytes),
                     state.invocationRetainedBytes(issued),
                     QueryRetentionByteCount.measured(request.accountedRequestBytes()),

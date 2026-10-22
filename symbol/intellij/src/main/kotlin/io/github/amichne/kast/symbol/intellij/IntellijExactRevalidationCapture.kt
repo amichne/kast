@@ -8,6 +8,9 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.WorkAllowance
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.ExactRevalidationLocator
 import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
 import io.github.amichne.kast.symbol.contract.ExactRevalidationTextIdentity
@@ -22,12 +25,40 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 /** Request-local capture deduplicates file reads; no platform object is retained in its entries. */
-class IntellijExactRevalidationCapture(
+class IntellijExactRevalidationCapture
+private constructor(
     private val model: WorkspaceSearchScopeModel,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
-    private val workLimit: Long = 256,
+    private val workAllowance: WorkAllowance,
     private val limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
 ) {
+    internal val executionWorkAllowance: WorkAllowance
+        get() = workAllowance
+
+    constructor(
+        model: WorkspaceSearchScopeModel,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
+        workLimit: Long = 256,
+        limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
+    ) : this(
+        model,
+        observation,
+        WorkAllowance.Bounded(
+            when (val limit = WorkUnitLimit.parse(workLimit)) {
+                is Refinement.Refined -> limit.value
+                is Refinement.Rejected -> error("Exact capture needs positive work authority")
+            }
+        ),
+        limits,
+    )
+
+    constructor(
+        model: WorkspaceSearchScopeModel,
+        observation: IntellijReadObservation,
+        resources: ResourceBudget,
+        limits: io.github.amichne.kast.kernel.ReadLimits,
+    ) : this(model, observation, resources.workAllowance, limits)
+
     private data class Capture(val owner: ModelOwnedSourceRoot, val identity: ExactRevalidationTextIdentity)
 
     private val entries = mutableMapOf<SymbolDiscoveryFileIdentity, Refinement<Capture, ExactRevalidationRejection>>()
@@ -56,7 +87,7 @@ class IntellijExactRevalidationCapture(
                 )
                 reject(ExactRevalidationRejection.CAPTURE_UNAVAILABLE)
             }
-        if (entries.size < MAX_FILES) entries[file] = result
+        if (workAllowance == WorkAllowance.Unlimited || entries.size < MAX_FILES) entries[file] = result
         if (result is Refinement.Rejected) observation.count(IntellijReadCounter.REVALIDATION_CAPTURE_REJECTED)
     }
 
@@ -73,7 +104,7 @@ class IntellijExactRevalidationCapture(
         psi: PsiFile,
         policy: io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy =
             io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT,
-        maximumWork: Long = workLimit - work,
+        maximumWork: WorkAllowance = workAllowance,
     ): Refinement<Unit, ExactRevalidationRejection> =
         when (val current = read(locator.evidence.file, psi, maximumWork)) {
             is Refinement.Rejected -> current
@@ -90,9 +121,10 @@ class IntellijExactRevalidationCapture(
     private fun read(
         file: SymbolDiscoveryFileIdentity,
         psi: PsiFile,
-        maximumWork: Long = workLimit - work,
+        maximumWork: WorkAllowance = workAllowance,
     ): Refinement<Capture, ExactRevalidationRejection> {
-        if (entries.size >= MAX_FILES) return reject(ExactRevalidationRejection.CAPACITY)
+        if (workAllowance != WorkAllowance.Unlimited && entries.size >= MAX_FILES)
+            return reject(ExactRevalidationRejection.CAPACITY)
         val owner =
             when (val ownership = owningSource(file)) {
                 is Refinement.Refined -> ownership.value
@@ -117,7 +149,7 @@ class IntellijExactRevalidationCapture(
     private fun readContent(
         owner: ModelOwnedSourceRoot,
         psi: PsiFile,
-        maximumWork: Long,
+        maximumWork: WorkAllowance,
     ): Refinement<Capture, ExactRevalidationRejection> {
         val virtual = psi.virtualFile ?: return reject(ExactRevalidationRejection.DECLARATION_MISSING)
         val documents = FileDocumentManager.getInstance()
@@ -154,14 +186,18 @@ class IntellijExactRevalidationCapture(
         size: Long,
         psiLength: Int,
         document: Document?,
-        maximumWork: Long,
+        maximumWork: WorkAllowance,
     ): Refinement<Int, ExactRevalidationRejection> {
-        if (size !in 0..MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
-        if (psiLength > MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
-        if (document != null && document.textLength > MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
+        if (size < 0 || size > Int.MAX_VALUE) return reject(ExactRevalidationRejection.CAPACITY)
+        if (workAllowance != WorkAllowance.Unlimited && size > MAX_FILE_BYTES)
+            return reject(ExactRevalidationRejection.CAPACITY)
+        if (workAllowance != WorkAllowance.Unlimited && psiLength > MAX_FILE_BYTES)
+            return reject(ExactRevalidationRejection.CAPACITY)
+        if (workAllowance != WorkAllowance.Unlimited && document != null && document.textLength > MAX_FILE_BYTES)
+            return reject(ExactRevalidationRejection.CAPACITY)
         // Reserve the one-byte EOF probe; charge only actual consumed bytes.
         val maximumCost = 1 + (size + CHUNK_BYTES) / CHUNK_BYTES
-        if (maximumCost > minOf(workLimit - work, maximumWork))
+        if (!workAllowance.permits(work + maximumCost) || !maximumWork.permits(maximumCost))
             return reject(ExactRevalidationRejection.WORK_LIMIT_REACHED)
         return Refinement.Refined(size.toInt())
     }

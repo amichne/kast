@@ -172,7 +172,7 @@ class QueryImpactSourceRetentionTest {
             RelationRequest.start(
                 selector,
                 RelationMeaning.References,
-                RelationBudget(execution.budget.resources, RelationByteLimit.parse(100000).refined()),
+                RelationBudget(execution.budget.resources.bounded(), RelationByteLimit.parse(100000).refined()),
                 plan.source.domain,
             )
         val obligation = ValueFlowObligation(site, ValueFlowUnsupportedCause.UNMODELED_CALL)

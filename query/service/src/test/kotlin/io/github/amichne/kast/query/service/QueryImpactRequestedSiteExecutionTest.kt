@@ -109,7 +109,7 @@ class QueryImpactRequestedSiteExecutionTest {
                         owner,
                         site.range,
                         role,
-                        RelationBudget(f.request().budget.resources, RelationByteLimit.parse(100000).value()),
+                        RelationBudget(f.request().budget.resources.bounded(), RelationByteLimit.parse(100000).value()),
                     )
                     .value()
             return QueryImpactRequestedSite.admit(

@@ -74,7 +74,7 @@ internal class AutomaticRelationTimeGrantTest : AutomaticSymbolQueryCase() {
                             fixture.selector.fingerprint,
                             (child.subject as RelationEndpoint.Subject).selector.fingerprint,
                         )
-                        assertEquals(400L, child.budget.resources.elapsedTimeLimit.value)
+                        assertEquals(400L, child.budget.resources.bounded().elapsedTimeLimit.value)
                         now = 900_000_000L
                         callerPage(child, caller)
                     },
@@ -124,12 +124,12 @@ internal class AutomaticRelationTimeGrantTest : AutomaticSymbolQueryCase() {
 
     private fun traversalCeiling() =
         TraversalBudget(
-            budget.resources.resultLimit,
+            budget.resources.bounded().resultLimit,
             TraversalByteLimit.parse(100_000L).refined(),
-            budget.resources.workUnitLimit,
-            budget.resources.elapsedTimeLimit,
+            budget.resources.bounded().workUnitLimit,
+            budget.resources.bounded().elapsedTimeLimit,
             TraversalDepthLimit.parse(1).refined(),
             TraversalFrontierLimit.parse(1).refined(),
-            RelationBudget(budget.resources, RelationByteLimit.parse(100_000L).refined()),
+            RelationBudget(budget.resources.bounded(), RelationByteLimit.parse(100_000L).refined()),
         )
 }

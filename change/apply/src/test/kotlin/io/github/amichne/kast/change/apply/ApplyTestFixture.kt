@@ -404,7 +404,7 @@ internal class ApplyTestFixture(private val classLike: Boolean = false) {
     private fun canonicalRoot(raw: String): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(raw)).refined()
 
-    private fun resourceBudget(): ResourceBudget =
+    private fun resourceBudget(): ResourceBudget.Bounded =
         ResourceBudget(
             ResultLimit.parse(8).refined(),
             WorkUnitLimit.parse(8L).refined(),

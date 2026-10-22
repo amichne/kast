@@ -26,7 +26,7 @@ internal suspend fun revalidateImpactSite(
             is ValueModelSiteRead.Unsupported -> return impactFailure(observed.cause.boundaryFailure(), position)
             is ValueModelSiteRead.Limited -> return impactFailure(observed.cause.impactFailure(), position)
         }
-    if (read.examinedWorkUnits.value > grant.resources.workUnitLimit.value)
+    if (!grant.resources.permitsWork(read.examinedWorkUnits.value))
         return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)
     val actual =
         when (val admitted = RevalidatedValueSite.fromCompiler(request, read.position.site)) {

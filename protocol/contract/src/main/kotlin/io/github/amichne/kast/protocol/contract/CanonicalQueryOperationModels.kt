@@ -178,6 +178,12 @@ enum class QueryRetentionModeDocument {
     @SerialName("retain") RETAIN,
 }
 
+@Serializable
+enum class QueryExecutionModeDocument {
+    BOUNDED,
+    RUNNER_CONTROLLED,
+}
+
 /** Each action carries exactly the input needed for that transition. */
 @Serializable
 @JsonClassDiscriminator("action")
@@ -197,6 +203,9 @@ sealed interface QueryRunRequest : OperationRequest {
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        @SerialName("execution_mode")
+        val executionMode: QueryExecutionModeDocument = QueryExecutionModeDocument.BOUNDED,
     ) : QueryRunRequest
 
     @Serializable

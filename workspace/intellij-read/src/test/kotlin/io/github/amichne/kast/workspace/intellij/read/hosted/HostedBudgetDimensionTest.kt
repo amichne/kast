@@ -23,8 +23,8 @@ class HostedBudgetDimensionTest {
                 val actual = grant(input)
                 val expected = baseline.amounts().toMutableList().apply { this[axis.ordinal] = axis.amount }
                 assertEquals(expected, actual.amounts(), "$profile $axis")
-                assertEquals(input.requested.elapsed, actual.elapsed.requested)
-                assertEquals(input.requested.work, actual.work.requested)
+                assertEquals(input.requested.boundedFixture().elapsed, actual.elapsed.requested)
+                assertEquals(input.requested.boundedFixture().work, actual.work.requested)
                 assertEquals(input.requested.results, actual.results.requested)
                 assertEquals(input.requested.returnedBytes, actual.returnedBytes.requested)
                 assertEquals(emptySet<ExecutionBudgetClamp>(), actual.clamps()[axis.ordinal], "$profile $axis")
@@ -32,10 +32,11 @@ class HostedBudgetDimensionTest {
         }
     }
 
-    private fun grant(request: HostedExecutionBudgetRequest): AdmittedExecutionBudget =
+    private fun grant(request: HostedExecutionBudgetRequest): AdmittedExecutionBudget.Bounded =
         admitHostedExecutionBudget(ReadLimits.Default, request, ElapsedTimeLimitMillis.parse(4_000).proven())
+            .boundedFixture()
 
-    private fun AdmittedExecutionBudget.amounts() =
+    private fun AdmittedExecutionBudget.Bounded.amounts() =
         listOf(
             elapsed.effective.value,
             work.effective.value,
@@ -43,7 +44,7 @@ class HostedBudgetDimensionTest {
             returnedBytes.effective.value,
         )
 
-    private fun AdmittedExecutionBudget.clamps() =
+    private fun AdmittedExecutionBudget.Bounded.clamps() =
         listOf(elapsed.clamping, work.clamping, results.clamping, returnedBytes.clamping)
 
     private enum class Axis(val amount: Long) {

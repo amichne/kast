@@ -125,8 +125,8 @@ class HostedTraversalOperationsTest {
                 TraversalBudget(
                     ResultLimit.parse(3).refined(),
                     TraversalByteLimit.parse(100_000).refined(),
-                    fixture.budget.resources.workUnitLimit,
-                    fixture.budget.resources.elapsedTimeLimit,
+                    fixture.budget.resources.boundedFixture().workUnitLimit,
+                    fixture.budget.resources.boundedFixture().elapsedTimeLimit,
                     TraversalDepthLimit.parse(1).refined(),
                     TraversalFrontierLimit.parse(1).refined(),
                     fixture.budget,

@@ -47,7 +47,7 @@ sealed interface TraversalResult {
          * state is not permitted at this boundary.
          */
         fun complete(page: TraversalPage): TraversalResult =
-            if (page.elapsedMillis.value > page.plan.budget.elapsedTime.value) {
+            if (!page.plan.budget.resources.permitsElapsedMillis(page.elapsedMillis.value)) {
                 Rejected(TraversalRejection.TraversalContractViolation)
             } else
                 Complete(
@@ -103,7 +103,7 @@ sealed interface TraversalResult {
             qualification: TraversalQualification,
         ): Refinement<Qualified, TraversalQualificationFailure> =
             if (
-                page.elapsedMillis.value > page.plan.budget.elapsedTime.value &&
+                !page.plan.budget.resources.permitsElapsedMillis(page.elapsedMillis.value) &&
                     TraversalLimitation.TIME_LIMIT_REACHED !in qualification.limitations
             )
                 Refinement.Rejected(TraversalQualificationFailure.ELAPSED_OVERRUN_UNQUALIFIED)
@@ -229,11 +229,11 @@ private constructor(
             when {
                 listOf(encodedBytes, examinedWorkUnits, elapsedMillis, expandedFrontier.toLong()).any { it < 0L } ->
                     Refinement.Rejected(TraversalPageFailure.NEGATIVE_MEASURE)
-                encodedBytes > plan.budget.returnedBytes.value ->
+                !plan.budget.permitsReturnedBytes(encodedBytes) ->
                     Refinement.Rejected(TraversalPageFailure.BYTE_LIMIT_EXCEEDED)
-                examinedWorkUnits > plan.budget.workUnits.value ->
+                !plan.budget.resources.permitsWork(examinedWorkUnits) ->
                     Refinement.Rejected(TraversalPageFailure.WORK_LIMIT_EXCEEDED)
-                expandedFrontier > plan.budget.frontier.value ->
+                !plan.budget.permitsFrontier(expandedFrontier) ->
                     Refinement.Rejected(TraversalPageFailure.FRONTIER_LIMIT_EXCEEDED)
                 else -> Refinement.Refined(Unit)
             }

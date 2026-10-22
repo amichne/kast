@@ -238,6 +238,7 @@ internal object KastProviderQualifier {
             invoke = { runtime, input, context -> runtime.invoke(this, input, context) },
             encode = KastInvocationOutput::document,
             invocationBudget = executionBudget.invocation,
+            executionMode = KastInvocationInput::executionMode,
             inputAliases = inputAliases,
             effect = BrokerOperationEffect.Canonical(hostedDefinition.effect),
             inputGuidance = { failure ->

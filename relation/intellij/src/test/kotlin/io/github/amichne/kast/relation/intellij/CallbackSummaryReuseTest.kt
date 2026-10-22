@@ -213,9 +213,9 @@ class CallbackSummaryReuseTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources.copy(
-                        resultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined()
-                    ),
+                    request.budget.resources
+                        .bounded()
+                        .copy(resultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined()),
                     RelationByteLimit.parse(candidate.summary.retainedBytes).refined(),
                 ),
                 counts,

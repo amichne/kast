@@ -66,7 +66,7 @@ class HostedRepairBudgetMatrixTest {
         requestedMillis: Long,
         expectedGrant: Long,
     ) {
-        val elapsed = allowance.executionBudget.elapsed
+        val elapsed = allowance.executionBudget.boundedFixture().elapsed
         assertEquals(requestedMillis, (elapsed.requested as ExecutionAllowance.Requested).value.value)
         assertEquals(if (policy == Policy.SHORT) 2_000L else 15_000L, elapsed.configuredDefault.value)
         assertEquals((Int.MAX_VALUE - 1).toLong(), elapsed.operatorCeiling.value)

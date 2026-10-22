@@ -29,7 +29,11 @@ class NativeCallbackExpiryTest : NativeReferenceFixtureTest() {
         val request = fixture.request
 
         val now = AtomicLong()
-        val observed = ExpireAtNativeCallback(now, request.budget.resources.elapsedTimeLimit.value * NANOS_PER_MILLI)
+        val observed =
+            ExpireAtNativeCallback(
+                now,
+                request.budget.resources.nativeBounded().elapsedTimeLimit.value * NANOS_PER_MILLI,
+            )
         val compiled = fixture.scope(observed)
         val collector = IntellijRelationCollector(request, clockNanoseconds = now::get, observation = observed)
         val checkCancellation = { ProgressManager.checkCanceled() }
@@ -93,7 +97,10 @@ class NativeCallbackExpiryTest : NativeReferenceFixtureTest() {
         val nativeScope = GlobalSearchScope.allScope(project)
         assertCurrentExcludedCallback(fixture, nativeScope, context)
         val observed =
-            ExpireAtNativeCallback(now, narrowed.request.budget.resources.elapsedTimeLimit.value * NANOS_PER_MILLI)
+            ExpireAtNativeCallback(
+                now,
+                narrowed.request.budget.resources.nativeBounded().elapsedTimeLimit.value * NANOS_PER_MILLI,
+            )
         val siteReads = AtomicInteger()
         assertFalse(
             observed.forEachReference(

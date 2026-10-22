@@ -1,7 +1,6 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.AdmittedImpactModelSyntax
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
@@ -68,23 +67,25 @@ internal class QueryImpactSourceAcquisition(
                     )
             }
         val work =
-            when (
-                val admitted =
-                    WorkUnitLimit.parse(
-                        minOf(current.workUnitLimit.value, budget.resources.workUnitLimit.value - examinedWork)
-                    )
-            ) {
+            when (val admitted = current.intersect(budget.resources).remainingAfter(examinedWork, 0L)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return impactFailure(QueryImpactSourceFailureCode.WORK_LIMIT_REACHED, position)
             }
         val bytes =
-            when (val admitted = RelationByteLimit.parse(budget.checkpointBytes.value - retainedBytes)) {
+            when (
+                val admitted =
+                    RelationByteLimit.parse(
+                        if (budget.resources == io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled)
+                            budget.returnedBytes.value
+                        else budget.checkpointBytes.value - retainedBytes
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
             }
-        return Refinement.Refined(RelationBudget(current.copy(workUnitLimit = work), bytes))
+        return Refinement.Refined(RelationBudget(work, bytes, budget.outputResults))
     }
 
     suspend fun acquireSeeds(seeds: List<QueryImpactProducerDocument>): Refinement<Unit, QueryRunRejection> {
@@ -150,7 +151,7 @@ internal class QueryImpactSourceAcquisition(
                 is ValueProducerSeedRead.Rejected -> return impactFailure(read.cause.impactFailure(), position)
                 is ValueProducerSeedRead.ContractRejected -> return impactFailure(read.cause.impactFailure(), position)
             }
-        if (observed.examinedWorkUnits.value > request.budget.resources.workUnitLimit.value)
+        if (!request.budget.resources.permitsWork(observed.examinedWorkUnits.value))
             return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)
         examinedWork += observed.examinedWorkUnits.value
         // An adapter cannot substitute a proof admitted against a different seed request.
@@ -171,7 +172,7 @@ internal class QueryImpactSourceAcquisition(
                     position,
                 )
         }
-        if (retainedBytes > budget.checkpointBytes.value)
+        if (!budget.storage.permits(retainedBytes))
             return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
         return Refinement.Refined(Unit)
     }
@@ -221,7 +222,7 @@ internal class QueryImpactSourceAcquisition(
                 is ValueModelDeclarationRead.Revalidated -> observed
                 is ValueModelDeclarationRead.Rejected -> return impactFailure(observed.cause.impactFailure(), position)
             }
-        if (read.examinedWorkUnits.value > grant.resources.workUnitLimit.value)
+        if (!grant.resources.permitsWork(read.examinedWorkUnits.value))
             return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)
         examinedWork += read.examinedWorkUnits.value
         when (val matched = matchImpactDeclaration(declaration, selected, read.declaration.endpoint, lease, position)) {
@@ -311,7 +312,7 @@ internal class QueryImpactSourceAcquisition(
                     ImpactSiteAdmissionOrigin.PEER_BOUNDARY -> QueryImpactRetainedGraph().requestedSite(proof)
                 },
             )
-        if (retainedBytes > budget.checkpointBytes.value)
+        if (!budget.storage.permits(retainedBytes))
             return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
         return Refinement.Refined(proof)
     }

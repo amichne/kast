@@ -24,18 +24,7 @@ internal fun collectDirectoryKotlinDeclarations(
     retainedBytes: Long = 0L,
 ): Boolean {
     val prepared =
-        when (
-            val result =
-                callbacks.observation.call(IntellijReadCall.DISCOVERY_DIRECTORY_PLAN) {
-                    IntellijDirectoryDiscoveryPlan.Prepared.prepare(
-                        plan,
-                        callbacks.consume,
-                        callbacks.observation,
-                        limits,
-                        retainedBytes,
-                    )
-                }
-        ) {
+        when (val result = plan.prepareDirectoryCollection(limits, callbacks, retainedBytes)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return callbacks.reject(result.failure)
         }
@@ -58,7 +47,13 @@ internal fun collectDirectoryKotlinDeclarations(
             IntellijDeclarationInitialInventory.TimeLimit -> return callbacks.rejectTime()
         }
     val collection =
-        NamedDirectoryPartitionCollection(initial, prepared.chargedBytes + retainedBytes, limits, callbacks)
+        NamedDirectoryPartitionCollection(
+            initial,
+            prepared.chargedBytes + retainedBytes,
+            limits,
+            callbacks,
+            plan.request.budget.resources,
+        )
     if (!collection.drain(adapter)) return false
     val visitor =
         ScopedKotlinDeclarationVisitor(
@@ -73,11 +68,27 @@ internal fun collectDirectoryKotlinDeclarations(
     return collection.files.values.all { visitor.readSource(it, plan.request.usesExactClasslikeAstTraversal()) }
 }
 
+private fun IntellijDirectoryDiscoveryPlan.prepareDirectoryCollection(
+    limits: ReadLimits,
+    callbacks: ScopedDeclarationCallbacks,
+    retainedBytes: Long,
+): Refinement<IntellijDirectoryDiscoveryPlan.Prepared, SymbolDiscoveryBlockCause> =
+    callbacks.observation.call(IntellijReadCall.DISCOVERY_DIRECTORY_PLAN) {
+        IntellijDirectoryDiscoveryPlan.Prepared.prepare(
+            selection = this,
+            consume = callbacks.consume,
+            observation = callbacks.observation,
+            limits = limits,
+            retainedBytes = retainedBytes,
+        )
+    }
+
 private class NamedDirectoryPartitionCollection(
     initial: List<SemanticFilePartition>,
     private val planBytes: Long,
     private val limits: ReadLimits,
     private val callbacks: ScopedDeclarationCallbacks,
+    private val resources: io.github.amichne.kast.kernel.ResourceBudget,
 ) {
     private val frontier =
         java.util.TreeMap<String, SemanticFilePartition>().apply {
@@ -146,9 +157,15 @@ private class NamedDirectoryPartitionCollection(
     private fun fits(): Boolean {
         val count = frontier.size + files.size
         val bytes = retainedBytes + planBytes + DIRECTORY_BINDING_BYTES
-        if (count > limits[ReadLimitParameter.DISCOVERY_FILES].value)
+        if (
+            resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                count > limits[ReadLimitParameter.DISCOVERY_FILES].value
+        )
             return callbacks.reject(SymbolDiscoveryBlockCause.PARTITION_CAPACITY)
-        if (bytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value)
+        if (
+            resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                bytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value
+        )
             return callbacks.reject(SymbolDiscoveryBlockCause.RETENTION_LIMIT)
         callbacks.observation.count(IntellijReadCounter.DISCOVERY_RETENTION_PARTITION_SAMPLES, amount = count)
         callbacks.observation.count(IntellijReadCounter.DISCOVERY_RETENTION_BYTE_SAMPLES, amount = bytes.toInt())

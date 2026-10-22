@@ -15,6 +15,30 @@ import org.junit.jupiter.api.Test
 
 class HostedExecutionBudgetTest {
     @Test
+    fun `runner-controlled admission keeps only presentation ceilings`() {
+        val limits =
+            ReadLimits.resolve(
+                    mapOf(
+                        "KAST_READ_EXECUTION_MAX_MILLIS" to "1",
+                        "KAST_READ_EXECUTION_MAX_WORK" to "1",
+                        "KAST_READ_EXECUTION_MAX_RESULTS" to "3",
+                        "KAST_READ_EXECUTION_MAX_RETURNED_BYTES" to "512",
+                    )
+                )
+                .proven()
+        val grant =
+            admitHostedRunnerExecutionBudget(
+                limits,
+                RequestedExecutionBudget.RunnerControlled(),
+                HostedBudgetProfile.SEMANTIC,
+                ResultLimit.parse(1000).proven(),
+            )
+        assertEquals(io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled, grant.resources)
+        assertEquals(3, grant.results.effective.value)
+        assertEquals(512L, grant.returnedBytes.effective.value)
+    }
+
+    @Test
     fun `explicit operator transport capacity retains its clamp evidence`() {
         val limits = ReadLimits.resolve(mapOf("KAST_READ_HOST_RESPONSE_BYTES" to "65536")).proven()
         val grant =
@@ -68,11 +92,11 @@ class HostedExecutionBudgetTest {
         val deadline = HostedReadDeadline(shortHostLimits(), { now }, request)
         now = 1_000_000_000L
         val grant = deadline.admit(null).proven().executionBudget
-        assertEquals(2_750L, grant.elapsed.effective.value)
-        assertEquals(5L, grant.work.effective.value)
+        assertEquals(2_750L, grant.boundedFixture().elapsed.effective.value)
+        assertEquals(5L, grant.boundedFixture().work.effective.value)
         assertEquals(1_000, grant.results.effective.value)
         assertEquals(100_000L, grant.returnedBytes.effective.value)
-        assertEquals(setOf(ExecutionBudgetClamp.DEADLINE_REMAINING), grant.elapsed.clamping)
+        assertEquals(setOf(ExecutionBudgetClamp.DEADLINE_REMAINING), grant.boundedFixture().elapsed.clamping)
         now = 3_750_000_000L
         assertEquals(Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), deadline.admit(null))
     }
@@ -91,9 +115,9 @@ class HostedExecutionBudgetTest {
                 )
                 .proven()
         val grant = HostedReadDeadline(limits, { 0L }).admit(null).proven().executionBudget
-        assertEquals(15_000L, grant.elapsed.configuredDefault.value)
-        assertEquals(800L, grant.elapsed.effective.value)
-        assertEquals(12L, grant.work.effective.value)
+        assertEquals(15_000L, grant.boundedFixture().elapsed.configuredDefault.value)
+        assertEquals(800L, grant.boundedFixture().elapsed.effective.value)
+        assertEquals(12L, grant.boundedFixture().work.effective.value)
         assertEquals(3, grant.results.effective.value)
         assertEquals(512L, grant.returnedBytes.effective.value)
         assertTrue(grant.results.clamping.contains(ExecutionBudgetClamp.OPERATOR_CEILING))

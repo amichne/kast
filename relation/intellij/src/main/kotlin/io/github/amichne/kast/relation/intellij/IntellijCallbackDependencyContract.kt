@@ -4,6 +4,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.relation.contract.CallbackDeferredDependency
 import io.github.amichne.kast.relation.contract.CallbackDependencyContract
 import io.github.amichne.kast.relation.contract.CallbackDependencyContractProvenance
@@ -15,6 +16,7 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import java.io.InputStream
 import java.security.MessageDigest
 import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractCallsInPlaceContractEffectDeclaration
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -189,7 +191,7 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.loadBinaryContract(
         declaration.containingFile?.virtualFile
             ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
     val digest =
-        when (val read = file.contractClassDigest()) {
+        when (val read = file.contractClassDigest(context.scope.request.budget.resources)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
@@ -220,29 +222,84 @@ private fun KaNamedFunctionSymbol.isLazyInitializer(
     return (returnType as? KaClassType)?.classId?.asSingleFqName()?.asString() == "kotlin.Lazy"
 }
 
-internal fun com.intellij.openapi.vfs.VirtualFile.contractClassDigest():
-    Refinement<DependencyClassDigest, CallbackInvocationFlowCause> {
-    if (extension != "class" || length !in 1..MAX_CONTRACT_CLASS_BYTES)
+internal fun com.intellij.openapi.vfs.VirtualFile.contractClassDigest(
+    resources: ResourceBudget
+): Refinement<DependencyClassDigest, CallbackInvocationFlowCause> {
+    if (extension != "class" || length < 1)
         return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+    when (resources) {
+        is ResourceBudget.Bounded ->
+            if (length > MAX_CONTRACT_CLASS_BYTES)
+                return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+        ResourceBudget.RunnerControlled -> Unit
+    }
     val stamp = modificationStamp
-    val content =
+    val digest =
         try {
-            inputStream.use { it.readNBytes((MAX_CONTRACT_CLASS_BYTES + 1).toInt()) }
+            inputStream.use {
+                contractClassDigestContents(it, resources, com.intellij.openapi.progress.ProgressManager::checkCanceled)
+            }
         } catch (_: java.io.IOException) {
             return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
         }
-    if (content.size.toLong() !in 1..MAX_CONTRACT_CLASS_BYTES)
-        return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
-    if (modificationStamp != stamp) return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_CHANGED)
-    return when (
-        val parsed =
-            DependencyClassDigest.parse(
-                java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content))
-            )
-    ) {
-        is Refinement.Refined -> parsed
-        is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+    return when (digest) {
+        is Refinement.Rejected -> digest
+        is Refinement.Refined ->
+            if (modificationStamp != stamp) Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_CHANGED)
+            else digest
     }
+}
+
+internal fun contractClassDigestContents(
+    input: InputStream,
+    resources: ResourceBudget,
+    checkCancellation: () -> Unit,
+): Refinement<DependencyClassDigest, CallbackInvocationFlowCause> {
+    return try {
+        val digest = MessageDigest.getInstance("SHA-256")
+        when (val streamed = updateContractClassDigest(input, resources, checkCancellation, digest)) {
+            is Refinement.Rejected -> streamed
+            is Refinement.Refined ->
+                when (val parsed = DependencyClassDigest.parse(java.util.HexFormat.of().formatHex(digest.digest()))) {
+                    is Refinement.Refined -> parsed
+                    is Refinement.Rejected ->
+                        Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+                }
+        }
+    } catch (_: java.io.IOException) {
+        Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+    }
+}
+
+private fun updateContractClassDigest(
+    input: InputStream,
+    resources: ResourceBudget,
+    checkCancellation: () -> Unit,
+    digest: MessageDigest,
+): Refinement<Unit, CallbackInvocationFlowCause> {
+    val chunk = ByteArray(8192)
+    var boundedBytes = 0L
+    var hasContent = false
+    while (true) {
+        checkCancellation()
+        val count = input.read(chunk)
+        checkCancellation()
+        if (count < 0) break
+        when (resources) {
+            is ResourceBudget.Bounded -> {
+                boundedBytes += count
+                if (boundedBytes > MAX_CONTRACT_CLASS_BYTES)
+                    return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+            }
+            ResourceBudget.RunnerControlled -> Unit
+        }
+        if (count > 0) {
+            digest.update(chunk, 0, count)
+            hasContent = true
+        }
+    }
+    return if (hasContent) Refinement.Refined(Unit)
+    else Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
 }
 
 private fun org.jetbrains.kotlin.analysis.api.KaSession.contractTarget(
@@ -257,7 +314,15 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.contractTarget(
             IntellijDetachedRelationFile.Unsupported -> return null
         }
     val projection =
-        when (val value = symbol.compilerProjection(this, detached, observation = context.observation)) {
+        when (
+            val value =
+                symbol.compilerProjection(
+                    this,
+                    detached,
+                    observation = context.observation,
+                    workAllowance = context.scope.request.budget.resources.workAllowance,
+                )
+        ) {
             is IntellijCompilerProjectionResult.Projected -> value.projection
             is IntellijCompilerProjectionResult.LocalRejected,
             IntellijCompilerProjectionResult.Unsupported -> return null

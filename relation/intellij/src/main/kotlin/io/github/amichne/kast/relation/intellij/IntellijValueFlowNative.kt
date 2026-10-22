@@ -63,7 +63,7 @@ internal class IntellijValueFlowNative(
 
         val base = ValueFlowStep.detachedByteCount(request.source, scope.request, emptyList(), emptyList()).value
         val reserved = reservedValueObligationBytes(request.source)
-        if (base > request.budget.returnedBytes.value || reserved > request.budget.returnedBytes.value - base) {
+        if (!request.budget.permitsReturnedBytes(base + reserved)) {
 
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, nativeWorkCount())
         }
@@ -183,8 +183,9 @@ internal class IntellijValueFlowNative(
         ProgressManager.checkCanceled()
         val grant = request.budget.resources
         return when {
-            examined >= grant.workUnitLimit.value -> stopped(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
-            retained.resultCount >= grant.resultLimit.value -> stopped(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
+            !grant.hasWorkCapacity(examined) -> stopped(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+            retained.resultCount >= request.budget.outputResults.value ->
+                stopped(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
             allowance.elapsedLimitReached(grant) -> stopped(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
             else -> {
                 allowance.examine()
@@ -266,14 +267,20 @@ internal class IntellijValueFlowNative(
     }
 
     private fun branchResult(expression: KtExpression, branch: KtExpression) {
-        when (val result = nativeBranchCarriesValue(expression, branch, observation)) {
+        when (
+            val result =
+                nativeBranchCarriesValue(expression, branch, observation, request.budget.resources.workAllowance)
+        ) {
             is Refinement.Refined -> emit(branch, ValueRole.ExpressionResult, ValueTransferKind.BRANCH_ALTERNATIVE)
             is Refinement.Rejected -> unresolved(result.failure)
         }
     }
 
     private fun tryBranchResult(expression: KtExpression, position: TryBranchResultPosition.Result) {
-        when (val evidence = NativeTryBranchResult.admit(expression, position, observation)) {
+        when (
+            val evidence =
+                NativeTryBranchResult.admit(expression, position, observation, request.budget.resources.workAllowance)
+        ) {
             is Refinement.Refined -> {
                 val before = edges.size
                 emit(

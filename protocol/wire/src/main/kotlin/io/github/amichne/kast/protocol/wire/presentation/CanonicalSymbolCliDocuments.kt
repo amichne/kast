@@ -106,7 +106,9 @@ data class LocalDeclarationAddressCliDocument(
     )
     val ownerIdentity: String,
     val ownerRange: SourceRangeCliDocument,
-    @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 32)
+    @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(
+        maximumItems = io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
+    )
     val lexicalOwners: List<SourceRangeCliDocument>,
 )
 

@@ -28,11 +28,16 @@ internal class HostedCallbackCaptureAllowance(private val initial: ResourceBudge
     }
 
     fun remaining(current: ResourceBudget): Refinement<ResourceBudget, HostedCallbackCaptureBudgetFailure> {
+        val bounded =
+            when (initial) {
+                ResourceBudget.RunnerControlled -> return Refinement.Refined(current)
+                is ResourceBudget.Bounded -> initial
+            }
         if (meter == Meter.SATURATED) return Refinement.Rejected(HostedCallbackCaptureBudgetFailure.METER_SATURATED)
-        val workRemaining = minOf(initial.workUnitLimit.value - work, current.workUnitLimit.value)
-        // Round spent time upwards; truncation would grant the same partial millisecond repeatedly.
+        val workRemaining = bounded.workUnitLimit.value - work
+        // Round spent time upwards; truncation grants the same partial millisecond repeatedly.
         val spentMillis = nanos / NANOS_PER_MILLISECOND + if (nanos % NANOS_PER_MILLISECOND == 0L) 0L else 1L
-        val timeRemaining = minOf(initial.elapsedTimeLimit.value - spentMillis, current.elapsedTimeLimit.value)
+        val timeRemaining = bounded.elapsedTimeLimit.value - spentMillis
         val workLimit =
             when (val parsed = WorkUnitLimit.parse(workRemaining)) {
                 is Refinement.Refined -> parsed.value
@@ -43,7 +48,9 @@ internal class HostedCallbackCaptureAllowance(private val initial: ResourceBudge
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return Refinement.Rejected(HostedCallbackCaptureBudgetFailure.TIME_EXHAUSTED)
             }
-        return Refinement.Refined(current.copy(workUnitLimit = workLimit, elapsedTimeLimit = timeLimit))
+        return Refinement.Refined(
+            current.intersect(bounded.copy(workUnitLimit = workLimit, elapsedTimeLimit = timeLimit))
+        )
     }
 
     private enum class Meter {

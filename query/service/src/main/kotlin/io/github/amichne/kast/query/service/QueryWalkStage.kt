@@ -44,7 +44,7 @@ internal class QueryWalkStage(
 ) {
     suspend fun read(task: PipelineTask.Walk, state: QueryExecutionState): QueryWalkStageResult {
         val budget =
-            state.traversalBudget(state.request.budget.resources.resultLimit.value, task.stage.extent, ceiling)
+            state.traversalBudget(state.request.budget.outputResults.value, task.stage.extent, ceiling)
                 ?: return QueryWalkStageResult.NotStarted
         val plan =
             if (task.cursor == null) {

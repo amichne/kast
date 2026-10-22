@@ -16,20 +16,88 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.HeavyPlatformTestCase
 import com.intellij.testFramework.IndexingTestUtil
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.LocalDeclarationAddress
 import io.github.amichne.kast.symbol.contract.LocalDeclarationKind
+import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import io.github.amichne.kast.symbol.contract.LocalPropertyMutability
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.nio.file.Path
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 
 class LocalDeclarationOwnerNativeTest : HeavyPlatformTestCase() {
     override fun getModuleType() = JavaModuleType.getModuleType()
 
     override fun runInDispatchThread() = false
+
+    fun testRunnerControlledLocalTypeProofExceedsDefaultWorkLimit() {
+        val parameters = (0..130).joinToString { "p$it: Int" }
+        val file = prepare("package proof\nfun owner() { fun local($parameters): Int = 0 }\n")
+        ReadAction.run<RuntimeException> {
+            val psi = psiManager.findFile(file) as KtFile
+            val local = PsiTreeUtil.findChildrenOfType(psi, KtNamedFunction::class.java).single { it.name == "local" }
+            analyze(local) {
+                assertEquals(
+                    Refinement.Rejected(LocalDeclarationProjectionFailure.WorkLimitReached),
+                    local.symbol.localDeclarationCompilerTypeProof(),
+                )
+                assertEquals(
+                    Refinement.Refined(Unit),
+                    local.symbol.localDeclarationCompilerTypeProof(WorkAllowance.Unlimited),
+                )
+                val identity = LocalDeclarationAddress.restoreFile("workspace", file.path).refined()
+                assertTrue(
+                    local.symbol.toCompilerProjection(
+                        session = this,
+                        observation = IntellijReadObservation.None,
+                        file = identity,
+                        workAllowance = WorkAllowance.Unlimited,
+                    ) is IntellijCompilerSymbolProjectionResult.Projected
+                )
+            }
+        }
+    }
+
+    fun testRunnerControlledLocalLexicalOwnersExceedDefaultDepth() {
+        val nesting = 33
+        val file =
+            prepare(
+                "package proof\nfun owner() { " +
+                    "if (true) { ".repeat(nesting) +
+                    "val item = 1" +
+                    " }".repeat(nesting) +
+                    " }\n"
+            )
+        ReadAction.run<RuntimeException> {
+            val psi = psiManager.findFile(file) as KtFile
+            val property = PsiTreeUtil.findChildrenOfType(psi, KtProperty::class.java).single { it.name == "item" }
+            val identity = LocalDeclarationAddress.restoreFile("workspace", file.path).refined()
+            analyze(property) {
+                assertEquals(
+                    IntellijCompilerSymbolProjectionResult.Rejected(IntellijSymbolSelectorRejection.WORK_LIMIT_REACHED),
+                    property.symbol.toCompilerProjection(this, IntellijReadObservation.None, identity),
+                )
+                val projected =
+                    property.symbol.toCompilerProjection(
+                        session = this,
+                        observation = IntellijReadObservation.None,
+                        file = identity,
+                        workAllowance = WorkAllowance.Unlimited,
+                    )
+                assertTrue(projected is IntellijCompilerSymbolProjectionResult.Projected)
+                val signature = (projected as IntellijCompilerSymbolProjectionResult.Projected).projection.signature
+                assertTrue(signature is CanonicalCompilerSignature.LocalProperty)
+                assertEquals(
+                    nesting + 1,
+                    (signature as CanonicalCompilerSignature.LocalProperty).address.lexicalOwners.size,
+                )
+            }
+        }
+    }
 
     fun testLambdaLocalPropertyKeepsItsNamedCompilerOwner() =
         assertProperty("fun owner() { scope { val item = 1; item.hashCode() } }")

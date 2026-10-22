@@ -133,7 +133,7 @@ class ProjectBoundExactRevalidationPort(
             clock = SystemIntellijDiscoveryNanoClock,
             captureWork = { capture.chargedWork },
             checkContent = { maximum ->
-                capture.check(locator, live.declaration.containingFile, maximumWork = maximum.value)
+                capture.check(locator, live.declaration.containingFile, maximumWork = maximum)
             },
             confirmCompiler = {
                 when (val found = IntellijKotlinCompilerSymbolLookup(psi, observation, capture).find(compiled, key)) {

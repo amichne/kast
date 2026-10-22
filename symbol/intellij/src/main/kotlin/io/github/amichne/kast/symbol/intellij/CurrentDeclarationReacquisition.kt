@@ -88,8 +88,7 @@ private class CurrentDeclarationRead(
             PsiManager.getInstance(project).findFile(virtual) as? KtFile
                 ?: return Refinement.Rejected(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
         when (
-            val checked =
-                capture.check(locator, psi, ExactRevalidationPolicy.CURRENT_DECLARATION, budget.workUnitLimit.value)
+            val checked = capture.check(locator, psi, ExactRevalidationPolicy.CURRENT_DECLARATION, budget.workAllowance)
         ) {
             is Refinement.Rejected -> return checked
             is Refinement.Refined -> Unit
@@ -137,7 +136,7 @@ private class CurrentDeclarationRead(
         var matched: CompilerGroundedSymbolEvidence? = null
         for (declaration in candidates) {
             ProgressManager.checkCanceled()
-            if (elapsedMillis(started) >= budget.elapsedTimeLimit.value)
+            if (!budget.hasTimeRemaining(elapsedMillis(started)))
                 return rejectedCurrent(ExactRevalidationRejection.TIME_LIMIT_REACHED)
             val offset =
                 when (val parsed = SymbolDiscoverySourceOffset.parse(declaration.textRange.startOffset)) {
@@ -181,9 +180,9 @@ private class ReacquisitionCandidates(
         if (declaration in candidates) return true
         admission =
             when {
-                elapsedMillis(started) >= budget.elapsedTimeLimit.value ->
+                !budget.hasTimeRemaining(elapsedMillis(started)) ->
                     Refinement.Rejected(ExactRevalidationRejection.TIME_LIMIT_REACHED)
-                candidates.size.toLong() + captureWork >= budget.workUnitLimit.value ->
+                !budget.hasWorkCapacity(candidates.size.toLong() + captureWork) ->
                     Refinement.Rejected(ExactRevalidationRejection.WORK_LIMIT_REACHED)
                 else -> Refinement.Refined(Unit)
             }

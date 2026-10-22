@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
@@ -28,6 +29,44 @@ import org.junit.jupiter.api.Test
 
 /** The real completed-read rule with one scripted child boundary; no installed/compiler observation is claimed. */
 class HostedPeerSiteAcquisitionTest {
+    @Test
+    fun `runner-controlled peer admission keeps proof beyond the configured checkpoint bytes`() = runTest {
+        val f = HostedPeerSiteFixture()
+        val accounting = ReadAcquisitionAccounting()
+        val budget =
+            QueryBudget(
+                ResourceBudget.RunnerControlled,
+                QueryByteLimit.parse(100_000).peerValue(),
+                QueryByteLimit.parse(1).peerValue(),
+                ResultLimit.parse(2).peerValue(),
+            )
+        var calls = 0
+        val result =
+            acquireHostedPeerSites(
+                listOf(f.selected),
+                budget,
+                accounting,
+                read =
+                    HostedPeerSiteReadPort { _, grant ->
+                        calls++
+                        assertEquals(ResourceBudget.RunnerControlled, grant.resources)
+                        HostedSemanticReadResult.Completed(
+                            HostedPeerSiteEvaluation.Selected(
+                                f.nativeSelection(grant),
+                                f.authority,
+                                grant,
+                                RelationWorkCount.parse(1000).peerValue(),
+                            )
+                        )
+                    },
+                clock = { 0L },
+            )
+        val admitted = assertInstanceOf(HostedPeerSiteAdmissions.Admitted::class.java, result)
+        assertEquals(1, admitted.values.size)
+        assertEquals(1, calls)
+        assertEquals(1000L, accounting.snapshot().value)
+    }
+
     @Test
     fun `post read freshness rejection cannot publish a provisional native selection`() = runTest {
         val f = HostedPeerSiteFixture()
@@ -95,7 +134,7 @@ class HostedPeerSiteAcquisitionTest {
         assertEquals(5, admitted.acquisition.examinedWorkUnits.value)
         assertEquals(8_000_000, admitted.acquisition.elapsed.value)
         assertEquals(5, accounting.snapshot().value)
-        val remaining = accounting.remaining(budget(f).resources).peerValue()
+        val remaining = accounting.remaining(budget(f).resources).peerValue().boundedFixture()
         assertEquals(95, remaining.workUnitLimit.value)
         assertEquals(992, remaining.elapsedTimeLimit.value)
         assertEquals(0, times.size)
@@ -196,7 +235,7 @@ class HostedPeerSiteAcquisitionTest {
                 accounting,
                 read =
                     HostedPeerSiteReadPort { _, offered ->
-                        assertEquals(100, offered.resources.workUnitLimit.value)
+                        assertEquals(100, offered.resources.boundedFixture().workUnitLimit.value)
                         val larger = dimension.inflate(offered)
                         HostedSemanticReadResult.Completed(
                             HostedPeerSiteEvaluation.Selected(
@@ -228,26 +267,37 @@ class HostedPeerSiteAcquisitionTest {
                 WORK ->
                     offered.copy(
                         resources =
-                            offered.resources.copy(
-                                workUnitLimit =
-                                    WorkUnitLimit.parse(offered.resources.workUnitLimit.value + 1).peerValue()
-                            )
+                            offered.resources
+                                .boundedFixture()
+                                .copy(
+                                    workUnitLimit =
+                                        WorkUnitLimit.parse(offered.resources.boundedFixture().workUnitLimit.value + 1)
+                                            .peerValue()
+                                )
                     )
                 RESULTS ->
                     offered.copy(
                         resources =
-                            offered.resources.copy(
-                                resultLimit = ResultLimit.parse(offered.resources.resultLimit.value + 1).peerValue()
-                            )
+                            offered.resources
+                                .boundedFixture()
+                                .copy(
+                                    resultLimit =
+                                        ResultLimit.parse(offered.resources.boundedFixture().resultLimit.value + 1)
+                                            .peerValue()
+                                )
                     )
                 TIME ->
                     offered.copy(
                         resources =
-                            offered.resources.copy(
-                                elapsedTimeLimit =
-                                    ElapsedTimeLimitMillis.parse(offered.resources.elapsedTimeLimit.value + 1)
-                                        .peerValue()
-                            )
+                            offered.resources
+                                .boundedFixture()
+                                .copy(
+                                    elapsedTimeLimit =
+                                        ElapsedTimeLimitMillis.parse(
+                                                offered.resources.boundedFixture().elapsedTimeLimit.value + 1
+                                            )
+                                            .peerValue()
+                                )
                     )
                 STORAGE ->
                     offered.copy(returnedBytes = RelationByteLimit.parse(offered.returnedBytes.value + 1).peerValue())
@@ -268,18 +318,11 @@ class HostedPeerSiteAcquisitionTest {
                 accounting,
                 read =
                     HostedPeerSiteReadPort { selection, offered ->
-                        offeredWork += offered.resources.workUnitLimit.value
-                        offeredTime += offered.resources.elapsedTimeLimit.value
+                        offeredWork += offered.resources.boundedFixture().workUnitLimit.value
+                        offeredTime += offered.resources.boundedFixture().elapsedTimeLimit.value
                         val index = offeredWork.size - 1
                         assertEquals(index * 2, selection.site.range.start.value)
-                        val clamped =
-                            offered.copy(
-                                resources =
-                                    offered.resources.copy(
-                                        workUnitLimit = WorkUnitLimit.parse(80).peerValue(),
-                                        elapsedTimeLimit = ElapsedTimeLimitMillis.parse(300).peerValue(),
-                                    )
-                            )
+                        val clamped = clampedChildBudget(offered)
                         HostedSemanticReadResult.Completed(
                             HostedPeerSiteEvaluation.Selected(
                                 f.nativeSelection(clamped, index * 2),
@@ -295,10 +338,13 @@ class HostedPeerSiteAcquisitionTest {
         assertEquals(2, admissions.size)
         assertEquals(listOf(100L, 95L), offeredWork)
         assertEquals(listOf(1000L, 992L), offeredTime)
-        assertEquals(listOf(80L, 80L), admissions.map { it.acquisition.grant.resources.workUnitLimit.value })
+        assertEquals(
+            listOf(80L, 80L),
+            admissions.map { it.acquisition.grant.resources.boundedFixture().workUnitLimit.value },
+        )
         assertEquals(8, accounting.snapshot().value)
-        assertEquals(92, accounting.remaining(budget(f).resources).peerValue().workUnitLimit.value)
-        assertEquals(989, accounting.remaining(budget(f).resources).peerValue().elapsedTimeLimit.value)
+        assertEquals(92, accounting.remaining(budget(f).resources).peerValue().boundedFixture().workUnitLimit.value)
+        assertEquals(989, accounting.remaining(budget(f).resources).peerValue().boundedFixture().elapsedTimeLimit.value)
         assertEquals(0, times.size)
     }
 
@@ -307,6 +353,7 @@ class HostedPeerSiteAcquisitionTest {
             f.peer.budget.resources,
             QueryByteLimit.parse(100_000).peerValue(),
             QueryByteLimit.parse(8_388_608).peerValue(),
+            f.peer.budget.outputResults,
         )
 
     private class Observation : IntellijReadObservation {
@@ -331,3 +378,14 @@ class HostedPeerSiteAcquisitionTest {
         }
     }
 }
+
+private fun clampedChildBudget(offered: RelationBudget): RelationBudget =
+    offered.copy(
+        resources =
+            offered.resources
+                .boundedFixture()
+                .copy(
+                    workUnitLimit = WorkUnitLimit.parse(80).peerValue(),
+                    elapsedTimeLimit = ElapsedTimeLimitMillis.parse(300).peerValue(),
+                )
+    )

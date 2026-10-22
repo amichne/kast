@@ -136,7 +136,8 @@ class SymbolDiscoveryTest {
             val qualifications = mutableSetOf<SymbolDiscoveryQualification>()
             val acceptedCount = minOf(workLimit, MAX_NATIVE_DISCOVERY_CANDIDATES.toLong()).toInt()
             collectTextDiscoveryOccurrences(
-                workLimit = WorkUnitLimit.parse(workLimit).refined(),
+                workLimit =
+                    io.github.amichne.kast.kernel.WorkAllowance.Bounded(WorkUnitLimit.parse(workLimit).refined()),
                 observe = { true },
                 qualify = qualifications::add,
                 process = { accept ->
@@ -169,7 +170,7 @@ class SymbolDiscoveryTest {
     fun `text provider failure qualifies returned candidates and halted observation prevents projection`() {
         val qualifications = mutableSetOf<SymbolDiscoveryQualification>()
         collectTextDiscoveryOccurrences(
-            WorkUnitLimit.parse(1).refined(),
+            io.github.amichne.kast.kernel.WorkAllowance.Bounded(WorkUnitLimit.parse(1).refined()),
             { true },
             qualifications::add,
             process = { false },
@@ -185,7 +186,7 @@ class SymbolDiscoveryTest {
             } as PsiElement
         var checks = 0
         collectTextDiscoveryOccurrences(
-            WorkUnitLimit.parse(1).refined(),
+            io.github.amichne.kast.kernel.WorkAllowance.Bounded(WorkUnitLimit.parse(1).refined()),
             observe = {
                 checks += 1
                 false

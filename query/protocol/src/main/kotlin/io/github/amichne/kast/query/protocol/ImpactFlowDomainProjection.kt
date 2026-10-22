@@ -34,12 +34,7 @@ internal fun RelationRequest.impactDocument(): ImpactProjected<ImpactFlowDomainD
                 boundary.requestedDomainDocument(),
                 domain,
                 request.first.second,
-                ImpactFlowBudgetDocument(
-                    budget.resources.elapsedTimeLimit,
-                    budget.resources.workUnitLimit,
-                    budget.resources.resultLimit,
-                    request.second,
-                ),
+                ImpactFlowBudgetDocument.from(budget.resources, budget.outputResults, request.second),
                 position,
             )
         }

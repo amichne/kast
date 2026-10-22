@@ -21,6 +21,14 @@ class LocalAddressSchemaReuseTest {
         val definition = localAddressDefinition()
         assertEquals(generatedRequestSchema(LocalDeclarationAddressCliDocument.serializer()), definition)
         assertTrue(validate(definition, Json.encodeToString(address())).isEmpty())
+        val deep =
+            address()
+                .copy(
+                    range = SourceRangeCliDocument(50, 51),
+                    ownerRange = SourceRangeCliDocument(0, 100),
+                    lexicalOwners = (1..33).map { SourceRangeCliDocument(it, 100 - it) },
+                )
+        assertTrue(validate(definition, Json.encodeToString(deep)).isEmpty())
     }
 
     @Test
@@ -30,7 +38,7 @@ class LocalAddressSchemaReuseTest {
         assertFalse(
             validate(
                     definition,
-                    Json.encodeToString(address().copy(lexicalOwners = List(33) { SourceRangeCliDocument(1, 9) })),
+                    Json.encodeToString(address().copy(lexicalOwners = List(1001) { SourceRangeCliDocument(1, 9) })),
                 )
                 .isEmpty()
         )

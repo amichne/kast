@@ -138,10 +138,10 @@ class HostedPlanningEvidenceTest {
                     fixture.selector,
                     RelationMeaning.References,
                     TraversalBudget(
-                        fixture.budget.resources.resultLimit,
+                        fixture.budget.resources.boundedFixture().resultLimit,
                         TraversalByteLimit.parse(fixture.budget.returnedBytes.value).proven(),
-                        fixture.budget.resources.workUnitLimit,
-                        fixture.budget.resources.elapsedTimeLimit,
+                        fixture.budget.resources.boundedFixture().workUnitLimit,
+                        fixture.budget.resources.boundedFixture().elapsedTimeLimit,
                         TraversalDepthLimit.parse(1).proven(),
                         TraversalFrontierLimit.parse(1).proven(),
                         fixture.budget,

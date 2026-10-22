@@ -217,7 +217,7 @@ class CallbackSummaryStorageTest {
         for (target in listOf(largeSignature, hidden)) {
             val formal = fixture.formal(target)
             val observation = CallbackStorageObservation()
-            val retention = CallbackFlowRetention(fixture.budget().resources.resultLimit, observation)
+            val retention = CallbackFlowRetention(fixture.budget().resources.bounded().resultLimit, observation)
             assertEquals(
                 Refinement.Refined(Unit),
                 retention.admitFormal(formal),
@@ -260,7 +260,7 @@ internal class SummaryStorageFixture {
 
     fun budget(bytes: Long = 65_536L) =
         RelationBudget(
-            request.budget.resources.copy(resultLimit = ResultLimit.parse(8).refined()),
+            request.budget.resources.bounded().copy(resultLimit = ResultLimit.parse(8).refined()),
             RelationByteLimit.parse(bytes).refined(),
         )
 

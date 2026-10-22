@@ -41,7 +41,7 @@ internal class AutomaticDenseStoreQuotaTest : AutomaticDenseRetentionCase() {
         assertEquals((0L..1_000L step 20).toList(), providerPositions)
         assertTrue(checkpointAdmissions.isNotEmpty())
         assertTrue(checkpointAdmissions.all { it.outcome == QueryCheckpointStorageOutcome.WITHIN_LIMIT })
-        assertTrue(checkpointAdmissions.all { it.allowance.value <= grant.checkpointBytes.value })
+        assertTrue(checkpointAdmissions.all { it.allowance.bounded().limit.value <= grant.checkpointBytes.value })
 
         val items = retainedRows(protocol, payload)
         val references = items.map { it as QueryResultItemDocument.ReferenceOccurrence }

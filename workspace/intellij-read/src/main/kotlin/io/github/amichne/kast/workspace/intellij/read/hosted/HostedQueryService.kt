@@ -78,7 +78,7 @@ private constructor(
     fun workspaceReadiness(root: CanonicalWorkspaceRoot): WorkspaceCapabilityReadiness =
         workspaceObservations.workspaceReadiness(root)
 
-    /** One permit and deadline for the complete plan; each adapter owns its individual short read. */
+    /** One permit owns the complete plan. Each adapter owns its individual short read. */
     suspend fun <Value> read(
         endpoint: HostedQueryEndpoint,
         root: CanonicalWorkspaceRoot,

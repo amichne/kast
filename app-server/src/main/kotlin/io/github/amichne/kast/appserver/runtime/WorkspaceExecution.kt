@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.github.amichne.kast.workspace.contract.WorkspaceExecutionCertainty
 import io.github.amichne.kast.workspace.contract.WorkspaceExecutionDisposition
 import io.github.amichne.kast.workspace.contract.WorkspaceExecutionSettlement
@@ -165,11 +166,7 @@ internal class WorkspaceExecution(
             if (!begin(request)) return
             val routing =
                 try {
-                    withContext(recovery) {
-                        withTimeout(allowance) {
-                            operation().also { currentCoroutineContext().ensureActive() }
-                        }
-                    }
+                    invokeWithAllowance(request, recovery, allowance, operation)
                 } catch (_: TimeoutCancellationException) {
                     finish(
                         request,
@@ -189,6 +186,24 @@ internal class WorkspaceExecution(
             finish(request, interrupted(request))
         }
     }
+
+    private suspend fun invokeWithAllowance(
+        request: Request,
+        recovery: WorkspaceRecoverySettlement,
+        allowance: Long,
+        operation: suspend () -> ProtocolRouting,
+    ): ProtocolRouting =
+        withContext(recovery) {
+            when (request.access) {
+                is WorkspaceExecutionAccess.RunnerControlledQuery ->
+                    operation().also { currentCoroutineContext().ensureActive() }
+                WorkspaceExecutionAccess.Observation,
+                is WorkspaceExecutionAccess.Operation ->
+                    withTimeout(allowance) {
+                        operation().also { currentCoroutineContext().ensureActive() }
+                    }
+            }
+        }
 
     @Synchronized
     private fun begin(request: Request): Boolean {
@@ -282,6 +297,9 @@ internal class WorkspaceExecution(
                 request.queued,
                 request.interactionLimit,
                 failure,
+                if (request.access is WorkspaceExecutionAccess.RunnerControlledQuery)
+                    QueryExecutionModeDocument.RUNNER_CONTROLLED
+                else QueryExecutionModeDocument.BOUNDED,
             )
         )
     }

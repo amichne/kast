@@ -193,6 +193,7 @@ internal class IntellijImmutableCallbackValueResolver(
                                 candidate.expression,
                                 candidate.position,
                                 summaries.observation,
+                                context.scope.request.budget.resources.workAllowance,
                             )
                     ) {
                         is Refinement.Refined -> admitted.value

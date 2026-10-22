@@ -85,7 +85,7 @@ internal class IntellijDeclarationDiscoveryState(
     }
 
     fun resultFits(): Boolean {
-        if (candidates.size < request.budget.resources.resultLimit.value) return true
+        if (candidates.size < request.budget.outputResults.value) return true
         qualifications += SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
         return false
     }
@@ -119,7 +119,10 @@ internal class IntellijDeclarationDiscoveryState(
                 is SymbolDiscoveryActiveInput.Scanning ->
                     PARTITION_BINDING_BYTES + TEXT_UNIT_BYTES * input.file.stableValue.length
             }
-        if (bindingBytes + activeBytes + pendingBytes <= limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value)
+        if (
+            request.budget.resources == io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled ||
+                bindingBytes + activeBytes + pendingBytes <= limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value
+        )
             return true
         qualifications += SymbolDiscoveryQualification.BYTE_LIMIT_REACHED
         block = SymbolDiscoveryBlockCause.RETENTION_LIMIT

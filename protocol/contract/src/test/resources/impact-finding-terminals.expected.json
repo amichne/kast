@@ -403,6 +403,7 @@
         },
         "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "budget": {
+          "mode": "BOUNDED",
           "maxElapsedMillis": 100,
           "maxWorkUnits": 10,
           "maxResults": 2,

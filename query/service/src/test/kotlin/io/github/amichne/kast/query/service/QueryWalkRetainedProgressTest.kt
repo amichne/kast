@@ -264,7 +264,7 @@ private class RetainedWalkFixture(
         reads += read.subject.name.value to position
         val facts = graph.getValue(read.subject.name.value).mapIndexed { index, name -> fact(read, name, index) }
         check(position <= facts.size) { "Unexpected relation cursor" }
-        val emitted = facts.drop(position.toInt()).take(read.budget.resources.resultLimit.value)
+        val emitted = facts.drop(position.toInt()).take(read.budget.resources.bounded().resultLimit.value)
         val inventory = (read.position as? RelationReadPosition.Resume)?.continuation?.providerState ?: inventory(facts)
         val successor =
             emitted.fold(inventory) { state, fact -> state.consume(RelationProviderConsumption.GraphConfirmed(fact)) }

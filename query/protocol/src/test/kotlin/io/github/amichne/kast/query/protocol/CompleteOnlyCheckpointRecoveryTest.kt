@@ -71,7 +71,7 @@ internal class CompleteOnlyCheckpointRecoveryTest : AutomaticSymbolQueryCase() {
                         .refined(),
                     QueryContinuationState.Resumable(Partial(execution.plan, execution.lease)),
                 )
-                .observedWork(QueryWorkCount.parse(execution.budget.resources.workUnitLimit.value).refined())
+                .observedWork(QueryWorkCount.parse(execution.budget.resources.bounded().workUnitLimit.value).refined())
         }
 
         fun assertDrained() = assertEquals(1, calls)

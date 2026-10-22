@@ -280,8 +280,8 @@ class ImpactWitnessPresentationTest {
                 .filterIsInstance<ImpactWitnessDocument.NativeRead>()
                 .last()
         assertEquals(7L, native.examinedWorkUnits.value)
-        assertEquals(3L, native.domain.budget.maxWorkUnits.value)
-        assertEquals(listOf(3L, 4L), native.receipts.values.map { it.domain.budget.maxWorkUnits.value })
+        assertEquals(3L, native.domain.budget.bounded().maxWorkUnits.value)
+        assertEquals(listOf(3L, 4L), native.receipts.values.map { it.domain.budget.bounded().maxWorkUnits.value })
         assertEquals(listOf(3L, 4L), native.receipts.values.map { it.examinedWorkUnits.value })
         val encoded = Json.encodeToJsonElement(ImpactWitnessDocument.serializer(), native).jsonObject
         assertEquals(

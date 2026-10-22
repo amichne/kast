@@ -51,7 +51,7 @@ import org.junit.jupiter.api.Test
 internal class StagedRelationQueryTest : AutomaticSymbolQueryCase() {
     private val hop = QueryStepDocument.Related(RelationKindDocument.CALLERS, QueryExpansionScopeDocument.RetainedSeed)
     private val smallBudget =
-        budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(3).refined()))
+        budget.copy(resources = budget.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(3).refined()))
 
     @Test
     fun `complete retained stage supplies the next hop without repeating the prefix`() = runTest {
@@ -185,10 +185,10 @@ internal class StagedRelationQueryTest : AutomaticSymbolQueryCase() {
                 traversal = TraversalOperations { error("Unexpected traversal") },
                 traversalCeiling =
                     TraversalBudget(
-                        budget.resources.resultLimit,
+                        budget.resources.bounded().resultLimit,
                         TraversalByteLimit.parse(100_000).refined(),
-                        budget.resources.workUnitLimit,
-                        budget.resources.elapsedTimeLimit,
+                        budget.resources.bounded().workUnitLimit,
+                        budget.resources.bounded().elapsedTimeLimit,
                         TraversalDepthLimit.parse(1).refined(),
                         TraversalFrontierLimit.parse(1).refined(),
                         fixture.budget,

@@ -238,8 +238,8 @@ class QueryRetainedTraversalPresentationTest {
             TraversalBudget(
                 ResultLimit.parse(100).refined(),
                 TraversalByteLimit.parse(100_000).refined(),
-                fixture.budget.resources.workUnitLimit,
-                fixture.budget.resources.elapsedTimeLimit,
+                fixture.budget.resources.bounded().workUnitLimit,
+                fixture.budget.resources.bounded().elapsedTimeLimit,
                 TraversalDepthLimit.parse(2).refined(),
                 TraversalFrontierLimit.parse(100).refined(),
                 fixture.budget,
@@ -270,8 +270,8 @@ class QueryRetainedTraversalPresentationTest {
             TraversalBudget(
                 ResultLimit.parse(100).refined(),
                 TraversalByteLimit.parse(100_000).refined(),
-                oneHop.resources.workUnitLimit,
-                oneHop.resources.elapsedTimeLimit,
+                oneHop.resources.bounded().workUnitLimit,
+                oneHop.resources.bounded().elapsedTimeLimit,
                 TraversalDepthLimit.parse(3).refined(),
                 TraversalFrontierLimit.parse(100).refined(),
                 oneHop,

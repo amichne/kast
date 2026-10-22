@@ -143,7 +143,10 @@ class NativeTransparentWrapperReturnTest : NativeReferenceFixtureTest() {
         assertEquals(listOf(entered.frame), transfer.target.callStack.frames)
         assertTrue(target.dispatch.batch.facts.any { it === target.relation })
         val qualifiedBudget =
-            RelationBudget(prepared.request.budget.resources, RelationByteLimit.parse(16_000_000L).nativeRefined())
+            RelationBudget(
+                prepared.request.budget.resources.nativeBounded(),
+                RelationByteLimit.parse(16_000_000L).nativeRefined(),
+            )
         val constant =
             adapterRead(
                     prepared.copy(request = prepared.request.copy(source = transfer.target, budget = qualifiedBudget))
@@ -170,7 +173,7 @@ class NativeTransparentWrapperReturnTest : NativeReferenceFixtureTest() {
         val source = fixture.source(caller, fixture.member("Base", target), FIRST_PARAMETER)
         val budget =
             RelationBudget(
-                fixture.scope.request.budget.resources,
+                fixture.scope.request.budget.resources.nativeBounded(),
                 RelationByteLimit.parse(WRAPPER_READ_BYTES).nativeRefined(),
             )
         PreparedWrapperRead(

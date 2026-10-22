@@ -3,10 +3,56 @@ package io.github.amichne.kast.symbol.contract
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class LocalDeclarationIdentityTest {
+    @Test
+    fun `canonical lexical counts cannot allocate beyond actual decoded range fields`() {
+        for (fields in listOf(listOf("-1"), listOf("1"), listOf(Int.MAX_VALUE.toString()))) {
+            assertNull(CanonicalFieldCursor(fields).nextRanges())
+        }
+        assertEquals(listOf(range(10, 90)), CanonicalFieldCursor(listOf("1", "10", "90")).nextRanges())
+    }
+
+    @Test
+    fun `strictly nested local addresses exceed the old depth policy and reject malformed nesting`() {
+        val file = LocalDeclarationAddress.restoreFile("workspace", "/workspace/Deep.kt").value()
+        val signature = CanonicalCompilerSignature.function("proof.owner", null, emptyList(), emptyList(), 0).value()
+        val owner = CompilerSymbolIdentity.fromCanonicalSignature(signature)
+        val lexical = (1..33).map { range(it, 1000 - it) }
+        val admitted =
+            LocalDeclarationAddress.create(
+                file,
+                LocalDeclarationKind.PROPERTY,
+                range(500, 501),
+                owner,
+                range(0, 1000),
+                lexical,
+            )
+        assertTrue(admitted is Refinement.Refined, admitted.toString())
+        assertEquals(lexical, admitted.value().lexicalOwners)
+        val local =
+            CanonicalCompilerSignature.localProperty(admitted.value(), "kotlin.Int", LocalPropertyMutability.VAL)
+                .value()
+        assertEquals(
+            local,
+            CanonicalCompilerSignature.restoreCanonicalEncoding(local.canonicalEncoding().value).value(),
+        )
+        assertEquals(
+            Refinement.Rejected(LocalDeclarationAddressFailure.INVALID_LEXICAL_OWNER),
+            LocalDeclarationAddress.create(
+                file,
+                LocalDeclarationKind.PROPERTY,
+                range(500, 501),
+                owner,
+                range(0, 1000),
+                lexical.reversed(),
+            ),
+        )
+    }
+
     @Test
     fun `anonymous objects retain distinct compiler owners and reject invalid type or address facts`() {
         val first = address(20, 40, ownerName = "sample.first", kind = LocalDeclarationKind.ANONYMOUS_OBJECT)

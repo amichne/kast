@@ -13,10 +13,10 @@ internal class IntellijDeclarationDiscoveryAllowance(
 
     fun now(): Long = clock.now()
 
-    fun expired(): Boolean = clock.now() - started >= request.elapsedLimitNanoseconds().value
+    fun expired(): Boolean = request.elapsedExpired(clock.now() - started)
 
     fun consume(): Boolean {
-        if (consumedWork >= request.budget.resources.workUnitLimit.value) return false
+        if (!request.budget.resources.hasWorkCapacity(consumedWork)) return false
         consumedWork++
         return true
     }

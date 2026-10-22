@@ -111,9 +111,9 @@ class QueryNameDiscoveryPaginationTest {
         assertEquals(5, selectors.map { it.fingerprint }.distinct().size)
         assertTrue(selectors.all { it.lease == request.lease && it.name.value == "Application" })
         val discovery = requests.single()
-        assertEquals(5, discovery.budget.resources.resultLimit.value)
-        assertEquals(5L, discovery.budget.resources.workUnitLimit.value)
-        assertEquals(1_000L, discovery.budget.resources.elapsedTimeLimit.value)
+        assertEquals(5, discovery.budget.resources.bounded().resultLimit.value)
+        assertEquals(5L, discovery.budget.resources.bounded().workUnitLimit.value)
+        assertEquals(1_000L, discovery.budget.resources.bounded().elapsedTimeLimit.value)
         assertEquals(request.budget.returnedBytes.value, discovery.budget.returnedBytes.value)
     }
 
@@ -147,8 +147,8 @@ class QueryNameDiscoveryPaginationTest {
             last.coverage.limitations.toSet(),
         )
         assertEquals(listOf(0, 30, 60), resolved.map { it.range.startInclusive })
-        assertEquals(3, requests.single().budget.resources.resultLimit.value)
-        assertEquals(3L, requests.single().budget.resources.workUnitLimit.value)
+        assertEquals(3, requests.single().budget.resources.bounded().resultLimit.value)
+        assertEquals(3L, requests.single().budget.resources.bounded().workUnitLimit.value)
     }
 
     @Test
@@ -169,8 +169,8 @@ class QueryNameDiscoveryPaginationTest {
             QueryExecutionResult.Complete::class.java,
             service.run(fixture.request(plan(fixture, SymbolDiscoveryMatch.FUZZY), workLimit = 10, resultLimit = 2)),
         )
-        assertEquals(2, requests.single().budget.resources.resultLimit.value)
-        assertEquals(10L, requests.single().budget.resources.workUnitLimit.value)
+        assertEquals(2, requests.single().budget.resources.bounded().resultLimit.value)
+        assertEquals(10L, requests.single().budget.resources.bounded().workUnitLimit.value)
     }
 
     private fun plan(fixture: QueryServiceTest, match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.EXACT_NAME) =
@@ -198,8 +198,8 @@ class QueryNameDiscoveryPaginationTest {
                     val size =
                         minOf(
                             5,
-                            request.budget.resources.resultLimit.value,
-                            request.budget.resources.workUnitLimit.value.toInt(),
+                            request.budget.resources.bounded().resultLimit.value,
+                            request.budget.resources.bounded().workUnitLimit.value.toInt(),
                         )
                     val batch = candidateBatch(request, size)
                     SymbolDiscoveryResult.Discovered(
@@ -209,7 +209,7 @@ class QueryNameDiscoveryPaginationTest {
                                 batch,
                                 SymbolDiscoveryQualifications.from(
                                         setOf(
-                                            if (size.toLong() == request.budget.resources.workUnitLimit.value)
+                                            if (size.toLong() == request.budget.resources.bounded().workUnitLimit.value)
                                                 SymbolDiscoveryQualification.WORK_LIMIT_REACHED
                                             else SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
                                         )

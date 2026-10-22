@@ -92,10 +92,10 @@ internal class IntellijRelationEvidenceBuffer(private val request: RelationReque
         allowance: IntellijRelationEvidenceAllowance,
     ): IntellijRelationEvidenceAdmission {
         if (value in values) return IntellijRelationEvidenceAdmission.Duplicate
-        if (resultCount(allowance) >= request.budget.resources.resultLimit.value)
+        if (resultCount(allowance) >= request.budget.outputResults.value)
             return IntellijRelationEvidenceAdmission.Limited(RelationLimitation.RESULT_LIMIT_REACHED)
         val bytes = canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong()
-        if (allowance.retainedBytes + bytes > request.budget.returnedBytes.value)
+        if (!request.budget.permitsReturnedBytes(allowance.retainedBytes + bytes))
             return IntellijRelationEvidenceAdmission.Limited(RelationLimitation.BYTE_LIMIT_REACHED)
         val measured =
             when (val refined = RelationByteCount.parse(bytes)) {

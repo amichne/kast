@@ -64,10 +64,13 @@ class QueryCheckpointPublicationTest {
         val grants =
             listOf(
                 budget.copy(
-                    resources = budget.resources.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(2000).refined())
+                    resources =
+                        budget.resources.bounded().copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(2000).refined())
                 ),
-                budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(200).refined())),
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(20).refined())),
+                budget.copy(
+                    resources = budget.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(200).refined())
+                ),
+                budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(20).refined())),
                 budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
             )
         grants.forEach { grant -> assertGrantReplay(retained, grant) }
@@ -222,9 +225,9 @@ class QueryCheckpointPublicationTest {
                 continuation = grantIssued.token,
                 executionBudget =
                     ExecutionBudgetDocument(
-                        maxElapsedMillis = grant.resources.elapsedTimeLimit,
-                        maxWorkUnits = grant.resources.workUnitLimit,
-                        maxResults = grant.resources.resultLimit,
+                        maxElapsedMillis = grant.resources.bounded().elapsedTimeLimit,
+                        maxWorkUnits = grant.resources.bounded().workUnitLimit,
+                        maxResults = grant.resources.bounded().resultLimit,
                         maxReturnedBytes = ReturnedByteLimit.parse(grant.returnedBytes.value).refined(),
                     ),
             )

@@ -45,16 +45,22 @@ enum class QueryCheckpointStorageOutcome {
 class QueryCheckpointStorageAdmission
 private constructor(
     val estimate: QueryCheckpointStorageEstimate,
-    val allowance: QueryByteLimit,
+    val allowance: QueryStorageAllowance,
 ) {
     val outcome: QueryCheckpointStorageOutcome =
-        if (estimate.required.value > allowance.value) QueryCheckpointStorageOutcome.CAPACITY_EXCEEDED
+        if (!allowance.permits(estimate.required.value)) QueryCheckpointStorageOutcome.CAPACITY_EXCEEDED
         else QueryCheckpointStorageOutcome.WITHIN_LIMIT
 
     companion object {
         fun evaluate(
             estimate: QueryCheckpointStorageEstimate,
             allowance: QueryByteLimit,
+        ): QueryCheckpointStorageAdmission =
+            QueryCheckpointStorageAdmission(estimate, QueryStorageAllowance.Bounded(allowance))
+
+        fun evaluate(
+            estimate: QueryCheckpointStorageEstimate,
+            allowance: QueryStorageAllowance,
         ): QueryCheckpointStorageAdmission = QueryCheckpointStorageAdmission(estimate, allowance)
     }
 }

@@ -61,7 +61,10 @@ internal class IntellijDeclarationPartitionScanner(
     ): Boolean {
         if (position != null || partition !is SemanticFilePartition.Directory || !childrenAreValid(partition, children))
             return blocked(SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE)
-        if (children.size > state.limits[ReadLimitParameter.DISCOVERY_FILES].value) {
+        if (
+            state.request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                children.size > state.limits[ReadLimitParameter.DISCOVERY_FILES].value
+        ) {
             state.qualifications += SymbolDiscoveryQualification.WORK_LIMIT_REACHED
             return blocked(SymbolDiscoveryBlockCause.PARTITION_CAPACITY)
         }

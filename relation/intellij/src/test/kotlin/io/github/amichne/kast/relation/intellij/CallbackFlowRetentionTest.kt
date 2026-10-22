@@ -15,8 +15,35 @@ import org.junit.jupiter.api.Test
 /** Internal proof storage does not consume the allowance for serialized output. */
 class CallbackFlowRetentionTest {
     @Test
+    fun `runner proof storage has no aggregate result or byte quota`() {
+        val grant =
+            RelationBudget(
+                ResourceBudget.RunnerControlled,
+                RelationByteLimit.parse(1L).value(),
+                ResultLimit.parse(1).value(),
+            )
+        val retention = CallbackParameterSummaries(grant).retention
+        repeat(10_000) { assertEquals(Refinement.Refined(Unit), retention.admit(100_000L)) }
+    }
+
+    @Test
+    fun `runner callback work has no work or elapsed stop`() {
+        var now = 0L
+        val allowance = IntellijRelationAllowance { now }
+        repeat(200) {
+            now += 1_000_000_000L
+            assertEquals(CallbackWorkAdmission.READY, allowance.admitCallbackWork(ResourceBudget.RunnerControlled))
+        }
+        assertEquals(200L, allowance.examined)
+        assertEquals(
+            CallbackWorkAdmission.TIME_LIMIT_REACHED,
+            allowance.admitCallbackWork(budget(results = 1).resources),
+        )
+    }
+
+    @Test
     fun `alias and invocation share one result grant`() {
-        val retention = CallbackFlowRetention(budget(results = 1).resources.resultLimit)
+        val retention = CallbackFlowRetention(budget(results = 1).resources.resultAllowance)
         assertTrue(retention.admit(128L) is Refinement.Refined) // first alias
         assertEquals(
             Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED),
@@ -26,7 +53,7 @@ class CallbackFlowRetentionTest {
 
     @Test
     fun `mixed proof categories exhaust one aggregate grant and remain rejected`() {
-        val retention = CallbackFlowRetention(budget(results = 2).resources.resultLimit)
+        val retention = CallbackFlowRetention(budget(results = 2).resources.resultAllowance)
         assertTrue(retention.admit(128L) is Refinement.Refined)
         assertTrue(retention.admit(4096L) is Refinement.Refined)
         repeat(3) {
@@ -56,7 +83,7 @@ class CallbackFlowRetentionTest {
     @Test
     fun `a separate callback read owns a fresh allowance`() {
         repeat(2) {
-            val retention = CallbackFlowRetention(budget(results = 1).resources.resultLimit)
+            val retention = CallbackFlowRetention(budget(results = 1).resources.resultAllowance)
             assertTrue(retention.admit(128L) is Refinement.Refined)
             assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED), retention.admit(1L))
         }

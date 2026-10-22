@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.relation.contract.BoundedRelationBudget
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationMeaning
@@ -70,7 +71,11 @@ internal object LiveVerificationScopeCodec {
     fun document(scope: LiveAddDeclarationVerificationScope) =
         LiveVerificationScopeDocument(
             scope.relations.map {
-                LiveRelationReplayDocument(it.meaning.documentName(), it.budget.document(), it.boundary.document())
+                LiveRelationReplayDocument(
+                    it.meaning.documentName(),
+                    it.boundedBudget.document(),
+                    it.boundary.document(),
+                )
             },
             scope.traversals.map { replay ->
                 val budget = replay.budget
@@ -87,7 +92,7 @@ internal object LiveVerificationScopeCodec {
                                 LiveTraversalExtentDocument.ThroughDepth(selected.maximumDepth.value)
                         },
                     frontier = budget.frontier.value,
-                    oneHop = budget.oneHop.document(),
+                    oneHop = replay.boundedOneHop.document(),
                     expansion = replay.expansion.document(),
                 )
             },
@@ -113,7 +118,13 @@ internal object LiveVerificationScopeCodec {
                     replay.boundary.restore(basis).required {
                         return rejected()
                     }
-                LivePlannedRelationRead(meaning, budget, boundary)
+                LivePlannedRelationRead(
+                    meaning,
+                    BoundedRelationBudget.admit(budget).required {
+                        return rejected()
+                    },
+                    boundary,
+                )
             }
         val traversals =
             document.traversals.map { replay ->
@@ -183,6 +194,9 @@ internal object LiveVerificationScopeCodec {
             LivePlannedTraversal(
                 meaning,
                 budget,
+                BoundedRelationBudget.admit(budget.oneHop).required {
+                    return rejected()
+                },
                 expansion.restore(basis).required {
                     return rejected()
                 },
@@ -202,12 +216,12 @@ internal object LiveVerificationScopeCodec {
                 }
         }
 
-    private fun RelationBudget.document() =
+    private fun BoundedRelationBudget.document() =
         LiveRelationBudgetDocument(
             records = resources.resultLimit.value,
             workUnits = resources.workUnitLimit.value,
             elapsedTime = resources.elapsedTimeLimit.value,
-            returnedBytes = returnedBytes.value,
+            returnedBytes = value.returnedBytes.value,
         )
 
     private fun LiveRelationBudgetDocument.restore(): Refinement<RelationBudget, LiveAddDeclarationPlanDecodeFailure> =

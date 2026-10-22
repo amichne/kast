@@ -180,7 +180,7 @@ class ReferenceProgressTest {
                     RelationProvenance.K2_AUTHORED_SOURCE,
                 )
                 .value()
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertFalse(collector.acceptReference(occurrence))
         collector.retainProviderState(retained.consume())
         val result =

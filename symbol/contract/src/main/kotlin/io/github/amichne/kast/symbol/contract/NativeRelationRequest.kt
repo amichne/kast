@@ -2,6 +2,7 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
 
 enum class NativeRelationFamily {
     REFERENCES,
@@ -38,7 +39,27 @@ value class NativeRelationByteLimit private constructor(val value: Long) {
 data class NativeRelationBudget(
     val resources: ResourceBudget,
     val returnedBytes: NativeRelationByteLimit,
-)
+    val pageResults: ResultLimit,
+) {
+    constructor(
+        resources: ResourceBudget.Bounded,
+        returnedBytes: NativeRelationByteLimit,
+    ) : this(resources, returnedBytes, resources.resultLimit)
+
+    fun permitsReturnedBytes(bytes: Long): Boolean =
+        when (resources) {
+            ResourceBudget.RunnerControlled -> true
+            is ResourceBudget.Bounded -> bytes <= returnedBytes.value
+        }
+
+    fun permitsOutputCount(count: Int): Boolean = resources.permitsResults(count)
+
+    val outputResults: ResultLimit =
+        when (resources) {
+            is ResourceBudget.Bounded -> resources.resultLimit
+            ResourceBudget.RunnerControlled -> pageResults
+        }
+}
 
 /**
  * Generation/scope-bound one-hop relation request. The exact selector is the only subject input; callers cannot supply

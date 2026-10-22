@@ -94,8 +94,8 @@ class HostedQueryExecutorTest {
                 runHostedReadTransaction(progress, { io.github.amichne.kast.kernel.Refinement.Refined(Unit) }) {
                     allowance ->
                     admittedReport = ExecutionBudgetReport.from(allowance.executionBudget)
-                    assertEquals(1432, allowance.semantic.value)
-                    delay(allowance.semantic.value + 50)
+                    assertEquals(1432, allowance.boundedFixture().semantic.value)
+                    delay(allowance.boundedFixture().semantic.value + 50)
                     42
                 }
             }

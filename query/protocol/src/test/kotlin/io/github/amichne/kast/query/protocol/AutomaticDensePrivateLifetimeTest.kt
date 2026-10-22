@@ -39,12 +39,15 @@ internal class AutomaticDensePrivateLifetimeTest : AutomaticDenseRetentionCase()
         assertTrue(admissions.all { it.total.value == it.facts.value + it.issuedState.value + it.request.value })
         val before = admissions.last { it.stage == QueryInvocationRetentionStage.BEFORE_EXECUTION }
         val checkpoint = checkpointAdmissions.last()
-        assertEquals((before.allowance.value - before.total.value) / 2L, checkpoint.allowance.value)
-        assertTrue(checkpoint.estimate.required.value > checkpoint.allowance.value)
+        assertEquals(
+            (before.allowance.bounded().limit.value - before.total.value) / 2L,
+            checkpoint.allowance.bounded().limit.value,
+        )
+        assertTrue(checkpoint.estimate.required.value > checkpoint.allowance.bounded().limit.value)
         println(
             "DensePrivateLifetime(rows=$known, calls=${positions.size}, maxEntries=${entries.max()}, " +
                 "facts=${before.facts.value}, issued=${before.issuedState.value}, request=${before.request.value}, " +
-                "checkpointRequired=${checkpoint.estimate.required.value}, checkpointAllowance=${checkpoint.allowance.value})"
+                "checkpointRequired=${checkpoint.estimate.required.value}, checkpointAllowance=${checkpoint.allowance.bounded().limit.value})"
         )
     }
 }

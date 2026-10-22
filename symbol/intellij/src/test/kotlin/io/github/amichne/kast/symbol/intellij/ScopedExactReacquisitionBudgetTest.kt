@@ -132,7 +132,10 @@ class ScopedExactReacquisitionBudgetTest {
                     },
                 captureWork = { captureWork },
                 checkContent = { maximum ->
-                    assertEquals(WorkUnitLimit.parse(2).refined(), maximum)
+                    assertEquals(
+                        io.github.amichne.kast.kernel.WorkAllowance.Bounded(WorkUnitLimit.parse(2).refined()),
+                        maximum,
+                    )
                     effects += Effect.CONTENT_CAPTURE
                     captureWork += 2L
                     Refinement.Refined(Unit)

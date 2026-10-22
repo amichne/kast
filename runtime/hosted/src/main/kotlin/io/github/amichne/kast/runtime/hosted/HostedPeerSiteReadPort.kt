@@ -89,7 +89,7 @@ private suspend fun admitPeerSite(
                 )
             )
             .proven()
-    val grant = RelationBudget(context.executionBudget.resources, bytes)
+    val grant = RelationBudget(context.executionBudget.resources, bytes, context.executionBudget.results.effective)
     return when (
         val selected =
             selection.acquireSite(
@@ -137,12 +137,20 @@ internal fun ImpactSemanticBasisDocument.Live.requireCurrentPeer(
 
 private fun RelationBudget.childRequest() =
     HostedExecutionBudgetRequest(
-        RequestedExecutionBudget(
-            elapsed = ExecutionAllowance.Requested(resources.elapsedTimeLimit),
-            work = ExecutionAllowance.Requested(resources.workUnitLimit),
-            results = ExecutionAllowance.Requested(resources.resultLimit),
-            returnedBytes = ExecutionAllowance.Requested(ReturnedByteLimit.parse(returnedBytes.value).proven()),
-        )
+        when (val admitted = resources) {
+            is io.github.amichne.kast.kernel.ResourceBudget.Bounded ->
+                RequestedExecutionBudget(
+                    elapsed = ExecutionAllowance.Requested(admitted.elapsedTimeLimit),
+                    work = ExecutionAllowance.Requested(admitted.workUnitLimit),
+                    results = ExecutionAllowance.Requested(outputResults),
+                    returnedBytes = ExecutionAllowance.Requested(ReturnedByteLimit.parse(returnedBytes.value).proven()),
+                )
+            io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled ->
+                RequestedExecutionBudget.RunnerControlled(
+                    results = ExecutionAllowance.Requested(outputResults),
+                    returnedBytes = ExecutionAllowance.Requested(ReturnedByteLimit.parse(returnedBytes.value).proven()),
+                )
+        }
     )
 
 private fun <Value> Refinement<Value, *>.proven(): Value =

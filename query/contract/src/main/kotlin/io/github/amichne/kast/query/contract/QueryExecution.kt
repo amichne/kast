@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadRejection
@@ -41,8 +42,27 @@ value class QueryByteLimit private constructor(val value: Long) {
 data class QueryBudget(
     val resources: ResourceBudget,
     val returnedBytes: QueryByteLimit,
-    val checkpointBytes: QueryByteLimit = QueryByteLimit.DefaultCheckpoint,
-)
+    val checkpointBytes: QueryByteLimit,
+    val pageResults: ResultLimit,
+) {
+    constructor(
+        resources: ResourceBudget.Bounded,
+        returnedBytes: QueryByteLimit,
+        checkpointBytes: QueryByteLimit = QueryByteLimit.DefaultCheckpoint,
+    ) : this(resources, returnedBytes, checkpointBytes, resources.resultLimit)
+
+    val storage: QueryStorageAllowance =
+        when (resources) {
+            is ResourceBudget.Bounded -> QueryStorageAllowance.Bounded(checkpointBytes)
+            ResourceBudget.RunnerControlled -> QueryStorageAllowance.Unlimited
+        }
+
+    val outputResults: ResultLimit =
+        when (resources) {
+            is ResourceBudget.Bounded -> resources.resultLimit
+            ResourceBudget.RunnerControlled -> pageResults
+        }
+}
 
 enum class QueryExecutionRequestFailure {
     REFERENCE_LEASE_MISMATCH,
@@ -316,7 +336,7 @@ internal fun QueryResult.hasUnresolvedRequiredEvidence(): Boolean =
         (rows is QueryRows.ValuePaths && !rows.hasCompleteAccounting()) ||
         failures.isNotEmpty() ||
         omissions.isNotEmpty() ||
-        walkObservations.any { it.coverage.isTerminallyIncomplete() } ||
+        walkObservations.hasUnresolvedWalkEvidence() ||
         discoveryObservations.any { it.progress is QueryDiscoveryProgress.Blocked } ||
         relationObservations.any { it.coverage is QueryRelationCoverage.TerminalIncomplete } ||
         relationObservations

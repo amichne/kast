@@ -113,7 +113,10 @@ class NativeStoredFieldDispatchTest : NativeReferenceFixtureTest() {
                     .nativeRefined()
             val site = ValueSite.fromCompiler(enclosing, range(receiver), ValueRole.LocalRead).nativeRefined()
             val budget =
-                RelationBudget(fixture.request.budget.resources, RelationByteLimit.parse(1_000_000L).nativeRefined())
+                RelationBudget(
+                    fixture.request.budget.resources.nativeBounded(),
+                    RelationByteLimit.parse(1_000_000L).nativeRefined(),
+                )
             StoredFieldRead(ValueFlowRequest(site, budget, fixture.request.boundary), sourceModel(fixture))
         }
     }

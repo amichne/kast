@@ -220,8 +220,8 @@ internal class DependencyCaptureBudget(
 
     fun current(): Refinement<Unit, SemanticDependencyCaptureFailure> {
         checkCanceled()
-        if (work >= budget.workUnitLimit.value) return rejected(SemanticDependencyCaptureFailure.WORK_EXHAUSTED)
-        if ((nanoTime() - started) / NANOS_PER_MILLISECOND >= budget.elapsedTimeLimit.value)
+        if (!budget.hasWorkCapacity(work)) return rejected(SemanticDependencyCaptureFailure.WORK_EXHAUSTED)
+        if (!budget.hasTimeRemaining((nanoTime() - started).coerceAtLeast(0L) / NANOS_PER_MILLISECOND))
             return rejected(SemanticDependencyCaptureFailure.TIME_EXHAUSTED)
         return Refinement.Refined(Unit)
     }
@@ -238,9 +238,9 @@ internal class DependencyCaptureBudget(
     /** A lower bound is proof of infeasibility, never work that was actually performed. */
     fun requireHashReads(minimum: SemanticHashReadMinimum): SemanticCapture<Unit> {
         checkCanceled()
-        if ((nanoTime() - started) / NANOS_PER_MILLISECOND >= budget.elapsedTimeLimit.value)
+        if (!budget.hasTimeRemaining((nanoTime() - started).coerceAtLeast(0L) / NANOS_PER_MILLISECOND))
             return rejected(SemanticDependencyCaptureFailure.TIME_EXHAUSTED)
-        if (minimum.calls.toLong() > budget.workUnitLimit.value - work)
+        if (!budget.permitsWork(work + minimum.calls.toLong()))
             return rejected(SemanticDependencyCaptureFailure.MINIMUM_HASH_WORK_UNAVAILABLE)
         return Refinement.Refined(Unit)
     }

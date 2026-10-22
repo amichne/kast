@@ -6,6 +6,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.LocalDeclarationAddress
@@ -27,10 +28,11 @@ internal fun KaSymbol.localRelationProjection(
     admittedFile: SymbolDiscoveryFileIdentity?,
     depth: Int,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
 ): IntellijCompilerProjectionResult {
     if (!hasSupportedLocalDeclaration())
         return IntellijCompilerProjectionResult.LocalRejected(LocalDeclarationProjectionFailure.UnsupportedDeclaration)
-    when (val proof = localRelationCompilerTypeProof()) {
+    when (val proof = localRelationCompilerTypeProof(workAllowance)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return IntellijCompilerProjectionResult.LocalRejected(proof.failure)
     }
@@ -42,8 +44,8 @@ internal fun KaSymbol.localRelationProjection(
     val address =
         when (
             val admitted =
-                localRelationDeclarationAddress(session, file, depth) { owner, ownerDepth ->
-                    owner.localRelationOwnerSignature(session, file, ownerDepth, observation)
+                localRelationDeclarationAddress(session, file, depth, workAllowance) { owner, ownerDepth ->
+                    owner.localRelationOwnerSignature(session, file, ownerDepth, observation, workAllowance)
                 }
         ) {
             is Refinement.Refined -> admitted.value

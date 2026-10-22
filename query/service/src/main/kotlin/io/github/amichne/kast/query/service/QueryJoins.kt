@@ -1,6 +1,9 @@
 package io.github.amichne.kast.query.service
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.contract.QueryStorageAllowance
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import java.util.Collections
@@ -48,13 +51,19 @@ internal class QueryJoins(restored: QueryJoinSnapshot = QueryJoinSnapshot(emptyM
 
     fun rightRows(stage: ExactQueryStage.Join): List<QuerySymbol> = stage.right.symbols
 
-    fun buildNext(stage: ExactQueryStage.Join, maximumBytes: Long): QueryJoinBuild {
+    fun buildNext(stage: ExactQueryStage.Join, maximumBytes: Long): QueryJoinBuild =
+        when (val limit = QueryByteLimit.parse(maximumBytes)) {
+            is Refinement.Refined -> buildNext(stage, QueryStorageAllowance.Bounded(limit.value))
+            is Refinement.Rejected -> QueryJoinBuild.BYTE_LIMIT
+        }
+
+    fun buildNext(stage: ExactQueryStage.Join, allowance: QueryStorageAllowance): QueryJoinBuild {
         val right = rightRows(stage)
         val prior = indexes[stage]
         val current = prior ?: MutableJoinIndex(0, linkedMapOf())
         if (current.consumed >= right.size) return QueryJoinBuild.COMPLETE
         val added = saturatedAdd(JOIN_INDEX_ENTRY_BYTES, if (prior == null) JOIN_STATE_OVERHEAD_BYTES else 0L)
-        if (saturatedAdd(retainedBytes(), added) > maximumBytes) return QueryJoinBuild.BYTE_LIMIT
+        if (!allowance.permits(saturatedAdd(retainedBytes(), added))) return QueryJoinBuild.BYTE_LIMIT
         val position = current.consumed
         val key = CanonicalSymbolId.from(right[position].selector)
         current.positions.getOrPut(key, ::mutableListOf).add(position)

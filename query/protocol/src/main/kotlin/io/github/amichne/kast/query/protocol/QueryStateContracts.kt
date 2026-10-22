@@ -73,6 +73,8 @@ class QueryExecutionClaim
 internal constructor(
     internal val origin: QueryExecutionOrigin,
     internal val identity: UUID,
+    internal val executionMode: io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument =
+        io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED,
 )
 
 internal sealed interface QueryExecutionOrigin {

@@ -239,7 +239,15 @@ internal fun ImmutableCallbackEnumeration.block(
     when (val position = tryBranchResultPosition(value)) {
         is TryBranchResultPosition.Result -> {
             val proof =
-                when (val admitted = NativeTryBranchResult.admit(value, position, summaries.observation)) {
+                when (
+                    val admitted =
+                        NativeTryBranchResult.admit(
+                            value,
+                            position,
+                            summaries.observation,
+                            context.scope.request.budget.resources.workAllowance,
+                        )
+                ) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return obligation(admitted.failure.callbackTryFailure())
                 }

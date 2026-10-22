@@ -139,7 +139,7 @@ internal class QueryTextDiscoveryFixture {
     ): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
         observe(request)
         assertTrue(
-            request.budget.resources.resultLimit.value > 1,
+            request.budget.resources.bounded().resultLimit.value > 1,
             "Candidate capacity must permit owners beyond the presentation result limit",
         )
         val first = match(fixture)

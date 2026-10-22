@@ -87,7 +87,8 @@ class QueryRetainedOccurrencePresentationTest {
                 fixture.references,
                 store,
             )
-        val smallBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
+        val smallBudget =
+            budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).refined()))
         val pages =
             (0 until 3).map { cursor ->
                 val pageRequest =

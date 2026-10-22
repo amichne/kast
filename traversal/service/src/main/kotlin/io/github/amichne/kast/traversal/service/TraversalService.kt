@@ -93,7 +93,7 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                         return TraversalResult.Rejected(TraversalRejection.ReaderContractViolation)
                 }
             accounting.expandedFrontier += 1
-            val timeOverrun = read.elapsedMillis.value > request.budget.resources.elapsedTimeLimit.value
+            val timeOverrun = !request.budget.resources.permitsElapsedMillis(read.elapsedMillis.value)
             val relationResult = read.result
             if (relationResult is RelationReadResult.Rejected) {
                 return TraversalResult.Rejected(TraversalRejection.OneHopRejected(relationResult.reason))

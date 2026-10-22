@@ -58,7 +58,7 @@ class ExactRevalidationSavedContentTest {
         var excludedReads = 0
         assertEquals(
             ExactSavedBytesRead.Rejected(ExactRevalidationRejection.CAPACITY),
-            readExactSavedBytes(ByteArrayInputStream(byteArrayOf(1)), maximum + 1, { excludedReads += it }, {}),
+            readExactSavedBytes(ByteArrayInputStream(byteArrayOf(1)), -1, { excludedReads += it }, {}),
         )
         assertEquals(0, excludedReads)
     }
@@ -78,5 +78,18 @@ class ExactRevalidationSavedContentTest {
                 readExactSavedBytes(ByteArrayInputStream(raw), raw.size, {}, { throw cancelled })
             },
         )
+    }
+
+    @Test
+    fun `exact byte effect accepts a size admitted beyond the bounded capture policy`() {
+        val raw = ByteArray(IntellijExactRevalidationCapture.MAX_FILE_BYTES + 1)
+        var consumed = 0
+        val read =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                ExactSavedBytesRead.Read::class.java,
+                readExactSavedBytes(ByteArrayInputStream(raw), raw.size, { consumed += it }, {}),
+            )
+        assertArrayEquals(raw, read.bytes)
+        assertEquals(raw.size, consumed)
     }
 }

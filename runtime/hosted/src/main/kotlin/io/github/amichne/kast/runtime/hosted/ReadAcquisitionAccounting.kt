@@ -29,7 +29,15 @@ internal class ReadAcquisitionAccounting {
             is Refinement.Rejected -> error("Nonnegative acquisition work lost its proof")
         }
 
-    fun remaining(budget: ResourceBudget): Refinement<ResourceBudget, ReadReacquisitionBudgetFailure> {
+    fun remaining(budget: ResourceBudget): Refinement<ResourceBudget, ReadReacquisitionBudgetFailure> =
+        when (budget) {
+            ResourceBudget.RunnerControlled -> Refinement.Refined(budget)
+            is ResourceBudget.Bounded -> remainingBounded(budget)
+        }
+
+    private fun remainingBounded(
+        budget: ResourceBudget.Bounded
+    ): Refinement<ResourceBudget.Bounded, ReadReacquisitionBudgetFailure> {
         val remainingWork =
             when (val parsed = WorkUnitLimit.parse(budget.workUnitLimit.value - work)) {
                 is Refinement.Refined -> parsed.value

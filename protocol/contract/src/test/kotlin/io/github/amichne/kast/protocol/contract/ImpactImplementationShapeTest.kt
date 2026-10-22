@@ -98,7 +98,12 @@ class ImpactImplementationShapeTest {
     @Test
     fun `call identity ignores work observations while changed coverage cannot discharge a return`() {
         val f = ImplementationShapeFixture()
-        val budget = f.dispatch.question.budget.copy(maxWorkUnits = WorkUnitLimit.parse(20).value())
+        val budget =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                    ImpactFlowBudgetDocument.Bounded::class.java,
+                    f.dispatch.question.budget,
+                )
+                .copy(maxWorkUnits = WorkUnitLimit.parse(20).value())
         val fresh =
             f.frame.copy(
                 target =

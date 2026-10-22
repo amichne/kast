@@ -133,7 +133,11 @@ class ImmutableCallbackValueStorageTest {
 
     private fun retention(bytes: Long) =
         CallbackFlowRetention(
-            request.budget.copy(returnedBytes = RelationByteLimit.parse(bytes).refined()).resources.resultLimit,
+            request.budget
+                .copy(returnedBytes = RelationByteLimit.parse(bytes).refined())
+                .resources
+                .bounded()
+                .resultLimit,
             observation,
         )
 }

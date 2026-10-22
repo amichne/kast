@@ -4,8 +4,8 @@ title: "Public query engineering rules"
 description: "Defines schema ownership, typed query admission, strict completion, and distinct retained-output capabilities."
 resource: "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-22T05:29:46Z"
+source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
@@ -13,6 +13,7 @@ code_sources:
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolTraceContractTest.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicRunnerControlledExecutionTest.kt
   - path: packaging/generate-public-query.py
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
 ---
@@ -42,6 +43,12 @@ separate in the admitted syntax. The public `RESUME` schema admits only the
 `query-output:v1` token family. Internal `query:v1` continuations, malformed tokens, and
 retained-result tokens reject before canonical lowering. `RESUME` only delivers already-produced output.
 It cannot continue semantic execution or change its grant. Schema admission does not establish issued authority.
+
+`RUN.executionMode` defaults to `BOUNDED`.
+`RUNNER_CONTROLLED` uses caller cancellation to stop semantic execution.
+Its request accepts output grants and rejects `maxElapsedMs` or `maxWorkUnits`.
+Keep finite output pages separate from semantic execution.
+
 The intent tools in `tools.schema.json` allow default controls to be omitted;
 normalize omission or explicit null once through the generated defaults before canonical construction. Admit
 those requests through `AdmittedPublicTool`, retaining tool identity and schema
@@ -61,7 +68,7 @@ Retained binding results can seed another run, including selected issued row IDs
 Semi and anti joins continue as symbol streams. An anti join admits only a complete right operand.
 
 Encoding is a transport projection of retained typed syntax, not a reverse parser
-for arbitrary canonical requests. No public constructor/copy may bypass admission.
+for arbitrary canonical requests. A public constructor or copy must not bypass admission.
 Schema constraints and canonical syntax guards remain enforced even when a provider
 supports a weaker generation schema. Passing a JSON Schema is not a capability.
 

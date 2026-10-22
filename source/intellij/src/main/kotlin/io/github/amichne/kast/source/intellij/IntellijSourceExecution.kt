@@ -24,7 +24,7 @@ internal class IntellijSourceExecution(
     fun admitUnit(): SourceExecutionAdmission {
         val time = observeCompletion()
         if (time != SourceExecutionAdmission.ADMITTED) return time
-        if (examined == resources.workUnitLimit.value) {
+        if (!resources.hasWorkCapacity(examined)) {
             return SourceExecutionAdmission.WORK_LIMIT_REACHED
         }
         examined += 1
@@ -51,7 +51,7 @@ internal class IntellijSourceExecution(
         timing =
             when {
                 now - lastObserved < 0L || elapsed < 0L -> SourceExecutionAdmission.CLOCK_REJECTED
-                TimeUnit.NANOSECONDS.toMillis(elapsed) >= resources.elapsedTimeLimit.value ->
+                !resources.hasTimeRemaining(TimeUnit.NANOSECONDS.toMillis(elapsed)) ->
                     SourceExecutionAdmission.TIME_LIMIT_REACHED
                 else -> SourceExecutionAdmission.ADMITTED
             }

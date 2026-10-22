@@ -98,7 +98,7 @@ class HostedImpactByteAdmissionTest {
 
     private class Fixture {
         val symbols = RelationPagingFixture.published()
-        val budget = QueryBudget(symbols.budget.resources, QueryByteLimit.parse(10000).value())
+        val budget = QueryBudget(symbols.budget.resources.boundedFixture(), QueryByteLimit.parse(10000).value())
         var seedCalls = 0
         var flowCalls = 0
         var retainedBytes = 0L
@@ -186,10 +186,10 @@ class HostedImpactByteAdmissionTest {
 
         private fun traversalBudget() =
             TraversalBudget(
-                budget.resources.resultLimit,
+                budget.resources.boundedFixture().resultLimit,
                 TraversalByteLimit.parse(10000).value(),
-                budget.resources.workUnitLimit,
-                budget.resources.elapsedTimeLimit,
+                budget.resources.boundedFixture().workUnitLimit,
+                budget.resources.boundedFixture().elapsedTimeLimit,
                 TraversalDepthLimit.parse(1).value(),
                 TraversalFrontierLimit.parse(3).value(),
                 symbols.budget,

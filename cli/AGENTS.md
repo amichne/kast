@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-16T06:38:53Z"
-source_revision: c63215981504766de0d3b861c801414e05768f57
+timestamp: "2026-10-22T05:31:45Z"
+source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
@@ -18,6 +18,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
@@ -30,7 +31,7 @@ code_sources:
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
 <!-- generated: 2026-10-15 | hash: b96782f52fd4 -->
 
-# cli
+# CLI
 
 ## Purpose
 
@@ -39,6 +40,7 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 ## Key Files
 
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - the client-owned stdio MCP process.
+- [McpRunnerInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt) - one query worker, exact cancellation, and worker cleanup.
 - [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, request-only plans, one-shot invocation, and query sessions.
 - [QueryCostPlan.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt) - request-shape advice before installation access or host effects.
 - [KastDirectToolSession.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt) - shared direct tool admission and existing-IDE composition.
@@ -49,7 +51,7 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 - [KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - the private installer version entry.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installed service control.
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - the private managed daemon entry.
-- [InstalledServerProjectionDocuments.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt) - installed schemas from canonical serializers.
+- [InstalledServerProjectionDocuments.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt) - installed schemas from canonical types.
 - [InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - local installed knowledge reads.
 
 ## Subdirectories
@@ -75,7 +77,8 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 - Trace MCP and tool RPC through `KastDirectToolSession`. The MCP transport does not start an App Server broker.
 - Fresh and replacement installations select private endpoints and do not enable a daemon. Legacy retirement and recovery keep their ownership rules.
 - MCP starts preparation at legacy initialization or its first admitted modern request. Semantic calls wait for the selected workspace endpoint.
-- For query output, trace canonical serializers into `InstalledServerProjectionDocuments` and the shared JavaScript delivery and presentation owners.
+- In `RUNNER_CONTROLLED`, the caller owns semantic cancellation. The input owner accepts `notifications/cancelled` for the exact request identifier. End-of-input cancels the active query and drains its worker. A cancelled query emits no MCP response.
+- For query output, trace canonical types into `InstalledServerProjectionDocuments` and the shared JavaScript delivery and presentation owners.
 - For source reads and session rejection, examine `KastToolRpcQuerySession` and `QuerySessionRejectionDetail`. Issued selectors keep their current authority.
 - For generated Copilot and Pi sections, change the delivery owner or public-query generator. Preserve authored extension adapters.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

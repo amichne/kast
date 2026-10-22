@@ -90,7 +90,8 @@ class QueryRetainedRowAdmissionTest {
                 CanonicalQueryReferences(),
                 store,
             )
-        val smallBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
+        val smallBudget =
+            budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).refined()))
         val request = requestAt(QueryResultCursor.Start)
         val first = protocol.executePage(request, fixture.authority, smallBudget) as OperationOutcome.Complete
         val replay = protocol.executePage(request, fixture.authority, smallBudget) as OperationOutcome.Complete

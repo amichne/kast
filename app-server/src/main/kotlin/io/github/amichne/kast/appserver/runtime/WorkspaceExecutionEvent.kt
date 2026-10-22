@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import kotlin.time.Duration
 
 internal data class WorkspaceExecutionIdentity(
@@ -57,6 +58,7 @@ internal data class WorkspaceExecutionEvent(
     val queued: Duration,
     val interactionLimit: ElapsedTimeLimitMillis,
     val failure: WorkspaceExecutionFailure? = null,
+    val executionMode: QueryExecutionModeDocument = QueryExecutionModeDocument.BOUNDED,
 )
 
 internal fun WorkspaceExecutionResult.certainty(): InvocationCertainty =

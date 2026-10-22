@@ -15,7 +15,7 @@ sealed interface HostedReadRejectedPublication {
     data class RetainedProgress(val checkpoint: QueryExecutionContinuation.Pipeline) : HostedReadRejectedPublication
 }
 
-/** One attempt's detached store publication, committed only after freshness, deadline and permit completion. */
+/** One read's detached store publication, committed only after freshness, execution, and permit completion. */
 interface HostedReadPublicationEffect {
     val rejectedPublication: HostedReadRejectedPublication
         get() = HostedReadRejectedPublication.Discard

@@ -66,6 +66,33 @@ internal fun admitHostedExecutionBudget(
     )
 }
 
+internal fun admitHostedRunnerExecutionBudget(
+    limits: ReadLimits,
+    request: RequestedExecutionBudget.RunnerControlled,
+    profile: HostedBudgetProfile,
+    maximumResults: ResultLimit,
+): AdmittedExecutionBudget.RunnerControlled {
+    val resultParameter =
+        when (profile) {
+            HostedBudgetProfile.SEMANTIC -> ReadLimitParameter.SEMANTIC_RESULTS
+            HostedBudgetProfile.SOURCE -> ReadLimitParameter.SOURCE_ENTITIES
+        }
+    val bytesParameter =
+        when (profile) {
+            HostedBudgetProfile.SEMANTIC -> ReadLimitParameter.SEMANTIC_RETURNED_BYTES
+            HostedBudgetProfile.SOURCE -> ReadLimitParameter.SOURCE_RETURNED_BYTES
+        }
+    return AdmittedExecutionBudget.admit(
+        request,
+        ResultLimit.parse(limits[resultParameter].value).proven(),
+        ReturnedByteLimit.parse(limits[bytesParameter].value.toLong()).proven(),
+        ResultLimit.parse(limits[ReadLimitParameter.EXECUTION_MAX_RESULTS].value).proven(),
+        ReturnedByteLimit.parse(limits[ReadLimitParameter.EXECUTION_MAX_RETURNED_BYTES].value.toLong()).proven(),
+        maximumResults,
+        ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
+    )
+}
+
 private fun <Value> Refinement<Value, *>.proven(): Value =
     when (this) {
         is Refinement.Refined -> value

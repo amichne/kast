@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.DirectToolDocument
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import java.io.BufferedInputStream
 import java.io.PrintStream
@@ -31,48 +32,87 @@ internal class KastMcpServer(
     private var era: McpProtocolEra? = null
     private var preparationStarted = false
 
-    @Suppress("LoopWithTooManyJumpStatements")
     fun run(input: BufferedInputStream, output: PrintStream) {
-        while (true) {
-            val line = readMcpLine(input) ?: return
-            val response =
+        val publicationLock = Any()
+        fun publish(response: McpResponse) =
+            synchronized(publicationLock) {
+                output.println(mcpWire.encodeToString(response))
+                output.flush()
+            }
+        val runner =
+            McpRunnerInvocationOwner(
+                publish = ::publish,
+                cancelled = { tool -> report(tool, McpCallStage.EXECUTION, McpCallOutcome.CANCELLED) },
+                failed = { tool ->
+                    report(tool, McpCallStage.EXECUTION, McpCallOutcome.REJECTED)
+                    try {
+                        input.close()
+                    } catch (_: java.io.IOException) {
+                        // Closing the output still rejects the client's pending request.
+                    } finally {
+                        output.close()
+                    }
+                },
+            )
+        try {
+            while (true) {
+                val line = readMcpLine(input)
+                if (line == null) return
                 when (val admission = admitMcpRequest(line)) {
-                    is McpRequestAdmission.Call -> dispatch(admission.id, admission.request)
-                    is McpRequestAdmission.Notification -> continue
-                    is McpRequestAdmission.Rejected -> McpResponse(admission.id, error = admission.error)
+                    is McpRequestAdmission.Call -> receiveCall(admission, runner, ::publish)
+                    is McpRequestAdmission.Notification -> runner.cancel(admission.request)
+                    is McpRequestAdmission.Rejected -> publish(McpResponse(admission.id, error = admission.error))
                 }
-            output.println(mcpWire.encodeToString(response))
-            output.flush()
+            }
+        } finally {
+            runner.stop()
+        }
+    }
+
+    private fun receiveCall(
+        admission: McpRequestAdmission.Call,
+        runner: McpRunnerInvocationOwner,
+        publish: (McpResponse) -> Unit,
+    ) {
+        when (val selected = dispatch(admission.id, admission.request)) {
+            is McpDispatch.Response -> publish(selected.response)
+            is McpDispatch.Invocation ->
+                when {
+                    runner.active ->
+                        publish(rejected(selected.id, McpCallFailure.INVOCATION_IN_PROGRESS, selected.modern))
+                    selected.policy == QueryExecutionModeDocument.RUNNER_CONTROLLED ->
+                        runner.start(selected.id, selected.call.name) { invokeCall(selected) }
+                    else -> publish(invokeCall(selected))
+                }
         }
     }
 
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "MagicNumber")
-    private fun dispatch(id: JsonElement, request: McpRequest): McpResponse {
+    private fun dispatch(id: JsonElement, request: McpRequest): McpDispatch {
         if (request.method == "initialize") {
-            if (era == McpProtocolEra.MODERN) return McpResponse(id, error = McpError(-32600, "modern-connection"))
+            if (era == McpProtocolEra.MODERN) return response(id, error = McpError(-32600, "modern-connection"))
             if (hasModernMeta(request.params))
-                return McpResponse(id, error = McpError(-32600, "initialize-has-modern-envelope"))
+                return response(id, error = McpError(-32600, "initialize-has-modern-envelope"))
             era = McpProtocolEra.LEGACY
             startPreparation()
-            return success(id, McpInitializeResult())
+            return respond(id, McpInitializeResult())
         }
         val modern = hasModernMeta(request.params)
-        if (era == McpProtocolEra.LEGACY && modern)
-            return McpResponse(id, error = McpError(-32600, "legacy-connection"))
+        if (era == McpProtocolEra.LEGACY && modern) return response(id, error = McpError(-32600, "legacy-connection"))
         if (era == McpProtocolEra.MODERN || modern) {
-            if (era == McpProtocolEra.LEGACY) return McpResponse(id, error = McpError(-32600, "legacy-connection"))
+            if (era == McpProtocolEra.LEGACY) return response(id, error = McpError(-32600, "legacy-connection"))
             val meta =
                 try {
                     mcpWire
                         .decodeFromJsonElement<McpModernParams>(
-                            request.params ?: return McpResponse(id, error = McpError(-32602, "missing-request-meta"))
+                            request.params ?: return response(id, error = McpError(-32602, "missing-request-meta"))
                         )
                         .meta
                 } catch (_: SerializationException) {
-                    return McpResponse(id, error = McpError(-32602, "missing-request-meta"))
+                    return response(id, error = McpError(-32602, "missing-request-meta"))
                 }
             if (meta.protocolVersion != MODERN_PROTOCOL_VERSION)
-                return McpResponse(
+                return response(
                     id,
                     error =
                         McpError(
@@ -84,20 +124,20 @@ internal class KastMcpServer(
             era = McpProtocolEra.MODERN
             startPreparation()
             return when (request.method) {
-                "ping" -> success(id, McpEmptyResult(resultType = "complete"))
-                "server/discover" -> success(id, McpDiscoverResult())
+                "ping" -> respond(id, McpEmptyResult(resultType = "complete"))
+                "server/discover" -> respond(id, McpDiscoverResult())
                 "tools/list" ->
-                    success(id, McpToolList(toolCatalog(), resultType = "complete", ttlMs = 0, cacheScope = "private"))
-                "tools/call" -> call(id, request.params, modern = true)
-                else -> McpResponse(id, error = McpError(-32601, "method-not-found"))
+                    respond(id, McpToolList(toolCatalog(), resultType = "complete", ttlMs = 0, cacheScope = "private"))
+                "tools/call" -> admitCall(id, request.params, modern = true)
+                else -> response(id, error = McpError(-32601, "method-not-found"))
             }
         }
-        if (era == null) return McpResponse(id, error = McpError(-32602, "missing-request-meta"))
+        if (era == null) return response(id, error = McpError(-32602, "missing-request-meta"))
         return when (request.method) {
-            "ping" -> success(id, McpEmptyResult())
-            "tools/list" -> success(id, McpToolList(toolCatalog()))
-            "tools/call" -> call(id, request.params, modern = false)
-            else -> McpResponse(id, error = McpError(-32601, "method-not-found"))
+            "ping" -> respond(id, McpEmptyResult())
+            "tools/list" -> respond(id, McpToolList(toolCatalog()))
+            "tools/call" -> admitCall(id, request.params, modern = false)
+            else -> response(id, error = McpError(-32601, "method-not-found"))
         }
     }
 
@@ -150,22 +190,30 @@ internal class KastMcpServer(
     }
 
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
-    private fun call(id: JsonElement, params: JsonElement?, modern: Boolean): McpResponse {
-        val raw = params as? JsonObject ?: return rejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
+    private fun admitCall(id: JsonElement, params: JsonElement?, modern: Boolean): McpDispatch {
+        val raw = params as? JsonObject ?: return responseRejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
         if ("arguments" in raw && raw["arguments"] !is JsonObject)
-            return rejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
+            return responseRejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
         val call =
             try {
                 mcpWire.decodeFromJsonElement<McpToolCall>(raw)
             } catch (_: SerializationException) {
-                return rejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
+                return responseRejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
             }
-        if (call.name !in tools) return rejected(id, McpCallFailure.UNKNOWN_TOOL, modern)
+        if (call.name !in tools) return responseRejected(id, McpCallFailure.UNKNOWN_TOOL, modern)
         report(call.name, McpCallStage.ADMISSION, McpCallOutcome.STARTED)
         if (root() !is CanonicalRootDiscovery.Discovered) {
             report(call.name, McpCallStage.ADMISSION, McpCallOutcome.REJECTED)
-            return rejected(id, McpCallFailure.NOT_GRADLE_WORKSPACE, modern)
+            return responseRejected(id, McpCallFailure.NOT_GRADLE_WORKSPACE, modern)
         }
+        return McpDispatch.Invocation(id, call, modern, call.executionPolicy())
+    }
+
+    @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
+    private fun invokeCall(invocation: McpDispatch.Invocation): McpResponse {
+        val id = invocation.id
+        val call = invocation.call
+        val modern = invocation.modern
         // The existing CLI owns the schema, IDE identity, and semantic outcome.
         report(call.name, McpCallStage.EXECUTION, McpCallOutcome.STARTED)
         val exit =
@@ -231,6 +279,15 @@ internal class KastMcpServer(
         )
     }
 
+    private inline fun <reified T> respond(id: JsonElement, result: T): McpDispatch =
+        McpDispatch.Response(success(id, result))
+
+    private fun response(id: JsonElement, error: McpError): McpDispatch =
+        McpDispatch.Response(McpResponse(id, error = error))
+
+    private fun responseRejected(id: JsonElement, failure: McpCallFailure, modern: Boolean): McpDispatch =
+        McpDispatch.Response(rejected(id, failure, modern))
+
     private fun rejected(id: JsonElement, failure: McpCallFailure, modern: Boolean): McpResponse {
         return transportRejected(
             id,
@@ -252,3 +309,26 @@ internal class KastMcpServer(
         )
     }
 }
+
+private sealed interface McpDispatch {
+    data class Response(val response: McpResponse) : McpDispatch
+
+    data class Invocation(
+        val id: JsonElement,
+        val call: McpToolCall,
+        val modern: Boolean,
+        val policy: QueryExecutionModeDocument,
+    ) : McpDispatch
+}
+
+/** Scheduling does not admit semantic input. The direct session owns its complete schema. */
+private fun McpToolCall.executionPolicy(): QueryExecutionModeDocument =
+    if (name == "query_symbols") {
+        val request = arguments?.get("request") as? JsonObject
+        if (
+            request?.get("type") == JsonPrimitive("RUN") &&
+                request["executionMode"] == JsonPrimitive("RUNNER_CONTROLLED")
+        )
+            QueryExecutionModeDocument.RUNNER_CONTROLLED
+        else QueryExecutionModeDocument.BOUNDED
+    } else QueryExecutionModeDocument.BOUNDED

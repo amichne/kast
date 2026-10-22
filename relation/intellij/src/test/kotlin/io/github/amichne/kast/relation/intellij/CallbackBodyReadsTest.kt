@@ -20,7 +20,7 @@ class CallbackBodyReadsTest {
 
     @Test
     fun `an active exact body and binding rejects recursion and releases after return`() {
-        val reads = CallbackBodyReads()
+        val reads = CallbackBodyReads(request.budget.resources)
         val body = body(0)
         val recursive =
             reads.read(body, binding, basis) {
@@ -32,7 +32,7 @@ class CallbackBodyReadsTest {
 
     @Test
     fun `different body identities share a bounded depth and release after exhaustion`() {
-        val reads = CallbackBodyReads()
+        val reads = CallbackBodyReads(request.budget.resources)
         var entered = 0
         fun descend(index: Int): CallbackInvocationFlowRead =
             reads.read(body(index), binding, basis) {
@@ -46,7 +46,7 @@ class CallbackBodyReadsTest {
 
     @Test
     fun `a failed read releases its active identity`() {
-        val reads = CallbackBodyReads()
+        val reads = CallbackBodyReads(request.budget.resources)
         val body = body(0)
         assertThrows(IllegalStateException::class.java) {
             reads.read(body, binding, basis) { error("Native read failed") }

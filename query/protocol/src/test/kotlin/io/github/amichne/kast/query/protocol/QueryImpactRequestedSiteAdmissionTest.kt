@@ -30,7 +30,7 @@ class QueryImpactRequestedSiteAdmissionTest {
         assertEquals(listOf(2L, 2L), admitted.source.requestedSites.map { it.examinedWorkUnits.value })
         assertEquals(
             listOf(4L, 6L),
-            admitted.source.requestedSites.map { it.request.budget.resources.workUnitLimit.value },
+            admitted.source.requestedSites.map { it.request.budget.resources.bounded().workUnitLimit.value },
         )
         native.assertConsumed()
     }

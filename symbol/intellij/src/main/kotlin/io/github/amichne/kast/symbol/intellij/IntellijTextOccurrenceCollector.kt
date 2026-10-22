@@ -5,6 +5,8 @@ import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
@@ -17,7 +19,7 @@ private data class PendingTextOccurrence(val element: PsiElement, val offsetInEl
 
 /** Native callbacks capture bounded references only; PSI projection follows complete collection. */
 internal fun collectTextDiscoveryOccurrences(
-    workLimit: WorkUnitLimit,
+    workLimit: WorkAllowance,
     observe: () -> Boolean,
     qualify: (SymbolDiscoveryQualification) -> Unit,
     process: ((PsiElement, Int) -> Boolean) -> Boolean,
@@ -29,7 +31,24 @@ internal fun collectTextDiscoveryOccurrences(
 ): Int {
     val capture =
         TextOccurrenceCapture(
-            nativeLimit = minOf(workLimit.value, limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong()),
+            nativeLimit =
+                when (workLimit) {
+                    WorkAllowance.Unlimited -> WorkAllowance.Unlimited
+                    is WorkAllowance.Bounded ->
+                        when (
+                            val limit =
+                                WorkUnitLimit.parse(
+                                    minOf(
+                                        workLimit.limit.value,
+                                        limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
+                                    )
+                                )
+                        ) {
+                            is Refinement.Refined -> WorkAllowance.Bounded(limit.value)
+                            is Refinement.Rejected ->
+                                error("Positive discovery limits produced an invalid capture capacity")
+                        }
+                },
             observe = observe,
             qualify = qualify,
             admit = admit,
@@ -59,7 +78,7 @@ internal fun collectTextDiscoveryOccurrences(
 
 /** Captured PSI and all shared callback state belong to one request; projection never runs under its lock. */
 private class TextOccurrenceCapture(
-    private val nativeLimit: Long,
+    private val nativeLimit: WorkAllowance,
     private val observe: () -> Boolean,
     private val qualify: (SymbolDiscoveryQualification) -> Unit,
     private val admit: (PsiElement, Int) -> IntellijTextOccurrenceAdmission,
@@ -98,7 +117,7 @@ private class TextOccurrenceCapture(
     }
 
     private fun captureWithinBudget(element: PsiElement, offset: Int): Boolean {
-        if (pending.size.toLong() >= nativeLimit || !consume()) {
+        if (!nativeLimit.hasCapacity(pending.size.toLong()) || !consume()) {
             stopped = true
             qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
             return false

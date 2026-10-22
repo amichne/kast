@@ -141,7 +141,9 @@ class RetainedSymbolGraphSharingTest {
                 fixture.retained.source.authority,
                 fixture.retained.budget.copy(
                     resources =
-                        fixture.retained.budget.resources.copy(resultLimit = ResultLimit.parse(1).graphFixtureValue())
+                        fixture.retained.budget.resources
+                            .bounded()
+                            .copy(resultLimit = ResultLimit.parse(1).graphFixtureValue())
                 ),
             ) as OperationOutcome.Complete
         return fixture to page

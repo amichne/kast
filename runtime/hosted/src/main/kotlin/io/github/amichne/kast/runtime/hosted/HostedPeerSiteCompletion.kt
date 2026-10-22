@@ -73,11 +73,7 @@ private fun completeGrantedPeerSelection(
 }
 
 private fun peerReturnedGrant(actual: RelationBudget, offered: RelationBudget): Refinement<Unit, HostedQueryFailure> {
-    if (
-        actual.resources.workUnitLimit.value > offered.resources.workUnitLimit.value ||
-            actual.resources.resultLimit.value > offered.resources.resultLimit.value ||
-            actual.resources.elapsedTimeLimit.value > offered.resources.elapsedTimeLimit.value
-    )
+    if (!actual.resources.fitsWithin(offered.resources) || actual.outputResults.value > offered.outputResults.value)
         return Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
     return if (actual.returnedBytes.value > offered.returnedBytes.value)
         Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)

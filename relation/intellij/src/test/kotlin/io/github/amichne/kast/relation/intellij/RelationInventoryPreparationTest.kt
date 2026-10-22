@@ -61,7 +61,7 @@ class RelationInventoryPreparationTest {
         var preparations = 0
         val observation = Observation()
         val collector = IntellijRelationCollector(request, { now }, observation)
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         val termination =
             readRelationInventory(
                 request,
@@ -171,7 +171,7 @@ class RelationInventoryPreparationTest {
         val inventory =
             IntellijRelationInventory<RelationProviderLocator.Reference>(collector, ReadLimits.Default, observation)
         assertTrue(inventory.append(Refinement.Refined(locator(0))))
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertEquals(
             RelationInventoryPreparation.Unavailable,
             inventory.finish(true, RelationProviderState::references),
@@ -201,7 +201,7 @@ class RelationInventoryPreparationTest {
         assertEquals(0L, prepared.state.consumedLocatorCount.value)
         assertEquals(1L, prepared.state.providerCursor.nextPosition.value)
         assertEquals(listOf(locator(0), locator(1)), prepared.state.prepared)
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertEquals(IntellijRelationProviderItemAdmission.HALTED, collector.beginProviderItem(locator(0).descriptor))
         val result =
             assertInstanceOf(

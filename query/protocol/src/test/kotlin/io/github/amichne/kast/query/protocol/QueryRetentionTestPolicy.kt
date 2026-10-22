@@ -8,7 +8,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 /** Finite presentation and storage grants for tests that assert retained output ownership. */
 internal fun retainedQueryTestPolicy(budget: QueryBudget): QueryInvocationPolicy =
     QueryInvocationPolicy(
-        previewRows = budget.resources.resultLimit,
+        previewRows = budget.resources.bounded().resultLimit,
         previewBytesLimit = budget.returnedBytes,
         retainedBytes = (QueryByteLimit.parse(10_000_000) as Refinement.Refined).value,
         previewBytes = CanonicalQueryCliDocuments::previewBytes,

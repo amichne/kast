@@ -2,6 +2,7 @@ package io.github.amichne.kast.traversal.contract
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -9,6 +10,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationScopeFingerprint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.RunnerControlledRelationBudget
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
@@ -73,32 +75,80 @@ sealed interface TraversalStrategy {
     data class BoundedFanOut(val maximumEdgesPerNode: ResultLimit) : TraversalStrategy
 }
 
-data class TraversalBudget(
-    val records: ResultLimit,
-    val returnedBytes: TraversalByteLimit,
-    val workUnits: WorkUnitLimit,
-    val elapsedTime: ElapsedTimeLimitMillis,
-    val extent: TraversalExtent,
-    val frontier: TraversalFrontierLimit,
-    val oneHop: RelationBudget,
-) {
-    constructor(
-        records: ResultLimit,
-        returnedBytes: TraversalByteLimit,
-        workUnits: WorkUnitLimit,
-        elapsedTime: ElapsedTimeLimitMillis,
-        depth: TraversalDepthLimit,
-        frontier: TraversalFrontierLimit,
-        oneHop: RelationBudget,
-    ) : this(
-        records,
-        returnedBytes,
-        workUnits,
-        elapsedTime,
-        TraversalExtent.ThroughDepth(depth),
-        frontier,
-        oneHop,
-    )
+sealed interface TraversalBudget {
+    val resources: ResourceBudget
+    val records: ResultLimit
+    val returnedBytes: TraversalByteLimit
+    val extent: TraversalExtent
+    val oneHop: RelationBudget
+
+    data class Bounded(
+        override val records: ResultLimit,
+        override val returnedBytes: TraversalByteLimit,
+        val workUnits: WorkUnitLimit,
+        val elapsedTime: ElapsedTimeLimitMillis,
+        override val extent: TraversalExtent,
+        val frontier: TraversalFrontierLimit,
+        override val oneHop: RelationBudget,
+    ) : TraversalBudget {
+        override val resources = ResourceBudget(records, workUnits, elapsedTime)
+    }
+
+    data class RunnerControlled(
+        override val records: ResultLimit,
+        override val returnedBytes: TraversalByteLimit,
+        override val extent: TraversalExtent,
+        val oneHopGrant: RunnerControlledRelationBudget,
+    ) : TraversalBudget {
+        override val resources = ResourceBudget.RunnerControlled
+        override val oneHop: RelationBudget = oneHopGrant.value
+    }
+
+    fun permitsReturnedBytes(bytes: Long): Boolean =
+        resources == ResourceBudget.RunnerControlled || bytes <= returnedBytes.value
+
+    fun permitsFrontier(count: Int): Boolean =
+        when (this) {
+            is Bounded -> count <= frontier.value
+            is RunnerControlled -> true
+        }
+
+    fun hasFrontierCapacity(count: Int): Boolean =
+        when (this) {
+            is Bounded -> count < frontier.value
+            is RunnerControlled -> true
+        }
+
+    companion object {
+        operator fun invoke(
+            records: ResultLimit,
+            returnedBytes: TraversalByteLimit,
+            workUnits: WorkUnitLimit,
+            elapsedTime: ElapsedTimeLimitMillis,
+            extent: TraversalExtent,
+            frontier: TraversalFrontierLimit,
+            oneHop: RelationBudget,
+        ): Bounded = Bounded(records, returnedBytes, workUnits, elapsedTime, extent, frontier, oneHop)
+
+        operator fun invoke(
+            records: ResultLimit,
+            returnedBytes: TraversalByteLimit,
+            workUnits: WorkUnitLimit,
+            elapsedTime: ElapsedTimeLimitMillis,
+            depth: TraversalDepthLimit,
+            frontier: TraversalFrontierLimit,
+            oneHop: RelationBudget,
+        ): Bounded =
+            Bounded(
+                records,
+                returnedBytes,
+                workUnits,
+                elapsedTime,
+                TraversalExtent.ThroughDepth(depth),
+                frontier,
+                oneHop,
+            )
+    }
 }
 
 enum class TraversalPlanFailure {
@@ -242,13 +292,14 @@ private constructor(
             expansion: RelationSearchBoundary,
         ): Refinement<TraversalPlan, TraversalPlanFailure> =
             when {
-                budget.oneHop.resources.resultLimit.value > budget.records.value ->
+                budget.oneHop.outputResults.value > budget.records.value ||
+                    !budget.oneHop.resources.resultsFitWithin(budget.resources) ->
                     Refinement.Rejected(TraversalPlanFailure.ONE_HOP_RECORD_LIMIT_EXCEEDS_TRAVERSAL)
                 budget.oneHop.returnedBytes.value > budget.returnedBytes.value ->
                     Refinement.Rejected(TraversalPlanFailure.ONE_HOP_BYTE_LIMIT_EXCEEDS_TRAVERSAL)
-                budget.oneHop.resources.workUnitLimit.value > budget.workUnits.value ->
+                !budget.oneHop.resources.workFitsWithin(budget.resources) ->
                     Refinement.Rejected(TraversalPlanFailure.ONE_HOP_WORK_LIMIT_EXCEEDS_TRAVERSAL)
-                budget.oneHop.resources.elapsedTimeLimit.value > budget.elapsedTime.value ->
+                !budget.oneHop.resources.timeFitsWithin(budget.resources) ->
                     Refinement.Rejected(TraversalPlanFailure.ONE_HOP_TIME_LIMIT_EXCEEDS_TRAVERSAL)
                 else ->
                     Refinement.Refined(
