@@ -47,6 +47,7 @@ class TraceRequestContractTest(unittest.TestCase):
                 self.assertNotIn('completion', request)
                 self.assertEqual('RUN', request['type'])
                 self.assertEqual('RETAIN', request['retention'])
+                self.assertEqual('BOUNDED', request['executionMode'])
                 self.assertEqual(grant, request['executionBudget'])
                 self.assertNotIn('output', request)
                 source = ({'type': 'SEARCH_DECLARATIONS', 'declarationName': name,

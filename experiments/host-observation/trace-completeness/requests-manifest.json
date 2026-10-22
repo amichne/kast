@@ -1,12 +1,13 @@
 {
   "type": "TRACE_REQUESTS_MANIFEST",
   "fixtureManifestSha256": "3111951fa903d4983d9af6f131e9c54cd39d008b487b307e45c64b634e3a3dd1",
-  "inputSchemaSha256": "ec382650f52831082d7b374c7e07bb4f2c37e8b1ac35c95e7c5710a9698d8495",
+  "inputSchemaSha256": "dc5b2eccc60c57d523c13e06b642ebb155cc8edfbf2c703101925243638138bd",
   "requests": [
     {
       "label": "A.TRACE",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "Attributes",
             "scope": {
@@ -61,6 +62,7 @@
       "label": "B.TRACE",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "FlowCollector",
             "scope": {
@@ -115,6 +117,7 @@
       "label": "A.IMPLEMENTATIONS",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "Attributes",
             "scope": {
@@ -177,6 +180,7 @@
       "label": "B.IMPLEMENTATIONS",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "FlowCollector",
             "scope": {
@@ -239,6 +243,7 @@
       "label": "B.OVERRIDES",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "file": "src/main/kotlin/fixture/flow/FlowCollector.kt",
             "offset": 990,
@@ -290,6 +295,7 @@
       "label": "A.library.CALLEES",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "take",
             "scope": {
@@ -349,6 +355,7 @@
       "label": "A.helper.CALLEES",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "helperRemoval",
             "scope": {
@@ -408,6 +415,7 @@
       "label": "B.named.CALLERS",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "consume",
             "scope": {
@@ -467,6 +475,7 @@
       "label": "N.stored.CALLEES",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "storedControl",
             "scope": {
@@ -526,6 +535,7 @@
       "label": "N.conditional.CALLEES",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "conditionalControl",
             "scope": {
@@ -585,6 +595,7 @@
       "label": "N.spring.IMPLEMENTATIONS",
       "payload": {
         "request": {
+          "executionMode": "BOUNDED",
           "source": {
             "declarationName": "ArticleRepository",
             "scope": {
