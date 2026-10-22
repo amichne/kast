@@ -751,6 +751,31 @@
           }
         }
       }
+    },
+    "enclosingOccurrenceSource": {
+      "summary": "Read the smallest callable body around an issued occurrence with a bounded line window. This example token grants no authority.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "candidate:v5:AAAAAAAAAAAAAAAAAAAAAA",
+          "region": "ENCLOSING_CALLABLE_BODY",
+          "text": {
+            "type": "WINDOW",
+            "beforeLines": 2,
+            "afterLines": 3
+          }
+        }
+      }
+    },
+    "readSourceExactSymbol": {
+      "summary": "Read the body of an issued exact declaration under its original authority.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+          "region": "CALLABLE_BODY"
+        }
+      }
     }
   },
   "invalidExamples": {
@@ -1037,15 +1062,6 @@
         }
       }
     },
-    "readSourceExactSymbol": {
-      "summary": "READ_SOURCE requires an issued candidate reference, distinct from an exact symbol reference.",
-      "value": {
-        "request": {
-          "type": "READ_SOURCE",
-          "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
-        }
-      }
-    },
     "traceUnknownDepth": {
       "summary": "TRACE has a fixed topology; arbitrary depth controls are not accepted.",
       "value": {
@@ -1095,6 +1111,15 @@
           "executionBudget": {
             "maxResults": 20
           }
+        }
+      }
+    },
+    "readSourceTruncatedExactSymbol": {
+      "summary": "Truncated exact references reject before source selection.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "exact:v5:truncated"
         }
       }
     }

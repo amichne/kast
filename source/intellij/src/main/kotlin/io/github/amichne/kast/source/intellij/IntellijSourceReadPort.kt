@@ -328,45 +328,9 @@ internal class IntellijSourceReadPort(
                 is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
             }
         val text =
-            when (val projection = request.text) {
-                TextProjection.None -> SourceTextProjection.NotRequested
-                TextProjection.Complete ->
-                    when (
-                        val admitted =
-                            SourceTextProjection.returned(
-                                capture.regionSelector,
-                                capture.normalizedDocumentText,
-                            )
-                    ) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                    }
-                is TextProjection.Window -> {
-                    val windowRange =
-                        capture.windowRange(projection) ?: return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                    val windowSelector =
-                        when (
-                            val issued =
-                                SourceSelector.issueNested(
-                                    capture.regionSelector,
-                                    windowRange,
-                                    SourceRegionKind.WINDOW,
-                                )
-                        ) {
-                            is Refinement.Refined -> issued.value
-                            is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                        }
-                    when (
-                        val admitted =
-                            SourceTextProjection.returned(
-                                windowSelector,
-                                capture.normalizedDocumentText,
-                            )
-                    ) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                    }
-                }
+            when (val projected = capture.projectText(request.text)) {
+                is Refinement.Refined -> projected.value
+                is Refinement.Rejected -> return rejected(projected.failure)
             }
         val returnedBytes =
             when (text) {
@@ -504,58 +468,6 @@ private fun IntellijCommittedSourceCapture.snapshotText(declarationText: String)
         append(declarationText)
         repeat(snapshot.length.value - declarationRange.endExclusive.value) { append(' ') }
     }
-}
-
-private fun IntellijSelectedSourceCapture.windowRange(projection: TextProjection.Window): SourceRange? {
-    val regionStart = regionSelector.range.startInclusive.value
-    val regionEnd = regionSelector.range.endExclusive.value
-    val seedStart = maxOf(anchorSelector.range.startInclusive.value, regionStart)
-    val seedEnd = minOf(anchorSelector.range.endExclusive.value, regionEnd)
-    if (seedStart > seedEnd) return null
-
-    var start = lineStart(normalizedDocumentText, seedStart).coerceAtLeast(regionStart)
-    repeat(projection.beforeLines.value) {
-        if (start > regionStart) {
-            start = lineStart(normalizedDocumentText, (start - 1).coerceAtLeast(regionStart)).coerceAtLeast(regionStart)
-        }
-    }
-    var end = lineEnd(normalizedDocumentText, seedEnd).coerceAtMost(regionEnd)
-    repeat(projection.afterLines.value) {
-        if (end < regionEnd) {
-            end =
-                lineEnd(
-                        normalizedDocumentText,
-                        (end + 1).coerceAtMost(regionEnd),
-                    )
-                    .coerceAtMost(regionEnd)
-        }
-    }
-    val startOffset =
-        when (val parsed = Utf16CodeUnitOffset.parse(start)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return null
-        }
-    val endOffset =
-        when (val parsed = Utf16CodeUnitOffset.parse(end)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return null
-        }
-    return when (val admitted = SourceRange.create(snapshot, startOffset, endOffset)) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> null
-    }
-}
-
-private fun lineStart(text: String, offset: Int): Int {
-    val searchFrom = (offset - 1).coerceAtMost(text.lastIndex)
-    return if (searchFrom < 0) 0 else text.lastIndexOf('\n', searchFrom) + 1
-}
-
-private fun lineEnd(text: String, offset: Int): Int {
-    if (offset <= 0 && text.isEmpty()) return 0
-    if (offset > 0 && offset <= text.length && text[offset - 1] == '\n') return offset
-    val newline = text.indexOf('\n', offset.coerceAtMost(text.length))
-    return if (newline < 0) text.length else newline + 1
 }
 
 private fun sourceEntityCount(raw: Int): SourceEntityCount =

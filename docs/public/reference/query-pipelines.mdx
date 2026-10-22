@@ -181,6 +181,46 @@ With an explicit walk depth, the default is the retained seed's scope. An explic
 
 This current source-domain example does not change the recorded counts. A later `WHERE` cannot reduce work in the native scan.
 
+## Read source around an occurrence
+
+Copy the issued `candidateSelector` from an occurrence into `candidateRef`.
+Select its structural region independently of the text view.
+
+For an exact declaration, copy its issued `ref` into `candidateRef`.
+Use `CALLABLE_BODY` to select its callable body.
+Exact focus reads restore the original authority and reject stale references without reacquisition.
+
+```json
+{
+  "request": {
+    "type": "READ_SOURCE",
+    "candidateRef": "<issued candidateSelector>",
+    "region": "ENCLOSING_CALLABLE_BODY",
+    "text": {"type": "EXCERPT", "maxLines": 20}
+  }
+}
+```
+
+`ENCLOSING_DECLARATION`, `ENCLOSING_CALLABLE_BODY`, and `ENCLOSING_CLASS_BODY` select the smallest strict enclosing region of that kind.
+`CALLABLE_BODY` and `CLASS_BODY` select the nearest matching body, which can belong to the anchor itself.
+`ANCHOR` keeps the exact anchor, and `FILE` selects its file.
+A structural owner must contain the full focus.
+A window across sibling declarations cannot select just its first callable.
+
+Omission or `null` selects `ANCHOR` and `COMPLETE` text.
+`EXCERPT` returns at most `maxLines` around the anchor start, clipped to the selected region.
+Its default is 40 lines, and its range is 1 to 1000 lines.
+`WINDOW` defaults to five lines before and after the anchor, clipped to the selected region.
+A window includes the full anchor span, so a multi-line anchor can produce more text than these line counts.
+An oversized view withholds text and reports an explicit limitation.
+
+The response keeps the structural region selector separate from the text selector.
+A window selector identifies an excerpt and does not prove complete declaration text.
+For more context, copy the issued region selector into `candidateRef` and request `COMPLETE` text.
+For a selector without text, use `"text": {"type": "NONE"}`.
+Source re-entry keeps the original source scope and rejects stale snapshots.
+It does not replay query stages.
+
 ## Read produced output or retained rows
 
 Use `RESUME` for an issued output continuation. Use `READ_RESULT` for rows from an identified retained result.

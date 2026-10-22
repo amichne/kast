@@ -2978,9 +2978,9 @@
     "SourceCandidateReference": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^candidate:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
+      "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
       "x-kotlin-type": "ProtocolText",
-      "description": "Exact issued source occurrence or anonymous callable candidate reference. Retains its original workspace and read authority."
+      "description": "Issued candidate, exact symbol, or source selector under its original workspace, source scope, and read authority. Copy the reference unchanged."
     },
     "ReadSourceAction": {
       "type": "object",
@@ -2995,6 +2995,35 @@
         "candidateRef": {
           "$ref": "#/$defs/SourceCandidateReference"
         },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "ANCHOR",
+            "CALLABLE_BODY",
+            "CLASS_BODY",
+            "FILE",
+            "ENCLOSING_DECLARATION",
+            "ENCLOSING_CALLABLE_BODY",
+            "ENCLOSING_CLASS_BODY",
+            null
+          ],
+          "default": "ANCHOR",
+          "description": "Select structure from the exact anchor. ENCLOSING selects the smallest strict enclosing owner of the named kind. Omission or null selects ANCHOR."
+        },
+        "text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceText"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Select text independently of the structural region. Omission or null selects COMPLETE."
+        },
         "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
         }
@@ -3004,7 +3033,7 @@
         "candidateRef"
       ],
       "additionalProperties": false,
-      "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
+      "description": "Read an issued focus with separate region and text choices. Stale references reject. Query stages do not replay."
     },
     "Trace": {
       "type": "object",
@@ -3192,6 +3221,120 @@
         "end"
       ],
       "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument"
+    },
+    "SourceTextComplete": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "COMPLETE"
+          ],
+          "default": "COMPLETE"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Return the complete region. A byte limit can withhold its text."
+    },
+    "SourceTextNone": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "NONE"
+          ],
+          "default": "NONE"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Return the region selector without text."
+    },
+    "SourceTextWindow": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WINDOW"
+          ],
+          "default": "WINDOW"
+        },
+        "beforeLines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 5
+        },
+        "afterLines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 5
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Return lines around the full anchor span, clipped to the region. A window does not prove complete declaration text."
+    },
+    "SourceText": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceTextComplete"
+        },
+        {
+          "$ref": "#/$defs/SourceTextNone"
+        },
+        {
+          "$ref": "#/$defs/SourceTextWindow"
+        },
+        {
+          "$ref": "#/$defs/SourceTextExcerpt"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "SourceTextExcerpt": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "EXCERPT"
+          ],
+          "default": "EXCERPT"
+        },
+        "maxLines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 40
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Cap the view at maxLines around the anchor start, clipped to the region."
     },
     "ExecutionMode": {
       "type": [
@@ -3984,6 +4127,31 @@
               }
             }
           }
+        },
+        "enclosingOccurrenceSource": {
+          "summary": "Read the smallest callable body around an issued occurrence with a bounded line window. This example token grants no authority.",
+          "value": {
+            "request": {
+              "type": "READ_SOURCE",
+              "candidateRef": "candidate:v5:AAAAAAAAAAAAAAAAAAAAAA",
+              "region": "ENCLOSING_CALLABLE_BODY",
+              "text": {
+                "type": "WINDOW",
+                "beforeLines": 2,
+                "afterLines": 3
+              }
+            }
+          }
+        },
+        "readSourceExactSymbol": {
+          "summary": "Read the body of an issued exact declaration under its original authority.",
+          "value": {
+            "request": {
+              "type": "READ_SOURCE",
+              "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+              "region": "CALLABLE_BODY"
+            }
+          }
         }
       },
       "invalidExamples": {
@@ -4270,15 +4438,6 @@
             }
           }
         },
-        "readSourceExactSymbol": {
-          "summary": "READ_SOURCE requires an issued candidate reference, distinct from an exact symbol reference.",
-          "value": {
-            "request": {
-              "type": "READ_SOURCE",
-              "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
-            }
-          }
-        },
         "traceUnknownDepth": {
           "summary": "TRACE has a fixed topology; arbitrary depth controls are not accepted.",
           "value": {
@@ -4328,6 +4487,15 @@
               "executionBudget": {
                 "maxResults": 20
               }
+            }
+          }
+        },
+        "readSourceTruncatedExactSymbol": {
+          "summary": "Truncated exact references reject before source selection.",
+          "value": {
+            "request": {
+              "type": "READ_SOURCE",
+              "candidateRef": "exact:v5:truncated"
             }
           }
         }
@@ -4604,5 +4772,5 @@
       ]
     }
   ],
-  "contractVersion": 15
+  "contractVersion": 16
 }

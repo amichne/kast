@@ -177,6 +177,10 @@ value class LineCount private constructor(val value: Int) {
     }
 }
 
+enum class SourceExcerptFailure {
+    ZERO_LINES
+}
+
 sealed interface TextProjection {
     data object Complete : TextProjection
 
@@ -187,6 +191,14 @@ sealed interface TextProjection {
         val beforeLines: LineCount,
         val afterLines: LineCount,
     ) : TextProjection
+
+    data class Excerpt private constructor(val maxLines: LineCount) : TextProjection {
+        companion object {
+            fun create(maxLines: LineCount): Refinement<Excerpt, SourceExcerptFailure> =
+                if (maxLines.value == 0) Refinement.Rejected(SourceExcerptFailure.ZERO_LINES)
+                else Refinement.Refined(Excerpt(maxLines))
+        }
+    }
 
     companion object {
         fun window(beforeLines: LineCount, afterLines: LineCount): Window = Window(beforeLines, afterLines)

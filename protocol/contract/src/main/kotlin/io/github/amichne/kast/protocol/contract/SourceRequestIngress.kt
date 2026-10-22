@@ -100,7 +100,7 @@ private fun validateSourceAnchor(root: JsonObject) {
             "type",
             SourceRequestPath.ANCHOR_TYPE,
             SourceRequestRule.ANCHOR_TYPE,
-            listOf("candidate", "symbol", "source"),
+            listOf("candidate", "symbol", "symbol-snapshot", "source"),
         )
     val selector =
         sourceString(
@@ -138,10 +138,12 @@ private fun validateAnchorFamily(text: ProtocolText, role: String) {
             val actual =
                 when (family.value) {
                     is SourceReadAnchorDocument.Candidate -> "candidate"
-                    is SourceReadAnchorDocument.Symbol -> "symbol"
+                    is SourceReadAnchorDocument.Symbol,
+                    is SourceReadAnchorDocument.SnapshotSymbol -> "symbol"
                     is SourceReadAnchorDocument.Source -> "source"
                 }
-            if (role != actual)
+            val requestedFamily = if (role == "symbol-snapshot") "symbol" else role
+            if (requestedFamily != actual)
                 throw SourceRequestSerializationException(
                     SourceReadFailureDetail.ReferenceRejected(role.role(), SourceReferenceFailure.WRONG_FAMILY)
                 )
@@ -288,7 +290,7 @@ private fun validateSourceText(root: JsonObject) {
             "type",
             SourceRequestPath.TEXT_TYPE,
             SourceRequestRule.TEXT_TYPE,
-            listOf("complete", "none", "window"),
+            listOf("complete", "none", "window", "excerpt"),
         )
     ) {
         "window" -> {
@@ -308,6 +310,17 @@ private fun validateSourceText(root: JsonObject) {
                 0,
                 MAX_SOURCE_READ_LINE_COUNT.toLong(),
                 SourceRequestRule.LINE_COUNT,
+            )
+        }
+        "excerpt" -> {
+            sourceFields(projection, SourceRequestPath.TEXT, setOf("type", "maxLines"))
+            sourceNumber(
+                projection,
+                "maxLines",
+                SourceRequestPath.MAX_LINES,
+                1,
+                MAX_SOURCE_READ_LINE_COUNT.toLong(),
+                SourceRequestRule.POSITIVE_LINE_COUNT,
             )
         }
         else -> sourceFields(projection, SourceRequestPath.TEXT, setOf("type"))
@@ -342,6 +355,7 @@ private fun validateSourcePage(root: JsonObject) {
 private fun String.role(): SourceReferenceRole =
     when (this) {
         "candidate" -> SourceReferenceRole.CANDIDATE
-        "symbol" -> SourceReferenceRole.SYMBOL
+        "symbol",
+        "symbol-snapshot" -> SourceReferenceRole.SYMBOL
         else -> SourceReferenceRole.SOURCE
     }

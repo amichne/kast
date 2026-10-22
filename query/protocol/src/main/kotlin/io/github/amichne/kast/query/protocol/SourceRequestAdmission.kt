@@ -216,7 +216,8 @@ private fun SourceReadAnchorDocument.admit(
                 is CanonicalSelectorDecoding.Rejected ->
                     return Refinement.Rejected(lookup.sourceRejection(SourceReferenceRole.CANDIDATE))
             }
-        is SourceReadAnchorDocument.Symbol ->
+        is SourceReadAnchorDocument.Symbol,
+        is SourceReadAnchorDocument.SnapshotSymbol ->
             when (val lookup = authority.restoreExact(requested.selector, current)) {
                 is CanonicalSelectorDecoding.Decoded -> Refinement.Refined(DomainSourceReadAnchor.Symbol(lookup.value))
                 is CanonicalSelectorDecoding.Rejected ->
@@ -286,6 +287,22 @@ private fun SourceTextRequestDocument.domain(): Refinement<TextProjection, Sourc
                         SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.REQUEST_REFINEMENT)
                     )
             Refinement.Refined(TextProjection.window(before, after))
+        }
+        is SourceTextRequestDocument.Excerpt -> {
+            val lines =
+                LineCount.parse(requested.maxLines.value).refinedOrNull()
+                    ?: return sourceRequestRejected(
+                        io.github.amichne.kast.protocol.contract.SourceRequestPath.MAX_LINES,
+                        io.github.amichne.kast.protocol.contract.SourceRequestRule.POSITIVE_LINE_COUNT,
+                    )
+            when (val admitted = TextProjection.Excerpt.create(lines)) {
+                is Refinement.Refined -> admitted
+                is Refinement.Rejected ->
+                    sourceRequestRejected(
+                        io.github.amichne.kast.protocol.contract.SourceRequestPath.MAX_LINES,
+                        io.github.amichne.kast.protocol.contract.SourceRequestRule.POSITIVE_LINE_COUNT,
+                    )
+            }
         }
     }
 

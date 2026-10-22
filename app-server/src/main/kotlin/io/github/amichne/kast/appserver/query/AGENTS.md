@@ -4,11 +4,12 @@ title: "Public query engineering rules"
 description: "Defines schema ownership, typed query admission, strict completion, and distinct retained-output capabilities."
 resource: "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query"
 tags: [kast, navigation]
-timestamp: "2026-10-22T05:29:46Z"
+timestamp: "2026-10-22T05:40:00Z"
 source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolSourceMapping.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
@@ -34,7 +35,18 @@ request admits exactly one of four actions:
 - `RUN` accepts a source and optional ordered steps.
 - `RESUME` accepts a typed retained-output continuation and an optional presentation budget.
 - `READ_RESULT` accepts a retained-result reference and a distinct presentation cursor.
-- `READ_SOURCE` accepts an issued candidate reference for its exact source anchor.
+- `READ_SOURCE` accepts an issued candidate, exact symbol, or source selector, with separate structural and text choices.
+
+`READ_SOURCE` keeps the `candidateRef` field for compatibility.
+The field accepts an issued candidate, exact symbol, or source selector and preserves its exact bytes.
+Public exact-symbol focus uses the canonical `SnapshotSymbol` anchor.
+It restores the original authority and rejects stale or ambiguous references without reacquisition.
+The private canonical `Symbol` anchor keeps its explicit first-page reacquisition behavior.
+
+The `region` choice selects the anchor, body, file, or smallest strict enclosing region.
+The `text` choice selects complete text, a line window, or no text.
+The source owner keeps the region selector distinct from the text selector.
+A window does not prove complete declaration text.
 
 Source reads reuse the canonical source owner and preserve its authority and freshness failures.
 Keep candidate references, exact-symbol
@@ -68,7 +80,7 @@ Retained binding results can seed another run, including selected issued row IDs
 Semi and anti joins continue as symbol streams. An anti join admits only a complete right operand.
 
 Encoding is a transport projection of retained typed syntax, not a reverse parser
-for arbitrary canonical requests. A public constructor or copy must not bypass admission.
+for arbitrary canonical requests. Every public constructor and copy must preserve admission.
 Schema constraints and canonical syntax guards remain enforced even when a provider
 supports a weaker generation schema. Passing a JSON Schema is not a capability.
 

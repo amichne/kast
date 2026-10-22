@@ -13,6 +13,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -42,6 +43,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -87,6 +89,9 @@ internal class NativeScopedTraceFixture(
         }
     }
     private val limits = ReadLimits.Default
+    private val references = CanonicalQueryReferences(model)
+
+    fun sourceProtocol() = CanonicalSourceReadProtocol(source(), references)
 
     fun protocol(): CanonicalQueryProtocol {
         val symbols =
@@ -119,7 +124,7 @@ internal class NativeScopedTraceFixture(
                 traversal = hostedTraversalOperations(relations, observation),
                 traversalCeiling = traversalBudget,
             ),
-            CanonicalQueryReferences(model),
+            references,
         )
     }
 
@@ -170,6 +175,11 @@ internal class NativeScopedTraceFixture(
 internal class NativeTraceCounters : IntellijReadObservation {
     private val counts = mutableMapOf<IntellijReadCounter, Long>()
     val terminations = mutableListOf<IntellijReadTermination>()
+    val unexpectedFailures = mutableListOf<IntellijReadUnexpectedFailure>()
+
+    override fun unexpected(failure: IntellijReadUnexpectedFailure) {
+        unexpectedFailures += failure
+    }
 
     override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
         counts[counter] = (counts[counter] ?: 0L) + amount

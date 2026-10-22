@@ -98,20 +98,6 @@ class KastToolRpcQuerySessionTest {
     }
 
     @Test
-    fun `exact symbol cannot replace an issued source candidate`() {
-        val request =
-            PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)
-                .invalidExamples
-                .getValue("readSourceExactSymbol")
-                .value
-                .toString()
-        val actual = mutableListOf<ToolRpcReply>()
-        KastToolRpcQuerySession { error("Exact symbol cannot dispatch a source read") }
-            .run(input(listOf(request)), actual::add)
-        assertEquals(listOf(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)), actual)
-    }
-
-    @Test
     fun `missing preceding capability rejects without inventing expected authority`() {
         val cases =
             listOf(
@@ -285,7 +271,7 @@ class KastToolRpcQuerySessionTest {
         val encoded = Json.encodeToString(ToolRpcCatalog(emptyList()))
         val catalog = Json.parseToJsonElement(encoded).jsonObject
         assertEquals("true", catalog.getValue("querySession").jsonPrimitive.content)
-        assertEquals("15", catalog.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("16", catalog.getValue("schemaVersion").jsonPrimitive.content)
     }
 
     private fun run(

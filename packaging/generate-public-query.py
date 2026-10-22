@@ -284,9 +284,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
     discovery_body = []
     impact_body = []
     trace_body = []
+    source_body = []
     discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource'}
     for key, spec in objects.items():
-        object_body = trace_body if key == 'Trace' else impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
+        object_body = source_body if key == 'ReadSourceAction' or key.startswith('SourceText') else trace_body if key == 'Trace' else impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
@@ -301,10 +302,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
         if not props:
             declaration = f'internal data object PublicTool{key}{suffix}'
             inline_annotation = annotation.replace('\n', ' ')
-            object_annotation = (inline_annotation if key.startswith('Impact') and
+            object_annotation = (inline_annotation if key.startswith(('Impact', 'SourceText')) and
                                  len(inline_annotation + declaration) <= 120 else annotation)
             object_body.append(object_annotation + declaration + '\n\n')
         else:
+            class_start = len(object_body)
             object_body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
                 resolved = definitions[value['$ref'].split('/')[-1]] if '$ref' in value else value
@@ -339,13 +341,21 @@ def render_tools(authority: dict) -> dict[Path, str]:
                 else:
                     object_body.append(declaration)
             object_body.append(')' + suffix + '\n\n')
+            if key.startswith('SourceText') and len(props) == 1:
+                parameter = object_body[-2].strip().removesuffix(',')
+                declaration = f'internal data class PublicTool{key}({parameter}){suffix}'
+                if len(declaration) <= 120:
+                    object_body[class_start:] = [annotation + declaration + '\n\n']
     for key, values in enums.items():
-        lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
+        enum_body = source_body if key == 'Region' else lines
+        enum_body.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
         for value in values:
-            lines.append(f'    @SerialName({json.dumps(value)}) {enum_entry(value)},\n')
-        lines.append('}\n\n')
+            enum_body.append(f'    @SerialName({json.dumps(value)}) {enum_entry(value)},\n')
+        enum_body.append('}\n\n')
     for union in unions:
-        lines.append(f'@Serializable\ninternal sealed interface PublicTool{union}\n\n')
+        union_body = source_body if union == 'SourceText' else lines
+        annotation_separator = ' ' if union == 'SourceText' else '\n'
+        union_body.append(f'@Serializable{annotation_separator}internal sealed interface PublicTool{union}\n\n')
     lines += body
     # Defaults are data in the authority and are compiled here, never copied into a provider.
     query_tool = next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
@@ -353,6 +363,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
     def text_value(value): return 'toolDefault(ProtocolText.parse(' + json.dumps(value) + '))'
     def bounded(values): return 'toolDefault(BoundedProtocolList.create(listOf(' + ', '.join(values) + ')))'
     lines.append('internal object PublicToolDefaults {\n')
+    lines.append(f'    const val sourceMaxLines = {definitions["SourceTextExcerpt"]["properties"]["maxLines"]["default"]}\n')
+    for field in ('beforeLines', 'afterLines'):
+        value = definitions['SourceTextWindow']['properties'][field]['default']
+        lines.append(f'    const val source{field[0].upper() + field[1:]} = {value}\n')
     lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['nameMatch']) + '\n')
     lines.append('    val executionMode = QueryExecutionModeDocument.' + enum_entry(defaults['executionMode']) + '\n')
     lines.append('    const val includeSubdirectories = ' + str(definitions['DirectoryScope']['properties']['includeSubdirectories']['default']).lower() + '\n')
@@ -397,6 +411,12 @@ def render_tools(authority: dict) -> dict[Path, str]:
     outputs = {
         KOTLIN / 'PublicToolDocuments.kt': document_source,
         KOTLIN / 'PublicToolTrace.kt': HEADER + ''.join(trace_body).rstrip() + '\n',
+        KOTLIN / 'PublicToolSourceDocuments.kt':
+            '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+            'package io.github.amichne.kast.appserver.query\n\n'
+            'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
+            'import kotlinx.serialization.SerialName\n'
+            'import kotlinx.serialization.Serializable\n\n' + ''.join(source_body).rstrip() + '\n',
         KOTLIN / 'PublicToolDiscoveryDocuments.kt':
             '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.appserver.query\n\n'

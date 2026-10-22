@@ -80,6 +80,7 @@ enum class SourceRequestPath {
     @SerialName("text.type") TEXT_TYPE,
     @SerialName("text.beforeLines") BEFORE_LINES,
     @SerialName("text.afterLines") AFTER_LINES,
+    @SerialName("text.maxLines") MAX_LINES,
     @SerialName("entityLimit") ENTITY_LIMIT,
     @SerialName("textByteLimit") TEXT_BYTE_LIMIT,
     @SerialName("page") PAGE,
@@ -162,6 +163,7 @@ enum class SourceRequestRule {
     @SerialName("page-type") PAGE_TYPE,
     @SerialName("format") FORMAT,
     @SerialName("line-count-0-to-1000") LINE_COUNT,
+    @SerialName("line-count-1-to-1000") POSITIVE_LINE_COUNT,
     @SerialName("entity-count-1-to-1000") ENTITY_COUNT,
     @SerialName("entity-limit-not-applicable") ENTITY_LIMIT_NOT_APPLICABLE,
     @SerialName("positive-byte-count") BYTE_COUNT,
@@ -287,7 +289,8 @@ sealed interface SourceRequestExpectation {
 
 private fun SourceRequestRule.expectation(): SourceRequestExpectation =
     when (this) {
-        SourceRequestRule.ANCHOR_TYPE -> SourceRequestExpectation.Alternatives(listOf("candidate", "symbol", "source"))
+        SourceRequestRule.ANCHOR_TYPE ->
+            SourceRequestExpectation.Alternatives(listOf("candidate", "symbol", "symbol-snapshot", "source"))
         SourceRequestRule.REGION_TYPE ->
             SourceRequestExpectation.Alternatives(listOf("anchor", "body", "file", "enclosing"))
         SourceRequestRule.BODY_KIND -> SourceRequestExpectation.Alternatives(listOf("callable", "class"))
@@ -304,10 +307,12 @@ private fun SourceRequestRule.expectation(): SourceRequestExpectation =
         SourceRequestRule.VISIBILITY_TYPE -> SourceRequestExpectation.Alternatives(listOf("any", "exact"))
         SourceRequestRule.VISIBILITY ->
             SourceRequestExpectation.Alternatives(listOf("public", "protected", "internal", "private", "local"))
-        SourceRequestRule.TEXT_TYPE -> SourceRequestExpectation.Alternatives(listOf("complete", "none", "window"))
+        SourceRequestRule.TEXT_TYPE ->
+            SourceRequestExpectation.Alternatives(listOf("complete", "none", "window", "excerpt"))
         SourceRequestRule.PAGE_TYPE -> SourceRequestExpectation.Alternatives(listOf("first", "continue"))
         SourceRequestRule.FORMAT -> SourceRequestExpectation.Alternatives(listOf("expanded", "compact"))
         SourceRequestRule.LINE_COUNT -> SourceRequestExpectation.Bounds(0, MAX_SOURCE_READ_LINE_COUNT.toLong())
+        SourceRequestRule.POSITIVE_LINE_COUNT -> SourceRequestExpectation.Bounds(1, MAX_SOURCE_READ_LINE_COUNT.toLong())
         SourceRequestRule.ENTITY_COUNT -> SourceRequestExpectation.Bounds(1, MAX_SOURCE_READ_ENTITY_LIMIT.toLong())
         SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE -> SourceRequestExpectation.Rule
         SourceRequestRule.BYTE_COUNT -> SourceRequestExpectation.Bounds(1, Long.MAX_VALUE)
@@ -341,6 +346,7 @@ private fun SourceRequestRule.expectation(path: SourceRequestPath): SourceReques
         SourceRequestPath.TEXT_TYPE -> SourceRequestRule.TEXT_TYPE.expectation()
         SourceRequestPath.BEFORE_LINES,
         SourceRequestPath.AFTER_LINES -> SourceRequestRule.LINE_COUNT.expectation()
+        SourceRequestPath.MAX_LINES -> SourceRequestRule.POSITIVE_LINE_COUNT.expectation()
         SourceRequestPath.BUDGET_ELAPSED,
         SourceRequestPath.BUDGET_WORK,
         SourceRequestPath.BUDGET_BYTES -> SourceRequestExpectation.Bounds(1, Long.MAX_VALUE)
