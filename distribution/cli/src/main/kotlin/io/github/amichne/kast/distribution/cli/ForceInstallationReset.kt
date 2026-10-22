@@ -79,21 +79,15 @@ internal class ForceResetRoot private constructor(val path: Path) {
         }
         return try {
             val marker = installationResetFence(path)
-            val artifacts =
-                Files.newDirectoryStream(path.parent).use { entries ->
-                    entries
-                        .asSequence()
-                        .filter {
-                            it.fileName.toString().startsWith(".kast-") &&
-                                !it.fileName.toString().endsWith(".lock") &&
-                                it != marker
-                        }
-                        .take(MAXIMUM_PUBLIC_RESET_ENTRIES + 1)
-                        .toList()
-                }
+            val artifacts = retainedArtifacts(marker)
             if (artifacts.size > MAXIMUM_PUBLIC_RESET_ENTRIES)
                 return ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
-            for (path in artifacts + listOf(scope.home.resolve(".kast"))) {
+            val launcherArtifacts = launcherArtifacts(scope)
+            if (launcherArtifacts.size > MAXIMUM_PUBLIC_RESET_ENTRIES)
+                return ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+            for (path in artifacts + launcherArtifacts + scope.historicalPaths) {
+                if (ForceResetRoot.admit(path, scope.home) == ForceResetRootAdmission.Rejected)
+                    return ResetEffect.Rejected(ForceResetFailure.ROOT_REJECTED)
                 when (val removed = removeHistoricalEntry(path, scope.home, runtime)) {
                     ResetEffect.Completed -> Unit
                     is ResetEffect.Rejected -> return removed
@@ -106,6 +100,32 @@ internal class ForceResetRoot private constructor(val path: Path) {
             ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
         }
     }
+
+    private fun retainedArtifacts(marker: Path): List<Path> =
+        Files.newDirectoryStream(path.parent).use { entries ->
+            entries
+                .asSequence()
+                .filter {
+                    it.fileName.toString().startsWith(".kast-") &&
+                        !it.fileName.toString().endsWith(".lock") &&
+                        it != marker
+                }
+                .take(MAXIMUM_PUBLIC_RESET_ENTRIES + 1)
+                .toList()
+        }
+
+    private fun launcherArtifacts(scope: PublicResetScope): List<Path> =
+        setOf(scope.command.parent, scope.home.resolve(".local/bin")).flatMap { directory ->
+            if (Files.notExists(directory, NOFOLLOW_LINKS)) emptyList()
+            else
+                Files.newDirectoryStream(directory).use { entries ->
+                    entries
+                        .asSequence()
+                        .filter { Regex("\\.kast-[0-9]+\\.(old|new)").matches(it.fileName.toString()) }
+                        .take(MAXIMUM_PUBLIC_RESET_ENTRIES + 1)
+                        .toList()
+                }
+        }
 
     private fun removeCommands(scope: PublicResetScope): ResetEffect {
         when (resetInstallationTransport(path.resolve("installation"), scope.home)) {

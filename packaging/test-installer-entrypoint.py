@@ -71,13 +71,6 @@ class HostReleaseFixture:
 
 
 @dataclass(frozen=True)
-class StableReleaseFixture:
-    tag_name: str = 'v1.2.3'
-    draft: bool = False
-    prerelease: bool = False
-
-
-@dataclass(frozen=True)
 class CompletionRejectedFixture:
     type: str = 'REJECTED'
     operation: str = 'REINSTALL'
@@ -268,7 +261,7 @@ esac
             self.assertIn('options=install --stage-only', result.stderr)
 
     def developer_curl(self, directory: str, assets: Path, pointer: str | None, *, version: str = '0.0.123',
-                       stable_release: str | None = None, release_status: int = 0):
+                       stable_url: str | None = None, release_status: int = 0):
         binary = Path(directory) / "bin/curl"
         binary.write_text(f"""#!/usr/bin/env python3
 from pathlib import Path
@@ -288,13 +281,16 @@ elif url == 'https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=d
     if {pointer is None!r}:
         raise SystemExit(22)
     print({pointer!r})
-elif url == 'https://api.github.com/repos/amichne/kast/releases/latest' and {stable_release is not None!r}:
-    print({stable_release!r})
+elif url == 'https://github.com/amichne/kast/releases/latest' and {stable_url is not None!r}:
+    assert '--head' in arguments and '--write-out' in arguments
+    sys.stdout.write({stable_url!r})
+    if {release_status!r}:
+        print('curl: (22) The requested URL returned error: 503', file=sys.stderr)
     raise SystemExit({release_status!r})
-elif url == 'https://api.github.com/repos/amichne/kast/releases?per_page=100' and {stable_release is not None!r}:
-    print('[' + {stable_release!r} + ']')
-    raise SystemExit({release_status!r})
-elif {f'/v{version}/' if stable_release is not None else f'/developer-v{version}/'!r} in url and '--output' in arguments:
+elif url.startswith('https://api.github.com/'):
+    print('curl: (22) API rate limit exceeded', file=sys.stderr)
+    raise SystemExit(22)
+elif {f'/v{version}/' if stable_url is not None else f'/developer-v{version}/'!r} in url and '--output' in arguments:
     name = url.rsplit('/', 1)[-1]
     shutil.copyfile(Path({str(assets)!r}) / name, arguments[arguments.index('--output') + 1])
 else:
@@ -309,47 +305,53 @@ else:
             environment.pop('KAST_VERSION')
             environment.pop('KAST_INSTALL_ASSETS_DIRECTORY')
             environment.update(self.developer_curl(directory, assets, None, version='1.2.3',
-                stable_release=json.dumps(asdict(StableReleaseFixture()))))
+                stable_url='https://github.com/amichne/kast/releases/tag/v1.2.3'))
             result = subprocess.run(
                 [str(BASH), '-c', INSTALLER.read_text(), '--', '--idea-home', str(idea), '--dry-run'],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)
             calls = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()]
-            self.assertEqual(['https://api.github.com/repos/amichne/kast/releases/latest'],
-                [arguments[-1] for arguments in calls if '--output' not in arguments])
+            self.assertEqual('https://github.com/amichne/kast/releases/latest', calls[0][-1])
+            self.assertFalse(any('api.github.com' in arguments[-1] for arguments in calls))
             self.assertEqual(6, len(calls) - 1)
             for arguments in calls[1:]:
                 self.assertTrue(arguments[-1].startswith('https://github.com/amichne/kast/releases/download/v1.2.3/'))
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
-    def test_stable_latest_rejects_invalid_or_unavailable_metadata_before_assets(self):
+    def test_stable_latest_rejects_foreign_unstable_or_unavailable_redirects_before_assets(self):
         cases = (
-            ('truncated', '{"tag_name":', 0, 'latest release metadata is invalid'),
-            ('developer', json.dumps(asdict(StableReleaseFixture('developer-v0.0.123'))), 0, 'latest release is not stable'),
-            ('draft', json.dumps(asdict(StableReleaseFixture(draft=True))), 0, 'latest release is not stable'),
-            ('prerelease', json.dumps(asdict(StableReleaseFixture(prerelease=True))), 0, 'latest release is not stable'),
-            ('transfer', json.dumps(asdict(StableReleaseFixture())), 22, 'latest release is unavailable'),
+            ('foreign', 'https://github.com/foreign/kast/releases/tag/v1.2.3', 0, 'latest release URL is invalid'),
+            ('host', 'https://github.com.example/amichne/kast/releases/tag/v1.2.3', 0, 'latest release URL is invalid'),
+            ('http', 'http://github.com/amichne/kast/releases/tag/v1.2.3', 0, 'latest release URL is invalid'),
+            ('developer', 'https://github.com/amichne/kast/releases/tag/developer-v0.0.123', 0, 'latest release URL is invalid'),
+            ('prerelease', 'https://github.com/amichne/kast/releases/tag/v1.2.3-rc1', 0, 'latest release URL is invalid'),
+            ('query', 'https://github.com/amichne/kast/releases/tag/v1.2.3?other', 0, 'latest release URL is invalid'),
+            ('unresolved', 'https://github.com/amichne/kast/releases/latest', 0, 'latest release URL is invalid'),
+            ('transfer', '', 22, 'latest release is unavailable'),
         )
-        for name, metadata, status, message in cases:
+        for name, url, status, message in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory(prefix='kast-stable-rejected-') as directory:
                 idea, assets, environment = self.installer_fixture(directory)
                 environment.pop('KAST_VERSION')
                 environment.pop('KAST_INSTALL_ASSETS_DIRECTORY')
                 environment.update(self.developer_curl(directory, assets, None,
-                    stable_release=metadata, release_status=status))
+                    stable_url=url, release_status=status))
                 result = subprocess.run(
                     [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
                     cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
                 )
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn(message, result.stderr)
+                if status:
+                    self.assertIn('503', result.stderr)
+                    self.assertIn('--version <major.minor.patch>', result.stderr)
                 self.assertNotIn('Traceback', result.stderr)
                 self.assertEqual(1, len((Path(directory) / 'curl.calls').read_text().splitlines()))
                 self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4', completion_capability=True,
-                        service_failure_report: str | None = None, retained_replacement=False):
+                        service_failure_report: str | None = None, retained_replacement=False, host_force_capability=True):
         idea, assets, environment = self.installer_fixture(
             directory, version=version, completion_capability=b'1\n' if completion_capability else None,
         )
@@ -358,7 +360,8 @@ else:
         prior = install / 'installation'
         prior.mkdir(parents=True)
         log = root / 'upgrade.log'
-        environment.update(TEST_LOG=str(log), TMPDIR=str(root / 'tmp'))
+        environment.update(TEST_LOG=str(log), TMPDIR=str(root / 'tmp'),
+                           HOST_FORCE_CAPABILITY='1' if host_force_capability else '0')
         (root / 'tmp').mkdir()
         scripts = {
             'share/kast/ide-host.json': json.dumps(asdict(ControlMetadataFixture(version))).encode(),
@@ -420,17 +423,21 @@ else
 fi
 ''',
             'share/kast/host-installation.py': b'''import os,sys
+if sys.argv[1:] == ['--help']:
+    print('--archive --dry-run ' + ('--force' if os.environ.get('HOST_FORCE_CAPABILITY') == '1' else ''))
+    sys.exit(0)
 assert sys.argv[1] == '--archive'
 assert sys.argv[3] == '--sha256'
 assert sys.argv[5] == '--version'
 assert sys.argv[7] == '--idea-build'
 assert sys.argv[9] == '--plugin-root'
-assert len(sys.argv) in (15, 16)
+assert sys.argv[15:] in ([], ['--dry-run'], ['--force'], ['--dry-run', '--force'])
+assert '--force' not in sys.argv or os.environ.get('HOST_FORCE_CAPABILITY') == '1'
 assert sys.argv[11] == '--release-record'
 assert sys.argv[13] == '--required-control'
-if len(sys.argv) == 16:
-    assert sys.argv[15] == '--dry-run'
+if '--dry-run' in sys.argv[15:]:
     sys.exit(0)
+assert ('--force' in sys.argv) == (os.environ.get('EXPECT_HOST_FORCE') == '1')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('plugin\\n')
 code = int(os.environ.get('FAIL_PLUGIN', '0'))
 print('{"type":"REJECTED","failure":"OWNERSHIP_UNPROVEN"}' if code else '{"type":"ACTIVATED","restartRequired":true}')
@@ -514,6 +521,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
     def test_force_install_resets_with_fresh_archive_before_service_and_repairs_missing_launcher(self):
         with tempfile.TemporaryDirectory(prefix='kast-public-reset-') as directory:
             idea, environment, prior, log = self.upgrade_fixture(directory)
+            environment['EXPECT_HOST_FORCE'] = '1'
             (prior.parent / 'management.json').write_text('corrupt receipt')
             legacy = Path(environment['HOME']) / '.kast'
             legacy.mkdir()
@@ -545,6 +553,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
     def test_developer_install_resets_automatically_after_release_selection(self):
         with tempfile.TemporaryDirectory(prefix='kast-developer-reset-') as directory:
             idea, environment, prior, log = self.upgrade_fixture(directory, version='0.0.123')
+            environment['EXPECT_HOST_FORCE'] = '1'
             assets = Path(environment.pop('KAST_INSTALL_ASSETS_DIRECTORY'))
             environment.pop('KAST_VERSION')
             environment.update(self.developer_curl(directory, assets,
@@ -560,7 +569,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
 
     def test_force_install_older_release_uses_verified_new_recovery_without_changing_selected_version(self):
         with tempfile.TemporaryDirectory(prefix='kast-older-release-reset-') as directory:
-            idea, environment, prior, log = self.upgrade_fixture(directory)
+            idea, environment, prior, log = self.upgrade_fixture(directory, host_force_capability=False)
             assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
             control = assets / 'kast-control-v1.2.4-macos-aarch64.tar.gz'
             with tarfile.open(control, 'r:gz') as archive:

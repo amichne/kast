@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.CallbackBodyBinding
 import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
@@ -11,7 +12,6 @@ import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.CallbackParameterSummary
 import io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationUse
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValue
-import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
@@ -19,9 +19,9 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeValue
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.util.IdentityHashMap
 
-/** Alias routes, detached invocations, and owner bindings share one original result and returned-byte grant. */
+/** Proof records share a result grant. Byte estimates are diagnostic, independent of serialized output. */
 internal class CallbackFlowRetention(
-    private val budget: RelationBudget,
+    private val resultLimit: ResultLimit,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     private var retainedBytes = 0L
@@ -124,21 +124,15 @@ internal class CallbackFlowRetention(
 
     fun admit(bytes: Long): Refinement<Unit, CallbackInvocationFlowCause> {
         val requiredBytes = if (bytes > Long.MAX_VALUE - retainedBytes) Long.MAX_VALUE else retainedBytes + bytes
-        observe(IntellijReadGauge.CALLBACK_PROOF_BYTE_ALLOWANCE, budget.returnedBytes.value)
         observe(IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES, requiredBytes)
         val admitted =
             when {
-                retainedResults >= budget.resources.resultLimit.value -> {
+                retainedResults >= resultLimit.value -> {
                     observation.count(IntellijReadCounter.CALLBACK_PROOF_RETENTION_RESULT_REJECTED)
                     Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED)
                 }
-                bytes > budget.returnedBytes.value - retainedBytes -> {
-                    observeByteRejection(requiredBytes)
-                    observation.count(IntellijReadCounter.CALLBACK_PROOF_RETENTION_BYTE_REJECTED)
-                    Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED)
-                }
                 else -> {
-                    retainedBytes += bytes
+                    retainedBytes = requiredBytes
                     retainedResults += 1
                     observation.count(IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED)
                     Refinement.Refined(Unit)
@@ -146,12 +140,6 @@ internal class CallbackFlowRetention(
             }
         observe(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES, retainedBytes)
         return admitted
-    }
-
-    private fun observeByteRejection(requiredBytes: Long) {
-        observe(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_ALLOWANCE, budget.returnedBytes.value)
-        observe(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_RETAINED_BYTES, retainedBytes)
-        observe(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES, requiredBytes)
     }
 
     private fun observe(gauge: IntellijReadGauge, bytes: Long) =

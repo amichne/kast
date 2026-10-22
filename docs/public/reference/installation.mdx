@@ -40,7 +40,14 @@ Run the public installer from a terminal.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-By default, the installer selects stable Control and Host releases on their own. It checks their contracts before it reports success.
+By default, the installer selects Control and Host from the same stable release.
+It uses GitHub's public release redirect, without an anonymous API request.
+It admits only a version URL from `amichne/kast` and examines artifact checksums and contracts before installation.
+
+If release selection fails, the error keeps the HTTP cause and names `--version <major.minor.patch>` as the recovery option.
+The installer replaces the selected Host directory even when its old receipt or file inventory differs.
+A replacement error triggers restoration of the prior Host and receipt.
+Failed restoration keeps recovery evidence.
 
 The installer offers the Codex plugin. Accept the default. Restart IDEA and Codex to use it.
 
@@ -60,6 +67,10 @@ For structured error details, append `-- --verbose`. Keep the `--` separator bef
   Terminal downloads show progress. Ctrl-C stops installation. `kast upgrade` keeps the developer channel.
 
   A developer installation resets stale Kast state before replacement. For a stable installation, `--force` asks for the same cleanup.
+
+  Reset also removes old Kast configuration, launcher backups, and the default Pi and Copilot extensions.
+  With a Host helper that supports reset, it also removes known historical copies of the plugin.
+  Stable locks stay in place. Unrelated extensions and plugins stay in place.
 
   To preview the plan without changing files or registrations, use `--dry-run`. To omit Codex plugin installation, use `--skip-codex-plugin`.
 </Accordion>
@@ -89,6 +100,11 @@ Restart IDEA to load Host. Check the installed version and command path. Check t
 ```shell
 kast status
 ```
+
+Status reports receipt records and passive runtime evidence.
+An empty registration list does not describe Codex's plugin catalog.
+`EPOCH_UNAVAILABLE` does not prove that an installed MCP session failed.
+Use the semantic exercise in step 3 to examine that session.
 
 If `XDG_CONFIG_HOME` is nonempty, the public executable is `$XDG_CONFIG_HOME/kast`. Otherwise, it is `$HOME/.local/bin/kast`.
 

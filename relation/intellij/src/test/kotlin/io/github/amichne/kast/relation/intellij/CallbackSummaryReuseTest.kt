@@ -101,7 +101,7 @@ class CallbackSummaryReuseTest {
         val supplied = CallbackInvocationFlowRead.Observed(supplierFlow())
         assertEquals(supplied, reuse.publish(supplied, emptyList(), captured))
         assertEquals(listOf(captured.summary), cache.published)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), summaries.retention.admit(1L))
+        assertEquals(Refinement.Refined(Unit), summaries.retention.admit(1L))
         assertEquals(0, cache.admitted)
     }
 
@@ -213,7 +213,9 @@ class CallbackSummaryReuseTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources,
+                    request.budget.resources.copy(
+                        resultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined()
+                    ),
                     RelationByteLimit.parse(candidate.summary.retainedBytes).refined(),
                 ),
                 counts,
@@ -229,7 +231,7 @@ class CallbackSummaryReuseTest {
         assertEquals(
             listOf(
                 IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
-                IntellijReadCounter.CALLBACK_PROOF_RETENTION_BYTE_REJECTED,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_RESULT_REJECTED,
                 IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS,
             ),
             counts.values,

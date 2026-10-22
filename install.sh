@@ -338,24 +338,29 @@ discover_idea_home() {
 }
 
 resolve_latest_version() {
-  local metadata
-  metadata="$(curl --fail --location --silent --show-error --max-filesize 4194304 \
+  local selected_url
+  selected_url="$(curl --fail --location --head --silent --show-error --output /dev/null --write-out '%{url_effective}' \
+    --proto '=https' --proto-redir '=https' \
     --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    "https://api.github.com/repos/$REPOSITORY/releases/latest")" || fail "latest release is unavailable"
-  printf '%s' "$metadata" | python3 -c '
-import json, re, sys
-try:
-    release = json.load(sys.stdin)
-except (json.JSONDecodeError, UnicodeDecodeError):
-    sys.exit("kast-install: latest release metadata is invalid")
-if not isinstance(release, dict):
-    sys.exit("kast-install: latest release metadata is invalid")
-tag = release.get("tag_name")
-match = re.fullmatch(r"v([0-9]+\.[0-9]+\.[0-9]+)", tag) if isinstance(tag, str) else None
-if not match or release.get("draft") is not False or release.get("prerelease") is not False:
-    sys.exit("kast-install: latest release is not stable")
+    "https://github.com/$REPOSITORY/releases/latest")" ||
+    fail "latest release is unavailable; rerun install.sh with --version <major.minor.patch>"
+  printf '%s' "$selected_url" | python3 -c '
+import re, sys
+match = re.fullmatch(r"https://github\.com/" + re.escape(sys.argv[1]) + r"/releases/tag/v([0-9]+\.[0-9]+\.[0-9]+)", sys.stdin.read())
+if not match:
+    sys.exit("kast-install: latest release URL is invalid; rerun install.sh with --version <major.minor.patch>")
 print(match.group(1))
-'
+' "$REPOSITORY"
+}
+
+run_host_installer() {
+  local helper="$1"
+  shift
+  local reset_options=()
+  if [[ "$force" == 1 && "$(python3 "$helper" --help)" == *--force* ]]; then
+    reset_options+=(--force)
+  fi
+  python3 "$helper" "$@" ${reset_options[@]+"${reset_options[@]}"}
 }
 
 resolve_developer_latest() {
@@ -916,13 +921,13 @@ if [[ "$component" != control ]]; then
   fetch_asset "$host_record_name" "$temporary_root/$host_record_name"
   fetch_asset "$host_record_name.sha256" "$temporary_root/$host_record_name.sha256"
   verify_checksum "$temporary_root/$host_record_name" "$temporary_root/$host_record_name.sha256" "$host_record_name" >/dev/null
+  host_options=()
   if [[ "$component" == host ]]; then
     fetch_asset host-installation.py "$temporary_root/host-installation.py"
     fetch_asset host-installation.py.sha256 "$temporary_root/host-installation.py.sha256"
     verify_checksum "$temporary_root/host-installation.py" "$temporary_root/host-installation.py.sha256" host-installation.py >/dev/null
-    host_options=()
     [[ "$mode" == apply ]] || host_options+=(--dry-run)
-    python3 "$temporary_root/host-installation.py" --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" \
+    run_host_installer "$temporary_root/host-installation.py" --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" \
       --version "$host_version" --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
       --release-record "$temporary_root/$host_record_name" ${host_options[@]+"${host_options[@]}"}
     if [[ "$mode" == plan ]]; then success "planned Kast Host $host_version installation at $idea_plugin_root/kast-ide-hosted"
@@ -944,10 +949,11 @@ if [[ "$stage_only" == 0 && ( -e "$completion_capability" || -L "$completion_cap
 fi
 if [[ "$component" == pair ]]; then
   [[ -f "$control_root/share/kast/host-installation.py" ]] || fail "control convenience installer has no host installation helper"
-  run_installer_step "IDEA host payload preflight" "" python3 "$control_root/share/kast/host-installation.py" \
+  run_installer_step "IDEA host payload preflight" "" run_host_installer "$control_root/share/kast/host-installation.py" \
     --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" --version "$host_version" \
     --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
-    --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json" --dry-run
+    --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json" \
+    --dry-run
 fi
 management_executable="$control_root/share/kast/libexec/kast-management"
 [[ -x "$management_executable" ]] || fail "control archive has no native management executable"
@@ -1038,7 +1044,7 @@ if [[ "$mode" == plan ]]; then
   else info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."; fi
 else
   if [[ "$component" != control ]]; then
-    run_installer_step "IDEA host installation" "" python3 "$control_root/share/kast/host-installation.py" \
+    run_installer_step "IDEA host installation" "" run_host_installer "$control_root/share/kast/host-installation.py" \
       --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" --version "$host_version" \
       --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
       --release-record "$temporary_root/$host_record_name" --required-control "$control_root/share/kast/ide-host.json"

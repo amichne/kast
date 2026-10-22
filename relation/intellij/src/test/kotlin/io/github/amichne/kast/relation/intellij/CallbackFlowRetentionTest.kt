@@ -12,11 +12,11 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
-/** Aggregate retention limits are independent of alias, invocation, and owner collection sizes. */
+/** Internal proof storage does not consume the allowance for serialized output. */
 class CallbackFlowRetentionTest {
     @Test
     fun `alias and invocation share one result grant`() {
-        val retention = CallbackFlowRetention(budget(results = 1))
+        val retention = CallbackFlowRetention(budget(results = 1).resources.resultLimit)
         assertTrue(retention.admit(128L) is Refinement.Refined) // first alias
         assertEquals(
             Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED),
@@ -26,7 +26,7 @@ class CallbackFlowRetentionTest {
 
     @Test
     fun `mixed proof categories exhaust one aggregate grant and remain rejected`() {
-        val retention = CallbackFlowRetention(budget(results = 2))
+        val retention = CallbackFlowRetention(budget(results = 2).resources.resultLimit)
         assertTrue(retention.admit(128L) is Refinement.Refined)
         assertTrue(retention.admit(4096L) is Refinement.Refined)
         repeat(3) {
@@ -38,27 +38,25 @@ class CallbackFlowRetentionTest {
     }
 
     @Test
-    fun `byte rejection consumes neither a result slot nor retained bytes`() {
-        val retention = CallbackFlowRetention(budget(results = 2, bytes = 10L))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(11L))
-        assertTrue(retention.admit(5L) is Refinement.Refined)
-        assertTrue(retention.admit(5L) is Refinement.Refined)
+    fun `proof records can exceed the output byte allowance`() {
+        val retention = CallbackParameterSummaries(budget(results = 2, bytes = 10L)).retention
+        assertEquals(Refinement.Refined(Unit), retention.admit(11L))
+        assertEquals(Refinement.Refined(Unit), retention.admit(100_000L))
         assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED), retention.admit(0L))
     }
 
     @Test
-    fun `exact byte boundary admits a prefix and rejects overflow without charging it`() {
-        val retention = CallbackFlowRetention(budget(results = 3, bytes = 10L))
+    fun `proof admissions do not depend on the output page size`() {
+        val retention = CallbackParameterSummaries(budget(results = 3, bytes = 10L)).retention
         assertTrue(retention.admit(5L) is Refinement.Refined)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(6L))
+        assertEquals(Refinement.Refined(Unit), retention.admit(6L))
         assertTrue(retention.admit(5L) is Refinement.Refined)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
     }
 
     @Test
     fun `a separate callback read owns a fresh allowance`() {
         repeat(2) {
-            val retention = CallbackFlowRetention(budget(results = 1))
+            val retention = CallbackFlowRetention(budget(results = 1).resources.resultLimit)
             assertTrue(retention.admit(128L) is Refinement.Refined)
             assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED), retention.admit(1L))
         }
