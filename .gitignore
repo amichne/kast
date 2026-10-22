@@ -52,6 +52,7 @@ skills-lock.json
 # Agent instructions and navigation are checked in; only turn state stays local.
 /OUTDATED.local.md
 /.agent-turn/
+/.amp/portals/*
 /.kast/
 /.graphify/
 /.agents/mintlify*/*

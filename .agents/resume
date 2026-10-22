@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# No services or user credentials are needed for the Linux edit/test environment.
+# Check the persisted environment without installing anything on resume.
+exec /bin/bash -lc '
+    set -euo pipefail
+    test "$KAST_ORB_ENV_ACTIVE" = "$PWD"
+    test "$JAVA_HOME" = "$GRAALVM_HOME"
+    for tool in java native-image node npm vale uv python3 mint; do command -v "$tool" >/dev/null; done
+    printf "[orb resume] Toolchain ready.\n"
+'
