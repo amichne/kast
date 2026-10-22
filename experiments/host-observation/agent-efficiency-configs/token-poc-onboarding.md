@@ -3,7 +3,10 @@
 Use Kast first for Kotlin declaration discovery, references, callers, implementations, and impact. Documentation and nonsemantic work need no Kast call. Obey the worker's answer convention; every final answer must be independently correct against exact source evidence.
 
 ## Direct native calls
-For these known contract-14 shapes, call `tools.mcp__kast__query_symbols` directly inside Pi codemode. Do not discover, describe, or read full schemas/examples first. Registration is not semantic readiness: let the first useful query establish readiness, without a separate probe. If the installed schema differs, obey it; read only the needed schema section once for unfamiliar operations.
+For these known contract-17 shapes, call `tools.mcp__kast__query_symbols` directly inside Pi codemode. Do not discover, describe, or read full schemas/examples first. Registration is not semantic readiness: let the first useful query establish readiness, without a separate probe. If the installed schema differs, obey it; read only the needed schema section once for unfamiliar operations.
+
+These templates use current syntax, not new experiment evidence. Historical captures keep their original contract identity.
+Every RUN requires one `terminalStep`; output belongs inside it. Keep execution controls on RUN.
 
 Search template (replace placeholders with task constraints):
 ```javascript
@@ -13,7 +16,7 @@ await tools.mcp__kast__query_symbols({request:{
     declarationKinds:["CLASS"],
     scope:{type:"PACKAGE",packageName:"<package>",
       includeSubpackages:false,sourceSetNames:["main"]}},
-  output:{type:"SYMBOLS",fields:["NAME","LOCATION","SIGNATURE"]},
+  terminalStep:{type:"EMIT",output:{type:"SYMBOLS",fields:["NAME","LOCATION","SIGNATURE"]}},
   executionBudget:{maxResults:50}
 }})
 ```
@@ -25,7 +28,7 @@ await tools.mcp__kast__query_symbols({request:{
   type:"RUN",source:{type:"SYMBOL_REFS",symbolRefs:[unchangedIssuedRef]},
   steps:[{type:"EXPAND_RELATION",relation:"REFERENCES",
     expansionScope:{type:"WORKSPACE"}}],
-  output:{type:"OCCURRENCES"}
+  terminalStep:{type:"EMIT",output:{type:"OCCURRENCES"}}
 }})
 ```
 Other relations: CALLERS, IMPLEMENTATIONS, TYPE_USES, OVERRIDES, INHERITORS, CALLEES. SYMBOLS output serves destination declaration names/locations. Discovery scope selects seeds, not expansion scope; preserve all required clients. For wider impact, examine the needed TRACE schema section.

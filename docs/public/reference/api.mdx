@@ -14,7 +14,7 @@ Use the installed catalog for your release. [Generated schemas](/reference/schem
 
 | Action | Necessary input | Behavior |
 | --- | --- | --- |
-| `RUN` | `source` | Evaluate optional `steps` in order. Select `output` and optional `retention`. |
+| `RUN` | `source`, `terminalStep` | Evaluate optional transformation `steps` in order, then `EMIT` or `TRACE`. |
 | `RESUME` | Issued output `continuation` | Show the produced output that is left. Do no semantic work. |
 | `READ_RESULT` | Issued `result`. Optional `cursor` | Show retained rows without semantic work. Match the output to the retained row type. |
 | `READ_SOURCE` | Issued `candidateRef` | Read an exact anchored occurrence or anonymous body. See [callbacks](/reference/callbacks#read-the-exact-anonymous-source). |
@@ -30,12 +30,19 @@ Use the installed catalog for your release. [Generated schemas](/reference/schem
     "source": {
       "type": "SEARCH_DECLARATIONS",
       "declarationName": "QueryStepSyntax"
-    }
+    },
+    "terminalStep": {"type": "EMIT"}
   }
 }
 ```
 
-Omitted output selects symbol names and locations. `retention: "RETAIN"` keeps the result for later reads or composition.
+Contract 17 requires one non-null `terminalStep` object with `type: "EMIT"` or `type: "TRACE"`.
+Put the output projection in `terminalStep.output`. Omitted or null output selects symbol names and locations.
+Keep `retention`, `executionMode`, and `executionBudget` on `RUN`.
+`retention: "RETAIN"` keeps the result for later reads or composition.
+
+RUN-level `output`, `traceOptions`, and `TRACE` inside `steps` reject.
+The other actions reject `terminalStep`. `READ_RESULT.output` stays on its action.
 
 Every public `RUN` uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. If you supply a completion selector, Kast rejects the input.
 
@@ -81,21 +88,34 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 | `DISTINCT_SYMBOLS` | Keep the first row per canonical identity at this pipeline position. |
 | `EXPAND_RELATION` | One hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`. |
 | `WALK` | Exhaust the reachable graph with omitted or null `maximumDepth`. An explicit depth limits reach. Breadth-first by default. |
-| `TRACE` | Put this bounded investigation last. Return the seed, direct callable members for types, reference owners, implementations or overrides, and direct callers. Add one further caller layer. Select `SYMBOLS`. |
 | `CONCAT` | Append `input`, keeping order and duplicates. |
 | `UNION`, `INTERSECT`, `DIFFERENCE` | Compare saved symbol rows in `right` by canonical identity. Difference needs complete coverage of that input. |
 | `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` needs complete coverage of `right` to prove absence. |
 | `PROJECT_BINDING` | Select one named symbol cell before further symbol steps. |
 
 Each stage consumes rows of the kind produced by the stage before it. A stage after composition acts on the combined stream.
+Omitted, null, or empty `steps` selects no transformations.
+Allow at most 1000 transformation steps before EMIT, or 999 before the canonical TRACE suffix.
+[Row compatibility](/reference/composition#row-compatibility) defines the existing transitions.
 
 `WHERE` cannot reduce native scan work already done. Apply known discovery limits and native expansion scope before that semantic work.
+
+## Terminal operations
+
+| `terminalStep.type` | Arguments | Result |
+| --- | --- | --- |
+| `EMIT` | Optional `output`, using any existing output variant compatible with the final rows. | Present the pipeline result. |
+| `TRACE` | Optional symbol `output` and direct `expansionScope`. | Group affected symbols with proven connections and occurrences. |
+
+Each terminal is a closed object. EMIT rejects trace-specific options; TRACE rejects non-symbol output.
+An explicit `SYMBOLS` output requires `fields`. `[]` keeps identity and kind only.
 
 <a id="trace-an-interface-or-adapter" />
 
 ### TRACE topology
 
-Put `TRACE` last and use `SYMBOLS` output. It groups results by canonical identity. It keeps relation and occurrence evidence.
+Select `terminalStep.type: "TRACE"`, never a TRACE step. It groups results by canonical identity and keeps relation and occurrence evidence.
+Set expansion scope directly on the terminal; omission or null selects `WORKSPACE`.
 
 Its topology is fixed. It includes the seed, reference owners, implementations or overrides, and direct callers. For type seeds, it adds direct callable members.
 
@@ -111,7 +131,7 @@ Kast finds members from source and compiler evidence. It does not invent a call 
 
 | Scope | Meaning |
 | --- | --- |
-| `WORKSPACE` | Workspace expansion. Default for `EXPAND_RELATION` and for `WALK` with omitted or null `maximumDepth`. |
+| `WORKSPACE` | Workspace expansion. Default for `TRACE`, `EXPAND_RELATION`, and `WALK` with omitted or null `maximumDepth`. |
 | `RETAINED_SEED` | Scope carried by each seed. Default for `WALK` with explicit `maximumDepth`. Acquire an `AT_LOCATION` seed for exact-file scope. |
 | `SOURCE_DOMAIN` | Exact imported `sourceSets`, source policy, generated-source policy, and optional workspace-relative directory. |
 
@@ -130,6 +150,9 @@ A complete traversal needs complete one-hop reads at each required node. If reso
 <a id="choose-the-result-you-need" />
 
 ## Outputs
+
+Select these variants through `EMIT.output` or the unchanged `READ_RESULT.output`.
+TRACE accepts only `SYMBOLS` through `terminalStep.output`.
 
 | Output | Evidence |
 | --- | --- |
@@ -163,7 +186,7 @@ Native reads prove call and site identity. Supplied models prove what a represen
 
 Public requested sites and model boundary sites select native work through `enclosing`, `range`, and `role`. Kast supplies retained `executionOwner`, `valuePath`, and `callStack` evidence. These input sites do not accept those retained fields.
 
-`IMPACT` accepts no transformation steps. `VALUE_PATHS` shows paths. `IMPACT_WITNESS` shows a section after the original investigation completes.
+`IMPACT` accepts no transformation steps. Select EMIT with `VALUE_PATHS` for paths or `IMPACT_WITNESS` for a section after the original investigation completes.
 
 <Accordion title="Kotlin transfer qualifications">
 Under normal completion, a final try or catch value can supply its try expression. The compiler proves that transfer. Catch fallback values keep their own producers.

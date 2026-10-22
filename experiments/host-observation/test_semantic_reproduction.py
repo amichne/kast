@@ -73,7 +73,9 @@ class SemanticReproductionTest(unittest.TestCase):
                          [step["type"] for step in request["request"]["steps"]])
         self.assertEqual({"type": "VISIBILITY", "values": ["PRIVATE"]},
                          request["request"]["steps"][0]["predicate"])
-        self.assertEqual({"type": "SYMBOLS", "fields": []}, request["request"]["output"])
+        self.assertEqual({"type": "EMIT", "output": {"type": "SYMBOLS", "fields": []}},
+                         request["request"]["terminalStep"])
+        self.assertNotIn("output", request["request"])
 
     def test_retired_query_route_is_not_admitted(self):
         with self.assertRaises(ValueError):

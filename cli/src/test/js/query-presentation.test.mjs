@@ -21,7 +21,8 @@ test('runner-controlled semantics outlive the bounded transport deadline', async
   let time = 0;
   const modes = [];
   const initial = native.cases.empty.reply;
-  const result = await awaitQueryDelivery({ request: { type: 'RUN', executionMode: 'RUNNER_CONTROLLED' } },
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    terminalStep: { type: 'EMIT' }, executionMode: 'RUNNER_CONTROLLED' } },
     async (_request, policy) => { modes.push(policy.executionMode); time = 10000; return initial; },
     { callTimeoutMillis: 100 }, undefined, () => time);
   assert.equal(modes[0], 'RUNNER_CONTROLLED');
@@ -143,7 +144,8 @@ test('refinement recovery consumes received failures without semantic retry or c
   replies[1].document.failures[0] = failures[0];
   replies[2].document.failures[0] = failures[1];
   const requests = [];
-  const result = await awaitQueryDelivery({ request: { type: 'RUN' } }, async request => {
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    terminalStep: { type: 'EMIT' } } }, async request => {
     requests.push(request);
     assert.ok(requests.length <= replies.length, 'Recovery advice cannot cause another request');
     return replies[requests.length - 1];
@@ -329,6 +331,24 @@ test('minimal SYMBOLS delivers all 53 exact rows under the unchanged aggregate a
   assert.ok(Buffer.byteLength(rendered.text) < Buffer.byteLength(JSON.stringify(result)));
   console.log('D3 client SYMBOLS logical_calls=' + requests.length + ' response_bytes=' + result.delivery.response_bytes +
     ' request_bytes=' + result.delivery.request_bytes + ' envelope_bytes=' + Buffer.byteLength(JSON.stringify(result)));
+});
+
+for (const type of ['EMIT', 'TRACE']) test(`${type} retains explicit identity-only projection on output pages`, async () => {
+  const requests = [], replies = structuredClone(symbolGraphPages);
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    terminalStep: { type, output: { type: 'SYMBOLS', fields: [] } } } }, async (request) => {
+    requests.push(request);
+    assert.ok(requests.length <= replies.length, 'No extra semantic or presentation call');
+    return replies[requests.length - 1];
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.equal(result.delivery.stop, 'DELIVERED');
+  assert.equal(requests.length, replies.length);
+  assert.equal(requests.filter(request => request.request.type === 'RUN').length, 1);
+  for (const request of requests.slice(1)) {
+    assert.equal(request.request.type, 'READ_RESULT');
+    assert.equal(JSON.stringify(request.request.output), JSON.stringify({ type: 'SYMBOLS', fields: [] }));
+    assert.equal(Object.hasOwn(request.request, 'terminalStep'), false);
+  }
 });
 
 test('symbol text rejects unresolved connections and unknown connection variants', () => {
@@ -569,13 +589,16 @@ test('expired detail handle returns the exact finite rejection without reviving 
   assert.equal(queryPresentation(result), JSON.stringify(unavailable));
 });
 
-test('fixed result oracle reproduces saved work and byte measurements without semantic replay', async () => {
+test('fixed result oracle preserves evidence and accounts for terminal request bytes without semantic replay', async () => {
+  // Only the fresh RUN shape changes. Preserve the historical capture and its measured evidence.
+  const terminalBytes = Buffer.byteLength(JSON.stringify({ terminalStep: { type: 'EMIT', output: null } }))
+    - Buffer.byteLength(JSON.stringify({ output: null }));
   for (const measurement of measurements.cases) {
     const frozen = captured.cases[measurement.name].result;
     const replies = [frozen.initial, ...frozen.pages], requests = [];
     let responseBytes = 0;
     const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
-      output: { type: 'SYMBOLS', fields: ['NAME'] }, executionBudget: { maxResults: 43 } } },
+      terminalStep: { type: 'EMIT', output: { type: 'SYMBOLS', fields: ['NAME'] } }, executionBudget: { maxResults: 43 } } },
     async (request, policy) => {
       requests.push(request);
       assert.ok(requests.length <= replies.length, 'Unexpected or excess physical request');
@@ -585,7 +608,9 @@ test('fixed result oracle reproduces saved work and byte measurements without se
       return reply;
     }, { callTimeoutMillis: 1000 }, undefined, () => 0);
     assert.equal(requests.length, replies.length, 'All fixture replies consumed');
-    assert.equal(JSON.stringify(result), JSON.stringify(frozen));
+    const expected = structuredClone(frozen);
+    expected.delivery.request_bytes += terminalBytes;
+    assert.equal(JSON.stringify(result), JSON.stringify(expected));
     const metrics = {
       logicalQueries: 1, physicalRpcs: requests.length,
       semanticExecutions: requests.filter(request => request.request.type === 'RUN').length,
@@ -593,8 +618,10 @@ test('fixed result oracle reproduces saved work and byte measurements without se
       responseBytes, modelVisibleBytes: Buffer.byteLength(queryPresentation(result)),
     };
     assert.deepEqual(metrics, { ...measurement.after,
+      requestBytes: measurement.after.requestBytes + terminalBytes,
       modelVisibleBytes: measurements.summaryFollowUp.cases[measurement.name].modelVisibleBytes });
-    assert.deepEqual({ ...metrics, modelVisibleBytes: Buffer.byteLength(JSON.stringify(frozen)) }, measurement.before);
+    assert.deepEqual({ ...metrics, modelVisibleBytes: Buffer.byteLength(JSON.stringify(frozen)) },
+      { ...measurement.before, requestBytes: measurement.before.requestBytes + terminalBytes });
     assert.equal(metrics.semanticExecutions, 1);
     assert.equal(metrics.requestBytes, result.delivery.request_bytes);
     assert.equal(metrics.responseBytes, result.delivery.response_bytes);
@@ -685,7 +712,7 @@ test('smaller description-key work cannot buy extra canonical envelope drainage'
   const requests = [];
   let readBytes = 0;
   const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
-    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    terminalStep: { type: 'EMIT', output: { type: 'OCCURRENCES' } } } }, async (request, policy) => {
     requests.push(request);
     assert.ok(requests.length <= replies.length, 'No unexpected semantic or output work');
     const reply = replies[requests.length - 1], bytes = Buffer.byteLength(JSON.stringify(reply));
@@ -723,7 +750,7 @@ test('expired detail authority preserves every already-received observation with
   const expired = captured.cases.expired.result.pages[0];
   const replies = [initial, expired], requests = [];
   const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
-    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    terminalStep: { type: 'EMIT', output: { type: 'OCCURRENCES' } } } }, async (request, policy) => {
     requests.push(request);
     assert.ok(requests.length <= replies.length, 'Authority failure cannot trigger recovery execution');
     const reply = replies[requests.length - 1];
@@ -782,7 +809,8 @@ test('Pi provider input contains the exact compact projection and excludes canon
       const tool = { role: 'toolResult', toolCallId: 'fixture_call', toolName: 'query_symbols',
         content: [{ type: 'text', text }], details: result, isError: result.initial?.type === 'rejected_document', timestamp: 0 };
       const assistant = { role: 'assistant', provider: model.provider, api: model.api, model: model.id,
-        content: [{ type: 'toolCall', id: 'fixture_call', name: 'query_symbols', arguments: { request: { type: 'RUN' } } }],
+        content: [{ type: 'toolCall', id: 'fixture_call', name: 'query_symbols', arguments: { request: {
+          type: 'RUN', source: { type: 'ALL_DECLARATIONS' }, terminalStep: { type: 'EMIT' } } } }],
         stopReason: 'toolUse', timestamp: 0 };
       const sdkContext = convertToLlm([assistant, tool]);
       assert.equal(sdkContext[1].details, result, 'Details remain available to the local SDK');
@@ -815,7 +843,7 @@ test('Pi provider input contains the exact compact projection and excludes canon
 test('a transient thrown detail read preserves received evidence without asserting handle invalidation', async () => {
   const initial = native.cases.retainedEvidence.reply, requests = [];
   const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
-    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    terminalStep: { type: 'EMIT', output: { type: 'OCCURRENCES' } } } }, async (request, policy) => {
     requests.push(request);
     if (requests.length === 1) {
       policy.onResponseBytes(Buffer.byteLength(JSON.stringify(initial)));

@@ -12,6 +12,7 @@ import { validatePlan } from './run_pi_evaluation.mjs';
 import { isolatedSettings } from './pi_evaluation_worker.mjs';
 import { admittedQueryDocument } from './pi_evaluation_question.mjs';
 
+const runRequest=()=>({type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}});
 const config=()=>({name:'negative',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
 const providerPayload=()=>({model:'gpt-6.1-sol',reasoning:{effort:'high'},tools:[],instructions:'unchanged synthetic instructions',input:[]});
 const providerObservation=(body=providerPayload())=>({provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',payload:inspectProviderPayload({...body,max_output_tokens:2000},4194304)});
@@ -61,7 +62,7 @@ function fixtureProviderInput(_model,messages) {
 }
 function issuedHistory(result) {
   return [{role:'assistant',provider:'openai-codex',api:'openai-codex-responses',model:'gpt-6.1-sol',
-    content:[{type:'toolCall',id:result.toolCallId,name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}]},result];
+    content:[{type:'toolCall',id:result.toolCallId,name:'query_symbols',arguments:{request:runRequest(),verbose:true}}]},result];
 }
 function callbacks(policy,recordResult,projectProviderInput=fixtureProviderInput) {
   const handlers=new Map(),records=[];let aborted=0;
@@ -81,7 +82,7 @@ test('final answer declaration ownership follows complete qualified rejected and
       const event=resultEvent(envelope),canonical=JSON.stringify(envelope);
       if(saved)assert.equal(policy.restoreReceivedResult(decodeEnvelope(event.content),10000).allow,true);
       else {
-        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
         guard.emit('tool_result',event);
       }
       assert.equal(policy.report().phase,'DELIVERY');
@@ -107,7 +108,7 @@ test('WORK and issued evidence-read DELIVERY keep their exact declarations and e
     assert.deepEqual(actual,{...snapshot,max_output_tokens:2000});
     assert.deepEqual(original,snapshot);assert.equal(guard.aborted,0);
     assert.equal(policy.report().phase,pending?'DELIVERY':'WORK');
-    const request=pending?denseRejected.document.rejection.detail.evidence.nextQuery.request:{type:'RUN'};
+    const request=pending?denseRejected.document.rejection.detail.evidence.nextQuery.request:runRequest();
     assert.equal(policy.toolCall('query_symbols',{request},'permitted').allow,true);
   }
 });
@@ -132,7 +133,7 @@ test('declaration removal never raises final answer bounds or permits a second r
 });
 
 test('final answer declarations grant no tool execution and preserve the first terminal failure',()=>{
-  for(const [toolName,request] of [['query_symbols',{type:'RUN'}],['query_symbols',{type:'RESUME'}],['query_symbols',denseRejected.document.rejection.detail.evidence.nextQuery.request],['check_diagnostics',undefined],['health_check',undefined]]) {
+  for(const [toolName,request] of [['query_symbols',runRequest()],['query_symbols',{type:'RESUME'}],['query_symbols',denseRejected.document.rejection.detail.evidence.nextQuery.request],['check_diagnostics',undefined],['health_check',undefined]]) {
     const policy=makePolicy(config()),guard=callbacks(policy);
     policy.restoreReceivedResult(qualified,10000);
     guard.emit('before_provider_request',{payload:declaredPayload()});
@@ -222,10 +223,10 @@ test('inline SDK declarations consume the declaration bound once and unknown inp
 test('actual guard aborts in tool_result before any provider continuation or changed-scope tool',()=>{
   const policy=makePolicy({...config(),name:'positive',expectedSemanticCalls:2});const guard=callbacks(policy);
   guard.emit('before_provider_request',providerEvent());
-  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
   guard.emit('tool_result',resultEvent(denseRejected));
   assert.equal(guard.aborted,1,'rejection must abort at the callback boundary itself');
-  const blocked=guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'changed-scope',input:{request:{type:'RUN',scope:'changed',budget:{maxElapsedMs:20000}}}});
+  const blocked=guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'changed-scope',input:{request:{...runRequest(),source:{type:'ALL_DECLARATIONS',scope:{type:'DIRECTORY',relativeDirectoryPath:'changed'}},executionBudget:{maxElapsedMs:20000}}}});
   assert.deepEqual(blocked,{block:true,reason:'INTENTIONAL_REJECTION'});
   assert.equal(policy.report().modelProposals[1].nativeReplyObserved,false);
   assert.equal(policy.report().modelProposals[1].harnessDecision,'INTENTIONAL_REJECTION');
@@ -258,7 +259,7 @@ test('declaration bytes deny before admission and finalized global overshoot is 
 
 test('evidence-only opt-in admits exact READ_RESULT but rejects RUN RESUME and changed grants',()=>{
   const next=denseRejected.document.rejection.detail.evidence.nextQuery.request;
-  for(const request of [{type:'RUN',scope:'changed'},{type:'RESUME'}, {...next,cursor:1},{...next,budget:{maxResults:2000}}]) {
+  for(const request of [runRequest(),{type:'RESUME'}, {...next,cursor:1},{...next,budget:{maxResults:2000}}]) {
     const policy=makePolicy({...config(),evidenceOnlyDelivery:true});policy.toolResult(denseRejected);
     assert.equal(policy.toolCall('query_symbols',{request},'blocked').allow,false);
     assert.equal(policy.report().nativeRepliesObserved,0);
@@ -287,7 +288,7 @@ test('supported received-result controller continues once with zero prompts or t
 
 test('delivery phase guard blocks any additional semantic tool before execution',()=>{
   const policy=makePolicy(config());policy.toolResult(negativeComplete);const guard=callbacks(policy);
-  const result=guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'retry',input:{request:{type:'RUN'}}});
+  const result=guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'retry',input:{request:runRequest()}});
   assert.deepEqual(result,{block:true,reason:'HARNESS_TOOL_BLOCKED'});assert.equal(guard.aborted,1);assert.equal(policy.report().nativeRepliesObserved,0);
 });
 
@@ -343,8 +344,8 @@ test('model response beyond its reserve remains harness budget limit even if fin
 });
 
 test('another tool cannot race past an unresolved semantic call and its eventual rejection',()=>{
-  const policy=makePolicy(config());assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'first').allow,true);
-  assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN',scope:'other'}},'parallel').allow,false);
+  const policy=makePolicy(config());assert.equal(policy.toolCall('query_symbols',{request:runRequest()},'first').allow,true);
+  assert.equal(policy.toolCall('query_symbols',{request:{...runRequest(),source:{type:'ALL_DECLARATIONS',scope:{type:'DIRECTORY',relativeDirectoryPath:'other'}}}},'parallel').allow,false);
   assert.equal(policy.report().semanticRepliesObserved,0);
 });
 
@@ -352,7 +353,7 @@ test('real guard callbacks deliver recorded negative final answer under its sepa
   const policy=makePolicy(config()),guard=callbacks(policy);
   guard.emit('before_provider_request',providerEvent());
   guard.emit('message_end',{message:{role:'assistant',stopReason:'toolUse',usage:{input:17139,output:89,totalTokens:17228},content:[]}});
-  assert.equal(guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}}),undefined);
+  assert.equal(guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}}),undefined);
   guard.emit('tool_execution_start',{toolCallId:'call-1'});
   guard.emit('tool_result',resultEvent(negativeComplete));
   assert.equal(guard.aborted,0);
@@ -458,7 +459,7 @@ test('streamed assistant response cap aborts the actual update callback and forb
 
 test('canonical qualified producer reply permits bounded delivery without exhaustive success',()=>{
   const policy=makePolicy({...config(),expectedSemanticCalls:2}),guard=callbacks(policy);
-  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
   guard.emit('tool_result',resultEvent(qualified));
   assert.equal(guard.aborted,0);assert.equal(policy.report().phase,'DELIVERY');
   assert.equal(policy.report().nativeOutcome,'QUALIFIED_RESULT');assert.equal(policy.report().exhaustiveEvidence,false);
@@ -467,14 +468,14 @@ test('canonical qualified producer reply permits bounded delivery without exhaus
   policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'A qualified prefix; completeness is unproven.'}]});
   assert.equal(policy.report().outcome,'QUALIFIED_ANSWER');assert.equal(policy.report().finalAnswer,true);
   const received=makePolicy(config());assert.equal(received.restoreReceivedResult(qualified,2141).allow,true);
-  assert.equal(received.toolCall('query_symbols',{request:{type:'RUN'}},'new').allow,false);
+  assert.equal(received.toolCall('query_symbols',{request:runRequest()},'new').allow,false);
   const malformed=structuredClone(qualified);malformed.document.coverage.exhaustive=true;
   assert.deepEqual(decodeEnvelope([{type:'text',text:JSON.stringify(malformed)}]),{type:'invalid'});
 });
 
 test('canonical rejection preserves originalCoverage at the actual guard boundary',()=>{
   const policy=makePolicy(config()),guard=callbacks(policy);
-  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
   guard.emit('tool_result',resultEvent(denseRejected));
   assert.equal(guard.aborted,1);
   assert.deepEqual(policy.report().semanticRejection,{code:'COMPLETION_UNPROVEN',nextAction:'report_failure',knownMinimum:56,limitations:['BYTE_LIMIT_REACHED'],progress:{type:'terminal_incomplete',reason:'checkpoint-capacity-exceeded'},policyProgress:'EVIDENCE_ONLY'});
@@ -496,7 +497,7 @@ test('closed production RPC failures retain their code without fabricated native
   const failures=source.match(/const TOOL_RPC_FAILURES = \[([\s\S]*?)\] as const;/)[1].match(/"[A-Z_]+"/g).map(value=>JSON.parse(value));
   for(const failure of failures) {
     const policy=makePolicy(config()),guard=callbacks(policy);
-    guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+    guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
     guard.emit('tool_result',resultEvent({type:'rejected',failure}));
     assert.equal(guard.aborted,1);assert.equal(policy.report().outcome,'TOOL_RPC_REJECTION');
     assert.deepEqual(policy.report().rpcRejection,{failure});assert.equal(policy.report().semanticRejection,null);
@@ -509,7 +510,7 @@ test('closed production RPC failures retain their code without fabricated native
 const deliveryCases=JSON.parse(readFileSync(new URL('./pi-fixtures/query-delivery-cases.json',import.meta.url),'utf8')).cases;
 function deliveredCase(name,options={}) {
   const policy=makePolicy({...config(),delivery:{...config().delivery,reportedTokens:60000},...options}),guard=callbacks(policy);
-  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
   const fixture=deliveryCases[name];
   guard.emit('tool_result',{...resultEvent(fixture.result),isError:fixture.hostFailure});
   return {policy,guard,fixture};
@@ -553,7 +554,7 @@ function exactNamePrefix() {
   proof.question.from={type:'symbols',match:{type:'name',text:'function0',matching:'exact-name'},
     scope:{sourceSets:['main'],directory:null,packageName:null},declarationKinds:['function']};
   envelope.pages[0].document.question=structuredClone(proof.question);
-  proof.seedQuery={request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:[proof.preview[0].ref]},output:structuredClone(proof.nextQuery.request.output)}};
+  proof.seedQuery={request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:[proof.preview[0].ref]},terminalStep:{type:'EMIT',output:structuredClone(proof.nextQuery.request.output)}}};
   return envelope;
 }
 function setOriginalMinimum(envelope,minimum) {
@@ -603,7 +604,7 @@ test('retained seed suggestions agree with exact discovery question preview and 
   }
   for(const [label,change] of [
     ['different seed',p=>p.seedQuery.request.source.symbolRefs=['exact:v2:other']],
-    ['different output',p=>p.seedQuery.request.output.fields=['LOCATION']],
+    ['different output',p=>p.seedQuery.request.terminalStep.output.fields=['LOCATION']],
     ['location question',p=>p.question.from={type:'location',file:'Fixture.kt',offset:0}],
     ['fuzzy question',p=>p.question.from.match.matching='fuzzy'],
     ['nonempty steps',p=>p.question.steps=[{type:'distinct'}]],
@@ -637,7 +638,7 @@ test('real delivery rejects nonadvancing successors before a relabeled saved pre
   const envelope=partialPrefix(),stalled=structuredClone(envelope.pages[0]);
   stalled.document.items=[];stalled.document.page_progress.rows=0;
   const replies=[envelope.initial,...envelope.pages,stalled],calls=[];
-  const actual=await awaitDelivery({request:{type:'RUN'}},async request=>{
+  const actual=await awaitDelivery({request:runRequest()},async request=>{
     calls.push(structuredClone(request));assert.ok(replies.length,'No call follows the stalled reply');return replies.shift();
   },{callTimeoutMillis:1000},undefined,()=>0);
   assert.equal(replies.length,0);assert.equal(calls.length,3);assert.equal(actual.delivery.stop,'NON_ADVANCING');
@@ -687,7 +688,7 @@ test('terminal FINAL pages cannot be relabeled as a byte-limited prefix',async()
     page.evidence_window={type:'FINAL',start:0,end:0,total:0};
     if(omitted)delete page.next_cursor;else page.next_cursor=null;
     const replies=[envelope.initial,...envelope.pages],calls=[];
-    const delivered=await awaitDelivery({request:{type:'RUN'}},async request=>{
+    const delivered=await awaitDelivery({request:runRequest()},async request=>{
       calls.push(structuredClone(request));
       assert.ok(replies.length,'No call may follow the terminal received page');
       return replies.shift();
@@ -1043,7 +1044,7 @@ test('internally consistent malformed questions and contradictory evidence quali
 test('fresh partial prefix guard counts full instructions and body permits one request and forbids every further tool',()=>{
   const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}}),guard=callbacks(policy);
   const envelope=partialPrefix();
-  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
   guard.emit('tool_result',{...resultEvent(envelope),isError:true});
   assert.equal(guard.aborted,0);assert.equal(policy.report().semanticRepliesObserved,1);
   assert.equal(summarizeGuard(guard.records.at(-1)).decision.reason,'DECLARED_RECEIVED_PARTIAL_EVIDENCE');
@@ -1053,7 +1054,7 @@ test('fresh partial prefix guard counts full instructions and body permits one r
   assert.equal(policy.report().requestObservations[0].payloadBytes,Buffer.byteLength(JSON.stringify(payload)));
   policy.modelUsage({input:100,output:50,totalTokens:150});
   assert.equal(policy.beforeProvider(pinned).reason,'HARNESS_BUDGET_LIMIT');
-  for(const request of [{type:'RUN'},{type:'RESUME'},envelope.initial.document.rejection.detail.evidence.nextQuery.request]) {
+  for(const request of [runRequest(),{type:'RESUME'},envelope.initial.document.rejection.detail.evidence.nextQuery.request]) {
     const p=makePolicy({...config(),evidenceOnlyDelivery:true});
     p.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000);
     assert.equal(p.toolCall('query_symbols',{request},'new-call').reason,'HARNESS_TOOL_BLOCKED');
@@ -1081,7 +1082,7 @@ test('actual shared-client delivered complete and qualified preserve initial sem
     assert.equal(policy.beforeProvider(pinned).allow,true);policy.modelUsage({input:17000,output:100,totalTokens:17100});
     policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Bounded interpretation of delivered evidence.'}]});
     assert.equal(policy.report().outcome,finalOutcome);assert.equal(policy.report().requiredEvidenceVerified,false);
-    const second=deliveredCase(name);assert.equal(second.policy.toolCall('query_symbols',{request:{type:'RUN'}},'rerun').allow,false);
+    const second=deliveredCase(name);assert.equal(second.policy.toolCall('query_symbols',{request:runRequest()},'rerun').allow,false);
   }
 });
 test('actual shared-client delivered rejection proof stays rejected and cannot trigger another retained read',()=>{
@@ -1106,7 +1107,7 @@ test('actual shared-client blockers cancellation and lost-byte initial remain fi
     assert.equal(report.modelProposals[0].hostIsErrorObserved,true);
     assert.equal(report.exhaustiveEvidence,false);assert.equal(report.requiredEvidenceVerified,false);
     assert.equal(policy.beforeProvider(pinned).allow,false);
-    assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'rerun').allow,false);
+    assert.equal(policy.toolCall('query_symbols',{request:runRequest()},'rerun').allow,false);
     assert.equal(policy.toolCall('query_symbols',{request:{type:'RESUME'}},'resume').allow,false);
     if(name==='expired')assert.equal(report.queryDeliveries[0].canonicalOutcomes.at(-1).rejection.reason,'result-unavailable');
     if(name==='unavailable'||name==='budgetIncrease')assert.deepEqual(report.queryDeliveries[0].canonicalOutcomes.at(-1).qualification,fixture.result.pages.at(-1).document.qualification);
@@ -1124,7 +1125,7 @@ test('shared-client saved delivery continues only its existing received result a
     assert.equal(policy.report().phase,'DELIVERY');assert.equal(policy.report().semanticRepliesObserved,0);
     assert.equal(policy.report().deliveryPhysicalRpcCountReported,0);
     assert.equal(policy.report().savedDeliveryPhysicalRpcCountReported,deliveryCases[name].result.delivery.rpc_count);
-    assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'retry').allow,false);
+    assert.equal(policy.toolCall('query_symbols',{request:runRequest()},'retry').allow,false);
   }
   const failed=makePolicy(config());
   assert.equal(failed.restoreReceivedResult(decodeEnvelope(resultEvent(deliveryCases.lostDelivery.result).content),2000).reason,'CLIENT_DELIVERY_BLOCKED');
@@ -1140,7 +1141,7 @@ test('record failure aborts provider admission and blocks subsequent tool execut
   guard.emit('before_provider_request',providerEvent());
   assert.equal(guard.aborted,1);
   assert.equal(policy.report().outcome,'HARNESS_OBSERVATION_INVALID');
-  assert.deepEqual(guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'unsafe',input:{request:{type:'RUN'}}}),{block:true,reason:'HARNESS_OBSERVATION_INVALID'});
+  assert.deepEqual(guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'unsafe',input:{request:runRequest()}}),{block:true,reason:'HARNESS_OBSERVATION_INVALID'});
   assert.equal(guard.aborted,2);
   assert.equal(policy.report().nativeRepliesObserved,0);
 });
@@ -1162,7 +1163,7 @@ test('compact production text keeps canonical SDK details and visible-byte accou
     assert.equal(decodeEnvelope([{type:'text',text}]).type,'invalid');
     assert.deepEqual(decodeEnvelope([{type:'text',text}],'query_symbols',envelope),envelope);
     const policy=makePolicy(config()),guard=callbacks(policy);
-    guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+    guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
     guard.emit('tool_result',{toolName:'query_symbols',toolCallId:'call-1',content:[{type:'text',text}],details:envelope,
       isError:name==='rejectedProof'});
     assert.equal(policy.report().outcome,expectedOutcome);
@@ -1202,11 +1203,11 @@ test('explicit compact final context preserves original verbose messages and can
     for(const saved of [false,true]) {
       const policy=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:true}),guard=callbacks(policy);
       const result={role:'toolResult',...resultEvent(envelope),details:envelope};
-      const messages=[{role:'user',content:'Original fixed request.'},{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}]},result];
+      const messages=[{role:'user',content:'Original fixed request.'},{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:runRequest(),verbose:true}}]},result];
       const before=JSON.stringify(messages);
       if(saved)assert.equal(policy.restoreReceivedResult(decodeEnvelope(result.content,result.toolName,result.details),10000,'call-1').allow,true);
       else {
-        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}});
+        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest(),verbose:true}});
         guard.emit('tool_result',result);
       }
       const view=guard.emit('context',{messages});
@@ -1283,10 +1284,10 @@ test('compact provider output belongs to the selected call exactly once while un
   for(const saved of [false,true])for(const scenario of ['wrong-call','repeated-bound-canonical','repeated-bound-view','unrelated-history']) {
     const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy);
     const result={role:'toolResult',...resultEvent(negativeComplete),details:negativeComplete};
-    const messages=[{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}]},result];
+    const messages=[{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:runRequest(),verbose:true}}]},result];
     if(saved)assert.equal(policy.restoreReceivedResult(negativeComplete,10000,'call-1').allow,true);
     else {
-      guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}});
+      guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest(),verbose:true}});
       guard.emit('tool_result',result);
     }
     const view=guard.emit('context',{messages}),text=view.messages.at(-1).content[0].text;
@@ -1310,7 +1311,7 @@ test('compact mode leaves WORK and issued evidence reads untouched and cannot re
   const messages=[{role:'user',content:'Original work context'}];
   const policy=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:true}),guard=callbacks(policy);
   assert.equal(guard.emit('context',{messages}),undefined);
-  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}});
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest(),verbose:true}});
   guard.emit('tool_result',resultEvent(deliveryCases.rejectedProof.result.initial));
   assert.equal(policy.isFinalAnswerDelivery(),false);
   assert.equal(guard.emit('context',{messages}),undefined);
@@ -1339,11 +1340,11 @@ test('installed Pi request-time context runner preserves raw state and serialize
         {messages:convertToLlm(messages)},new Set(['openai-codex']),{includeSystemPrompt:false}))({on:(name,handler)=>handlers.set(name,[handler]),getThinkingLevel:()=> 'high'});
       const result={role:'toolResult',...resultEvent(envelope),details:envelope,isError:true,timestamp:0};
       const messages=[{role:'assistant',provider:model.provider,api:model.api,model:model.id,
-        content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}],stopReason:'toolUse',timestamp:0},result];
+        content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:runRequest(),verbose:true}}],stopReason:'toolUse',timestamp:0},result];
       const before=JSON.stringify(messages),ctx={model,abort:()=>assert.fail('Unexpected fixture rejection')};
       if(saved)assert.equal(policy.restoreReceivedResult(envelope,10000,'call-1').allow,true);
       else {
-        handlers.get('tool_call')[0]({toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}},ctx);
+        handlers.get('tool_call')[0]({toolName:'query_symbols',toolCallId:'call-1',input:{request:runRequest(),verbose:true}},ctx);
         handlers.get('tool_result')[0](result,ctx);
       }
       const runner=new ExtensionRunner([{path:'synthetic-source-guard',handlers}],{getThinkingLevel:()=> 'high'},'/public/synthetic-fixture',{},{});
@@ -1381,7 +1382,7 @@ test('installed converter binds normalized selected provider identity on fresh a
       const before=JSON.stringify(messages);
       if(saved)assert.equal(policy.restoreReceivedResult(negativeComplete,10000,source.id).allow,true);
       else {
-        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:source.id,input:{request:{type:'RUN'},verbose:true}});
+        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:source.id,input:{request:runRequest(),verbose:true}});
         guard.emit('tool_result',result);
       }
       const transformed=guard.emit('context',{messages});

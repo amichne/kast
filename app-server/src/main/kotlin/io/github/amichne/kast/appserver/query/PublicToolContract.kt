@@ -30,6 +30,7 @@ enum class PublicToolParameter(val path: String) {
     DIRECTORY("scope.relativeDirectoryPath"),
     PACKAGE("scope.packageName"),
     DIAGNOSTIC_PATH("relativePath"),
+    TERMINAL_STEP("terminalStep"),
 }
 
 @Serializable
@@ -40,6 +41,7 @@ enum class PublicToolRule(val correction: String) {
     ),
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),
     PACKAGE_NAME("Supply a Kotlin package name such as com.example.orders."),
+    CANONICAL_STEP_LIMIT("Use at most 1000 steps before EMIT or 999 before the canonical TRACE suffix."),
 }
 
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */
@@ -192,7 +194,9 @@ fun PublicToolInputFailure.explanation(): String =
     when (this) {
         PublicToolInputFailure.SchemaMismatch -> "Tool contract mismatch; use the schema for the selected tool."
         PublicToolInputFailure.SchemaRejected ->
-            "Arguments must match the selected tool's fields and variants. Omit optional controls to use their defaults."
+            "Arguments must match the selected tool's fields and variants. " +
+                "For RUN, provide terminalStep with type EMIT or TRACE; put output there and never TRACE in steps. " +
+                "Omit optional controls to use their defaults."
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
         is PublicToolInputFailure.SourceAnchor -> "candidateRef: source anchor rejected (${cause.name})."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"

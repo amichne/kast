@@ -156,7 +156,7 @@ try {
   const savedResult={role:'toolResult',toolCallId:'saved-call',toolName:'query_symbols',content,isError:true,details:{duplicate:deliveryFixture.result,omitted:'SDK_OMITTED_METADATA_'.repeat(12000)},timestamp:3};
   const saved=await privateStage('received-source',undefined,async manager=>{
     manager.appendMessage({role:'user',content:[{type:'text',text:'Find callers for the fixed fixture target.'}],timestamp:1});
-    manager.appendMessage({role:'assistant',provider:'openai-codex',model:'gpt-6.1-sol',api:'openai-codex-responses',content:[{type:'toolCall',id:'saved-call',name:'query_symbols',arguments:{request:{type:'RUN'}}}],stopReason:'toolUse',usage:{input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},timestamp:2});
+    manager.appendMessage({role:'assistant',provider:'openai-codex',model:'gpt-6.1-sol',api:'openai-codex-responses',content:[{type:'toolCall',id:'saved-call',name:'query_symbols',arguments:{request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}}}],stopReason:'toolUse',usage:{input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},timestamp:2});
     manager.appendMessage(savedResult);
     return {sourceFile:manager.getSessionFile(),context:structuredClone(manager.buildSessionContext().messages)};
   });
@@ -253,7 +253,7 @@ try {
     assert.equal(created.type,'session',JSON.stringify(created));
     activeSession=created.session;
     const callId=`synthetic-new-call-${fetchCalls+1}`;
-    const item={id:'synthetic-new-function-id',type:'function_call',call_id:callId,name:'query_symbols',arguments:JSON.stringify({request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:['exact:v2:synthetic-negative']}}}),status:'completed'};
+    const item={id:'synthetic-new-function-id',type:'function_call',call_id:callId,name:'query_symbols',arguments:JSON.stringify({request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:['exact:v2:synthetic-negative']},terminalStep:{type:'EMIT'}}}),status:'completed'};
     scriptedResponses.push([{type:'response.created',response:{id:'synthetic-new-tool-response'}},{type:'response.output_item.added',output_index:0,item:{...item,arguments:''}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-new-tool-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:0}}}}]);
     await activeSession.prompt('Find the exact synthetic negative target and describe its qualified result.',{source:'rpc',expandPromptTemplates:false});
     assert.equal(dynamicPolicy.report().outcome,'FINAL_ANSWER',JSON.stringify(dynamicPolicy.report()));

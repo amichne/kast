@@ -35,7 +35,7 @@ const send=(child,value=reply)=>child.stdout.emit('data',Buffer.from(JSON.string
 
 test('session reuses one child and cleans only its owned environment and resources',async()=>{
   const f=await fixture(child=>send(child));
-  const requests=[{request:{type:'RUN'}},{request:{type:'READ_RESULT'}}];
+  const requests=[{request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},{request:{type:'READ_RESULT'}}];
   for(const request of requests)assert.deepEqual(JSON.parse(JSON.stringify(await f.session.invoke(request,policy))),reply);
   await f.session.close();
   assert.equal(f.children.length,1);assert.deepEqual(Array.from(f.children[0].args),['query-session']);
@@ -54,17 +54,17 @@ for(const [name,produce,reason] of [
   ['nonzero exit',child=>child.emit('close',7),'NONZERO_EXIT'],
 ])test(`${name} terminates one child without retry`,async()=>{
   const f=await fixture(produce),sizes=[];
-  await assert.rejects(f.session.invoke({request:{type:'RUN'}},{...policy,onResponseBytes:n=>sizes.push(n)}),new RegExp(reason));
+  await assert.rejects(f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},{...policy,onResponseBytes:n=>sizes.push(n)}),new RegExp(reason));
   await f.session.close();assert.equal(f.writes.length,1);assert.equal(f.children.length,1);assert.equal(sizes.length,1);
 });
 test('cancellation before invocation launches zero children',async()=>{
   const f=await fixture();f.controller.abort();
-  await assert.rejects(f.session.invoke({request:{type:'RUN'}},policy),/CANCELLED/);
+  await assert.rejects(f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy),/CANCELLED/);
   await f.session.close();assert.equal(f.children.length,0);
 });
 test('runner-controlled invocation has no timer and cancellation kills its one child',async()=>{
   const f=await fixture();
-  const pending=f.session.invoke({request:{type:'RUN',executionMode:'RUNNER_CONTROLLED'}},
+  const pending=f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'},executionMode:'RUNNER_CONTROLLED'}},
     {...policy,executionMode:'RUNNER_CONTROLLED'});
   assert.equal(f.timers.length,0);
   f.controller.abort();
@@ -73,31 +73,31 @@ test('runner-controlled invocation has no timer and cancellation kills its one c
   assert.equal(f.writes.length,1);assert.deepEqual(f.observed,['killed']);
 });
 for(const stop of ['cancel','timeout'])test(`${stop} while awaiting is bounded and does not resubmit`,async()=>{
-  const f=await fixture();const pending=f.session.invoke({request:{type:'RUN'}},policy);
+  const f=await fixture();const pending=f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy);
   if(stop==='cancel')f.controller.abort();else f.timers[0].callback();
   await assert.rejects(pending,stop==='cancel'?/CANCELLED/:/TIMEOUT/);await f.session.close();
   assert.equal(f.writes.length,1);assert.deepEqual(f.observed,['killed']);
 });
 test('a received first outcome survives cancellation before any further request',async()=>{
   const f=await fixture(child=>send(child));
-  const initial=await f.session.invoke({request:{type:'RUN'}},policy);f.controller.abort();
+  const initial=await f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy);f.controller.abort();
   await assert.rejects(f.session.invoke({request:{type:'READ_RESULT'}},policy),/CANCELLED/);
   await f.session.close();assert.deepEqual(JSON.parse(JSON.stringify(initial)),reply);assert.equal(f.writes.length,1);
 });
 test('concurrent request is rejected before any additional write',async()=>{
-  const f=await fixture();const pending=f.session.invoke({request:{type:'RUN'}},policy);
+  const f=await fixture();const pending=f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy);
   await assert.rejects(f.session.invoke({request:{type:'READ_RESULT'}},policy),/CONCURRENT_REQUEST/);
   f.controller.abort();await assert.rejects(pending,/CANCELLED/);await f.session.close();assert.equal(f.writes.length,1);
 });
 test('bounded graceful cleanup kills an uncooperative idle child',async()=>{
-  const f=await fixture(child=>send(child));await f.session.invoke({request:{type:'RUN'}},policy);
+  const f=await fixture(child=>send(child));await f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy);
   f.children[0].child.stdin.end=()=>{};
   const closing=f.session.close();f.timers.at(-1).callback();await closing;
   assert.deepEqual(f.observed,['killed']);assert.ok(f.timers.every(timer=>timer.cleared));
 });
 
 test('cleanup releases owned pipes when an inherited descriptor would postpone child close',async()=>{
-  const f=await fixture(child=>send(child));await f.session.invoke({request:{type:'RUN'}},policy);
+  const f=await fixture(child=>send(child));await f.session.invoke({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},policy);
   const child=f.children[0].child,destroyed=[];
   child.stdin.end=()=>{};
   child.kill=()=>{f.observed.push('killed');child.emit('exit',null);return true;};

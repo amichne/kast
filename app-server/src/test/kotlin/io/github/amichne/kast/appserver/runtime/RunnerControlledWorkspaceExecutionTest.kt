@@ -10,6 +10,7 @@ import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.core.HostedToolDefinition
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolEmit
 import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
 import io.github.amichne.kast.appserver.query.PublicToolReferenceSource
 import io.github.amichne.kast.appserver.query.PublicToolRunAction
@@ -145,6 +146,7 @@ private fun queryInput(mode: QueryExecutionModeDocument) =
                             ) as Refinement.Refined)
                             .value
                     ),
+                terminalStep = PublicToolEmit(),
                 executionMode = mode,
             )
         )

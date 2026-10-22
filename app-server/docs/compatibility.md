@@ -297,12 +297,12 @@ schema-bound `kast tool query_symbols` route:
 
 ```sh
 kast tool query_symbols <<'JSON'
-{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declaration_name":"KtorBrokerServer","name_match":null,"declaration_kinds":["CLASS"],"scope":{"type":"DIRECTORY","relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}},"steps":null,"output":{"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE"]}}}
+{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"KtorBrokerServer","nameMatch":null,"declarationKinds":["CLASS"],"scope":{"type":"DIRECTORY","relativeDirectoryPath":"app-server","includeSubdirectories":true,"sourceSetNames":["main"]}},"steps":null,"terminalStep":{"type":"EMIT","output":{"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE"]}}}}
 JSON
 ```
 
 The public contract tests cover admission and lowering, not live semantic readiness.
-This current request has not been observed against the user's live workspace;
+This contract-17 request has not been observed against the user's live workspace;
 it does not resolve or supersede the historical readiness blocker above.
 
 ## Desktop release checklist — not yet passed

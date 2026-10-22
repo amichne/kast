@@ -1,7 +1,7 @@
 {
   "type": "TRACE_REQUESTS_MANIFEST",
   "fixtureManifestSha256": "3111951fa903d4983d9af6f131e9c54cd39d008b487b307e45c64b634e3a3dd1",
-  "inputSchemaSha256": "513068dc9821c612277eaa198b1b6c8a7ba84c4c595e617817ca567decb28bfb",
+  "inputSchemaSha256": "ec382650f52831082d7b374c7e07bb4f2c37e8b1ac35c95e7c5710a9698d8495",
   "requests": [
     {
       "label": "A.TRACE",
@@ -23,34 +23,33 @@
             ],
             "type": "SEARCH_DECLARATIONS"
           },
-          "steps": [
-            {
-              "expansionScope": {
-                "sourceSets": [
-                  "main",
-                  "test"
-                ],
-                "sourcePolicy": "PRODUCTION_AND_TEST",
-                "generatedSources": "EXCLUDE",
-                "directory": "src",
-                "type": "SOURCE_DOMAIN"
-              },
-              "type": "TRACE"
-            }
-          ],
+          "steps": [],
           "executionBudget": {
             "maxElapsedMs": 15000,
             "maxResults": 100,
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "TRACE",
+            "expansionScope": {
+              "sourceSets": [
+                "main",
+                "test"
+              ],
+              "sourcePolicy": "PRODUCTION_AND_TEST",
+              "generatedSources": "EXCLUDE",
+              "directory": "src",
+              "type": "SOURCE_DOMAIN"
+            },
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -78,34 +77,33 @@
             ],
             "type": "SEARCH_DECLARATIONS"
           },
-          "steps": [
-            {
-              "expansionScope": {
-                "sourceSets": [
-                  "main",
-                  "test"
-                ],
-                "sourcePolicy": "PRODUCTION_AND_TEST",
-                "generatedSources": "EXCLUDE",
-                "directory": "src",
-                "type": "SOURCE_DOMAIN"
-              },
-              "type": "TRACE"
-            }
-          ],
+          "steps": [],
           "executionBudget": {
             "maxElapsedMs": 15000,
             "maxResults": 100,
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "TRACE",
+            "expansionScope": {
+              "sourceSets": [
+                "main",
+                "test"
+              ],
+              "sourcePolicy": "PRODUCTION_AND_TEST",
+              "generatedSources": "EXCLUDE",
+              "directory": "src",
+              "type": "SOURCE_DOMAIN"
+            },
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -158,13 +156,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -217,13 +218,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -265,13 +269,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -321,13 +328,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -377,13 +387,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -433,13 +446,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -489,13 +505,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -545,13 +564,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"
@@ -604,13 +626,16 @@
             "maxWorkUnits": 100000,
             "maxReturnedBytes": 524288
           },
-          "output": {
-            "type": "SYMBOLS",
-            "fields": [
-              "NAME",
-              "LOCATION",
-              "SIGNATURE"
-            ]
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
           },
           "retention": "RETAIN",
           "type": "RUN"

@@ -46,7 +46,7 @@ class PublicExecutionBudgetTest {
                             PublicToolRunAction(
                                 source = PublicToolReferenceSource(refs),
                                 steps = null,
-                                output = null,
+                                terminalStep = PublicToolEmit(),
                                 executionBudget = publicBudget,
                             )
                         )
@@ -132,7 +132,7 @@ class PublicExecutionBudgetTest {
                             PublicToolRunAction(
                                 source = PublicToolReferenceSource(refs),
                                 steps = null,
-                                output = null,
+                                terminalStep = PublicToolEmit(),
                                 executionBudget = publicBudget,
                             )
                         )

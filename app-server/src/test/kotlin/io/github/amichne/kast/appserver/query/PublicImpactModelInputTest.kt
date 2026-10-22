@@ -181,7 +181,7 @@ class PublicImpactModelInputTest {
                     PublicToolImpactWorkspaceDomain,
                     QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
                 ),
-                output = PublicToolValuePathsOutput,
+                terminalStep = PublicToolEmit(PublicToolValuePathsOutput),
             )
         )
 

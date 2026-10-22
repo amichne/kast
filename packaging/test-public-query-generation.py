@@ -72,8 +72,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_query_parameters_share_impact_identity_and_range_schemas(self):
         generated = generator.render_tools(self.authority)
         parameters = json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"])
-        # Contract 15 adds structural source selection and text views to the public schema.
-        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 50_000)
+        # Contract 17 adds required terminal variants and their output applicability to contract 16.
+        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 52_000)
         definitions = parameters["$defs"]
         self.assertEqual(
             {"$ref": "#/$defs/ImpactDeclarationReference"},
@@ -98,8 +98,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
         expected = {
-            "query_symbols.parameters.json": "5d8a76a6d6ef963ff0f640f25d0489f4f16358d1b79320059c7cb15cc9dd3d87",
-            "query_symbols.openai-parameters.json": "7c878f98341176b32bb87dcc9ad5a60362e41279787d5bf212bfd22c069fedee",
+            "query_symbols.parameters.json": "321a6cd8eb4905997c562ad78b232c21a3e1ba9a79ccb69291d556919e4fca2d",
+            "query_symbols.openai-parameters.json": "e6bbbf6e52aeecd1d54e129f44e39d1eb8a1c947593b477df44daa47e2b3b85a",
         }
         generated = generator.render_tools(self.authority)
         for name, digest in expected.items():
@@ -124,6 +124,35 @@ class PublicQueryGenerationTest(unittest.TestCase):
                 self.authority["tools"][0]["deferLoading"] = policy
                 with self.assertRaisesRegex(ValueError, "loading policy"):
                     generator.validate_authority(self.authority)
+
+    def test_terminal_grammar_is_closed_in_both_schema_profiles(self):
+        generated = generator.render_tools(self.authority)
+        for name in ("query_symbols.parameters.json", "query_symbols.openai-parameters.json"):
+            definitions = json.loads(generated[generator.RESOURCES / name])["$defs"]
+            run = definitions["RunAction"]
+            self.assertIn("terminalStep", run["required"])
+            self.assertEqual({"$ref": "#/$defs/TerminalStep"}, run["properties"]["terminalStep"])
+            self.assertNotIn("output", run["properties"])
+            self.assertEqual(
+                [{"$ref": "#/$defs/Emit"}, {"$ref": "#/$defs/Trace"}],
+                definitions["TerminalStep"]["anyOf"],
+            )
+            self.assertNotIn({"$ref": "#/$defs/Trace"}, definitions["Step"]["anyOf"])
+            for variant, keys in (("Emit", {"type", "output"}), ("Trace", {"type", "output", "expansionScope"})):
+                node = definitions[variant]
+                self.assertEqual(keys, set(node["properties"]))
+                self.assertIs(False, node["additionalProperties"])
+                self.assertIn("type", node["required"])
+                self.assertEqual([variant.upper()], node["properties"]["type"]["enum"])
+                if "openai" in name:
+                    self.assertEqual(keys, set(node["required"]))
+            self.assertEqual([{"$ref": "#/$defs/SymbolsOutput"}], definitions["TraceOutput"]["anyOf"])
+
+    def test_row_compatibility_reference_projects_authored_facts(self):
+        self.authority["rowCompatibility"][0]["result"] = "Preserved symbols"
+        generated = generator.render_tools(self.authority)
+        table = generated[ROOT / "agent-tools/references/query-row-compatibility.md"]
+        self.assertIn("| WHERE, DISTINCT_SYMBOLS | Symbols | Preserved symbols |", table)
 
     def test_adapter_failures_project_the_runtime_enum_owner(self):
         owner = (ROOT / "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt").read_text()
@@ -197,8 +226,10 @@ class PublicQueryGenerationTest(unittest.TestCase):
         generated = generator.render_tools(self.authority)
         trace = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt"]
         ingress = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"]
-        self.assertEqual(1, trace.count("internal data class PublicToolTrace("))
-        self.assertNotIn("internal data class PublicToolTrace(", ingress)
+        for name in ("Trace", "Emit"):
+            declaration = f"internal data class PublicTool{name}("
+            self.assertEqual(1, trace.count(declaration))
+            self.assertNotIn(declaration, ingress)
         self.assertLessEqual(len(trace.splitlines()), 400)
 
     def test_source_documents_and_line_defaults_retain_their_schema_owner(self):

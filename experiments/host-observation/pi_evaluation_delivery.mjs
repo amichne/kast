@@ -50,7 +50,7 @@ export function partialEvidenceSummary(envelope) {
     const from=question.from,seed=proof.seedQuery.request,first=proof.preview.find(row=>row.type==='exact-symbol');
     if(output.type!=='symbols'||from.type!=='symbols'||from.match.type!=='name'||from.match.matching!=='exact-name'||
       question.steps.length||!first||!isDeepStrictEqual(seed.source.symbolRefs,[first.ref])||
-      !isDeepStrictEqual(seed.output,readOutput))return null;
+      seed.terminalStep.type!=='EMIT'||!isDeepStrictEqual(seed.terminalStep.output,readOutput))return null;
   }
   const evidenceFields=['failures','omissions','walk_observations','reference_observations','discovery_observations','relation_observations'];
   // completionEvidenceRead preserves source limitations, adds STATIC_MODEL_UNPROVEN,

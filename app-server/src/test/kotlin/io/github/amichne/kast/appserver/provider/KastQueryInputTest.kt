@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.query.PublicToolCheckDiagnostics
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolEmit
 import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
 import io.github.amichne.kast.appserver.query.PublicToolReferenceSource
 import io.github.amichne.kast.appserver.query.PublicToolRunAction
@@ -26,7 +27,7 @@ class KastQueryInputTest {
         val raw =
             Json.encodeToJsonElement(
                 PublicToolQuerySymbols.serializer(),
-                PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), null, null)),
+                PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), null, PublicToolEmit())),
             )
         val admitted =
             when (val result = PublicToolContract.schema(PublicToolIdentity.QUERY_SYMBOLS).admit(raw)) {

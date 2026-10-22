@@ -55,10 +55,21 @@ class PublicToolOccurrenceOutputTest {
     fun `occurrence output lowers from run to the canonical choice`() {
         val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
         val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
-        val action = PublicToolRunAction(PublicToolReferenceSource(refs), null, PublicToolOccurrencesOutput)
+        val action =
+            PublicToolRunAction(PublicToolReferenceSource(refs), null, PublicToolEmit(PublicToolOccurrencesOutput))
         val input = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), PublicToolQuerySymbols(action))
         val request = input.jsonObject.getValue("request").jsonObject
-        assertEquals("OCCURRENCES", request.getValue("output").jsonObject.getValue("type").jsonPrimitive.content)
+        assertEquals(
+            "OCCURRENCES",
+            request
+                .getValue("terminalStep")
+                .jsonObject
+                .getValue("output")
+                .jsonObject
+                .getValue("type")
+                .jsonPrimitive
+                .content,
+        )
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined
         val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         assertEquals(QueryOutputDocument.Occurrences, canonical.output)

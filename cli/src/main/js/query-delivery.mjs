@@ -112,9 +112,11 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     );
     return result;
   };
+  const requestedOutput = params.request?.type === 'RUN'
+    ? params.request.terminalStep?.output : params.request?.output;
   const read = (cursor, evidence) => ({ request: {
     type: 'READ_RESULT', result: retained, cursor, evidence_cursor: evidence,
-    ...(params.request?.output != null ? { output: params.request.output } : {}),
+    ...(requestedOutput != null ? { output: requestedOutput } : {}),
     ...(rejectedEvidence ? { output: rejectedEvidence.nextQuery?.request?.output } : {}),
     ...(params.request?.executionBudget != null ? { executionBudget: params.request.executionBudget } : {}),
   }, ...(params.verbose != null ? { verbose: params.verbose } : {}) });

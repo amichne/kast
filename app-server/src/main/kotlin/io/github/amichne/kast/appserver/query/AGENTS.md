@@ -32,10 +32,23 @@ construction boundary. Never reintroduce a raw JSON query payload, candidate
 output, an INSPECT stage, magic wildcard, or implicit retry. The closed query
 request admits exactly one of four actions:
 
-- `RUN` accepts a source and optional ordered steps.
+- `RUN` requires a source and exactly one non-null `terminalStep` object, with optional ordered transformation steps.
 - `RESUME` accepts a typed retained-output continuation and an optional presentation budget.
 - `READ_RESULT` accepts a retained-result reference and a distinct presentation cursor.
 - `READ_SOURCE` accepts an issued candidate, exact symbol, or source selector, with separate structural and text choices.
+
+Public contract 17 requires `terminalStep.type` to be `EMIT` or `TRACE`.
+`EMIT.output` accepts the existing output union. `TRACE.output` accepts only `SYMBOLS`.
+`TRACE.expansionScope` belongs directly on the terminal and defaults to workspace expansion when omitted or null.
+Reject `TRACE` inside `steps`, sibling `RUN.output`, and `traceOptions`.
+Omitted or null terminal output selects `NAME` and `LOCATION`.
+Explicit `SYMBOLS` output requires `fields`; `[]` selects identity and kind only.
+Keep retention, execution mode, and execution budget on `RUN`.
+Other actions reject `terminalStep`; preserve `READ_RESULT.output`.
+Allow 1000 transformation steps before EMIT, or 999 before the lowered canonical TRACE suffix.
+Preserve canonical row admission in `QueryRowAdmission.kt`; a terminal tag does not prove row compatibility.
+Binding rows need `PROJECT_BINDING` with a declared name before symbol stages or TRACE.
+Impact witness output still uses the existing protocol route through value paths.
 
 `READ_SOURCE` keeps the `candidateRef` field for compatibility.
 The field accepts an issued candidate, exact symbol, or source selector and preserves its exact bytes.
@@ -91,8 +104,8 @@ Completion needs exhausted execution, no item failures, and no omitted evidence.
 Callback graphs and original impact investigations keep their own proof obligations.
 Unproved completion preserves typed rejection and recovery evidence.
 
-`TRACE` has a fixed topology for references, implementations or overrides, direct callers, and one further caller layer.
-It accepts an expansion scope, without arbitrary depth controls.
+The `TRACE` terminal has a fixed topology for references, implementations or overrides, direct callers, and one further caller layer.
+It accepts an expansion scope, without arbitrary depth controls, and preserves grouped symbols, connections, and occurrences.
 
 ## Navigation
 

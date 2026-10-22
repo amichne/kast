@@ -70,7 +70,7 @@ internal fun methodTraceService(
     )
 }
 
-private fun methodTraceFacts(
+internal fun methodTraceFacts(
     read: RelationRequest,
     seed: SymbolSelector,
     targets: List<Pair<SymbolSelector, Int>>,

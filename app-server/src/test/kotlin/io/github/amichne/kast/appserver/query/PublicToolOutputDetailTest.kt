@@ -14,7 +14,8 @@ class PublicToolOutputDetailTest {
         val target = text("exact:v5:AAAAAAAAAAAAAAAAAAAAAQ")
         val cases =
             listOf(
-                PublicToolIdentity.QUERY_SYMBOLS to PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource())),
+                PublicToolIdentity.QUERY_SYMBOLS to
+                    PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), terminalStep = PublicToolEmit())),
                 PublicToolIdentity.CHECK_DIAGNOSTICS to PublicToolCheckDiagnostics(text(".")),
                 PublicToolIdentity.ADD_DECLARATION to PublicToolAddDeclaration(target, text("fun added() = Unit")),
                 PublicToolIdentity.REPLACE_BODY to PublicToolReplaceBody(target, text("{ return Unit }")),

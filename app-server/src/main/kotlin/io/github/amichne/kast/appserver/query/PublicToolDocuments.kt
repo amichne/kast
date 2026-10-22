@@ -150,7 +150,7 @@ internal data class PublicToolReferenceSource(
 @SerialName("SYMBOLS")
 internal data class PublicToolSymbolsOutput(
     val fields: BoundedProtocolList<PublicToolFields>,
-) : PublicToolOutput, PublicToolReadResultOutput
+) : PublicToolOutput, PublicToolReadResultOutput, PublicToolTraceOutput
 
 @Serializable
 @SerialName("OCCURRENCES")
@@ -260,7 +260,7 @@ internal data class PublicToolResultSource(
 internal data class PublicToolRunAction(
     val source: PublicToolSource,
     val steps: BoundedProtocolList<PublicToolStep>? = null,
-    val output: PublicToolOutput? = null,
+    val terminalStep: PublicToolTerminalStep,
     val retention: PublicToolRetention? = null,
     val executionBudget: PublicToolExecutionBudget? = null,
     val executionMode: QueryExecutionModeDocument? = null,

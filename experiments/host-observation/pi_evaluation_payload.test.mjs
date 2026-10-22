@@ -95,7 +95,7 @@ test('changed whole payloads admit by exact bytes without claiming a calibration
 });
 
 test('resumed tool text and restored declarations bind one complete projection',()=>{
-  const payload=fresh();payload.input.push({type:'additional_tools',role:'developer',tools:[tool()]},{type:'function_call',call_id:'received',name:'query_symbols',arguments:'{"request":{"type":"RUN"}}'},{type:'function_call_output',call_id:'received',output:JSON.stringify(received())});
+  const payload=fresh();payload.input.push({type:'additional_tools',role:'developer',tools:[tool()]},{type:'function_call',call_id:'received',name:'query_symbols',arguments:JSON.stringify({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}})},{type:'function_call_output',call_id:'received',output:JSON.stringify(received())});
   const policy=calibratedPolicy(payload);
   assert.equal(policy.restoreReceivedResult(received(),Buffer.byteLength(JSON.stringify(received()))).allow,true);
   const original=structuredClone(payload),observed=boundary(policy,payload);
@@ -159,7 +159,7 @@ test('fresh question dynamic canonical tool result and final answer complete wit
   request(first);assert.equal(aborts,0);
   // The ID and full result are constructed only after fresh admission, without
   // registering a request receipt or predicting the next serialized payload.
-  const callId=`generated-after-admission-${admitted.length}`,argumentsValue={request:{type:'RUN'}};
+  const callId=`generated-after-admission-${admitted.length}`,argumentsValue={request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}};
   emit('message_end',{message:{role:'assistant',stopReason:'toolUse',content:[{type:'toolCall',id:callId,name:'query_symbols',arguments:argumentsValue}],usage:{input:400,cacheRead:600,output:100,reasoning:50,totalTokens:1100}}});
   assert.equal(emit('tool_call',{toolName:'query_symbols',input:argumentsValue,toolCallId:callId}),undefined);
   emit('tool_execution_start',{toolCallId:callId});

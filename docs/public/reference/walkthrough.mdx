@@ -6,6 +6,9 @@ icon: "notebook-text"
 
 This page keeps past query evidence at `56df091`. Its counts and handles belong to the recorded workspace state.
 
+The examples now use contract 17 and explicit EMIT terminals.
+They show current syntax, not the captured request bytes. No calls were rerun. The linked capture keeps the old requests and results unchanged.
+
 [Capture details](/reference/schemas#recorded-walkthrough) names the revision, Host, epoch, and environment. [The first-query tutorial](/tutorials/first-query) supplies a current exercise.
 
 ## Start from remembered text
@@ -26,7 +29,7 @@ This `SEARCH_TEXT` request illustrates current inputs. The historical recording 
         "sourceSetNames": ["main"]
       }
     },
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION"]},
+    "terminalStep": {"type": "EMIT", "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION"]}},
     "executionBudget": {"maxResults": 10}
   }
 }
@@ -57,9 +60,12 @@ Call `01-discovery` found one `QueryStepSyntax` with exhaustive coverage, signat
         "sourceSetNames": ["main"]
       }
     },
-    "output": {
-      "type": "SYMBOLS",
-      "fields": ["NAME", "LOCATION", "SIGNATURE", "SOURCE"]
+    "terminalStep": {
+      "type": "EMIT",
+      "output": {
+        "type": "SYMBOLS",
+        "fields": ["NAME", "LOCATION", "SIGNATURE", "SOURCE"]
+      }
     }
   }
 }
@@ -86,6 +92,7 @@ Call `02-implementations-a` returned ten `IMPLEMENTATIONS` matches with a comple
       {"type": "EXPAND_RELATION", "relation": "IMPLEMENTATIONS"},
       {"type": "DISTINCT_SYMBOLS"}
     ],
+    "terminalStep": {"type": "EMIT"},
     "retention": "RETAIN"
   }
 }
@@ -111,7 +118,7 @@ Call `15-caller-walk` started from `QueryPlanCompiler.exactStage`. It returned `
     "steps": [
       {"type": "WALK", "relation": "CALLERS", "maximumDepth": 2}
     ],
-    "output": {"type": "TRAVERSAL_RECORDS"}
+    "terminalStep": {"type": "EMIT", "output": {"type": "TRAVERSAL_RECORDS"}}
   }
 }
 ```

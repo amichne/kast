@@ -63,6 +63,8 @@ It exports a fixed set of public fields.
 
 For a fresh semantic capture, use an isolated owned IDEA profile and imported fixture.
 The [request templates](requests.json) include the transport lookup omitted from the clip.
+They use contract 17's required EMIT terminals, with output inside `terminalStep`.
+This syntax update does not change the historical clip or evidence and does not establish new semantic results.
 Replace each placeholder with the ref or result just issued by its prior call.
 Follow the [public request capture guide](../../experiments/representation-impact/README.md) and [Tool RPC contract](../tool-rpc.md).
 Acquire fresh callable references through public queries; keep each `RUN` and its retained reads tied to the same result.

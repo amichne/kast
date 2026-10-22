@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 16
+const val PUBLIC_TOOL_CONTRACT_VERSION = 17
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -14,29 +14,32 @@ enum class PublicToolIdentity(
     val loading: HostedToolLoading,
 ) {
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
-        "Run, resume, and read compiler-grounded Kotlin queries in the bound workspace. Apply known name, k" +
-            "ind, scope, and source-set constraints before discovery. Start with request {\"type\":\"RUN\",\"so" +
-            "urce\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\",\"declarationKinds\":[\"CLA" +
-            "SS\"],\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"orders\",\"sourceSetNames\":[" +
-            "\"main\"]}}}. Select the exact owner, receiver, signature, and location, never the first overload." +
-            " Pass its unchanged issued ref in source {\"type\":\"SYMBOL_REFS\",\"symbolRefs\":[\"<issued ref>" +
-            "\"]}. Use EXPAND_RELATION for direct references or callers. Use TRACE for references, implementati" +
-            "ons or overrides, direct callers, and one further caller layer. Discovery scope selects seeds. Exp" +
-            "ansion scope selects destinations. SOURCE_DOMAIN applies source-set, production/test, and generate" +
-            "d-source constraints before enumeration. If the host supports tool composition, chain discovery, e" +
-            "xact selection, and expansion inside code. Keep successful intermediate results inside that call. " +
-            "Return task findings with scope, completion, omissions, and recovery facts. Do not omit requested " +
-            "matches or hide failures to reduce tokens. Apply path exclusions before read batches. Remove dupli" +
-            "cate paths. Reuse unchanged source reads until a source change or freshness rejection. Inspect unr" +
-            "esolved imports, companion qualifiers, and unmatched source sites before a complete source-use ans" +
-            "wer. Every RUN uses COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Preserve typed rejection and" +
-            " recovery evidence when completion is unproven. Use RESUME only with an issued output continuation" +
-            ", READ_RESULT with an issued result reference and cursor, and READ_SOURCE with an issued candidate" +
-            "Selector as candidateRef. Keep these capabilities distinct. Set retention RETAIN for later present" +
-            "ation. Budgets share one admitted grant under host ceilings. The schema also defines graph walk wi" +
-            "th WALK, predicates, retained composition, joins, and value IMPACT. Use known request shapes direc" +
-            "tly. Read only the needed schema section or named example for unfamiliar shapes. Stop when evidenc" +
-            "e answers the task.",
+        "Run, resume, and read compiler-grounded Kotlin queries in the bound workspace. For RUN, provide a " +
+            "source, zero or more nonterminal steps, and exactly one terminalStep object tagged EMIT or TRACE. " +
+            "Put output in terminalStep.output. EMIT accepts all output choices. TRACE accepts only symbols and" +
+            " owns expansionScope directly. Never put TRACE in steps or output on RUN. Apply known name, kind, " +
+            "scope, and source-set constraints before discovery. Start with request {\"type\":\"RUN\",\"source" +
+            "\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\",\"declarationKinds\":[\"CLASS\"" +
+            "],\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"orders\",\"sourceSetNames\":[\"mai" +
+            "n\"]}},\"terminalStep\":{\"type\":\"EMIT\"}}. Select the exact owner, receiver, signature, and loc" +
+            "ation, never the first overload. Pass its unchanged issued ref in source {\"type\":\"SYMBOL_REFS\"" +
+            ",\"symbolRefs\":[\"<issued ref>\"]}. Use EXPAND_RELATION for direct references or callers. Use TRA" +
+            "CE for references, implementations or overrides, direct callers, and one further caller layer. Dis" +
+            "covery scope selects seeds. Expansion scope selects destinations. SOURCE_DOMAIN applies source-set" +
+            ", production/test, and generated-source constraints before enumeration. If the host supports tool " +
+            "composition, chain discovery, exact selection, and expansion inside code. Keep successful intermed" +
+            "iate results inside that call. Return task findings with scope, completion, omissions, and recover" +
+            "y facts. Do not omit requested matches or hide failures to reduce tokens. Apply path exclusions be" +
+            "fore read batches. Remove duplicate paths. Reuse unchanged source reads until a source change or f" +
+            "reshness rejection. Inspect unresolved imports, companion qualifiers, and unmatched source sites b" +
+            "efore a complete source-use answer. Every RUN uses COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V" +
+            "1. Preserve typed rejection and recovery evidence when completion is unproven. Use RESUME only wit" +
+            "h an issued output continuation, READ_RESULT with an issued result reference and cursor, and READ_" +
+            "SOURCE with an issued candidateSelector as candidateRef. Keep these capabilities distinct. Set ret" +
+            "ention RETAIN for later presentation. Budgets share one admitted grant under host ceilings. The sc" +
+            "hema also defines graph walk with WALK, predicates, retained composition, joins, and value IMPACT." +
+            " Use known request shapes directly. Read only the needed schema section or named example for unfam" +
+            "iliar shapes. Stop when evidence answers the task.",
         HostedToolLoading.DEFERRED,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

@@ -76,7 +76,7 @@ class PublicToolSchemaTest {
         val token = "NON_ISSUED_SCHEMA_TEST_ONLY"
         val reference = (ProtocolText.parse(token) as Refinement.Refined).value
         val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
-        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), null, null))
+        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), null, PublicToolEmit()))
         val admitted =
             (PublicToolContract.admit(
                     PublicToolIdentity.QUERY_SYMBOLS,
@@ -114,7 +114,9 @@ class PublicToolSchemaTest {
         val input =
             Json.encodeToJsonElement(
                 PublicToolQuerySymbols.serializer(),
-                PublicToolQuerySymbols(PublicToolRunAction(source, steps, PublicToolSymbolsOutput(fields))),
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(source, steps, PublicToolEmit(PublicToolSymbolsOutput(fields)))
+                ),
             )
         val admitted = (PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined).value
         val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -297,7 +299,11 @@ class PublicToolSchemaTest {
                 Json.encodeToJsonElement(
                     PublicToolQuerySymbols.serializer(),
                     PublicToolQuerySymbols(
-                        PublicToolRunAction(PublicToolAllSource(), null, PublicToolSymbolsOutput(emptyFields))
+                        PublicToolRunAction(
+                            PublicToolAllSource(),
+                            null,
+                            PublicToolEmit(PublicToolSymbolsOutput(emptyFields)),
+                        )
                     ),
                 ),
             PublicToolIdentity.QUERY_SYMBOLS to
@@ -307,7 +313,7 @@ class PublicToolSchemaTest {
                         PublicToolRunAction(
                             source = PublicToolResultSource(result),
                             steps = null,
-                            output = null,
+                            terminalStep = PublicToolEmit(),
                             retention = PublicToolRetention.RETAIN,
                         )
                     ),

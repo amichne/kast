@@ -49,6 +49,7 @@ class PublicRunnerControlledExecutionTest {
         val run =
             PublicToolRunAction(
                 source = PublicToolReferenceSource(references),
+                terminalStep = PublicToolEmit(),
                 executionMode = QueryExecutionModeDocument.RUNNER_CONTROLLED,
                 executionBudget = PublicToolExecutionBudget(maxResults = 2, maxReturnedBytes = 2000),
             )
@@ -78,7 +79,11 @@ class PublicRunnerControlledExecutionTest {
         val source = PublicToolReferenceSource(references)
         for (mode in listOf(null, QueryExecutionModeDocument.BOUNDED)) {
             val input =
-                Json.encodeToJsonElement(PublicToolQuerySymbols(PublicToolRunAction(source, executionMode = mode)))
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols(
+                        PublicToolRunAction(source, terminalStep = PublicToolEmit(), executionMode = mode)
+                    )
+                )
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined
             val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
             assertEquals(QueryExecutionModeDocument.BOUNDED, run.executionMode)
@@ -142,6 +147,7 @@ class PublicRunnerControlledExecutionTest {
 @Serializable
 private data class ExplicitNullableModeRun(
     val source: PublicToolSource,
+    @EncodeDefault val terminalStep: PublicToolTerminalStep = PublicToolEmit(),
     @EncodeDefault val executionMode: QueryExecutionModeDocument? = null,
     @EncodeDefault val type: String = "RUN",
 )
@@ -152,6 +158,7 @@ private data class ExplicitNullableModeRun(
 private data class InvalidModeRun(
     val source: PublicToolSource,
     val executionMode: JsonElement,
+    @EncodeDefault val terminalStep: PublicToolTerminalStep = PublicToolEmit(),
     @EncodeDefault val type: String = "RUN",
 )
 
@@ -170,6 +177,7 @@ private data class InvalidModeResume(
 @Serializable
 private data class RunnerControlledRun(
     val source: PublicToolSource,
+    @EncodeDefault val terminalStep: PublicToolTerminalStep = PublicToolEmit(),
     @EncodeDefault val type: String = "RUN",
     @EncodeDefault val executionMode: ProposedExecutionMode = ProposedExecutionMode.RUNNER_CONTROLLED,
 )

@@ -165,8 +165,11 @@ private data class CancellationTestCall(
 private data class CancellationTestRun(
     val type: String = "RUN",
     val source: CancellationTestSource = CancellationTestSource(),
+    val terminalStep: CancellationTestTerminal = CancellationTestTerminal(),
     val executionMode: String = "RUNNER_CONTROLLED",
 )
+
+@Serializable private data class CancellationTestTerminal(val type: String = "EMIT")
 
 @Serializable
 private data class CancellationTestSource(

@@ -124,7 +124,7 @@ test('production terminal helper preserves a synthetic policy-accepted large rej
   const document=JSON.parse(readFileSync(fixtureUrl,'utf8'));
   document.rejection.detail.originalCoverage.limitations=Array(14000).fill('BYTE_LIMIT_REACHED');
   const text=JSON.stringify({type:'rejected_document',document}),policy=new CasePolicy(config);
-  assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'synthetic-call').allow,true);
+  assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},'synthetic-call').allow,true);
   const decision=policy.toolResult(decodeEnvelope([{type:'text',text}]),Buffer.byteLength(text),'synthetic-call',false);
   assert.equal(decision.allow,false);assert.equal(decision.reason,Outcome.REJECTION);
   const expected=policy.report();
@@ -138,7 +138,7 @@ const {publishWorkerResult}=await import(process.argv[1]);const {CasePolicy,deco
 const document=JSON.parse(readFileSync(new URL(process.argv[3]),'utf8'));
 document.rejection.detail.originalCoverage.limitations=Array(14000).fill('BYTE_LIMIT_REACHED');
 const text=JSON.stringify({type:'rejected_document',document});const policy=new CasePolicy(JSON.parse(process.argv[4]));
-policy.toolCall('query_symbols',{request:{type:'RUN'}},'synthetic-call');
+policy.toolCall('query_symbols',{request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},'synthetic-call');
 policy.toolResult(decodeEnvelope([{type:'text',text}]),Buffer.byteLength(text),'synthetic-call',false);
 await publishWorkerResult({type:'report',report:policy.report()});`;
   const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,

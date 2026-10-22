@@ -22,7 +22,7 @@ internal object PublicQueryInputFixture {
     fun unsupportedStep(): String = encode(Source.All(), steps = listOf(Step("check_diagnostics")))
 
     private fun encode(source: Source, steps: List<Step>? = null, fields: List<String>? = null): String =
-        json.encodeToString(Query.serializer(), Query(Run(source, steps, fields?.let(::SymbolOutput))))
+        json.encodeToString(Query.serializer(), Query(Run(source, steps, Emit(fields?.let(::SymbolOutput)))))
 
     @Serializable private data class Query(val request: Run)
 
@@ -30,9 +30,11 @@ internal object PublicQueryInputFixture {
     private data class Run(
         val source: Source,
         val steps: List<Step>?,
-        val output: SymbolOutput?,
+        val terminalStep: Emit,
         val type: String = "RUN",
     )
+
+    @Serializable private data class Emit(val output: SymbolOutput?, val type: String = "EMIT")
 
     @Serializable private data class SymbolOutput(val fields: List<String>, val type: String = "SYMBOLS")
 

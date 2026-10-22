@@ -48,6 +48,7 @@ class TraceRequestContractTest(unittest.TestCase):
                 self.assertEqual('RUN', request['type'])
                 self.assertEqual('RETAIN', request['retention'])
                 self.assertEqual(grant, request['executionBudget'])
+                self.assertNotIn('output', request)
                 source = ({'type': 'SEARCH_DECLARATIONS', 'declarationName': name,
                            'declarationKinds': [kind], 'scope': {
                                'type': 'PACKAGE', 'packageName': 'fixture.' + package,
@@ -55,15 +56,15 @@ class TraceRequestContractTest(unittest.TestCase):
                           if name else {'type': 'AT_LOCATION',
                                         'file': 'src/main/kotlin/fixture/flow/FlowCollector.kt', 'offset': 990})
                 self.assertEqual(source, request['source'])
-                step = {'type': 'TRACE' if operation == 'TRACE' else 'EXPAND_RELATION',
-                        'expansionScope': {'type': 'SOURCE_DOMAIN', 'sourceSets': ['main', 'test'],
-                                           'sourcePolicy': 'PRODUCTION_AND_TEST',
-                                           'generatedSources': 'EXCLUDE', 'directory': directory}}
-                if operation != 'TRACE':
-                    step['relation'] = operation
-                steps = [step]
+                domain = {'type': 'SOURCE_DOMAIN', 'sourceSets': ['main', 'test'],
+                          'sourcePolicy': 'PRODUCTION_AND_TEST',
+                          'generatedSources': 'EXCLUDE', 'directory': directory}
+                output = {'type': 'SYMBOLS', 'fields': ['NAME', 'LOCATION', 'SIGNATURE']}
+                terminal = ({'type': 'TRACE', 'expansionScope': domain, 'output': output}
+                            if operation == 'TRACE' else {'type': 'EMIT', 'output': output})
+                steps = ([] if operation == 'TRACE' else [
+                    {'type': 'EXPAND_RELATION', 'relation': operation, 'expansionScope': domain}])
                 if operation in ('IMPLEMENTATIONS', 'OVERRIDES'):
                     steps.append({'type': 'DISTINCT_SYMBOLS'})
                 self.assertEqual(steps, request['steps'])
-                self.assertEqual({'type': 'SYMBOLS', 'fields': ['NAME', 'LOCATION', 'SIGNATURE']},
-                                 request['output'])
+                self.assertEqual(terminal, request['terminalStep'])

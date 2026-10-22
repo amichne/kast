@@ -24,7 +24,8 @@ class PublicToolTextContractTest {
                         word = text("launchd"),
                         scope = PublicToolDirectoryScope(text("app-server"), false, bounded(listOf(text("main")))),
                         declarationKinds = bounded(listOf(PublicToolDeclarationKinds.FUNCTION)),
-                    )
+                    ),
+                    terminalStep = PublicToolEmit(),
                 )
             )
         val raw = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
@@ -64,7 +65,10 @@ class PublicToolTextContractTest {
 
     @Test
     fun `indexed word source permits defaults without weakening the word grammar`() {
-        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolTextSource(text("bootstrap"))))
+        val input =
+            PublicToolQuerySymbols(
+                PublicToolRunAction(PublicToolTextSource(text("bootstrap")), terminalStep = PublicToolEmit())
+            )
         val raw = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw) as Refinement.Refined
         val source =

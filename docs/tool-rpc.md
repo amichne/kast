@@ -30,9 +30,13 @@ Qualified results are partial evidence, and a rejected result does not prove
 absence. The tool name must appear in the current catalog.
 
 ```shell
-printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"OrderService"}}}' |
+printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"OrderService"},"terminalStep":{"type":"EMIT"}}}' |
   "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call query_symbols
 ```
+
+Contract 17 requires one `terminalStep` object on RUN: `EMIT` or `TRACE`.
+Put output in that terminal; TRACE accepts only symbols and owns `expansionScope` directly.
+Keep query controls on RUN. `READ_RESULT.output` stays unchanged.
 
 ### Examine a query before execution
 

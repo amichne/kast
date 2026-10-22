@@ -1,4 +1,4 @@
-/** Actual Pi session probe; source intent and native/build pins are separate authorities. */
+/** Historical public-contract 6/7 Pi session probe; source intent and native/build pins are separate authorities. */
 import { readFile, writeFile, mkdir, realpath } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';

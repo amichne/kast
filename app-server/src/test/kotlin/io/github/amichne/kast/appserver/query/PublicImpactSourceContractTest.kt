@@ -66,7 +66,9 @@ class PublicImpactSourceContractTest {
         val raw =
             json.encodeToJsonElement(
                 PublicToolQuerySymbols.serializer(),
-                PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput)),
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(source, terminalStep = PublicToolEmit(PublicToolValuePathsOutput))
+                ),
             )
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw).refined()
         val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -106,7 +108,7 @@ class PublicImpactSourceContractTest {
                 PublicToolQuerySymbols(
                     PublicToolRunAction(
                         source,
-                        output = PublicToolImpactWitnessOutput(section),
+                        terminalStep = PublicToolEmit(PublicToolImpactWitnessOutput(section)),
                     )
                 )
             val encoded = json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
@@ -149,7 +151,7 @@ class PublicImpactSourceContractTest {
         }
         val invalid = javaClass.getResource("/impact-source/witness-on-run.json")!!.readText()
         assertEquals(
-            Refinement.Rejected(PublicToolInputFailure.SchemaRejected),
+            Refinement.Rejected(PublicToolInputFailure.SyntaxRejected),
             PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(invalid)),
         )
     }
@@ -196,7 +198,9 @@ class PublicImpactSourceContractTest {
             val encoded =
                 json.encodeToJsonElement(
                     PublicToolQuerySymbols.serializer(),
-                    PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput)),
+                    PublicToolQuerySymbols(
+                        PublicToolRunAction(source, terminalStep = PublicToolEmit(PublicToolValuePathsOutput))
+                    ),
                 )
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
             val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -223,7 +227,10 @@ class PublicImpactSourceContractTest {
                 domain = PublicToolImpactWorkspaceDomain,
                 flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
             )
-        val request = PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput))
+        val request =
+            PublicToolQuerySymbols(
+                PublicToolRunAction(source, terminalStep = PublicToolEmit(PublicToolValuePathsOutput))
+            )
         val omitted = Json {
             encodeDefaults = false
             explicitNulls = false
@@ -243,7 +250,7 @@ class PublicImpactSourceContractTest {
                 request =
                     PublicToolRunAction(
                         source.copy(requestedSites = bounded(listOf(target))),
-                        output = PublicToolValuePathsOutput,
+                        terminalStep = PublicToolEmit(PublicToolValuePathsOutput),
                     )
             )
         val malformed =

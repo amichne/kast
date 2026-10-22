@@ -1,5 +1,5 @@
 {
-  "note": "Templates from actual calls. Replace placeholders with fresh issued refs/results in a prepared public fixture. Each RUN uses a fresh query-session child; retain its READ_RESULT lineage. These templates do not launch or select an IDE.",
+  "note": "Current contract-17 templates adapted from historical calls, not new capture evidence. Replace placeholders with fresh issued refs/results in a prepared public fixture. Each RUN uses a fresh query-session child; retain its READ_RESULT lineage. These templates do not launch or select an IDE.",
   "calls": [
     {
       "name": "feature-handle",
@@ -10,13 +10,16 @@
           "file": "logging/src/main/kotlin/fixture/variants/v0/V0.kt",
           "offset": 804
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         }
       }
     },
@@ -49,13 +52,16 @@
             "type": "DISTINCT_SYMBOLS"
           }
         ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         }
       }
     },
@@ -68,13 +74,16 @@
           "file": "logging/src/main/kotlin/fixture/variants/v0/V0.kt",
           "offset": 417
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         }
       }
     },
@@ -109,8 +118,11 @@
           "models": []
         },
         "steps": [],
-        "output": {
-          "type": "VALUE_PATHS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "VALUE_PATHS"
+          }
         },
         "retention": "RETAIN"
       }
@@ -161,8 +173,11 @@
           "models": []
         },
         "steps": [],
-        "output": {
-          "type": "VALUE_PATHS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "VALUE_PATHS"
+          }
         },
         "retention": "RETAIN"
       }

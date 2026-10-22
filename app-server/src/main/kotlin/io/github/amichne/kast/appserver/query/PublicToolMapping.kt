@@ -71,38 +71,65 @@ private fun PublicToolReadSourceAction.lowerReadSource(): Refinement<PublicToolC
             )
     }
 
-private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
+private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, PublicToolInputFailure> {
     if (
         executionMode == QueryExecutionModeDocument.RUNNER_CONTROLLED &&
             (executionBudget?.maxElapsedMs != null || executionBudget?.maxWorkUnits != null)
     ) {
-        Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
-    } else
+        return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
+    }
+    val from =
         when (val from = source.lower()) {
-            is Refinement.Rejected -> from
-            is Refinement.Refined ->
-                when (val loweredSteps = (steps ?: PublicToolDefaults.steps).values.lower()) {
-                    is Refinement.Rejected -> loweredSteps
-                    is Refinement.Refined ->
-                        Refinement.Refined(
-                            PublicToolCanonical.Query(
-                                QueryRunRequest.Run(
-                                    from = from.value,
-                                    steps = bounded(loweredSteps.value),
-                                    output = output?.lower() ?: PublicToolDefaults.output,
-                                    execution =
-                                        QueryExecutionDocument(
-                                            QueryExecutionKindDocument.EXHAUSTIVE,
-                                            QueryExecutionBudgetDocument.INTERACTIVE,
-                                        ),
-                                    retention = retention.lower(),
-                                    executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
-                                    executionMode = executionMode ?: PublicToolDefaults.executionMode,
-                                )
-                            )
-                        )
-                }
+            is Refinement.Rejected -> return from
+            is Refinement.Refined -> from.value
         }
+    val loweredSteps =
+        when (val lowered = (steps ?: PublicToolDefaults.steps).values.lower()) {
+            is Refinement.Rejected -> return lowered
+            is Refinement.Refined -> lowered.value
+        }
+    return lowerTerminal(from, loweredSteps)
+}
+
+private fun PublicToolRunAction.lowerTerminal(
+    from: QueryFromDocument,
+    steps: List<QueryStepDocument>,
+): Refinement<PublicToolCanonical, PublicToolInputFailure> {
+    if (terminalStep is PublicToolTrace && steps.size >= MAX_PROTOCOL_ITEMS) {
+        return rejected(PublicToolParameter.TERMINAL_STEP, PublicToolRule.CANONICAL_STEP_LIMIT)
+    }
+    val terminalSteps =
+        when (val terminal = terminalStep) {
+            is PublicToolEmit -> steps
+            is PublicToolTrace ->
+                steps +
+                    QueryStepDocument.Trace(
+                        terminal.expansionScope?.lowerExpansionScope() ?: QueryExpansionScopeDocument.Workspace
+                    )
+        }
+    val output =
+        when (val terminal = terminalStep) {
+            is PublicToolEmit -> terminal.output?.lower() ?: PublicToolDefaults.output
+            is PublicToolTrace -> terminal.output?.lower() ?: PublicToolDefaults.output
+        }
+    return Refinement.Refined(
+        PublicToolCanonical.Query(
+            QueryRunRequest.Run(
+                from = from,
+                steps = bounded(terminalSteps),
+                output = output,
+                execution =
+                    QueryExecutionDocument(
+                        QueryExecutionKindDocument.EXHAUSTIVE,
+                        QueryExecutionBudgetDocument.INTERACTIVE,
+                    ),
+                retention = retention.lower(),
+                executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
+                executionMode = executionMode ?: PublicToolDefaults.executionMode,
+            )
+        )
+    )
+}
 
 private fun PublicToolRetention?.lower(): QueryRetentionModeDocument =
     when (this) {
@@ -276,10 +303,6 @@ private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, Pu
 
 private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
-        is PublicToolTrace ->
-            Refinement.Refined(
-                QueryStepDocument.Trace(expansionScope?.lowerExpansionScope() ?: QueryExpansionScopeDocument.Workspace)
-            )
         is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate.lower()))
         is PublicToolExpandRelation ->
             Refinement.Refined(

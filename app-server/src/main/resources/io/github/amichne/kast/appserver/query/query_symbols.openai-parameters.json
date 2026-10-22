@@ -876,15 +876,8 @@
           "maxItems": 1000,
           "description": "Ordered transformations executed left to right. null and [] mean no transformations. A join reads its right side from a retained symbol result. Inner join yields binding rows with named left and right cells; project_binding selects one named cell before symbol stages continue. Semi and anti joins retain symbol rows; anti requires complete right coverage."
         },
-        "output": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Output"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "terminalStep": {
+          "$ref": "#/$defs/TerminalStep"
         },
         "retention": {
           "type": [
@@ -923,13 +916,13 @@
         "type",
         "source",
         "steps",
-        "output",
+        "terminalStep",
         "retention",
         "executionBudget",
         "executionMode"
       ],
       "additionalProperties": false,
-      "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
+      "description": "Run a source through zero or more nonterminal steps and exactly one terminalStep object. EMIT accepts every output projection; TRACE accepts only symbols and owns expansionScope. Keep retention and execution controls on RUN. EMIT permits 1000 steps; TRACE permits 999 before its canonical suffix."
     },
     "ResumeAction": {
       "type": "object",
@@ -1239,9 +1232,6 @@
         },
         {
           "$ref": "#/$defs/Join"
-        },
-        {
-          "$ref": "#/$defs/Trace"
         }
       ]
     },
@@ -2924,6 +2914,51 @@
       "additionalProperties": false,
       "description": "Read an issued focus with separate region and text choices. Stale references reject. Query stages do not replay."
     },
+    "TerminalStep": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Emit"
+        },
+        {
+          "$ref": "#/$defs/Trace"
+        }
+      ],
+      "description": "Exactly one final operation. Each variant owns its arguments and output projection."
+    },
+    "Emit": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "EMIT"
+          ]
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Output"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "output"
+      ],
+      "additionalProperties": false,
+      "description": "Return the pipeline result through the selected output projection. Omitted or null output selects symbols with NAME and LOCATION."
+    },
+    "TraceOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SymbolsOutput"
+        }
+      ]
+    },
     "Trace": {
       "type": "object",
       "description": "Terminal affected-use trace. Groups exact declarations while retaining every compiler-proven connection and reference occurrence. Includes seed references, implementations or overrides, direct callable callers, and one further caller layer. Every branch shares the execution grant and expansion scope; incomplete branches remain qualified.",
@@ -2944,11 +2979,23 @@
             }
           ],
           "description": "Native relation expansion domain, independent of seed discovery and output filtering. Omission or null selects WORKSPACE. SOURCE_DOMAIN restricts destinations before native enumeration."
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TraceOutput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Symbol presentation only. Omission or null selects NAME and LOCATION. Explicit SYMBOLS output requires fields; [] selects identity and kind only."
         }
       },
       "required": [
         "type",
-        "expansionScope"
+        "expansionScope",
+        "output"
       ],
       "additionalProperties": false
     },

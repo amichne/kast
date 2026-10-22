@@ -5,6 +5,9 @@
     "arguments": {
       "request": {
         "type": "RUN",
+        "terminalStep": {
+          "type": "EMIT"
+        },
         "source": {
           "type": "SEARCH_DECLARATIONS",
           "declarationName": "Order"
@@ -33,14 +36,17 @@
             ]
           }
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE",
-            "SOURCE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE",
+              "SOURCE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 20
@@ -87,13 +93,16 @@
             }
           }
         ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 50
@@ -123,13 +132,16 @@
             ]
           }
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 20
@@ -148,14 +160,17 @@
           "file": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt",
           "offset": 100
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE",
-            "SOURCE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE",
+              "SOURCE"
+            ]
+          }
         }
       }
     }
@@ -178,8 +193,11 @@
             "relation": "REFERENCES"
           }
         ],
-        "output": {
-          "type": "OCCURRENCES"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "OCCURRENCES"
+          }
         },
         "executionBudget": {
           "maxResults": 50
@@ -208,13 +226,16 @@
             "type": "DISTINCT_SYMBOLS"
           }
         ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 50
@@ -243,13 +264,16 @@
             "type": "DISTINCT_SYMBOLS"
           }
         ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 50
@@ -278,13 +302,16 @@
             "type": "DISTINCT_SYMBOLS"
           }
         ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 50
@@ -311,8 +338,11 @@
             "maximumDepth": 2
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         },
         "executionBudget": {
           "maxResults": 50
@@ -333,13 +363,16 @@
             "CLASS"
           ]
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "retention": "RETAIN",
         "executionBudget": {
@@ -388,13 +421,16 @@
             }
           }
         ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         }
       }
     }
@@ -418,6 +454,9 @@
     "arguments": {
       "request": {
         "type": "RUN",
+        "terminalStep": {
+          "type": "EMIT"
+        },
         "source": {
           "type": "SEARCH_DECLARATIONS",
           "declarationName": "InstalledAppServerManager",
@@ -455,12 +494,15 @@
             "FUNCTION"
           ]
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 10
@@ -494,8 +536,11 @@
           "models": []
         },
         "steps": [],
-        "output": {
-          "type": "VALUE_PATHS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "VALUE_PATHS"
+          }
         },
         "retention": "RETAIN"
       }
@@ -557,8 +602,11 @@
             }
           }
         ],
-        "output": {
-          "type": "OCCURRENCES"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "OCCURRENCES"
+          }
         },
         "retention": "RETAIN"
       }
@@ -586,8 +634,11 @@
             }
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         },
         "retention": "RETAIN"
       }
@@ -643,8 +694,11 @@
           ]
         },
         "steps": [],
-        "output": {
-          "type": "VALUE_PATHS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "VALUE_PATHS"
+          }
         },
         "retention": "RETAIN"
       }
@@ -700,9 +754,12 @@
           "models": []
         },
         "steps": [],
-        "output": {
-          "type": "IMPACT_WITNESS",
-          "section": "FINDINGS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "IMPACT_WITNESS",
+            "section": "FINDINGS"
+          }
         },
         "retention": "RETAIN"
       }
@@ -720,21 +777,20 @@
             "<exact-ref-returned-by-Kast>"
           ]
         },
-        "steps": [
-          {
-            "type": "TRACE",
-            "expansionScope": {
-              "type": "WORKSPACE"
-            }
+        "steps": [],
+        "terminalStep": {
+          "type": "TRACE",
+          "expansionScope": {
+            "type": "WORKSPACE"
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
           }
-        ],
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
         },
         "retention": "RETAIN",
         "executionBudget": {
@@ -764,13 +820,16 @@
             ]
           }
         },
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "LOCATION",
-            "SIGNATURE"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
         },
         "executionBudget": {
           "maxResults": 20

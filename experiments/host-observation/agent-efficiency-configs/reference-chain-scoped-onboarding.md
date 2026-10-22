@@ -1,17 +1,20 @@
 # Kast reference tasks
 
-Use native Kast first. Inside one Pi `codemode` call, discover the declaration, select its exact identity, expand references, review the requested source scope, and project the terminal answer. Keep successful intermediate results in local variables. Never `text()` or `store()` those results. Do not discover tools or read full references for these known contract-14 shapes.
+Use native Kast first. Inside one Pi `codemode` call, discover the declaration, select its exact identity, expand references, review the requested source scope, and project the terminal answer. Keep successful intermediate results in local variables. Never `text()` or `store()` those results. Do not discover tools or read full references for these known contract-17 shapes.
+
+These are current request templates, not new experiment results. Historical captures keep their original prompt and contract identity.
+Every RUN requires one `terminalStep`; put output there. Use EMIT for these queries, not a RUN-level output.
 
 ```javascript
 const query = request => tools.mcp__kast__query_symbols({request,verbose:true});
 const found = await query({type:"RUN",source:{type:"SEARCH_DECLARATIONS",
   declarationName:"<simpleName>",declarationKinds:["CLASS"],
   scope:{type:"PACKAGE",packageName:"<knownPackage>",includeSubpackages:false,sourceSetNames:["main"]}},
-  output:{type:"SYMBOLS",fields:["NAME","LOCATION","SIGNATURE"]}});
+  terminalStep:{type:"EMIT",output:{type:"SYMBOLS",fields:["NAME","LOCATION","SIGNATURE"]}}});
 // Select the issued ref inside code, then expand it without a model turn.
 const end = await query({type:"RUN",source:{type:"SYMBOL_REFS",symbolRefs:[issuedRef]},
   steps:[{type:"EXPAND_RELATION",relation:"REFERENCES",expansionScope:{type:"SOURCE_DOMAIN",sourceSets:["main"],sourcePolicy:"PRODUCTION_ONLY",generatedSources:"EXCLUDE"}}],
-  output:{type:"OCCURRENCES"}});
+  terminalStep:{type:"EMIT",output:{type:"OCCURRENCES"}}});
 ```
 
 This example covers production `main` across modules. Replace placeholders with task facts. Preserve the requested source scope for other tasks. `CLASS` includes interfaces and objects. Use `FUNCTION` or `PROPERTY` for those declarations. A native result is a CallToolResult. Its `structuredContent` is the Kast document. `verbose:true` selects canonical rows inside code. Default compact rows can use a shared relation graph.

@@ -54,7 +54,10 @@
             "relativePath": "."
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -79,7 +82,10 @@
             ]
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -101,7 +107,10 @@
             "relation": "dependencies"
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -117,7 +126,10 @@
           "symbolRefs": []
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -136,7 +148,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null,
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        },
         "execution": {
           "kind": "exhaustive"
         }
@@ -156,6 +171,9 @@
           "nameMatch": null,
           "declarationKinds": null,
           "scope": null
+        },
+        "terminalStep": {
+          "type": "EMIT"
         }
       }
     },
@@ -180,7 +198,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -205,7 +226,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -230,7 +254,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -255,7 +282,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -280,7 +310,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -305,7 +338,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -330,7 +366,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -355,7 +394,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -380,7 +422,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -400,7 +445,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -420,7 +468,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -440,7 +491,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -460,7 +514,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": true,
@@ -480,7 +537,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -502,7 +562,10 @@
           "scope": null
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -529,7 +592,10 @@
           }
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -557,7 +623,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -574,12 +643,15 @@
           "scope": null
         },
         "steps": null,
-        "output": {
-          "type": "SYMBOLS",
-          "fields": [
-            "NAME",
-            "NAME"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "NAME"
+            ]
+          }
         }
       }
     },
@@ -635,7 +707,10 @@
           "result": "symbol:v1:00000000-0000-0000-0000-000000000000"
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -650,7 +725,10 @@
           "type": "ALL_DECLARATIONS"
         },
         "steps": null,
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -663,7 +741,10 @@
         "type": "ALL_DECLARATIONS"
       },
       "steps": null,
-      "output": null
+      "terminalStep": {
+        "type": "EMIT",
+        "output": null
+      }
     },
     "schema_valid": false
   },
@@ -708,7 +789,10 @@
             ]
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -730,7 +814,10 @@
             "expression": "select(.kind == \"class\")"
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -757,7 +844,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -784,7 +874,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -811,7 +904,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -840,7 +936,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -867,7 +966,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -894,7 +996,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -919,7 +1024,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -943,7 +1051,10 @@
             ]
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -969,7 +1080,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -996,7 +1110,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -1024,7 +1141,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -1053,7 +1173,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -1078,7 +1201,10 @@
             }
           }
         ],
-        "output": null
+        "terminalStep": {
+          "type": "EMIT",
+          "output": null
+        }
       }
     },
     "schema_valid": false
@@ -1093,6 +1219,9 @@
           "type": "ALL_DECLARATIONS"
         },
         "steps": null,
+        "terminalStep": {
+          "type": "EMIT"
+        },
         "returnFields": [
           "name"
         ]
@@ -1110,11 +1239,14 @@
           "type": "ALL_DECLARATIONS"
         },
         "steps": null,
-        "output": {
-          "type": "OCCURRENCES",
-          "fields": [
-            "NAME"
-          ]
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "OCCURRENCES",
+            "fields": [
+              "NAME"
+            ]
+          }
         }
       }
     },
@@ -1150,8 +1282,11 @@
             "maximumDepth": 0
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         }
       }
     },
@@ -1173,8 +1308,11 @@
             "maximumDepth": 1001
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         }
       }
     },
@@ -1199,8 +1337,11 @@
             }
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         }
       }
     },
@@ -1226,8 +1367,11 @@
             }
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         }
       }
     },
@@ -1252,8 +1396,11 @@
             }
           }
         ],
-        "output": {
-          "type": "TRAVERSAL_RECORDS"
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          }
         }
       }
     },

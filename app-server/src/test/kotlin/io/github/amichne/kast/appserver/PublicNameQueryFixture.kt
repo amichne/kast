@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.query.PublicToolDeclarationKinds
+import io.github.amichne.kast.appserver.query.PublicToolEmit
 import io.github.amichne.kast.appserver.query.PublicToolNameMatch
 import io.github.amichne.kast.appserver.query.PublicToolOutput
 import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
@@ -32,7 +33,7 @@ internal fun publicNameQuery(
                     scope = scope,
                 ),
                 null,
-                output,
+                PublicToolEmit(output),
             )
         ),
     )

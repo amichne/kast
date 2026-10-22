@@ -126,7 +126,7 @@ def presentation(calls):
             request = call.request['request']
             original = calls[0].request.get('request', {})
             if (request.get('executionBudget') != original.get('executionBudget') or
-                    request.get('output') != original.get('output')):
+                    request.get('output') != original.get('terminalStep', {}).get('output')):
                 return PresentationRejected(PresentationFailure.REQUEST)
             if request.get('result') != reference:
                 return PresentationRejected(PresentationFailure.OWNER)

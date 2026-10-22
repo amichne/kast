@@ -21,7 +21,7 @@ All routes read one JSON document from stdin. `query_symbols` takes one required
 
 | Action | Required input | Meaning |
 |---|---|---|
-| `RUN` | `source` | Run a query with optional ordered `steps`, `output`, and `retention: "RETAIN"`. |
+| `RUN` | `source`, `terminalStep` | Run optional ordered transformation `steps`, then the selected `EMIT` or `TRACE` terminal. |
 | `RESUME` | Issued `continuation` | Deliver already-produced output with an issued `query-output:v1` continuation and an optional presentation budget. No semantic stages run. |
 | `READ_RESULT` | Issued `result` | Present immutable retained rows with an optional `cursor` and matching typed `output`. No query stages run. |
 | `READ_SOURCE` | Issued `candidateRef` | Read the exact source anchor through the source owner and preserve its authority and freshness failures. |
@@ -31,10 +31,18 @@ It can also select an impact investigation.
 Exact case-sensitive name matching is the discovery default. Source scope restricts discovery only, and ordered steps stay ordered.
 Omitted, null, or empty `steps` means no transformations. A retained-result source accepts optional issued `rowIds`.
 
-`RUN` output selects `SYMBOLS`, `OCCURRENCES`, `TRAVERSAL_RECORDS`, `BINDING_ROWS`, `VALUE_PATHS`, or `IMPACT_WITNESS` for the admitted final row kind.
+Public contract 17 requires exactly one non-null `terminalStep` object tagged `EMIT` or `TRACE`.
+`EMIT.output` selects `SYMBOLS`, `OCCURRENCES`, `TRAVERSAL_RECORDS`, `BINDING_ROWS`, `VALUE_PATHS`, or `IMPACT_WITNESS` for the admitted final row kind.
+`TRACE.output` accepts only `SYMBOLS`. Its `expansionScope` belongs directly on the terminal and defaults to workspace expansion when omitted or null.
+`TRACE` cannot appear in `steps`. RUN-level `output` and `traceOptions` reject.
+Retention, execution mode, and execution budget remain on `RUN` and govern the whole query.
+EMIT permits at most 1000 transformation steps. TRACE permits 999 before its canonical TRACE suffix.
+The other three actions reject `terminalStep`.
+
 `READ_RESULT` supports the same output vocabulary for the retained row kind.
-Omitted or null output selects `SYMBOLS` with `NAME` and `LOCATION`.
-Empty symbol fields request mandatory identity and kind only.
+Its `output` field stays on `READ_RESULT`.
+Omitted or null terminal output or `READ_RESULT.output` selects `SYMBOLS` with `NAME` and `LOCATION`.
+Explicit symbol output requires `fields`. An empty array requests identity and kind only.
 Occurrence output preserves each relation fact and repeated use site. Traversal-record output preserves depth and its relation fact.
 
 Use `READ_RESULT` with matching typed output to present retained occurrence or traversal-record rows.
@@ -73,6 +81,9 @@ Incompatible stages and unknown column names reject during admission.
 An incomplete right operand rejects `ANTI` join.
 `READ_RESULT` presents retained binding rows with `BINDING_ROWS` output and preserves pairs and row IDs.
 Binding rows cannot serve as the right operand of a symbol join. The public grammar has no alternate join key.
+
+The [generated row compatibility table](../../agent-tools/references/query-row-compatibility.md) records the existing `QueryRowAdmission` transitions.
+Terminal selection does not prove row compatibility. Impact witness output keeps its protocol route through value paths before presentation.
 
 `WALK` takes a relation and defaults to exhaustive breadth-first traversal within the workspace expansion domain. Omitted or null `maximumDepth` selects the canonical `EXHAUSTIVE` extent. An explicit `maximumDepth` from 1 to 1000 selects `THROUGH_DEPTH` and remains subject to the hosted bounded-depth ceiling; its omitted expansion policy retains the seed domain. An explicit `expansionScope` is preserved in either case. Resource limits preserve the original extent and reject when requested completeness is unproven. Optional bounded-fan-out exploration preserves its qualifications. The stage composes the existing traversal domain operation under the query execution budget. Query results carry depth-bearing records and walk observations with frontier, progress, strategy, partial expansions, and coverage. Public RUN requires complete semantic execution within the admitted bounded grant. Public RESUME only delivers already-produced output; it cannot continue an unfinished walk or increase its semantic grant.
 

@@ -25,6 +25,11 @@ internal fun PublicToolReadResultOutput.lower(): QueryOutputDocument =
         PublicToolValuePathsOutput -> QueryOutputDocument.ValuePaths
     }
 
+internal fun PublicToolTraceOutput.lower(): QueryOutputDocument.Symbols =
+    when (this) {
+        is PublicToolSymbolsOutput -> symbolsOutput()
+    }
+
 private fun PublicToolSymbolsOutput.symbolsOutput(): QueryOutputDocument.Symbols =
     QueryOutputDocument.Symbols(
         proven(

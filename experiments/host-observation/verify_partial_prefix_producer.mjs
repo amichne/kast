@@ -36,7 +36,7 @@ for(const fixture of cases) {
   assert.equal(allRows.length,fixture.rowCount);
   assert.equal(new Set(allRows.map(row=>row.row_id??row.ref)).size,fixture.rowCount);
   const replies=[initial,...pages],calls=[];
-  const result=await awaitDelivery({request:{type:'RUN',output:initial.document.rejection.detail.evidence.nextQuery.request.output}},async request=>{
+  const result=await awaitDelivery({request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT',output:initial.document.rejection.detail.evidence.nextQuery.request.output}}},async request=>{
     calls.push(structuredClone(request));assert.ok(replies.length,'No unexpected call');return replies.shift();
   },{callTimeoutMillis:1000},undefined,()=>0);
   assert.equal(result.delivery.stop,'BYTE_LIMIT',fixture.name);

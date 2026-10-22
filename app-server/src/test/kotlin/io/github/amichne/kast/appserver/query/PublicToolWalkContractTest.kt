@@ -30,7 +30,7 @@ class PublicToolWalkContractTest {
         val encoded =
             Json.encodeToJsonElement(
                 PublicToolQuerySymbols.serializer(),
-                PublicToolQuerySymbols(PublicToolRunAction(source, steps)),
+                PublicToolQuerySymbols(PublicToolRunAction(source, steps, PublicToolEmit())),
             )
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
         val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -50,7 +50,7 @@ class PublicToolWalkContractTest {
         val depth = (ProtocolCount.parse(1) as Refinement.Refined).value
         val step = PublicToolWalk(PublicToolRelation.CALLERS, depth, PublicToolBoundedFanOutStrategy(32))
         val steps = (BoundedProtocolList.create(listOf<PublicToolStep>(step)) as Refinement.Refined).value
-        val input = PublicToolQuerySymbols(PublicToolRunAction(source, steps))
+        val input = PublicToolQuerySymbols(PublicToolRunAction(source, steps, PublicToolEmit()))
         val omitted = Json {
             explicitNulls = false
             encodeDefaults = false
@@ -92,16 +92,17 @@ class PublicToolWalkContractTest {
                         listOf<PublicToolStep>(PublicToolWalk(PublicToolRelation.CALLERS, depth, provided))
                     ) as Refinement.Refined)
                     .value
-            val input = PublicToolQuerySymbols(PublicToolRunAction(source, steps, PublicToolTraversalRecordsOutput))
+            val input =
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(source, steps, PublicToolEmit(PublicToolTraversalRecordsOutput))
+                )
             val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
             val request = encoded.jsonObject.getValue("request").jsonObject
             val walk = request.getValue("steps").jsonArray.single().jsonObject
             assertEquals("WALK", walk.getValue("type").jsonPrimitive.content)
             assertEquals(3, walk.getValue("maximumDepth").jsonPrimitive.int)
-            assertEquals(
-                "TRAVERSAL_RECORDS",
-                request.getValue("output").jsonObject.getValue("type").jsonPrimitive.content,
-            )
+            val output = request.getValue("terminalStep").jsonObject.getValue("output").jsonObject
+            assertEquals("TRAVERSAL_RECORDS", output.getValue("type").jsonPrimitive.content)
             if (provided == fanOut) {
                 val strategy = walk.getValue("strategy").jsonObject
                 assertEquals("BOUNDED_FAN_OUT", strategy.getValue("type").jsonPrimitive.content)

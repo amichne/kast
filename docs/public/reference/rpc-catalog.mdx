@@ -21,7 +21,8 @@ Tool RPC carries JSON through an installed process. Its working directory select
 "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
 ```
 
-The reply uses `type: "catalog"` and `catalog.schemaVersion: 2`. Each effect is `READ` or `WRITE`.
+The reply uses `type: "catalog"`. Its `catalog.schemaVersion` is the installed public tool contract version, 17 for the required-terminal grammar.
+Each effect is `READ` or `WRITE`.
 
 The catalog reports the call timeout and maximum response bytes. It can also report the `querySession` capability. If that capability is absent, use one-shot calls.
 

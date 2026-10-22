@@ -176,9 +176,21 @@ internal data class QueryCompletionPublicSeedSource(
 @Serializable
 internal data class QueryCompletionPublicSeedRequest(
     val source: QueryCompletionPublicSeedSource,
-    val output: QueryCompletionPublicReadOutput,
+    val terminalStep: QueryCompletionPublicSeedTerminal,
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val type: QueryCompletionPublicSeedAction = QueryCompletionPublicSeedAction.RUN,
+)
+
+@Serializable
+internal enum class QueryCompletionPublicSeedTerminalKind {
+    EMIT
+}
+
+@Serializable
+internal data class QueryCompletionPublicSeedTerminal(
+    val output: QueryCompletionPublicReadOutput,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    val type: QueryCompletionPublicSeedTerminalKind = QueryCompletionPublicSeedTerminalKind.EMIT,
 )
 
 /** An exact seed is a separate, smaller question, never a replacement for original discovery coverage. */
@@ -194,7 +206,7 @@ private fun completionSeedQuery(retained: QueryCompletionEvidenceDocument.Retain
     return QueryCompletionPublicSeedQuery(
         QueryCompletionPublicSeedRequest(
             QueryCompletionPublicSeedSource(listOf(row.ref.token)),
-            output.toCompletionPublicOutput(),
+            QueryCompletionPublicSeedTerminal(output.toCompletionPublicOutput()),
         )
     )
 }

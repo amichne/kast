@@ -37,6 +37,8 @@ class StaticCallbackQualificationTest(unittest.TestCase):
         request = q.static_request(symbol, q.Budget(maxResults=1), self.suite.root)
         encoded = json.loads(json.dumps(request))
         self.assertNotIn('completion', encoded['request'])
+        self.assertNotIn('output', encoded['request'])
+        self.assertEqual({'type': 'EMIT', 'output': {'type': 'OCCURRENCES'}}, encoded['request']['terminalStep'])
         self.assertEqual([{'type': 'EXPAND_RELATION', 'relation': 'CALLEES',
                            'expansionScope': {'type': 'WORKSPACE'}}], encoded['request']['steps'])
         self.assertEqual({'type': 'AT_LOCATION', 'file': 'suppliers/src/main/kotlin/fixture/staticcallbacks/suppliers/Suppliers.kt',

@@ -70,6 +70,9 @@ The capture replaces the absolute checkout prefix with `/workspace/kast`. It kee
 
 The capture is older than compact output and current complete-only execution. Its semantic continuation behavior is historical. It is not the public `RESUME` contract today.
 
+The capture predates contract 17. Its requests have no `terminalStep` and keep the old syntax.
+The walkthrough and composition pages now show EMIT terminals. Their results still come from the old run. These syntax changes are not new run evidence.
+
 Current `RESUME` only shows produced output. Current `RUN` does the work across semantic pages. It rejects incomplete proof.
 
 Schema tests check the saved JSON. They do not replay the original IDEA interaction.
@@ -79,7 +82,7 @@ Schema tests check the saved JSON. They do not replay the original IDEA interact
 This current input selects declaration discovery through `RUN`.
 
 ```json
-{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"QueryStepSyntax"}}}
+{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"QueryStepSyntax"},"terminalStep":{"type":"EMIT"}}}
 ```
 
 [The source map](/reference/source-map#public-requests) links contract owners. [MCP](/reference/mcp-catalog) and [Tool RPC](/reference/rpc-catalog) define transport wrappers.

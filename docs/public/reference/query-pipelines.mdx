@@ -21,7 +21,8 @@ Every public run needs complete execution within `COMPILER_RESOLVED_STATIC_V1`. 
 
 A finished output page cannot supply producer proof that is missing. During later output reads, rejection evidence stays `POLICY_REJECTED_EVIDENCE`.
 
-The examples use the [historical recording](/reference/schemas#recorded-walkthrough) at `56df091`. Its counts describe that recording alone.
+The request examples use contract 17 syntax. The counts and replies come from the [historical recording](/reference/schemas#recorded-walkthrough) at `56df091`.
+Adding explicit EMIT terminals does not rerun those calls or establish current counts. The recorded request bytes remain unchanged.
 
 <a id="retain-a-second-query-result" />
 
@@ -48,7 +49,10 @@ Only `QueryStepSyntax.Concat` implements that interface. `ExactQueryStage.Concat
         "sourceSetNames": ["main"]
       }
     },
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
+    "terminalStep": {
+      "type": "EMIT",
+      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    },
     "retention": "RETAIN"
   }
 }
@@ -78,7 +82,10 @@ Use `UNION` to combine symbol identities. Apply a later `WHERE` to the combined 
         }
       }
     ],
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    "terminalStep": {
+      "type": "EMIT",
+      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    }
   }
 }
 ```
@@ -101,7 +108,8 @@ Use `INTERSECT` to keep identities present in both inputs.
     "source": {"type": "RESULT", "result": "<result A>"},
     "steps": [
       {"type": "INTERSECT", "right": {"type": "RESULT", "result": "<result B>"}}
-    ]
+    ],
+    "terminalStep": {"type": "EMIT"}
   }
 }
 ```
@@ -127,7 +135,7 @@ Use an `INNER` join to keep two named cells. Select one cell before a later symb
         "right": {"type": "RESULT", "result": "<result B>"}
       }
     ],
-    "output": {"type": "BINDING_ROWS"},
+    "terminalStep": {"type": "EMIT", "output": {"type": "BINDING_ROWS"}},
     "retention": "RETAIN"
   }
 }
@@ -145,7 +153,7 @@ Recorded call `06-join-c` kept one pair as C. Both cells identified `QueryStepSy
       {"type": "PROJECT_BINDING", "name": "step"},
       {"type": "EXPAND_RELATION", "relation": "REFERENCES"}
     ],
-    "output": {"type": "OCCURRENCES"}
+    "terminalStep": {"type": "EMIT", "output": {"type": "OCCURRENCES"}}
   }
 }
 ```

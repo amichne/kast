@@ -23,7 +23,20 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@SerialName("EMIT")
+internal data class PublicToolEmit(
+    val output: PublicToolOutput? = null,
+) : PublicToolTerminalStep
+
+@Serializable
 @SerialName("TRACE")
 internal data class PublicToolTrace(
     val expansionScope: PublicToolExpansionScope? = null,
-) : PublicToolStep
+    val output: PublicToolTraceOutput? = null,
+) : PublicToolTerminalStep
+
+@Serializable
+internal sealed interface PublicToolTerminalStep
+
+@Serializable
+internal sealed interface PublicToolTraceOutput

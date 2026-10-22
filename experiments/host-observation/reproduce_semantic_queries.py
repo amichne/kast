@@ -185,7 +185,7 @@ class QualificationSlice(str, Enum):
     @property
     def public_contract_version(self):
         return {self.TRY_BRANCH_RESULTS: 6, self.TRY_LOCAL_IDENTITIES: 7,
-                self.RELATION_WORK_REDUCTION: 16,
+                self.RELATION_WORK_REDUCTION: 17,
                 self.QUERY_CHECKPOINT_STORAGE: 14}[self]
 
 
@@ -529,7 +529,7 @@ def invocation(case, surface):
         else:
             raise ValueError("UNSUPPORTED_REPLAY_STEP")
     return "query_symbols", ["tool", "query_symbols"], dict(request=dict(type="RUN", source=lowered,
-        steps=steps, output=dict(type="SYMBOLS", fields=list(case.select))))
+        steps=steps, terminalStep=dict(type="EMIT", output=dict(type="SYMBOLS", fields=list(case.select)))))
 
 
 def search(name, scope=None, match="EXACT"):
@@ -1169,7 +1169,7 @@ def drain_workload(request, invoke, max_calls):
         else:
             progress = presentation(calls)
             if not isinstance(progress, PresentationNext): break
-            selected = initial['request']['output']
+            selected = initial['request']['terminalStep']['output']
             if selected['type'] == 'SYMBOLS':
                 output = replay_wire.Symbols([replay_wire.SymbolField(f) for f in selected['fields']])
             elif selected['type'] == 'OCCURRENCES':

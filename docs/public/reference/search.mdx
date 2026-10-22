@@ -51,7 +51,10 @@ For an interface, use the request family `CLASS`. Returned class-like declaratio
         "sourceSetNames": ["main"]
       }
     },
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    "terminalStep": {
+      "type": "EMIT",
+      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    }
   }
 }
 ```
@@ -79,8 +82,11 @@ This current input example uses a placeholder for the issued reference.
   "request": {
     "type": "RUN",
     "source": {"type": "SYMBOL_REFS", "symbolRefs": ["<issued ref>"]},
-    "steps": [{"type": "TRACE", "expansionScope": {"type": "WORKSPACE"}}],
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
+    "terminalStep": {
+      "type": "TRACE",
+      "expansionScope": {"type": "WORKSPACE"},
+      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    },
     "retention": "RETAIN",
     "executionBudget": {"maxElapsedMs": 30000}
   }
@@ -89,7 +95,8 @@ This current input example uses a placeholder for the issued reference.
 
 `TRACE` includes references, implementations or overrides, and direct callers. It adds one further caller layer. For a type seed, it also includes direct callable members.
 
-The topology is fixed. Put `TRACE` last and use `SYMBOLS` output. Its grouped symbols keep the original relation and occurrence evidence.
+The topology is fixed. Select TRACE through `terminalStep`, never `steps`, with symbol output only.
+Its grouped symbols keep the original relation and occurrence evidence.
 
 `WORKSPACE` can reach clients outside the discovery directory. Use explicit `SOURCE_DOMAIN` when the question excludes those destinations.
 

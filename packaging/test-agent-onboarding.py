@@ -53,14 +53,17 @@ class AgentOnboardingTest(unittest.TestCase):
                     text = result.stdout.rstrip("\n") + "\n"
                 texts.append(text)
                 self.assertLessEqual(len(text.encode()), 8192)
-                self.assertIn("Use `CLASS` for interfaces", text)
+                self.assertIn("`CLASS` includes interfaces", text)
                 for clause in (
                     "Apply the task's source-set and path exclusions before each read batch",
                     "Remove duplicate paths and reuse unchanged source reads",
-                    "Keep successful intermediate results inside that call",
-                    "Do not omit requested matches or hide failures to reduce tokens",
-                    "Read only the needed schema section or named example for unfamiliar shapes",
-                    "Preserve incomplete results and scope qualifications",
+                    "Keep intermediate results inside it",
+                    "Keep requested matches and failures",
+                    "Read only the needed section or named example for unfamiliar shapes",
+                    "Incomplete results and scope qualifications do not prove absence. Preserve them",
+                    "one non-null `terminalStep` object tagged `EMIT` or `TRACE`",
+                    "Use `terminalStep.output`, not `RUN.output`",
+                    "Never put `TRACE` in `steps` or add `traceOptions`",
                 ):
                     self.assertIn(clause, text, host)
                 brief = (PLUGIN / "references/onboarding.md").read_text().rstrip()

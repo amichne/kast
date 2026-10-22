@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from enterprise_cache_oracle import CACHE, FIXTURE, FixtureIntegrityError, load_oracle, materialize
 import kast_ide
-from qualify_enterprise_cache import Budget, DirectoryScope, Location, Output, PackageScope, Payload, PhotoWalkBudget, Refs, RowsOutput, Run, ScopedTrace, Search, SourceDomain, Trace, Walk, encode, request_validator, retained_pages, run
+from qualify_enterprise_cache import Budget, DirectoryScope, Emit, Location, Output, PackageScope, Payload, PhotoWalkBudget, Refs, RowsOutput, Run, ScopedTrace, Search, SourceDomain, Trace, Walk, encode, request_validator, retained_pages, run
 
 
 class EnterpriseCacheQualificationTest(unittest.TestCase):
@@ -67,29 +67,35 @@ class EnterpriseCacheQualificationTest(unittest.TestCase):
         self.assertEqual(package, directory)
 
     def test_photo_walk_keeps_default_work_and_byte_dimensions_omitted(self):
-        request = encode(Payload(Run(Refs(('exact:v4:' + '0' * 64,)), RowsOutput('TRAVERSAL_RECORDS'),
+        request = encode(Payload(Run(Refs(('exact:v4:' + '0' * 64,)), Emit(RowsOutput('TRAVERSAL_RECORDS')),
                                     (Walk(),), PhotoWalkBudget())))
         self.assertEqual(request['request']['executionBudget'], {'maxElapsedMs': 15000, 'maxResults': 100})
         self.assertEqual(request['request']['steps'], [{'type': 'WALK', 'relation': 'CALLEES', 'maximumDepth': 1}])
+        self.assertEqual({'type': 'EMIT', 'output': {'type': 'TRAVERSAL_RECORDS'}}, request['request']['terminalStep'])
         request_validator().validate(request)
 
     def test_scoped_trace_retains_the_explicit_domain_under_the_public_schema(self):
         source = Search('CacheManager', DirectoryScope(), ('CLASS',))
         domain = SourceDomain(sourceSets=('main', 'test'), sourcePolicy='PRODUCTION_AND_TEST',
                               directory='src/main/kotlin/example/cache')
-        request = encode(Payload(Run(source, steps=(ScopedTrace(domain),))))
-        self.assertEqual(request['request']['steps'], [{
+        request = encode(Payload(Run(source, terminalStep=ScopedTrace(domain))))
+        self.assertEqual(request['request']['steps'], [])
+        self.assertNotIn('output', request['request'])
+        self.assertEqual(request['request']['terminalStep'], {
             'type': 'TRACE', 'expansionScope': {
                 'type': 'SOURCE_DOMAIN', 'sourceSets': ['main', 'test'],
                 'sourcePolicy': 'PRODUCTION_AND_TEST', 'generatedSources': 'EXCLUDE',
-                'directory': 'src/main/kotlin/example/cache'}}])
+                'directory': 'src/main/kotlin/example/cache'},
+            'output': {'type': 'SYMBOLS', 'fields': ['NAME', 'LOCATION', 'SIGNATURE']}})
         request_validator().validate(request)
 
     def test_default_trace_keeps_workspace_expansion_omitted_without_changing_the_grant(self):
         source = Search('CacheManager', DirectoryScope(), ('CLASS',))
-        workspace = encode(Payload(Run(source, steps=(Trace(),))))
-        scoped = encode(Payload(Run(source, steps=(ScopedTrace(SourceDomain()),))))
-        self.assertEqual(workspace['request']['steps'], [{'type': 'TRACE'}])
+        workspace = encode(Payload(Run(source, terminalStep=Trace())))
+        scoped = encode(Payload(Run(source, terminalStep=ScopedTrace(SourceDomain()))))
+        self.assertEqual(workspace['request']['steps'], [])
+        self.assertEqual(workspace['request']['terminalStep'], {
+            'type': 'TRACE', 'output': {'type': 'SYMBOLS', 'fields': ['NAME', 'LOCATION', 'SIGNATURE']}})
         self.assertEqual(workspace['request']['executionBudget'], {
             'maxElapsedMs': 15000, 'maxResults': 100,
             'maxWorkUnits': 100000, 'maxReturnedBytes': 524288})

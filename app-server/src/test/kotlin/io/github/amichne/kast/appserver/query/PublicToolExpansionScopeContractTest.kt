@@ -150,7 +150,7 @@ class PublicToolExpansionScopeContractTest {
 private data class ExpansionRunFixture(
     val source: PublicToolSource,
     val steps: List<ExpansionStepFixture>,
-    val output: PublicToolOutput = PublicToolOccurrencesOutput,
+    val terminalStep: PublicToolTerminalStep = PublicToolEmit(PublicToolOccurrencesOutput),
     val type: ExpansionRunTag = ExpansionRunTag.RUN,
 )
 

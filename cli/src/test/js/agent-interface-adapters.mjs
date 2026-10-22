@@ -63,7 +63,8 @@ if (process.env.KAST_PI_PACKAGE) {
     for (const [detail, result] of [['compact', compact], ['verbose', verbose]]) {
       const text = owners[1](result, detail === 'verbose');
       const assistant = { role: 'assistant', provider: model.provider, api: model.api, model: model.id,
-        content: [{ type: 'toolCall', id: 'fixture_call', name: 'query_symbols', arguments: { request: { type: 'RUN' } } }],
+        content: [{ type: 'toolCall', id: 'fixture_call', name: 'query_symbols', arguments: { request: {
+          type: 'RUN', source: { type: 'ALL_DECLARATIONS' }, terminalStep: { type: 'EMIT' } } } }],
         stopReason: 'toolUse', timestamp: 0 };
       const tool = { role: 'toolResult', toolCallId: 'fixture_call', toolName: 'query_symbols',
         content: [{ type: 'text', text }], details: result, isError: result.type === 'rejected_document', timestamp: 0 };

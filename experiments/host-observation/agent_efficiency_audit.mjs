@@ -66,13 +66,20 @@ export function projectCall(event){
       ||!source.symbolRefs.every(string))return {...out,variant:'invalid'};
     projected={type:source.type,symbolRefHashes:source.symbolRefs.map(hash)};
   } else return out;
-  const request={type:'RUN',source:projected};
-  if(value.output!==undefined){
-    if(!object(value.output)||value.output.type!=='SYMBOLS'||!Array.isArray(value.output.fields)
-      ||!value.output.fields.every(f=>['NAME','LOCATION','SIGNATURE','SOURCE'].includes(f)))return out;
-    request.output={type:'SYMBOLS',fields:[...value.output.fields]};
+  const terminal=value.terminalStep;
+  if(Object.hasOwn(value,'output')||!object(terminal)||terminal.type!=='EMIT'
+    ||Object.keys(terminal).some(key=>!['type','output'].includes(key)))return out;
+  const request={type:'RUN',source:projected,terminalStep:{type:'EMIT'}};
+  if(terminal.output!=null){
+    if(!object(terminal.output)||terminal.output.type!=='SYMBOLS'||!Array.isArray(terminal.output.fields)
+      ||Object.keys(terminal.output).some(key=>!['type','fields'].includes(key))
+      ||new Set(terminal.output.fields).size!==terminal.output.fields.length
+      ||!terminal.output.fields.every(f=>['NAME','LOCATION','SIGNATURE','SOURCE'].includes(f)))return out;
+    request.terminalStep.output={type:'SYMBOLS',fields:[...terminal.output.fields]};
+  } else if(terminal.output===null){
+    request.terminalStep.output=null;
   }
-  if(value.steps!==undefined&&(!Array.isArray(value.steps)||value.steps.length))return {...out,request};
+  if(value.steps!=null&&(!Array.isArray(value.steps)||value.steps.length))return {...out,request};
   return {...out,variant:'supported',request};
 }
 function row(value){

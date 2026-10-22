@@ -183,7 +183,7 @@ else process.exitCode=9;
   const loaded = await load('pi', catalog, undefined, undefined, environment, {cwd:directory,
     spawn:(command,args,options)=>{const child=spawnChild(command,args,options);children.push(child);return child;}});
   assert.ifError(loaded.error);
-  await loaded.registered.find(tool=>tool.name==='query_symbols').execute('call',{request:{type:'RUN'}},undefined,undefined,{cwd:directory});
+  await loaded.registered.find(tool=>tool.name==='query_symbols').execute('call',{request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}}},undefined,undefined,{cwd:directory});
   const observations=readFileSync(proof,'utf8').trim().split('\n').map(line=>JSON.parse(line));
   assert.deepEqual(observations.map(value=>value.phase),['catalog','call']);
   for(const observed of observations) {
@@ -203,8 +203,8 @@ for (const harness of ['copilot', 'pi']) {
     const loaded = await load(harness, catalog, undefined, undefined, environment);
     assert.ifError(loaded.error);
     const query = loaded.registered.find(tool => tool.name === 'query_symbols');
-    if (harness === 'pi') await query.execute('call', {request: {type: 'RUN'}}, undefined, undefined, {cwd:'/fixture'});
-    else await query.handler({request: {type: 'RUN'}}, {});
+    if (harness === 'pi') await query.execute('call', {request: {type: 'RUN', source: {type: 'ALL_DECLARATIONS'}, terminalStep: {type: 'EMIT'}}}, undefined, undefined, {cwd:'/fixture'});
+    else await query.handler({request: {type: 'RUN', source: {type: 'ALL_DECLARATIONS'}, terminalStep: {type: 'EMIT'}}}, {});
     assert.equal(loaded.calls.length, 2);
     for (const call of loaded.calls) {
       assert.equal(call.command, '/selected/kast-tool-rpc');
@@ -245,8 +245,8 @@ for (const harness of ['copilot', 'pi']) {
     }
     const query = loaded.registered.find(t => t.name === 'query_symbols');
     const result = harness === 'pi'
-      ? await query.execute('call', {request: {type: 'RUN'}}, undefined, undefined, {cwd:'/fixture'})
-      : await query.handler({request: {type: 'RUN'}}, {});
+      ? await query.execute('call', {request: {type: 'RUN', source: {type: 'ALL_DECLARATIONS'}, terminalStep: {type: 'EMIT'}}}, undefined, undefined, {cwd:'/fixture'})
+      : await query.handler({request: {type: 'RUN', source: {type: 'ALL_DECLARATIONS'}, terminalStep: {type: 'EMIT'}}}, {});
     assert.equal(loaded.calls.length, 2);
     assert.deepEqual(Array.from(loaded.calls[1].args), ['call', 'query_symbols']);
     assert.ok(JSON.stringify(result).includes('complete'));
@@ -287,7 +287,7 @@ for (const harness of ['copilot', 'pi']) {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;
     const loaded = await load(harness, reply);
     assert.equal(loaded.registered.length, 0);
-    assert.match(loaded.error?.message ?? '', /catalog.*expected=16.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
+    assert.match(loaded.error?.message ?? '', /catalog.*expected=17.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
   });
   const invokeRead = async (outcome) => {
     const loaded = await load(harness, catalog, outcome);
@@ -371,7 +371,7 @@ test('installed Pi loader registers the packaged catalog and invokes the product
     assert.equal(loaded.extensions.length, 1);
     const tools = loaded.extensions[0].tools;
     assert.deepEqual([...tools.keys()].sort(), catalog.catalog.tools.map(t => t.name).sort());
-    const result = await tools.get('query_symbols').definition.execute('smoke', {request: {type:'RUN', source:{type:'ALL_DECLARATIONS'}, steps:[], output:{type:'SYMBOLS',fields:['NAME']}}}, undefined, undefined, {cwd:temporary, hasUI:false});
+    const result = await tools.get('query_symbols').definition.execute('smoke', {request: {type:'RUN', source:{type:'ALL_DECLARATIONS'}, steps:[], terminalStep:{type:'EMIT',output:{type:'SYMBOLS',fields:['NAME']}}}}, undefined, undefined, {cwd:temporary, hasUI:false});
     assert.deepEqual(JSON.parse(result.content[0].text), {type:'rejected',failure:'OUT_OF_SCOPE'});
     console.log(`upstream Pi=${JSON.parse(readFileSync(join(pi, 'package.json'))).version} Node=${process.version}; loader/registerTool/RPC invocation verified; compiler execution unverified`);
   } finally {
@@ -423,7 +423,7 @@ test('Pi write approval shows bounded workspace target and intent with cancellat
 if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
   const fixture = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_DELIVERY, 'utf8'));
   const params = { verbose: true, request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
-    output: { type: 'SYMBOLS', fields: ['NAME'] }, executionBudget: { maxResults: 43 } } };
+    terminalStep: { type: 'EMIT', output: { type: 'SYMBOLS', fields: ['NAME'] } }, executionBudget: { maxResults: 43 } } };
   for (const harness of ['pi', 'copilot']) {
     const execute = async (outcomes, signal, arguments_ = params) => {
       const loaded = await load(harness, catalog, {sequence:outcomes});
@@ -461,7 +461,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
         for (const [index, [cursor, evidence_cursor]] of expectedCursors.entries()) {
           const input = JSON.parse(loaded.calls[index + 2].input);
           assert.deepEqual(input, {verbose:true,request:{ type:'READ_RESULT', result:fixture.prefix.document.retention.reference,
-            cursor, evidence_cursor, output:params.request.output, executionBudget:params.request.executionBudget }});
+            cursor, evidence_cursor, output:params.request.terminalStep.output, executionBudget:params.request.executionBudget }});
           assert.equal(Object.hasOwn(input.request, 'source'), false);
         }
         const visibleBytes = Buffer.byteLength(JSON.stringify(delivered), 'utf8');
@@ -473,7 +473,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
     }
     test(`${harness} initial READ_RESULT at a nonzero row cursor drains its independent evidence tail`, async () => {
       const request = {verbose:true,request:{type:'READ_RESULT',result:fixture.prefix.document.retention.reference,
-        cursor:1,evidence_cursor:0,output:params.request.output,executionBudget:params.request.executionBudget}};
+        cursor:1,evidence_cursor:0,output:params.request.terminalStep.output,executionBudget:params.request.executionBudget}};
       assert.equal(Object.hasOwn(fixture.rows.document, 'next_cursor'), false);
       assert.equal(Object.hasOwn(fixture.rows.document, 'invocation'), false);
       assert.equal(fixture.rows.document.evidence_window.type, 'MORE');
@@ -537,7 +537,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
       assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
       assert.deepEqual(JSON.parse(loaded.calls[2].input), {verbose:true,request:{type:'READ_RESULT',
         result:fixture.prefix.document.retention.reference,cursor:1,evidence_cursor:0,
-        output:params.request.output,executionBudget:params.request.executionBudget}});
+        output:params.request.terminalStep.output,executionBudget:params.request.executionBudget}});
     });
     test(`${harness} stale handles terminate with their exact canonical rejection`, async () => {
       const {loaded, result, delivered} = await execute([fixture.prefix, fixture.stale]);
@@ -685,8 +685,8 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
   const fixture = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_DELIVERY, 'utf8'));
   for (const harness of ['pi', 'copilot']) {
     for (const [name, keys, first] of [
-      ['complete', ['prefix','rows','tail'], {type:'RUN',source:{type:'ALL_DECLARATIONS'},output:{type:'SYMBOLS',fields:['NAME']}}],
-      ['retained rejection', ['rejected','proof','proofTail'], {type:'RUN',source:{type:'ALL_DECLARATIONS'},output:{type:'SYMBOLS',fields:['NAME']}}],
+      ['complete', ['prefix','rows','tail'], {type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT',output:{type:'SYMBOLS',fields:['NAME']}}}],
+      ['retained rejection', ['rejected','proof','proofTail'], {type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT',output:{type:'SYMBOLS',fields:['NAME']}}}],
       ['detail', ['rows','tail'], {type:'READ_RESULT',result:fixture.prefix.document.retention.reference,cursor:1,evidence_cursor:0,output:{type:'SYMBOLS',fields:['NAME']}}],
       ['stale detail', ['expiredResult'], {type:'READ_RESULT',result:fixture.prefix.document.retention.reference,cursor:0,evidence_cursor:0}],
     ]) {

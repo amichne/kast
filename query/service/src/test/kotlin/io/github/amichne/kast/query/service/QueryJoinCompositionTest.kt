@@ -140,6 +140,47 @@ class QueryJoinCompositionTest {
     }
 
     @Test
+    fun `inner join projects a named cell before trace in one request`() = runTest {
+        QueryServiceTest().apply {
+            val selected = selector(selection())
+            val left = retained(selected, listOf(row(selected, 10)))
+            val right = retained(selected, listOf(row(selected, 20), row(selected, 21)))
+            val mode = QueryJoinMode.Inner.create(name("caller"), name("target")).refined()
+            for ((binding, starts) in listOf("caller" to setOf(10), "target" to setOf(20, 21))) {
+                val plan =
+                    admittedPlan(
+                        QuerySourceSyntax.Retained(left),
+                        listOf(
+                            QueryStepSyntax.Join(mode, right),
+                            QueryStepSyntax.ProjectBinding(name(binding)),
+                            QueryStepSyntax.Trace(),
+                        ),
+                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
+                    )
+                val service =
+                    traceService(
+                        this,
+                        io.github.amichne.kast.relation.contract.RelationOperations { read ->
+                            val complete =
+                                io.github.amichne.kast.relation.contract.RelationCompilation.complete(
+                                    traceBatch(read, emptyList())
+                                )
+                            io.github.amichne.kast.relation.contract.RelationReadResult.Complete(
+                                complete.batch,
+                                complete.coverage,
+                            )
+                        },
+                    )
+                val result =
+                    assertInstanceOf(QueryExecutionResult.Complete::class.java, service.run(request(plan, 100L)))
+                val symbol = result.result.symbolRows().single()
+                assertEquals(selected, symbol.selector)
+                assertEquals(starts, symbol.connections.map { it.occurrence.range.startInclusive }.toSet())
+            }
+        }
+    }
+
+    @Test
     fun `selected retained binding projects through distinct into a depth two walk`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())

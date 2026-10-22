@@ -14,7 +14,7 @@ const fixture=JSON.parse(canonicalBytes);
 // Same export-only exposure used by #995's production adapter test; the shared
 // source bytes and owning rules are unchanged. There are no external imports.
 const client=vm.runInNewContext(source+'\n({awaitQueryDelivery,queryDeliveryFailed})',{Buffer,Date,JSON,Error});
-const params={request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},output:{type:'SYMBOLS',fields:['NAME']},executionBudget:{maxResults:43}}};
+const params={request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT',output:{type:'SYMBOLS',fields:['NAME']}},executionBudget:{maxResults:43}}};
 const policy={callTimeoutMillis:100,maxResponseBytes:4194304};
 const cases={};
 async function produce(name,sequence,{cancelAt,loseAt,elapsedPerCall=0}={}) {

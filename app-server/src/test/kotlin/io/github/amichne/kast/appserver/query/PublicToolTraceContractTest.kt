@@ -5,6 +5,10 @@ package io.github.amichne.kast.appserver.query
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryContainmentDocument
+import io.github.amichne.kast.protocol.contract.QueryDirectoryScopeDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
@@ -20,41 +24,53 @@ class PublicToolTraceContractTest {
     @Test
     fun `public trace has a required closed discriminator and canonical scope`() {
         val step = PublicToolTrace()
-        val encoded = Json.encodeToJsonElement(PublicToolStep.serializer(), step)
+        val encoded = Json.encodeToJsonElement(PublicToolTerminalStep.serializer(), step)
         assertEquals(Json.encodeToJsonElement(serializer<TraceShape>(), TraceShape("TRACE")), encoded)
         val reference = ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY").refined()
-        val input =
-            PublicToolQuerySymbols(
-                PublicToolRunAction(
-                    PublicToolReferenceSource(BoundedProtocolList.create(listOf(reference)).refined()),
-                    BoundedProtocolList.create(listOf<PublicToolStep>(step)).refined(),
+        for ((scope, expected) in
+            listOf(
+                null to QueryExpansionScopeDocument.Workspace,
+                PublicToolImpactWorkspaceDomain to QueryExpansionScopeDocument.Workspace,
+                PublicToolImpactRetainedDomain to QueryExpansionScopeDocument.RetainedSeed,
+            )) {
+            val input =
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(
+                        PublicToolReferenceSource(BoundedProtocolList.create(listOf(reference)).refined()),
+                        terminalStep = PublicToolTrace(scope),
+                    )
                 )
-            )
-        val admitted =
-            PublicToolContract.admit(
-                    PublicToolIdentity.QUERY_SYMBOLS,
-                    Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
-                )
-                .refined()
-        val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-        assertEquals(listOf(QueryStepDocument.Trace(QueryExpansionScopeDocument.Workspace)), request.steps.values)
+            val admitted =
+                PublicToolContract.admit(
+                        PublicToolIdentity.QUERY_SYMBOLS,
+                        Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+                    )
+                    .refined()
+            val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+            assertEquals(listOf(QueryStepDocument.Trace(expected)), request.steps.values)
+        }
     }
 
     @Test
     fun `trace source domain is retained through public admission`() {
-        val sourceSets = BoundedProtocolList.create(listOf(ProtocolText.parse("main").refined())).refined()
+        val sourceSets =
+            BoundedProtocolList.create(listOf("integrationTest", "main").map { ProtocolText.parse(it).refined() })
+                .refined()
+        val directory = ProtocolText.parse("services/orders").refined()
         val scope =
             PublicToolImpactSourceDomain(
                 sourceSets = sourceSets,
-                sourcePolicy = PublicToolSourcePolicy.PRODUCTION_ONLY,
-                generatedSources = PublicToolGeneratedSources.EXCLUDE,
+                directory = directory,
+                includeSubdirectories = false,
+                sourcePolicy = PublicToolSourcePolicy.TEST_ONLY,
+                generatedSources = PublicToolGeneratedSources.INCLUDE,
             )
         val step = PublicToolTrace(scope)
         val input =
             PublicToolQuerySymbols(
                 PublicToolRunAction(
                     PublicToolAllSource(),
-                    BoundedProtocolList.create(listOf<PublicToolStep>(step)).refined(),
+                    terminalStep = step,
                 )
             )
         val admitted =
@@ -65,7 +81,15 @@ class PublicToolTraceContractTest {
                 .refined()
         val request = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         val trace = assertInstanceOf(QueryStepDocument.Trace::class.java, request.steps.values.single())
-        assertInstanceOf(QueryExpansionScopeDocument.Sources::class.java, trace.expansionScope)
+        assertEquals(
+            QueryExpansionScopeDocument.Sources(
+                sourceSets,
+                QueryDirectoryScopeDocument(directory, QueryContainmentDocument.DIRECT),
+                QueryDiscoverySourcePolicyDocument.TEST_ONLY,
+                QueryDiscoveryInclusionPolicyDocument.INCLUDE,
+            ),
+            trace.expansionScope,
+        )
     }
 
     @Test
@@ -79,7 +103,7 @@ class PublicToolTraceContractTest {
             val input =
                 encoder.encodeToJsonElement(
                     serializer<RejectedTraceEnvelope>(),
-                    RejectedTraceEnvelope(RejectedTraceRequest(steps = listOf(step))),
+                    RejectedTraceEnvelope(RejectedTraceRequest(terminalStep = step)),
                 )
             assertInstanceOf(
                 Refinement.Rejected::class.java,
@@ -103,7 +127,7 @@ private fun <V, F> Refinement<V, F>.refined(): V =
 private data class RejectedTraceRequest(
     val type: String = "RUN",
     val source: PublicToolSource = PublicToolAllSource(),
-    val steps: List<RejectedTraceFixture>,
+    val terminalStep: RejectedTraceFixture,
 )
 
 @Serializable private data class RejectedTraceEnvelope(val request: RejectedTraceRequest)

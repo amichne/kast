@@ -7,7 +7,7 @@ const hash = s=>createHash('sha256').update(s).digest('hex');
 const event = (tool,extra)=>({toolName:`mcp__kast__${tool}`,toolCallId:'parent/1',parentToolCallId:'parent',...extra});
 const query = {request:{type:'RUN',source:{type:'SEARCH_DECLARATIONS',declarationName:'calculate',
   declarationKinds:['FUNCTION'],scope:{type:'DIRECTORY',relativeDirectoryPath:'src/main',sourceSetNames:['main']}},
-  output:{type:'SYMBOLS',fields:['NAME','LOCATION','SIGNATURE']}}};
+  terminalStep:{type:'EMIT',output:{type:'SYMBOLS',fields:['NAME','LOCATION','SIGNATURE']}}}};
 const result = ()=>({operation:'query.run',status:'complete',coverage:{exhaustive:true},
   invocation:{stop:{type:'COMPLETED'}},evidence_window:{type:'FINAL'},
   live:{root:'/subject',host:'host-1',epoch:1,contentView:'SAVED_PSI_COMMITTED',version:1},
@@ -24,6 +24,21 @@ test('actual nested request shape keeps scope, identity, and correlation',()=>{
   assert.deepEqual(p.request,query.request);
   assert.equal(p.presentation,'COMPACT_DEFAULT');
   assert.equal(projectCall(event('query_symbols',{input:{...query,verbose:true}})).presentation,'CANONICAL');
+});
+test('declaration-selection audit cannot erase terminal meaning or accept legacy output',()=>{
+  for(const terminalStep of [undefined,null,{type:'TRACE'},{type:'UNKNOWN'},
+    {type:'EMIT',expansionScope:null},{type:'EMIT',output:{type:'OCCURRENCES'}},
+    {type:'EMIT',output:{type:'SYMBOLS',fields:['NAME','NAME']}}]){
+    const input=structuredClone(query);input.request.terminalStep=terminalStep;
+    assert.notEqual(projectCall(event('query_symbols',{input})).variant,'supported');
+  }
+  const legacy=structuredClone(query);legacy.request.output=legacy.request.terminalStep.output;
+  assert.notEqual(projectCall(event('query_symbols',{input:legacy})).variant,'supported');
+  for(const terminalStep of [{type:'EMIT'},{type:'EMIT',output:null},{type:'EMIT',output:{type:'SYMBOLS',fields:[]}}]){
+    const input=structuredClone(query);input.request.terminalStep=terminalStep;input.request.steps=null;
+    const projected=projectCall(event('query_symbols',{input}));
+    assert.equal(projected.variant,'supported');assert.deepEqual(projected.request.terminalStep,terminalStep);
+  }
 });
 test('canonical result signature stays qualified without source content',()=>{
   const p=projectResult(event('query_symbols',{isError:false,structuredContent:result()}));

@@ -28,7 +28,8 @@ class PublicToolCompletionPolicyTest {
 
     @Test
     fun `public run has no completion input and retains fixed compiler static proof`() {
-        val input = encodePublicTool(PublicToolQuerySymbols(PublicToolRunAction(source)), Json)
+        val input =
+            encodePublicTool(PublicToolQuerySymbols(PublicToolRunAction(source, terminalStep = PublicToolEmit())), Json)
         assertFalse(input.jsonObject.getValue("request").jsonObject.containsKey("completion"))
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined
         val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
@@ -66,6 +67,7 @@ private data class ObsoletePublicCompletionEnvelope(val request: ObsoletePublicC
 private data class ObsoletePublicCompletionRun(
     val source: PublicToolSource,
     val completion: InvalidPublicCompletionPolicy?,
+    @kotlinx.serialization.EncodeDefault val terminalStep: PublicToolTerminalStep = PublicToolEmit(),
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS) val type: String = "RUN",
 )
 

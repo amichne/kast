@@ -28,7 +28,7 @@ class PublicToolContractTest {
                 }
                 .encodeToJsonElement(
                     PublicToolQuerySymbols.serializer(),
-                    PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), values)),
+                    PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), values, PublicToolEmit())),
                 )
         }
         val requests = inputs.map { input ->
@@ -90,7 +90,8 @@ class PublicToolContractTest {
                     )
                 ) as Refinement.Refined)
                 .value
-        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), steps, null))
+        val input =
+            PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), steps, PublicToolEmit()))
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
@@ -142,7 +143,7 @@ class PublicToolContractTest {
                 (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolWhere(publicPredicate)))
                         as Refinement.Refined)
                     .value
-            val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), steps, null))
+            val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), steps, PublicToolEmit()))
             val admitted =
                 PublicToolContract.admit(
                     PublicToolIdentity.QUERY_SYMBOLS,
@@ -173,7 +174,7 @@ class PublicToolContractTest {
                         PublicToolRunAction(
                             PublicToolReferenceSource(refs),
                             PublicToolDefaults.steps,
-                            PublicToolSymbolsOutput(fields),
+                            PublicToolEmit(PublicToolSymbolsOutput(fields)),
                         )
                     ),
                 ),

@@ -255,10 +255,16 @@ class StaticRelationStep:
 
 
 @dataclass(frozen=True)
+class StaticEmit:
+    output: OccurrencesOutput | SymbolsOutput
+    type: str = field(default='EMIT', init=False)
+
+
+@dataclass(frozen=True)
 class StaticRunRequest:
     source: AtLocation
     steps: tuple[StaticRelationStep, ...]
-    output: OccurrencesOutput | SymbolsOutput
+    terminalStep: StaticEmit
     retention: StaticRetention
     executionBudget: Budget
     type: str = field(default='RUN', init=False)
@@ -840,7 +846,8 @@ def qualify_value_bindings(args, budget, invoke, drain):
     def locate(offset):
         pages = drain(dict(verbose=True, request=dict(type='RUN',
             source=dict(type='AT_LOCATION', file=relative, offset=offset), steps=[],
-            output=dict(type='SYMBOLS', fields=['NAME', 'LOCATION']), executionBudget=asdict(budget))))
+            terminalStep=dict(type='EMIT', output=dict(type='SYMBOLS', fields=['NAME', 'LOCATION'])),
+            executionBudget=asdict(budget))))
         items = [item for page in pages for item in page['items']]
         assert len(items) == 1 and items[0]['type'] == 'exact-symbol', items
         return items[0]['ref']
@@ -856,7 +863,8 @@ def qualify_value_bindings(args, budget, invoke, drain):
         pages = drain(dict(verbose=True, request=dict(type='RUN', source=dict(type='IMPACT',
             seeds=[dict(enclosing=enclosing, callable=callable_ref, anchor=dict(start=start, end=start + len(expression)))],
             declarations=[], models=[], domain=dict(type='WORKSPACE'), flow='KOTLIN_FORWARD_V1'), steps=[],
-            output=dict(type='VALUE_PATHS'), retention='RETAIN', executionBudget=asdict(evaluation_budget))))
+            terminalStep=dict(type='EMIT', output=dict(type='VALUE_PATHS')),
+            retention='RETAIN', executionBudget=asdict(evaluation_budget))))
         paths = [item['path'] for page in pages for item in page['items'] if item['type'] == 'VALUE_PATH']
         assert paths, name
         assert all(p['producer']['range'] == dict(start=start, end=start + len(expression)) for p in paths)
@@ -909,7 +917,7 @@ def static_location(symbol, root):
 def static_request(symbol, budget, root, direction=StaticRelation.CALLEES):
     """One named relation hop; callback flow retains its independent formal route."""
     return static_wire(StaticRunRequest(static_location(symbol, root),
-        (StaticRelationStep(direction),), OccurrencesOutput(), StaticRetention.RETAIN, budget))
+        (StaticRelationStep(direction),), StaticEmit(OccurrencesOutput()), StaticRetention.RETAIN, budget))
 
 
 def assert_span(actual, expected):
@@ -1396,7 +1404,7 @@ def qualify_static(args, output, invoke, pinned):
     live = None
     for symbol in suite.symbols:
         payload = static_wire(StaticRunRequest(static_location(symbol, args.root),
-            (), SymbolsOutput(), StaticRetention.DISCARD, grants[-1]))
+            (), StaticEmit(SymbolsOutput()), StaticRetention.DISCARD, grants[-1]))
         call = invoke(payload)
         document = call.response
         assert document is not None and document.get('status') == 'complete', document

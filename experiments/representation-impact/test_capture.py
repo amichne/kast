@@ -19,8 +19,14 @@ class Search:
 
 
 @dataclass(frozen=True)
+class Emit:
+    type: str = 'EMIT'
+
+
+@dataclass(frozen=True)
 class RequestAction:
     source: Search = Search()
+    terminalStep: Emit = Emit()
     type: str = 'RUN'
 
 
@@ -196,7 +202,7 @@ class CaptureTest(unittest.TestCase):
 
     def test_current_generated_schema_rejects_unknown_or_duplicate_request_before_effects(self):
         self.assertIsInstance(c.validate_request(encoded(Request())), RequestAdmitted)
-        for raw in (b'{"request":{"type":"RUN","source":{"type":"ASSUMED"}}}',
+        for raw in (b'{"request":{"type":"RUN","source":{"type":"ASSUMED"},"terminalStep":{"type":"EMIT"}}}',
                     b'{"request":{},"request":{}}', b'{"request":null}'):
             self.assertEqual(Failure.REQUEST_SCHEMA_REJECTED, c.validate_request(raw))
         with tempfile.TemporaryDirectory() as temporary:

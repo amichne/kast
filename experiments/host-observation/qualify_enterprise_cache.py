@@ -108,17 +108,6 @@ class Distinct:
 
 
 @dataclass(frozen=True)
-class Trace:
-    type: str = field(default='TRACE', init=False)
-
-
-@dataclass(frozen=True)
-class ScopedTrace:
-    expansionScope: SourceDomain
-    type: str = field(default='TRACE', init=False)
-
-
-@dataclass(frozen=True)
 class Output:
     type: str = 'SYMBOLS'
     fields: tuple[str, ...] = ('NAME', 'LOCATION', 'SIGNATURE')
@@ -130,10 +119,29 @@ class RowsOutput:
 
 
 @dataclass(frozen=True)
+class Emit:
+    output: Output | RowsOutput = Output()
+    type: str = field(default='EMIT', init=False)
+
+
+@dataclass(frozen=True)
+class Trace:
+    output: Output = Output()
+    type: str = field(default='TRACE', init=False)
+
+
+@dataclass(frozen=True)
+class ScopedTrace:
+    expansionScope: SourceDomain
+    output: Output = Output()
+    type: str = field(default='TRACE', init=False)
+
+
+@dataclass(frozen=True)
 class Run:
     source: Search | Location | Refs
-    output: Output | RowsOutput = Output()
-    steps: tuple[Relation | ScopedRelation | Walk | Distinct | Trace | ScopedTrace, ...] = ()
+    terminalStep: Emit | Trace | ScopedTrace = Emit()
+    steps: tuple[Relation | ScopedRelation | Walk | Distinct, ...] = ()
     executionBudget: Budget | PhotoWalkBudget = Budget()
     retention: str = 'RETAIN'
     type: str = field(default='RUN', init=False)
@@ -359,7 +367,7 @@ def run(args):
 
     if args.trace:
         token = fresh('executeWithCache', 'example.cache.executeWithCache')
-        traced = invoke(Payload(Run(Refs((token,)), steps=(Trace(),), executionBudget=budget)))
+        traced = invoke(Payload(Run(Refs((token,)), terminalStep=Trace(), executionBudget=budget)))
         if traced.get('status') != 'complete' or traced.get('coverage', {}).get('exhaustive') is not True:
             raise ValueError('TRACE_COMPLETION_UNPROVEN')
         identities = {identity(item) for item in traced['items']}
@@ -374,7 +382,7 @@ def run(args):
         checks.append(Check('trace-required-downstream-facts', Outcome.PASSED, (f'call-{counter - 1:04d}.json',)))
 
         token = fresh('CacheManager', 'example.cache.CacheManager', 'CLASS')
-        interface_trace = invoke(Payload(Run(Refs((token,)), steps=(Trace(),), executionBudget=budget)))
+        interface_trace = invoke(Payload(Run(Refs((token,)), terminalStep=Trace(), executionBudget=budget)))
         if interface_trace.get('status') != 'complete' or interface_trace.get('coverage', {}).get('exhaustive') is not True:
             raise ValueError('INTERFACE_TRACE_COMPLETION_UNPROVEN')
         identities = {identity(item) for item in interface_trace['items']}
@@ -390,7 +398,7 @@ def run(args):
     def references():
         token = fresh('executeWithCache', 'example.cache.executeWithCache')
         rows_output = RowsOutput('OCCURRENCES')
-        response = invoke(Payload(Run(Refs((token,)), rows_output, (Relation('REFERENCES'),), budget)))
+        response = invoke(Payload(Run(Refs((token,)), Emit(rows_output), (Relation('REFERENCES'),), budget)))
         pages = retained_pages(response, rows_output, budget, invoke)
         if response.get('status') != 'complete' or response.get('coverage', {}).get('exhaustive') is not True:
             raise ValueError('REFERENCE_ENUMERATION_UNPROVEN')
@@ -399,7 +407,7 @@ def run(args):
 
     before = counter
     token = fresh('executeWithCache', 'example.cache.executeWithCache')
-    walk = invoke(Payload(Run(Refs((token,)), RowsOutput('TRAVERSAL_RECORDS'), (Walk(),), PhotoWalkBudget())))
+    walk = invoke(Payload(Run(Refs((token,)), Emit(RowsOutput('TRAVERSAL_RECORDS')), (Walk(),), PhotoWalkBudget())))
     # Observe the reported photo failure without asserting a tiny fixture must exhaust bytes.
     if walk.get('status') == 'complete':
         relations = [item['record']['relation'] for item in walk['items']]
@@ -420,8 +428,8 @@ def run(args):
                         tuple(f'call-{i:04d}.json' for i in range(before, counter))))
 
     for name, invalid in (
-        ('INTERFACE-kind', {'request': {'type': 'RUN', 'source': {'type': 'SEARCH_DECLARATIONS', 'declarationName': 'CacheManager', 'declarationKinds': ['INTERFACE']}}}),
-        ('object-retention', {'request': {'type': 'RUN', 'source': {'type': 'SEARCH_DECLARATIONS', 'declarationName': 'CacheManager'}, 'retention': {'type': 'RETAIN'}}})):
+        ('INTERFACE-kind', {'request': {'type': 'RUN', 'source': {'type': 'SEARCH_DECLARATIONS', 'declarationName': 'CacheManager', 'declarationKinds': ['INTERFACE']}, 'terminalStep': {'type': 'EMIT'}}}),
+        ('object-retention', {'request': {'type': 'RUN', 'source': {'type': 'SEARCH_DECLARATIONS', 'declarationName': 'CacheManager'}, 'terminalStep': {'type': 'EMIT'}, 'retention': {'type': 'RETAIN'}}})):
         if validator.is_valid(invalid):
             raise ValueError('NEGATIVE_SCHEMA_CONTROL_ACCEPTED:' + name)
         checks.append(Check(name, Outcome.PASSED, ()))

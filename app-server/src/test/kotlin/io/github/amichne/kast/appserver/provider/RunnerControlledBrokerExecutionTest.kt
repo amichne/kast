@@ -22,9 +22,11 @@ import io.github.amichne.kast.appserver.core.ToolLoading
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.core.ToolPresentation
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolEmit
 import io.github.amichne.kast.appserver.query.PublicToolQuerySymbols
 import io.github.amichne.kast.appserver.query.PublicToolReferenceSource
 import io.github.amichne.kast.appserver.query.PublicToolRunAction
+import io.github.amichne.kast.appserver.query.terminalRejectionFixtures
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
@@ -86,12 +88,31 @@ class RunnerControlledBrokerExecutionTest {
         }
     }
 
-    private fun broker(json: Json, address: ToolAddress): Broker {
+    @Test
+    fun `malformed terminal syntax never invokes the provider`(@TempDir directory: Path) = runTest {
+        val json = Json { encodeDefaults = true }
+        val name = (ToolName.admit("query_symbols") as Refinement.Refined).value
+        val namespace = (ProviderNamespace.admit("kast") as Refinement.Refined).value
+        val address = ToolAddress(namespace, name)
+        var invocations = 0
+        val broker = broker(json, address) { invocations++ }
+        val valid = request(json, address, QueryExecutionModeDocument.RUNNER_CONTROLLED, directory)
+        for (raw in terminalRejectionFixtures()) {
+            val result =
+                assertInstanceOf(BrokerDispatch.Rejected::class.java, broker.dispatch(valid.copy(arguments = raw)))
+            assertInstanceOf(BrokerFailure.InvalidArguments::class.java, result.failure)
+            assertEquals(0, invocations, raw.toString())
+        }
+        assertInstanceOf(BrokerDispatch.Completed::class.java, broker.dispatch(valid))
+        assertEquals(1, invocations, "The same provider capability must remain usable for an admitted RUN")
+    }
+
+    private fun broker(json: Json, address: ToolAddress, onInvoke: () -> Unit = {}): Broker {
         val registration =
             (ProviderRegistration.define(
                     address.namespace,
                     (ProviderVersion.admit("1") as Refinement.Refined).value,
-                    listOf(tool(json, address.tool)),
+                    listOf(tool(json, address.tool, onInvoke)),
                     start = { ProviderStartup.Started(Unit) },
                 ) as Validation.Validated)
                 .value
@@ -101,6 +122,7 @@ class RunnerControlledBrokerExecutionTest {
     private fun tool(
         json: Json,
         name: ToolName,
+        onInvoke: () -> Unit,
     ): BrokerTool<Unit, KastInvocationInput, BrokerModeReply, KastToolInputFailure> {
         val outputSchema =
             (NetworkntJsonSchemaCompiler.compile(json.encodeToJsonElement(BrokerModeSchema()).jsonObject)
@@ -123,6 +145,7 @@ class RunnerControlledBrokerExecutionTest {
                 ),
             outputSchema = outputSchema,
             invoke = { _, _, _ ->
+                onInvoke()
                 delay(200)
                 ProviderCall.Completed(BrokerModeReply())
             },
@@ -147,6 +170,7 @@ class RunnerControlledBrokerExecutionTest {
                 PublicToolQuerySymbols(
                     PublicToolRunAction(
                         PublicToolReferenceSource(references),
+                        terminalStep = PublicToolEmit(),
                         executionMode = mode,
                     )
                 )

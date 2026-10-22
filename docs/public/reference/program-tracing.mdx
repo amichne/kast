@@ -139,7 +139,10 @@ Caller cancellation or a disconnected caller stops the operation.
         "generatedSources": "EXCLUDE"
       }
     }],
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
+    "terminalStep": {
+      "type": "EMIT",
+      "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+    },
     "retention": "RETAIN",
     "executionBudget": {"maxResults": 20, "maxReturnedBytes": 100000}
   }

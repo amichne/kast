@@ -34,6 +34,17 @@ An inner join keeps both cells and their evidence. Before a later symbol step, u
 
 `BINDING_ROWS` presents inner-join output. Kast does not support arbitrary-field joins or a general-purpose `MAP`.
 
+## Row compatibility
+
+The [generated row compatibility table](https://github.com/amichne/kast/blob/main/agent-tools/references/query-row-compatibility.md) lists the row rules in `QueryRowAdmission.kt`.
+A required terminal selects one operation. It does not prove that the rows fit.
+
+For binding rows, use EMIT with `BINDING_ROWS`, or select a named cell with `PROJECT_BINDING` before further symbol steps.
+Retained occurrence and value-path rows allow no steps. Use their matching output.
+Symbol rows can use `SYMBOLS`, `OCCURRENCES`, or `TRAVERSAL_RECORDS`. Each form keeps its own evidence.
+To show an impact witness, the protocol first runs the value-path query. It then shows the chosen witness section.
+That path does not add a row rule.
+
 ## Absence and rejection
 
 `DIFFERENCE` and `ANTI` need a complete right input. It has no failures or producer work left. Missing matches in a prefix do not prove absence.
@@ -47,9 +58,9 @@ All composed rows keep their original state. Kast rejects reuse before compositi
 This union uses issued retained result references. The example handles are placeholders.
 
 ```json
-{"request":{"type":"RUN","source":{"type":"RESULT","result":"<left result>"},"steps":[{"type":"UNION","right":{"type":"RESULT","result":"<right result>"}}]}}
+{"request":{"type":"RUN","source":{"type":"RESULT","result":"<left result>"},"steps":[{"type":"UNION","right":{"type":"RESULT","result":"<right result>"}}],"terminalStep":{"type":"EMIT"}}}
 ```
 
-[Combine query results](/reference/query-pipelines) supplies the historical examples. [Staleness](/reference/staleness) defines input lifetimes.
+[Combine query results](/reference/query-pipelines) pairs current request syntax with historical results. [Staleness](/reference/staleness) defines input lifetimes.
 
 [The source map](/reference/source-map#query-execution-and-retention) identifies row contracts and their owning protocol.

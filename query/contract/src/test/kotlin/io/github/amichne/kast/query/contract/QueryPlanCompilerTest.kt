@@ -60,6 +60,27 @@ class QueryPlanCompilerTest {
     }
 
     @Test
+    fun `one trace terminal compiles to its selected phase and all arrival emission suffix`() {
+        val output = QueryOutputSyntax.Symbols(symbolFields())
+        val admitted =
+            assertInstanceOf(
+                QueryPlanAdmission.Admitted::class.java,
+                QueryPlanCompiler.admit(
+                    QueryPlanSyntax(QuerySourceSyntax.Symbols(discovery()), listOf(QueryStepSyntax.Trace()), output)
+                ),
+            )
+        val plan = assertInstanceOf(AdmittedQueryPlan.Symbols::class.java, admitted.plan)
+        assertEquals(
+            ExactQueryStage.Trace(
+                QueryTracePhase.SEED,
+                io.github.amichne.kast.relation.contract.RelationSearchBoundary.WORKSPACE_EXPANSION,
+                ExactQueryStage.Distinct(ExactQueryStage.Emit(output), QueryGroupingEvidence.ALL_ARRIVALS),
+            ),
+            plan.stage,
+        )
+    }
+
+    @Test
     fun `unsupported exhaustive declaration kind is rejected before execution`() {
         val syntax =
             QueryPlanSyntax(

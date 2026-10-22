@@ -113,7 +113,7 @@ def execute(args):
                 assert source.count(token) == 1, 'fixture seed not unique'
                 offset = len(source[:source.index(token) + 4].encode('utf-16-le')) // 2
                 request = shared.static_wire(shared.StaticRunRequest(shared.AtLocation(case.source, offset),
-                    (shared.StaticRelationStep(shared.StaticRelation.CALLEES),), shared.OccurrencesOutput(),
+                    (shared.StaticRelationStep(shared.StaticRelation.CALLEES),), shared.StaticEmit(shared.OccurrencesOutput()),
                     shared.StaticRetention.RETAIN, budget))
                 observed = replay.drain_workload(request, invoke, 512)
                 pages = [call.response for call in observed]

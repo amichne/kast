@@ -89,10 +89,16 @@ class Occurrences:
 
 
 @dataclass(frozen=True)
+class Emit:
+    output: Symbols | Occurrences
+    type: str = field(default='EMIT', init=False)
+
+
+@dataclass(frozen=True)
 class Run:
     source: ExactDeclarationSearch | AllFunctions
     steps: list[References | WherePublic]
-    output: Symbols | Occurrences
+    terminalStep: Emit
     executionBudget: ExecutionBudget
     type: str = field(default='RUN', init=False)
 
@@ -138,11 +144,11 @@ def comparison_requests(profile=WorkloadProfile.RELIABILITY_FIXTURE):
     fields = [SymbolField.NAME, SymbolField.LOCATION, SymbolField.SIGNATURE]
     requests = {
         Workload.EXACT_SOURCE: Run(ExactDeclarationSearch('QueryPlanSyntax' if production else 'FixtureLogger', selected),
-                                  [], Symbols([*fields, SymbolField.SOURCE]), grant),
+                                  [], Emit(Symbols([*fields, SymbolField.SOURCE])), grant),
         Workload.EXACT_NEGATIVE: Run(ExactDeclarationSearch(NEGATIVE_DECLARATION_NAME, selected),
-                                    [], Symbols(fields.copy()), grant),
+                                    [], Emit(Symbols(fields.copy())), grant),
         Workload.DENSE_REFERENCES: Run(ExactDeclarationSearch('QueryStepSyntax' if production else 'DenseReferenceTarget', selected),
-                                      [References()], Occurrences(), grant),
-        Workload.SCOPED_ALL: Run(AllFunctions(functions), [WherePublic()], Symbols(fields.copy()), grant),
+                                      [References()], Emit(Occurrences()), grant),
+        Workload.SCOPED_ALL: Run(AllFunctions(functions), [WherePublic()], Emit(Symbols(fields.copy())), grant),
     }
     return {workload.value: asdict(Query(request)) for workload, request in requests.items()}

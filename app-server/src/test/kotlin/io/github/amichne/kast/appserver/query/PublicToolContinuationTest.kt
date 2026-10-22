@@ -78,7 +78,7 @@ class PublicToolContinuationTest {
                 PublicToolRunAction(
                     source = PublicToolResultSource(reference),
                     steps = null,
-                    output = null,
+                    terminalStep = PublicToolEmit(),
                     retention = PublicToolRetention.RETAIN,
                 )
             )
@@ -123,7 +123,7 @@ class PublicToolContinuationTest {
                     )
                 ) as Refinement.Refined)
                 .value
-        val input = PublicToolQuerySymbols(PublicToolRunAction(selected, steps, null))
+        val input = PublicToolQuerySymbols(PublicToolRunAction(selected, steps, PublicToolEmit()))
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,
@@ -139,7 +139,9 @@ class PublicToolContinuationTest {
 
         val emptyRows = (BoundedProtocolList.create(emptyList<QueryResultRowReference>()) as Refinement.Refined).value
         val emptyInput =
-            PublicToolQuerySymbols(PublicToolRunAction(PublicToolResultSource(reference, emptyRows), null, null))
+            PublicToolQuerySymbols(
+                PublicToolRunAction(PublicToolResultSource(reference, emptyRows), null, PublicToolEmit())
+            )
         val emptyAdmitted =
             PublicToolContract.admit(
                 PublicToolIdentity.QUERY_SYMBOLS,

@@ -19,19 +19,26 @@ class PublicToolBindingContractTest {
     @Test
     fun `file offset source lowers to containing declaration intent`() {
         val file = (ProtocolText.parse("src/main/kotlin/Subject.kt") as Refinement.Refined).value
-        val query = PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, 42), null))
+        val query =
+            PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, 42), null, PublicToolEmit()))
         val admitted = admit(query) as Refinement.Refined
         val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
         val source = request.from as io.github.amichne.kast.protocol.contract.QueryFromDocument.Location
         assertEquals(file, source.file)
         assertEquals(42, source.offset.value)
         assertTrue(
-            admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, -1), null)))
+            admit(
+                PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(file, -1), null, PublicToolEmit()))
+            )
                 is Refinement.Rejected
         )
         val traversal = (ProtocolText.parse("../outside.kt") as Refinement.Refined).value
         assertTrue(
-            admit(PublicToolQuerySymbols(PublicToolRunAction(PublicToolLocationSource(traversal, 42), null)))
+            admit(
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(PublicToolLocationSource(traversal, 42), null, PublicToolEmit())
+                )
+            )
                 is Refinement.Rejected
         )
     }
@@ -93,7 +100,9 @@ class PublicToolBindingContractTest {
         val ref = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
         val refs = (BoundedProtocolList.create(listOf(ref)) as Refinement.Refined).value
         val stages = (BoundedProtocolList.create(steps) as Refinement.Refined).value
-        return PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), stages, output))
+        return PublicToolQuerySymbols(
+            PublicToolRunAction(PublicToolReferenceSource(refs), stages, PublicToolEmit(output))
+        )
     }
 
     private fun admit(value: PublicToolQuerySymbols) =

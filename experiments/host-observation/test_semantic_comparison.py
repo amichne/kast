@@ -390,16 +390,17 @@ class SemanticComparisonTest(unittest.TestCase):
         expected = {
             'exact-negative': dict(source=dict(type='SEARCH_DECLARATIONS', declarationName='KastReplayNegativeDeclaration9C22D9',
                 nameMatch='EXACT', declarationKinds=['CLASS'], scope=scope), steps=[],
-                output=dict(type='SYMBOLS', fields=fields)),
+                terminalStep=dict(type='EMIT', output=dict(type='SYMBOLS', fields=fields))),
             'exact-source': dict(source=dict(type='SEARCH_DECLARATIONS', declarationName='QueryPlanSyntax',
                 nameMatch='EXACT', declarationKinds=['CLASS'], scope=scope), steps=[],
-                output=dict(type='SYMBOLS', fields=fields + ['SOURCE'])),
+                terminalStep=dict(type='EMIT', output=dict(type='SYMBOLS', fields=fields + ['SOURCE']))),
             'dense-references': dict(source=dict(type='SEARCH_DECLARATIONS', declarationName='QueryStepSyntax',
                 nameMatch='EXACT', declarationKinds=['CLASS'], scope=scope),
-                steps=[dict(type='EXPAND_RELATION', relation='REFERENCES')], output=dict(type='OCCURRENCES')),
+                steps=[dict(type='EXPAND_RELATION', relation='REFERENCES')],
+                terminalStep=dict(type='EMIT', output=dict(type='OCCURRENCES'))),
             'scoped-all': dict(source=dict(type='ALL_DECLARATIONS', declarationKinds=['FUNCTION'], scope=function_scope),
                 steps=[dict(type='WHERE', predicate=dict(type='VISIBILITY', values=['PUBLIC']))],
-                output=dict(type='SYMBOLS', fields=fields)),
+                terminalStep=dict(type='EMIT', output=dict(type='SYMBOLS', fields=fields))),
         }
         self.assertEqual(set(expected), set(requests))
         for workload, semantic_request in expected.items():
@@ -833,7 +834,8 @@ class SemanticComparisonTest(unittest.TestCase):
         self.assertEqual(['RUN', 'READ_RESULT'], [q['request']['type'] for q in seen])
         self.assertEqual(20, seen[1]['request']['cursor'])
         self.assertEqual(0, seen[1]['request']['evidence_cursor'])
-        self.assertEqual(original.request['request']['output'], seen[1]['request']['output'])
+        self.assertEqual(original.request['request']['terminalStep']['output'], seen[1]['request']['output'])
+        self.assertNotIn('terminalStep', seen[1]['request'])
         self.assertEqual(original.request['request']['executionBudget'], seen[1]['request']['executionBudget'])
 
         self.assertEqual(pages[0]['retention']['reference'], seen[1]['request']['result'])

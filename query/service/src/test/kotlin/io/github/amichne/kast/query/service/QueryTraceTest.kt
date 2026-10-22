@@ -20,6 +20,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -55,6 +56,56 @@ class QueryTraceTest {
         assertEquals(seed, grouped.selector)
         assertEquals(listOf(100, 102), grouped.connections.map { it.occurrence.range.startInclusive })
         assertEquals(2, result.result.relationObservations.size)
+    }
+
+    @Test
+    fun `trace merges arrivals from multiple distinct seeds`() = runTest {
+        val fixture = QueryServiceTest()
+        val basis = fixture.selector(fixture.selection())
+        val first = traceFunction(basis, "first", 30)
+        val second = traceFunction(basis, "second", 60)
+        val shared = traceFunction(basis, "shared", 90)
+        val downstream = traceFunction(basis, "downstream", 120)
+        for (seeds in listOf(listOf(first, second), listOf(second, first))) {
+            for (grant in listOf(4L, 100L)) {
+                val reads = mutableListOf<Pair<String, RelationMeaning>>()
+                val service = traceService(fixture, multipleSeedRelations(first, shared, downstream, reads))
+                val plan = fixture.exactReferencePlan(seeds, listOf(QueryStepSyntax.Trace()))
+                val request = fixture.request(plan, grant, resultLimit = 100, returnedBytes = 1_000_000L)
+                var result = service.run(request)
+                var pages = 1
+                while (result is QueryExecutionResult.Qualified) {
+                    val checkpoint = assertInstanceOf(QueryContinuationState.Resumable::class.java, result.continuation)
+                    assertTrue(++pages <= 20, "Both seeds must make bounded progress")
+                    result =
+                        service.run(
+                            QueryExecutionRequest.create(plan, request.lease, request.budget, checkpoint.checkpoint)
+                                .refined()
+                        )
+                }
+                val rows = assertInstanceOf(QueryExecutionResult.Complete::class.java, result).result.symbolRows()
+                assertEquals(
+                    setOf(first.fingerprint, second.fingerprint, shared.fingerprint, downstream.fingerprint),
+                    rows.map { it.selector.fingerprint }.toSet(),
+                )
+                val expected =
+                    mapOf(
+                        first.fingerprint to emptySet<Int>(),
+                        second.fingerprint to emptySet(),
+                        shared.fingerprint to setOf(101, 103, 107, 211, 223),
+                        downstream.fingerprint to setOf(101, 103, 107, 211, 223, 307),
+                    )
+                rows.forEach { row ->
+                    assertEquals(
+                        expected.getValue(row.selector.fingerprint),
+                        row.connections.map { it.occurrence.range.startInclusive }.toSet(),
+                    )
+                    assertTrue(row.connections.all { it.authority == first.lease.identity })
+                }
+                assertEquals(7, reads.size)
+                assertEquals(1, reads.count { it == "shared" to RelationMeaning.Callers })
+            }
+        }
     }
 
     @Test
@@ -140,6 +191,28 @@ class QueryTraceTest {
         assertEquals(listOf(RelationMeaning.References, RelationMeaning.Implementations), reads)
         assertEquals(seed, last.result.symbolRows().single().selector)
     }
+}
+
+private fun multipleSeedRelations(
+    first: SymbolSelector,
+    shared: SymbolSelector,
+    downstream: SymbolSelector,
+    reads: MutableList<Pair<String, RelationMeaning>>,
+): RelationOperations = RelationOperations { read ->
+    reads += read.subject.name.value to read.meaning
+    val targets =
+        when (read.subject.name.value to read.meaning) {
+            "first" to RelationMeaning.References -> listOf(shared to 101, shared to 103)
+            "first" to RelationMeaning.Callers -> listOf(shared to 107)
+            "second" to RelationMeaning.References -> listOf(shared to 211)
+            "second" to RelationMeaning.Callers -> listOf(shared to 223)
+            "first" to RelationMeaning.Overrides,
+            "second" to RelationMeaning.Overrides -> emptyList()
+            "shared" to RelationMeaning.Callers -> listOf(downstream to 307)
+            else -> error("Unexpected read: ${read.subject.name.value} / ${read.meaning}")
+        }
+    val complete = RelationCompilation.complete(traceBatch(read, methodTraceFacts(read, first, targets)))
+    RelationReadResult.Complete(complete.batch, complete.coverage)
 }
 
 private fun <V, F> Refinement<V, F>.refined(): V =

@@ -1,5 +1,5 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
-const PUBLIC_TOOL_CONTRACT_VERSION = 16;
+const PUBLIC_TOOL_CONTRACT_VERSION = 17;
 // Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.
 const TOOL_RPC_FAILURES = [
   "INSTALLATION_STOPPED",
@@ -136,9 +136,11 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     );
     return result;
   };
+  const requestedOutput = params.request?.type === 'RUN'
+    ? params.request.terminalStep?.output : params.request?.output;
   const read = (cursor, evidence) => ({ request: {
     type: 'READ_RESULT', result: retained, cursor, evidence_cursor: evidence,
-    ...(params.request?.output != null ? { output: params.request.output } : {}),
+    ...(requestedOutput != null ? { output: requestedOutput } : {}),
     ...(rejectedEvidence ? { output: rejectedEvidence.nextQuery?.request?.output } : {}),
     ...(params.request?.executionBudget != null ? { executionBudget: params.request.executionBudget } : {}),
   }, ...(params.verbose != null ? { verbose: params.verbose } : {}) });

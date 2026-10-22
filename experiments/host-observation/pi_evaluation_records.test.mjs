@@ -404,7 +404,7 @@ test('real guard callbacks flow through persisted allowlist with an actual polic
   const ctx={model:{provider:'openai-codex',id:'gpt-6.1-sol'},abort:()=>{aborted++;}};
   handlers.get('session_start')({},ctx);
   handlers.get('tool_call')({toolName:'secret tool name',toolCallId:'secret ID',
-    input:{request:{type:'RUN'},source:'secret payload'}},ctx);
+    input:{request:{type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}},source:'secret payload'}},ctx);
   const summaries=read(directory);
   assert.equal(aborted,1);
   assert.deepEqual(summaries,[{stage:'SESSION_SETTINGS',provider:'openai-codex',model:'gpt-6.1-sol',
