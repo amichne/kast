@@ -67,7 +67,7 @@ internal fun SourceReadRequest.admit(
             is Refinement.Rejected -> return SourceRequestAdmission.Rejected(admitted.failure)
         }
     val domainEntityLimit =
-        SourceEntityLimit.parse(minOf(entityLimit.value, budget.resources.resultLimit.value)).refinedOrNull()
+        SourceEntityLimit.parse(minOf(entityLimit.value, budget.outputResults.value)).refinedOrNull()
             ?: return SourceRequestAdmission.Rejected(
                 SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.REQUEST_REFINEMENT)
             )

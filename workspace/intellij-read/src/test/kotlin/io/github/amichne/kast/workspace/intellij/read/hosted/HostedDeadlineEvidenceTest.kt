@@ -50,12 +50,12 @@ class HostedDeadlineEvidenceTest {
         val deadline = HostedReadDeadline(shortHostLimits(), { now })
         now = 3_749_000_000L
         val lastMillisecond = deadline.admit(null).proven()
-        assertEquals(1L, lastMillisecond.semantic.value)
+        assertEquals(1L, lastMillisecond.boundedFixture().semantic.value)
         now += 1L
         assertEquals(Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), deadline.admit(null))
         now = 4_000_000_000L
         assertEquals(Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), deadline.admit(null))
-        assertEquals(1L, lastMillisecond.executionBudget.elapsed.effective.value)
+        assertEquals(1L, lastMillisecond.executionBudget.boundedFixture().elapsed.effective.value)
     }
 
     @Test
@@ -70,7 +70,7 @@ class HostedDeadlineEvidenceTest {
             executor.execute(executor.endpoint, shortHostLimits()) { progress ->
                 runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { allowance ->
                     admittedReport = ExecutionBudgetReport.from(allowance.executionBudget)
-                    assertEquals(2_000L, allowance.semantic.value)
+                    assertEquals(2_000L, allowance.boundedFixture().semantic.value)
                     try {
                         awaitCancellation()
                     } finally {

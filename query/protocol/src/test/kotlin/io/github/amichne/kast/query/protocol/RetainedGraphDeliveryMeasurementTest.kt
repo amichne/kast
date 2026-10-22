@@ -145,7 +145,9 @@ class RetainedGraphDeliveryMeasurementTest {
                 fixture.source.authority,
                 fixture.budget.copy(
                     resources =
-                        fixture.budget.resources.copy(resultLimit = ResultLimit.parse(limit).graphFixtureValue())
+                        fixture.budget.resources
+                            .bounded()
+                            .copy(resultLimit = ResultLimit.parse(limit).graphFixtureValue())
                 ),
             ) as OperationOutcome.Complete
         val document =

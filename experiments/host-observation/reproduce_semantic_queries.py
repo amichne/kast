@@ -185,7 +185,7 @@ class QualificationSlice(str, Enum):
     @property
     def public_contract_version(self):
         return {self.TRY_BRANCH_RESULTS: 6, self.TRY_LOCAL_IDENTITIES: 7,
-                self.RELATION_WORK_REDUCTION: 15,
+                self.RELATION_WORK_REDUCTION: 16,
                 self.QUERY_CHECKPOINT_STORAGE: 14}[self]
 
 

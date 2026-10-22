@@ -3,6 +3,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -22,14 +23,66 @@ data class ImpactFlowDomainDocument(
     val position: ImpactFlowReadPositionDocument,
 )
 
-/** Captured native allowance has every bound; request defaults cannot erase an observed domain. */
+/** Captured native allowance preserves finite output grants and the admitted execution mode. */
 @Serializable
-data class ImpactFlowBudgetDocument(
-    @Serializable(with = ExecutionElapsedSerializer::class) val maxElapsedMillis: ElapsedTimeLimitMillis,
-    @Serializable(with = ExecutionWorkSerializer::class) val maxWorkUnits: WorkUnitLimit,
-    @Serializable(with = ExecutionResultsSerializer::class) val maxResults: ResultLimit,
-    @Serializable(with = ExecutionBytesSerializer::class) val maxReturnedBytes: ReturnedByteLimit,
-)
+@JsonClassDiscriminator("mode")
+sealed interface ImpactFlowBudgetDocument {
+    val maxResults: ResultLimit
+    val maxReturnedBytes: ReturnedByteLimit
+
+    @Serializable
+    @SerialName("BOUNDED")
+    data class Bounded(
+        @Serializable(with = ExecutionElapsedSerializer::class) val maxElapsedMillis: ElapsedTimeLimitMillis,
+        @Serializable(with = ExecutionWorkSerializer::class) val maxWorkUnits: WorkUnitLimit,
+        @Serializable(with = ExecutionResultsSerializer::class) override val maxResults: ResultLimit,
+        @Serializable(with = ExecutionBytesSerializer::class) override val maxReturnedBytes: ReturnedByteLimit,
+    ) : ImpactFlowBudgetDocument
+
+    @Serializable
+    @SerialName("RUNNER_CONTROLLED")
+    data class RunnerControlled(
+        @Serializable(with = ExecutionResultsSerializer::class) override val maxResults: ResultLimit,
+        @Serializable(with = ExecutionBytesSerializer::class) override val maxReturnedBytes: ReturnedByteLimit,
+    ) : ImpactFlowBudgetDocument
+
+    fun permitsWork(work: Long): Boolean =
+        when (this) {
+            is Bounded -> work <= maxWorkUnits.value
+            is RunnerControlled -> true
+        }
+
+    fun permitsElapsedMillis(elapsed: Long): Boolean =
+        when (this) {
+            is Bounded -> elapsed <= maxElapsedMillis.value
+            is RunnerControlled -> true
+        }
+
+    companion object {
+        operator fun invoke(
+            maxElapsedMillis: ElapsedTimeLimitMillis,
+            maxWorkUnits: WorkUnitLimit,
+            maxResults: ResultLimit,
+            maxReturnedBytes: ReturnedByteLimit,
+        ): Bounded = Bounded(maxElapsedMillis, maxWorkUnits, maxResults, maxReturnedBytes)
+
+        fun from(
+            resources: ResourceBudget,
+            pageResults: ResultLimit,
+            returnedBytes: ReturnedByteLimit,
+        ): ImpactFlowBudgetDocument =
+            when (resources) {
+                is ResourceBudget.Bounded ->
+                    Bounded(
+                        resources.elapsedTimeLimit,
+                        resources.workUnitLimit,
+                        resources.resultLimit.intersect(pageResults),
+                        returnedBytes,
+                    )
+                ResourceBudget.RunnerControlled -> RunnerControlled(pageResults, returnedBytes)
+            }
+    }
+}
 
 @Serializable
 @JsonClassDiscriminator("type")

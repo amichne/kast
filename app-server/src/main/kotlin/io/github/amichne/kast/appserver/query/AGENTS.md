@@ -14,6 +14,7 @@ code_sources:
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolTraceContractTest.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicRunnerControlledExecutionTest.kt
   - path: packaging/generate-public-query.py
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
 ---
@@ -54,6 +55,12 @@ separate in the admitted syntax. The public `RESUME` schema admits only the
 `query-output:v1` token family. Internal `query:v1` continuations, malformed tokens, and
 retained-result tokens reject before canonical lowering. `RESUME` only delivers already-produced output.
 It cannot continue semantic execution or change its grant. Schema admission does not establish issued authority.
+
+`RUN.executionMode` defaults to `BOUNDED`.
+`RUNNER_CONTROLLED` uses caller cancellation to stop semantic execution.
+Its request accepts output grants and rejects `maxElapsedMs` or `maxWorkUnits`.
+Keep finite output pages separate from semantic execution.
+
 The intent tools in `tools.schema.json` allow default controls to be omitted;
 normalize omission or explicit null once through the generated defaults before canonical construction. Admit
 those requests through `AdmittedPublicTool`, retaining tool identity and schema

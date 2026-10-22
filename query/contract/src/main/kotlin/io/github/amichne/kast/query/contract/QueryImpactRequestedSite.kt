@@ -30,7 +30,7 @@ private constructor(
             proof: RevalidatedValueSite,
             examinedWorkUnits: RelationWorkCount,
         ): Refinement<QueryImpactRequestedSite, QueryImpactRequestedSiteFailure> {
-            if (examinedWorkUnits.value > request.budget.resources.workUnitLimit.value)
+            if (!request.budget.resources.permitsWork(examinedWorkUnits.value))
                 return Refinement.Rejected(QueryImpactRequestedSiteFailure.WorkReceiptExceedsGrant)
             val argument = request.role as? ValueSiteRoleClaim.Argument
             if (

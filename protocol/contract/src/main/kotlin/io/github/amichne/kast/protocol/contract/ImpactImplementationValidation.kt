@@ -48,7 +48,7 @@ internal fun ImpactImplementationDispatchDocument.admitsImplementation(basis: Im
         resultCount.value == facts.values.size.toLong() &&
         facts.values.size + scopeExclusions.values.size <= question.budget.maxResults.value &&
         encodedBytes.value <= question.budget.maxReturnedBytes.value &&
-        examinedWorkUnits.value <= question.budget.maxWorkUnits.value &&
+        question.budget.permitsWork(examinedWorkUnits.value) &&
         coverage.admitsCoverage(this) &&
         omissions.values.admitOmissions(provider) &&
         scopeExclusions.values.all { it.admitsExclusion(this, basis) }

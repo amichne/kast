@@ -13,7 +13,7 @@ enum class HostedReadReplayPolicy {
     RETRY_MOVED_READ,
 }
 
-/** Discards an unpublishable read and retries under the caller's single enclosing host deadline. */
+/** Discards a stale read and retries under the caller's execution mode and cancellation. */
 internal suspend fun <Value> retryMovedHostedRead(
     policy: HostedReadReplayPolicy,
     observation: IntellijReadObservation,

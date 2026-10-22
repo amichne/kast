@@ -107,6 +107,7 @@ internal open class AutomaticSymbolQueryCase {
     ) {
         private var unexpectedCalls = 0
         var calls = 0
+        val resourceGrants = mutableListOf<ResourceBudget>()
         val grants = mutableListOf<Long>()
         val timeGrants = mutableListOf<Long>()
         val operations = QueryOperations { execution ->
@@ -116,8 +117,14 @@ internal open class AutomaticSymbolQueryCase {
             }
             assertEquals(fixture.authority, execution.lease)
             if (calls > 0) assertEquals(calls, (execution.checkpoint as Checkpoint).page)
-            grants += execution.budget.resources.workUnitLimit.value
-            timeGrants += execution.budget.resources.elapsedTimeLimit.value
+            resourceGrants += execution.budget.resources
+            when (val resources = execution.budget.resources) {
+                is ResourceBudget.Bounded -> {
+                    grants += resources.workUnitLimit.value
+                    timeGrants += resources.elapsedTimeLimit.value
+                }
+                ResourceBudget.RunnerControlled -> Unit
+            }
             val rows = pages[calls++]
             if (staleAfterFirst && calls > 1)
                 return@QueryOperations QueryExecutionResult.Rejected(QueryExecutionRejection.REFERENCE_STALE)

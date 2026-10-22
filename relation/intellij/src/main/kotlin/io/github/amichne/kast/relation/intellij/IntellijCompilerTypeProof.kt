@@ -2,6 +2,10 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.openapi.progress.ProgressManager
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
@@ -22,24 +26,40 @@ import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
 private const val MAX_COMPILER_TYPE_WORK = 256
 private const val MAX_COMPILER_TYPE_DEPTH = 32
 
-/** Inspect compiler structure before rendering; no native type escapes this bounded inspection. */
-internal fun nativeCompilerTypeProof(types: List<KaType>): NativeCompilerTypeProof =
-    nativeCompilerTypeProof(types.asSequence())
+internal fun defaultRelationCompilerTypeAllowance(): WorkAllowance.Bounded =
+    when (val limit = WorkUnitLimit.parse(MAX_COMPILER_TYPE_WORK.toLong())) {
+        is Refinement.Refined -> WorkAllowance.Bounded(limit.value)
+        is Refinement.Rejected -> error("The fixed compiler type allowance must be positive")
+    }
 
-internal fun nativeCompilerTypeProof(types: Sequence<KaType>): NativeCompilerTypeProof =
-    IntellijCompilerTypeProof().inspect(types)
+/** Inspect compiler structure before rendering. Native types remain inside the analysis session. */
+internal fun nativeCompilerTypeProof(
+    types: List<KaType>,
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
+): NativeCompilerTypeProof = nativeCompilerTypeProof(types.asSequence(), workAllowance)
 
-private class IntellijCompilerTypeProof {
+internal fun nativeCompilerTypeProof(
+    types: Sequence<KaType>,
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
+): NativeCompilerTypeProof = IntellijCompilerTypeProof(workAllowance).inspect(types)
+
+private class IntellijCompilerTypeProof(private val workAllowance: WorkAllowance) {
     private val pending = ArrayDeque<Pair<KaType, Int>>()
     private val parameters = hashSetOf<KaTypeParameterSymbol>()
-    private var examined = 0
+    private val seen = hashSetOf<KaType>()
+    private var examined = 0L
+    private val work =
+        when (workAllowance) {
+            WorkAllowance.Unlimited -> WorkAllowance.Unlimited
+            is WorkAllowance.Bounded -> workAllowance.intersect(defaultRelationCompilerTypeAllowance())
+        }
 
     fun inspect(types: Sequence<KaType>): NativeCompilerTypeProof {
         val roots = enqueue(types, 0)
         if (roots != NativeCompilerTypeProof.ADMITTED) return roots
         while (pending.isNotEmpty()) {
             val (type, depth) = pending.removeFirst()
-            if (++examined > MAX_COMPILER_TYPE_WORK || depth > MAX_COMPILER_TYPE_DEPTH)
+            if (!spend(1L) || workAllowance is WorkAllowance.Bounded && depth > MAX_COMPILER_TYPE_DEPTH)
                 return NativeCompilerTypeProof.WORK_LIMIT_REACHED
             val proof = visit(type, depth)
             if (proof != NativeCompilerTypeProof.ADMITTED) return proof
@@ -47,9 +67,17 @@ private class IntellijCompilerTypeProof {
         return NativeCompilerTypeProof.ADMITTED
     }
 
+    private fun spend(count: Long): Boolean {
+        ProgressManager.checkCanceled()
+        examined = if (count > Long.MAX_VALUE - examined) Long.MAX_VALUE else examined + count
+        return work.permits(examined)
+    }
+
     private fun enqueue(types: Sequence<KaType>, depth: Int): NativeCompilerTypeProof {
         for (type in types) {
-            if (pending.size >= MAX_COMPILER_TYPE_WORK) return NativeCompilerTypeProof.WORK_LIMIT_REACHED
+            ProgressManager.checkCanceled()
+            if (workAllowance == WorkAllowance.Unlimited && !seen.add(type)) continue
+            if (!work.permits(pending.size.toLong() + 1L)) return NativeCompilerTypeProof.WORK_LIMIT_REACHED
             pending.addLast(type to depth)
         }
         return NativeCompilerTypeProof.ADMITTED
@@ -76,12 +104,11 @@ private class IntellijCompilerTypeProof {
         }
 
     private fun visitClass(type: KaClassType, depth: Int): NativeCompilerTypeProof {
-        if (type.qualifiers.size > MAX_COMPILER_TYPE_WORK - examined) return NativeCompilerTypeProof.WORK_LIMIT_REACHED
-        examined += type.qualifiers.size
+        if (!spend(type.qualifiers.size.toLong())) return NativeCompilerTypeProof.WORK_LIMIT_REACHED
         val projections =
             type.typeArguments.asSequence() + type.qualifiers.asSequence().flatMap { it.typeArguments.asSequence() }
         for (projection in projections) {
-            if (++examined > MAX_COMPILER_TYPE_WORK) return NativeCompilerTypeProof.WORK_LIMIT_REACHED
+            if (!spend(1L)) return NativeCompilerTypeProof.WORK_LIMIT_REACHED
             val proof =
                 when (projection) {
                     is KaStarTypeProjection -> NativeCompilerTypeProof.ADMITTED
@@ -95,7 +122,9 @@ private class IntellijCompilerTypeProof {
 }
 
 /** Inspect exactly the type facts encoded by a qualified containing declaration's signature. */
-internal fun KaSymbol.localOwnerCompilerTypeProof(): NativeCompilerTypeProof {
+internal fun KaSymbol.localOwnerCompilerTypeProof(
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance()
+): NativeCompilerTypeProof {
     val facts =
         when (this) {
             is KaFunctionSymbol ->
@@ -109,5 +138,5 @@ internal fun KaSymbol.localOwnerCompilerTypeProof(): NativeCompilerTypeProof {
             is KaClassLikeSymbol -> emptySequence()
             else -> return NativeCompilerTypeProof.UNSUPPORTED_TYPE
         }
-    return nativeCompilerTypeProof(facts)
+    return nativeCompilerTypeProof(facts, workAllowance)
 }

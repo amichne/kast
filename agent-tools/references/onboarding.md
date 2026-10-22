@@ -53,7 +53,7 @@ If tools, readiness, or scope prevent a query, use ordinary reads and state the 
 
 Do not repeat discovery or failed requests without new evidence or a changed prerequisite.
 Preserve incomplete results and scope qualifications; they do not prove that no callers or references exist.
-Public tool contract: `15`. If schemas differ, use the installed tool schema.
+Public tool contract: `16`. If schemas differ, use the installed tool schema.
 
 Minimal interface query:
 

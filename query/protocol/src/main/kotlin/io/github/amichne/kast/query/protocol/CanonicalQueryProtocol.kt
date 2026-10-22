@@ -47,7 +47,7 @@ class CanonicalQueryProtocol(
                     is Refinement.Refined -> execution.value
                     is Refinement.Rejected -> return OperationOutcome.Rejected(execution.failure)
                 }
-            when (val acquired = state.acquireInitial(lease)) {
+            when (val acquired = state.acquireInitial(lease, executionMode = request.executionMode)) {
                 is QueryInitialAcquisition.Acquired -> {
                     state.finishInvocation(
                         invocation,
@@ -99,7 +99,14 @@ class CanonicalQueryProtocol(
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
         when (request) {
             is QueryRunRequest.Run ->
-                when (val acquired = state.acquireInitial(lease, request.resultInputs().map { it.reference }.toSet())) {
+                when (
+                    val acquired =
+                        state.acquireInitial(
+                            lease,
+                            request.resultInputs().map { it.reference }.toSet(),
+                            request.executionMode,
+                        )
+                ) {
                     is QueryInitialAcquisition.Acquired -> executeOwned(request, null, acquired.claim, lease, budget)
                     QueryInitialAcquisition.Unavailable ->
                         rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
@@ -115,7 +122,7 @@ class CanonicalQueryProtocol(
                 when (val acquired = state.acquireInitial(lease, setOf(request.result))) {
                     is QueryInitialAcquisition.Acquired ->
                         pagePublication.execute(acquired.claim) {
-                            projection.readRetained(request, lease, acquired.claim, budget.resources.resultLimit)
+                            projection.readRetained(request, lease, acquired.claim, budget.outputResults)
                         }
                     QueryInitialAcquisition.Unavailable ->
                         rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
@@ -129,7 +136,15 @@ class CanonicalQueryProtocol(
         lease: SemanticReadAuthority,
         budget: QueryBudget,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
-        when (val acquired = state.acquireCheckpoint(token, lease, budget.returnedBytes.value)) {
+        when (
+            val acquired =
+                state.acquireCheckpoint(
+                    token = token,
+                    lease = lease,
+                    maximumPageBytes = budget.returnedBytes.value,
+                    invocation = publication as? QueryInvocationPublication,
+                )
+        ) {
             is QueryCheckpointAcquisition.Published -> pagePublication.execute(acquired.claim) { acquired.page }
             QueryCheckpointAcquisition.InUse -> rejected(QueryExecutionRejectionDocument.CONTINUATION_IN_USE)
             QueryCheckpointAcquisition.Unavailable -> rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
@@ -270,16 +285,8 @@ class CanonicalQueryProtocol(
     ): Refinement<ResourceBudget, QueryRunRejection> =
         when (val remaining = authority.remainingReadBudget(budget.resources)) {
             is Refinement.Refined ->
-                when (
-                    val work =
-                        WorkUnitLimit.parse(
-                            minOf(
-                                remaining.value.workUnitLimit.value,
-                                budget.resources.workUnitLimit.value - examinedWork,
-                            )
-                        )
-                ) {
-                    is Refinement.Refined -> Refinement.Refined(remaining.value.copy(workUnitLimit = work.value))
+                when (val work = budget.resources.intersect(remaining.value).remainingAfter(examinedWork, 0L)) {
+                    is Refinement.Refined -> Refinement.Refined(work.value)
                     is Refinement.Rejected ->
                         Refinement.Rejected(
                             QueryRunRejection.ImpactSourceRejected(

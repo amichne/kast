@@ -6,11 +6,11 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.LocalDeclarationAddress
 import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
@@ -61,24 +61,17 @@ internal fun KaSymbol.compilerProjection(
     file: SymbolDiscoveryFileIdentity? = null,
     depth: Int = 0,
     observation: IntellijReadObservation = IntellijReadObservation.None,
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
 ): IntellijCompilerProjectionResult {
-    if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
+    if (workAllowance is WorkAllowance.Bounded && depth > DEFAULT_LOCAL_RELATION_OWNER_DEPTH)
         return IntellijCompilerProjectionResult.LocalRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
     if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
-        return localRelationProjection(session, file, depth, observation)
+        return localRelationProjection(session, file, depth, observation, workAllowance)
     return when (this) {
         is KaValueParameterSymbol ->
-            generatedPrimaryConstructorProperty?.compilerProjection(session, file, depth, observation)
+            generatedPrimaryConstructorProperty?.compilerProjection(session, file, depth, observation, workAllowance)
                 ?: IntellijCompilerProjectionResult.Unsupported
-        is KaConstructorSymbol -> {
-            val owner =
-                containingClassId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
-            projected(
-                CompilerSymbolKind.CONSTRUCTOR,
-                "$owner.<init>",
-                functionSignature("$owner.<init>"),
-            )
-        }
+        is KaConstructorSymbol -> projectedConstructor()
         is KaFunctionSymbol -> projectedFunction()
         is KaKotlinPropertySymbol -> projectedProperty()
         is KaTypeAliasSymbol -> {
@@ -102,6 +95,11 @@ internal fun KaSymbol.compilerProjection(
     }
 }
 
+private fun KaConstructorSymbol.projectedConstructor(): IntellijCompilerProjectionResult {
+    val owner = containingClassId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
+    return projected(CompilerSymbolKind.CONSTRUCTOR, "$owner.<init>", functionSignature("$owner.<init>"))
+}
+
 private fun KaFunctionSymbol.projectedFunction(): IntellijCompilerProjectionResult {
     val callable = callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
     return projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
@@ -113,15 +111,19 @@ private fun KaFunctionSymbol.projectedFunction(): IntellijCompilerProjectionResu
  * SAME establishes identical detached compiler identities. DIFFERENT and UNSUPPORTED are closed non-admission states;
  * no PSI name, offset, or display text substitutes for K2 identity.
  */
-internal fun KaSymbol.compareIdentity(other: KaSymbol, session: KaSession): IntellijSymbolIdentityComparison {
+internal fun KaSymbol.compareIdentity(
+    other: KaSymbol,
+    session: KaSession,
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
+): IntellijSymbolIdentityComparison {
     val left =
-        when (val result = compilerProjection(session)) {
+        when (val result = compilerProjection(session, workAllowance = workAllowance)) {
             is IntellijCompilerProjectionResult.Projected -> result.projection.identity
             is IntellijCompilerProjectionResult.LocalRejected,
             IntellijCompilerProjectionResult.Unsupported -> return IntellijSymbolIdentityComparison.UNSUPPORTED
         }
     val right =
-        when (val result = other.compilerProjection(session)) {
+        when (val result = other.compilerProjection(session, workAllowance = workAllowance)) {
             is IntellijCompilerProjectionResult.Projected -> result.projection.identity
             is IntellijCompilerProjectionResult.LocalRejected,
             IntellijCompilerProjectionResult.Unsupported -> return IntellijSymbolIdentityComparison.UNSUPPORTED

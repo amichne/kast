@@ -18,10 +18,11 @@ function createQuerySession(command, cwd, policy, signal, spawnProcess, environm
   };
   const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
   const abort = () => stop('CANCELLED');
-  const launch = () => {
+  const launch = deliveryPolicy => {
     if (signal?.aborted) throw failure('CANCELLED');
     child = spawnProcess(command, ['query-session'], { cwd, env: childEnvironment, stdio: ['pipe', 'pipe', 'pipe'] });
-    timer = setTimeout(() => stop('TIMEOUT'), policy.callTimeoutMillis);
+    if (deliveryPolicy.executionMode !== 'RUNNER_CONTROLLED')
+      timer = setTimeout(() => stop('TIMEOUT'), policy.callTimeoutMillis);
     signal?.addEventListener('abort', abort, { once: true });
     child.stderr.on('data', () => {}); // No arbitrary process diagnostics or source payload retained.
     child.stdin.on('error', () => stop('INPUT_FAILED'));
@@ -55,7 +56,7 @@ function createQuerySession(command, cwd, policy, signal, spawnProcess, environm
     invoke(arguments_, deliveryPolicy) {
       if (closed || stopped || closing) return Promise.reject(failure(stopped ?? 'CLOSED'));
       if (pending) return Promise.reject(failure('CONCURRENT_REQUEST'));
-      try { if (!child) launch(); } catch (error) { return Promise.reject(error); }
+      try { if (!child) launch(deliveryPolicy); } catch (error) { return Promise.reject(error); }
       return new Promise((resolve, reject) => {
         pending = { resolve, reject, policy: deliveryPolicy };
         child.stdin.write(JSON.stringify(arguments_) + '\n');

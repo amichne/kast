@@ -165,7 +165,7 @@ class OriginalImpactRetentionTest {
             reference: io.github.amichne.kast.protocol.contract.QueryResultReference,
             cursor: Int = 0,
         ): OperationOutcome.Qualified<QueryRunResult, QueryRunQualification> {
-            val larger = QueryBudget(symbols.budget.resources, QueryByteLimit.parse(1_000_000).value())
+            val larger = QueryBudget(symbols.budget.resources.bounded(), QueryByteLimit.parse(1_000_000).value())
             val read =
                 protocol.executePage(
                     QueryRunRequest.ReadResult.valuePaths(reference, QueryResultCursor.parse(cursor).value()),

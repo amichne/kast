@@ -67,9 +67,7 @@ internal class BoundedNativeDiscoveryCollector(
             }
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        if (
-            directoryAllowance?.expired() == true || elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value
-        ) {
+        if (directoryAllowance?.expired() == true || request.elapsedExpired(elapsedSince(startedAt))) {
             qualifyAndHalt(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
             return false
         }
@@ -78,7 +76,7 @@ internal class BoundedNativeDiscoveryCollector(
 
     internal fun consumeWork(): Boolean {
         if (!observe()) return false
-        if (workUnits >= request.budget.resources.workUnitLimit.value || directoryAllowance?.consume() == false) {
+        if (!request.budget.resources.hasWorkCapacity(workUnits) || directoryAllowance?.consume() == false) {
             observation.terminated(IntellijReadTermination.WORK_LIMIT, contributor)
             qualifyAndHalt(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
             return false
@@ -169,12 +167,12 @@ internal class BoundedNativeDiscoveryCollector(
         if (!consumeWork()) {
             return false
         }
-        if (candidates.size >= request.budget.resources.resultLimit.value) {
+        if (!request.budget.resources.hasResultCapacity(candidates.size)) {
             qualifyAndHalt(SymbolDiscoveryQualification.RESULT_LIMIT_REACHED)
             return false
         }
         val candidateBytes = candidate.projectedUtf8Size()
-        if (candidateBytes.value > request.budget.returnedBytes.value - encodedBytes) {
+        if (!request.budget.permitsReturnedBytes(encodedBytes + candidateBytes.value)) {
             qualifyAndHalt(SymbolDiscoveryQualification.BYTE_LIMIT_REACHED)
             return false
         }
@@ -202,9 +200,7 @@ internal class BoundedNativeDiscoveryCollector(
     }
 
     fun finish(): IntellijNativeDiscoveryExecution {
-        if (
-            directoryAllowance?.expired() == true || elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value
-        ) {
+        if (directoryAllowance?.expired() == true || request.elapsedExpired(elapsedSince(startedAt))) {
             qualify(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
         }
         val totalNanoseconds = elapsedSince(startedAt)

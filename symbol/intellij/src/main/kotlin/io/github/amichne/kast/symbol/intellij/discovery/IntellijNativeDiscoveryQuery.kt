@@ -132,7 +132,8 @@ internal class IntellijNativeDiscoveryQuery(
                                 return@Processor true
                             }
                             if (
-                                name !in matchingNames &&
+                                request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                                    name !in matchingNames &&
                                     matchingNames.size >= limits[ReadLimitParameter.DISCOVERY_NAMES].value
                             ) {
                                 observation.terminated(IntellijReadTermination.NAME_CAP, collector.contributor)
@@ -159,7 +160,10 @@ internal class IntellijNativeDiscoveryQuery(
                                         IntellijDiscoveryItemAdmission.ADMITTED
                                 )
                                     return@Processor !collector.halted
-                                if (pending.size >= limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value) {
+                                if (
+                                    request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                                        pending.size >= limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value
+                                ) {
                                     reachedCandidateLimit = true
                                     observation.terminated(IntellijReadTermination.CANDIDATE_CAP, collector.contributor)
                                     collector.qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)

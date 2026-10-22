@@ -133,7 +133,8 @@ class QueryRetainedCallbackPresentationTest {
         val retained = issueCallbackEvidence(units)
         val protocol = callbackProtocol()
         var evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null
-        val pageBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
+        val pageBudget =
+            budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).refined()))
         for (offset in 1..3) {
             val page =
                 protocol.executePage(

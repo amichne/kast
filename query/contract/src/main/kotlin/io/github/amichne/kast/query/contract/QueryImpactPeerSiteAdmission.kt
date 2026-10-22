@@ -26,11 +26,7 @@ private constructor(
                 return Refinement.Rejected(QueryImpactPeerProofFailure.SITE_WORK_EXCEEDS_ACQUISITION_WORK)
             val selected = selection.request.budget
             val child = acquisition.grant
-            if (
-                selected.resources.resultLimit.value > child.resources.resultLimit.value ||
-                    selected.resources.workUnitLimit.value > child.resources.workUnitLimit.value ||
-                    selected.resources.elapsedTimeLimit.value > child.resources.elapsedTimeLimit.value
-            )
+            if (!selected.resources.fitsWithin(child.resources))
                 return Refinement.Rejected(QueryImpactPeerProofFailure.SITE_GRANT_EXCEEDS_ACQUISITION_GRANT)
             if (selected.returnedBytes.value > child.returnedBytes.value)
                 return Refinement.Rejected(QueryImpactPeerProofFailure.SITE_GRANT_EXCEEDS_ACQUISITION_GRANT)

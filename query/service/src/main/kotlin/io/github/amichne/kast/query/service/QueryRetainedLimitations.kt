@@ -5,9 +5,8 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryValuePathAccountingStatus
-import io.github.amichne.kast.query.contract.QueryWalkCoverage
 import io.github.amichne.kast.query.contract.accountingStatus
-import io.github.amichne.kast.traversal.contract.TraversalLimitation
+import io.github.amichne.kast.query.contract.hasUnresolvedWalkEvidence
 
 internal fun retainedQueryLimitations(result: QueryRetainedResult): List<QueryLimitation> {
     val inherited = (result.coverage as? QueryCoverage.Qualified)?.limitations.orEmpty()
@@ -25,8 +24,7 @@ internal fun retainedQueryLimitations(result: QueryRetainedResult): List<QueryLi
         }
     val omissions = if (result.omissions.isEmpty()) emptyList() else listOf(QueryLimitation.RELATION_INCOMPLETE)
     val walks =
-        if (result.walkObservations.any { it.coverage.isTerminallyIncomplete() })
-            listOf(QueryLimitation.TRAVERSAL_INCOMPLETE)
+        if (result.walkObservations.hasUnresolvedWalkEvidence()) listOf(QueryLimitation.TRAVERSAL_INCOMPLETE)
         else emptyList()
     val impacts =
         if (result is QueryRetainedResult.ValuePaths)
@@ -39,7 +37,3 @@ internal fun retainedQueryLimitations(result: QueryRetainedResult): List<QueryLi
         else emptyList()
     return inherited + failures + omissions + walks + impacts
 }
-
-private fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
-    this is QueryWalkCoverage.TerminalIncomplete ||
-        (this is QueryWalkCoverage.Resumable && TraversalLimitation.ONE_HOP_INCOMPLETE in limitations)

@@ -8,6 +8,7 @@ package io.github.amichne.kast.source.intellij
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -17,26 +18,25 @@ import io.github.amichne.kast.symbol.contract.LocalDeclarationKind
 import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
+import io.github.amichne.kast.workspace.intellij.read.namedLocalCompilerOwner
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.components.containingSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolLocation
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 internal fun KaSymbol.localSourceDeclarationAddress(
     session: KaSession,
     file: SymbolDiscoveryFileIdentity,
     depth: Int,
+    workAllowance: WorkAllowance,
     projectOwner: (KaSymbol, Int) -> Refinement<CanonicalCompilerSignature, LocalDeclarationProjectionFailure>,
 ): Refinement<LocalDeclarationAddress, LocalDeclarationProjectionFailure> {
     val declaration = psi ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.SourceUnavailable)
     val range = declaration.textRange ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.SourceUnavailable)
     val owner =
-        when (val admitted = localSourceOwner(session, declaration)) {
+        when (val admitted = localSourceOwner(session, declaration, workAllowance)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
@@ -45,7 +45,7 @@ internal fun KaSymbol.localSourceDeclarationAddress(
             is Refinement.Refined -> projected.value
             is Refinement.Rejected -> return projected
         }
-    return createLocalSourceAddress(file, range, declaration, owner.psi, signature)
+    return createLocalSourceAddress(file, range, declaration, owner.psi, signature, workAllowance)
 }
 
 private data class LocalSourceOwner(val symbol: KaSymbol, val psi: PsiElement)
@@ -53,9 +53,10 @@ private data class LocalSourceOwner(val symbol: KaSymbol, val psi: PsiElement)
 private fun KaSymbol.localSourceOwner(
     session: KaSession,
     declaration: PsiElement,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalSourceOwner, LocalDeclarationProjectionFailure> {
     val owner =
-        when (val selected = namedLocalSourceOwner(session)) {
+        when (val selected = namedLocalCompilerOwner(session, workAllowance)) {
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return selected
         }
@@ -65,7 +66,7 @@ private fun KaSymbol.localSourceOwner(
             LocalDeclarationProjectionFailure.InvalidAddress(LocalDeclarationAddressFailure.INVALID_FILE)
         )
     if (owner.location != KaSymbolLocation.LOCAL) {
-        when (val proof = owner.localOwnerCompilerTypeProof().asLocalSourceTypeProof()) {
+        when (val proof = owner.localOwnerCompilerTypeProof(workAllowance).asLocalSourceTypeProof()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return proof
         }
@@ -73,31 +74,17 @@ private fun KaSymbol.localSourceOwner(
     return Refinement.Refined(LocalSourceOwner(owner, ownerPsi))
 }
 
-private fun KaSymbol.namedLocalSourceOwner(
-    session: KaSession
-): Refinement<KaSymbol, LocalDeclarationProjectionFailure> =
-    with(session) {
-        var owner = containingSymbol
-        var traversed = 0
-        while (owner != null && !owner.isLocalDeclarationOwner()) {
-            if (++traversed > LocalDeclarationAddress.MAX_OWNER_DEPTH)
-                return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
-            owner = owner.containingSymbol
-        }
-        return if (owner == null) Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerUnavailable)
-        else Refinement.Refined(owner)
-    }
-
 private fun KaSymbol.createLocalSourceAddress(
     file: SymbolDiscoveryFileIdentity,
     range: TextRange,
     declaration: PsiElement,
     owner: PsiElement,
     signature: CanonicalCompilerSignature,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalDeclarationAddress, LocalDeclarationProjectionFailure> {
     val ownerRange = owner.textRange ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerUnavailable)
     val lexical =
-        when (val admitted = localDeclarationLexicalOwners(declaration, owner)) {
+        when (val admitted = localDeclarationLexicalOwners(declaration, owner, workAllowance)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
@@ -145,6 +132,3 @@ private fun Refinement<LocalDeclarationAddress, LocalDeclarationAddressFailure>.
                 else LocalDeclarationProjectionFailure.InvalidAddress(failure)
             )
     }
-
-private fun KaSymbol.isLocalDeclarationOwner(): Boolean =
-    this is KaConstructorSymbol || this is KaAnonymousObjectSymbol || (psi as? KtNamedDeclaration)?.name != null

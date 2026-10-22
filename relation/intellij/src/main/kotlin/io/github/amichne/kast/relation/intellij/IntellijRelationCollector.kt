@@ -35,6 +35,8 @@ internal class IntellijRelationCollector(
     private val limits: ReadLimits = ReadLimits.Default,
     private val allowance: IntellijRelationAllowance = IntellijRelationAllowance(clockNanoseconds),
 ) {
+    val hasInternalLimits: Boolean = request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded
+
     var providerConsumption: RelationProviderConsumption = RelationProviderConsumption.Unconfirmed
         private set
 
@@ -55,10 +57,14 @@ internal class IntellijRelationCollector(
     private var state = IntellijRelationCollectionState.COLLECTING
 
     fun observeInventoryAllowance() {
-        observeInventoryGauge(
-            IntellijReadGauge.RELATION_ELAPSED_LIMIT_MILLIS,
-            request.budget.resources.elapsedTimeLimit.value,
-        )
+        when (val resources = request.budget.resources) {
+            is io.github.amichne.kast.kernel.ResourceBudget.Bounded ->
+                observeInventoryGauge(
+                    IntellijReadGauge.RELATION_ELAPSED_LIMIT_MILLIS,
+                    resources.elapsedTimeLimit.value,
+                )
+            io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled -> Unit
+        }
         observeInventoryGauge(
             IntellijReadGauge.RELATION_ELAPSED_BEFORE_PREPARATION_NANOS,
             allowance.elapsedNanoseconds(),
@@ -93,7 +99,10 @@ internal class IntellijRelationCollector(
         if (admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {
             return IntellijRelationProviderEnumerationAdmission.HALTED
         }
-        if (allowance.admitCandidate(limits) == IntellijRelationProviderEnumerationAdmission.HALTED) {
+        if (
+            allowance.admitCandidate(limits, request.budget.resources) ==
+                IntellijRelationProviderEnumerationAdmission.HALTED
+        ) {
             observation.terminated(IntellijReadTermination.CANDIDATE_CAP)
             limitations += RelationLimitation.CANDIDATE_LIMIT_REACHED
             state = IntellijRelationCollectionState.ENUMERATION_LIMIT
@@ -128,9 +137,8 @@ internal class IntellijRelationCollector(
     /** A completed unit consumes work; stop before another K2 refinement can begin. */
     private fun admitSemanticItem(item: RelationProviderItemDescriptor): IntellijRelationProviderItemAdmission =
         when {
-            examined >= request.budget.resources.workUnitLimit.value ->
-                haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
-            evidence.resultCount(evidenceAllowance()) >= request.budget.resources.resultLimit.value ->
+            !request.budget.resources.hasWorkCapacity(examined) -> haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
+            evidence.resultCount(evidenceAllowance()) >= request.budget.outputResults.value ->
                 haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
             else -> {
                 pendingProviderItem = item
@@ -166,7 +174,7 @@ internal class IntellijRelationCollector(
     ): Boolean {
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         val pending = pendingProviderItem ?: return contractHalt()
-        if (evidence.resultCount(evidenceAllowance()) >= request.budget.resources.resultLimit.value) {
+        if (evidence.resultCount(evidenceAllowance()) >= request.budget.outputResults.value) {
             return halt(RelationLimitation.RESULT_LIMIT_REACHED)
         }
 
@@ -177,7 +185,7 @@ internal class IntellijRelationCollector(
         val factBytes =
             fact.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() +
                 (callback?.canonicalProjection()?.toByteArray(StandardCharsets.UTF_8)?.size?.toLong() ?: 0L)
-        if (retainedBytes + factBytes > request.budget.returnedBytes.value) {
+        if (!request.budget.permitsReturnedBytes(retainedBytes + factBytes)) {
             return halt(RelationLimitation.BYTE_LIMIT_REACHED)
         }
 
@@ -302,7 +310,7 @@ internal class IntellijRelationCollector(
             nextProviderCursor = value.providerCursor
         } else if (nextProviderCursor != value.providerCursor) return contractHalt()
         providerState = value
-        if (value.retainedBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value) {
+        if (hasInternalLimits && value.retainedBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value) {
             return blockPartition(RelationLimitation.RETENTION_LIMIT_REACHED)
         }
         return true
@@ -319,7 +327,7 @@ internal class IntellijRelationCollector(
         val bytes =
             value.canonicalProjection().toByteArray(StandardCharsets.UTF_8).size.toLong() +
                 (fact?.canonicalProjection()?.toByteArray(StandardCharsets.UTF_8)?.size?.toLong() ?: 0L)
-        if (retainedBytes + bytes > request.budget.returnedBytes.value)
+        if (!request.budget.permitsReturnedBytes(retainedBytes + bytes))
             return halt(RelationLimitation.BYTE_LIMIT_REACHED)
         nextProviderCursor = nextProviderCursor.advance(pending)
         pendingProviderItem = null

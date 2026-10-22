@@ -8,6 +8,7 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationKind
@@ -31,6 +32,7 @@ import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
 import io.github.amichne.kast.source.contract.VisibilitySelection
 import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDeclarationKinds
@@ -60,6 +62,28 @@ import org.junit.jupiter.api.io.TempDir
 
 /** Physical PSI and production source enumeration. Visibility is injected; K2 anchor validation remains separate. */
 class DirectInterfaceMemberSourcePsiTest {
+    @Test
+    fun `runner local anchors traverse more than the finite owner depth`(@TempDir home: Path) {
+        val text = "fun owner() {" + "run {".repeat(40) + "val target = 1" + "}".repeat(41)
+        physical(home, text) { file, _ ->
+            val owner = file.declarations.single()
+            val declaration =
+                com.intellij.psi.util.PsiTreeUtil.findChildrenOfType(
+                        owner,
+                        org.jetbrains.kotlin.psi.KtProperty::class.java,
+                    )
+                    .single()
+            val bounded = localDeclarationLexicalOwners(declaration, owner)
+            assertEquals(
+                LocalDeclarationProjectionFailure.OwnerDepthExceeded,
+                assertInstanceOf(Refinement.Rejected::class.java, bounded).failure,
+            )
+            val runner = localDeclarationLexicalOwners(declaration, owner, WorkAllowance.Unlimited)
+            val anchors = assertInstanceOf(Refinement.Refined::class.java, runner).value as List<*>
+            assertTrue(anchors.size > 32)
+        }
+    }
+
     @Test
     fun `anonymous object source lookup label comes from actual object literal PSI`(@TempDir home: Path) {
         physical(home, "fun owner() = object : Runnable { override fun run() = Unit }\nobject Named") { file, _ ->

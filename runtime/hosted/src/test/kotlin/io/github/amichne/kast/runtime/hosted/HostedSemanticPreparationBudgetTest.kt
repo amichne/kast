@@ -11,9 +11,20 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class HostedSemanticPreparationBudgetTest {
     @Test
+    fun `runner-controlled optional capture preserves its execution mode`() {
+        assertEquals(
+            Refinement.Refined(ResourceBudget.RunnerControlled),
+            optionalPreparationBudget(ResourceBudget.RunnerControlled),
+        )
+    }
+
+    @Test
     fun `optional capture leaves three quarters of work and time for extraction`() {
         val original = resources(23, 43)
-        val prepared = assertInstanceOf<Refinement.Refined<ResourceBudget>>(optionalPreparationBudget(original)).value
+        val prepared =
+            assertInstanceOf<Refinement.Refined<ResourceBudget>>(optionalPreparationBudget(original))
+                .value
+                .boundedFixture()
         assertEquals(5L, prepared.workUnitLimit.value)
         assertEquals(10L, prepared.elapsedTimeLimit.value)
         assertEquals(original.resultLimit, prepared.resultLimit)

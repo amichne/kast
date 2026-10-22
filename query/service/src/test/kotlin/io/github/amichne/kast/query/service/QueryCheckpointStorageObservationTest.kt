@@ -56,7 +56,7 @@ class QueryCheckpointStorageObservationTest {
     fun `capacity rejection preserves the exact limit and emits one component snapshot`() = runTest {
         val (result, admission) = boundedPage(1L)
         assertEquals(QueryCheckpointStorageOutcome.CAPACITY_EXCEEDED, admission.outcome)
-        assertEquals(1L, admission.allowance.value)
+        assertEquals(1L, admission.allowance.bounded().limit.value)
         assertTrue(admission.estimate.required.value > 1L)
         val terminal = assertInstanceOf(QueryContinuationState.Terminal::class.java, result.continuation)
         assertEquals(QueryTerminalReason.CHECKPOINT_CAPACITY_EXCEEDED, terminal.reason)
@@ -71,7 +71,7 @@ class QueryCheckpointStorageObservationTest {
         val checkpoint = retained.checkpoint as PipelineCheckpoint
         assertEquals(checkpoint.retainedBytes, admission.estimate.required.value)
         assertEquals(checkpoint.storageEstimate(), admission.estimate)
-        assertEquals(QueryByteLimit.DefaultCheckpoint, admission.allowance)
+        assertEquals(QueryByteLimit.DefaultCheckpoint, admission.allowance.bounded().limit)
         assertEquals(1, result.result.symbolRows().size)
     }
 
@@ -173,7 +173,7 @@ class QueryCheckpointStorageObservationTest {
         assertEquals(1, observations.size, "Unconsumed checkpoint expectation")
         assertSame(original.lease, request.lease)
         assertSame(plan, request.plan)
-        assertEquals(original.budget.resources, request.budget.resources)
+        assertEquals(original.budget.resources.bounded(), request.budget.resources)
         assertEquals(original.budget.returnedBytes, request.budget.returnedBytes)
         val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
         assertEquals(listOf(selector), qualified.result.symbolRows().map { it.selector })

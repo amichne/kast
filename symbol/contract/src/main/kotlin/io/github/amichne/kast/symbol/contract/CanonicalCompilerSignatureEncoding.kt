@@ -90,6 +90,12 @@ internal class CanonicalFieldCursor(private val fields: List<String>) {
         if (count > fields.size - index) return null
         return List(count) { next() ?: return null }
     }
+
+    fun nextRanges(): List<ExactDeclarationTextRange>? {
+        val count = next()?.toIntOrNull()?.takeIf { it >= 0 } ?: return null
+        if (count > (fields.size - index) / 2) return null
+        return List(count) { nextRange() ?: return null }
+    }
 }
 
 internal fun decodeCanonicalFields(raw: String): List<String>? {
@@ -179,8 +185,7 @@ internal fun CanonicalFieldCursor.nextLocalAddress(): LocalDeclarationAddress? {
     val location = nextRange() ?: return null
     val owner = nextOwnerIdentity() ?: return null
     val enclosing = nextRange() ?: return null
-    val count = next()?.toIntOrNull()?.takeIf { it in 0..LocalDeclarationAddress.MAX_OWNER_DEPTH } ?: return null
-    val lexical = List(count) { nextRange() ?: return null }
+    val lexical = nextRanges() ?: return null
     return LocalDeclarationAddress.create(file, kind, location, owner, enclosing, lexical).refinedLocalOrNull()
 }
 

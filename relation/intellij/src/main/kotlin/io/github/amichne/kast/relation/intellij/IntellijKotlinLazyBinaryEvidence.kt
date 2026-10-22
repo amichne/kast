@@ -9,7 +9,7 @@ import io.github.amichne.kast.relation.contract.KotlinLazyBinaryEvidence
 import io.github.amichne.kast.relation.contract.KotlinLazyClassDigests
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 
-/** Reads six bounded classes from the resolved factory's archive under one unchanged archive stamp. */
+/** Reads six classes from the resolved factory's archive under one unchanged archive stamp. */
 internal fun readKotlinLazyBinaryEvidence(
     context: IntellijCallbackFlowContext,
     factory: VirtualFile,
@@ -61,7 +61,8 @@ private class LazyBinaryClasses(
         val file =
             factory.parent.findChild("$name.class")
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
-        return if (file == factory) Refinement.Refined(factoryDigest) else file.contractClassDigest()
+        return if (file == factory) Refinement.Refined(factoryDigest)
+        else file.contractClassDigest(context.scope.request.budget.resources)
     }
 
     fun readClasses(): Refinement<KotlinLazyClassDigests, CallbackInvocationFlowCause> {

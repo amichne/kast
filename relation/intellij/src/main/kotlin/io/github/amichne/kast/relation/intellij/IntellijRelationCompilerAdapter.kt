@@ -184,6 +184,7 @@ internal class IntellijRelationCompilerQuery(
                 project,
                 request.subject.lease.workspaceRoot,
                 observation,
+                request.budget.resources.workAllowance,
             )
         val subject =
             when (

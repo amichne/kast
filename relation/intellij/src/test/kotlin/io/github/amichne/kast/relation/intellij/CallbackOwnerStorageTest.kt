@@ -169,7 +169,11 @@ private class OwnerStorageFixture(private val observation: CallbackStorageObserv
 
     fun retention(bytes: Long) =
         CallbackFlowRetention(
-            request.budget.copy(returnedBytes = RelationByteLimit.parse(bytes).refined()).resources.resultLimit,
+            request.budget
+                .copy(returnedBytes = RelationByteLimit.parse(bytes).refined())
+                .resources
+                .bounded()
+                .resultLimit,
             observation,
         )
 

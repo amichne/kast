@@ -30,8 +30,15 @@ class QueryStateStore(
         token: QueryExecutionContinuation.Pipeline,
         lease: SemanticReadAuthority,
         maximumPageBytes: Long,
+        invocation: QueryInvocationPublication? = null,
     ): QueryCheckpointAcquisition {
-        val acquired = acquireContinuation(token, lease, maximumPageBytes)
+        val acquired =
+            acquireContinuation(
+                token = token,
+                lease = lease,
+                maximumPageBytes = maximumPageBytes,
+                invocation = invocation,
+            )
         val result = acquired.checkpointAcquisition()
         if (result == QueryCheckpointAcquisition.Unavailable && acquired is ProducerAcquisition.Acquired)
             releasePublication(acquired.claim)
@@ -55,18 +62,28 @@ class QueryStateStore(
         token: QueryExecutionContinuation,
         lease: SemanticReadAuthority,
         maximumPageBytes: Long,
+        invocation: QueryInvocationPublication? = null,
     ): ProducerAcquisition {
         val key = token.key()
-        retention.continuationFailure(key, clock(), ttlMillis)?.let {
+        retention.continuationFailure(key = key, now = clock(), ttlMillis = ttlMillis, invocation = invocation)?.let {
             expire()
             return ProducerAcquisition.Rejected(it)
         }
         expire()
         val entry = entries[key] as? Entry.Producer ?: return ProducerAcquisition.Unavailable
         if (lifetime == Lifetime.RETIRED) return ProducerAcquisition.Unavailable
-        return acquisition.acquireProducer(key, entry, token, lease, maximumPageBytes).also { result ->
-            if (result is ProducerAcquisition.Acquired || result is ProducerAcquisition.Published) retainedBytes()
-        }
+        return acquisition
+            .acquireProducer(
+                key = key,
+                entry = entry,
+                token = token,
+                lease = lease,
+                maximumPageBytes = maximumPageBytes,
+                invocation = invocation,
+            )
+            .also { result ->
+                if (result is ProducerAcquisition.Acquired || result is ProducerAcquisition.Published) retainedBytes()
+            }
     }
 
     /** The immutable page and its retained successor become visible in one store transition. */
@@ -120,22 +137,7 @@ class QueryStateStore(
     }
 
     /** Cancellation and rejected publication revoke only resources allocated by this attempt. */
-    @Synchronized
-    fun releasePublication(claim: QueryExecutionClaim) {
-        entries.entries.removeIf { it.value.owner === claim }
-        if (claim.origin !is QueryExecutionOrigin.Producer) {
-            transientClaims.remove(claim.identity)
-            expire()
-            return
-        }
-        val key = claim.origin.token.key()
-        val entry = entries[key] as? Entry.Pending ?: return
-        val running = entry.execution as? CheckpointExecution.Running ?: return
-        if (running.claim === claim) {
-            entries[key] = entry.withExecution(CheckpointExecution.Ready, entry.bytes - running.reservedBytes)
-        }
-        expire()
-    }
+    @Synchronized fun releasePublication(claim: QueryExecutionClaim) = acquisition.releasePublication(claim)
 
     private fun owns(claim: QueryExecutionClaim): Boolean = entries.ownsPublication(claim, transientClaims)
 
@@ -154,16 +156,14 @@ class QueryStateStore(
     internal fun acquireInitial(
         lease: SemanticReadAuthority,
         protectedResults: Set<QueryResultReference> = emptySet(),
+        executionMode: io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument =
+            io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED,
     ): QueryInitialAcquisition {
         if (lifetime == Lifetime.RETIRED) return QueryInitialAcquisition.Unavailable
         expire()
-        val origin = entries.initialOrigin(lease, protectedResults, clock(), ttlMillis)
-        if (!evictFor(origin.accountedClaimBytes(), entries.dependencyClosure(origin.inputs)))
-            return QueryInitialAcquisition.CapacityExceeded
-        val claim = QueryExecutionClaim(origin, UUID.randomUUID())
-        transientClaims[claim.identity] = claim
-        retainedBytes()
-        return QueryInitialAcquisition.Acquired(claim)
+        return acquisition.acquireInitial(lease, protectedResults, executionMode).also {
+            if (it is QueryInitialAcquisition.Acquired) retainedBytes()
+        }
     }
 
     @Synchronized
@@ -196,7 +196,8 @@ class QueryStateStore(
             return QueryCheckpointIssuance.Issued(it)
         }
         val bytes = entryBytes(checkpoint.retainedBytes, normalized) ?: return QueryCheckpointIssuance.CapacityExceeded
-        if (!evictFor(bytes, protectedResult?.let(Key::Result))) return QueryCheckpointIssuance.CapacityExceeded
+        if (!normalized.runnerControlled() && !evictFor(bytes, protectedResult?.let(Key::Result)))
+            return QueryCheckpointIssuance.CapacityExceeded
         val token = generatedPipelineContinuation()
         entries[Key.Checkpoint(token)] = Entry.Checkpoint(normalized, checkpoint, clock(), bytes, publicationOwner)
         retainedBytes()
@@ -248,7 +249,8 @@ class QueryStateStore(
         val bytes =
             entryBytes(result.retainedBytes.saturatedAdd(rowBytes), normalized)
                 ?: return QueryResultIssuance.CapacityExceeded
-        if (!evictFor(bytes, protectedCheckpoint?.let(Key::Checkpoint))) return QueryResultIssuance.CapacityExceeded
+        if (!normalized.runnerControlled() && !evictFor(bytes, protectedCheckpoint?.let(Key::Checkpoint)))
+            return QueryResultIssuance.CapacityExceeded
         val reference =
             when (val parsed = QueryResultReference.parse("result:v1:" + UUID.randomUUID())) {
                 is Refinement.Refined -> parsed.value
@@ -307,7 +309,7 @@ class QueryStateStore(
             return QueryOutputIssuance.Issued(it)
         }
         val bytes = encodedBytes.value.saturatedMultiply(4L).saturatedAdd(normalized.accountedRequestBytes())
-        if (bytes > maximumBytes || !evictFor(bytes, page.dependencies())) {
+        if (!normalized.runnerControlled() && (bytes > maximumBytes || !evictFor(bytes, page.dependencies()))) {
             return QueryOutputIssuance.CapacityExceeded
         }
         val token =

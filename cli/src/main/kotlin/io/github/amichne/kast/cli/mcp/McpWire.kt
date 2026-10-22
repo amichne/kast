@@ -153,6 +153,7 @@ internal enum class McpCallFailure {
     UNKNOWN_TOOL,
     NOT_GRADLE_WORKSPACE,
     INVOCATION_FAILED,
+    INVOCATION_IN_PROGRESS,
     INVALID_RESULT_SCHEMA;
 
     val nextAction: String
@@ -162,6 +163,7 @@ internal enum class McpCallFailure {
                 UNKNOWN_TOOL -> "Call tools/list and choose a listed tool name."
                 NOT_GRADLE_WORKSPACE -> "Start Kast MCP inside the intended Gradle workspace."
                 INVOCATION_FAILED -> "Call health_check to inspect workspace readiness before retrying."
+                INVOCATION_IN_PROGRESS -> "Cancel the current query or wait for its response before another tool call."
                 INVALID_RESULT_SCHEMA -> "Report the Kast result schema failure with the tool name."
             }
 }
@@ -216,4 +218,5 @@ internal enum class McpCallOutcome {
     STARTED,
     COMPLETED,
     REJECTED,
+    CANCELLED,
 }

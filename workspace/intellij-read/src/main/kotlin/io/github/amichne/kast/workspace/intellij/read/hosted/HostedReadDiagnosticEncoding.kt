@@ -44,7 +44,7 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 15,
+            schemaVersion = 16,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
@@ -64,6 +64,7 @@ internal fun HostedReadDiagnosticReceipt.encode(): String =
             semanticEntry =
                 when (val value = semanticEntry) {
                     HostedSemanticEntry.NotEntered -> HostedEntryDocument.NotEntered
+                    HostedSemanticEntry.RunnerControlled -> HostedEntryDocument.RunnerControlled
                     is HostedSemanticEntry.Entered -> HostedEntryDocument.Entered(value.remainingDeadlineNanos)
                 },
             semanticBudget = semanticBudget,
@@ -145,6 +146,8 @@ private sealed interface HostedCorrelationDocument {
 private sealed interface HostedEntryDocument {
     @Serializable @SerialName("not-entered") data object NotEntered : HostedEntryDocument
 
+    @Serializable @SerialName("runner-controlled") data object RunnerControlled : HostedEntryDocument
+
     @Serializable @SerialName("entered") data class Entered(val remainingDeadlineNanos: Long) : HostedEntryDocument
 }
 
@@ -168,7 +171,7 @@ internal sealed interface HostedDiagnosticOutcomeDocument {
 internal fun HostedDiscoveryPageRecord.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedDiscoveryPageDocument(
-            schemaVersion = 15,
+            schemaVersion = 16,
             readId = read.value.toString(),
             pageOrdinal = ordinal.value,
             outcome = measurements.outcome,

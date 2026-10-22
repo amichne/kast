@@ -97,7 +97,7 @@ internal class NativeValueFlowTransfers(
         ) {
             is Refinement.Refined -> {
                 if (transfer.value !in edges) {
-                    if (resultCount >= request.budget.resources.resultLimit.value) {
+                    if (resultCount >= request.budget.outputResults.value) {
                         unresolved(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
                         return
                     }
@@ -109,10 +109,7 @@ internal class NativeValueFlowTransfers(
                                 obligations = obligations,
                             )
                             .value
-                    if (
-                        bytes > request.budget.returnedBytes.value ||
-                            reservedValueObligationBytes(request.source) > request.budget.returnedBytes.value - bytes
-                    ) {
+                    if (!request.budget.permitsReturnedBytes(bytes + reservedValueObligationBytes(request.source))) {
 
                         unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
                         return
@@ -150,10 +147,7 @@ internal class NativeValueFlowTransfers(
                     obligations = (obligations + obligation).distinct(),
                 )
                 .value
-        if (
-            bytes > request.budget.returnedBytes.value ||
-                reservedValueObligationBytes(request.source) > request.budget.returnedBytes.value - bytes
-        ) {
+        if (!request.budget.permitsReturnedBytes(bytes + reservedValueObligationBytes(request.source))) {
 
             return Refinement.Rejected(ValueFlowRejection.GRANT_TOO_SMALL)
         }

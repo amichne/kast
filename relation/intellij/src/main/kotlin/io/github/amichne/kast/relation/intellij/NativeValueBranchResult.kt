@@ -3,6 +3,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
@@ -16,18 +17,20 @@ internal fun nativeBranchCarriesValue(
     expression: KtExpression,
     branch: KtExpression,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
 ): Refinement<Unit, ValueFlowUnsupportedCause> =
     observation.observedAnalyze(branch) {
         val source = expression.expressionType ?: return@observedAnalyze unsupportedBranch()
         val target = branch.expressionType ?: return@observedAnalyze unsupportedBranch()
-        normalBranchValueTypes(source, target)
+        normalBranchValueTypes(source, target, workAllowance)
     }
 
 internal fun KaSession.normalBranchValueTypes(
     source: KaType,
     target: KaType,
+    workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
 ): Refinement<Unit, ValueFlowUnsupportedCause> {
-    when (nativeCompilerTypeProof(listOf(source, target))) {
+    when (nativeCompilerTypeProof(listOf(source, target), workAllowance)) {
         NativeCompilerTypeProof.ADMITTED -> Unit
         NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
             return Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)

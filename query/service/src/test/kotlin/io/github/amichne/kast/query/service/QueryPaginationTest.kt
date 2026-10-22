@@ -105,7 +105,7 @@ class QueryPaginationTest {
                 service(
                     discovery =
                         SymbolDiscoveryOperations { input ->
-                            assertEquals(1L, input.budget.resources.workUnitLimit.value)
+                            assertEquals(1L, input.budget.resources.bounded().workUnitLimit.value)
                             assertEquals(0, discoveries++, "Retained candidates must not repeat discovery")
                             workLimitedDiscovery(discovery, input)
                         },

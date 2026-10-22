@@ -47,8 +47,7 @@ internal fun QueryRelationStageResult.Read.nextTasks(task: PipelineTask.Related)
 internal class QueryRelationStage(private val relations: RelationOperations) {
     suspend fun read(task: PipelineTask.Related, state: QueryExecutionState): QueryRelationStageResult {
         val childBudget =
-            state.relationBudget(state.request.budget.resources.resultLimit.value)
-                ?: return QueryRelationStageResult.NotStarted
+            state.relationBudget(state.request.budget.outputResults.value) ?: return QueryRelationStageResult.NotStarted
         val child =
             when (val admitted = task.relationRequest(childBudget)) {
                 is Refinement.Refined -> admitted.value

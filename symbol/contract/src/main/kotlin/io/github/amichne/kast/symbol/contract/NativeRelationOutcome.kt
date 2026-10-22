@@ -106,10 +106,10 @@ private constructor(
             if (facts.any { it.family != request.family }) {
                 return Refinement.Rejected(NativeRelationBatchFailure.FAMILY_MISMATCH)
             }
-            if (facts.size > request.budget.resources.resultLimit.value) {
+            if (!request.budget.permitsOutputCount(facts.size)) {
                 return Refinement.Rejected(NativeRelationBatchFailure.RESULT_LIMIT_EXCEEDED)
             }
-            if (encodedBytes.value > request.budget.returnedBytes.value) {
+            if (!request.budget.permitsReturnedBytes(encodedBytes.value)) {
                 return Refinement.Rejected(NativeRelationBatchFailure.BYTE_LIMIT_EXCEEDED)
             }
             if (facts != facts.distinct().sorted()) {

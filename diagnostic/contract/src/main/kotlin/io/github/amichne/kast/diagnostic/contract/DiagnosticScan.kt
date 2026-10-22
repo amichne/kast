@@ -73,7 +73,7 @@ sealed interface DiagnosticScanResult {
 }
 
 fun interface DiagnosticScanOperations {
-    suspend fun scan(request: DiagnosticScanRequest, budget: ResourceBudget): DiagnosticScanResult
+    suspend fun scan(request: DiagnosticScanRequest, budget: ResourceBudget.Bounded): DiagnosticScanResult
 }
 
 @JvmInline

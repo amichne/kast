@@ -41,6 +41,16 @@ class BoundedSourceFileCollectorTest {
     }
 
     @Test
+    fun `runner-controlled source inventory keeps all eligible paths without finite work or elapsed grants`() {
+        val collector = BoundedSourceFileCollector(Path.of("/workspace/src"), ResourceBudget.RunnerControlled)
+        for (index in 0 until 32) assertTrue(collector.accept(source("$index.kt"), Long.MAX_VALUE))
+        val result = collector.finish() as Refinement.Refined
+        assertEquals(32, result.value.size)
+        assertFalse(collector.accept(ProjectSourceEntry.Source(Path.of("/workspace/other/A.kt")), Long.MAX_VALUE))
+        assertEquals(Refinement.Rejected(ProjectSourceFileFailure.INVALID_SCOPE), collector.finish())
+    }
+
+    @Test
     fun `a path outside the requested subtree cannot enter the result`() {
         val collector = collector()
         assertFalse(collector.accept(ProjectSourceEntry.Source(Path.of("/workspace/other/A.kt")), 0))

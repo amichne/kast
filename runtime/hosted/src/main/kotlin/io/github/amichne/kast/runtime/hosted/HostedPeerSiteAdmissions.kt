@@ -55,7 +55,7 @@ internal suspend fun acquireHostedPeerSites(
                 val receipt = admission.acquisition
                 accounting.record(receipt.examinedWorkUnits.value, receipt.elapsed.value)
                 retainedBytes = saturatedPeerBytes(retainedBytes, graph.peerSiteAdmission(admission))
-                if (retainedBytes > budget.checkpointBytes.value)
+                if (!budget.storage.permits(retainedBytes))
                     Refinement.Rejected(
                         peerBudgetFailure(
                             QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED,
@@ -103,8 +103,14 @@ private fun peerGrant(
                     )
                 )
         }
+    val availableBytes =
+        when (val storage = budget.storage) {
+            io.github.amichne.kast.query.contract.QueryStorageAllowance.Unlimited -> budget.returnedBytes.value
+            is io.github.amichne.kast.query.contract.QueryStorageAllowance.Bounded ->
+                storage.limit.value - retainedBytes
+        }
     val bytes =
-        when (val remaining = RelationByteLimit.parse(budget.checkpointBytes.value - retainedBytes)) {
+        when (val remaining = RelationByteLimit.parse(availableBytes)) {
             is Refinement.Refined -> remaining.value
             is Refinement.Rejected ->
                 return Refinement.Rejected(
@@ -114,7 +120,7 @@ private fun peerGrant(
                     )
                 )
         }
-    return Refinement.Refined(RelationBudget(resources, bytes))
+    return Refinement.Refined(RelationBudget(resources, bytes, budget.outputResults))
 }
 
 private suspend fun observedPeerRead(

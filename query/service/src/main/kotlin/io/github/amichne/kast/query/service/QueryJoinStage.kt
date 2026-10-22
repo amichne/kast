@@ -58,7 +58,7 @@ internal class QueryJoinStage(
 
     private fun build(task: PipelineTask.Join): Boolean {
         if (!state.consumeUnit()) return false
-        return when (joins.buildNext(task.stage, request.budget.checkpointBytes.value)) {
+        return when (joins.buildNext(task.stage, request.budget.storage)) {
             QueryJoinBuild.BUILT -> true
             QueryJoinBuild.COMPLETE -> {
                 val cursor =

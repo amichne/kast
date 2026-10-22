@@ -5,6 +5,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmission
 import io.github.amichne.kast.query.contract.QueryCheckpointStorageBytes
 import io.github.amichne.kast.query.contract.QueryCheckpointStorageEstimate
+import io.github.amichne.kast.query.contract.QueryStorageAllowance
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
@@ -48,6 +49,31 @@ class HostedQueryCheckpointStorageObservationTest {
             ),
             observation.gauges,
         )
+    }
+
+    @Test
+    fun `unlimited checkpoint admission reports the mode without a finite allowance gauge`() {
+        val gauges = linkedMapOf<IntellijReadGauge, Long>()
+        val counters = mutableListOf<IntellijReadCounter>()
+        val observation =
+            object : IntellijReadObservation by IntellijReadObservation.None {
+                override fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {
+                    gauges[gauge] = value.value
+                }
+
+                override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
+                    counters += counter
+                }
+            }
+        val estimate = QueryCheckpointStorageEstimate(bytes(11), bytes(13), bytes(17), bytes(19), bytes(23))
+        hostedQueryCheckpointStorageObservation(observation)
+            .observe(QueryCheckpointStorageAdmission.evaluate(estimate, QueryStorageAllowance.Unlimited))
+        assertEquals(
+            listOf(IntellijReadCounter.QUERY_CHECKPOINT_UNLIMITED, IntellijReadCounter.QUERY_CHECKPOINT_WITHIN_LIMIT),
+            counters,
+        )
+        assertEquals(83L, gauges.getValue(IntellijReadGauge.QUERY_CHECKPOINT_REQUIRED_BYTES))
+        assertEquals(false, gauges.containsKey(IntellijReadGauge.QUERY_CHECKPOINT_ALLOWANCE))
     }
 
     private class Observation : IntellijReadObservation by IntellijReadObservation.None {

@@ -56,10 +56,20 @@ private constructor(
                 limits: ReadLimits,
                 retainedBytes: Long = 0L,
             ): Refinement<Prepared, SymbolDiscoveryBlockCause> {
-                if (retainedBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - PLAN_BINDING_BYTES)
+                if (
+                    selection.request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                        retainedBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - PLAN_BINDING_BYTES
+                )
                     return Refinement.Rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT)
                 observation.count(IntellijReadCounter.DISCOVERY_BYTES_CHARGED, amount = PLAN_BINDING_BYTES.toInt())
-                val preparation = DirectoryPlanPreparation(consume, observation, limits, retainedBytes)
+                val preparation =
+                    DirectoryPlanPreparation(
+                        consume,
+                        observation,
+                        limits,
+                        retainedBytes,
+                        selection.request.budget.resources,
+                    )
                 val selected =
                     when (val result = preparation.collect(selection.scope.sourceRoots)) {
                         is Refinement.Refined -> result.value
@@ -114,6 +124,7 @@ private class DirectoryPlanPreparation(
     private val observation: IntellijReadObservation,
     private val limits: ReadLimits,
     retainedBytes: Long,
+    private val resources: io.github.amichne.kast.kernel.ResourceBudget,
 ) {
     var bytes = PLAN_BINDING_BYTES + retainedBytes
         private set
@@ -127,7 +138,10 @@ private class DirectoryPlanPreparation(
             val path = Path.of(root.sourceRoot.value)
             if (path in paths) continue
             val added = ROOT_ENTRY_BYTES + 2L * root.sourceRoot.value.length
-            if (added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes)
+            if (
+                resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                    added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes
+            )
                 return Refinement.Rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT)
             paths.add(path)
             bytes += added

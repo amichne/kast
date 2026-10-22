@@ -31,7 +31,7 @@ internal class NativePacketQueryCapture(private val services: NativePacketQueryS
     private val budget = NativePacketQueryServices.budget
     private val policy =
         QueryInvocationPolicy(
-            previewRows = budget.resources.resultLimit,
+            previewRows = budget.outputResults,
             previewBytesLimit = budget.returnedBytes,
             retainedBytes = QueryByteLimit.parse(32_000_000L).packetQueryRefined(),
             previewBytes = CanonicalQueryCliDocuments::previewBytes,

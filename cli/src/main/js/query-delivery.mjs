@@ -66,16 +66,19 @@ const producedQueryDelivery = (initial, pages, delivery) => {
 async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now) {
   params = JSON.parse(JSON.stringify(params));
   const started = now();
+  const runnerControlled = params.request?.type === 'RUN' && params.request.executionMode === 'RUNNER_CONTROLLED';
+  const expired = () => !runnerControlled && now() - started >= policy.callTimeoutMillis;
   let rpcCount = 0, requestBytes = 0, responseBytes = 0, presentationBytes = 0;
   const pages = [], seenContinuations = new Set();
   const call = async arguments_ => {
     const remaining = policy.callTimeoutMillis - (now() - started);
     if (signal?.aborted) throw new Error('CANCELLED');
-    if (remaining <= 0) throw new Error('TIME_LIMIT');
+    if (!runnerControlled && remaining <= 0) throw new Error('TIME_LIMIT');
     rpcCount++;
     requestBytes += Buffer.byteLength(JSON.stringify(arguments_), 'utf8');
     let observedBytes = false;
-    const reply = await invoke(arguments_, { ...policy, callTimeoutMillis: remaining,
+    const reply = await invoke(arguments_, { ...policy,
+      ...(runnerControlled ? { executionMode: 'RUNNER_CONTROLLED' } : { callTimeoutMillis: remaining }),
       onResponseBytes: bytes => { observedBytes = true; responseBytes += bytes; } });
     if (!observedBytes) responseBytes += Buffer.byteLength(JSON.stringify(reply), 'utf8');
     return reply;
@@ -116,7 +119,7 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     ...(params.request?.executionBudget != null ? { executionBudget: params.request.executionBudget } : {}),
   }, ...(params.verbose != null ? { verbose: params.verbose } : {}) });
   if (signal?.aborted) return bounded('CANCELLED');
-  if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
+  if (expired()) return bounded('TIME_LIMIT');
   if (deliveryBlocker(first)) return bounded(deliveryBlocker(first));
   if (rejectedEvidence) {
     if (!deliveryReference(retained) || rejectedEvidence.nextQuery?.request?.type !== 'READ_RESULT' ||
@@ -137,12 +140,12 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
   presentationBytes = Buffer.byteLength(JSON.stringify(initial), 'utf8');
   while (next) {
     if (signal?.aborted) return bounded('CANCELLED');
-    if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
+    if (expired()) return bounded('TIME_LIMIT');
     if (rpcCount >= QUERY_DELIVERY_LIMITS.pages) return bounded('PAGE_LIMIT');
     if (presentationBytes + 4096 >= QUERY_DELIVERY_LIMITS.bytes) return bounded('BYTE_LIMIT');
     let reply;
     try { reply = await call(next); }
-    catch { return bounded(signal?.aborted ? 'CANCELLED' : now() - started >= policy.callTimeoutMillis ? 'TIME_LIMIT' : 'DELIVERY_UNAVAILABLE'); }
+    catch { return bounded(signal?.aborted ? 'CANCELLED' : expired() ? 'TIME_LIMIT' : 'DELIVERY_UNAVAILABLE'); }
     const page = reply.document;
     if (!deliveryObject(page) || reply.type === 'rejected_document') {
       pages.push(reply);
@@ -194,7 +197,7 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     pages.push(reply);
     presentationBytes += Buffer.byteLength(JSON.stringify(reply), 'utf8');
     if (signal?.aborted) return bounded('CANCELLED');
-    if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
+    if (expired()) return bounded('TIME_LIMIT');
   }
   return bounded('DELIVERED');
 }

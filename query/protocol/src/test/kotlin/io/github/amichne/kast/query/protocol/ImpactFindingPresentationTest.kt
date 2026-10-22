@@ -38,9 +38,9 @@ class ImpactFindingPresentationTest {
         val budget =
             fixture.budget.copy(
                 resources =
-                    fixture.budget.resources.copy(
-                        resultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(1).value()
-                    )
+                    fixture.budget.resources
+                        .bounded()
+                        .copy(resultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(1).value())
             )
         val first =
             protocol.executePage(

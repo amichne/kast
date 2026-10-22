@@ -28,6 +28,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -367,6 +368,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
         value = definitions['SourceTextWindow']['properties'][field]['default']
         lines.append(f'    const val source{field[0].upper() + field[1:]} = {value}\n')
     lines.append('    val nameMatch = PublicToolNameMatch.' + enum_entry(defaults['nameMatch']) + '\n')
+    lines.append('    val executionMode = QueryExecutionModeDocument.' + enum_entry(defaults['executionMode']) + '\n')
     lines.append('    const val includeSubdirectories = ' + str(definitions['DirectoryScope']['properties']['includeSubdirectories']['default']).lower() + '\n')
     lines.append('    const val includeSubpackages = ' + str(definitions['PackageScope']['properties']['includeSubpackages']['default']).lower() + '\n')
     lines.append('    const val maximumEdgesPerNode = ' + str(definitions['BoundedFanOutStrategy']['properties']['maximumEdgesPerNode']['default']) + '\n')

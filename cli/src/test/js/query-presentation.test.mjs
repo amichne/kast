@@ -17,6 +17,16 @@ const owner = new SourceTextModule(readFileSync(new URL('../../main/js/query-del
 await owner.link(() => { throw new Error('Pure delivery presentation must not import effects'); });
 await owner.evaluate();
 const { queryPresentation, awaitQueryDelivery, createQueryDeliveryEnvelope } = owner.namespace;
+test('runner-controlled semantics outlive the bounded transport deadline', async () => {
+  let time = 0;
+  const modes = [];
+  const initial = native.cases.empty.reply;
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', executionMode: 'RUNNER_CONTROLLED' } },
+    async (_request, policy) => { modes.push(policy.executionMode); time = 10000; return initial; },
+    { callTimeoutMillis: 100 }, undefined, () => time);
+  assert.equal(modes[0], 'RUNNER_CONTROLLED');
+  assert.equal(result.delivery?.stop ?? 'DELIVERED', 'DELIVERED');
+});
 const refs = Array.from({ length: 43 }, (_, index) => `exact:v2:fixture-${index}`);
 const nativeDocumentHashes = {
   empty: 'c7190ca0d4fd02d841ecd544b4ef5a4bbf4c2d126554b8dac4d890499aa1480f',

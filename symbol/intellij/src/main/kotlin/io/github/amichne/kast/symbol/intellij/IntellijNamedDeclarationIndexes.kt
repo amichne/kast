@@ -90,7 +90,19 @@ private fun collectContributorDeclarations(
 ): Boolean {
     val target = request.target as? SymbolDiscoveryTarget.Name ?: return false
     val names =
-        when (val admitted = collectContributorNames(contributor, scope, target, observe, qualify, limits, filter)) {
+        when (
+            val admitted =
+                collectContributorNames(
+                    contributor,
+                    scope,
+                    target,
+                    observe,
+                    qualify,
+                    limits,
+                    filter,
+                    request.budget.resources,
+                )
+        ) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return false
         }
@@ -122,6 +134,7 @@ private fun collectContributorNames(
     qualify: (SymbolDiscoveryQualification) -> Unit,
     limits: ReadLimits,
     filter: IdFilter?,
+    resources: io.github.amichne.kast.kernel.ResourceBudget,
 ): Refinement<Set<String>, ContributorNameFailure> {
     val names = linkedSetOf<String>()
     var completion: Refinement<Unit, ContributorNameFailure> = Refinement.Refined(Unit)
@@ -132,7 +145,11 @@ private fun collectContributorNames(
                 return@Processor false
             }
             if (target.pattern.relevance(name) == SymbolNameRelevance.UNMATCHED) return@Processor true
-            if (name !in names && names.size >= limits[ReadLimitParameter.DISCOVERY_NAMES].value) {
+            if (
+                resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                    name !in names &&
+                    names.size >= limits[ReadLimitParameter.DISCOVERY_NAMES].value
+            ) {
                 qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
                 completion = Refinement.Rejected(ContributorNameFailure.NAME_LIMIT_REACHED)
                 return@Processor false

@@ -29,15 +29,21 @@ private constructor(private val clockNanoseconds: () -> Long, val startedAt: Lon
     }
 
     fun examine() {
-        examined += 1L
+        examined = if (examined == Long.MAX_VALUE) examined else examined + 1L
     }
 
     fun collectCandidate() {
         nativeCandidates += 1
     }
 
-    fun admitCandidate(limits: io.github.amichne.kast.kernel.ReadLimits): IntellijRelationProviderEnumerationAdmission =
-        if (nativeCandidates >= limits[io.github.amichne.kast.kernel.ReadLimitParameter.RELATION_CANDIDATES].value)
+    fun admitCandidate(
+        limits: io.github.amichne.kast.kernel.ReadLimits,
+        resources: io.github.amichne.kast.kernel.ResourceBudget,
+    ): IntellijRelationProviderEnumerationAdmission =
+        if (
+            resources != io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled &&
+                nativeCandidates >= limits[io.github.amichne.kast.kernel.ReadLimitParameter.RELATION_CANDIDATES].value
+        )
             IntellijRelationProviderEnumerationAdmission.HALTED
         else {
             collectCandidate()
@@ -52,30 +58,11 @@ private constructor(private val clockNanoseconds: () -> Long, val startedAt: Lon
         io.github.amichne.kast.kernel.ResourceBudget,
         io.github.amichne.kast.kernel.PositiveLimitFailure,
     > {
-        val work =
-            when (
-                val parsed = io.github.amichne.kast.kernel.WorkUnitLimit.parse(resources.workUnitLimit.value - examined)
-            ) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> return parsed
-            }
-        val time =
-            when (
-                val parsed =
-                    io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(
-                        resources.elapsedTimeLimit.value - elapsedNanoseconds() / NANOS_PER_MILLISECOND
-                    )
-            ) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> return parsed
-            }
-        return io.github.amichne.kast.kernel.Refinement.Refined(
-            resources.copy(workUnitLimit = work, elapsedTimeLimit = time)
-        )
+        return resources.remainingAfter(examined, elapsedNanoseconds() / NANOS_PER_MILLISECOND)
     }
 
     fun elapsedLimitReached(resources: io.github.amichne.kast.kernel.ResourceBudget): Boolean =
-        elapsedNanoseconds() >= java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(resources.elapsedTimeLimit.value)
+        !resources.hasTimeRemaining(elapsedNanoseconds() / NANOS_PER_MILLISECOND)
 
     fun admitEnumeration(
         state: IntellijRelationCollectionState,
@@ -94,7 +81,7 @@ private constructor(private val clockNanoseconds: () -> Long, val startedAt: Lon
     fun admitCallbackWork(resources: io.github.amichne.kast.kernel.ResourceBudget): CallbackWorkAdmission =
         when {
             elapsedLimitReached(resources) -> CallbackWorkAdmission.TIME_LIMIT_REACHED
-            examined >= resources.workUnitLimit.value -> CallbackWorkAdmission.WORK_LIMIT_REACHED
+            !resources.hasWorkCapacity(examined) -> CallbackWorkAdmission.WORK_LIMIT_REACHED
             else -> {
                 examine()
                 CallbackWorkAdmission.READY

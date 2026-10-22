@@ -49,7 +49,10 @@ sealed interface DiagnosticEnumerationResult {
 
 /** Each call releases all platform objects. The caller owns same-basis admission and final validation. */
 fun interface DiagnosticScopeEnumerator {
-    suspend fun enumerate(request: DiagnosticEnumerationRequest, budget: ResourceBudget): DiagnosticEnumerationResult
+    suspend fun enumerate(
+        request: DiagnosticEnumerationRequest,
+        budget: ResourceBudget.Bounded,
+    ): DiagnosticEnumerationResult
 }
 
 /** Retains why a request cannot advance; no unchanged continuation is an expected failure protocol. */

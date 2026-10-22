@@ -36,50 +36,19 @@ object CanonicalHostedContract {
                 checkNotNull(javaClass.getResourceAsStream("/ide-hosted/$name")) { "Missing hosted schema: $name" }
             resource.use { update(digest, name, it.readBytes()) }
         }
-        val descriptors = LinkedHashMap<String, SerialDescriptor>()
-        fun identity(descriptor: SerialDescriptor): String =
-            when (descriptor.kind) {
-                kotlinx.serialization.descriptors.StructureKind.LIST,
-                kotlinx.serialization.descriptors.StructureKind.MAP ->
-                    descriptor.serialName +
-                        (0 until descriptor.elementsCount).joinToString(prefix = "<", postfix = ">") {
-                            identity(descriptor.getElementDescriptor(it))
-                        }
-                else -> descriptor.serialName
-            }
-        fun collect(descriptor: SerialDescriptor) {
-            if (descriptors.putIfAbsent(identity(descriptor), descriptor) != null) return
-            repeat(descriptor.elementsCount) { collect(descriptor.getElementDescriptor(it)) }
-        }
         // The public lifecycle projection is control-owned; its actual host exchange is collected below.
-        bindings
-            .filter { it.operation != io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_LIFECYCLE }
-            .flatMap { it.contractDescriptors }
-            .forEach(::collect)
-        // Application lifecycle uses its existing direct framed exchange rather than an operation envelope.
-        collect(io.github.amichne.kast.protocol.contract.IdeLifecycleCommand.serializer().descriptor)
-        collect(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer().descriptor)
-        collect(WireEnvelopeDocument.serializer().descriptor)
-        val shape =
-            HostedWireShapeDocument(
-                descriptors.entries
-                    .sortedBy { it.key }
-                    .map { (name, descriptor) ->
-                        HostedWireTypeDocument(
-                            name,
-                            descriptor.kind.toString(),
-                            descriptor.isNullable,
-                            (0 until descriptor.elementsCount).map { index ->
-                                HostedWireFieldDocument(
-                                    descriptor.getElementName(index),
-                                    identity(descriptor.getElementDescriptor(index)),
-                                    descriptor.isElementOptional(index),
-                                    descriptor.getElementDescriptor(index).isNullable,
-                                )
-                            },
-                        )
-                    }
-            )
+        val roots =
+            bindings
+                .filter {
+                    it.operation != io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_LIFECYCLE
+                }
+                .flatMap { it.contractDescriptors } +
+                listOf(
+                    io.github.amichne.kast.protocol.contract.IdeLifecycleCommand.serializer().descriptor,
+                    io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer().descriptor,
+                    WireEnvelopeDocument.serializer().descriptor,
+                )
+        val shape = hostedWireShape(roots)
         update(
             digest,
             "generated-wire-shape",
@@ -120,10 +89,79 @@ object CanonicalHostedContract {
     }
 }
 
-@Serializable private data class HostedWireShapeDocument(val types: List<HostedWireTypeDocument>)
+internal fun hostedWireShape(roots: List<SerialDescriptor>): HostedWireShapeDocument {
+    val descriptors = LinkedHashMap<String, HostedWireDescriptor>()
+    fun collect(node: HostedWireDescriptor) {
+        if (descriptors.putIfAbsent(node.identity, node) != null) return
+        repeat(node.descriptor.elementsCount) { collect(node.child(it)) }
+    }
+    roots.forEach { collect(HostedWireDescriptor.Declaration(it)) }
+    return HostedWireShapeDocument(
+        descriptors.entries
+            .sortedBy { it.key }
+            .map { (name, node) ->
+                val descriptor = node.descriptor
+                HostedWireTypeDocument(
+                    name,
+                    descriptor.kind.toString(),
+                    descriptor.isNullable,
+                    (0 until descriptor.elementsCount).map { index ->
+                        val child = node.child(index)
+                        HostedWireFieldDocument(
+                            descriptor.getElementName(index),
+                            child.identity,
+                            descriptor.isElementOptional(index),
+                            child.descriptor.isNullable,
+                        )
+                    },
+                )
+            }
+    )
+}
+
+/** A polymorphic tag belongs to its sealed owner; equal tags in other owners identify different wire types. */
+private sealed interface HostedWireDescriptor {
+    val descriptor: SerialDescriptor
+    val identity: String
+
+    data class Declaration(override val descriptor: SerialDescriptor) : HostedWireDescriptor {
+        override val identity = descriptor.declaredIdentity()
+    }
+
+    data class Cases(val owner: String, override val descriptor: SerialDescriptor) : HostedWireDescriptor {
+        override val identity = "$owner#${descriptor.serialName}"
+    }
+
+    data class Case(val owner: String, override val descriptor: SerialDescriptor) : HostedWireDescriptor {
+        override val identity = "$owner#${descriptor.serialName}"
+    }
+
+    fun child(index: Int): HostedWireDescriptor =
+        when (this) {
+            is Cases -> Case(owner, descriptor.getElementDescriptor(index))
+            is Declaration,
+            is Case ->
+                if (descriptor.kind == kotlinx.serialization.descriptors.PolymorphicKind.SEALED && index == 1)
+                    Cases(identity, descriptor.getElementDescriptor(index))
+                else Declaration(descriptor.getElementDescriptor(index))
+        }
+}
+
+private fun SerialDescriptor.declaredIdentity(): String =
+    when (kind) {
+        kotlinx.serialization.descriptors.StructureKind.LIST,
+        kotlinx.serialization.descriptors.StructureKind.MAP ->
+            serialName +
+                (0 until elementsCount).joinToString(prefix = "<", postfix = ">") {
+                    getElementDescriptor(it).declaredIdentity()
+                }
+        else -> serialName
+    }
+
+@Serializable internal data class HostedWireShapeDocument(val types: List<HostedWireTypeDocument>)
 
 @Serializable
-private data class HostedWireTypeDocument(
+internal data class HostedWireTypeDocument(
     val name: String,
     val kind: String,
     val nullable: Boolean,
@@ -131,7 +169,7 @@ private data class HostedWireTypeDocument(
 )
 
 @Serializable
-private data class HostedWireFieldDocument(
+internal data class HostedWireFieldDocument(
     val name: String,
     val valueType: String,
     val optional: Boolean,

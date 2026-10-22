@@ -187,14 +187,15 @@ private constructor(
         ): Refinement<ValueFlowStep, ValueFlowStepFailure> {
             if (!validProgress(source, transfers, terminal))
                 return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
-            if (transfers.size > domain.budget.resources.resultLimit.value)
+            if (!domain.budget.permitsOutputCount(transfers.size))
                 return Refinement.Rejected(ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED)
             if (
-                detachedByteCount(source, domain, transfers, obligations).value >
-                    domain.budget.returnedBytes.value - remainderBytes.value
+                !domain.budget.permitsReturnedBytes(
+                    detachedByteCount(source, domain, transfers, obligations).value.addBytes(remainderBytes.value)
+                )
             )
                 return Refinement.Rejected(ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED)
-            if (examinedWorkUnits.value > domain.budget.resources.workUnitLimit.value)
+            if (!domain.budget.resources.permitsWork(examinedWorkUnits.value))
                 return Refinement.Rejected(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED)
             if (
                 domain.subject.lease.identity != source.basis ||

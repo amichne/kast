@@ -36,7 +36,20 @@ internal const val RETAINED_ENCODING_MULTIPLIER = 4L
 
 internal fun QueryRunRequest.Run.accountedEntryBytes(payloadBytes: Long, capacity: Int, maximumBytes: Long): Long? {
     val requestBytes = accountedRequestBytes()
+    if (executionMode == io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.RUNNER_CONTROLLED)
+        return requestBytes.saturatedAdd(payloadBytes)
     if (capacity <= 0 || requestBytes !in 0..maximumBytes || payloadBytes !in 0..(maximumBytes - requestBytes))
         return null
     return requestBytes + payloadBytes
 }
+
+internal fun QueryRunRequest.runnerControlled(): Boolean =
+    this is QueryRunRequest.Run &&
+        executionMode == io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.RUNNER_CONTROLLED
+
+internal fun QueryRunRequest.executionMode(): io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument =
+    when (this) {
+        is QueryRunRequest.Run -> executionMode
+        is QueryRunRequest.Resume,
+        is QueryRunRequest.ReadResult -> io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED
+    }

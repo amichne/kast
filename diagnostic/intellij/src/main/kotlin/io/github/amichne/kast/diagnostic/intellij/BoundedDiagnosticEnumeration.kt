@@ -21,7 +21,7 @@ private data class DetachedDiagnosticEnumerationCursor(
 
 /** Callback work and elapsed accounting survive retried read actions; their candidate sets do not. */
 internal class DiagnosticEnumerationAllowance(
-    private val budget: ResourceBudget,
+    private val budget: ResourceBudget.Bounded,
     private val elapsedMillis: () -> Long,
 ) {
     var consumedWork = DiagnosticEnumerationWork.NONE

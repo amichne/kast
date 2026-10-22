@@ -67,11 +67,6 @@ private fun QueryRows.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
             }
     }
 
-internal fun QueryWalkCoverage.isTerminallyIncomplete(): Boolean =
-    this is QueryWalkCoverage.TerminalIncomplete ||
-        (this is QueryWalkCoverage.Resumable &&
-            io.github.amichne.kast.traversal.contract.TraversalLimitation.ONE_HOP_INCOMPLETE in limitations)
-
 internal fun QueryItemFailure.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (this) {
         is QueryItemFailure.Refinement -> candidate.lease != lease

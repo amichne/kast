@@ -75,7 +75,7 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         val factsLedger = observer.estimates
         val inventoryLedgers = observer.owners
         val factStages = observer.stages
-        assertTrue(checkpointAdmissions.all { it.allowance.value <= grant.checkpointBytes.value })
+        assertTrue(checkpointAdmissions.all { it.allowance.bounded().limit.value <= grant.checkpointBytes.value })
         assertTrue(ledger.all { it.total.value <= invocationPolicy.retainedBytes.value })
         assertTrue(ledger.all { it.total.value == it.facts.value + it.issuedState.value + it.request.value })
         assertTrue(ledger.all { it.request.value == input.accountedRequestBytes() })
@@ -286,7 +286,7 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         val last = checkpointAdmissions.last()
         assertEquals(393, rowCount)
         assertEquals(789_650L, last.estimate.required.value)
-        assertEquals(685_851L, last.allowance.value)
+        assertEquals(685_851L, last.allowance.bounded().limit.value)
         assertEquals(last.estimate.required, last.estimate.tasks)
         assertEquals(
             0L,
@@ -296,8 +296,12 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
                 last.estimate.joins.value,
         )
         val beforeCheckpoint = ledger.last { it.stage == QueryInvocationRetentionStage.BEFORE_EXECUTION }
-        val remaining = beforeCheckpoint.allowance.value - beforeCheckpoint.total.value
-        assertEquals(last.allowance.value, remaining / 2L, "Existing checkpoint/output reservation remains enforced")
+        val remaining = beforeCheckpoint.allowance.bounded().limit.value - beforeCheckpoint.total.value
+        assertEquals(
+            last.allowance.bounded().limit.value,
+            remaining / 2L,
+            "Existing checkpoint/output reservation remains enforced",
+        )
         println(
             "CheckpointReservation(facts=${beforeCheckpoint.facts.value}, " +
                 "issued=${beforeCheckpoint.issuedState.value}, request=${beforeCheckpoint.request.value}, " +
@@ -305,7 +309,7 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         )
         println(
             "DenseCheckpoint(rows=$rowCount, required=${last.estimate.required.value}, " +
-                "allowance=${last.allowance.value}, components=${last.estimate})"
+                "allowance=${last.allowance.bounded().limit.value}, components=${last.estimate})"
         )
     }
 

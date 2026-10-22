@@ -165,7 +165,8 @@ class HostedQueryPublicationProjectionTest {
         suspend fun assertSmallerRefitRejected(original: PublishedCheckpointPage) {
             val smallerLimit = ResultLimit.parse(1).refined()
             val smallerRequest = resume.copy(executionBudget = ExecutionBudgetDocument(maxResults = smallerLimit))
-            val smallerBudget = budget.copy(resources = budget.resources.copy(resultLimit = smallerLimit))
+            val smallerBudget =
+                budget.copy(resources = budget.resources.boundedFixture().copy(resultLimit = smallerLimit))
             val replayedPage = protocol.executeQueryPage(smallerRequest, owner.authority, smallerBudget)
             assertEquals(original.semantic, replayedPage)
             val beforeFitting = store.retentionMeasurements()
@@ -205,7 +206,7 @@ class HostedQueryPublicationProjectionTest {
         private fun encodeOriginalGrant(page: HostedQueryOutcome): HostedResponse =
             encodeHostedQueryResponse(
                 page,
-                maximumResults = budget.resources.resultLimit,
+                maximumResults = budget.resources.boundedFixture().resultLimit,
                 maximumBytes = bytes(),
                 published = { fitted = it },
             )

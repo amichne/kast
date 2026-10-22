@@ -6,6 +6,8 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityRequirements
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
+import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -245,10 +247,7 @@ internal constructor(
                         Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey() != key
                     ) {
                         ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-                    } else {
-                        write(channel, request)
-                        response(channel, root, operation, descriptor)
-                    }
+                    } else channel.exchangeResponse(request, root, operation, descriptor, deadline)
                 } catch (_: java.io.IOException) {
                     ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
                 } finally {
@@ -258,6 +257,19 @@ internal constructor(
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.DEADLINE_EXCEEDED)
             } else answer
         }
+    }
+
+    private fun SocketChannel.exchangeResponse(
+        request: ByteArray,
+        root: CanonicalRoot,
+        operation: ExistingIdeOperation,
+        descriptor: ExistingIdeDescriptor,
+        deadline: WireIoDeadline,
+    ): ExistingIdeExchange {
+        write(this, request)
+        return if (operation.runnerControlsResponse() && deadline.finish() == WireRequestOutcome.TIMED_OUT)
+            ExistingIdeExchange.Rejected(ExistingIdeFailure.DEADLINE_EXCEEDED)
+        else response(this, root, operation, descriptor)
     }
 
     private fun write(channel: SocketChannel, request: ByteArray) {
@@ -283,6 +295,22 @@ internal constructor(
         }
     }
 }
+
+private fun ExistingIdeOperation.runnerControlsResponse(): Boolean =
+    when (this) {
+        is ExistingIdeOperation.Read ->
+            when (val effect = request.hostedEffect) {
+                is HostedRequestEffect.QueryRun -> effect.executionMode == QueryExecutionModeDocument.RUNNER_CONTROLLED
+                is HostedRequestEffect.Operation,
+                is HostedRequestEffect.ChangePlan,
+                is HostedRequestEffect.ChangeApply,
+                is HostedRequestEffect.ChangeRecover -> false
+            }
+        ExistingIdeOperation.Status,
+        is ExistingIdeOperation.Classes,
+        is ExistingIdeOperation.Supertype,
+        is ExistingIdeOperation.Change -> false
+    }
 
 /** Re-prove the exact physical settings owner; neither aliases nor a nearest ancestor can replace it. */
 internal fun admitObservedHostedRoot(path: Path): Refinement<CanonicalRoot, ExistingIdeFailure> =

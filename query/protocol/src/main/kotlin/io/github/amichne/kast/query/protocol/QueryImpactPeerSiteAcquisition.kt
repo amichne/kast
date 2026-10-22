@@ -35,7 +35,7 @@ suspend fun QueryImpactPeerSelection.acquireSite(
             lease = current,
             authority = references,
             compiler = compiler,
-            budget = QueryBudget(grant.resources, bytes, bytes),
+            budget = QueryBudget(grant.resources, bytes, bytes, grant.outputResults),
             domain = RelationSearchBoundary.WORKSPACE_EXPANSION,
         )
         .acquirePeerSite(this)

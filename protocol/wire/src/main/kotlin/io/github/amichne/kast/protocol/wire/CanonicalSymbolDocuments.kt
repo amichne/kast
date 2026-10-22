@@ -154,7 +154,9 @@ internal data class LocalDeclarationAddressWireDocument(
     )
     val ownerIdentity: String,
     val ownerRange: SourceRangeWireDocument,
-    @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 32)
+    @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(
+        maximumItems = io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
+    )
     val lexicalOwners: List<SourceRangeWireDocument>,
 )
 

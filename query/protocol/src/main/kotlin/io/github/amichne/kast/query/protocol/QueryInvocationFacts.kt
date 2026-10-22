@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
+import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCount
@@ -14,6 +15,7 @@ import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QueryStorageAllowance
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -46,7 +48,17 @@ internal class QueryInvocationFacts(
 
     var progress: QueryContinuationState = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
 
-    fun append(page: SymbolInvocationPage, capacity: Long): Refinement<Unit, QueryInvocationTransition.Stopped> {
+    fun append(page: SymbolInvocationPage, capacity: Long): Refinement<Unit, QueryInvocationTransition.Stopped> =
+        when (val limit = QueryByteLimit.parse(capacity)) {
+            is Refinement.Refined -> append(page, QueryStorageAllowance.Bounded(limit.value))
+            is Refinement.Rejected ->
+                Refinement.Rejected(QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT))
+        }
+
+    fun append(
+        page: SymbolInvocationPage,
+        capacity: QueryStorageAllowance,
+    ): Refinement<Unit, QueryInvocationTransition.Stopped> {
         val previous = pages.firstOrNull()?.result?.rows
         val current = page.result.rows
         if (previous != null && !compatibleRows(previous, current)) return Refinement.Rejected(invalidInvocation())
@@ -66,7 +78,7 @@ internal class QueryInvocationFacts(
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return captured
             }
-        if (charge.total.value > capacity - retainedBytes)
+        if (!capacity.permits(charge.total.value.saturatedAdd(retainedBytes)))
             return Refinement.Rejected(QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT))
         retentionEstimate += charge
         if (observedEmptyRows == null) observedEmptyRows = emptyRows(current)

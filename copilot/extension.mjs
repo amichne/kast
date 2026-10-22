@@ -1,5 +1,5 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
-const PUBLIC_TOOL_CONTRACT_VERSION = 15;
+const PUBLIC_TOOL_CONTRACT_VERSION = 16;
 // Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.
 const TOOL_RPC_FAILURES = [
   "INSTALLATION_STOPPED",
@@ -90,16 +90,19 @@ const producedQueryDelivery = (initial, pages, delivery) => {
 async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now) {
   params = JSON.parse(JSON.stringify(params));
   const started = now();
+  const runnerControlled = params.request?.type === 'RUN' && params.request.executionMode === 'RUNNER_CONTROLLED';
+  const expired = () => !runnerControlled && now() - started >= policy.callTimeoutMillis;
   let rpcCount = 0, requestBytes = 0, responseBytes = 0, presentationBytes = 0;
   const pages = [], seenContinuations = new Set();
   const call = async arguments_ => {
     const remaining = policy.callTimeoutMillis - (now() - started);
     if (signal?.aborted) throw new Error('CANCELLED');
-    if (remaining <= 0) throw new Error('TIME_LIMIT');
+    if (!runnerControlled && remaining <= 0) throw new Error('TIME_LIMIT');
     rpcCount++;
     requestBytes += Buffer.byteLength(JSON.stringify(arguments_), 'utf8');
     let observedBytes = false;
-    const reply = await invoke(arguments_, { ...policy, callTimeoutMillis: remaining,
+    const reply = await invoke(arguments_, { ...policy,
+      ...(runnerControlled ? { executionMode: 'RUNNER_CONTROLLED' } : { callTimeoutMillis: remaining }),
       onResponseBytes: bytes => { observedBytes = true; responseBytes += bytes; } });
     if (!observedBytes) responseBytes += Buffer.byteLength(JSON.stringify(reply), 'utf8');
     return reply;
@@ -140,7 +143,7 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     ...(params.request?.executionBudget != null ? { executionBudget: params.request.executionBudget } : {}),
   }, ...(params.verbose != null ? { verbose: params.verbose } : {}) });
   if (signal?.aborted) return bounded('CANCELLED');
-  if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
+  if (expired()) return bounded('TIME_LIMIT');
   if (deliveryBlocker(first)) return bounded(deliveryBlocker(first));
   if (rejectedEvidence) {
     if (!deliveryReference(retained) || rejectedEvidence.nextQuery?.request?.type !== 'READ_RESULT' ||
@@ -161,12 +164,12 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
   presentationBytes = Buffer.byteLength(JSON.stringify(initial), 'utf8');
   while (next) {
     if (signal?.aborted) return bounded('CANCELLED');
-    if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
+    if (expired()) return bounded('TIME_LIMIT');
     if (rpcCount >= QUERY_DELIVERY_LIMITS.pages) return bounded('PAGE_LIMIT');
     if (presentationBytes + 4096 >= QUERY_DELIVERY_LIMITS.bytes) return bounded('BYTE_LIMIT');
     let reply;
     try { reply = await call(next); }
-    catch { return bounded(signal?.aborted ? 'CANCELLED' : now() - started >= policy.callTimeoutMillis ? 'TIME_LIMIT' : 'DELIVERY_UNAVAILABLE'); }
+    catch { return bounded(signal?.aborted ? 'CANCELLED' : expired() ? 'TIME_LIMIT' : 'DELIVERY_UNAVAILABLE'); }
     const page = reply.document;
     if (!deliveryObject(page) || reply.type === 'rejected_document') {
       pages.push(reply);
@@ -218,7 +221,7 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     pages.push(reply);
     presentationBytes += Buffer.byteLength(JSON.stringify(reply), 'utf8');
     if (signal?.aborted) return bounded('CANCELLED');
-    if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
+    if (expired()) return bounded('TIME_LIMIT');
   }
   return bounded('DELIVERED');
 }
@@ -512,10 +515,11 @@ function createQuerySession(command, cwd, policy, signal, spawnProcess, environm
   };
   const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
   const abort = () => stop('CANCELLED');
-  const launch = () => {
+  const launch = deliveryPolicy => {
     if (signal?.aborted) throw failure('CANCELLED');
     child = spawnProcess(command, ['query-session'], { cwd, env: childEnvironment, stdio: ['pipe', 'pipe', 'pipe'] });
-    timer = setTimeout(() => stop('TIMEOUT'), policy.callTimeoutMillis);
+    if (deliveryPolicy.executionMode !== 'RUNNER_CONTROLLED')
+      timer = setTimeout(() => stop('TIMEOUT'), policy.callTimeoutMillis);
     signal?.addEventListener('abort', abort, { once: true });
     child.stderr.on('data', () => {}); // No arbitrary process diagnostics or source payload retained.
     child.stdin.on('error', () => stop('INPUT_FAILED'));
@@ -549,7 +553,7 @@ function createQuerySession(command, cwd, policy, signal, spawnProcess, environm
     invoke(arguments_, deliveryPolicy) {
       if (closed || stopped || closing) return Promise.reject(failure(stopped ?? 'CLOSED'));
       if (pending) return Promise.reject(failure('CONCURRENT_REQUEST'));
-      try { if (!child) launch(); } catch (error) { return Promise.reject(error); }
+      try { if (!child) launch(deliveryPolicy); } catch (error) { return Promise.reject(error); }
       return new Promise((resolve, reject) => {
         pending = { resolve, reject, policy: deliveryPolicy };
         child.stdin.write(JSON.stringify(arguments_) + '\n');
@@ -592,7 +596,8 @@ function run(args, input = "", policy = null, signal = null, cwd = process.cwd()
     const maxResponseBytes = policy?.maxResponseBytes ?? 4_194_304;
     const deadline = policy?.callTimeoutMillis ?? 180_000;
     const stop = (reason) => { termination ??= reason; child.kill("SIGKILL"); };
-    const timer = setTimeout(() => stop("TIMEOUT"), deadline);
+    const timer = policy?.executionMode === "RUNNER_CONTROLLED" ? undefined
+      : setTimeout(() => stop("TIMEOUT"), deadline);
     const abort = () => stop("CANCELLED");
     const cleanup = () => {
       clearTimeout(timer);

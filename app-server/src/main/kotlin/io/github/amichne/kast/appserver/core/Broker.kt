@@ -10,6 +10,7 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -96,6 +97,9 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
             emptyList()
         },
     inputAliases: Set<ToolName> = emptySet(),
+    internal val executionMode: (Input) -> QueryExecutionModeDocument = {
+        QueryExecutionModeDocument.BOUNDED
+    },
 ) {
     internal val inputAliases: Set<ToolName> = inputAliases.toSet()
 }
@@ -456,10 +460,7 @@ private class TypedProviderRoute<Runtime>(
         runtime: Runtime,
     ): Refinement<Output, BrokerFailure> =
         try {
-            when (
-                val invocation =
-                    withTimeout(tool.invocationBudget.value) { tool.invoke(runtime, input, request.context) }
-            ) {
+            when (val invocation = tool.invokeWithinMode(runtime, input, request.context)) {
                 is ProviderCall.Completed -> Refinement.Refined(invocation.value)
                 is ProviderCall.WorkspaceRejected ->
                     Refinement.Rejected(BrokerFailure.WorkspacePreparationRejected(request.address, invocation.failure))

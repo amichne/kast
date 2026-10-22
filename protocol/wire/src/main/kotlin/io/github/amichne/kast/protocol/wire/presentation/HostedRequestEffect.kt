@@ -2,10 +2,13 @@ package io.github.amichne.kast.protocol.wire.presentation
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 
 /** Retained request meaning used to admit the existing IDE's supported operation set. */
 sealed interface HostedRequestEffect {
     data class Operation(val operation: CanonicalOperation) : HostedRequestEffect
+
+    data class QueryRun(val executionMode: QueryExecutionModeDocument) : HostedRequestEffect
 
     data class ChangePlan(val intent: ChangeIntentDocument) : HostedRequestEffect
 

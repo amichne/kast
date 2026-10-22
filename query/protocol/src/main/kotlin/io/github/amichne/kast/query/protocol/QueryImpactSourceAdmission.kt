@@ -92,9 +92,9 @@ private fun QueryImpactSourceDocument.admitPeers(
                     is Refinement.Refined -> admitted.value
                 }
         }
-    if (peers.retainedBytes > budget.checkpointBytes.value)
+    if (!budget.storage.permits(peers.retainedBytes))
         return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED)
-    if (peers.examinedWork >= budget.resources.workUnitLimit.value)
+    if (!budget.resources.hasWorkCapacity(peers.examinedWork))
         return impactFailure(QueryImpactSourceFailureCode.WORK_LIMIT_REACHED)
     return Refinement.Refined(peers)
 }

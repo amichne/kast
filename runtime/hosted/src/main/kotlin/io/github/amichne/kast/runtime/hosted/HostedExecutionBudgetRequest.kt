@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
+import io.github.amichne.kast.protocol.contract.requestedExecutionBudget
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedBudgetProfile
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedExecutionBudgetRequest
 
@@ -11,7 +12,14 @@ internal fun HostedRequest.Read.executionBudget(): HostedExecutionBudgetRequest 
     HostedExecutionBudgetRequest(
         requested =
             when (this) {
-                is HostedRequest.Query -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
+                is HostedRequest.Query ->
+                    when (val query = request) {
+                        is io.github.amichne.kast.protocol.contract.QueryRunRequest.Run ->
+                            query.requestedExecutionBudget()
+                        is io.github.amichne.kast.protocol.contract.QueryRunRequest.Resume,
+                        is io.github.amichne.kast.protocol.contract.QueryRunRequest.ReadResult ->
+                            query.executionBudget?.requested() ?: RequestedExecutionBudget()
+                    }
                 is HostedRequest.Source -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Diagnostic -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
             },

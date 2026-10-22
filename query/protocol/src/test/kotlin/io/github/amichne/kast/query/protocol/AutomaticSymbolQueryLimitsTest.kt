@@ -25,7 +25,8 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
     fun `aggregate work stop rejects completion while preserving proven rows and internal continuation`() = runTest {
         val script = Script(listOf(listOf(row), listOf(row)))
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val limited = budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(8).refined()))
+        val limited =
+            budget.copy(resources = budget.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(8).refined()))
         val rejection = completionRejection(protocol.execute(request, fixture.authority, limited, policy()))
         assertEquals(1, script.calls)
         assertEquals(1, retainedEvidence(rejection).preview.values.size)
@@ -129,7 +130,9 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
             protocol.execute(
                 request,
                 fixture.authority,
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(100).refined())),
+                budget.copy(
+                    resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(100).refined())
+                ),
                 observedPolicy,
             )
         val rejection = completionRejection(result)

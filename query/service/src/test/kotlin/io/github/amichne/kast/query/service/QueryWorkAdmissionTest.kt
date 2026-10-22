@@ -64,7 +64,7 @@ class QueryWorkAdmissionTest {
             assertEquals(listOf(QueryLimitation.WORK_LIMIT_REACHED), first.coverage.limitations)
             assertEquals(List(expectedSourceCalls) { selected }, first.selectors())
             assertSame(originalBudget, firstRequest.budget)
-            assertEquals(work, originalBudget.resources.workUnitLimit.value)
+            assertEquals(work, originalBudget.resources.bounded().workUnitLimit.value)
 
             val checkpoint =
                 assertInstanceOf(QueryContinuationState.Resumable::class.java, first.continuation).checkpoint
@@ -76,12 +76,12 @@ class QueryWorkAdmissionTest {
             assertEquals(2, exactCalls)
             assertEquals(2, sourceGrants.size)
             sourceGrants.forEach { grant ->
-                assertEquals(1L, grant.workUnitLimit.value)
-                assertEquals(1, grant.resultLimit.value)
-                assertEquals(originalBudget.resources.elapsedTimeLimit, grant.elapsedTimeLimit)
+                assertEquals(1L, grant.bounded().workUnitLimit.value)
+                assertEquals(1, grant.bounded().resultLimit.value)
+                assertEquals(originalBudget.resources.bounded().elapsedTimeLimit, grant.bounded().elapsedTimeLimit)
             }
             assertSame(larger.budget, resumed.budget)
-            assertEquals(work, originalBudget.resources.workUnitLimit.value)
+            assertEquals(work, originalBudget.resources.bounded().workUnitLimit.value)
         }
     }
 

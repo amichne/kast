@@ -54,7 +54,7 @@ internal fun validateImpactRead(
     source: QueryImpactSource,
 ): ValueFlowRead {
     val work = read.examinedImpactWork()
-    if (work.value > request.budget.resources.workUnitLimit.value)
+    if (!request.budget.resources.permitsWork(work.value))
         return ValueFlowRead.ContractRejected(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED, work)
     val page =
         when (read) {
@@ -76,11 +76,10 @@ internal fun validateImpactRead(
         when {
             step.source != request.source -> ValueFlowStepFailure.SOURCE_MISMATCH
             step.domain.boundary != request.boundary -> ValueFlowStepFailure.DOMAIN_MISMATCH
-            step.examinedWorkUnits.value > request.budget.resources.workUnitLimit.value ->
+            !request.budget.resources.permitsWork(step.examinedWorkUnits.value) ->
                 ValueFlowStepFailure.WORK_LIMIT_EXCEEDED
-            step.transfers.size > request.budget.resources.resultLimit.value ->
-                ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED
-            step.retainedBytes > request.budget.returnedBytes.value - remainderBytes ->
+            step.transfers.size > request.budget.outputResults.value -> ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED
+            !request.budget.permitsReturnedBytes(saturatedAdd(step.retainedBytes, remainderBytes)) ->
                 ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED
             receipt.returnedBytes.value != step.retainedBytes + remainderBytes ||
                 receipt.returnedResults.value != step.transfers.size ||

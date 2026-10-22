@@ -38,7 +38,7 @@ class DiagnosticScanService(
     private val diagnostics: DiagnosticOperations,
     private val clock: () -> Long = System::nanoTime,
 ) : DiagnosticScanOperations {
-    override suspend fun scan(request: DiagnosticScanRequest, budget: ResourceBudget): DiagnosticScanResult {
+    override suspend fun scan(request: DiagnosticScanRequest, budget: ResourceBudget.Bounded): DiagnosticScanResult {
         val start = clock()
         if (authorities.validate(request.query.lease) != SemanticReadValidation.CURRENT) return stale()
         if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return timeGrantRejected()
@@ -57,7 +57,7 @@ class DiagnosticScanService(
 
     private suspend fun progress(
         initial: DetachedDiagnosticScan,
-        budget: ResourceBudget,
+        budget: ResourceBudget.Bounded,
         start: Long,
     ): DiagnosticScanResult {
         var checkpoint = initial
@@ -90,7 +90,7 @@ class DiagnosticScanService(
     private suspend fun validatePublication(
         checkpoint: DetachedDiagnosticScan,
         advanced: DiagnosticScanResult,
-        budget: ResourceBudget,
+        budget: ResourceBudget.Bounded,
         start: Long,
     ): DiagnosticScanResult =
         when {
@@ -103,7 +103,7 @@ class DiagnosticScanService(
     private suspend fun advance(
         checkpoint: DetachedDiagnosticScan,
         allowance: DiagnosticScanAllowance,
-        remaining: ResourceBudget,
+        remaining: ResourceBudget.Bounded,
         start: Long,
     ): DiagnosticScanResult =
         when (val work = checkpoint.work) {
@@ -162,7 +162,7 @@ class DiagnosticScanService(
     private suspend fun analyze(
         checkpoint: DetachedDiagnosticScan,
         work: DiagnosticScanWork.Analyze,
-        budget: ResourceBudget,
+        budget: ResourceBudget.Bounded,
         start: Long,
     ): DiagnosticScanResult {
         if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return increaseBudget()
@@ -212,11 +212,11 @@ class DiagnosticScanService(
 }
 
 /** Request-local accounting; detached checkpoints never retain or replenish a grant. */
-private class DiagnosticScanAllowance(val budget: ResourceBudget) {
+private class DiagnosticScanAllowance(val budget: ResourceBudget.Bounded) {
     var remainingWork = budget.workUnitLimit.value
     val facts = mutableListOf<DiagnosticFact>()
 
-    fun remaining(elapsedMillis: Long): Refinement<ResourceBudget, DiagnosticScanRejection> {
+    fun remaining(elapsedMillis: Long): Refinement<ResourceBudget.Bounded, DiagnosticScanRejection> {
         val resultLimit =
             when (val limit = ResultLimit.parse(budget.resultLimit.value - facts.size)) {
                 is Refinement.Refined -> limit.value

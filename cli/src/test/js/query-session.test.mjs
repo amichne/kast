@@ -62,6 +62,16 @@ test('cancellation before invocation launches zero children',async()=>{
   await assert.rejects(f.session.invoke({request:{type:'RUN'}},policy),/CANCELLED/);
   await f.session.close();assert.equal(f.children.length,0);
 });
+test('runner-controlled invocation has no timer and cancellation kills its one child',async()=>{
+  const f=await fixture();
+  const pending=f.session.invoke({request:{type:'RUN',executionMode:'RUNNER_CONTROLLED'}},
+    {...policy,executionMode:'RUNNER_CONTROLLED'});
+  assert.equal(f.timers.length,0);
+  f.controller.abort();
+  await assert.rejects(pending,/CANCELLED/);
+  await f.session.close();
+  assert.equal(f.writes.length,1);assert.deepEqual(f.observed,['killed']);
+});
 for(const stop of ['cancel','timeout'])test(`${stop} while awaiting is bounded and does not resubmit`,async()=>{
   const f=await fixture();const pending=f.session.invoke({request:{type:'RUN'}},policy);
   if(stop==='cancel')f.controller.abort();else f.timers[0].callback();

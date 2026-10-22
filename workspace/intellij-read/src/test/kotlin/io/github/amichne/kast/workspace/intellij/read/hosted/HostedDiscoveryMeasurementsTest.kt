@@ -72,7 +72,7 @@ class HostedDiscoveryMeasurementsTest {
                 println("MVP_LOG_RECORD=" + record.encode())
                 val encoded = Json.parseToJsonElement(record.encode()).jsonObject
                 assertEquals(setOf("schemaVersion", "readId", "pageOrdinal", "outcome") + fields, encoded.keys)
-                assertEquals(15, encoded.getValue("schemaVersion").jsonPrimitive.int)
+                assertEquals(16, encoded.getValue("schemaVersion").jsonPrimitive.int)
                 assertEquals(1, encoded.getValue("pageOrdinal").jsonPrimitive.int)
                 assertEquals(
                     if (qualified) "QUALIFIED" else "COMPLETE",

@@ -35,14 +35,16 @@ private constructor(
             indexes: IntellijDeclarationIndexes,
             limits: ReadLimits,
             callbacks: ScopedDeclarationCallbacks,
+            resources: io.github.amichne.kast.kernel.ResourceBudget,
         ): Refinement<IntellijExactNameCandidateFiles, ExactNameCandidateFileFailure> =
-            Collector(scope, limits, callbacks).collect(name, indexes)
+            Collector(scope, limits, callbacks, resources).collect(name, indexes)
     }
 
     private class Collector(
         private val scope: GlobalSearchScope,
         private val limits: ReadLimits,
         private val callbacks: ScopedDeclarationCallbacks,
+        private val resources: io.github.amichne.kast.kernel.ResourceBudget,
     ) {
         private val paths = linkedSetOf<String>()
         private var bytes = 0L
@@ -73,12 +75,18 @@ private constructor(
             if (file.fileType != KotlinFileType.INSTANCE || !scope.contains(file)) return true
             if (file.path in paths) return true
             val added = FILE_BINDING_BYTES + TEXT_UNIT_BYTES * file.path.length
-            if (paths.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
+            if (
+                resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                    paths.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value
+            )
                 return reject(
                     SymbolDiscoveryBlockCause.PARTITION_CAPACITY,
                     SymbolDiscoveryQualification.WORK_LIMIT_REACHED,
                 )
-            if (added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes)
+            if (
+                resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                    added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes
+            )
                 return reject(
                     SymbolDiscoveryBlockCause.RETENTION_LIMIT,
                     SymbolDiscoveryQualification.BYTE_LIMIT_REACHED,
@@ -117,7 +125,14 @@ internal fun collectExactNameCandidateDeclarations(
     val candidates =
         when (
             val result =
-                IntellijExactNameCandidateFiles.collect(name, plan.scope.nativeScope, indexes, limits, callbacks)
+                IntellijExactNameCandidateFiles.collect(
+                    name,
+                    plan.scope.nativeScope,
+                    indexes,
+                    limits,
+                    callbacks,
+                    plan.request.budget.resources,
+                )
         ) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> {

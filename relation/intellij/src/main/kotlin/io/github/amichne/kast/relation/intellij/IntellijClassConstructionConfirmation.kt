@@ -7,6 +7,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -21,6 +22,7 @@ internal fun confirmClassConstruction(
     admitted: IntellijRelationReferenceAdmission.Admitted.ClassConstruction,
     workspaceRoot: CanonicalWorkspaceRoot,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
 ): IntellijK2TargetConfirmation =
     observation.observedAnalyze(admitted.reference.element) {
         if (nativeSymbol(admitted.selectedClass) !is KaClassSymbol)
@@ -40,7 +42,7 @@ internal fun confirmClassConstruction(
                     observation,
                 )
         val evidence =
-            when (val result = constructorEvidence(owner, workspaceRoot)) {
+            when (val result = constructorEvidence(owner, workspaceRoot, workAllowance)) {
                 is ConstructorEvidence.Proven -> result.evidence
                 is ConstructorEvidence.Unresolved ->
                     return@observedAnalyze unresolvedConstruction(result.reason, observation)
@@ -73,6 +75,7 @@ private sealed interface ConstructorEvidence {
 private fun KaSession.constructorEvidence(
     owner: KaClassSymbol,
     workspaceRoot: CanonicalWorkspaceRoot,
+    workAllowance: WorkAllowance,
 ): ConstructorEvidence {
     val anchor = owner.psi ?: return ConstructorEvidence.Unresolved(IntellijReadTermination.K2_SYMBOL_WITHOUT_PSI)
     val declaration =
@@ -87,7 +90,7 @@ private fun KaSession.constructorEvidence(
                 return ConstructorEvidence.Unresolved(IntellijReadTermination.DISCOVERY_SOURCE_UNAVAILABLE)
         }
     val compiler =
-        when (val projected = owner.compilerProjection(this, detached)) {
+        when (val projected = owner.compilerProjection(this, detached, workAllowance = workAllowance)) {
             is IntellijCompilerProjectionResult.Projected -> projected.projection
             is IntellijCompilerProjectionResult.LocalRejected ->
                 return ConstructorEvidence.Unresolved(

@@ -29,7 +29,10 @@ class NativeScopeExpiryTest : NativeReferenceFixtureTest() {
 
         val now = AtomicLong()
         val observed =
-            ExpireAtNativeScopeMembership(now, narrowed.request.budget.resources.elapsedTimeLimit.value * 1_000_000L)
+            ExpireAtNativeScopeMembership(
+                now,
+                narrowed.request.budget.resources.nativeBounded().elapsedTimeLimit.value * 1_000_000L,
+            )
         val compiled = narrowed.scope(observed)
         val collector = IntellijRelationCollector(narrowed.request, clockNanoseconds = now::get, observation = observed)
         val cancellationCheck = { ProgressManager.checkCanceled() }

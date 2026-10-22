@@ -35,12 +35,7 @@ internal fun QueryImpactSiteAccounting.siteAccountingDocument(
                 values.first.first.second,
                 values.first.second,
                 ImpactSiteAdmissionDocument(
-                    ImpactFlowBudgetDocument(
-                        budget.elapsedTimeLimit,
-                        budget.workUnitLimit,
-                        budget.resultLimit,
-                        bytes,
-                    ),
+                    ImpactFlowBudgetDocument.from(budget, requested.request.budget.outputResults, bytes),
                     values.second,
                 ),
             )

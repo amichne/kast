@@ -207,7 +207,7 @@ class QueryImpactBoundarySourceAdmissionTest {
             override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
                 assertEquals(0, seeds++)
                 assertEquals(range(20, 35), request.anchor)
-                grants += request.budget.resources.workUnitLimit.value
+                grants += request.budget.resources.bounded().workUnitLimit.value
                 val invocation = ValueInvocation.fromCompiler(owner, range(20, 35), callable).refined()
                 return ValueProducerSeedRead.Seeded(
                     ValueProducerSeed.fromCompiler(request, invocation.resultSite(), invocation).refined(),
@@ -221,7 +221,7 @@ class QueryImpactBoundarySourceAdmissionTest {
             ): ValueModelDeclarationRead {
                 assertEquals(0, declarations++)
                 assertEquals(owner.file, selector.file)
-                grants += budget.resources.workUnitLimit.value
+                grants += budget.resources.bounded().workUnitLimit.value
                 return ValueModelDeclarationRead.Revalidated(
                     RevalidatedRelationEndpoint.validate(owner, owner.evidence).refined(),
                     work(1),
@@ -233,7 +233,7 @@ class QueryImpactBoundarySourceAdmissionTest {
                 val expected = listOf(range(20, 35), range(60, 75))[positions.size]
                 assertEquals(expected, request.anchor)
                 assertEquals(ValueSiteRoleClaim.ExpressionResult, request.role)
-                grants += request.budget.resources.workUnitLimit.value
+                grants += request.budget.resources.bounded().workUnitLimit.value
                 positions += expected
                 if (rejection != null) return ValueModelSiteRead.Rejected(rejection)
                 val site = ValueSite.fromCompiler(owner, expected, ValueRole.ExpressionResult).refined()

@@ -46,7 +46,7 @@ class IntellijTextOccurrenceCollectorTest {
         val active = AtomicInteger()
         var observed = 0
         collectTextDiscoveryOccurrences(
-            workLimit = WorkUnitLimit.parse(250).refined(),
+            workLimit = io.github.amichne.kast.kernel.WorkAllowance.Bounded(WorkUnitLimit.parse(250).refined()),
             observe = {
                 assertEquals(1, active.incrementAndGet(), "Observation state must not overlap")
                 observed += 1
@@ -109,7 +109,7 @@ class IntellijTextOccurrenceCollectorTest {
                 val qualifications = mutableSetOf<SymbolDiscoveryQualification>()
                 val captured =
                     collectTextDiscoveryOccurrences(
-                        WorkUnitLimit.parse(1).refined(),
+                        io.github.amichne.kast.kernel.WorkAllowance.Bounded(WorkUnitLimit.parse(1).refined()),
                         { true },
                         qualifications::add,
                         process = { throw failure },

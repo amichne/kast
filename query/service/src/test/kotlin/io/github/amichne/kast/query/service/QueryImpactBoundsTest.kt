@@ -224,7 +224,7 @@ class QueryImpactBoundsTest {
                 RelationRequest.start(
                     SymbolSelector.issue(f.lease, f.scope, (f.owner as RelationEndpoint.Resolved).evidence),
                     RelationMeaning.References,
-                    RelationBudget(f.request().budget.resources, RelationByteLimit.parse(1000000).value()),
+                    RelationBudget(f.request().budget.resources.bounded(), RelationByteLimit.parse(1000000).value()),
                     RelationSearchBoundary.WORKSPACE_EXPANSION,
                 ),
                 RelationWorkCount.parse(1).value(),

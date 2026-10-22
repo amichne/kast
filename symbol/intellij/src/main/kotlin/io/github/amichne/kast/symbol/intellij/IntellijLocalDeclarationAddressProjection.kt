@@ -8,6 +8,7 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -31,20 +32,21 @@ internal fun KaSymbol.localAddress(
     observation: IntellijReadObservation,
     file: SymbolDiscoveryFileIdentity,
     depth: Int,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalDeclarationAddress, LocalDeclarationProjectionFailure> {
     val declaration = psi ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.SourceUnavailable)
     val range = declaration.textRange ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.SourceUnavailable)
     val owner =
-        when (val admitted = localCompilerOwner(session, declaration)) {
+        when (val admitted = localCompilerOwner(session, declaration, workAllowance)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
     val signature =
-        when (val projected = owner.symbol.localOwnerSignature(session, observation, file, depth + 1)) {
+        when (val projected = owner.symbol.localOwnerSignature(session, observation, file, depth + 1, workAllowance)) {
             is Refinement.Refined -> projected.value
             is Refinement.Rejected -> return projected
         }
-    return createLocalCompilerAddress(file, range, declaration, owner.psi, signature)
+    return createLocalCompilerAddress(file, range, declaration, owner.psi, signature, workAllowance)
 }
 
 private data class LocalCompilerOwner(val symbol: KaSymbol, val psi: PsiElement)
@@ -52,9 +54,10 @@ private data class LocalCompilerOwner(val symbol: KaSymbol, val psi: PsiElement)
 private fun KaSymbol.localCompilerOwner(
     session: KaSession,
     declaration: PsiElement,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalCompilerOwner, LocalDeclarationProjectionFailure> {
     val owner =
-        when (val selected = namedLocalCompilerOwner(session)) {
+        when (val selected = namedLocalCompilerOwner(session, workAllowance)) {
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return selected
         }
@@ -64,7 +67,7 @@ private fun KaSymbol.localCompilerOwner(
             LocalDeclarationProjectionFailure.InvalidAddress(LocalDeclarationAddressFailure.INVALID_FILE)
         )
     if (owner.location != KaSymbolLocation.LOCAL) {
-        when (val proof = owner.localOwnerCompilerTypeProof().asLocalDeclarationTypeProof()) {
+        when (val proof = owner.localOwnerCompilerTypeProof(workAllowance).asLocalDeclarationTypeProof()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return proof
         }
@@ -78,10 +81,11 @@ private fun KaSymbol.createLocalCompilerAddress(
     declaration: PsiElement,
     owner: PsiElement,
     signature: CanonicalCompilerSignature,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalDeclarationAddress, LocalDeclarationProjectionFailure> {
     val ownerRange = owner.textRange ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerUnavailable)
     val lexical =
-        when (val admitted = localDeclarationLexicalOwners(declaration, owner)) {
+        when (val admitted = localDeclarationLexicalOwners(declaration, owner, workAllowance)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
@@ -135,8 +139,9 @@ private fun KaSymbol.localOwnerSignature(
     observation: IntellijReadObservation,
     file: SymbolDiscoveryFileIdentity,
     depth: Int,
+    workAllowance: WorkAllowance,
 ): Refinement<CanonicalCompilerSignature, LocalDeclarationProjectionFailure> =
-    when (val result = toCompilerProjection(session, observation, file, depth)) {
+    when (val result = toCompilerProjection(session, observation, file, depth, workAllowance)) {
         is IntellijCompilerSymbolProjectionResult.Projected -> Refinement.Refined(result.projection.signature)
         is IntellijCompilerSymbolProjectionResult.Rejected ->
             Refinement.Rejected(

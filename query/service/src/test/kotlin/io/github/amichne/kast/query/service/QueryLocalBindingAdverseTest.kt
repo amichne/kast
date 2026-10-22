@@ -111,7 +111,7 @@ class QueryLocalBindingAdverseTest {
         val request =
             ValueFlowRequest(
                 s.binding,
-                RelationBudget(grant.resources, RelationByteLimit.parse(1).value()),
+                RelationBudget(grant.resources.bounded(), RelationByteLimit.parse(1).value()),
                 RelationSearchBoundary.WORKSPACE_EXPANSION,
             )
         val rejected = s.port.read(request) as ValueFlowRead.Rejected
@@ -147,7 +147,7 @@ class QueryLocalBindingAdverseTest {
         assertEquals(1L, ledger.readRejections.single().examinedWorkUnits.value)
         assertEquals(
             listOf(4L, 20L),
-            ledger.readReceipts.getValue(s.binding).map { it.domain.budget.resources.workUnitLimit.value },
+            ledger.readReceipts.getValue(s.binding).map { it.domain.budget.resources.bounded().workUnitLimit.value },
         )
         assertEquals(listOf(4L, 1L), ledger.readReceipts.getValue(s.binding).map { it.examinedWorkUnits.value })
         assertEquals(1, ledger.observations.single { it.source == s.binding }.transfers.size)

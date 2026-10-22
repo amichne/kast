@@ -33,7 +33,7 @@ private fun QueryImpactPeerAcquisitionReceipt.impactDocument(): ImpactProjected<
 
 private fun RelationBudget.impactBudget(): ImpactProjected<ImpactFlowBudgetDocument> =
     ReturnedByteLimit.parse(returnedBytes.value).impactFailure(ImpactPathProjectionFailure::Budget).impactMap {
-        ImpactFlowBudgetDocument(resources.elapsedTimeLimit, resources.workUnitLimit, resources.resultLimit, it)
+        ImpactFlowBudgetDocument.from(resources, outputResults, it)
     }
 
 internal fun QueryImpactPeerContinuationReason.impactDocument(): ImpactPeerContinuationReasonDocument =

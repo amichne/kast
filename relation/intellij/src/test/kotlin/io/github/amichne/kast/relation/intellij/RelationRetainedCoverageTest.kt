@@ -73,7 +73,7 @@ class RelationRetainedCoverageTest {
         val request = fixture.request(RelationMeaning.Callees)
         var now = 0L
         val collector = IntellijRelationCollector(request, clockNanoseconds = { now })
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertEquals(IntellijRelationProviderEnumerationAdmission.HALTED, collector.admitProviderEnumeration())
         val result =
             assertInstanceOf(

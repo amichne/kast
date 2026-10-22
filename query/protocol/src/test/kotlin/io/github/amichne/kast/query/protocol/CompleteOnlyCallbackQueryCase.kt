@@ -42,8 +42,8 @@ internal abstract class CompleteOnlyCallbackQueryCase : AutomaticSymbolQueryCase
             io.github.amichne.kast.traversal.contract.TraversalBudget(
                 io.github.amichne.kast.kernel.ResultLimit.parse(100).refined(),
                 io.github.amichne.kast.traversal.contract.TraversalByteLimit.parse(100_000).refined(),
-                budget.resources.workUnitLimit,
-                budget.resources.elapsedTimeLimit,
+                budget.resources.bounded().workUnitLimit,
+                budget.resources.bounded().elapsedTimeLimit,
                 io.github.amichne.kast.traversal.contract.TraversalDepthLimit.parse(2).refined(),
                 io.github.amichne.kast.traversal.contract.TraversalFrontierLimit.parse(100).refined(),
                 RelationPagingFixture.published().budget,

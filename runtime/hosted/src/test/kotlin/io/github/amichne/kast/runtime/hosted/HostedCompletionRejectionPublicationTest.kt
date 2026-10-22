@@ -359,11 +359,15 @@ class HostedCompletionRejectionPublicationTest {
             return ExecutionBudgetReport.from(
                 AdmittedExecutionBudget.admit(
                     RequestedExecutionBudget(),
-                    budget.resources,
+                    budget.resources.boundedFixture(),
                     bytes,
-                    budget.resources,
+                    budget.resources.boundedFixture(),
                     bytes,
-                    ExecutionBudgetCapacity(budget.resources.elapsedTimeLimit, budget.resources.resultLimit, bytes),
+                    ExecutionBudgetCapacity(
+                        budget.resources.boundedFixture().elapsedTimeLimit,
+                        budget.resources.boundedFixture().resultLimit,
+                        bytes,
+                    ),
                 )
             )
         }

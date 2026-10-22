@@ -80,9 +80,9 @@ class RetainedSymbolGraphMeasurementTest {
                 fixture.retained.source.authority,
                 fixture.retained.budget.copy(
                     resources =
-                        fixture.retained.budget.resources.copy(
-                            resultLimit = ResultLimit.parse(limit).graphFixtureValue()
-                        )
+                        fixture.retained.budget.resources
+                            .bounded()
+                            .copy(resultLimit = ResultLimit.parse(limit).graphFixtureValue())
                 ),
             ) as OperationOutcome.Complete
         val encoded = (CanonicalOperationWireBindings.queryRun.encodeOutcome(page) as WireEncoding.Encoded).document

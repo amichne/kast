@@ -62,7 +62,10 @@ internal fun Map<QueryStateKey, QueryStateEntry>.admitPublication(
         }
     )
         return publicationRejected(QueryPublicationFailure.DEPENDENCY_UNAVAILABLE)
-    if (closure.any { key -> this[key]?.withinLifetime(now, ttlMillis) == false })
+    if (
+        claim.executionMode == io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED &&
+            closure.any { key -> this[key]?.withinLifetime(now, ttlMillis) == false }
+    )
         return publicationRejected(QueryPublicationFailure.EXPIRED)
     return Refinement.Refined(accepted)
 }
@@ -88,7 +91,8 @@ private fun admitInitial(
 ): Refinement<QueryPublicationTransition, QueryPublicationFailure> =
     when {
         transientClaims[claim.identity] !== claim -> publicationRejected(QueryPublicationFailure.CLAIM_UNAVAILABLE)
-        window.now - origin.createdAt > TimeUnit.MILLISECONDS.toNanos(window.ttlMillis) ->
+        claim.executionMode == io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED &&
+            window.now - origin.createdAt > TimeUnit.MILLISECONDS.toNanos(window.ttlMillis) ->
             publicationRejected(QueryPublicationFailure.EXPIRED)
         else -> Refinement.Refined(QueryPublicationTransition.Initial)
     }
@@ -127,7 +131,11 @@ private fun Map<QueryStateKey, QueryStateEntry>.admitProducer(
         entry.execution as? QueryCheckpointExecution.Running
             ?: return publicationRejected(QueryPublicationFailure.CLAIM_UNAVAILABLE)
     if (running.claim !== claim) return publicationRejected(QueryPublicationFailure.CLAIM_UNAVAILABLE)
-    if (!entry.withinLifetime(window.now, window.ttlMillis)) return publicationRejected(QueryPublicationFailure.EXPIRED)
+    if (
+        claim.executionMode == io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED &&
+            !entry.withinLifetime(window.now, window.ttlMillis)
+    )
+        return publicationRejected(QueryPublicationFailure.EXPIRED)
     if (key in closure) return publicationRejected(QueryPublicationFailure.NON_ADVANCING_SUCCESSOR)
     val pageBytes =
         when (val admitted = charge.admittedBytes(page, running.reservedBytes)) {

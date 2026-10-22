@@ -91,7 +91,7 @@ class LocalCompilerSignatureDocumentTest {
     }
 
     @Test
-    fun `local addresses reject overlapping or unbounded lexical ownership`() {
+    fun `local addresses reject malformed lexical ownership`() {
         for ((owner, lexical, expectedFailure) in
             listOf(
                 Triple(range(25, 90), emptyList(), LocalDeclarationAddressDocumentFailure.INVALID_OWNER_RANGE),
@@ -108,7 +108,7 @@ class LocalCompilerSignatureDocumentTest {
                 Triple(
                     range(0, 100),
                     List(33) { range(10, 90) },
-                    LocalDeclarationAddressDocumentFailure.OWNER_DEPTH_EXCEEDED,
+                    LocalDeclarationAddressDocumentFailure.INVALID_LEXICAL_OWNER,
                 ),
             )) {
             assertEquals(

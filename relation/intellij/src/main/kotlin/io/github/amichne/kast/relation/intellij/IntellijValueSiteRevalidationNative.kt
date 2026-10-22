@@ -63,7 +63,7 @@ internal class IntellijValueSiteRevalidationNative(
                     is ValueSiteRoleClaim.Receiver -> ARGUMENT_SITE_WORK
                     else -> EXPRESSION_SITE_WORK
                 }
-            if (request.budget.resources.workUnitLimit.value < work)
+            if (!request.budget.resources.permitsWork(work))
                 return@nativeBoundary ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.WORK_LIMIT_REACHED)
             val started = System.nanoTime()
             when (val role = positionRole(project, request, model)) {
@@ -149,8 +149,9 @@ internal class IntellijValueSiteRevalidationNative(
         started: Long,
     ): ValueModelSiteRead {
         if (
-            System.nanoTime() - started >=
-                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(request.budget.resources.elapsedTimeLimit.value)
+            !request.budget.resources.hasTimeRemaining(
+                java.util.concurrent.TimeUnit.NANOSECONDS.toMillis((System.nanoTime() - started).coerceAtLeast(0L))
+            )
         )
             return ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.TIME_LIMIT_REACHED)
         val site =
@@ -166,7 +167,7 @@ internal class IntellijValueSiteRevalidationNative(
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return ValueModelSiteRead.Rejected(ValueFlowRejection.STALE_SITE)
             }
-        if (site.retainedBytes > request.budget.returnedBytes.value)
+        if (!request.budget.permitsReturnedBytes(site.retainedBytes))
             return ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.BYTE_LIMIT_REACHED)
         return when (val result = RevalidatedValueSite.fromCompiler(request, site)) {
             is Refinement.Refined -> ValueModelSiteRead.Revalidated(result.value, siteWorkCount(work))

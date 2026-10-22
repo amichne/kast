@@ -15,7 +15,7 @@ internal fun readmitNamedRelationPartition(
     scope: CompiledRelationScope,
     allowance: IntellijRelationAllowance,
 ): NamedRelationReadmission {
-    if (previous.facts.size > request.budget.resources.resultLimit.value)
+    if (previous.facts.size > request.budget.outputResults.value)
         return Refinement.Rejected(
             NamedRelationReadmissionFailure.Batch(
                 io.github.amichne.kast.relation.contract.RelationBatchFailure.RESULT_LIMIT_EXCEEDED

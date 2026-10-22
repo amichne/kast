@@ -13,11 +13,32 @@ import io.github.amichne.kast.protocol.wire.presentation.LocalDeclarationAddress
 import io.github.amichne.kast.protocol.wire.presentation.toCliDocument
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class LocalCompilerSignatureWireTest {
+    @Test
+    fun `wire and CLI preserve thirty three strictly nested lexical owners`() {
+        val lexical = (1..33).map { SourceRangeWireDocument(it, 100 - it) }
+        val local =
+            function().let { signature ->
+                signature.copy(
+                    address =
+                        signature.address.copy(
+                            range = SourceRangeWireDocument(50, 51),
+                            lexicalOwners = lexical,
+                        )
+                )
+            }
+        val contract = local.toContract().converted()
+        assertEquals(local, contract.toWireDocument())
+        val cli = assertInstanceOf(CompilerSignatureCliDocument.LocalFunction::class.java, contract.toCliDocument())
+        assertEquals((1..33).toList(), cli.address.lexicalOwners.map { it.startInclusive })
+        assertEquals((1..33).map { 100 - it }, cli.address.lexicalOwners.map { it.endExclusive })
+    }
+
     @Test
     fun `anonymous object wire shape preserves compiler owner and rejects forged address or supertype facts`() {
         val signature =

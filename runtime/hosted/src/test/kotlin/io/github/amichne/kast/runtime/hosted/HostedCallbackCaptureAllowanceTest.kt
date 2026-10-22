@@ -12,6 +12,22 @@ import org.junit.jupiter.api.Test
 
 class HostedCallbackCaptureAllowanceTest : HostedSemanticFactFixture() {
     @Test
+    fun `runner-controlled captures preserve unlimited execution after saturated cost measurements`() {
+        val allowance = HostedCallbackCaptureAllowance(ResourceBudget.RunnerControlled)
+        allowance.record(cost(Long.MAX_VALUE, Long.MAX_VALUE))
+        allowance.record(cost(1L, 1L))
+        assertEquals(
+            Refinement.Refined(ResourceBudget.RunnerControlled),
+            allowance.remaining(ResourceBudget.RunnerControlled),
+        )
+        assertEquals(Refinement.Refined(budget(5L, 9L)), allowance.remaining(budget(5L, 9L)))
+        assertEquals(
+            Refinement.Refined(budget(5L, 9L)),
+            HostedCallbackCaptureAllowance(budget(5L, 9L)).remaining(ResourceBudget.RunnerControlled),
+        )
+    }
+
+    @Test
     fun `aggregate capture cost and current parent both constrain the next grant`() {
         val allowance = HostedCallbackCaptureAllowance(budget(40, 100))
         allowance.record(cost(8, 2_000_000))

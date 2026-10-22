@@ -6,6 +6,7 @@
 package io.github.amichne.kast.source.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerDeclarationAddress
@@ -39,28 +40,24 @@ import org.jetbrains.kotlin.psi.KtProperty
 internal fun KtNamedDeclaration.compilerEvidence(
     selector: SymbolSelector,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance = defaultLocalSourceCompilerTypeAllowance(),
 ): Refinement<CompilerGroundedSymbolEvidence, SourceCompilerEvidenceFailure> {
     val projection =
-        when (val result = analyze(this) { symbol.sourceProjection(this, selector.file, observation = observation) }) {
+        when (
+            val result =
+                analyze(this) {
+                    symbol.sourceProjection(
+                        this,
+                        selector.file,
+                        observation = observation,
+                        workAllowance = workAllowance,
+                    )
+                }
+        ) {
             is SourceCompilerProjectionResult.Projected -> result.projection
             is SourceCompilerProjectionResult.LocalRejected -> {
                 observation.localIdentityRejected(result.failure)
-                return Refinement.Rejected(
-                    when (result.failure) {
-                        LocalDeclarationProjectionFailure.WorkLimitReached,
-                        LocalDeclarationProjectionFailure.OwnerDepthExceeded ->
-                            SourceCompilerEvidenceFailure.WORK_LIMIT_REACHED
-                        LocalDeclarationProjectionFailure.CompilerTypeError,
-                        LocalDeclarationProjectionFailure.CompilerTypeUnsupported,
-                        LocalDeclarationProjectionFailure.UnsupportedDeclaration,
-                        LocalDeclarationProjectionFailure.SignatureUnavailable,
-                        LocalDeclarationProjectionFailure.SourceUnavailable,
-                        LocalDeclarationProjectionFailure.OwnerUnavailable,
-                        LocalDeclarationProjectionFailure.CompilerOwnerUnavailable,
-                        LocalDeclarationProjectionFailure.LexicalAncestryUnavailable,
-                        is LocalDeclarationProjectionFailure.InvalidAddress -> SourceCompilerEvidenceFailure.UNAVAILABLE
-                    }
-                )
+                return Refinement.Rejected(result.failure.sourceEvidenceFailure())
             }
             SourceCompilerProjectionResult.Rejected ->
                 return Refinement.Rejected(SourceCompilerEvidenceFailure.UNAVAILABLE)
@@ -90,6 +87,21 @@ internal fun KtNamedDeclaration.compilerEvidence(
     }
 }
 
+private fun LocalDeclarationProjectionFailure.sourceEvidenceFailure(): SourceCompilerEvidenceFailure =
+    when (this) {
+        LocalDeclarationProjectionFailure.WorkLimitReached,
+        LocalDeclarationProjectionFailure.OwnerDepthExceeded -> SourceCompilerEvidenceFailure.WORK_LIMIT_REACHED
+        LocalDeclarationProjectionFailure.CompilerTypeError,
+        LocalDeclarationProjectionFailure.CompilerTypeUnsupported,
+        LocalDeclarationProjectionFailure.UnsupportedDeclaration,
+        LocalDeclarationProjectionFailure.SignatureUnavailable,
+        LocalDeclarationProjectionFailure.SourceUnavailable,
+        LocalDeclarationProjectionFailure.OwnerUnavailable,
+        LocalDeclarationProjectionFailure.CompilerOwnerUnavailable,
+        LocalDeclarationProjectionFailure.LexicalAncestryUnavailable,
+        is LocalDeclarationProjectionFailure.InvalidAddress -> SourceCompilerEvidenceFailure.UNAVAILABLE
+    }
+
 private data class SourceCompilerProjection(
     val kind: CompilerSymbolKind,
     val qualifiedIdentity: String?,
@@ -109,11 +121,12 @@ private fun KaSymbol.sourceProjection(
     file: SymbolDiscoveryFileIdentity,
     depth: Int = 0,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
 ): SourceCompilerProjectionResult {
-    if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
+    if (workAllowance is WorkAllowance.Bounded && depth > DEFAULT_LOCAL_SOURCE_OWNER_DEPTH)
         return SourceCompilerProjectionResult.LocalRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
     if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
-        return localSourceProjection(session, file, depth, observation)
+        return localSourceProjection(session, file, depth, observation, workAllowance)
     return qualifiedSourceProjection()
 }
 
@@ -122,18 +135,19 @@ private fun KaSymbol.localSourceProjection(
     file: SymbolDiscoveryFileIdentity,
     depth: Int,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
 ): SourceCompilerProjectionResult {
     if (!hasSupportedLocalDeclaration())
         return SourceCompilerProjectionResult.LocalRejected(LocalDeclarationProjectionFailure.UnsupportedDeclaration)
-    when (val proof = localSourceCompilerTypeProof()) {
+    when (val proof = localSourceCompilerTypeProof(workAllowance)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return SourceCompilerProjectionResult.LocalRejected(proof.failure)
     }
     val address =
         when (
             val admitted =
-                localSourceDeclarationAddress(session, file, depth) { owner, ownerDepth ->
-                    owner.localSourceOwnerSignature(session, file, ownerDepth, observation)
+                localSourceDeclarationAddress(session, file, depth, workAllowance) { owner, ownerDepth ->
+                    owner.localSourceOwnerSignature(session, file, ownerDepth, observation, workAllowance)
                 }
         ) {
             is Refinement.Refined -> admitted.value
@@ -194,11 +208,12 @@ private fun KaSymbol.localSourceOwnerSignature(
     file: SymbolDiscoveryFileIdentity,
     depth: Int,
     observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
 ): Refinement<CanonicalCompilerSignature, LocalDeclarationProjectionFailure> {
-    if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
+    if (workAllowance is WorkAllowance.Bounded && depth > DEFAULT_LOCAL_SOURCE_OWNER_DEPTH)
         return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
     if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
-        return sourceProjection(session, file, depth, observation).ownerSignature()
+        return sourceProjection(session, file, depth, observation, workAllowance).ownerSignature()
     val projected =
         when (this) {
             is KaNamedFunctionSymbol -> {

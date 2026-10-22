@@ -191,7 +191,7 @@ class SnapshotSourceReadTest {
 
     private fun budget(fixture: RelationPagingFixture) =
         SourceProtocolBudget(
-            fixture.budget.resources,
+            fixture.budget.resources.bounded(),
             (SourceTextByteLimit.parse(10000) as Refinement.Refined).value,
         )
 }

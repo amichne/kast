@@ -162,7 +162,7 @@ internal class QueryImpactTasks(
         retainedBytes: (QueryImpactRetainedGraph) -> Long,
     ): QueryImpactTaskTransition {
         val required = requiredImpactExpansionBytes(route, observation, source, retainedBytes)
-        if (required > request.budget.checkpointBytes.value) {
+        if (!request.budget.storage.permits(required)) {
             val cutoff = impactCapacityStop(route, required, request.budget.checkpointBytes.value)
             return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(cutoff))
         }
@@ -218,10 +218,19 @@ internal class QueryImpactTasks(
         if (cached != null && route.site !in remainders) return QueryImpactReadAcquisition.Ready(cached)
         val graph = QueryImpactRetainedGraph()
         val current = retainedBytes(graph)
-        val remaining = (request.budget.checkpointBytes.value - current).coerceAtLeast(0L)
+        val remaining =
+            when (val storage = request.budget.storage) {
+                io.github.amichne.kast.query.contract.QueryStorageAllowance.Unlimited ->
+                    request.budget.returnedBytes.value
+                is io.github.amichne.kast.query.contract.QueryStorageAllowance.Bounded ->
+                    (storage.limit.value - current).coerceAtLeast(0L)
+            }
         val itemBytes = saturatedAdd(route.retainedBytes(graph), saturatedAdd(graph.site(route.site), 4096L))
         val reserve = saturatedAdd(itemBytes, itemBytes)
-        if (remaining < reserve)
+        if (
+            request.budget.storage is io.github.amichne.kast.query.contract.QueryStorageAllowance.Bounded &&
+                remaining < reserve
+        )
             return QueryImpactReadAcquisition.Cutoff(
                 impactCapacityStop(route, saturatedAdd(current, reserve), request.budget.checkpointBytes.value)
             )

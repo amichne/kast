@@ -105,7 +105,7 @@ internal class ImpactFindingFixture(withRequestedSites: Boolean = false) {
         RelationRequest.start(
             symbols.selector,
             RelationMeaning.References,
-            RelationBudget(budget.resources, RelationByteLimit.parse(100000).value()),
+            RelationBudget(budget.resources.bounded(), RelationByteLimit.parse(100000).value()),
             RelationSearchBoundary.WORKSPACE_EXPANSION,
         )
     private val site =

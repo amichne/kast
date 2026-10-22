@@ -78,8 +78,12 @@ mise exec -- uv run --locked ruff format --check .
 mise exec -- uv run --locked ruff check .
 ```
 
-The root `verifyDocumentationGlossary` task runs the focused suite and examines the repository projections and current prose.
-The root `check` and `productBuildGate` tasks include that task.
+The root `verifyDocumentationGlossary` task examines repository projections and current prose without the tooling tests.
+Run `documentationToolingTest` to examine the tooling itself.
+The root `check` and `productBuildGate` tasks include both tasks.
+Both consumers use one locked Python environment under `build/documentation/python`.
+Their reports reside in `build/reports/validation/`.
+Gradle reuses unchanged reports and reruns consumers after an input change or a report deletion.
 
 The shared prose assessor remains a separate consumer.
 Its report v2 omits glossary fields and does not accept `--glossary`.

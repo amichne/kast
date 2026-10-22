@@ -12,7 +12,7 @@ internal fun ImpactAccountingDocument.Investigated.validateSiteAccounting(
         val accounting = (item.item.witness as ImpactWitnessDocument.SiteAccounting).accounting
         if (!accounting.matchesRequestedSite(item.item.ordinal, requestedSites.values))
             return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
-        if (accounting.admission.examinedWorkUnits.value > accounting.admission.budget.maxWorkUnits.value)
+        if (!accounting.admission.budget.permitsWork(accounting.admission.examinedWorkUnits.value))
             return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
         if (!accounting.outcome.matchesOriginalPaths(this))
             return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)

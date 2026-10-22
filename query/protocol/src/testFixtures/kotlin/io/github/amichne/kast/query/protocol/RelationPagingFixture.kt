@@ -68,7 +68,7 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
         observedBoundaries += request.boundary
         var state = (request.position as? RelationReadPosition.Resume)?.continuation?.providerState ?: inventory
         val start = state.consumedLocatorCount.value
-        val end = minOf(4, start + request.budget.resources.resultLimit.value)
+        val end = minOf(4, start + request.budget.outputResults.value)
         val facts =
             (start until end).map { index ->
                 consumed += index
