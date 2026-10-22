@@ -196,7 +196,7 @@ Exact focus reads restore the original authority and reject stale references wit
     "type": "READ_SOURCE",
     "candidateRef": "<issued candidateSelector>",
     "region": "ENCLOSING_CALLABLE_BODY",
-    "text": {"type": "WINDOW", "beforeLines": 2, "afterLines": 3}
+    "text": {"type": "EXCERPT", "maxLines": 20}
   }
 }
 ```
@@ -206,6 +206,8 @@ Exact focus reads restore the original authority and reject stale references wit
 `ANCHOR` keeps the exact anchor, and `FILE` selects its file.
 
 Omission or `null` selects `ANCHOR` and `COMPLETE` text.
+`EXCERPT` returns at most `maxLines` around the anchor start, clipped to the selected region.
+Its default is 40 lines, and its range is 1 to 1000 lines.
 `WINDOW` defaults to five lines before and after the anchor, clipped to the selected region.
 A window includes the full anchor span, so a multi-line anchor can produce more text than these line counts.
 An oversized view withholds text and reports an explicit limitation.

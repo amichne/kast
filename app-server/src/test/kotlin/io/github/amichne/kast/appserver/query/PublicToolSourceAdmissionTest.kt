@@ -14,6 +14,32 @@ import org.junit.jupiter.api.Test
 
 class PublicToolSourceAdmissionTest {
     @Test
+    fun `source excerpt chooses a maximum line count independently of its body region`() {
+        val raw = Json {
+            encodeDefaults = true
+        }
+            .encodeToJsonElement(ExcerptReadInput(ExcerptReadAction("exact:v5:AAAAAAAAAAAAAAAAAAAAAA", ExcerptText(7))))
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw)
+        assertTrue(admitted is Refinement.Refined, admitted.toString())
+        val request = ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Source).request
+        val encoded =
+            Json.encodeToJsonElement(
+                    io.github.amichne.kast.protocol.contract.SourceReadRequest.serializer(),
+                    request,
+                )
+                .jsonObject
+        val text = encoded.getValue("text").jsonObject
+        assertEquals("excerpt", text.getValue("type").jsonPrimitive.content)
+        assertEquals("7", text.getValue("maxLines").jsonPrimitive.content)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument.Body(
+                io.github.amichne.kast.protocol.contract.SourceBodyKindDocument.CALLABLE
+            ),
+            request.region,
+        )
+    }
+
+    @Test
     fun `exact declaration focus uses strict snapshot admission without changing its identity`() {
         val reference = text("exact:v5:AAAAAAAAAAAAAAAAAAAAAA")
         val raw =
@@ -77,7 +103,13 @@ class PublicToolSourceAdmissionTest {
         // This fixture proves syntax admission only. Source admission still needs an issued snapshot.
         val selector = text("source-selector-v2:eA:2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881")
         for (presentation in
-            listOf(null, PublicToolSourceTextNone, PublicToolSourceTextComplete, PublicToolSourceTextWindow())) {
+            listOf(
+                null,
+                PublicToolSourceTextNone,
+                PublicToolSourceTextComplete,
+                PublicToolSourceTextWindow(),
+                PublicToolSourceTextExcerpt(),
+            )) {
             val raw = Json {
                 encodeDefaults = true
             }
@@ -104,6 +136,13 @@ class PublicToolSourceAdmissionTest {
                     assertEquals(5, window.beforeLines.value)
                     assertEquals(5, window.afterLines.value)
                 }
+                is PublicToolSourceTextExcerpt ->
+                    assertEquals(
+                        40,
+                        (request.text as io.github.amichne.kast.protocol.contract.SourceTextRequestDocument.Excerpt)
+                            .maxLines
+                            .value,
+                    )
             }
         }
     }
@@ -116,6 +155,8 @@ class PublicToolSourceAdmissionTest {
                 "\"startOffset\":20",
                 "\"text\":{\"type\":\"WINDOW\",\"beforeLines\":-1}",
                 "\"text\":{\"type\":\"WINDOW\",\"afterLines\":1001}",
+                "\"text\":{\"type\":\"EXCERPT\",\"maxLines\":0}",
+                "\"text\":{\"type\":\"EXCERPT\",\"maxLines\":1001}",
                 "\"text\":{\"type\":\"COMPLETE\",\"afterLines\":2}",
             )
         for (fields in invalid) {
@@ -213,3 +254,15 @@ private data class FocusedTextWindow(
     val afterLines: Int,
     val type: String = "WINDOW",
 )
+
+@Serializable private data class ExcerptReadInput(val request: ExcerptReadAction)
+
+@Serializable
+private data class ExcerptReadAction(
+    val candidateRef: String,
+    val text: ExcerptText,
+    val region: String = "CALLABLE_BODY",
+    val type: String = "READ_SOURCE",
+)
+
+@Serializable private data class ExcerptText(val maxLines: Int, val type: String = "EXCERPT")

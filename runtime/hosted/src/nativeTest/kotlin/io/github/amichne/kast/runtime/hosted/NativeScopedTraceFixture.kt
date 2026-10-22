@@ -13,6 +13,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -87,6 +88,9 @@ internal class NativeScopedTraceFixture(
         }
     }
     private val limits = ReadLimits.Default
+    private val references = CanonicalQueryReferences(model)
+
+    fun sourceProtocol() = CanonicalSourceReadProtocol(source(), references)
 
     fun protocol(): CanonicalQueryProtocol {
         val symbols =
@@ -119,7 +123,7 @@ internal class NativeScopedTraceFixture(
                 traversal = hostedTraversalOperations(relations, observation),
                 traversalCeiling = traversalBudget,
             ),
-            CanonicalQueryReferences(model),
+            references,
         )
     }
 

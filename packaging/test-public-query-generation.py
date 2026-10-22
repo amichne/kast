@@ -98,8 +98,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
         expected = {
-            "query_symbols.parameters.json": "803fe3daff962bfdf9b19c4c361a507f7aab490ea26cbfd73788fb6f02eb08fe",
-            "query_symbols.openai-parameters.json": "ba6a06893b12b2b605b5e985e02e1ef45c8e7f185a789ece9074fc9be6324782",
+            "query_symbols.parameters.json": "e69b711b4049e54818ed9256f86bc064e289027aac5e671b04bce202c9cea17e",
+            "query_symbols.openai-parameters.json": "0133f3a83205db0f11281f61a98124ae88d4ceff9ded95134d1764f7470a67e8",
         }
         generated = generator.render_tools(self.authority)
         for name, digest in expected.items():
@@ -207,7 +207,7 @@ class PublicQueryGenerationTest(unittest.TestCase):
         source = generated[ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolSourceDocuments.kt']
         ingress = generated[ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt']
         self.assertIn('const val sourceBeforeLines = 7', ingress)
-        for name in ('ReadSourceAction', 'SourceTextComplete', 'SourceTextNone', 'SourceTextWindow'):
+        for name in ('ReadSourceAction', 'SourceTextComplete', 'SourceTextNone', 'SourceTextWindow', 'SourceTextExcerpt'):
             declaration = 'internal data ' + ('object' if name in ('SourceTextComplete', 'SourceTextNone') else 'class') + ' PublicTool' + name
             self.assertEqual(1, source.count(declaration))
             self.assertNotIn(declaration, ingress)

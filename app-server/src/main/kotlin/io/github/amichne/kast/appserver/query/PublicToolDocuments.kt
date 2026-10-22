@@ -343,6 +343,7 @@ internal data class PublicToolReplaceBody(
 ) : PublicToolDocument
 
 internal object PublicToolDefaults {
+    const val sourceMaxLines = 40
     const val sourceBeforeLines = 5
     const val sourceAfterLines = 5
     val nameMatch = PublicToolNameMatch.EXACT

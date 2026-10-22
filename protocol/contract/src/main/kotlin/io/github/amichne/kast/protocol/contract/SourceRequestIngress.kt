@@ -290,7 +290,7 @@ private fun validateSourceText(root: JsonObject) {
             "type",
             SourceRequestPath.TEXT_TYPE,
             SourceRequestRule.TEXT_TYPE,
-            listOf("complete", "none", "window"),
+            listOf("complete", "none", "window", "excerpt"),
         )
     ) {
         "window" -> {
@@ -310,6 +310,17 @@ private fun validateSourceText(root: JsonObject) {
                 0,
                 MAX_SOURCE_READ_LINE_COUNT.toLong(),
                 SourceRequestRule.LINE_COUNT,
+            )
+        }
+        "excerpt" -> {
+            sourceFields(projection, SourceRequestPath.TEXT, setOf("type", "maxLines"))
+            sourceNumber(
+                projection,
+                "maxLines",
+                SourceRequestPath.MAX_LINES,
+                1,
+                MAX_SOURCE_READ_LINE_COUNT.toLong(),
+                SourceRequestRule.POSITIVE_LINE_COUNT,
             )
         }
         else -> sourceFields(projection, SourceRequestPath.TEXT, setOf("type"))

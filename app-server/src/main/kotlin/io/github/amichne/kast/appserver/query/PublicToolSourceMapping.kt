@@ -32,4 +32,8 @@ internal fun PublicToolSourceText?.lowerSourceText(): SourceTextRequestDocument 
                 proven(SourceLineCountDocument.parse(beforeLines ?: PublicToolDefaults.sourceBeforeLines)),
                 proven(SourceLineCountDocument.parse(afterLines ?: PublicToolDefaults.sourceAfterLines)),
             )
+        is PublicToolSourceTextExcerpt ->
+            SourceTextRequestDocument.Excerpt(
+                proven(SourceLineCountDocument.parse(maxLines ?: PublicToolDefaults.sourceMaxLines))
+            )
     }

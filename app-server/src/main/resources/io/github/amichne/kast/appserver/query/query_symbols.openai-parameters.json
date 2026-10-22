@@ -2911,7 +2911,7 @@
         "executionBudget"
       ],
       "additionalProperties": false,
-      "description": "Read source from an issued focus without coordinates. Select the region and text view independently. Stale references reject without reacquisition. This action does not replay query stages."
+      "description": "Read an issued focus with separate region and text choices. Stale references reject. Query stages do not replay."
     },
     "Trace": {
       "type": "object",
@@ -3082,7 +3082,7 @@
         "type"
       ],
       "additionalProperties": false,
-      "description": "Return the selected region in full. A byte limit withholds text with an explicit limitation."
+      "description": "Return the complete region. A byte limit can withhold its text."
     },
     "SourceTextNone": {
       "type": "object",
@@ -3098,7 +3098,7 @@
         "type"
       ],
       "additionalProperties": false,
-      "description": "Return the selected region and its issued selector without text."
+      "description": "Return the region selector without text."
     },
     "SourceTextWindow": {
       "type": "object",
@@ -3132,7 +3132,7 @@
         "afterLines"
       ],
       "additionalProperties": false,
-      "description": "Return whole lines around the anchor, clipped to the selected region. The text selector identifies a window, not the complete region."
+      "description": "Return lines around the full anchor span, clipped to the region. A window does not prove complete declaration text."
     },
     "SourceText": {
       "anyOf": [
@@ -3144,8 +3144,36 @@
         },
         {
           "$ref": "#/$defs/SourceTextWindow"
+        },
+        {
+          "$ref": "#/$defs/SourceTextExcerpt"
         }
       ]
+    },
+    "SourceTextExcerpt": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "EXCERPT"
+          ]
+        },
+        "maxLines": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "type",
+        "maxLines"
+      ],
+      "additionalProperties": false,
+      "description": "Cap the view at maxLines around the anchor start, clipped to the region."
     }
   }
 }

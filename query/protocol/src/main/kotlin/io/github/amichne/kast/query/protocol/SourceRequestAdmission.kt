@@ -288,6 +288,22 @@ private fun SourceTextRequestDocument.domain(): Refinement<TextProjection, Sourc
                     )
             Refinement.Refined(TextProjection.window(before, after))
         }
+        is SourceTextRequestDocument.Excerpt -> {
+            val lines =
+                LineCount.parse(requested.maxLines.value).refinedOrNull()
+                    ?: return sourceRequestRejected(
+                        io.github.amichne.kast.protocol.contract.SourceRequestPath.MAX_LINES,
+                        io.github.amichne.kast.protocol.contract.SourceRequestRule.POSITIVE_LINE_COUNT,
+                    )
+            when (val admitted = TextProjection.Excerpt.create(lines)) {
+                is Refinement.Refined -> admitted
+                is Refinement.Rejected ->
+                    sourceRequestRejected(
+                        io.github.amichne.kast.protocol.contract.SourceRequestPath.MAX_LINES,
+                        io.github.amichne.kast.protocol.contract.SourceRequestRule.POSITIVE_LINE_COUNT,
+                    )
+            }
+        }
     }
 
 private const val MAX_SOURCE_FILTER_COUNT = 4

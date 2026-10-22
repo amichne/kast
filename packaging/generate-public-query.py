@@ -286,7 +286,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     source_body = []
     discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource'}
     for key, spec in objects.items():
-        object_body = source_body if key in {'ReadSourceAction', 'SourceTextComplete', 'SourceTextNone', 'SourceTextWindow'} else trace_body if key == 'Trace' else impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
+        object_body = source_body if key == 'ReadSourceAction' or key.startswith('SourceText') else trace_body if key == 'Trace' else impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
@@ -305,6 +305,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
                                  len(inline_annotation + declaration) <= 120 else annotation)
             object_body.append(object_annotation + declaration + '\n\n')
         else:
+            class_start = len(object_body)
             object_body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
                 resolved = definitions[value['$ref'].split('/')[-1]] if '$ref' in value else value
@@ -339,6 +340,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
                 else:
                     object_body.append(declaration)
             object_body.append(')' + suffix + '\n\n')
+            if key.startswith('SourceText') and len(props) == 1:
+                parameter = object_body[-2].strip().removesuffix(',')
+                declaration = f'internal data class PublicTool{key}({parameter}){suffix}'
+                if len(declaration) <= 120:
+                    object_body[class_start:] = [annotation + declaration + '\n\n']
     for key, values in enums.items():
         enum_body = source_body if key == 'Region' else lines
         enum_body.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
@@ -356,6 +362,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     def text_value(value): return 'toolDefault(ProtocolText.parse(' + json.dumps(value) + '))'
     def bounded(values): return 'toolDefault(BoundedProtocolList.create(listOf(' + ', '.join(values) + ')))'
     lines.append('internal object PublicToolDefaults {\n')
+    lines.append(f'    const val sourceMaxLines = {definitions["SourceTextExcerpt"]["properties"]["maxLines"]["default"]}\n')
     for field in ('beforeLines', 'afterLines'):
         value = definitions['SourceTextWindow']['properties'][field]['default']
         lines.append(f'    const val source{field[0].upper() + field[1:]} = {value}\n')

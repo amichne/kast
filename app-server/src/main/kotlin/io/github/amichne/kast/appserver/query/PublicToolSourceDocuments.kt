@@ -26,6 +26,10 @@ internal data class PublicToolSourceTextWindow(
 ) : PublicToolSourceText
 
 @Serializable
+@SerialName("EXCERPT")
+internal data class PublicToolSourceTextExcerpt(val maxLines: Int? = null) : PublicToolSourceText
+
+@Serializable
 internal enum class PublicToolRegion {
     @SerialName("ANCHOR") ANCHOR,
     @SerialName("CALLABLE_BODY") CALLABLE_BODY,
