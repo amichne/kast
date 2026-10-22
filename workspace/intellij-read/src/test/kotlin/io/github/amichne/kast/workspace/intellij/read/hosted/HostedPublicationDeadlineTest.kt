@@ -50,7 +50,7 @@ class HostedPublicationDeadlineTest {
             )
         val allowance = progress.admitSemanticTime().proven()
         val report = ExecutionBudgetReport.from(allowance.executionBudget)
-        assertEquals(ceiling, allowance.semantic.value)
+        assertEquals(ceiling, allowance.boundedFixture().semantic.value)
         assertEquals(1500L, allowance.diagnosticScope.value)
         assertTrue(
             bytes(report) <= checkedSizes.max(),
@@ -90,11 +90,12 @@ class HostedPublicationDeadlineTest {
         val candidate = allowance(initial)
         val original = report(candidate)
         val selected =
-            when (val supplied = request.requested.elapsed) {
+            when (val supplied = request.requested.boundedFixture().elapsed) {
                 ExecutionAllowance.Default -> limits[ReadLimitParameter.SEMANTIC_MILLIS].value.toLong()
                 is ExecutionAllowance.Requested -> supplied.value.value
             }
-        val witness = report(allowance(minOf(candidate.semantic.value, (selected - 1L).coerceAtLeast(1L))))
+        val witness =
+            report(allowance(minOf(candidate.boundedFixture().semantic.value, (selected - 1L).coerceAtLeast(1L))))
         val bound = maxOf(bytes(original), bytes(witness))
         val decimalBoundaries =
             generateSequence(10L) { if (it < 1_000_000_000L) it * 10L else null }
@@ -106,15 +107,15 @@ class HostedPublicationDeadlineTest {
                     initial,
                     selected,
                     (selected - 1L).coerceAtLeast(1L),
-                    candidate.semantic.value,
-                    (candidate.semantic.value - 1L).coerceAtLeast(1L),
+                    candidate.boundedFixture().semantic.value,
+                    (candidate.boundedFixture().semantic.value - 1L).coerceAtLeast(1L),
                 ) + decimalBoundaries)
                 .filter { it <= initial }
         for (available in availableValues) {
             val refined = allowance(available)
             val observed = report(refined)
             assertTrue(bytes(observed) <= bound)
-            assertEquals(original.work, observed.work)
+            assertEquals(original.boundedFixture().work, observed.boundedFixture().work)
             assertEquals(original.results, observed.results)
             assertEquals(original.returnedBytes, observed.returnedBytes)
             assertEquals(
@@ -173,7 +174,7 @@ class HostedPublicationDeadlineTest {
                 runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { it }
             } as HostedExecution.Completed
         val allowance = (result.value as HostedSemanticRead.Resolved).evidence
-        assertEquals(550L, allowance.semantic.value)
+        assertEquals(550L, allowance.boundedFixture().semantic.value)
         assertEquals(550L, allowance.diagnosticScope.value)
         assertEquals(
             ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(allowance.executionBudget)),

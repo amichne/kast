@@ -3,6 +3,7 @@
 package io.github.amichne.kast.symbol.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
@@ -11,8 +12,14 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 
 private const val MAX_LOCAL_COMPILER_TYPE_PARAMETERS = 256
 
-internal fun KaSymbol.localDeclarationCompilerTypeProof(): Refinement<Unit, LocalDeclarationProjectionFailure> {
-    if (this is KaNamedFunctionSymbol && typeParameters.size > MAX_LOCAL_COMPILER_TYPE_PARAMETERS)
+internal fun KaSymbol.localDeclarationCompilerTypeProof(
+    workAllowance: WorkAllowance = defaultLocalCompilerTypeAllowance()
+): Refinement<Unit, LocalDeclarationProjectionFailure> {
+    if (
+        workAllowance is WorkAllowance.Bounded &&
+            this is KaNamedFunctionSymbol &&
+            typeParameters.size > MAX_LOCAL_COMPILER_TYPE_PARAMETERS
+    )
         return Refinement.Rejected(LocalDeclarationProjectionFailure.WorkLimitReached)
     val facts =
         when (this) {
@@ -26,7 +33,7 @@ internal fun KaSymbol.localDeclarationCompilerTypeProof(): Refinement<Unit, Loca
             is KaAnonymousObjectSymbol -> superTypes.asSequence()
             else -> emptySequence()
         }
-    return localCompilerTypeProof(facts).asLocalDeclarationTypeProof()
+    return localCompilerTypeProof(facts, workAllowance).asLocalDeclarationTypeProof()
 }
 
 internal fun LocalCompilerTypeProof.asLocalDeclarationTypeProof(): Refinement<Unit, LocalDeclarationProjectionFailure> =

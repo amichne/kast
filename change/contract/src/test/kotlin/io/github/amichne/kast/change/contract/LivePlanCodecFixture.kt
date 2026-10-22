@@ -231,9 +231,17 @@ private fun fixtureVerificationScope(
             ),
             RelationByteLimit.parse(10000).refined(),
         )
+    val boundedRelationBudget =
+        io.github.amichne.kast.relation.contract.BoundedRelationBudget.admit(relationBudget).refined()
     val verificationScope =
         LiveAddDeclarationVerificationScope.restore(
-                relations = listOf(LivePlannedRelationRead(RelationMeaning.References, relationBudget)),
+                relations =
+                    listOf(
+                        LivePlannedRelationRead(
+                            RelationMeaning.References,
+                            boundedRelationBudget,
+                        )
+                    ),
                 traversals =
                     listOf(
                         LivePlannedTraversal(
@@ -247,6 +255,7 @@ private fun fixtureVerificationScope(
                                 frontier = TraversalFrontierLimit.parse(10).refined(),
                                 oneHop = relationBudget,
                             ),
+                            boundedRelationBudget,
                         )
                     ),
                 diagnostics = listOf(LivePlannedDiagnosticScope.restore(listOf(target.file.path)).refined()),

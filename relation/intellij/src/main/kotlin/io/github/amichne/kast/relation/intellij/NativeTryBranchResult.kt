@@ -4,6 +4,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -26,9 +27,10 @@ internal object NativeTryBranchResult {
         expression: KtExpression,
         position: TryBranchResultPosition.Result,
         observation: IntellijReadObservation,
+        workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
     ): Refinement<ValueTransferEvidence.NormalBranchResult, ValueFlowUnsupportedCause> {
         observation.count(IntellijReadCounter.VALUE_FLOW_BRANCH_RESULT_CANDIDATES)
-        when (val condition = completion(expression, position, observation)) {
+        when (val condition = completion(expression, position, observation, workAllowance)) {
             Completion.VALUE -> Unit
             Completion.ABRUPT,
             Completion.LIMIT,
@@ -58,6 +60,7 @@ internal object NativeTryBranchResult {
         expression: KtExpression,
         position: TryBranchResultPosition.Result,
         observation: IntellijReadObservation,
+        workAllowance: WorkAllowance,
     ): Completion =
         when {
             position.enclosing.finallyBlock != null -> Completion.FINALLY
@@ -67,12 +70,16 @@ internal object NativeTryBranchResult {
                     val sourceType = expression.expressionType
                     val targetType = position.enclosing.expressionType
                     if (sourceType == null || targetType == null) Completion.UNAVAILABLE
-                    else checkedCompletion(sourceType, targetType)
+                    else checkedCompletion(sourceType, targetType, workAllowance)
                 }
         }
 
-    private fun KaSession.checkedCompletion(sourceType: KaType, targetType: KaType): Completion =
-        when (nativeCompilerTypeProof(listOf(sourceType, targetType))) {
+    private fun KaSession.checkedCompletion(
+        sourceType: KaType,
+        targetType: KaType,
+        workAllowance: WorkAllowance,
+    ): Completion =
+        when (nativeCompilerTypeProof(listOf(sourceType, targetType), workAllowance)) {
             NativeCompilerTypeProof.ADMITTED ->
                 when (val source = completion(sourceType)) {
                     Completion.VALUE -> completion(targetType)

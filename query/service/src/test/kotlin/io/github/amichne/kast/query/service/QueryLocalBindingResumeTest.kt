@@ -88,8 +88,8 @@ class QueryLocalBindingResumeTest {
         val s = Scenario()
         val pages = drainNative(s, grant)
         pages.forEach { page ->
-            assertTrue(page.examinedWorkUnits.value <= grant.resources.workUnitLimit.value)
-            assertTrue(page.transfers.size <= grant.resources.resultLimit.value)
+            assertTrue(page.examinedWorkUnits.value <= grant.resources.bounded().workUnitLimit.value)
+            assertTrue(page.transfers.size <= grant.resources.bounded().resultLimit.value)
             assertTrue(page.retainedBytes <= grant.returnedBytes.value)
         }
         assertEquals(listOf(s.d, s.e, s.g), pages.flatMap { it.transfers }.map { it.target })
@@ -98,7 +98,7 @@ class QueryLocalBindingResumeTest {
             pages.flatMap { it.obligations }.map { it.cause }.toSet(),
         )
         assertEquals((0..7).toList(), s.confirmations)
-        if (grant.resources.workUnitLimit.value == 3L)
+        if (grant.resources.bounded().workUnitLimit.value == 3L)
             assertTrue(s.reads.filterIsInstance<ValueFlowRead.Suspended>().any { it.step.transfers.isEmpty() })
     }
 
@@ -260,8 +260,10 @@ class QueryLocalBindingResumeTest {
             assertEquals(scan.receipts.sumOf { it.examinedWorkUnits.value }, scan.examinedWorkUnits.value)
             assertEquals(grants, scan.receipts.map { it.domain.budget })
             scan.receipts.forEach { receipt ->
-                assertTrue(receipt.examinedWorkUnits.value <= receipt.domain.budget.resources.workUnitLimit.value)
-                assertTrue(receipt.returnedResults.value <= receipt.domain.budget.resources.resultLimit.value)
+                assertTrue(
+                    receipt.examinedWorkUnits.value <= receipt.domain.budget.resources.bounded().workUnitLimit.value
+                )
+                assertTrue(receipt.returnedResults.value <= receipt.domain.budget.resources.bounded().resultLimit.value)
                 assertTrue(receipt.returnedBytes.value <= receipt.domain.budget.returnedBytes.value)
             }
         }

@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -69,7 +70,27 @@ value class RelationByteLimit private constructor(val value: Long) {
 data class RelationBudget(
     val resources: ResourceBudget,
     val returnedBytes: RelationByteLimit,
-)
+    val pageResults: ResultLimit,
+) {
+    constructor(
+        resources: ResourceBudget.Bounded,
+        returnedBytes: RelationByteLimit,
+    ) : this(resources, returnedBytes, resources.resultLimit)
+
+    fun permitsReturnedBytes(bytes: Long): Boolean =
+        when (resources) {
+            ResourceBudget.RunnerControlled -> true
+            is ResourceBudget.Bounded -> bytes <= returnedBytes.value
+        }
+
+    fun permitsOutputCount(count: Int): Boolean = count <= outputResults.value
+
+    val outputResults: ResultLimit =
+        when (resources) {
+            is ResourceBudget.Bounded -> resources.resultLimit
+            ResourceBudget.RunnerControlled -> pageResults
+        }
+}
 
 enum class RelationScopeFingerprintFailure {
     INVALID_SHA256

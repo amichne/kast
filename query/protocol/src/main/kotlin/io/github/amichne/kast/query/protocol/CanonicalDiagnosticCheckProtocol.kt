@@ -54,7 +54,7 @@ class CanonicalDiagnosticCheckProtocol(
     suspend fun execute(
         request: DiagnosticCheckRequest,
         current: SemanticReadAuthority,
-        budget: ResourceBudget,
+        budget: ResourceBudget.Bounded,
         report: ExecutionBudgetReport? = null,
     ): DiagnosticPublishedPage {
         val query =
@@ -349,10 +349,11 @@ private fun DiagnosticNextPage.token(): ProtocolText? =
     }
 
 private fun DiagnosticCheckRequest.effectiveBudget(
-    budget: ResourceBudget
-): Refinement<ResourceBudget, DiagnosticCheckRejection> =
-    when (val count = ResultLimit.parse(minOf(limit.value, budget.resultLimit.value))) {
-        is Refinement.Refined -> Refinement.Refined(budget.copy(resultLimit = count.value))
+    budget: ResourceBudget.Bounded
+): Refinement<ResourceBudget.Bounded, DiagnosticCheckRejection> =
+    when (val count = ResultLimit.parse(limit.value)) {
+        is Refinement.Refined ->
+            Refinement.Refined(budget.copy(resultLimit = budget.resultLimit.intersect(count.value)))
         is Refinement.Rejected -> Refinement.Rejected(DiagnosticCheckRejection.SCOPE_REJECTED)
     }
 

@@ -99,7 +99,7 @@ class CompleteNamedRelationPartitionTest {
             RelationRequest.start(
                 subject,
                 RelationMeaning.Callees,
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).value())),
+                budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).value())),
             )
         val endpoints = CallbackEndpointReadmissions.fromCompiler(authority, emptyMap()).value()
         assertEquals(

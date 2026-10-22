@@ -109,10 +109,10 @@ internal open class AutomaticDenseRetentionCase : AutomaticSymbolQueryCase() {
             traversal = TraversalOperations { unexpected("traversal") },
             traversalCeiling =
                 TraversalBudget(
-                    grant.resources.resultLimit,
+                    grant.resources.bounded().resultLimit,
                     TraversalByteLimit.parse(100_000).refined(),
-                    grant.resources.workUnitLimit,
-                    grant.resources.elapsedTimeLimit,
+                    grant.resources.bounded().workUnitLimit,
+                    grant.resources.bounded().elapsedTimeLimit,
                     TraversalDepthLimit.parse(1).refined(),
                     TraversalFrontierLimit.parse(100).refined(),
                     fixture.budget,
@@ -126,7 +126,7 @@ internal open class AutomaticDenseRetentionCase : AutomaticSymbolQueryCase() {
         positions += state.consumedLocatorCount.value
         val references =
             state.prepared
-                .take(minOf(20, request.budget.resources.resultLimit.value))
+                .take(minOf(20, request.budget.resources.bounded().resultLimit.value))
                 .map { locator ->
                     val occurrence = reference(request, locator)
                     state = state.consume(RelationProviderConsumption.Confirmed(occurrence))

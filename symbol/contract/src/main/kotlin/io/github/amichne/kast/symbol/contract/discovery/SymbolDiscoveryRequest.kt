@@ -2,6 +2,7 @@ package io.github.amichne.kast.symbol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
 import java.util.Collections
 
 private const val MAX_DISCOVERY_PATTERN_LENGTH = 256
@@ -76,7 +77,27 @@ value class SymbolDiscoveryByteLimit private constructor(val value: Long) {
 data class SymbolDiscoveryBudget(
     val resources: ResourceBudget,
     val returnedBytes: SymbolDiscoveryByteLimit,
-)
+    val pageResults: ResultLimit,
+) {
+    constructor(
+        resources: ResourceBudget.Bounded,
+        returnedBytes: SymbolDiscoveryByteLimit,
+    ) : this(resources, returnedBytes, resources.resultLimit)
+
+    fun permitsReturnedBytes(bytes: Long): Boolean =
+        when (resources) {
+            ResourceBudget.RunnerControlled -> true
+            is ResourceBudget.Bounded -> bytes <= returnedBytes.value
+        }
+
+    fun permitsOutputCount(count: Int): Boolean = resources.permitsResults(count)
+
+    val outputResults: ResultLimit =
+        when (resources) {
+            is ResourceBudget.Bounded -> resources.resultLimit
+            ResourceBudget.RunnerControlled -> pageResults
+        }
+}
 
 /** Closed domain meaning for the query declaration discovery. */
 sealed interface SymbolDiscoveryTarget {

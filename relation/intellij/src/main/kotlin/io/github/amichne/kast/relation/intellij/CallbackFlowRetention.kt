@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultAllowance
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.CallbackBodyBinding
 import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
@@ -21,9 +22,14 @@ import java.util.IdentityHashMap
 
 /** Proof records share a result grant. Byte estimates are diagnostic, independent of serialized output. */
 internal class CallbackFlowRetention(
-    private val resultLimit: ResultLimit,
+    private val resultAllowance: ResultAllowance,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
+    constructor(
+        resultLimit: ResultLimit,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
+    ) : this(ResultAllowance.Bounded(resultLimit), observation)
+
     private var retainedBytes = 0L
     private var retainedResults = 0
     private val formals = CallbackRetainedRecords<CallbackParameterIdentity>(this) { it.retainedBytes }
@@ -127,7 +133,7 @@ internal class CallbackFlowRetention(
         observe(IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES, requiredBytes)
         val admitted =
             when {
-                retainedResults >= resultLimit.value -> {
+                !resultAllowance.hasCapacity(retainedResults) -> {
                     observation.count(IntellijReadCounter.CALLBACK_PROOF_RETENTION_RESULT_REJECTED)
                     Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED)
                 }

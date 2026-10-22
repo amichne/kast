@@ -1,11 +1,11 @@
 ---
 type: Module Guide
 title: "Kast traversal"
-description: "Defines bounded graph traversal and executes it through the existing relation operation."
+description: "Defines graph traversal and executes it through the existing relation operation."
 resource: "repo://traversal"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-22T06:15:00Z"
+source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: traversal/contract/build.gradle.kts
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
@@ -26,7 +26,7 @@ code_sources:
 
 ## Purpose
 
-Defines bounded graph traversal and executes it through the existing relation operation.
+Defines graph traversal and executes it through the existing relation operation.
 
 ## Key Files
 
@@ -52,5 +52,7 @@ Defines bounded graph traversal and executes it through the existing relation op
 
 - For omitted nodes, examine the depth, expansion domain, coverage, and partial frontier before changing enumeration.
 - For the public `WALK` stage, trace query admission and projection into this service.
+- `TraversalBudget.RunnerControlled` needs a `RunnerControlledRelationBudget` for one-hop reads. Keep that proof through every page and continuation.
+- Explicit depth, fan-out, and expansion scopes define the question. Output page limits do not define semantic completion.
 - The public `TRACE` stage has a fixed topology in the query engine. It does not expose arbitrary traversal depth.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

@@ -146,7 +146,7 @@ private fun observeIndexedDiagnosticFile(
     }
 }
 
-private fun diagnosticEnumerationBudget(limits: ReadLimits, budget: ResourceBudget): ResourceBudget {
+private fun diagnosticEnumerationBudget(limits: ReadLimits, budget: ResourceBudget.Bounded): ResourceBudget.Bounded {
     val scope = diagnosticScopeBudget(limits)
     return ResourceBudget(
         scope.resultLimit,

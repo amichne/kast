@@ -4,8 +4,8 @@ title: "Kast kernel"
 description: "Defines shared outcomes, evidence, refinement, identity, budgets, and observability for the semantic domains."
 resource: "repo://kernel"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-22T06:15:00Z"
+source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: kernel/build.gradle.kts
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
@@ -14,6 +14,9 @@ code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/Refinement.kt
+  - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ResourceBudget.kt
+  - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ResultAllowance.kt
+  - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/WorkAllowance.kt
   - path: kernel/src/test/kotlin/io/github/amichne/kast/kernel/ExecutionBudgetTest.kt
   - path: kernel/src/test/kotlin/io/github/amichne/kast/kernel/ReadLimitsTest.kt
 ---
@@ -33,6 +36,8 @@ Defines shared outcomes, evidence, refinement, identity, budgets, and observabil
 - [EvidenceEnvelope.kt](src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt) - payload evidence and its authority.
 - [Refinement.kt](src/main/kotlin/io/github/amichne/kast/kernel/Refinement.kt) - typed admission and finite failure.
 - [ExecutionBudget.kt](src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt) - caller grants, default grants, ceilings, and clamp evidence.
+- [ResourceBudget.kt](src/main/kotlin/io/github/amichne/kast/kernel/ResourceBudget.kt) - finite grants and the explicit `RunnerControlled` variant.
+- [WorkAllowance.kt](src/main/kotlin/io/github/amichne/kast/kernel/WorkAllowance.kt) and [ResultAllowance.kt](src/main/kotlin/io/github/amichne/kast/kernel/ResultAllowance.kt) - finite or unlimited semantic allowances.
 - [ReadLimits.kt](src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt) - read, retention, and concurrency limits.
 - [KastObservability.kt](src/main/kotlin/io/github/amichne/kast/kernel/KastObservability.kt) - the domain observability port.
 
@@ -51,4 +56,5 @@ Defines shared outcomes, evidence, refinement, identity, budgets, and observabil
 
 - For a shared proof or failure, start with `OperationOutcome` and `Refinement`.
 - Keep domain-specific meaning in the domain contract.
+- Carry the budget variant through consumers. Keep finite output pages separate from unlimited semantic allowances. Do not encode unlimited grants with numeric sentinels.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

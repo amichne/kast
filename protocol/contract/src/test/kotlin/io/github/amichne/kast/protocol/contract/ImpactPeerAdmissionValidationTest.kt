@@ -2,6 +2,7 @@ package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class ImpactPeerAdmissionValidationTest {
@@ -30,10 +31,11 @@ class ImpactPeerAdmissionValidationTest {
                 acquisition =
                     admission.acquisition.copy(
                         budget =
-                            admission.acquisition.budget.copy(
-                                maxResults =
-                                    (io.github.amichne.kast.kernel.ResultLimit.parse(1) as Refinement.Refined).value
-                            )
+                            assertInstanceOf(ImpactFlowBudgetDocument.Bounded::class.java, admission.acquisition.budget)
+                                .copy(
+                                    maxResults =
+                                        (io.github.amichne.kast.kernel.ResultLimit.parse(1) as Refinement.Refined).value
+                                )
                     )
             ),
         )

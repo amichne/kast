@@ -18,8 +18,14 @@ internal class QueryStateRetention(
         }
 
     /** Inspect before cleanup reclaims token identity; an absent bounded receipt proves no historical cause. */
-    fun continuationFailure(key: QueryStateKey, now: Long, ttlMillis: Long): QueryContinuationFailure? {
+    fun continuationFailure(
+        key: QueryStateKey,
+        now: Long,
+        ttlMillis: Long,
+        invocation: QueryInvocationPublication? = null,
+    ): QueryContinuationFailure? {
         val entry = entries[key] as? QueryStateEntry.Producer ?: return revocation(key)
+        if (entry.ownedByRunner(invocation)) return null
         if (!entry.withinLifetime(now, ttlMillis)) return QueryContinuationFailure.EXPIRED
         if (entry.owner != null) return null
         if (key !in entries.liveDependencyClosure(now, ttlMillis))
@@ -69,10 +75,12 @@ internal class QueryStateRetention(
 
     /** Transfer and release both require an exclusive lifetime; another owner may already depend on this key. */
     fun invocationUnpinned(key: QueryStateKey, invocation: QueryInvocationPublication): Boolean =
-        entries[key]?.invocationOwner === invocation && evictable(key)
+        entries[key]?.invocationOwner === invocation && evictable(key, invocation)
 
-    private fun evictable(key: QueryStateKey): Boolean {
+    private fun evictable(key: QueryStateKey, releasing: QueryInvocationPublication? = null): Boolean {
         val entry = entries[key] ?: return false
+        val privateOwner = entry.privateRunnerOwner
+        if (privateOwner != null && privateOwner !== releasing) return false
         if (
             entry.owner != null ||
                 (entry as? QueryStateEntry.Producer)?.execution is QueryCheckpointExecution.Running ||
@@ -100,8 +108,7 @@ internal class QueryStateRetention(
             revocations.size().toLong() * REVOCATION_RECEIPT_BYTES +
                 transientClaims.values.sumOf { it.origin.accountedClaimBytes() }
         for (entry in entries.values) {
-            if (entry.bytes > maximumBytes - total) return maximumBytes
-            total += entry.bytes
+            total = total.saturatedAdd(entry.bytes)
         }
         return total
     }
@@ -130,13 +137,14 @@ internal class QueryStateRetention(
         revocations.record(token, cause)
     }
 
-    /** Only active claims pin physical storage beyond original dependency expiry. */
+    /** Active claims and private runner invocations pin storage beyond external token expiry. */
     fun expire(now: Long, ttlMillis: Long) {
         val active =
             entries
                 .filter { (key, entry) ->
                     (entry as? QueryStateEntry.Producer)?.execution is QueryCheckpointExecution.Running ||
                         entry.owner != null ||
+                        entry.privateRunnerOwner != null ||
                         attemptPins(key)
                 }
                 .keys

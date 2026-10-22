@@ -38,7 +38,17 @@ data class ExecutionBudgetDocument(
             maxResults.allowance(),
             maxReturnedBytes.allowance(),
         )
+
+    internal fun runnerControlled() =
+        RequestedExecutionBudget.RunnerControlled(maxResults.allowance(), maxReturnedBytes.allowance())
 }
+
+fun QueryRunRequest.Run.requestedExecutionBudget(): RequestedExecutionBudget =
+    when (executionMode) {
+        QueryExecutionModeDocument.BOUNDED -> (executionBudget ?: ExecutionBudgetDocument()).requested()
+        QueryExecutionModeDocument.RUNNER_CONTROLLED ->
+            (executionBudget ?: ExecutionBudgetDocument()).runnerControlled()
+    }
 
 private fun <Value : Any> Value?.allowance(): ExecutionAllowance<Value> =
     if (this == null) ExecutionAllowance.Default else ExecutionAllowance.Requested(this)

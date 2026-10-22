@@ -274,7 +274,13 @@ class IntellijValueFlowCompilerAdapter(
                 is IntellijRelationScopeCompilation.Rejected ->
                     return Prepared.Rejected(ValueFlowRejection.OWNER_UNAVAILABLE)
             }
-        val projection = IntellijK2RelationProjection(project, request.subject.lease.workspaceRoot, observation)
+        val projection =
+            IntellijK2RelationProjection(
+                project,
+                request.subject.lease.workspaceRoot,
+                observation,
+                request.budget.resources.workAllowance,
+            )
         val owner =
             when (val value = projection.subject(ownerScope, request.subject)) {
                 is IntellijRelationSubjectLookup.Found -> value.declaration

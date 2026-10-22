@@ -41,7 +41,7 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
                     false
                 }
             )
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertThrows<NativeRelationScopeStopped> { scope.contains(a) }
         assertEquals(0, delegateCalls)
         assertEquals(0L, allowance.examined)
@@ -116,7 +116,7 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
         assertEquals(listOf("module", "module-test", "library", "library-source", "compare"), calls)
         assertEquals(6, observation.admitted)
         assertTrue(observation.finished.all { it.second == IntellijReadCallOutcome.RETURNED })
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         filters.forEach { assertThrows<NativeRelationScopeStopped> { it() } }
         assertEquals(5, calls.size)
         assertEquals(5, observation.halted)
@@ -163,7 +163,7 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
             assertTrue(files.any { it === b })
             assertTrue(enumeration.contains(11))
             assertFalse(enumeration.contains(99))
-            now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+            now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
             assertThrows<NativeRelationScopeStopped> {
                 when (accessor) {
                     0 -> enumeration.contains(99)
@@ -183,7 +183,7 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
             EnumeratedRelationScope(
                 nativeScope {
                     memberships++
-                    now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+                    now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
                     false
                 },
                 prepare(plan()).complete(),
@@ -213,7 +213,7 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
         assertArrayEquals(intArrayOf(11, 12), enumeration.asArray().sortedArray())
         assertTrue(checkNotNull(enumeration.filesIfCollection).isEmpty())
         assertFalse(narrowed.contains(a))
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertThrows<NativeRelationScopeStopped> { enumeration.asArray() }
         assertThrows<NativeRelationScopeStopped> { narrowed.intersectWith(nativeScope { true }) }
     }

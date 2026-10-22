@@ -220,12 +220,12 @@ private class BoundedIntellijRelationCollector(
         if (fact in facts) {
             return true
         }
-        if (facts.size >= request.budget.resources.resultLimit.value) {
+        if (!request.budget.resources.hasResultCapacity(facts.size)) {
             qualifyAndHalt(NativeRelationLimitation.RESULT_LIMIT_REACHED)
             return false
         }
         val factBytes = fact.projectedUtf8Size()
-        if (factBytes.value > request.budget.returnedBytes.value - encodedBytes) {
+        if (!request.budget.permitsReturnedBytes(encodedBytes + factBytes.value)) {
             qualifyAndHalt(NativeRelationLimitation.BYTE_LIMIT_REACHED)
             return false
         }
@@ -244,7 +244,7 @@ private class BoundedIntellijRelationCollector(
     }
 
     fun finish(): IntellijNativeRelationExecution {
-        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds()) {
+        if (!request.budget.resources.hasTimeRemaining(elapsedSince(startedAt) / NANOS_PER_MILLISECOND)) {
             qualify(NativeRelationLimitation.TIME_LIMIT_REACHED)
         }
         val totalNanoseconds = elapsedSince(startedAt)
@@ -292,11 +292,11 @@ private class BoundedIntellijRelationCollector(
             }
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds()) {
+        if (!request.budget.resources.hasTimeRemaining(elapsedSince(startedAt) / NANOS_PER_MILLISECOND)) {
             qualifyAndHalt(NativeRelationLimitation.TIME_LIMIT_REACHED)
             return EventAdmission.HALTED
         }
-        if (workUnits >= request.budget.resources.workUnitLimit.value) {
+        if (!request.budget.resources.hasWorkCapacity(workUnits)) {
             qualifyAndHalt(NativeRelationLimitation.WORK_LIMIT_REACHED)
             return EventAdmission.HALTED
         }
@@ -324,15 +324,6 @@ private fun IntellijNativeRelationSearchRejection.publicRejection(): IntellijNat
 
 private fun rejected(reason: IntellijNativeRelationRejection): IntellijNativeRelationExecution.Rejected =
     IntellijNativeRelationExecution.Rejected(reason)
-
-private fun NativeRelationRequest.elapsedLimitNanoseconds(): Long {
-    val millis = budget.resources.elapsedTimeLimit.value
-    return if (millis > Long.MAX_VALUE / NANOS_PER_MILLISECOND) {
-        Long.MAX_VALUE
-    } else {
-        millis * NANOS_PER_MILLISECOND
-    }
-}
 
 private fun Long.byteMeasure(): NativeRelationByteCount =
     (NativeRelationByteCount.parse(this) as Refinement.Refined).value

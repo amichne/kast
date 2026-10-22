@@ -182,7 +182,7 @@ class QueryImpactPathProjectionTest {
         assertEquals(QueryRelationRequestedDomainDocument.WORKSPACE, projected.domain.requestedDomain)
         assertEquals(5, projected.examinedWorkUnits.value)
         assertEquals(observation.retainedBytes, projected.retainedBytes.value)
-        assertEquals(13, projected.domain.budget.maxWorkUnits.value)
+        assertEquals(13, projected.domain.budget.bounded().maxWorkUnits.value)
         assertEquals(ImpactFlowReadPositionDocument.Start, projected.domain.position)
         val encoded = Json.encodeToJsonElement(ImpactFlowEndObservationDocument.serializer(), projected).jsonObject
         assertEquals(setOf("source", "domain", "examinedWorkUnits", "retainedBytes", "terminal"), encoded.keys)

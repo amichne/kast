@@ -111,12 +111,13 @@ internal constructor(
     internal suspend fun read(
         meaning: io.github.amichne.kast.relation.contract.RelationMeaning,
         observation: IntellijReadObservation = IntellijReadObservation.None,
+        budget: io.github.amichne.kast.relation.contract.RelationBudget = request.budget,
     ): io.github.amichne.kast.relation.contract.RelationCompilation {
         val selected =
             com.intellij.openapi.application.readAction {
                 val projection = IntellijK2RelationProjection(project, request.subject.lease.workspaceRoot)
                 val evidence = (projection.project(target) as IntellijRelationDeclarationProjection.Projected).evidence
-                reissuedNativeRelationRequest(request, evidence, meaning)
+                reissuedNativeRelationRequest(request, evidence, meaning, budget)
             }
         return IntellijRelationCompilerQuery(observation = observation)
             .read(

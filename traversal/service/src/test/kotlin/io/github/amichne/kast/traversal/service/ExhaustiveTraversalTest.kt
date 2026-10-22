@@ -96,7 +96,9 @@ class ExhaustiveTraversalTest {
         val continuation =
             assertInstanceOf(TraversalQualification.Resumable::class.java, result.qualification).continuation
         val changed =
-            initial.budget.copy(extent = TraversalExtent.ThroughDepth(TraversalDepthLimit.parse(20).refined()))
+            initial.budget
+                .bounded()
+                .copy(extent = TraversalExtent.ThroughDepth(TraversalDepthLimit.parse(20).refined()))
         val rejected =
             assertInstanceOf(
                 Refinement.Rejected::class.java,
@@ -147,7 +149,7 @@ class ExhaustiveTraversalTest {
         return TraversalPlan.start(
                 nodes[0],
                 RelationMeaning.Callees,
-                bounded.budget.copy(extent = TraversalExtent.Exhaustive),
+                bounded.budget.bounded().copy(extent = TraversalExtent.Exhaustive),
             )
             .refined()
     }

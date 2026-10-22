@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
@@ -11,20 +12,41 @@ import io.github.amichne.kast.query.contract.QueryWorkUsage
 
 /** Binds a canonical page to its own semantic receipt, including the admission debit. */
 internal class QueryInvocationExecution(private val operations: QueryOperations) : QueryOperations {
-    private var receipt: QueryExecutionResult? = null
-    private var admittedWork = 0L
+    private sealed interface Receipt {
+        data object None : Receipt
+
+        data class Observed(val resources: ResourceBudget, val result: QueryExecutionResult) : Receipt
+    }
+
+    private var receipt: Receipt = Receipt.None
 
     override suspend fun run(request: QueryExecutionRequest): QueryExecutionResult {
-        admittedWork = request.budget.resources.workUnitLimit.value
-        return operations.run(request).also { result -> receipt = result }
+        return operations.run(request).also { result -> receipt = Receipt.Observed(request.budget.resources, result) }
     }
 
     suspend fun page(remaining: QueryBudget, execute: suspend () -> QueryPublishedPage): QueryInvocationPage {
-        receipt = null
+        receipt = Receipt.None
         val page = execute()
-        val raw = receipt
-        val usage = raw?.workUsage as? QueryWorkUsage.Observed ?: return QueryInvocationPage(page, raw)
-        val admission = remaining.resources.workUnitLimit.value - admittedWork
+        val observed =
+            when (val captured = receipt) {
+                Receipt.None -> return QueryInvocationPage(page, null)
+                is Receipt.Observed -> captured
+            }
+        val raw = observed.result
+        val usage = raw.workUsage as? QueryWorkUsage.Observed ?: return QueryInvocationPage(page, raw)
+        val admission =
+            when (val parent = remaining.resources) {
+                ResourceBudget.RunnerControlled -> 0L
+                is ResourceBudget.Bounded ->
+                    when (val child = observed.resources) {
+                        ResourceBudget.RunnerControlled ->
+                            return QueryInvocationPage(
+                                page,
+                                QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION),
+                            )
+                        is ResourceBudget.Bounded -> parent.workUnitLimit.value - child.workUnitLimit.value
+                    }
+            }
         if (admission < 0L || usage.count.value > Long.MAX_VALUE - admission)
             return QueryInvocationPage(
                 page,

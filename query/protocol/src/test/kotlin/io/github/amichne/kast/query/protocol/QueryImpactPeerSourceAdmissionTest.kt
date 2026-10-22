@@ -177,13 +177,13 @@ class QueryImpactPeerSourceAdmissionTest {
             start: Int,
             end: Int,
             receiptWork: Long = 3,
-            grantWork: Long = source.budget.resources.workUnitLimit.value,
+            grantWork: Long = source.budget.resources.bounded().workUnitLimit.value,
         ): QueryImpactPeerSiteAdmission {
             val grant =
                 RelationBudget(
-                    source.budget.resources.copy(
-                        workUnitLimit = io.github.amichne.kast.kernel.WorkUnitLimit.parse(grantWork).admitted()
-                    ),
+                    source.budget.resources
+                        .bounded()
+                        .copy(workUnitLimit = io.github.amichne.kast.kernel.WorkUnitLimit.parse(grantWork).admitted()),
                     RelationByteLimit.parse(source.budget.checkpointBytes.value).admitted(),
                 )
             val request =

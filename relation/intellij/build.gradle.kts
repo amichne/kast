@@ -205,5 +205,6 @@ registerRelationNativeFixtures(
         "*NativeCallbackCandidateFilterTest",
         "*NativeNestedCallbackCompositionTest",
         "*NativeCallbackSupplierCompositionTest",
+        "*NativeRunnerControlledTypeProofTest",
     ),
 )

@@ -17,6 +17,8 @@ internal data class HostedAdmittedRead(
 internal sealed interface HostedReadCompletion {
     data object HostContainment : HostedReadCompletion
 
+    data object RunnerControlled : HostedReadCompletion
+
     data class CallerElapsed(val startedNanos: Long, val limit: ElapsedTimeLimitMillis) : HostedReadCompletion
 }
 

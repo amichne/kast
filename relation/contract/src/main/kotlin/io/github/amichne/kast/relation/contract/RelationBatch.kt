@@ -227,10 +227,12 @@ private fun RelationBatchObservations.admit(
     if (scopeExclusions.any { !it.belongsTo(request) } || scopeExclusions != scopeExclusions.distinct().sorted())
         return Refinement.Rejected(RelationBatchFailure.INVALID_SCOPE_EXCLUSION)
     if (
-        scopeExclusions.size +
-            callableObservations.size +
-            callbackObservations.count { callback -> facts.none(callback::supportsNamedFact) } +
-            semanticCount > request.budget.resources.resultLimit.value
+        !request.budget.permitsOutputCount(
+            scopeExclusions.size +
+                callableObservations.size +
+                callbackObservations.count { callback -> facts.none(callback::supportsNamedFact) } +
+                semanticCount
+        )
     )
         return Refinement.Rejected(RelationBatchFailure.RESULT_LIMIT_EXCEEDED)
     return Refinement.Refined(Unit)
@@ -305,16 +307,16 @@ private fun admitBounds(
     encodedBytes: RelationByteCount,
     examinedWorkUnits: RelationWorkCount,
 ): Refinement<Unit, RelationBatchFailure> {
-    if (semanticCount > request.budget.resources.resultLimit.value) {
+    if (!request.budget.permitsOutputCount(semanticCount)) {
         return Refinement.Rejected(RelationBatchFailure.RESULT_LIMIT_EXCEEDED)
     }
     if (resultCount.value != semanticCount) {
         return Refinement.Rejected(RelationBatchFailure.RESULT_COUNT_MISMATCH)
     }
-    if (encodedBytes.value > request.budget.returnedBytes.value) {
+    if (!request.budget.permitsReturnedBytes(encodedBytes.value)) {
         return Refinement.Rejected(RelationBatchFailure.BYTE_LIMIT_EXCEEDED)
     }
-    if (examinedWorkUnits.value > request.budget.resources.workUnitLimit.value) {
+    if (!request.budget.resources.permitsWork(examinedWorkUnits.value)) {
         return Refinement.Rejected(RelationBatchFailure.WORK_LIMIT_EXCEEDED)
     }
     return Refinement.Refined(Unit)

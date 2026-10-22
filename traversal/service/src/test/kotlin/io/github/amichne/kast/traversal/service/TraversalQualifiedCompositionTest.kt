@@ -152,7 +152,7 @@ class TraversalQualifiedCompositionTest {
         var state = traversalCalleeInventory(request, facts.map { it.traversalCalleeLocator() })
         val byDescriptor = facts.associateBy { it.canonicalProjection() }
         val page =
-            state.prepared.take(request.budget.resources.resultLimit.value).map { locator ->
+            state.prepared.take(request.budget.resources.bounded().resultLimit.value).map { locator ->
                 byDescriptor.getValue(locator.descriptor.value)
             }
         page.forEach { fact ->

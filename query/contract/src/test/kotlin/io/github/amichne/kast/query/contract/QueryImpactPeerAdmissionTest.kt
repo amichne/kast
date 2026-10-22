@@ -19,7 +19,9 @@ class QueryImpactPeerAdmissionTest {
         val grant =
             f.receipt.grant.copy(
                 resources =
-                    f.receipt.grant.resources.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1).peerValue())
+                    f.receipt.grant.resources
+                        .bounded()
+                        .copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1).peerValue())
             )
         assertEquals(
             Refinement.Rejected(QueryImpactPeerElapsedNanosFailure.NEGATIVE),
@@ -41,7 +43,7 @@ class QueryImpactPeerAdmissionTest {
         val f = QueryImpactPeerTestFixture()
         val grant =
             f.receipt.grant.copy(
-                resources = f.receipt.grant.resources.copy(workUnitLimit = WorkUnitLimit.parse(3).peerValue())
+                resources = f.receipt.grant.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(3).peerValue())
             )
         assertEquals(3L, receipt(f, grant, work = 3).peerValue().examinedWorkUnits.value)
         assertEquals(
@@ -69,11 +71,18 @@ class QueryImpactPeerAdmissionTest {
         val original = f.receipt.grant
         val reduced =
             listOf(
-                original.copy(resources = original.resources.copy(workUnitLimit = WorkUnitLimit.parse(1).peerValue())),
                 original.copy(
-                    resources = original.resources.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1).peerValue())
+                    resources = original.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(1).peerValue())
                 ),
-                original.copy(resources = original.resources.copy(resultLimit = ResultLimit.parse(1).peerValue())),
+                original.copy(
+                    resources =
+                        original.resources
+                            .bounded()
+                            .copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(1).peerValue())
+                ),
+                original.copy(
+                    resources = original.resources.bounded().copy(resultLimit = ResultLimit.parse(1).peerValue())
+                ),
                 original.copy(returnedBytes = RelationByteLimit.parse(1).peerValue()),
             )
         for (grant in reduced) {

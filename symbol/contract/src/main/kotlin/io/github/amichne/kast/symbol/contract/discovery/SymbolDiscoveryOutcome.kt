@@ -128,10 +128,10 @@ private constructor(
             if (candidates.any { it.lease != request.scope.lease }) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.CANDIDATE_LEASE_MISMATCH)
             }
-            if (candidates.size > request.budget.resources.resultLimit.value) {
+            if (!request.budget.permitsOutputCount(candidates.size)) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.RESULT_LIMIT_EXCEEDED)
             }
-            if (encodedBytes.value > request.budget.returnedBytes.value) {
+            if (!request.budget.permitsReturnedBytes(encodedBytes.value)) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.BYTE_LIMIT_EXCEEDED)
             }
             if (

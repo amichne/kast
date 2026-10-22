@@ -26,7 +26,7 @@ class CallbackProviderSiteAdmissionTest {
             )
         }
         assertEquals(CallbackWorkAdmission.READY, collector.admitCallbackWork())
-        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertEquals(
             Refinement.Rejected(CallbackInvocationFlowCause.TIME_LIMIT_REACHED),
             admitCallbackProviderSite({ checks++ }, collector::callbackExpiry) {

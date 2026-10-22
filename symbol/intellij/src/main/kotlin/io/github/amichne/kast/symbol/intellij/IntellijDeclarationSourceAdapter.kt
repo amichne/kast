@@ -203,13 +203,19 @@ private constructor(
                     SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
                 )
             val partition = admission.detach(child) ?: continue
-            if (detached.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
+            if (
+                request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                    detached.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value
+            )
                 return rejected(
                     SymbolDiscoveryBlockCause.PARTITION_CAPACITY,
                     IntellijReadTermination.DISCOVERY_PARTITION_CAPACITY,
                 )
             val added = partition.detachedBytes()
-            if (added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes)
+            if (
+                request.budget.resources is io.github.amichne.kast.kernel.ResourceBudget.Bounded &&
+                    added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes
+            )
                 return rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT, IntellijReadTermination.RETENTION_LIMIT)
             detached += partition
             bytes += added

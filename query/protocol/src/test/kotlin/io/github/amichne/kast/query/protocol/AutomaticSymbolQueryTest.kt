@@ -187,7 +187,9 @@ internal class AutomaticSymbolQueryTest : AutomaticSymbolQueryCase() {
             protocol.executePage(
                 retainedEvidence(rejection).readRequest(),
                 fixture.authority,
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(100).refined())),
+                budget.copy(
+                    resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(100).refined())
+                ),
             ) as OperationOutcome.Qualified
         assertEquals(4, read.evidence.payload.items.values.size)
         assertTrue(QueryLimitationDocument.RELATION_INCOMPLETE in read.qualification.limitations)
@@ -243,7 +245,9 @@ internal class AutomaticSymbolQueryTest : AutomaticSymbolQueryCase() {
             protocol.execute(
                 request,
                 fixture.authority,
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(100).refined())),
+                budget.copy(
+                    resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(100).refined())
+                ),
                 policy(retainedBytes = 64_000_000),
             )
         assertTrue(
@@ -264,7 +268,9 @@ internal class AutomaticSymbolQueryTest : AutomaticSymbolQueryCase() {
             protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(reference, QueryResultCursor.parse(1000).refined(), output),
                 fixture.authority,
-                budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(100).refined())),
+                budget.copy(
+                    resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(100).refined())
+                ),
             ) as OperationOutcome.Complete
         assertEquals(100, last.evidence.payload.items.values.size)
         assertNull(last.evidence.payload.nextCursor)

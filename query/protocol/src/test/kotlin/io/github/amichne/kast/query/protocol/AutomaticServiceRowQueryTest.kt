@@ -158,10 +158,10 @@ internal class AutomaticServiceRowQueryTest : AutomaticSymbolQueryCase() {
                     },
                 traversalCeiling =
                     TraversalBudget(
-                        budget.resources.resultLimit,
+                        budget.resources.bounded().resultLimit,
                         TraversalByteLimit.parse(100_000).refined(),
-                        budget.resources.workUnitLimit,
-                        budget.resources.elapsedTimeLimit,
+                        budget.resources.bounded().workUnitLimit,
+                        budget.resources.bounded().elapsedTimeLimit,
                         TraversalDepthLimit.parse(1).refined(),
                         TraversalFrontierLimit.parse(100).refined(),
                         fixture.budget,
@@ -195,7 +195,7 @@ internal class AutomaticServiceRowQueryTest : AutomaticSymbolQueryCase() {
             }
         private val protocol = CanonicalQueryProtocol(service, fixture.references, state)
         private val grant =
-            budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(limit).refined()))
+            budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(limit).refined()))
 
         suspend fun drain(): List<QueryResultItemDocument> {
             val result = protocol.execute(input, fixture.authority, grant, policy(1, retainedBytes = 128_000_000))

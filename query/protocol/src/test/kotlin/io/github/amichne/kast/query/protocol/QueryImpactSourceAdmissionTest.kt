@@ -115,7 +115,7 @@ class QueryImpactSourceAdmissionTest {
                     assertTrue(observed.size < 2, "unexpected seed call")
                     assertEquals(listOf(range(20, 35), range(60, 75))[observed.size], request.anchor)
                     assertEquals(RelationSearchBoundary.WORKSPACE_EXPANSION, request.boundary)
-                    grants += request.budget.resources.workUnitLimit.value
+                    grants += request.budget.resources.bounded().workUnitLimit.value
                     val seed = proof(request)
                     observed += seed
                     return ValueProducerSeedRead.Seeded(seed, work(3))
@@ -127,7 +127,7 @@ class QueryImpactSourceAdmissionTest {
                 ): ValueModelDeclarationRead {
                     assertEquals(0, revalidations++, "unexpected revalidation")
                     assertEquals(callable.compilerIdentity, selector.compilerIdentity)
-                    grants += budget.resources.workUnitLimit.value
+                    grants += budget.resources.bounded().workUnitLimit.value
                     return ValueModelDeclarationRead.Revalidated(
                         RevalidatedRelationEndpoint.validate(callable, callable.evidence).refined(),
                         work(1),
@@ -313,7 +313,7 @@ class QueryImpactSourceAdmissionTest {
             CanonicalQueryProtocol(
                 QueryOperations {
                     assertEquals(0, executions++)
-                    assertEquals(7L, it.budget.resources.workUnitLimit.value)
+                    assertEquals(7L, it.budget.resources.bounded().workUnitLimit.value)
                     assertInstanceOf(AdmittedQueryPlan.Impact::class.java, it.plan)
                     QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
                 },
@@ -334,7 +334,7 @@ class QueryImpactSourceAdmissionTest {
             object : ValueProducerSeedCompilerPort {
                 override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
                     assertEquals(0, calls++)
-                    assertEquals(3L, request.budget.resources.workUnitLimit.value)
+                    assertEquals(3L, request.budget.resources.bounded().workUnitLimit.value)
                     return ValueProducerSeedRead.Seeded(proof(request), work(3))
                 }
 
@@ -352,7 +352,8 @@ class QueryImpactSourceAdmissionTest {
                 references,
                 producerSeeds = compiler,
             )
-        val exhausted = budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(3).refined()))
+        val exhausted =
+            budget.copy(resources = budget.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(3).refined()))
         val result = protocol.executePage(request(document()), owner.lease, exhausted) as OperationOutcome.Rejected
         assertEquals(QueryImpactSourceFailureCode.WORK_LIMIT_REACHED, result.reason.admissionCode())
         assertEquals(1, calls)

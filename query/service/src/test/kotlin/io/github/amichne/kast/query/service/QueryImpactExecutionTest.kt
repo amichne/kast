@@ -100,7 +100,7 @@ class QueryImpactExecutionTest {
         val service = f.service(native.port)
         val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(results = 1)))
         assertEquals(3, native.examined.size)
-        assertTrue(native.grants.first().resources.resultLimit.value > 1)
+        assertTrue(native.grants.first().resources.bounded().resultLimit.value > 1)
         assertTrue(
             (first.result.rows as QueryRows.ValuePaths).accountingStatus
                 is QueryValuePathAccountingStatus.SelectedSubset
@@ -160,7 +160,7 @@ class QueryImpactExecutionTest {
             )
         assertEquals(b, (last.result.rows as QueryRows.ValuePaths).values.single().destination)
         assertEquals(listOf(a, b), native.examined)
-        assertEquals(listOf(3L, 3L), native.grants.map { it.resources.workUnitLimit.value })
+        assertEquals(listOf(3L, 3L), native.grants.map { it.resources.bounded().workUnitLimit.value })
         native.assertConsumed()
     }
 

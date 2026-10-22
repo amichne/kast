@@ -48,7 +48,7 @@ internal class QueryExecutionState(
     fun canProcessImpact(): Boolean = observeTime()
 
     fun canContinue(workRequired: Boolean): Boolean {
-        if (workRequired && remainingWork() < 1L) {
+        if (workRequired && !request.budget.resources.hasWorkCapacity(usedWork)) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
             return false
         }
@@ -58,43 +58,47 @@ internal class QueryExecutionState(
     fun consume(work: Long) {
         usedWork = saturatedAdd(usedWork, work)
         // Intermediate bytes bound child effects; only final output spends returned-byte authority.
-        if (usedWork > request.budget.resources.workUnitLimit.value) {
+        if (!request.budget.resources.permitsWork(usedWork)) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
         }
     }
 
     fun consumeUnit(): Boolean {
-        if (remainingWork() < 1L) {
+        if (!request.budget.resources.hasWorkCapacity(usedWork)) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
             return false
         }
-        if (remainingMillis() < 1L) {
+        if (!request.budget.resources.hasTimeRemaining(elapsedMillis())) {
             limit(QueryLimitation.TIME_LIMIT_REACHED)
             return false
         }
-        usedWork += 1L
+        usedWork = saturatedAdd(usedWork, 1L)
         return true
     }
 
     /** Transfers one visibility unit together with the remaining elapsed authority. */
     fun sourceResources(): Refinement<ResourceBudget, QueryLimitation> {
-        val millis = remainingMillis()
-        if (remainingWork() < 1L) {
+        val elapsed = elapsedMillis()
+        if (!request.budget.resources.hasWorkCapacity(usedWork)) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
             return Refinement.Rejected(QueryLimitation.WORK_LIMIT_REACHED)
         }
-        if (millis < 1L) {
+        if (!request.budget.resources.hasTimeRemaining(elapsed)) {
             limit(QueryLimitation.TIME_LIMIT_REACHED)
             return Refinement.Rejected(QueryLimitation.TIME_LIMIT_REACHED)
         }
-        usedWork += 1L
-        return Refinement.Refined(
-            ResourceBudget(
-                ResultLimit.parse(1).refined(),
-                WorkUnitLimit.parse(1).refined(),
-                ElapsedTimeLimitMillis.parse(millis).refined(),
-            )
-        )
+        usedWork = saturatedAdd(usedWork, 1L)
+        return when (val resources = request.budget.resources) {
+            ResourceBudget.RunnerControlled -> Refinement.Refined(resources)
+            is ResourceBudget.Bounded ->
+                Refinement.Refined(
+                    ResourceBudget(
+                        ResultLimit.parse(1).refined(),
+                        WorkUnitLimit.parse(1).refined(),
+                        ElapsedTimeLimitMillis.parse(resources.elapsedTimeLimit.value - elapsed).refined(),
+                    )
+                )
+        }
     }
 
     /**
@@ -102,7 +106,7 @@ internal class QueryExecutionState(
      * spending the previous stage's cardinality again.
      */
     fun remainingResultCapacity(alreadyProduced: Int): Int? {
-        val remaining = request.budget.resources.resultLimit.value - alreadyProduced
+        val remaining = request.budget.outputResults.value - alreadyProduced
         if (remaining > 0) return remaining
         limit(QueryLimitation.RESULT_LIMIT_REACHED)
         return null
@@ -111,7 +115,11 @@ internal class QueryExecutionState(
     fun discoveryBudget(resultCapacity: Int): SymbolDiscoveryBudget? {
         val resources = remainingResources(resultCapacity) ?: return null
         val bytes = childByteAllowance() ?: return null
-        return SymbolDiscoveryBudget(resources, SymbolDiscoveryByteLimit.parse(bytes).refined())
+        return SymbolDiscoveryBudget(
+            resources,
+            SymbolDiscoveryByteLimit.parse(bytes).refined(),
+            ResultLimit.parse(resultCapacity).refined(),
+        )
     }
 
     fun discoveryBudget(match: QueryMatch, resultCapacity: Int): SymbolDiscoveryBudget? =
@@ -130,34 +138,68 @@ internal class QueryExecutionState(
      * grant. The existing interpreter retains admitted candidates when final output fills a page.
      */
     fun indexedDiscoveryBudget(): SymbolDiscoveryBudget? {
-        val discoveryWork = remainingWork() / 2L
+        return when (val grant = request.budget.resources) {
+            ResourceBudget.RunnerControlled -> discoveryBudget(request.budget.outputResults.value)
+            is ResourceBudget.Bounded -> boundedIndexedDiscoveryBudget(grant)
+        }
+    }
+
+    private fun boundedIndexedDiscoveryBudget(grant: ResourceBudget.Bounded): SymbolDiscoveryBudget? {
+        val discoveryWork = (grant.workUnitLimit.value - usedWork) / 2L
         if (discoveryWork < 1L) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
             return null
         }
         val candidateCapacity = discoveryWork.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        val resources = remainingResources(candidateCapacity) ?: return null
+        val resources = remainingResources(candidateCapacity)
         val bytes = childByteAllowance() ?: return null
-        return SymbolDiscoveryBudget(
-            resources.copy(workUnitLimit = WorkUnitLimit.parse(discoveryWork).refined()),
-            SymbolDiscoveryByteLimit.parse(bytes).refined(),
-        )
+        return when (resources) {
+            is ResourceBudget.Bounded ->
+                SymbolDiscoveryBudget(
+                    resources.copy(workUnitLimit = WorkUnitLimit.parse(discoveryWork).refined()),
+                    SymbolDiscoveryByteLimit.parse(bytes).refined(),
+                )
+            ResourceBudget.RunnerControlled,
+            null -> null
+        }
     }
 
     /** Native flow grants are separate from page output and bounded by remaining checkpoint storage. */
     fun impactBudget(checkpointRemaining: Long, itemBytes: Long): RelationBudget? {
         if (!canContinue(true)) return null
         val capacity =
-            minOf(remainingWork(), checkpointRemaining / itemBytes.coerceAtLeast(1L), Int.MAX_VALUE.toLong()).toInt()
+            when (val grant = request.budget.resources) {
+                is ResourceBudget.Bounded ->
+                    minOf(
+                            grant.workUnitLimit.value - usedWork,
+                            checkpointRemaining / itemBytes.coerceAtLeast(1L),
+                            Int.MAX_VALUE.toLong(),
+                        )
+                        .toInt()
+                ResourceBudget.RunnerControlled -> request.budget.outputResults.value
+            }
         val resources = remainingResources(capacity) ?: return null
-        if (checkpointRemaining < 1L) return null
-        return RelationBudget(resources, RelationByteLimit.parse(checkpointRemaining).refined())
+        val nativeBytes =
+            when (resources) {
+                ResourceBudget.RunnerControlled -> request.budget.returnedBytes.value
+                is ResourceBudget.Bounded -> checkpointRemaining
+            }
+        if (nativeBytes < 1L) return null
+        return RelationBudget(
+            resources,
+            RelationByteLimit.parse(nativeBytes).refined(),
+            ResultLimit.parse(capacity).refined(),
+        )
     }
 
     fun relationBudget(resultCapacity: Int): RelationBudget? {
         val resources = remainingResources(resultCapacity) ?: return null
         val bytes = childByteAllowance() ?: return null
-        return RelationBudget(resources, RelationByteLimit.parse(bytes).refined())
+        return RelationBudget(
+            resources,
+            RelationByteLimit.parse(bytes).refined(),
+            ResultLimit.parse(resultCapacity).refined(),
+        )
     }
 
     fun traversalBudget(
@@ -165,34 +207,12 @@ internal class QueryExecutionState(
         requestedExtent: io.github.amichne.kast.traversal.contract.TraversalExtent,
         ceiling: TraversalBudget,
     ): TraversalBudget? {
-        val resources = remainingResources(minOf(resultCapacity, ceiling.records.value)) ?: return null
+        val capacity = minOf(resultCapacity, ceiling.records.value)
+        val resources = remainingResources(capacity) ?: return null
         val bytes = childByteAllowance() ?: return null
-        val records = resources.resultLimit
+        val records = ResultLimit.parse(capacity).refined()
         val returnedBytes = TraversalByteLimit.parse(minOf(bytes, ceiling.returnedBytes.value)).refined()
-        val work = WorkUnitLimit.parse(minOf(resources.workUnitLimit.value, ceiling.workUnits.value)).refined()
-        val time =
-            ElapsedTimeLimitMillis.parse(minOf(resources.elapsedTimeLimit.value, ceiling.elapsedTime.value)).refined()
-        val oneHopResources =
-            ResourceBudget(
-                ResultLimit.parse(minOf(records.value, ceiling.oneHop.resources.resultLimit.value)).refined(),
-                WorkUnitLimit.parse(minOf(work.value, ceiling.oneHop.resources.workUnitLimit.value)).refined(),
-                ElapsedTimeLimitMillis.parse(minOf(time.value, ceiling.oneHop.resources.elapsedTimeLimit.value))
-                    .refined(),
-            )
-        val oneHop =
-            RelationBudget(
-                oneHopResources,
-                RelationByteLimit.parse(minOf(returnedBytes.value, ceiling.oneHop.returnedBytes.value)).refined(),
-            )
-        return TraversalBudget(
-            records = records,
-            returnedBytes = returnedBytes,
-            workUnits = work,
-            elapsedTime = time,
-            extent = requestedExtent,
-            frontier = ceiling.frontier,
-            oneHop = oneHop,
-        )
+        return queryTraversalBudget(resources, records, returnedBytes, requestedExtent, ceiling)
     }
 
     fun traversalLimited(qualification: TraversalQualification) {
@@ -221,22 +241,8 @@ internal class QueryExecutionState(
     }
 
     /** Child coverage proves incomplete discovery; aggregate result capacity remains query-owned. */
-    fun discoveryLimited(qualifications: Set<SymbolDiscoveryQualification>) {
-        upstreamLimit(QueryLimitation.DISCOVERY_INCOMPLETE)
-        qualifications.forEach { qualification ->
-            when (qualification) {
-                SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.BYTE_LIMIT_REACHED)
-                SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
-                SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> upstreamLimit(QueryLimitation.TIME_LIMIT_REACHED)
-                SymbolDiscoveryQualification.RESULT_LIMIT_REACHED,
-                SymbolDiscoveryQualification.DUMB_MODE_TRANSITION,
-                SymbolDiscoveryQualification.PROVIDER_FAILURE,
-                SymbolDiscoveryQualification.UNSCOPED_PROVIDER,
-                SymbolDiscoveryQualification.UNSUPPORTED_ITEM,
-                SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE -> Unit
-            }
-        }
-    }
+    fun discoveryLimited(qualifications: Set<SymbolDiscoveryQualification>) =
+        permanentDiscoveryLimitations(qualifications).forEach(::upstreamLimit)
 
     /** A resumable page's local bounds are not aggregate limitations if Kast can continue it. */
     fun relationPageLimited(limitations: Set<RelationLimitation>) {
@@ -245,26 +251,8 @@ internal class QueryExecutionState(
         }
     }
 
-    fun relationTerminallyLimited(limitations: Set<RelationLimitation>) {
-        upstreamLimit(QueryLimitation.RELATION_INCOMPLETE)
-        limitations.forEach { limitation ->
-            when (limitation) {
-                RelationLimitation.RESULT_LIMIT_REACHED -> upstreamLimit(QueryLimitation.RESULT_LIMIT_REACHED)
-                RelationLimitation.BYTE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.BYTE_LIMIT_REACHED)
-                RelationLimitation.WORK_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
-                RelationLimitation.TIME_LIMIT_REACHED -> upstreamLimit(QueryLimitation.TIME_LIMIT_REACHED)
-                RelationLimitation.CANDIDATE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
-                RelationLimitation.RETENTION_LIMIT_REACHED,
-                RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE,
-                RelationLimitation.DUMB_MODE_TRANSITION,
-                RelationLimitation.UNRESOLVED_TARGET,
-                RelationLimitation.UNSUPPORTED_ITEM,
-                RelationLimitation.PROVIDER_FAILURE,
-                RelationLimitation.PROVIDER_INCOMPLETE,
-                RelationLimitation.PROVIDER_STALLED -> Unit
-            }
-        }
-    }
+    fun relationTerminallyLimited(limitations: Set<RelationLimitation>) =
+        permanentRelationLimitations(limitations).forEach(::upstreamLimit)
 
     fun boundConnections(values: List<RelationFact>): List<RelationFact> = values.distinct().sorted()
 
@@ -275,7 +263,7 @@ internal class QueryExecutionState(
     fun drainFailures(): List<QueryItemFailure> = failures.toList().also { failures.clear() }
 
     fun observeTime(): Boolean {
-        if (remainingMillis() >= 1L) return true
+        if (request.budget.resources.hasTimeRemaining(elapsedMillis())) return true
         limit(QueryLimitation.TIME_LIMIT_REACHED)
         return false
     }
@@ -294,24 +282,22 @@ internal class QueryExecutionState(
             limit(QueryLimitation.RESULT_LIMIT_REACHED)
             return null
         }
-        val work = remainingWork()
-        val millis = remainingMillis()
-        if (work < 1L) {
-            limit(QueryLimitation.WORK_LIMIT_REACHED)
-            return null
+        return when (val remaining = request.budget.resources.remainingAfter(usedWork, elapsedMillis())) {
+            is Refinement.Refined ->
+                when (val resources = remaining.value) {
+                    ResourceBudget.RunnerControlled -> resources
+                    is ResourceBudget.Bounded ->
+                        resources.copy(resultLimit = ResultLimit.parse(resultCapacity).refined())
+                }
+            is Refinement.Rejected -> {
+                limit(
+                    if (request.budget.resources.hasWorkCapacity(usedWork)) QueryLimitation.TIME_LIMIT_REACHED
+                    else QueryLimitation.WORK_LIMIT_REACHED
+                )
+                null
+            }
         }
-        if (millis < 1L) {
-            limit(QueryLimitation.TIME_LIMIT_REACHED)
-            return null
-        }
-        return ResourceBudget(
-            ResultLimit.parse(resultCapacity).refined(),
-            WorkUnitLimit.parse(work).refined(),
-            ElapsedTimeLimitMillis.parse(millis).refined(),
-        )
     }
-
-    private fun remainingWork(): Long = (request.budget.resources.workUnitLimit.value - usedWork).coerceAtLeast(0L)
 
     private fun remainingBytes(): Long? {
         val remaining = (request.budget.returnedBytes.value - usedBytes).coerceAtLeast(0L)
@@ -338,10 +324,10 @@ internal class QueryExecutionState(
         return true
     }
 
-    private fun remainingMillis(): Long {
+    private fun elapsedMillis(): Long {
         val elapsedNanos = (clock.now() - startedAt).coerceAtLeast(0L)
         val elapsedMillis = elapsedNanos / 1_000_000L
-        return (request.budget.resources.elapsedTimeLimit.value - elapsedMillis).coerceAtLeast(0L)
+        return elapsedMillis
     }
 }
 

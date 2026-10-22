@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -62,10 +63,11 @@ internal data class WorkspaceExecutionEventSnapshot(
     val outcome: String,
     val elapsedMillis: Long,
     val queueAgeMillis: Long,
-    val interactionLimitMillis: Long,
-    val remainingMillis: Long,
+    val interactionLimitMillis: Long?,
+    val remainingMillis: Long?,
     val failure: String? = null,
     val certainty: String? = null,
+    val executionMode: QueryExecutionModeDocument = QueryExecutionModeDocument.BOUNDED,
 )
 
 internal fun serializeWorkspaceExecutionSnapshot(
@@ -96,10 +98,18 @@ private fun WorkspaceExecutionEvent.document() =
         outcome.name.lowercase(),
         elapsed.inWholeMilliseconds,
         queued.inWholeMilliseconds,
-        interactionLimit.value,
-        (interactionLimit.value - elapsed.inWholeMilliseconds).coerceAtLeast(0),
+        when (executionMode) {
+            QueryExecutionModeDocument.BOUNDED -> interactionLimit.value
+            QueryExecutionModeDocument.RUNNER_CONTROLLED -> null
+        },
+        when (executionMode) {
+            QueryExecutionModeDocument.BOUNDED ->
+                (interactionLimit.value - elapsed.inWholeMilliseconds).coerceAtLeast(0)
+            QueryExecutionModeDocument.RUNNER_CONTROLLED -> null
+        },
         failure?.name,
         failure?.certainty?.name?.lowercase(),
+        executionMode,
     )
 
 private val snapshotJson = Json {

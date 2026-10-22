@@ -96,7 +96,7 @@ class HostedContinuationOwnerRetentionTest {
                 .executeQueryPage(
                     QueryRunRequest.Resume(token),
                     next.lease,
-                    QueryBudget(fixture.budget.resources, QueryByteLimit.parse(100_000).value()),
+                    QueryBudget(fixture.budget.resources.boundedFixture(), QueryByteLimit.parse(100_000).value()),
                 )
         assertEquals(
             OperationOutcome.Rejected(
@@ -171,7 +171,7 @@ class HostedContinuationOwnerRetentionTest {
             .executeQueryPage(
                 queryRequest,
                 fixture.authority,
-                QueryBudget(fixture.budget.resources, QueryByteLimit.parse(100_000).value()),
+                QueryBudget(fixture.budget.resources.boundedFixture(), QueryByteLimit.parse(100_000).value()),
             )
         return checkpoint
     }

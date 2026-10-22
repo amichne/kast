@@ -91,6 +91,7 @@ sealed interface ExistingIdeOperation {
                             kind == HostedMutationOperation.CHANGE_RECOVER &&
                                 effect.planIdentity.value == identity.value
                         is HostedRequestEffect.ChangePlan,
+                        is HostedRequestEffect.QueryRun,
                         is HostedRequestEffect.Operation -> false
                     }
                 return if (matches) Refinement.Refined(Mutation(request, kind, identity))

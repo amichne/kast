@@ -57,7 +57,7 @@ internal class HostedSemanticServices(
         IntellijExactRevalidationCapture(
             context.model,
             context.observation,
-            context.executionBudget.work.effective.value,
+            context.executionBudget.resources,
             context.limits,
         )
     private val revalidationStore = project.getService(HostedExactRevalidationStore::class.java)

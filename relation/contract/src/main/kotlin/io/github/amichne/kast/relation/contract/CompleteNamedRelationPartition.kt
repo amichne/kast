@@ -91,7 +91,7 @@ fun CallbackEndpointReadmissions.readmitNamedRelations(
         return Refinement.Rejected(
             NamedRelationReadmissionFailure.Partition(NamedRelationPartitionFailure.REQUEST_MISMATCH)
         )
-    if (previous.facts.size > request.budget.resources.resultLimit.value)
+    if (!request.budget.permitsOutputCount(previous.facts.size))
         return Refinement.Rejected(NamedRelationReadmissionFailure.Batch(RelationBatchFailure.RESULT_LIMIT_EXCEEDED))
     return when (
         val current = authority.withCurrentOwner {

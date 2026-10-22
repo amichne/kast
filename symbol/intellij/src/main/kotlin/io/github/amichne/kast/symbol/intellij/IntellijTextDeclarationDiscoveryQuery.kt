@@ -27,12 +27,12 @@ internal class IntellijTextDeclarationDiscoveryQuery(
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         if (allowance.expired())
             return collector.finishLimited(allowance, SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
-        if (allowance.consumedWork >= request.budget.resources.workUnitLimit.value)
+        if (!request.budget.resources.hasWorkCapacity(allowance.consumedWork))
             return collector.finishLimited(allowance, SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
         val projector = IntellijTextDeclarationProjector(request, compiledScope, target.word, collector, observation)
         val timings = TextDiscoveryTimings(clock)
         collectTextDiscoveryOccurrences(
-            request.budget.resources.workUnitLimit,
+            request.budget.resources.workAllowance,
             observe = {
                 if (allowance.expired()) {
                     collector.qualify(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)

@@ -285,7 +285,7 @@ class KastToolRpcQuerySessionTest {
         val encoded = Json.encodeToString(ToolRpcCatalog(emptyList()))
         val catalog = Json.parseToJsonElement(encoded).jsonObject
         assertEquals("true", catalog.getValue("querySession").jsonPrimitive.content)
-        assertEquals("14", catalog.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("15", catalog.getValue("schemaVersion").jsonPrimitive.content)
     }
 
     private fun run(

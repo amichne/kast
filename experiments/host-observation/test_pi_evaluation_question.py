@@ -51,7 +51,13 @@ console.log(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map({owner})));
         public = json.loads((here.parents[1] / "cli/src/test/resources/query-presentation-native.json").read_text())
         seed = json.loads((here / "pi-fixtures/query-delivery-cases.json").read_text())["cases"]["rejectedProof"]["result"]
         originals = [seed["initial"]["document"], seed["pages"][0]["document"]]
-        originals += [case["reply"]["document"] for case in public["cases"].values()]
+        current = {name: copy.deepcopy(case["reply"]["document"]) for name, case in public["cases"].items()}
+        # Project current report syntax without changing the pinned native receipts.
+        for document in current.values():
+            budget = document["execution_budget"]
+            self.assertEqual({"max_elapsed_ms", "max_work_units", "max_results", "max_returned_bytes"}, set(budget))
+            document["execution_budget"] = {"mode": "BOUNDED", **budget}
+        originals += list(current.values())
         self.assertTrue(all(validator.is_valid(case) for case in originals))
         cases = copy.deepcopy(originals)
 
@@ -69,7 +75,7 @@ console.log(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map({owner})));
 
         # One authoritative example per supported boundary covers rejection,
         # exact-symbol, reference-occurrence and nested ownership/signature data.
-        for original in [originals[0], originals[1], public["cases"]["occurrences"]["reply"]["document"]]:
+        for original in [originals[0], originals[1], current["occurrences"]]:
             compact = copy.deepcopy(original)
             if "items" in compact:
                 compact["items"] = compact["items"][:1]

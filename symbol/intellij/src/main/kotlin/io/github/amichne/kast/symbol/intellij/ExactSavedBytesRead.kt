@@ -18,8 +18,7 @@ internal fun readExactSavedBytes(
     bytesRead: (Int) -> Unit,
     cancellationCheck: () -> Unit,
 ): ExactSavedBytesRead {
-    if (expectedBytes !in 0..IntellijExactRevalidationCapture.MAX_FILE_BYTES)
-        return ExactSavedBytesRead.Rejected(ExactRevalidationRejection.CAPACITY)
+    if (expectedBytes < 0) return ExactSavedBytesRead.Rejected(ExactRevalidationRejection.CAPACITY)
     val bytes = ByteArray(expectedBytes)
     var offset = 0
     while (offset < expectedBytes) {

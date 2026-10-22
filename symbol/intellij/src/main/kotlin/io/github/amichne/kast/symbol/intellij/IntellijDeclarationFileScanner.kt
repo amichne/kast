@@ -62,7 +62,7 @@ internal class IntellijDeclarationFileScanner(private val state: IntellijDeclara
 
     private fun append(candidate: SymbolDiscoveryCandidate): Boolean {
         val size = candidate.projectedUtf8Size().value
-        if (size > state.request.budget.returnedBytes.value - state.bytes) {
+        if (!state.request.budget.permitsReturnedBytes(state.bytes + size)) {
             state.qualifications += SymbolDiscoveryQualification.BYTE_LIMIT_REACHED
             if (state.candidates.isEmpty()) state.block = SymbolDiscoveryBlockCause.ITEM_BYTE_LIMIT
             return false

@@ -36,7 +36,7 @@ class CallbackParameterSummariesTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources,
+                    request.budget.resources.bounded(),
                     RelationByteLimit.parse(summary.retainedBytes).refined(),
                 )
             )
@@ -53,7 +53,7 @@ class CallbackParameterSummariesTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()),
+                    request.budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).refined()),
                     RelationByteLimit.parse(summary.retainedBytes).refined(),
                 )
             )
@@ -99,7 +99,7 @@ class CallbackParameterSummariesTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()),
+                    request.budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).refined()),
                     RelationByteLimit.parse(1L).refined(),
                 ),
                 cache = cache,
@@ -144,7 +144,10 @@ class CallbackParameterSummariesTest {
         val cache = ObservedSupplierCache(inventory)
         val summaries =
             CallbackParameterSummaries(
-                RelationBudget(request.budget.resources, RelationByteLimit.parse(inventory.retainedBytes).refined()),
+                RelationBudget(
+                    request.budget.resources.bounded(),
+                    RelationByteLimit.parse(inventory.retainedBytes).refined(),
+                ),
                 cache = cache,
             )
         assertSame(inventory, summaries.findSupplierInventory(inventory.root, inventory.domain))
@@ -164,7 +167,7 @@ class CallbackParameterSummariesTest {
         val summaries =
             CallbackParameterSummaries(
                 RelationBudget(
-                    request.budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()),
+                    request.budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1).refined()),
                     RelationByteLimit.parse(inventory.retainedBytes - 1).refined(),
                 ),
                 cache = cache,

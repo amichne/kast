@@ -26,7 +26,7 @@ internal fun progressiveQueryDiscoveryCandidates(
     examined: MutableList<Int>,
 ): SymbolDiscoveryOperations = SymbolDiscoveryOperations { child ->
     val start = child.remainder?.nextOffset?.value ?: 0
-    val end = minOf(start + child.budget.resources.resultLimit.value, names.size)
+    val end = minOf(start + child.budget.resources.bounded().resultLimit.value, names.size)
     val candidates =
         (start until end).map { position ->
             examined += position

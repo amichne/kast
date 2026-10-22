@@ -36,7 +36,7 @@ class LocalBindingReferenceScan<C>(
         if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
         // Reserve one transfer, one new obligation, and one detached address before confirmation.
-        if (!fitsCandidate() || request.budget.resources.workUnitLimit.value < MINIMUM_PROGRESS_WORK)
+        if (!fitsCandidate() || !request.budget.resources.permitsWork(MINIMUM_PROGRESS_WORK))
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         spend() // role admission, after the adapter's authority/owner unit
         enumerate(::visit)
@@ -55,7 +55,7 @@ class LocalBindingReferenceScan<C>(
 
     private fun visit(candidate: C): Boolean {
         checkCanceled()
-        if (elapsedMillis() >= request.budget.resources.elapsedTimeLimit.value) {
+        if (!request.budget.resources.hasTimeRemaining(elapsedMillis())) {
             suspension = ValueFlowSuspensionCause.TIME_LIMIT_REACHED
             return false
         }
@@ -112,9 +112,8 @@ class LocalBindingReferenceScan<C>(
     private fun permitted(): Boolean {
         suspension =
             when {
-                work >= request.budget.resources.workUnitLimit.value -> ValueFlowSuspensionCause.WORK_LIMIT_REACHED
-                edges.size >= request.budget.resources.resultLimit.value ->
-                    ValueFlowSuspensionCause.RESULT_LIMIT_REACHED
+                !request.budget.resources.hasWorkCapacity(work) -> ValueFlowSuspensionCause.WORK_LIMIT_REACHED
+                edges.size >= request.budget.outputResults.value -> ValueFlowSuspensionCause.RESULT_LIMIT_REACHED
                 !fitsCandidate() -> ValueFlowSuspensionCause.BYTE_LIMIT_REACHED
                 else -> null
             }
@@ -122,6 +121,7 @@ class LocalBindingReferenceScan<C>(
     }
 
     private fun fitsCandidate(): Boolean {
+        if (request.budget.resources == io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled) return true
         val base = ValueFlowStep.detachedByteCount(request.source, domain, edges, obligations).value
         val remaining = request.budget.returnedBytes.value - base
         val reserve = 2048L.addBytes(request.source.retainedBytes)

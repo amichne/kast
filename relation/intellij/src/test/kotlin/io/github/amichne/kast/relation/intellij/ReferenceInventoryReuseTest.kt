@@ -224,7 +224,7 @@ class ReferenceInventoryReuseTest {
         reuse.remember(original, state)
         var now = 0L
         val collector = IntellijRelationCollector(original, { now })
-        now = original.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        now = original.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         assertEquals(
             ProviderTermination.HALTED,
             readRelationInventory(

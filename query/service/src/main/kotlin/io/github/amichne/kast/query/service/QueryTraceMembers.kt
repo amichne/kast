@@ -94,11 +94,14 @@ internal class QueryTraceMembers(private val source: SourceReadOperations, priva
         tasks: ArrayDeque<PipelineTask>,
     ): Boolean {
         val budget = state.indexedDiscoveryBudget() ?: return false
-        val entityLimit = SourceEntityLimit.parse(minOf(1_000, budget.resources.resultLimit.value)).refined()
+        val entityLimit = SourceEntityLimit.parse(minOf(1_000, budget.outputResults.value)).refined()
         val request = memberRequest(task, budget, entityLimit)
         val result = source.read(request)
         // Source pages expose no measured work. Charge the full transferred ceiling conservatively.
-        state.consume(budget.resources.workUnitLimit.value)
+        when (val resources = budget.resources) {
+            is io.github.amichne.kast.kernel.ResourceBudget.Bounded -> state.consume(resources.workUnitLimit.value)
+            io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled -> state.consume(1L)
+        }
         state.observeTime()
         return when (result) {
             is SourceReadResult.Rejected -> reject(task, result.reason, state, tasks)

@@ -169,7 +169,7 @@ class QueryQualifiedCompositionTest {
                 else -> error("Unexpected subject")
             }
         val facts = facts(read, selected, names)
-        val page = facts.drop(position.toInt()).take(read.budget.resources.resultLimit.value)
+        val page = facts.drop(position.toInt()).take(read.budget.resources.bounded().resultLimit.value)
         val inventory = (read.position as? RelationReadPosition.Resume)?.continuation?.providerState ?: inventory(facts)
         val successor =
             page.fold(inventory) { state, fact -> state.consume(RelationProviderConsumption.GraphConfirmed(fact)) }

@@ -124,7 +124,7 @@ class CallbackResultWorkAdmissionTest {
         }
 
         fun expire() {
-            now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+            now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
         }
 
         private fun lookup(identity: SymbolDiscoveryFileIdentity): VirtualFile {

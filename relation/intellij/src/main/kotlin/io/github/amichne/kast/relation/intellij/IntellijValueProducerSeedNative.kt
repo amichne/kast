@@ -71,7 +71,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
         request: ValueProducerSeedRequest,
         model: WorkspaceSearchScopeModelCompilation,
     ): ValueProducerSeedRead {
-        if (request.budget.resources.workUnitLimit.value < SEED_WORK_UNITS)
+        if (!request.budget.resources.permitsWork(SEED_WORK_UNITS))
             return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.WORK_LIMIT_REACHED)
         val started = System.nanoTime()
         // P is selected under its retained declaration authority; D limits later expansion.
@@ -180,7 +180,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 is Refinement.Refined -> result.value
             }
         val site = invocation.resultSite()
-        if (site.retainedBytes > request.budget.returnedBytes.value)
+        if (!request.budget.permitsReturnedBytes(site.retainedBytes))
             return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.BYTE_LIMIT_REACHED)
         val selection =
             when (val selected = ValueInvocationSelection.fromCompiler(invocation, request.anchor)) {
@@ -199,7 +199,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
         budget: RelationBudget,
         model: WorkspaceSearchScopeModelCompilation,
     ): ValueModelDeclarationRead {
-        if (budget.resources.workUnitLimit.value < MODEL_REVALIDATION_WORK_UNITS)
+        if (!budget.resources.permitsWork(MODEL_REVALIDATION_WORK_UNITS))
             return ValueModelDeclarationRead.Rejected(ValueProducerSeedRejection.WORK_LIMIT_REACHED)
         val started = System.nanoTime()
         val native =
@@ -271,8 +271,9 @@ private fun projectDeclaration(
     }
 
 private fun elapsedBudgetReached(started: Long, budget: RelationBudget): Boolean =
-    System.nanoTime() - started >=
-        java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(budget.resources.elapsedTimeLimit.value)
+    !budget.resources.hasTimeRemaining(
+        java.util.concurrent.TimeUnit.NANOSECONDS.toMillis((System.nanoTime() - started).coerceAtLeast(0L))
+    )
 
 private const val SEED_WORK_UNITS = 3L
 private const val MODEL_REVALIDATION_WORK_UNITS = 1L

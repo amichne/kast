@@ -2,7 +2,7 @@ package io.github.amichne.kast.symbol.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
-import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilation
 import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
 
@@ -14,7 +14,7 @@ internal fun confirmScopedExactReacquisition(
     budget: ResourceBudget,
     clock: IntellijReadNanoClock,
     captureWork: () -> Long,
-    checkContent: (WorkUnitLimit) -> Refinement<Unit, ExactRevalidationRejection>,
+    checkContent: (WorkAllowance) -> Refinement<Unit, ExactRevalidationRejection>,
     confirmCompiler: () -> ExactRevalidationCompilation,
     chargeLookup: () -> Unit,
 ): ExactRevalidationCompilation {
@@ -45,9 +45,9 @@ internal fun confirmScopedExactReacquisition(
 
 private fun ResourceBudget.scopedCaptureGrant(
     elapsedNanos: Long
-): Refinement<WorkUnitLimit, ExactRevalidationRejection> {
+): Refinement<WorkAllowance, ExactRevalidationRejection> {
     if (scopedTimeExhausted(elapsedNanos)) return Refinement.Rejected(ExactRevalidationRejection.TIME_LIMIT_REACHED)
-    return when (val limit = WorkUnitLimit.parse(workUnitLimit.value - SCOPED_REACQUISITION_LOOKUP_WORK)) {
+    return when (val limit = workAllowance.remainingAfter(SCOPED_REACQUISITION_LOOKUP_WORK)) {
         is Refinement.Refined -> limit
         is Refinement.Rejected -> Refinement.Rejected(ExactRevalidationRejection.WORK_LIMIT_REACHED)
     }
@@ -59,9 +59,9 @@ private fun ResourceBudget.admitScopedLookup(
 ): Refinement<Unit, ExactRevalidationRejection> =
     when {
         scopedTimeExhausted(elapsedNanos) -> Refinement.Rejected(ExactRevalidationRejection.TIME_LIMIT_REACHED)
-        captureWork >= workUnitLimit.value -> Refinement.Rejected(ExactRevalidationRejection.WORK_LIMIT_REACHED)
+        !hasWorkCapacity(captureWork) -> Refinement.Rejected(ExactRevalidationRejection.WORK_LIMIT_REACHED)
         else -> Refinement.Refined(Unit)
     }
 
 private fun ResourceBudget.scopedTimeExhausted(elapsedNanos: Long): Boolean =
-    elapsedNanos / SCOPED_REACQUISITION_NANOS_PER_MILLISECOND >= elapsedTimeLimit.value
+    !hasTimeRemaining(elapsedNanos / SCOPED_REACQUISITION_NANOS_PER_MILLISECOND)

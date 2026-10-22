@@ -10,10 +10,10 @@ fun ImpactPeerSiteAdmissionDocument.validatePeerAdmission(
     val receipt = acquisition
     val selected = selection
     return when {
-        receipt.examinedWorkUnits.value > receipt.budget.maxWorkUnits.value ||
-            selected.examinedWorkUnits.value > selected.budget.maxWorkUnits.value ->
+        !receipt.budget.permitsWork(receipt.examinedWorkUnits.value) ||
+            !selected.budget.permitsWork(selected.examinedWorkUnits.value) ->
             Refinement.Rejected(ImpactPeerProofFailureDocument.WORK_RECEIPT_EXCEEDS_GRANT)
-        receipt.elapsedNanos.elapsedMillis() > receipt.budget.maxElapsedMillis.value ->
+        !receipt.budget.permitsElapsedMillis(receipt.elapsedNanos.elapsedMillis()) ->
             Refinement.Rejected(ImpactPeerProofFailureDocument.TIME_RECEIPT_EXCEEDS_GRANT)
         selected.examinedWorkUnits.value > receipt.examinedWorkUnits.value ->
             Refinement.Rejected(ImpactPeerProofFailureDocument.SITE_WORK_EXCEEDS_ACQUISITION_WORK)
@@ -28,10 +28,13 @@ fun ImpactPeerSiteAdmissionDocument.validatePeerAdmission(
 }
 
 internal fun ImpactFlowBudgetDocument.isWithin(parent: ImpactFlowBudgetDocument): Boolean =
-    maxWorkUnits.value <= parent.maxWorkUnits.value &&
-        maxElapsedMillis.value <= parent.maxElapsedMillis.value &&
-        maxResults.value <= parent.maxResults.value &&
-        maxReturnedBytes.value <= parent.maxReturnedBytes.value
+    maxResults.value <= parent.maxResults.value &&
+        maxReturnedBytes.value <= parent.maxReturnedBytes.value &&
+        when (this) {
+            is ImpactFlowBudgetDocument.Bounded ->
+                parent.permitsWork(maxWorkUnits.value) && parent.permitsElapsedMillis(maxElapsedMillis.value)
+            is ImpactFlowBudgetDocument.RunnerControlled -> parent is ImpactFlowBudgetDocument.RunnerControlled
+        }
 
 internal fun ImpactValueSiteReferenceDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     enclosing.basis == basis &&

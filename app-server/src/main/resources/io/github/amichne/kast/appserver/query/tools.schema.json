@@ -639,10 +639,10 @@
         "object",
         "null"
       ],
-      "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+      "description": "Optional positive controls use configured defaults. BOUNDED mode clamps each control. RUNNER_CONTROLLED accepts only output controls.",
       "properties": {
         "maxElapsedMs": {
-          "description": "Elapsed allowance in milliseconds. It does not impose a wait. Omission uses KAST_READ_SEMANTIC_MILLIS. Remaining host time can reduce the admitted grant.",
+          "description": "Elapsed allowance in milliseconds. Omission uses KAST_READ_SEMANTIC_MILLIS. Host time can reduce this grant.",
           "type": [
             "integer",
             "null"
@@ -651,7 +651,7 @@
           "maximum": 9223372036854775807
         },
         "maxWorkUnits": {
-          "description": "Accounted work allowance, independent of response size. Query omission uses KAST_READ_SEMANTIC_WORK. More time alone does not raise this allowance.",
+          "description": "Accounted work allowance. Query omission uses KAST_READ_SEMANTIC_WORK. Time and response size do not change this allowance.",
           "type": [
             "integer",
             "null"
@@ -660,7 +660,7 @@
           "maximum": 9223372036854775807
         },
         "maxResults": {
-          "description": "Result allowance, independent of execution work. Query omission uses KAST_READ_SEMANTIC_RESULTS. A short presentation page does not prove completion.",
+          "description": "In BOUNDED mode, this caps results. In RUNNER_CONTROLLED mode, this caps each output page.",
           "type": [
             "integer",
             "null"
@@ -669,7 +669,7 @@
           "maximum": 2147483647
         },
         "maxReturnedBytes": {
-          "description": "Encoded response allowance in bytes. Query omission uses KAST_READ_SEMANTIC_RETURNED_BYTES. Checkpoint storage has separate operator quotas.",
+          "description": "Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
           "type": [
             "integer",
             "null"
@@ -886,6 +886,9 @@
         },
         "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
+        },
+        "executionMode": {
+          "$ref": "#/$defs/ExecutionMode"
         }
       },
       "required": [
@@ -3189,6 +3192,20 @@
         "end"
       ],
       "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument"
+    },
+    "ExecutionMode": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "BOUNDED",
+        "RUNNER_CONTROLLED",
+        null
+      ],
+      "default": null,
+      "x-kotlin-type": "QueryExecutionModeDocument",
+      "description": "RUNNER_CONTROLLED accepts only output controls and runs until completion or caller cancellation."
     }
   },
   "tools": [
@@ -4342,7 +4359,8 @@
             "main",
             "test"
           ]
-        }
+        },
+        "executionMode": "BOUNDED"
       }
     },
     {
@@ -4586,5 +4604,5 @@
       ]
     }
   ],
-  "contractVersion": 14
+  "contractVersion": 15
 }

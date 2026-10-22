@@ -1602,236 +1602,377 @@
       }
     },
     "executionBudget": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "max_elapsed_ms": {
+      "anyOf": [
+        {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "selection": {
-              "type": "string",
+            "mode": {
               "enum": [
-                "configured_default",
-                "caller"
-              ]
+                "BOUNDED"
+              ],
+              "type": "string"
             },
-            "requested": {
-              "anyOf": [
-                {
+            "max_elapsed_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "type": "string",
+                  "enum": [
+                    "configured_default",
+                    "caller"
+                  ]
+                },
+                "requested": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "configuredDefault": {
                   "type": "integer",
                   "minimum": 1
                 },
-                {
-                  "type": "null"
+                "operatorCeiling": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "effective": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "clamping": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "operator_ceiling",
+                      "transport_capacity",
+                      "deadline_remaining"
+                    ]
+                  }
                 }
+              },
+              "required": [
+                "selection",
+                "requested",
+                "configuredDefault",
+                "operatorCeiling",
+                "effective",
+                "clamping"
               ]
             },
-            "configuredDefault": {
-              "type": "integer",
-              "minimum": 1
+            "max_work_units": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "type": "string",
+                  "enum": [
+                    "configured_default",
+                    "caller"
+                  ]
+                },
+                "requested": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "configuredDefault": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "operatorCeiling": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "effective": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "clamping": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "operator_ceiling",
+                      "transport_capacity",
+                      "deadline_remaining"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "selection",
+                "requested",
+                "configuredDefault",
+                "operatorCeiling",
+                "effective",
+                "clamping"
+              ]
             },
-            "operatorCeiling": {
-              "type": "integer",
-              "minimum": 1
+            "max_results": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "type": "string",
+                  "enum": [
+                    "configured_default",
+                    "caller"
+                  ]
+                },
+                "requested": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "configuredDefault": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "operatorCeiling": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "effective": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "clamping": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "operator_ceiling",
+                      "transport_capacity",
+                      "deadline_remaining"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "selection",
+                "requested",
+                "configuredDefault",
+                "operatorCeiling",
+                "effective",
+                "clamping"
+              ]
             },
-            "effective": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "clamping": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "operator_ceiling",
-                  "transport_capacity",
-                  "deadline_remaining"
-                ]
-              }
+            "max_returned_bytes": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "type": "string",
+                  "enum": [
+                    "configured_default",
+                    "caller"
+                  ]
+                },
+                "requested": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "configuredDefault": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "operatorCeiling": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "effective": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "clamping": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "operator_ceiling",
+                      "transport_capacity",
+                      "deadline_remaining"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "selection",
+                "requested",
+                "configuredDefault",
+                "operatorCeiling",
+                "effective",
+                "clamping"
+              ]
             }
           },
           "required": [
-            "selection",
-            "requested",
-            "configuredDefault",
-            "operatorCeiling",
-            "effective",
-            "clamping"
+            "mode",
+            "max_elapsed_ms",
+            "max_work_units",
+            "max_results",
+            "max_returned_bytes"
           ]
         },
-        "max_work_units": {
+        {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "selection": {
-              "type": "string",
+            "mode": {
               "enum": [
-                "configured_default",
-                "caller"
-              ]
+                "RUNNER_CONTROLLED"
+              ],
+              "type": "string"
             },
-            "requested": {
-              "anyOf": [
-                {
+            "max_results": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "type": "string",
+                  "enum": [
+                    "configured_default",
+                    "caller"
+                  ]
+                },
+                "requested": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "configuredDefault": {
                   "type": "integer",
                   "minimum": 1
                 },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "configuredDefault": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "operatorCeiling": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "effective": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "clamping": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "operator_ceiling",
-                  "transport_capacity",
-                  "deadline_remaining"
-                ]
-              }
-            }
-          },
-          "required": [
-            "selection",
-            "requested",
-            "configuredDefault",
-            "operatorCeiling",
-            "effective",
-            "clamping"
-          ]
-        },
-        "max_results": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "selection": {
-              "type": "string",
-              "enum": [
-                "configured_default",
-                "caller"
-              ]
-            },
-            "requested": {
-              "anyOf": [
-                {
+                "operatorCeiling": {
                   "type": "integer",
                   "minimum": 1
                 },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "configuredDefault": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "operatorCeiling": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "effective": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "clamping": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "operator_ceiling",
-                  "transport_capacity",
-                  "deadline_remaining"
-                ]
-              }
-            }
-          },
-          "required": [
-            "selection",
-            "requested",
-            "configuredDefault",
-            "operatorCeiling",
-            "effective",
-            "clamping"
-          ]
-        },
-        "max_returned_bytes": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "selection": {
-              "type": "string",
-              "enum": [
-                "configured_default",
-                "caller"
-              ]
-            },
-            "requested": {
-              "anyOf": [
-                {
+                "effective": {
                   "type": "integer",
                   "minimum": 1
                 },
-                {
-                  "type": "null"
+                "clamping": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "operator_ceiling",
+                      "transport_capacity",
+                      "deadline_remaining"
+                    ]
+                  }
                 }
+              },
+              "required": [
+                "selection",
+                "requested",
+                "configuredDefault",
+                "operatorCeiling",
+                "effective",
+                "clamping"
               ]
             },
-            "configuredDefault": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "operatorCeiling": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "effective": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "clamping": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "operator_ceiling",
-                  "transport_capacity",
-                  "deadline_remaining"
-                ]
-              }
+            "max_returned_bytes": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "type": "string",
+                  "enum": [
+                    "configured_default",
+                    "caller"
+                  ]
+                },
+                "requested": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "configuredDefault": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "operatorCeiling": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "effective": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "clamping": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "operator_ceiling",
+                      "transport_capacity",
+                      "deadline_remaining"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "selection",
+                "requested",
+                "configuredDefault",
+                "operatorCeiling",
+                "effective",
+                "clamping"
+              ]
             }
           },
           "required": [
-            "selection",
-            "requested",
-            "configuredDefault",
-            "operatorCeiling",
-            "effective",
-            "clamping"
+            "mode",
+            "max_results",
+            "max_returned_bytes"
           ]
         }
-      },
-      "required": [
-        "max_elapsed_ms",
-        "max_work_units",
-        "max_results",
-        "max_returned_bytes"
-      ]
+      ],
+      "discriminator": {
+        "propertyName": "mode"
+      }
     },
     "planningEvidenceFailure": {
       "oneOf": [

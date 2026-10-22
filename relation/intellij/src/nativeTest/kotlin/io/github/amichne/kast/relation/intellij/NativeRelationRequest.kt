@@ -98,6 +98,7 @@ internal fun reissuedNativeRelationRequest(
     request: RelationRequest,
     evidence: CompilerGroundedSymbolEvidence,
     meaning: RelationMeaning,
+    budget: RelationBudget = request.budget,
 ): RelationRequest {
     val file = evidence.file as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace
     val selection =
@@ -106,9 +107,9 @@ internal fun reissuedNativeRelationRequest(
             file = Path.of(file.path.value),
             offset = evidence.range.startInclusive,
             scope = request.searchScope,
-            resources = request.budget.resources,
+            resources = budget.resources,
         )
-    return RelationRequest.start(SymbolSelector.issue(selection, evidence).nativeRefined(), meaning, request.budget)
+    return RelationRequest.start(SymbolSelector.issue(selection, evidence).nativeRefined(), meaning, budget)
 }
 
 private fun nativeDiscoverySelection(
@@ -126,7 +127,11 @@ private fun nativeDiscoverySelection(
                 SymbolDiscoveryPattern.parse("target").nativeRefined(),
                 SymbolDiscoveryMatch.EXACT_NAME,
             ),
-            SymbolDiscoveryBudget(resources, SymbolDiscoveryByteLimit.parse(10_000L).nativeRefined()),
+            SymbolDiscoveryBudget(
+                resources,
+                SymbolDiscoveryByteLimit.parse(10_000L).nativeRefined(),
+                ResultLimit.parse(1).nativeRefined(),
+            ),
         )
     val candidate =
         SymbolDiscoveryCandidate.fromBoundary(

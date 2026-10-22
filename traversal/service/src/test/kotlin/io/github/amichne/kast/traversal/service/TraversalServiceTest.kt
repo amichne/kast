@@ -134,7 +134,7 @@ class TraversalServiceTest {
         val visited = mutableListOf<String>()
         val reader = OneHopRelationReader { request ->
             visited += request.node.fingerprint.value
-            assertEquals(1, request.budget.resources.resultLimit.value)
+            assertEquals(1, request.budget.resources.bounded().resultLimit.value)
             when (request.node.fingerprint.value) {
                 a.fingerprint.value ->
                     fixture.qualifiedRead(request, listOf(b), RelationLimitation.RESULT_LIMIT_REACHED)
@@ -180,12 +180,14 @@ class TraversalServiceTest {
                 selector = a,
                 meaning = RelationMeaning.Callees,
                 budget =
-                    plan.budget.copy(
-                        extent =
-                            io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
-                                TraversalDepthLimit.parse(3).refined()
-                            )
-                    ),
+                    plan.budget
+                        .bounded()
+                        .copy(
+                            extent =
+                                io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth(
+                                    TraversalDepthLimit.parse(3).refined()
+                                )
+                        ),
                 continuation = continuation,
             ),
         )

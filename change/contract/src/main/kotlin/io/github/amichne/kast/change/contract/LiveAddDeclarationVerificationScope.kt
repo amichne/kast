@@ -1,6 +1,7 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.BoundedRelationBudget
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadPosition
@@ -13,14 +14,18 @@ import java.nio.file.Path
 data class LivePlannedRelationRead
 internal constructor(
     val meaning: RelationMeaning,
-    val budget: RelationBudget,
+    val boundedBudget: BoundedRelationBudget,
     val boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
-)
+) {
+    val budget: RelationBudget
+        get() = boundedBudget.value
+}
 
 data class LivePlannedTraversal
 internal constructor(
     val meaning: RelationMeaning,
-    val budget: TraversalBudget,
+    val budget: TraversalBudget.Bounded,
+    val boundedOneHop: BoundedRelationBudget,
     val expansion: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
 )
 
@@ -88,14 +93,16 @@ private constructor(
             return Refinement.Refined(
                 LiveAddDeclarationVerificationScope(
                     evidence.relations.map { relation ->
-                        LivePlannedRelationRead(
-                            relation.batch.request.meaning,
-                            relation.batch.request.budget,
-                            relation.batch.request.boundary,
-                        )
+                        when (val captured = captureLiveRelation(relation)) {
+                            is Refinement.Refined -> captured.value
+                            is Refinement.Rejected -> return captured
+                        }
                     },
-                    evidence.traversals.map {
-                        LivePlannedTraversal(it.page.plan.meaning, it.page.plan.budget, it.page.plan.expansion)
+                    evidence.traversals.map { traversal ->
+                        when (val captured = captureLiveTraversal(traversal)) {
+                            is Refinement.Refined -> captured.value
+                            is Refinement.Rejected -> return captured
+                        }
                     },
                     diagnostics,
                 )
@@ -123,11 +130,7 @@ private constructor(
     }
 }
 
-private fun TraversalBudget.containsOneHop(): Boolean {
-    val outputFits =
-        oneHop.resources.resultLimit.value <= records.value && oneHop.returnedBytes.value <= returnedBytes.value
-    val workFits =
-        oneHop.resources.workUnitLimit.value <= workUnits.value &&
-            oneHop.resources.elapsedTimeLimit.value <= elapsedTime.value
-    return outputFits && workFits
-}
+private fun TraversalBudget.Bounded.containsOneHop(): Boolean =
+    oneHop.outputResults.value <= records.value &&
+        oneHop.returnedBytes.value <= returnedBytes.value &&
+        oneHop.resources.fitsWithin(resources)

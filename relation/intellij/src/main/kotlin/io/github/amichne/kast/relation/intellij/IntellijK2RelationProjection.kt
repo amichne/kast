@@ -13,6 +13,7 @@ import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -40,6 +41,7 @@ internal class IntellijK2RelationProjection(
     private val project: com.intellij.openapi.project.Project,
     private val workspaceRoot: CanonicalWorkspaceRoot,
     val observation: IntellijReadObservation = IntellijReadObservation.None,
+    val workAllowance: WorkAllowance = defaultRelationCompilerTypeAllowance(),
 ) {
     fun callOwner(lexical: ContainingDeclaration): Refinement<ContainingDeclaration.Found, CallOwnershipFailure> =
         refineCallOwnership(lexical, observation)
@@ -133,8 +135,13 @@ internal class IntellijK2RelationProjection(
             when (
                 val result =
                     observation.observedAnalyze(declaration.kaModule(null)) {
-                        nativeSymbol(declaration)?.compilerProjection(this, detached, observation = observation)
-                            ?: IntellijCompilerProjectionResult.Unsupported
+                        nativeSymbol(declaration)
+                            ?.compilerProjection(
+                                this,
+                                detached,
+                                observation = observation,
+                                workAllowance = workAllowance,
+                            ) ?: IntellijCompilerProjectionResult.Unsupported
                     }
             ) {
                 is IntellijCompilerProjectionResult.Projected -> result.projection
@@ -173,7 +180,7 @@ internal class IntellijK2RelationProjection(
             is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
                 confirmExactTarget(admitted.reference, admitted.endpoint)
             is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
-                confirmClassConstruction(admitted, workspaceRoot, observation)
+                confirmClassConstruction(admitted, workspaceRoot, observation, workAllowance)
         }
 
     fun confirmReferenceTarget(reference: KtReference, subject: RelationEndpoint): IntellijReferenceTargetResult {
@@ -255,7 +262,7 @@ internal class IntellijK2RelationProjection(
         val child = childSymbol as? KaCallableSymbol ?: return IntellijK2DefinitionConfirmation.UNSUPPORTED
         return if (
             child.directlyOverriddenSymbols.any {
-                it.compareIdentity(parent, this) == IntellijSymbolIdentityComparison.SAME
+                it.compareIdentity(parent, this, workAllowance) == IntellijSymbolIdentityComparison.SAME
             }
         )
             confirmed()
@@ -274,7 +281,7 @@ internal class IntellijK2RelationProjection(
                 if (
                     candidate.modality != KaSymbolModality.ABSTRACT &&
                         candidate.allOverriddenSymbols.any {
-                            it.compareIdentity(subject, this) == IntellijSymbolIdentityComparison.SAME
+                            it.compareIdentity(subject, this, workAllowance) == IntellijSymbolIdentityComparison.SAME
                         }
                 )
                     confirmed()

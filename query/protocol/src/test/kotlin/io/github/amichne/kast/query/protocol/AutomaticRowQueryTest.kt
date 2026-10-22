@@ -287,14 +287,15 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
     private fun traversalSymbol(): QuerySymbol {
         val traversalBudget =
             TraversalBudget(
-                budget.resources.resultLimit,
+                budget.resources.bounded().resultLimit,
                 TraversalByteLimit.parse(100_000).refined(),
-                budget.resources.workUnitLimit,
-                budget.resources.elapsedTimeLimit,
+                budget.resources.bounded().workUnitLimit,
+                budget.resources.bounded().elapsedTimeLimit,
                 TraversalDepthLimit.parse(1).refined(),
                 TraversalFrontierLimit.parse(100).refined(),
                 fixture.budget.copy(
-                    resources = fixture.budget.resources.copy(resultLimit = budget.resources.resultLimit)
+                    resources =
+                        fixture.budget.resources.bounded().copy(resultLimit = budget.resources.bounded().resultLimit)
                 ),
             )
         val plan = TraversalPlan.start(fixture.selector, RelationMeaning.References, traversalBudget).refined()

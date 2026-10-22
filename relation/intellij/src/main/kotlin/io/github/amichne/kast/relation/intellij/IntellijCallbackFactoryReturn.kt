@@ -3,6 +3,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackFactoryCapture
 import io.github.amichne.kast.relation.contract.CallbackFactoryCaptureContent
@@ -50,8 +51,12 @@ internal class IntellijCallbackFactoryReturn(
                 is Refinement.Rejected -> return mapped
             }
         if (mapped.function in activeFactories) return rejected(CallbackInvocationFlowCause.CALLBACK_CYCLE)
-        if (activeFactories.size >= MAXIMUM_FACTORY_DEPTH)
-            return rejected(CallbackInvocationFlowCause.WORK_LIMIT_REACHED)
+        when (context.scope.request.budget.resources) {
+            is ResourceBudget.Bounded ->
+                if (activeFactories.size >= MAXIMUM_FACTORY_DEPTH)
+                    return rejected(CallbackInvocationFlowCause.WORK_LIMIT_REACHED)
+            ResourceBudget.RunnerControlled -> Unit
+        }
         val factory =
             when (val target = context.target(mapped.function)) {
                 is Refinement.Refined -> target.value

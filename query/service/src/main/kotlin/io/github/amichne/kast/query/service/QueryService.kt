@@ -110,7 +110,7 @@ class QueryService(
                         joinStage.bindingRows.size +
                         completedFailures.size +
                         completedOmissions.size +
-                        completedWalkObservations.size >= request.budget.resources.resultLimit.value
+                        completedWalkObservations.size >= request.budget.outputResults.value
             ) {
                 state.limit(QueryLimitation.RESULT_LIMIT_REACHED)
                 return false
@@ -375,7 +375,7 @@ class QueryService(
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
             if (!progressed) return QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS)
-            return checkpoint(emittedCount).admitContinuation(request.budget.checkpointBytes, checkpointObservation)
+            return checkpoint(emittedCount).admitContinuation(request.budget.storage, checkpointObservation)
         }
 
         private fun checkpoint(emittedCount: QueryCount): PipelineCheckpoint =

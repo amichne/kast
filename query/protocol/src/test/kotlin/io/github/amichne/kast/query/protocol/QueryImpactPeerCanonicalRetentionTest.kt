@@ -127,7 +127,7 @@ class QueryImpactPeerCanonicalRetentionTest {
 
     private fun budget(f: QueryImpactPeerSourceAdmissionTest.Fixture): QueryBudget {
         return f.source.budget.copy(
-            resources = f.source.budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(100).value()),
+            resources = f.source.budget.resources.bounded().copy(workUnitLimit = WorkUnitLimit.parse(100).value()),
             checkpointBytes = QueryByteLimit.parse(1_000_000).value(),
             returnedBytes = QueryByteLimit.parse(1_000_000).value(),
         )
@@ -203,13 +203,13 @@ class QueryImpactPeerCanonicalRetentionTest {
             RelationOperations { error("Unexpected relation read") },
             TraversalOperations { error("Unexpected traversal") },
             TraversalBudget(
-                budget.resources.resultLimit,
+                budget.resources.bounded().resultLimit,
                 TraversalByteLimit.parse(100000).value(),
-                budget.resources.workUnitLimit,
-                budget.resources.elapsedTimeLimit,
+                budget.resources.bounded().workUnitLimit,
+                budget.resources.bounded().elapsedTimeLimit,
                 TraversalDepthLimit.parse(1).value(),
                 TraversalFrontierLimit.parse(1).value(),
-                RelationBudget(budget.resources, RelationByteLimit.parse(100000).value()),
+                RelationBudget(budget.resources.bounded(), RelationByteLimit.parse(100000).value()),
             ),
             QueryNanoClock { 0 },
             flow,

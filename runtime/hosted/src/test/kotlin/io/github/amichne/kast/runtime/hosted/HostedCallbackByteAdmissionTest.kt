@@ -165,7 +165,7 @@ class HostedCallbackByteAdmissionTest {
 
 private class CallbackByteFixture {
     val symbols = RelationPagingFixture(RelationPagingFixture.live().authority, "readPrepared")
-    val budget = QueryBudget(symbols.budget.resources, QueryByteLimit.parse(65536).callbackValue())
+    val budget = QueryBudget(symbols.budget.resources.boundedFixture(), QueryByteLimit.parse(65536).callbackValue())
     var relationCalls = 0
     var projectedBytes = 0L
     private val read = evidence("read", 10, 1000, emptyList())
@@ -186,10 +186,10 @@ private class CallbackByteFixture {
                 RelationOperations(::relation),
                 TraversalOperations { error("Unexpected traversal") },
                 TraversalBudget(
-                    budget.resources.resultLimit,
+                    budget.resources.boundedFixture().resultLimit,
                     TraversalByteLimit.parse(65536).callbackValue(),
-                    budget.resources.workUnitLimit,
-                    budget.resources.elapsedTimeLimit,
+                    budget.resources.boundedFixture().workUnitLimit,
+                    budget.resources.boundedFixture().elapsedTimeLimit,
                     TraversalDepthLimit.parse(1).callbackValue(),
                     TraversalFrontierLimit.parse(3).callbackValue(),
                     symbols.budget,

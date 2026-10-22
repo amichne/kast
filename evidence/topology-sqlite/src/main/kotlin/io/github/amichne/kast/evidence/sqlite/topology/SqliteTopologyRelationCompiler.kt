@@ -164,8 +164,7 @@ class SqliteTopologyRelationCompiler private constructor(content: TopologySnapsh
     }
 
     private fun page(request: RelationRequest, inventory: RelationProviderState): RelationCompilation {
-        val resultLimit = request.budget.resources.resultLimit.value
-        val workLimit = request.budget.resources.workUnitLimit.value
+        val resultLimit = request.budget.outputResults.value
         val byteLimit = request.budget.returnedBytes.value
         val page = mutableListOf<RelationFact>()
         var state = inventory
@@ -184,7 +183,8 @@ class SqliteTopologyRelationCompiler private constructor(content: TopologySnapsh
             boundary =
                 when {
                     page.size >= resultLimit -> RelationPageBoundary.Reached.RESULT_LIMIT
-                    page.size.toLong() >= workLimit -> RelationPageBoundary.Reached.WORK_LIMIT
+                    !request.budget.resources.hasWorkCapacity(page.size.toLong()) ->
+                        RelationPageBoundary.Reached.WORK_LIMIT
                     bytes + factBytes > byteLimit -> RelationPageBoundary.Reached.BYTE_LIMIT
                     else -> RelationPageBoundary.NotReached
                 }

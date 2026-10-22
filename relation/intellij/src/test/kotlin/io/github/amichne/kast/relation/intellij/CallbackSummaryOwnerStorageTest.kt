@@ -37,7 +37,11 @@ class CallbackSummaryOwnerStorageTest {
         val graph = (summary.forwarding as CallbackForwardingEvidence.ExhaustedGraph).graph
         val retention =
             CallbackFlowRetention(
-                fixture.budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes).resources.resultLimit,
+                fixture
+                    .budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes)
+                    .resources
+                    .bounded()
+                    .resultLimit,
                 observation,
             )
         retention.admitSummary(summary).refined()
@@ -57,7 +61,11 @@ class CallbackSummaryOwnerStorageTest {
         val owner = fixture.observedOwner(rebuilt)
         val retention =
             CallbackFlowRetention(
-                fixture.budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes).resources.resultLimit,
+                fixture
+                    .budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes)
+                    .resources
+                    .bounded()
+                    .resultLimit,
                 observation,
             )
         retention.admitSummary(summary).refined()
@@ -79,7 +87,7 @@ class CallbackSummaryOwnerStorageTest {
                             value.destination.retainedBytes
                     )
                     .resources
-                    .resultLimit,
+                    .resultAllowance,
                 observation,
             )
         retention.admitSummary(summary).refined()
@@ -107,7 +115,7 @@ class CallbackSummaryOwnerStorageTest {
         assertEquals(summary, rebuilt)
         assertNotSame(summary, rebuilt)
         val (owner, value) = fixture.immutableOwner(summary)
-        CallbackFlowRetention(fixture.budget(summary.retainedBytes).resources.resultLimit)
+        CallbackFlowRetention(fixture.budget(summary.retainedBytes).resources.bounded().resultLimit)
             .admitSummary(summary)
             .refined()
         val retention =
@@ -120,7 +128,7 @@ class CallbackSummaryOwnerStorageTest {
                             value.destination.retainedBytes
                     )
                     .resources
-                    .resultLimit,
+                    .resultAllowance,
                 observation,
             )
         retention.admitSummary(rebuilt).refined()

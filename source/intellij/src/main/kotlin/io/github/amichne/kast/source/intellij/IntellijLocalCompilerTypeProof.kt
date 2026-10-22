@@ -2,7 +2,10 @@
 
 package io.github.amichne.kast.source.intellij
 
+import com.intellij.openapi.progress.ProgressManager
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
@@ -21,26 +24,42 @@ import org.jetbrains.kotlin.analysis.api.types.KaTypeArgumentWithVariance
 import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
 
 /** Inspect compiler type structure before rendering, including nested arguments, bounds and flexible types. */
-internal fun localCompilerTypeProof(types: List<KaType>): LocalCompilerTypeProof =
-    localCompilerTypeProof(types.asSequence())
+internal fun localCompilerTypeProof(
+    types: List<KaType>,
+    workAllowance: WorkAllowance = defaultLocalSourceCompilerTypeAllowance(),
+): LocalCompilerTypeProof = localCompilerTypeProof(types.asSequence(), workAllowance)
 
 private const val MAX_LOCAL_COMPILER_TYPE_WORK = 256
 private const val MAX_LOCAL_COMPILER_TYPE_DEPTH = 32
 
-internal fun localCompilerTypeProof(types: Sequence<KaType>): LocalCompilerTypeProof =
-    IntellijLocalCompilerTypeProof().inspect(types)
+internal fun defaultLocalSourceCompilerTypeAllowance(): WorkAllowance.Bounded =
+    when (val limit = WorkUnitLimit.parse(MAX_LOCAL_COMPILER_TYPE_WORK.toLong())) {
+        is Refinement.Refined -> WorkAllowance.Bounded(limit.value)
+        is Refinement.Rejected -> error("The fixed source compiler type allowance must be positive")
+    }
 
-private class IntellijLocalCompilerTypeProof {
+internal fun localCompilerTypeProof(
+    types: Sequence<KaType>,
+    workAllowance: WorkAllowance = defaultLocalSourceCompilerTypeAllowance(),
+): LocalCompilerTypeProof = IntellijLocalCompilerTypeProof(workAllowance).inspect(types)
+
+private class IntellijLocalCompilerTypeProof(private val workAllowance: WorkAllowance) {
     private val pending = ArrayDeque<Pair<KaType, Int>>()
     private val parameters = hashSetOf<KaTypeParameterSymbol>()
-    private var examined = 0
+    private val seen = hashSetOf<KaType>()
+    private var examined = 0L
+    private val work =
+        when (workAllowance) {
+            WorkAllowance.Unlimited -> WorkAllowance.Unlimited
+            is WorkAllowance.Bounded -> workAllowance.intersect(defaultLocalSourceCompilerTypeAllowance())
+        }
 
     fun inspect(types: Sequence<KaType>): LocalCompilerTypeProof {
         val roots = enqueue(types, 0)
         if (roots != LocalCompilerTypeProof.ADMITTED) return roots
         while (pending.isNotEmpty()) {
             val (type, depth) = pending.removeFirst()
-            if (++examined > MAX_LOCAL_COMPILER_TYPE_WORK || depth > MAX_LOCAL_COMPILER_TYPE_DEPTH)
+            if (!spend(1L) || workAllowance is WorkAllowance.Bounded && depth > MAX_LOCAL_COMPILER_TYPE_DEPTH)
                 return LocalCompilerTypeProof.WORK_LIMIT_REACHED
             val children =
                 when (val proof = children(type)) {
@@ -53,9 +72,17 @@ private class IntellijLocalCompilerTypeProof {
         return LocalCompilerTypeProof.ADMITTED
     }
 
+    private fun spend(count: Long): Boolean {
+        ProgressManager.checkCanceled()
+        examined = if (count > Long.MAX_VALUE - examined) Long.MAX_VALUE else examined + count
+        return work.permits(examined)
+    }
+
     private fun enqueue(types: Sequence<KaType>, depth: Int): LocalCompilerTypeProof {
         for (type in types) {
-            if (pending.size >= MAX_LOCAL_COMPILER_TYPE_WORK) return LocalCompilerTypeProof.WORK_LIMIT_REACHED
+            ProgressManager.checkCanceled()
+            if (workAllowance == WorkAllowance.Unlimited && !seen.add(type)) continue
+            if (!work.permits(pending.size.toLong() + 1L)) return LocalCompilerTypeProof.WORK_LIMIT_REACHED
             pending.addLast(type to depth)
         }
         return LocalCompilerTypeProof.ADMITTED
@@ -83,15 +110,12 @@ private class IntellijLocalCompilerTypeProof {
         }
 
     private fun classChildren(type: KaClassType): Refinement<List<KaType>, LocalCompilerTypeProof> {
-        if (type.qualifiers.size > MAX_LOCAL_COMPILER_TYPE_WORK - examined)
-            return Refinement.Rejected(LocalCompilerTypeProof.WORK_LIMIT_REACHED)
-        examined += type.qualifiers.size
+        if (!spend(type.qualifiers.size.toLong())) return Refinement.Rejected(LocalCompilerTypeProof.WORK_LIMIT_REACHED)
         val projected = mutableListOf<KaType>()
         val projections =
             type.typeArguments.asSequence() + type.qualifiers.asSequence().flatMap { it.typeArguments.asSequence() }
         for (projection in projections) {
-            if (++examined > MAX_LOCAL_COMPILER_TYPE_WORK)
-                return Refinement.Rejected(LocalCompilerTypeProof.WORK_LIMIT_REACHED)
+            if (!spend(1L)) return Refinement.Rejected(LocalCompilerTypeProof.WORK_LIMIT_REACHED)
             when (projection) {
                 is KaStarTypeProjection -> Unit
                 is KaTypeArgumentWithVariance -> projected.add(projection.type)
@@ -103,7 +127,9 @@ private class IntellijLocalCompilerTypeProof {
 }
 
 /** Inspect exactly the type facts encoded by a qualified containing declaration's signature. */
-internal fun KaSymbol.localOwnerCompilerTypeProof(): LocalCompilerTypeProof {
+internal fun KaSymbol.localOwnerCompilerTypeProof(
+    workAllowance: WorkAllowance = defaultLocalSourceCompilerTypeAllowance()
+): LocalCompilerTypeProof {
     val facts =
         when (this) {
             is KaFunctionSymbol ->
@@ -117,5 +143,5 @@ internal fun KaSymbol.localOwnerCompilerTypeProof(): LocalCompilerTypeProof {
             is KaClassLikeSymbol -> emptySequence()
             else -> return LocalCompilerTypeProof.UNSUPPORTED_TYPE
         }
-    return localCompilerTypeProof(facts)
+    return localCompilerTypeProof(facts, workAllowance)
 }

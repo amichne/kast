@@ -83,6 +83,7 @@ private data class DimensionReport(
     @SerialName("max_work_units") val work: DimensionLimit = DimensionLimit(),
     @SerialName("max_results") val results: DimensionLimit = DimensionLimit(),
     @SerialName("max_returned_bytes") val bytes: DimensionLimit = DimensionLimit(),
+    val mode: QueryExecutionModeDocument = QueryExecutionModeDocument.BOUNDED,
 )
 
 @Serializable

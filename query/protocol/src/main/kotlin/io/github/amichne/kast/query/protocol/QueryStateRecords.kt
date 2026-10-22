@@ -141,7 +141,8 @@ internal fun Map<QueryStateKey, QueryStateEntry>.inputAvailable(
     return ownsPublication(claim, transientClaims) &&
         origin.lease == this[key]?.lease &&
         key in origin.inputs &&
-        now - origin.createdAt <= TimeUnit.MILLISECONDS.toNanos(ttlMillis)
+        (claim.executionMode == io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.RUNNER_CONTROLLED ||
+            now - origin.createdAt <= TimeUnit.MILLISECONDS.toNanos(ttlMillis))
 }
 
 internal sealed interface QueryProducerAcquisition {

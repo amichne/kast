@@ -34,7 +34,7 @@ internal class IntellijRelationInventory<Locator : RelationProviderLocator>(
                 is Refinement.Rejected -> return collector.blockPartition(locator.failure)
             }
         requiredBytes = retainedBytes + value.retainedBytes
-        if (requiredBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value)
+        if (collector.hasInternalLimits && requiredBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value)
             return collector.blockPartition(RelationLimitation.RETENTION_LIMIT_REACHED)
         retainedBytes = requiredBytes
         locators += value

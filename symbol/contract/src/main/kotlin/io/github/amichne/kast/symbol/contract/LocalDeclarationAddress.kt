@@ -68,8 +68,6 @@ private constructor(
     val lexicalOwners: List<ExactDeclarationTextRange>,
 ) {
     companion object {
-        const val MAX_OWNER_DEPTH = 32
-
         /** Restores detached syntax only; live scope/ownership is re-admitted at compiler lookup. */
         fun restoreFile(
             rawKind: String,
@@ -124,8 +122,6 @@ private constructor(
         ): Refinement<LocalDeclarationAddress, LocalDeclarationAddressFailure> {
             if (!ownerIdentity.hasCanonicalDigest())
                 return Refinement.Rejected(LocalDeclarationAddressFailure.INVALID_OWNER_IDENTITY)
-            if (lexicalOwners.size > MAX_OWNER_DEPTH)
-                return Refinement.Rejected(LocalDeclarationAddressFailure.OWNER_DEPTH_EXCEEDED)
             if (!ownerRange.strictlyContains(range))
                 return Refinement.Rejected(LocalDeclarationAddressFailure.INVALID_OWNER_RANGE)
             var enclosing = ownerRange

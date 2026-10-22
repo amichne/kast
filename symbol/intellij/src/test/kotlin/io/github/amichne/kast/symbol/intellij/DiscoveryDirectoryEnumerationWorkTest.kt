@@ -34,9 +34,11 @@ class DiscoveryDirectoryEnumerationWorkTest {
                     ),
                     base.budget.copy(
                         resources =
-                            base.budget.resources.copy(
-                                workUnitLimit = (WorkUnitLimit.parse(10_000) as Refinement.Refined).value
-                            )
+                            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                                    io.github.amichne.kast.kernel.ResourceBudget.Bounded::class.java,
+                                    base.budget.resources,
+                                )
+                                .copy(workUnitLimit = (WorkUnitLimit.parse(10_000) as Refinement.Refined).value)
                     ),
                     base.constraints,
                 )

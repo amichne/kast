@@ -70,7 +70,7 @@ internal class IntellijSupplementalDiscoveryQuery(
                 return discoverTextDeclarations(compiledScope, request, allowance, target)
             is SymbolDiscoveryTarget.Text -> {
                 collectTextDiscoveryOccurrences(
-                    workLimit = request.budget.resources.workUnitLimit,
+                    workLimit = request.budget.resources.workAllowance,
                     limits = limits,
                     observe = collector::observe,
                     qualify = collector::qualify,
@@ -175,19 +175,19 @@ internal class SupplementalCollector(
     private fun accept(candidate: SymbolDiscoveryCandidate): Boolean {
         if (!observe()) return false
         if (containsOwner(candidate)) return true
-        if (!nativeWork && workUnits >= request.budget.resources.workUnitLimit.value) {
+        if (!nativeWork && !request.budget.resources.hasWorkCapacity(workUnits)) {
             qualifications += SymbolDiscoveryQualification.WORK_LIMIT_REACHED
             halted = true
             return false
         }
         if (!nativeWork) workUnits += 1L
-        if (candidates.size >= request.budget.resources.resultLimit.value) {
+        if (!request.budget.resources.hasResultCapacity(candidates.size)) {
             qualifications += SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
             halted = true
             return false
         }
         val candidateBytes = candidate.projectedUtf8Size().value
-        if (candidateBytes > request.budget.returnedBytes.value - encodedBytes) {
+        if (!request.budget.permitsReturnedBytes(encodedBytes + candidateBytes)) {
             qualifications += SymbolDiscoveryQualification.BYTE_LIMIT_REACHED
             halted = true
             return false
@@ -212,7 +212,7 @@ internal class SupplementalCollector(
                 halted = true
             }
         }
-        if (clock.now() - startedAt >= request.elapsedLimitNanoseconds().value) {
+        if (request.elapsedExpired(clock.now() - startedAt)) {
             qualifications += SymbolDiscoveryQualification.TIME_LIMIT_REACHED
             halted = true
         }

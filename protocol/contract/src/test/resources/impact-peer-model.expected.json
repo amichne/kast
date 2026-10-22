@@ -99,6 +99,7 @@
         "referenceVersion": 1
       },
       "budget": {
+        "mode": "BOUNDED",
         "maxElapsedMillis": 100,
         "maxWorkUnits": 10,
         "maxResults": 2,
@@ -109,6 +110,7 @@
     },
     "selection": {
       "budget": {
+        "mode": "BOUNDED",
         "maxElapsedMillis": 100,
         "maxWorkUnits": 10,
         "maxResults": 2,

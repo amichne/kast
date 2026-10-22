@@ -108,6 +108,54 @@ Invocation queries still need complete callback graphs. Unresolved source identi
 
 The model proves source relationships resolved by the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
 
+## Runner-controlled execution
+
+`executionMode` defaults to `BOUNDED`. To rerun a query without semantic quotas, submit a fresh `RUN` with `executionMode: "RUNNER_CONTROLLED"`.
+Kast then omits its semantic time, work, internal byte, and internal result quotas.
+Caller cancellation or a disconnected caller stops the operation.
+
+```json
+{
+  "request": {
+    "type": "RUN",
+    "executionMode": "RUNNER_CONTROLLED",
+    "source": {
+      "type": "SEARCH_DECLARATIONS",
+      "declarationName": "confirmReferenceTarget",
+      "declarationKinds": ["FUNCTION"],
+      "scope": {
+        "type": "DIRECTORY",
+        "relativeDirectoryPath": "relation/intellij/src/main",
+        "sourceSetNames": ["main"]
+      }
+    },
+    "steps": [{
+      "type": "WALK",
+      "relation": "CALLERS",
+      "expansionScope": {
+        "type": "SOURCE_DOMAIN",
+        "sourceSets": ["main"],
+        "sourcePolicy": "PRODUCTION_ONLY",
+        "generatedSources": "EXCLUDE"
+      }
+    }],
+    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
+    "retention": "RETAIN",
+    "executionBudget": {"maxResults": 20, "maxReturnedBytes": 100000}
+  }
+}
+```
+
+In this mode, `maxResults` and `maxReturnedBytes` control output pages.
+Explicit `maxElapsedMs` or `maxWorkUnits` conflict with the mode and reject the request.
+Preparation and transport frames keep their existing limits.
+A runner can enforce its own timeout, so its deadline controls determine the maximum caller lifetime.
+
+Completion still needs exhaustive compiler proof.
+Source changes, unsupported effects, and invalid continuations still reject the operation.
+`RESUME` presents produced output only.
+After source changes, get fresh symbol references before a new `RUN`.
+
 ## Source evidence
 
 [The source map](/reference/source-map#callback-and-deferred-ownership) links callback owners and counterexample tests.

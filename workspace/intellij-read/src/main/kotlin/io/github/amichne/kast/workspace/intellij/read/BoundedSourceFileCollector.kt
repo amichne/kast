@@ -28,7 +28,7 @@ internal class BoundedSourceFileCollector(private val scope: Path, private val b
     fun accept(entry: ProjectSourceEntry, elapsedNanos: Long): Boolean {
         if (state is Refinement.Rejected) return false
         observed += 1
-        if (observed > budget.workUnitLimit.value || elapsedNanos / 1_000_000 >= budget.elapsedTimeLimit.value) {
+        if (!budget.permitsWork(observed) || !budget.hasTimeRemaining(elapsedNanos / 1_000_000)) {
             return reject(ProjectSourceFileFailure.LIMIT_EXCEEDED)
         }
         when (entry) {
@@ -39,7 +39,7 @@ internal class BoundedSourceFileCollector(private val scope: Path, private val b
                     return reject(ProjectSourceFileFailure.INVALID_SCOPE)
                 }
                 files.add(entry.path)
-                if (files.size > budget.resultLimit.value) return reject(ProjectSourceFileFailure.LIMIT_EXCEEDED)
+                if (!budget.permitsResults(files.size)) return reject(ProjectSourceFileFailure.LIMIT_EXCEEDED)
             }
         }
         return true

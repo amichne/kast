@@ -62,7 +62,7 @@ internal fun bindImpactSourceModels(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return impactFailure(admitted.failure.impactFailure())
         }
-    if (source.retainedBytes > budget.checkpointBytes.value)
+    if (!budget.storage.permits(source.retainedBytes))
         return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED)
     return Refinement.Refined(QueryImpactSourceAdmission(source, evidence.examinedWork))
 }

@@ -97,7 +97,7 @@ class NativePacketSourcePolicyTest : NativePacketValueFixtureTest() {
                         ValueFlowRequest(
                             site,
                             RelationBudget(
-                                fixture.budget.resources,
+                                fixture.budget.resources.nativeBounded(),
                                 RelationByteLimit.parse(16_000_000L).nativeRefined(),
                             ),
                             RelationSearchBoundary.RETAINED_SUBJECT,

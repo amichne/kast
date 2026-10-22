@@ -3,6 +3,7 @@
 package io.github.amichne.kast.source.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
@@ -11,8 +12,14 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 
 private const val MAX_LOCAL_SOURCE_TYPE_PARAMETERS = 256
 
-internal fun KaSymbol.localSourceCompilerTypeProof(): Refinement<Unit, LocalDeclarationProjectionFailure> {
-    if (this is KaNamedFunctionSymbol && typeParameters.size > MAX_LOCAL_SOURCE_TYPE_PARAMETERS)
+internal fun KaSymbol.localSourceCompilerTypeProof(
+    workAllowance: WorkAllowance = defaultLocalSourceCompilerTypeAllowance()
+): Refinement<Unit, LocalDeclarationProjectionFailure> {
+    if (
+        workAllowance is WorkAllowance.Bounded &&
+            this is KaNamedFunctionSymbol &&
+            typeParameters.size > MAX_LOCAL_SOURCE_TYPE_PARAMETERS
+    )
         return Refinement.Rejected(LocalDeclarationProjectionFailure.WorkLimitReached)
     val facts =
         when (this) {
@@ -26,7 +33,7 @@ internal fun KaSymbol.localSourceCompilerTypeProof(): Refinement<Unit, LocalDecl
             is KaAnonymousObjectSymbol -> superTypes.asSequence()
             else -> emptySequence()
         }
-    return localCompilerTypeProof(facts).asLocalSourceTypeProof()
+    return localCompilerTypeProof(facts, workAllowance).asLocalSourceTypeProof()
 }
 
 internal fun LocalCompilerTypeProof.asLocalSourceTypeProof(): Refinement<Unit, LocalDeclarationProjectionFailure> =

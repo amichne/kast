@@ -8,6 +8,7 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -29,12 +30,13 @@ internal fun KaSymbol.localRelationDeclarationAddress(
     session: KaSession,
     file: SymbolDiscoveryFileIdentity,
     depth: Int,
+    workAllowance: WorkAllowance,
     projectOwner: (KaSymbol, Int) -> Refinement<CanonicalCompilerSignature, LocalDeclarationProjectionFailure>,
 ): Refinement<LocalDeclarationAddress, LocalDeclarationProjectionFailure> {
     val declaration = psi ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.SourceUnavailable)
     val range = declaration.textRange ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.SourceUnavailable)
     val owner =
-        when (val admitted = localRelationOwner(session, declaration)) {
+        when (val admitted = localRelationOwner(session, declaration, workAllowance)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
@@ -43,7 +45,7 @@ internal fun KaSymbol.localRelationDeclarationAddress(
             is Refinement.Refined -> projected.value
             is Refinement.Rejected -> return projected
         }
-    return createLocalRelationAddress(file, range, declaration, owner.psi, signature)
+    return createLocalRelationAddress(file, range, declaration, owner.psi, signature, workAllowance)
 }
 
 private data class LocalRelationOwner(val symbol: KaSymbol, val psi: PsiElement)
@@ -51,9 +53,10 @@ private data class LocalRelationOwner(val symbol: KaSymbol, val psi: PsiElement)
 private fun KaSymbol.localRelationOwner(
     session: KaSession,
     declaration: PsiElement,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalRelationOwner, LocalDeclarationProjectionFailure> {
     val owner =
-        when (val selected = namedLocalCompilerOwner(session)) {
+        when (val selected = namedLocalCompilerOwner(session, workAllowance)) {
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return selected
         }
@@ -63,7 +66,7 @@ private fun KaSymbol.localRelationOwner(
             LocalDeclarationProjectionFailure.InvalidAddress(LocalDeclarationAddressFailure.INVALID_FILE)
         )
     if (owner.location != KaSymbolLocation.LOCAL) {
-        when (val proof = owner.localOwnerCompilerTypeProof().asLocalRelationTypeProof()) {
+        when (val proof = owner.localOwnerCompilerTypeProof(workAllowance).asLocalRelationTypeProof()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return proof
         }
@@ -77,10 +80,11 @@ private fun KaSymbol.createLocalRelationAddress(
     declaration: PsiElement,
     owner: PsiElement,
     signature: CanonicalCompilerSignature,
+    workAllowance: WorkAllowance,
 ): Refinement<LocalDeclarationAddress, LocalDeclarationProjectionFailure> {
     val ownerRange = owner.textRange ?: return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerUnavailable)
     val lexical =
-        when (val admitted = localDeclarationLexicalOwners(declaration, owner)) {
+        when (val admitted = localDeclarationLexicalOwners(declaration, owner, workAllowance)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }

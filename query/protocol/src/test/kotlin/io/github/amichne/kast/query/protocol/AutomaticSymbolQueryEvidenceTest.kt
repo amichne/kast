@@ -163,7 +163,7 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
                 evidenceCursor = evidenceCursor,
             ),
             fixture.authority,
-            budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1000).refined())),
+            budget.copy(resources = budget.resources.bounded().copy(resultLimit = ResultLimit.parse(1000).refined())),
         )
 
     private fun failureScript() =

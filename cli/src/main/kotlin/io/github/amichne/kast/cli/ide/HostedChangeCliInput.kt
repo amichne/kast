@@ -24,7 +24,8 @@ internal class HostedCliInput(val argv: List<String>, val input: CliRequestDocum
                 mutation(request, HostedMutationOperation.CHANGE_APPLY, effect.planIdentity.value)
             is HostedRequestEffect.ChangeRecover ->
                 mutation(request, HostedMutationOperation.CHANGE_RECOVER, effect.planIdentity.value)
-            is HostedRequestEffect.Operation -> ExistingIdeOperation.Read.admit(request)
+            is HostedRequestEffect.Operation,
+            is HostedRequestEffect.QueryRun -> ExistingIdeOperation.Read.admit(request)
         }
 }
 

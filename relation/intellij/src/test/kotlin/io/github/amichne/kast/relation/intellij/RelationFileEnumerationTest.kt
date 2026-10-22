@@ -96,7 +96,7 @@ internal class RelationFileEnumerationTest : RelationFileEnumerationFixture() {
             val outcome =
                 CompleteRelationFileUniverse.prepare(
                     selected,
-                    request.budget.resources,
+                    request.budget.resources.bounded(),
                     allowance,
                     ReadLimits.Default,
                     observation,
@@ -132,7 +132,7 @@ internal class RelationFileEnumerationTest : RelationFileEnumerationFixture() {
         val result =
             CompleteRelationFileUniverse.prepare(
                 plan(),
-                request.budget.resources,
+                request.budget.resources.bounded(),
                 IntellijRelationAllowance { 0L },
                 ReadLimits.Default,
                 IntellijReadObservation.None,
@@ -175,7 +175,7 @@ internal class RelationFileEnumerationTest : RelationFileEnumerationFixture() {
         val outcome =
             CompleteRelationFileUniverse.prepare(
                 plan(),
-                small.budget.resources,
+                small.budget.resources.bounded(),
                 allowance,
                 ReadLimits.Default,
                 IntellijReadObservation.None,
@@ -189,7 +189,7 @@ internal class RelationFileEnumerationTest : RelationFileEnumerationFixture() {
         val expired =
             CompleteRelationFileUniverse.prepare(
                 plan(),
-                request.budget.resources,
+                request.budget.resources.bounded(),
                 timed,
                 ReadLimits.Default,
                 IntellijReadObservation.None,
@@ -208,7 +208,7 @@ internal class RelationFileEnumerationTest : RelationFileEnumerationFixture() {
             assertThrows<com.intellij.openapi.progress.ProcessCanceledException> {
                 CompleteRelationFileUniverse.prepare(
                     plan(),
-                    request.budget.resources,
+                    request.budget.resources.bounded(),
                     IntellijRelationAllowance { 0L },
                     ReadLimits.Default,
                     observation,

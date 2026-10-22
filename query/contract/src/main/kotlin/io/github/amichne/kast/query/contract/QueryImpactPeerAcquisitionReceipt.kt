@@ -20,11 +20,11 @@ private constructor(
             examinedWorkUnits: RelationWorkCount,
             elapsed: QueryImpactPeerElapsedNanos,
         ): Refinement<QueryImpactPeerAcquisitionReceipt, QueryImpactPeerProofFailure> {
-            if (examinedWorkUnits.value > grant.resources.workUnitLimit.value)
+            if (!grant.resources.permitsWork(examinedWorkUnits.value))
                 return Refinement.Rejected(QueryImpactPeerProofFailure.WORK_RECEIPT_EXCEEDS_GRANT)
             val millis =
                 elapsed.value / NANOS_PER_MILLISECOND + if (elapsed.value % NANOS_PER_MILLISECOND == 0L) 0L else 1L
-            if (millis > grant.resources.elapsedTimeLimit.value)
+            if (!grant.resources.permitsElapsedMillis(millis))
                 return Refinement.Rejected(QueryImpactPeerProofFailure.TIME_RECEIPT_EXCEEDS_GRANT)
             return Refinement.Refined(
                 QueryImpactPeerAcquisitionReceipt(completedAuthority, grant, examinedWorkUnits, elapsed)

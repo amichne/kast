@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
 import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -262,6 +263,7 @@ internal data class PublicToolRunAction(
     val output: PublicToolOutput? = null,
     val retention: PublicToolRetention? = null,
     val executionBudget: PublicToolExecutionBudget? = null,
+    val executionMode: QueryExecutionModeDocument? = null,
 ) : PublicToolAction
 
 @Serializable
@@ -351,6 +353,7 @@ internal data class PublicToolReplaceBody(
 
 internal object PublicToolDefaults {
     val nameMatch = PublicToolNameMatch.EXACT
+    val executionMode = QueryExecutionModeDocument.BOUNDED
     const val includeSubdirectories = true
     const val includeSubpackages = true
     const val maximumEdgesPerNode = 32

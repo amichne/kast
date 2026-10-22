@@ -12,7 +12,7 @@ class HostedReadTransactionTest {
         val progress = HostedQueryProgress(clock = { now }, completion = HostedReadCompletionPolicy.CALLER_ELAPSED)
         val result =
             runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { allowance ->
-                now += allowance.semantic.value * 1_000_000L
+                now += allowance.boundedFixture().semantic.value * 1_000_000L
                 42
             }
         assertEquals(HostedSemanticRead.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), result)
@@ -51,7 +51,7 @@ class HostedReadTransactionTest {
             val result =
                 runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { allowance ->
                     now +=
-                        allowance.semantic.value * 1_000_000L +
+                        allowance.boundedFixture().semantic.value * 1_000_000L +
                             if (policy == HostedReadCompletionPolicy.CALLER_ELAPSED) -1L else 1L
                     42
                 }

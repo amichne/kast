@@ -20,6 +20,12 @@ internal val QueryStateEntry.invocationOwner: QueryInvocationPublication?
             is QueryStateEntry.Result -> null
         }
 
+internal val QueryStateEntry.privateRunnerOwner: QueryInvocationPublication?
+    get() = if (this is QueryStateEntry.Producer && request.runnerControlled()) invocationOwner else null
+
+internal fun QueryStateEntry.ownedByRunner(invocation: QueryInvocationPublication?): Boolean =
+    invocation != null && privateRunnerOwner === invocation
+
 internal fun QueryStateEntry.publishInvocation(): QueryStateEntry =
     when (this) {
         is QueryStateEntry.Checkpoint -> copy(privateInvocation = null)

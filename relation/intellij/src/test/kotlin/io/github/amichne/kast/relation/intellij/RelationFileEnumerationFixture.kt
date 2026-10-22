@@ -66,7 +66,7 @@ internal open class RelationFileEnumerationFixture {
         val result =
             CompleteRelationFileUniverse.prepare(
                 plan,
-                request.budget.resources,
+                request.budget.resources.bounded(),
                 allowance,
                 limits,
                 observation,

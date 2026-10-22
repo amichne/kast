@@ -2,7 +2,9 @@ package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.core.BrokerOperationEffect
 import io.github.amichne.kast.appserver.core.HostedToolDefinition
+import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.WorkspaceLifecycleToolInput
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import kotlinx.serialization.SerializationException
@@ -17,6 +19,22 @@ internal fun workspaceInvocationAccess(
     arguments: JsonElement,
 ): WorkspaceExecutionAccess {
     val operation = WorkspaceExecutionAccess.Operation(effect)
+    if (
+        definition?.operation == CanonicalOperation.QUERY_RUN &&
+            effect == BrokerOperationEffect.Canonical(definition.effect) &&
+            definition.inputSchema.admit(arguments) is Validation.Validated
+    ) {
+        return when (
+            val admitted =
+                PublicToolContract.admit(
+                    io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS,
+                    arguments,
+                )
+        ) {
+            is Refinement.Refined -> WorkspaceExecutionAccess.RunnerControlledQuery.admit(effect, admitted.value)
+            is Refinement.Rejected -> operation
+        }
+    }
     if (definition?.operation != CanonicalOperation.WORKSPACE_LIFECYCLE) return operation
     if (effect != BrokerOperationEffect.Canonical(definition.effect)) return operation
     if (definition.inputSchema.admit(arguments) !is Validation.Validated) return operation

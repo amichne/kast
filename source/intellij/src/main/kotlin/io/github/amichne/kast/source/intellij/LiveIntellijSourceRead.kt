@@ -146,7 +146,7 @@ internal class LiveIntellijSourceRegionAccess(
         val anchor =
             when (val requested = request.anchor) {
                 is io.github.amichne.kast.source.contract.SourceReadAnchor.Symbol ->
-                    admitSymbolAnchor(document, requested.selector)
+                    admitSymbolAnchor(document, requested.selector, request.resources.workAllowance)
                 is io.github.amichne.kast.source.contract.SourceReadAnchor.Source ->
                     admitSourceAnchor(document, requested.selector)
                 is io.github.amichne.kast.source.contract.SourceReadAnchor.Candidate ->
@@ -325,6 +325,7 @@ internal class LiveIntellijSourceRegionAccess(
     private fun admitSymbolAnchor(
         document: LiveSourceDocument,
         selector: SymbolSelector,
+        workAllowance: io.github.amichne.kast.kernel.WorkAllowance,
     ): LiveSourceAnchorResult {
         if (selector.lease != document.snapshot.lease) {
             return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.STALE_GENERATION)
@@ -333,7 +334,7 @@ internal class LiveIntellijSourceRegionAccess(
             exactDeclaration(document.psiFile, selector)
                 ?: return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.ANCHOR_NOT_FOUND)
         val evidence =
-            when (val admitted = declaration.compilerEvidence(selector, observation)) {
+            when (val admitted = declaration.compilerEvidence(selector, observation, workAllowance)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return LiveSourceAnchorResult.Rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)

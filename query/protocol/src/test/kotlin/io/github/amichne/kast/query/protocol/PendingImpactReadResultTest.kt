@@ -48,7 +48,7 @@ class PendingImpactReadResultTest {
                     f.symbols.references,
                     f.store,
                 )
-            val budget = QueryBudget(f.symbols.budget.resources, QueryByteLimit.parse(1_000_000).value())
+            val budget = QueryBudget(f.symbols.budget.resources.bounded(), QueryByteLimit.parse(1_000_000).value())
             val page =
                 protocol.executePage(QueryRunRequest.ReadResult.valuePaths(reference), f.symbols.authority, budget)
             assertInstanceOf(OperationOutcome.Qualified::class.java, page)

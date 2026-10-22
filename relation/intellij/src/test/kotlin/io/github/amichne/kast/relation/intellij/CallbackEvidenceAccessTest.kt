@@ -141,7 +141,7 @@ class CallbackEvidenceAccessTest {
         val sdk = RelationScopeSdkFixture()
         var now = 0L
         val collector = IntellijRelationCollector(base, { now })
-        now = base.budget.resources.elapsedTimeLimit.value * NANOS_PER_MILLISECOND
+        now = base.budget.resources.bounded().elapsedTimeLimit.value * NANOS_PER_MILLISECOND
         val effects = NoFileEffects()
         val projection = IntellijCallbackResultProjection(sdk.project, compile(sdk, base), collector, effects, {})
         assertEquals(

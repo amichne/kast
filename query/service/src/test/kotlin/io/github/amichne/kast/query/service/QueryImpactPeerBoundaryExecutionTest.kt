@@ -289,7 +289,7 @@ class QueryImpactPeerBoundaryExecutionTest {
         val grant =
             f.request().budget.let {
                 io.github.amichne.kast.relation.contract.RelationBudget(
-                    it.resources,
+                    it.resources.bounded(),
                     io.github.amichne.kast.relation.contract.RelationByteLimit.parse(it.checkpointBytes.value).value(),
                 )
             }

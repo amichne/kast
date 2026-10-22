@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.AdmittedExecutionBudget
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -195,6 +196,12 @@ private suspend fun evaluateHostedDiagnostic(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejectedHostedEpoch(admitted.failure)
         }
+    val diagnosticResources =
+        when (val grant = context.executionBudget) {
+            is AdmittedExecutionBudget.Bounded -> grant.resources
+            is AdmittedExecutionBudget.RunnerControlled ->
+                return HostedResponse.Rejected(HostedEndpointFailure.INVALID_REQUEST)
+        }
     val publication = HostedDiagnosticPublicationSession(context)
     val outcome =
         CanonicalDiagnosticCheckProtocol(
@@ -203,7 +210,7 @@ private suspend fun evaluateHostedDiagnostic(
                 retained.diagnosticCheckpoints,
                 publication,
             )
-            .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources)
+            .execute(request.request, context.authority, diagnosticResources)
     val response =
         encodeHostedDiagnosticResponse(
             outcome.withDiagnosticBudget(
@@ -240,28 +247,44 @@ internal class HostedSemanticBudgets(
             grant.resources,
             fixed(QueryByteLimit.parse(grant.returnedBytes.effective.value)),
             fixed(QueryByteLimit.parse(limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong())),
+            grant.results.effective,
         )
 
     val hostedRelationBudget =
         RelationBudget(
             hostedQueryBudget.resources,
             fixed(RelationByteLimit.parse(grant.returnedBytes.effective.value)),
+            grant.results.effective,
         )
     val hostedSourceBudget =
         SourceProtocolBudget(
             grant.resources,
             fixed(SourceTextByteLimit.parse(grant.returnedBytes.effective.value)),
+            grant.results.effective,
         )
     val hostedTraversalBudget =
-        TraversalBudget(
-            hostedQueryBudget.resources.resultLimit,
-            fixed(TraversalByteLimit.parse(grant.returnedBytes.effective.value)),
-            hostedQueryBudget.resources.workUnitLimit,
-            hostedQueryBudget.resources.elapsedTimeLimit,
-            fixed(TraversalDepthLimit.parse(limits[ReadLimitParameter.TRAVERSAL_DEPTH].value)),
-            fixed(TraversalFrontierLimit.parse(limits[ReadLimitParameter.TRAVERSAL_FRONTIER].value)),
-            hostedRelationBudget,
-        )
+        when (grant) {
+            is AdmittedExecutionBudget.Bounded ->
+                TraversalBudget(
+                    grant.results.effective,
+                    fixed(TraversalByteLimit.parse(grant.returnedBytes.effective.value)),
+                    grant.work.effective,
+                    grant.elapsed.effective,
+                    fixed(TraversalDepthLimit.parse(limits[ReadLimitParameter.TRAVERSAL_DEPTH].value)),
+                    fixed(TraversalFrontierLimit.parse(limits[ReadLimitParameter.TRAVERSAL_FRONTIER].value)),
+                    hostedRelationBudget,
+                )
+            is AdmittedExecutionBudget.RunnerControlled ->
+                TraversalBudget.RunnerControlled(
+                    grant.results.effective,
+                    fixed(TraversalByteLimit.parse(grant.returnedBytes.effective.value)),
+                    io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive,
+                    io.github.amichne.kast.relation.contract.RunnerControlledRelationBudget.create(
+                        hostedRelationBudget.returnedBytes,
+                        grant.results.effective,
+                    ),
+                )
+        }
 }
 
 private fun <Value> fixed(value: Refinement<Value, *>): Value =

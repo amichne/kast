@@ -18,11 +18,22 @@ class ReadAcquisitionAccountingTest {
         )
 
     @Test
+    fun `runner-controlled reacquisition has no work or elapsed rejection`() {
+        val accounting = ReadAcquisitionAccounting()
+        accounting.record(Long.MAX_VALUE, Long.MAX_VALUE)
+        accounting.record(1L, Long.MAX_VALUE)
+        assertEquals(
+            Refinement.Refined(ResourceBudget.RunnerControlled),
+            accounting.remaining(ResourceBudget.RunnerControlled),
+        )
+    }
+
+    @Test
     fun `multiple lookups spend the same work and elapsed allowance`() {
         val accounting = ReadAcquisitionAccounting()
         accounting.record(3, 1)
         accounting.record(2, 2_000_001)
-        val remaining = accounting.remaining(budget).value()
+        val remaining = accounting.remaining(budget).value().boundedFixture()
         assertEquals(5, remaining.workUnitLimit.value)
         assertEquals(16, remaining.elapsedTimeLimit.value)
         assertEquals(budget.resultLimit, remaining.resultLimit)
@@ -46,7 +57,7 @@ class ReadAcquisitionAccountingTest {
         accounting.record(3, 2_000_001)
         assertEquals(2, first.value)
         assertEquals(5, accounting.snapshot().value)
-        val remaining = accounting.remaining(budget).value()
+        val remaining = accounting.remaining(budget).value().boundedFixture()
         assertEquals(5, remaining.workUnitLimit.value)
         assertEquals(16, remaining.elapsedTimeLimit.value)
     }

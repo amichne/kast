@@ -181,9 +181,9 @@ private class EmptyProgressFixture {
     private fun discover(request: SymbolDiscoveryRequest): SymbolDiscoveryResult {
         val offset = request.remainder?.nextOffset?.value
         positions += offset
-        workGrants += request.budget.resources.workUnitLimit.value
+        workGrants += request.budget.resources.bounded().workUnitLimit.value
         check(positions.size <= 2) { "Discovery repeated exhausted input" }
-        val work = if (offset == null) request.budget.resources.workUnitLimit.value else 0L
+        val work = if (offset == null) request.budget.resources.bounded().workUnitLimit.value else 0L
         val batch =
             SymbolDiscoveryBatch.create(
                     request,
@@ -231,14 +231,14 @@ private class EmptyProgressFixture {
 
     private fun traversalCeiling() =
         TraversalBudget(
-            budget.resources.resultLimit,
+            budget.resources.bounded().resultLimit,
             TraversalByteLimit.parse(budget.returnedBytes.value).refinedEmptyProgress(),
-            budget.resources.workUnitLimit,
-            budget.resources.elapsedTimeLimit,
+            budget.resources.bounded().workUnitLimit,
+            budget.resources.bounded().elapsedTimeLimit,
             TraversalDepthLimit.parse(1).refinedEmptyProgress(),
             TraversalFrontierLimit.parse(1).refinedEmptyProgress(),
             RelationBudget(
-                budget.resources,
+                budget.resources.bounded(),
                 RelationByteLimit.parse(budget.returnedBytes.value).refinedEmptyProgress(),
             ),
         )

@@ -42,7 +42,7 @@ class RelationPreparationAccountingTest {
         val allowance = IntellijRelationAllowance { 0L }
         allowance.chargePreparation((RelationWorkCount.parse(3) as Refinement.Refined).value)
         val remaining = assertInstanceOf<Refinement.Refined<ResourceBudget>>(allowance.remainingResources(budget)).value
-        assertEquals(1L, remaining.workUnitLimit.value)
+        assertEquals(1L, remaining.bounded().workUnitLimit.value)
         allowance.chargePreparation((RelationWorkCount.parse(1) as Refinement.Refined).value)
         assertInstanceOf<Refinement.Rejected<*>>(allowance.remainingResources(budget))
     }

@@ -299,8 +299,8 @@ class CanonicalQueryProtocolTest {
                 executed = true
                 assertEquals(2, read.entityLimit.value)
                 assertEquals(64L, read.textByteLimit.value)
-                assertEquals(10L, read.resources.workUnitLimit.value)
-                assertEquals(100L, read.resources.elapsedTimeLimit.value)
+                assertEquals(10L, read.resources.bounded().workUnitLimit.value)
+                assertEquals(100L, read.resources.bounded().elapsedTimeLimit.value)
                 io.github.amichne.kast.source.contract.SourceReadResult.Rejected(
                     io.github.amichne.kast.source.contract.SourceReadRejection.WORKSPACE_NOT_READY
                 )

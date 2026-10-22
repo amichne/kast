@@ -269,17 +269,22 @@ internal class HostedCallbackFactCache(
 internal fun optionalPreparationBudget(
     budget: ResourceBudget
 ): Refinement<ResourceBudget, io.github.amichne.kast.kernel.PositiveLimitFailure> {
+    val bounded =
+        when (budget) {
+            ResourceBudget.RunnerControlled -> return Refinement.Refined(budget)
+            is ResourceBudget.Bounded -> budget
+        }
     val work =
-        when (val parsed = WorkUnitLimit.parse(budget.workUnitLimit.value / 4)) {
+        when (val parsed = WorkUnitLimit.parse(bounded.workUnitLimit.value / 4)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return parsed
         }
     val time =
-        when (val parsed = ElapsedTimeLimitMillis.parse(budget.elapsedTimeLimit.value / 4)) {
+        when (val parsed = ElapsedTimeLimitMillis.parse(bounded.elapsedTimeLimit.value / 4)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> return parsed
         }
-    return Refinement.Refined(budget.copy(workUnitLimit = work, elapsedTimeLimit = time))
+    return Refinement.Refined(bounded.copy(workUnitLimit = work, elapsedTimeLimit = time))
 }
 
 private fun measuredWork(work: Long): RelationWorkCount =

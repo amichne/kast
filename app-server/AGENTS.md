@@ -4,8 +4,8 @@ title: "Kast app-server"
 description: "Owns the shared coordinator, workspace preparation, host adapters, Codex transport, and public tool admission."
 resource: "repo://app-server"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-22T05:31:45Z"
+source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: app-server/README.md
   - path: app-server/build.gradle.kts
@@ -13,6 +13,9 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationInput.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionAccess.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
@@ -47,8 +50,8 @@ Owns the shared coordinator, workspace preparation, host adapters, Codex transpo
 ## Subdirectories
 
 - [src/main/kotlin/io/github/amichne/kast/appserver/core/](src/main/kotlin/io/github/amichne/kast/appserver/core/) - broker and session types.
-- [src/main/kotlin/io/github/amichne/kast/appserver/host/](src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md) - Codex host adapters and authored rules.
-- [src/main/kotlin/io/github/amichne/kast/appserver/query/](src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md) - public admission and canonical mappings with authored rules.
+- [Host adapters](src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md) - Codex host adapters and authored rules.
+- [Public query admission](src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md) - public admission and canonical mappings with authored rules.
 - [src/main/kotlin/io/github/amichne/kast/appserver/ide/](src/main/kotlin/io/github/amichne/kast/appserver/ide/) - existing-IDE endpoints and live compatibility.
 - [src/main/kotlin/io/github/amichne/kast/appserver/protocol/](src/main/kotlin/io/github/amichne/kast/appserver/protocol/) - Codex and Copilot transport projections.
 - [src/main/kotlin/io/github/amichne/kast/appserver/runtime/](src/main/kotlin/io/github/amichne/kast/appserver/runtime/) - registration, preparation, session, and invocation control.
@@ -68,4 +71,6 @@ Owns the shared coordinator, workspace preparation, host adapters, Codex transpo
 - For public syntax, read the nested query guide, authored schema, and canonical mappings.
 - For preparation failures, trace the exact root through `WorkspacePreparations` into the existing-IDE client.
 - Coordinator readiness alone does not establish workspace enrollment or semantic availability.
+- `KastInvocationInput` keeps the admitted execution mode through provider dispatch. `WorkspaceExecutionAccess.RunnerControlledQuery` carries an unlimited semantic lifetime only for a schema-admitted query with a read effect. Provider dispatch and the workspace lane omit semantic deadlines for that access. Queue admission and output limits keep their existing grants.
+- `ExistingIdeSocketClient` bounds connection and request writes. For an admitted `RUNNER_CONTROLLED` query, it waits for the semantic response until caller cancellation.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

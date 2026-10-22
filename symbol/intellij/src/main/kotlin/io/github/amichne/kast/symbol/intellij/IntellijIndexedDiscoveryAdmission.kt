@@ -3,6 +3,10 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.NavigationItem
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultAllowance
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
@@ -25,15 +29,35 @@ internal class IntellijIndexedDiscoveryAdmission(
 
     private val target = request.target
     private val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
-    private val capacity =
-        minOf(
-                request.budget.resources.workUnitLimit.value,
-                limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
-            )
-            .toInt()
-    private val ranked = fuzzy?.let {
-        BoundedLexicalCandidates(it.pattern, minOf(capacity, request.budget.resources.resultLimit.value))
-    }
+    private val capacity: ResultAllowance =
+        when (val resources = request.budget.resources) {
+            is ResourceBudget.Bounded ->
+                when (
+                    val limit =
+                        ResultLimit.parse(
+                            minOf(
+                                    resources.workUnitLimit.value,
+                                    limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
+                                )
+                                .toInt()
+                        )
+                ) {
+                    is Refinement.Refined -> ResultAllowance.Bounded(limit.value)
+                    is Refinement.Rejected -> error("Positive discovery limits produced an invalid capacity")
+                }
+            ResourceBudget.RunnerControlled -> ResultAllowance.Unlimited
+        }
+    private val ranked =
+        when (val allowance = capacity) {
+            is ResultAllowance.Bounded ->
+                fuzzy?.let {
+                    BoundedLexicalCandidates(
+                        it.pattern,
+                        minOf(allowance.limit.value, request.budget.outputResults.value),
+                    )
+                }
+            ResultAllowance.Unlimited -> null
+        }
     private val pending = ArrayList<NavigationItem>()
     private val identities = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<NavigationItem, Boolean>())
     private var reachedLimit = false
@@ -75,7 +99,7 @@ internal class IntellijIndexedDiscoveryAdmission(
         if (ranked != null) ranked.accept(item).observe(observation, contributor)
         else {
             if (item in identities) return true
-            if (pending.size >= capacity) {
+            if (!capacity.hasCapacity(pending.size)) {
                 reachedLimit = true
                 return false
             }
@@ -105,7 +129,7 @@ internal class IntellijIndexedDiscoveryAdmission(
         pending += ranking.values()
         if (ranking.truncated)
             collector.qualify(
-                if (request.budget.resources.resultLimit.value <= capacity)
+                if (capacity.permits(request.budget.outputResults.value))
                     SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
                 else SymbolDiscoveryQualification.WORK_LIMIT_REACHED
             )

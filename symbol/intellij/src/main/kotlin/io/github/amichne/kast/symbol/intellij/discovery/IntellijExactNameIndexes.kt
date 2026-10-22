@@ -113,7 +113,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                 FilenameIndex.processFilesByName(name, true, scope.nativeScope) {
                     ProgressManager.checkCanceled()
                     files += it
-                    files.size.toLong() <= request.budget.resources.workUnitLimit.value
+                    request.budget.resources.permitsWork(files.size.toLong())
                 }
             var projected = true
             for (file in files) {

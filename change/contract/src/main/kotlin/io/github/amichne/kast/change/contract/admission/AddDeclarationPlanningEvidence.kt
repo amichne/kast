@@ -1,7 +1,6 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
-import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationFact
@@ -317,9 +316,14 @@ private fun relationProjection(result: RelationReadResult.Complete): String = bu
             is RelationReadPosition.Resume -> "RESUME:" + position.continuation.fingerprint.value
         }
     )
-    appendPlanningField(request.budget.resources.resultLimit.value.toString())
-    appendPlanningField(request.budget.resources.workUnitLimit.value.toString())
-    appendPlanningField(request.budget.resources.elapsedTimeLimit.value.toString())
+    when (val resources = request.budget.resources) {
+        io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled -> appendPlanningField("RUNNER_CONTROLLED")
+        is io.github.amichne.kast.kernel.ResourceBudget.Bounded -> {
+            appendPlanningField(resources.resultLimit.value.toString())
+            appendPlanningField(resources.workUnitLimit.value.toString())
+            appendPlanningField(resources.elapsedTimeLimit.value.toString())
+        }
+    }
     appendPlanningField(request.budget.returnedBytes.value.toString())
     appendPlanningField(result.batch.encodedBytes.value.toString())
     appendPlanningField(result.batch.examinedWorkUnits.value.toString())
@@ -338,15 +342,26 @@ private fun traversalProjection(result: TraversalResult.Complete): String = buil
     )
     appendPlanningField(plan.budget.records.value.toString())
     appendPlanningField(plan.budget.returnedBytes.value.toString())
-    appendPlanningField(plan.budget.workUnits.value.toString())
-    appendPlanningField(plan.budget.elapsedTime.value.toString())
+    when (val budget = plan.budget) {
+        is io.github.amichne.kast.traversal.contract.TraversalBudget.RunnerControlled ->
+            appendPlanningField("RUNNER_CONTROLLED")
+        is io.github.amichne.kast.traversal.contract.TraversalBudget.Bounded -> {
+            appendPlanningField(budget.workUnits.value.toString())
+            appendPlanningField(budget.elapsedTime.value.toString())
+        }
+    }
     when (val extent = plan.budget.extent) {
         io.github.amichne.kast.traversal.contract.TraversalExtent.Exhaustive -> appendPlanningField("EXHAUSTIVE")
         is io.github.amichne.kast.traversal.contract.TraversalExtent.ThroughDepth -> {
             appendPlanningField(extent.maximumDepth.value.toString())
         }
     }
-    appendPlanningField(plan.budget.frontier.value.toString())
+    when (val budget = plan.budget) {
+        is io.github.amichne.kast.traversal.contract.TraversalBudget.RunnerControlled ->
+            appendPlanningField("RUNNER_CONTROLLED")
+        is io.github.amichne.kast.traversal.contract.TraversalBudget.Bounded ->
+            appendPlanningField(budget.frontier.value.toString())
+    }
     appendPlanningField(result.page.encodedBytes.value.toString())
     appendPlanningField(result.page.examinedWorkUnits.value.toString())
     appendPlanningField(result.page.elapsedMillis.value.toString())
@@ -355,26 +370,6 @@ private fun traversalProjection(result: TraversalResult.Complete): String = buil
     result.page.records.forEach { record ->
         appendPlanningField(record.canonicalProjection())
     }
-}
-
-private fun diagnosticProjection(result: DiagnosticCheckResult.Complete): String = buildString {
-    val scope = result.batch.scope
-    appendPlanningField(scope.lease.workspaceRoot.value)
-    appendPlanningField(scope.lease.identity.revisionKey.value)
-    scope.files.forEach { file -> appendPlanningField(file.value) }
-    result.coverage.analyzedFiles.forEach { file -> appendPlanningField(file.value) }
-    result.batch.facts.sortedBy(::diagnosticFactProjection).forEach { fact ->
-        appendPlanningField(diagnosticFactProjection(fact))
-    }
-}
-
-private fun diagnosticFactProjection(fact: DiagnosticFact): String = buildString {
-    appendPlanningField(fact.location.file.value)
-    appendPlanningField(fact.location.range.start.value.toString())
-    appendPlanningField(fact.location.range.endExclusive.value.toString())
-    appendPlanningField(fact.severity.name)
-    appendPlanningField(fact.code.value)
-    appendPlanningField(fact.message.value)
 }
 
 private fun RelationMeaning.canonicalKey(): String =

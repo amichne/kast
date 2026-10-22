@@ -146,10 +146,13 @@ internal class HostedReadDiagnostics(
                 when (val entry = stages[HostedQueryStage.SEMANTIC_READ]) {
                     null -> HostedSemanticEntry.NotEntered
                     else ->
-                        HostedSemanticEntry.Entered(
-                            (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong() * 1_000_000 - entry)
-                                .coerceAtLeast(0)
-                        )
+                        if (semanticBudget == HostedSemanticBudgetObservation.RunnerControlled)
+                            HostedSemanticEntry.RunnerControlled
+                        else
+                            HostedSemanticEntry.Entered(
+                                (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong() * 1_000_000 - entry)
+                                    .coerceAtLeast(0)
+                            )
                 },
                 semanticBudget,
                 counters.map { (key, value) -> HostedNativeCount(key.first, key.second, value) },
@@ -212,6 +215,8 @@ internal data class HostedNativeTermination(
 internal sealed interface HostedSemanticEntry {
     data object NotEntered : HostedSemanticEntry
 
+    data object RunnerControlled : HostedSemanticEntry
+
     data class Entered(val remainingDeadlineNanos: Long) : HostedSemanticEntry
 }
 
@@ -268,6 +273,8 @@ enum class HostedEvaluationOutcome {
 @Serializable
 internal sealed interface HostedSemanticBudgetObservation {
     @Serializable @SerialName("not-admitted") data object NotAdmitted : HostedSemanticBudgetObservation
+
+    @Serializable @SerialName("runner-controlled") data object RunnerControlled : HostedSemanticBudgetObservation
 
     @Serializable
     @SerialName("admitted")
