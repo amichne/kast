@@ -6,6 +6,7 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -20,6 +21,20 @@ internal value class PluginVersion(val value: String) {
 private const val MAXIMUM_PLUGIN_VERSION_CHARACTERS = 256
 
 @Serializable private data class BundledPluginVersion(val name: String, val version: String)
+
+@Serializable private data class BundledPluginMcp(val mcpServers: BundledPluginServers)
+
+@Serializable private data class BundledPluginServers(val kast: BundledPluginTransport)
+
+@Serializable
+private data class BundledPluginTransport(
+    val command: String,
+    val args: List<String>,
+    // The manifest owns these dynamic environment variable names and values.
+    val env: Map<String, String>? = null,
+    @SerialName("env_vars") val envVars: List<String> = emptyList(),
+    val cwd: String? = null,
+)
 
 private val pluginManifestJson = Json { ignoreUnknownKeys = true }
 private val requiredPluginFiles =
@@ -41,8 +56,12 @@ internal class AdmittedPluginBundle
 private constructor(
     val marketplace: Path,
     val version: PluginVersion,
+    private val transport: CodexTransport,
 ) {
     val plugin: Path = marketplace.resolve("plugins/kast")
+
+    fun ownsTransport(server: CodexServer): Boolean =
+        server.name == "kast" && server.transport.copy(env = server.transport.env.orEmpty()) == transport
 
     companion object {
         @Suppress("ReturnCount", "ComplexCondition", "CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
@@ -107,7 +126,24 @@ private constructor(
                         version.version.length > MAXIMUM_PLUGIN_VERSION_CHARACTERS
                 )
                     return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
-                PluginObservation.Observed(AdmittedPluginBundle(bundle, PluginVersion(version.version)))
+                val mcp =
+                    readBoundedFile(bundle.resolve("plugins/kast/.mcp.json"), 65536)
+                        ?: return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
+                val server = pluginManifestJson.decodeFromString<BundledPluginMcp>(mcp).mcpServers.kast
+                PluginObservation.Observed(
+                    AdmittedPluginBundle(
+                        bundle,
+                        PluginVersion(version.version),
+                        CodexTransport(
+                            "stdio",
+                            server.command,
+                            server.args,
+                            server.env.orEmpty(),
+                            server.envVars,
+                            server.cwd,
+                        ),
+                    )
+                )
             } catch (_: IOException) {
                 PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
             } catch (_: ManagementRejected) {

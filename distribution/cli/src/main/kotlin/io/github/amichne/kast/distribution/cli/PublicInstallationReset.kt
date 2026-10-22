@@ -12,6 +12,15 @@ internal sealed interface PublicResetAdmission {
 
 /** Explicit public reset authority covers only the user installation and its historical local artifacts. */
 internal class PublicResetScope private constructor(val root: Path, val home: Path, val command: Path) {
+    val historicalPaths: List<Path> =
+        listOf(
+            home.resolve(".kast"),
+            home.resolve(".config/kast"),
+            home.resolve(".pi/agent/extensions/kast.ts"),
+            home.resolve(".copilot/extensions/kast"),
+            home.resolve(".local/bin/kast-codex"),
+        )
+
     companion object {
         fun admit(root: Path, environment: Map<String, String>): PublicResetAdmission {
             val home =
@@ -29,7 +38,8 @@ internal class PublicResetScope private constructor(val root: Path, val home: Pa
                     is DestinationSelection.Selected -> selection.executable
                     is DestinationSelection.Rejected -> return rejected()
                 }
-            for (path in listOf(root, home.resolve(".kast"), home.resolve(".local/bin/kast"), command)) {
+            val scope = PublicResetScope(root, home, command)
+            for (path in scope.historicalPaths + listOf(root, home.resolve(".local/bin/kast"), command)) {
                 if (ForceResetRoot.admit(path, home) == ForceResetRootAdmission.Rejected) return rejected()
             }
             for (path in setOf(home.resolve(".local/bin/kast"), command)) {
@@ -37,7 +47,7 @@ internal class PublicResetScope private constructor(val root: Path, val home: Pa
                 val ancestor = generateSequence(path.parent) { it.parent }.first { Files.exists(it, NOFOLLOW_LINKS) }
                 if (!Files.isWritable(ancestor)) return rejected()
             }
-            return PublicResetAdmission.Admitted(PublicResetScope(root, home, command))
+            return PublicResetAdmission.Admitted(scope)
         }
 
         private fun rejected() = PublicResetAdmission.Rejected(ForceResetFailure.ROOT_REJECTED)

@@ -141,7 +141,7 @@ private fun installAdmittedCodexPlugin(
             is PluginObservation.Rejected ->
                 return PluginInstallOutcome.Rejected(PluginInstallStage.PAYLOAD_ADMISSION, admission.failure)
         }
-    when (val legacy = inspectLegacyCodexRegistration(root, home, codexHome, executeCodex)) {
+    when (val legacy = inspectLegacyCodexRegistration(root, home, codexHome, bundle, executeCodex)) {
         is PluginObservation.Observed -> Unit
         is PluginObservation.Rejected ->
             return PluginInstallOutcome.Rejected(PluginInstallStage.LEGACY_REGISTRATION_INSPECTION, legacy.failure)
@@ -200,11 +200,12 @@ private fun inspectLegacyCodexRegistration(
     root: Path,
     home: Path,
     codexHome: Path,
+    bundle: AdmittedPluginBundle,
     executeCodex: (List<String>) -> ProcessObservation,
 ): PluginObservation<Unit> =
     try {
         val observed = codexRegistration(executeCodex)
-        if (observed == null) PluginObservation.Observed(Unit)
+        if (observed == null || bundle.ownsTransport(observed)) PluginObservation.Observed(Unit)
         else {
             val prior =
                 admittedReceipt(root).registrations.singleOrNull { it.connection == HarnessConnection.CODEX_MCP }
