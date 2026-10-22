@@ -336,7 +336,7 @@ internal fun QueryResult.hasUnresolvedRequiredEvidence(): Boolean =
         (rows is QueryRows.ValuePaths && !rows.hasCompleteAccounting()) ||
         failures.isNotEmpty() ||
         omissions.isNotEmpty() ||
-        walkObservations.any { it.coverage.isTerminallyIncomplete() } ||
+        walkObservations.hasUnresolvedWalkEvidence() ||
         discoveryObservations.any { it.progress is QueryDiscoveryProgress.Blocked } ||
         relationObservations.any { it.coverage is QueryRelationCoverage.TerminalIncomplete } ||
         relationObservations
