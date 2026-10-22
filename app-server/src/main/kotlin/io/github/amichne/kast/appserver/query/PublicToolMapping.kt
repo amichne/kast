@@ -52,19 +52,19 @@ private fun PublicToolReadSourceAction.lowerReadSource(): Refinement<PublicToolC
         is Refinement.Rejected -> Refinement.Rejected(PublicToolInputFailure.SourceAnchor(anchor.failure))
         is Refinement.Refined ->
             when (val admitted = anchor.value) {
-                is SourceReadAnchorDocument.Candidate ->
+                is SourceReadAnchorDocument.Candidate,
+                is SourceReadAnchorDocument.Source ->
                     Refinement.Refined(
                         PublicToolCanonical.Source(
                             SourceReadRequest(
                                 anchor = admitted,
-                                region = SourceRegionSelectionDocument.Anchor,
+                                region = region.lowerSourceRegion(),
                                 entities = SourceEntitySelectionDocument.None,
-                                text = SourceTextRequestDocument.Complete,
+                                text = text.lowerSourceText(),
                                 executionBudget = (executionBudget ?: PublicToolDefaults.executionBudget).lower(),
                             )
                         )
                     )
-                is SourceReadAnchorDocument.Source,
                 is SourceReadAnchorDocument.Symbol ->
                     Refinement.Rejected(
                         PublicToolInputFailure.SourceAnchor(SourceReadAnchorDocumentFailure.UNKNOWN_TOKEN_FAMILY)

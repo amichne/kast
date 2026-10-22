@@ -314,13 +314,6 @@ internal data object PublicToolBindingRowsOutput : PublicToolOutput, PublicToolR
 internal data object PublicToolValuePathsOutput : PublicToolOutput, PublicToolReadResultOutput
 
 @Serializable
-@SerialName("READ_SOURCE")
-internal data class PublicToolReadSourceAction(
-    val candidateRef: ProtocolText,
-    val executionBudget: PublicToolExecutionBudget? = null,
-) : PublicToolAction
-
-@Serializable
 internal data class PublicToolQuerySymbols(
     val request: PublicToolAction,
     override val verbose: Boolean = false,
@@ -350,6 +343,8 @@ internal data class PublicToolReplaceBody(
 ) : PublicToolDocument
 
 internal object PublicToolDefaults {
+    const val sourceBeforeLines = 5
+    const val sourceAfterLines = 5
     val nameMatch = PublicToolNameMatch.EXACT
     const val includeSubdirectories = true
     const val includeSubpackages = true

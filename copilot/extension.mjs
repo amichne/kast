@@ -1,5 +1,5 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
-const PUBLIC_TOOL_CONTRACT_VERSION = 14;
+const PUBLIC_TOOL_CONTRACT_VERSION = 15;
 // Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.
 const TOOL_RPC_FAILURES = [
   "INSTALLATION_STOPPED",

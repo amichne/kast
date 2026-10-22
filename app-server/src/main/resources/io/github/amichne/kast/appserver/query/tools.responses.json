@@ -2854,8 +2854,8 @@
         },
         "SourceCandidateReference": {
           "type": "string",
-          "pattern": "^candidate:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
-          "description": "Exact issued source occurrence or anonymous callable candidate reference. Retains its original workspace and read authority."
+          "pattern": "^(?:candidate:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$",
+          "description": "Issued candidate or source selector with its original workspace, source scope, and read authority. Copy the reference unchanged."
         },
         "ReadSourceAction": {
           "type": "object",
@@ -2868,6 +2868,34 @@
             },
             "candidateRef": {
               "$ref": "#/$defs/SourceCandidateReference"
+            },
+            "region": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "ANCHOR",
+                "CALLABLE_BODY",
+                "CLASS_BODY",
+                "FILE",
+                "ENCLOSING_DECLARATION",
+                "ENCLOSING_CALLABLE_BODY",
+                "ENCLOSING_CLASS_BODY",
+                null
+              ],
+              "description": "Select structure from the exact anchor. ENCLOSING selects the smallest strict enclosing owner of the named kind. Omission or null selects ANCHOR."
+            },
+            "text": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/SourceText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Select text independently of the structural region. Omission or null selects COMPLETE."
             },
             "executionBudget": {
               "anyOf": [
@@ -2883,10 +2911,12 @@
           "required": [
             "type",
             "candidateRef",
+            "region",
+            "text",
             "executionBudget"
           ],
           "additionalProperties": false,
-          "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
+          "description": "Read source from an issued candidate or source selector without coordinates. Select the region and text view independently. The source owner admits scope and freshness. This action does not replay query stages."
         },
         "Trace": {
           "type": "object",
@@ -3041,6 +3071,85 @@
           "required": [
             "start",
             "end"
+          ]
+        },
+        "SourceTextComplete": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "COMPLETE"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "description": "Return the selected region in full. A byte limit withholds text with an explicit limitation."
+        },
+        "SourceTextNone": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "NONE"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "description": "Return the selected region and its issued selector without text."
+        },
+        "SourceTextWindow": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "WINDOW"
+              ]
+            },
+            "beforeLines": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "afterLines": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "type",
+            "beforeLines",
+            "afterLines"
+          ],
+          "additionalProperties": false,
+          "description": "Return whole lines around the anchor, clipped to the selected region. The text selector identifies a window, not the complete region."
+        },
+        "SourceText": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceTextComplete"
+            },
+            {
+              "$ref": "#/$defs/SourceTextNone"
+            },
+            {
+              "$ref": "#/$defs/SourceTextWindow"
+            }
           ]
         }
       }

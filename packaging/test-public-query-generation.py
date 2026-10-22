@@ -72,7 +72,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_query_parameters_share_impact_identity_and_range_schemas(self):
         generated = generator.render_tools(self.authority)
         parameters = json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"])
-        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 48_000)
+        # Contract 15 adds structural source selection and text views to the public schema.
+        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 50_000)
         definitions = parameters["$defs"]
         self.assertEqual(
             {"$ref": "#/$defs/ImpactDeclarationReference"},
@@ -97,8 +98,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
         expected = {
-            "query_symbols.parameters.json": "a8609cefc6fcf78aae5e7c80fb7d255c3bb392f3e5329b32e3739a1b59d0d420",
-            "query_symbols.openai-parameters.json": "890f7f7c411572e4e313b9a24fec6d8b4f431d80e9c818a2e98de14484ac7703",
+            "query_symbols.parameters.json": "9c51e7ff292eba37d67217beaa644dfe995271528c1832232b049d96d470f4da",
+            "query_symbols.openai-parameters.json": "6e2d7d02a190ddae552ac822bb2bc98e45f7de951d2e24495ab07794c3eef739",
         }
         generated = generator.render_tools(self.authority)
         for name, digest in expected.items():
@@ -199,6 +200,18 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.assertEqual(1, trace.count("internal data class PublicToolTrace("))
         self.assertNotIn("internal data class PublicToolTrace(", ingress)
         self.assertLessEqual(len(trace.splitlines()), 400)
+
+    def test_source_documents_and_line_defaults_retain_their_schema_owner(self):
+        self.authority['$defs']['SourceTextWindow']['properties']['beforeLines']['default'] = 7
+        generated = generator.render_tools(self.authority)
+        source = generated[ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolSourceDocuments.kt']
+        ingress = generated[ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt']
+        self.assertIn('const val sourceBeforeLines = 7', ingress)
+        for name in ('ReadSourceAction', 'SourceTextComplete', 'SourceTextNone', 'SourceTextWindow'):
+            declaration = 'internal data ' + ('object' if name in ('SourceTextComplete', 'SourceTextNone') else 'class') + ' PublicTool' + name
+            self.assertEqual(1, source.count(declaration))
+            self.assertNotIn(declaration, ingress)
+        self.assertLessEqual(len(source.splitlines()), 400)
 
     def test_requested_site_optional_collection_emits_formatter_stable_layout(self):
         generated = generator.render_tools(self.authority)
