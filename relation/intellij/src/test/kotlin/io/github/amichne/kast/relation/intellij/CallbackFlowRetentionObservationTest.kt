@@ -20,35 +20,22 @@ import org.junit.jupiter.api.Test
 
 class CallbackFlowRetentionObservationTest {
     @Test
-    fun `byte rejection reports actual proof grant required accounting and uncharged retained prefix`() {
+    fun `proof storage beyond the output allowance emits measurements without byte rejection`() {
         val observed = Observation()
-        val retention = CallbackFlowRetention(budget(results = 3, bytes = 10), observed)
-        assertTrue(retention.admit(5) is Refinement.Refined)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(6))
-        assertEquals(10L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_ALLOWANCE))
-        assertEquals(5L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
+        val retention = CallbackFlowRetention(budget(results = 3, bytes = 10).resources.resultLimit, observed)
+        assertEquals(Refinement.Refined(Unit), retention.admit(5))
+        assertEquals(Refinement.Refined(Unit), retention.admit(6))
+        assertEquals(11L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
         assertEquals(11L, observed.last(IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES))
-        assertEquals(listOf(11L), observed.values(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES))
-        assertTrue(retention.admit(5) is Refinement.Refined)
-        assertEquals(10L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_ALLOWANCE))
-        assertEquals(5L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_RETAINED_BYTES))
-        assertEquals(10L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
-        assertEquals(10L, observed.last(IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES))
-        assertEquals(listOf(11L), observed.values(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES))
-        assertEquals(
-            listOf(
-                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
-                IntellijReadCounter.CALLBACK_PROOF_RETENTION_BYTE_REJECTED,
-                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
-            ),
-            observed.counts,
-        )
+        assertTrue(observed.values(IntellijReadGauge.CALLBACK_PROOF_BYTE_ALLOWANCE).isEmpty())
+        assertTrue(observed.values(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES).isEmpty())
+        assertEquals(List(2) { IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED }, observed.counts)
     }
 
     @Test
-    fun `result rejection retains decision precedence rather than claiming simultaneous byte rejection`() {
+    fun `result rejection keeps its prefix and emits the uncharged diagnostic estimate`() {
         val observed = Observation()
-        val retention = CallbackFlowRetention(budget(results = 1, bytes = 10), observed)
+        val retention = CallbackFlowRetention(budget(results = 1, bytes = 10).resources.resultLimit, observed)
         assertTrue(retention.admit(4) is Refinement.Refined)
         assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.RESULT_LIMIT_REACHED), retention.admit(8))
         assertEquals(4L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
@@ -64,31 +51,31 @@ class CallbackFlowRetentionObservationTest {
     }
 
     @Test
-    fun `separate retention ledgers expose their own allowance and required bytes without summing them`() {
+    fun `separate retention ledgers emit their own estimates without summing them`() {
         val observed = Observation()
-        val first = CallbackFlowRetention(budget(results = 2, bytes = 10), observed)
-        assertTrue(first.admit(8) is Refinement.Refined)
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), first.admit(3))
-        assertTrue(CallbackFlowRetention(budget(results = 1, bytes = 5), observed).admit(3) is Refinement.Refined)
-        assertEquals(5L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_ALLOWANCE))
+        val first = CallbackFlowRetention(budget(results = 2, bytes = 10).resources.resultLimit, observed)
+        assertEquals(Refinement.Refined(Unit), first.admit(8))
+        assertEquals(Refinement.Refined(Unit), first.admit(3))
+        assertEquals(11L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
+        assertEquals(
+            Refinement.Refined(Unit),
+            CallbackFlowRetention(budget(results = 1, bytes = 5).resources.resultLimit, observed).admit(3),
+        )
         assertEquals(3L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
         assertEquals(3L, observed.last(IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES))
-        assertEquals(10L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_ALLOWANCE))
-        assertEquals(8L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_RETAINED_BYTES))
-        assertEquals(11L, observed.last(IntellijReadGauge.CALLBACK_PROOF_BYTE_REJECTION_REQUIRED_BYTES))
     }
 
     @Test
-    fun `required accounting saturates overflow without changing finite byte rejection`() {
+    fun `diagnostic byte estimates saturate overflow without rejecting a proof`() {
         val observed = Observation()
-        val retention = CallbackFlowRetention(budget(results = 2, bytes = 10), observed)
+        val retention = CallbackFlowRetention(budget(results = 2, bytes = 10).resources.resultLimit, observed)
         assertTrue(retention.admit(1) is Refinement.Refined)
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             retention.admit(Long.MAX_VALUE),
         )
         assertEquals(Long.MAX_VALUE, observed.last(IntellijReadGauge.CALLBACK_PROOF_REQUIRED_BYTES))
-        assertEquals(1L, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
+        assertEquals(Long.MAX_VALUE, observed.last(IntellijReadGauge.CALLBACK_PROOF_RETAINED_BYTES))
     }
 
     @Test

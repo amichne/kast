@@ -23,9 +23,11 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CallbackSummaryOwnerStorageTest {
+    private val observation = CallbackStorageObservation()
     private val fixture = SummaryStorageFixture()
 
     @Test
@@ -34,10 +36,13 @@ class CallbackSummaryOwnerStorageTest {
         val owner = fixture.observedOwner(summary)
         val graph = (summary.forwarding as CallbackForwardingEvidence.ExhaustedGraph).graph
         val retention =
-            CallbackFlowRetention(fixture.budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes))
+            CallbackFlowRetention(
+                fixture.budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes).resources.resultLimit,
+                observation,
+            )
         retention.admitSummary(summary).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitOwner(owner))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes, observation.retainedBytes)
     }
 
     @Test
@@ -51,9 +56,13 @@ class CallbackSummaryOwnerStorageTest {
         assertNotSame(graph, copy)
         val owner = fixture.observedOwner(rebuilt)
         val retention =
-            CallbackFlowRetention(fixture.budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes))
+            CallbackFlowRetention(
+                fixture.budget(summary.retainedBytes + owner.retainedBytes - graph.retainedBytes).resources.resultLimit,
+                observation,
+            )
         retention.admitSummary(summary).refined()
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admitOwner(owner))
+        assertEquals(Refinement.Refined(Unit), retention.admitOwner(owner))
+        assertEquals(summary.retainedBytes + owner.retainedBytes, observation.retainedBytes)
     }
 
     @Test
@@ -62,17 +71,24 @@ class CallbackSummaryOwnerStorageTest {
         val (owner, value) = fixture.immutableOwner(summary)
         val retention =
             CallbackFlowRetention(
-                fixture.budget(
-                    owner.retainedBytes -
-                        value.retainedBytes -
-                        value.source.retainedBytes -
-                        value.destination.retainedBytes
-                )
+                fixture
+                    .budget(
+                        owner.retainedBytes -
+                            value.retainedBytes -
+                            value.source.retainedBytes -
+                            value.destination.retainedBytes
+                    )
+                    .resources
+                    .resultLimit,
+                observation,
             )
         retention.admitSummary(summary).refined()
         retention.admitImmutableValue(value).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitOwner(owner))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(
+            owner.retainedBytes - value.retainedBytes - value.source.retainedBytes - value.destination.retainedBytes,
+            observation.retainedBytes,
+        )
     }
 
     @Test
@@ -91,19 +107,29 @@ class CallbackSummaryOwnerStorageTest {
         assertEquals(summary, rebuilt)
         assertNotSame(summary, rebuilt)
         val (owner, value) = fixture.immutableOwner(summary)
-        CallbackFlowRetention(fixture.budget(summary.retainedBytes)).admitSummary(summary).refined()
+        CallbackFlowRetention(fixture.budget(summary.retainedBytes).resources.resultLimit)
+            .admitSummary(summary)
+            .refined()
         val retention =
             CallbackFlowRetention(
-                fixture.budget(
-                    owner.retainedBytes -
-                        value.retainedBytes -
-                        value.source.retainedBytes -
-                        value.destination.retainedBytes
-                )
+                fixture
+                    .budget(
+                        owner.retainedBytes -
+                            value.retainedBytes -
+                            value.source.retainedBytes -
+                            value.destination.retainedBytes
+                    )
+                    .resources
+                    .resultLimit,
+                observation,
             )
         retention.admitSummary(rebuilt).refined()
         retention.admitImmutableValue(value).refined()
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admitOwner(owner))
+        assertEquals(Refinement.Refined(Unit), retention.admitOwner(owner))
+        assertTrue(
+            observation.retainedBytes >
+                owner.retainedBytes - value.retainedBytes - value.source.retainedBytes - value.destination.retainedBytes
+        )
     }
 }
 

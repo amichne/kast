@@ -38,7 +38,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -107,7 +106,7 @@ class CallbackSummaryStorageTest {
     }
 
     @Test
-    fun `equal rebuilt formals invocations and forwarding edges do not inherit storage admission`() {
+    fun `equal rebuilt records keep their full diagnostic estimate without rejection`() {
         val rebuiltRoot =
             CallbackParameterIdentity.fromCompiler(
                     fixture.root.callable,
@@ -145,33 +144,37 @@ class CallbackSummaryStorageTest {
             )
         for (summary in rebuilt) {
             assertTrue(summary.retainedBytes > 5000L)
-            val summaries = CallbackParameterSummaries(fixture.budget(fixture.stagedBytes + 5000L))
+            val observation = CallbackStorageObservation()
+            val summaries = CallbackParameterSummaries(fixture.budget(fixture.stagedBytes + 5000L), observation)
             fixture.stage(summaries.retention)
             assertEquals(
-                Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+                Refinement.Refined(Unit),
                 summaries.retain(summary),
             )
-            assertNull(summaries.find(summary.formal))
+            assertSame(summary, summaries.find(summary.formal))
+            assertTrue(observation.retainedBytes > fixture.stagedBytes + 5000L)
         }
     }
 
     @Test
-    fun `another retention owner cannot lend its admitted records to an uncharged summary`() {
+    fun `another retention owner measures an unshared summary without an output cap`() {
         val summary = fixture.summary()
         val original = CallbackParameterSummaries(fixture.budget())
         fixture.stage(original.retention)
-        val foreign = CallbackParameterSummaries(fixture.budget(summary.retainedBytes - 1L))
+        val observation = CallbackStorageObservation()
+        val foreign = CallbackParameterSummaries(fixture.budget(summary.retainedBytes - 1L), observation)
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             foreign.retain(summary),
         )
-        assertNull(foreign.find(summary.formal))
+        assertSame(summary, foreign.find(summary.formal))
+        assertEquals(summary.retainedBytes, observation.retainedBytes)
         original.retain(summary).refined()
         assertSame(summary, original.find(summary.formal))
     }
 
     @Test
-    fun `an unadmitted large standalone summary retains its full storage requirement`() {
+    fun `a large standalone summary is independent of the output byte allowance`() {
         val target = fixture.endpoint("large", 0, 100, parameter = "x".repeat(40_000))
         val formal = fixture.formal(target)
         val summary =
@@ -183,16 +186,15 @@ class CallbackSummaryStorageTest {
                 )
                 .refined()
         assertTrue(summary.retainedBytes > 65_536L)
-        val summaries = CallbackParameterSummaries(fixture.budget())
-        assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
-            summaries.retain(summary),
-        )
-        assertNull(summaries.find(formal))
+        val observation = CallbackStorageObservation()
+        val summaries = CallbackParameterSummaries(fixture.budget(), observation)
+        assertEquals(Refinement.Refined(Unit), summaries.retain(summary))
+        assertSame(summary, summaries.find(formal))
+        assertEquals(summary.retainedBytes, observation.retainedBytes)
     }
 
     @Test
-    fun `large signature and hidden constraint storage reject formal and forwarding admission`() {
+    fun `large signatures and hidden constraints cannot exhaust the output byte allowance`() {
         val largeSignature = fixture.endpoint("large", 0, 100, parameter = "x".repeat(40_000))
         val constraints =
             SymbolDiscoveryConstraints(
@@ -214,15 +216,17 @@ class CallbackSummaryStorageTest {
         assertEquals(fixture.root.callable.compilerIdentity, hidden.compilerIdentity)
         for (target in listOf(largeSignature, hidden)) {
             val formal = fixture.formal(target)
-            val retention = CallbackFlowRetention(fixture.budget())
+            val observation = CallbackStorageObservation()
+            val retention = CallbackFlowRetention(fixture.budget().resources.resultLimit, observation)
             assertEquals(
-                Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+                Refinement.Refined(Unit),
                 retention.admitFormal(formal),
             )
             assertEquals(
-                Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+                Refinement.Refined(Unit),
                 retention.admitForwarding(fixture.forward(fixture.root, formal, 50)),
             )
+            assertTrue(observation.retainedBytes > 65_536L)
             retention.admit(1L).refined()
         }
     }

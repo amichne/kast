@@ -1,7 +1,6 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValue
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -20,6 +19,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImmutableCallbackValueStorageTest {
+    private val observation = CallbackStorageObservation()
     private val fixture = RelationReadTest()
     private val request = fixture.request(RelationMeaning.Callees)
     private val endpoint = fixture.fact(request).target as RelationEndpoint.Resolved
@@ -56,7 +56,7 @@ class ImmutableCallbackValueStorageTest {
     fun `one value pays each exact site once and keeps container and origin costs`() {
         val retention = retention(initialBytes)
         assertEquals(Refinement.Refined(Unit), retention.admitImmutableValue(initial))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(initialBytes, observation.retainedBytes)
     }
 
     @Test
@@ -64,7 +64,7 @@ class ImmutableCallbackValueStorageTest {
         val retention = retention(initialBytes + extensionBytes)
         retention.admitImmutableValue(initial).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitImmutableValue(extended))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(initialBytes + extensionBytes, observation.retainedBytes)
     }
 
     @Test
@@ -75,7 +75,7 @@ class ImmutableCallbackValueStorageTest {
         val retention = retention(initialBytes + extensionBytes)
         retention.admitImmutableValue(initial).refined()
         assertEquals(Refinement.Refined(Unit), retention.admitImmutableValue(extend(copied)))
-        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), retention.admit(1L))
+        assertEquals(initialBytes + extensionBytes, observation.retainedBytes)
     }
 
     @Test
@@ -90,9 +90,10 @@ class ImmutableCallbackValueStorageTest {
         val retention = retention(initialBytes + extensionBytes)
         retention.admitImmutableValue(initial).refined()
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             retention.admitImmutableValue(extend(copied)),
         )
+        assertTrue(observation.retainedBytes > initialBytes + extensionBytes)
     }
 
     @Test
@@ -100,24 +101,25 @@ class ImmutableCallbackValueStorageTest {
         retention(initial.retainedBytes).admitImmutableValue(initial).refined()
         val retention = retention(extensionBytes)
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             retention.admitImmutableValue(extended),
         )
+        assertTrue(observation.retainedBytes > extensionBytes)
     }
 
     @Test
-    fun `a rejected value cannot lend its sites to a later value`() {
+    fun `a value above the output allowance still supplies its exact sites to a later value`() {
         assertTrue(initialBytes > extensionBytes)
         val retention = retention(extensionBytes)
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             retention.admitImmutableValue(initial),
         )
         assertEquals(
-            Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED),
+            Refinement.Refined(Unit),
             retention.admitImmutableValue(extended),
         )
-        assertEquals(Refinement.Refined(Unit), retention.admit(extensionBytes))
+        assertEquals(initialBytes + extensionBytes, observation.retainedBytes)
     }
 
     private fun extend(first: ValueTransfer) =
@@ -130,7 +132,10 @@ class ImmutableCallbackValueStorageTest {
             .refined()
 
     private fun retention(bytes: Long) =
-        CallbackFlowRetention(request.budget.copy(returnedBytes = RelationByteLimit.parse(bytes).refined()))
+        CallbackFlowRetention(
+            request.budget.copy(returnedBytes = RelationByteLimit.parse(bytes).refined()).resources.resultLimit,
+            observation,
+        )
 }
 
 private fun <V> Refinement<V, *>.refined(): V =
