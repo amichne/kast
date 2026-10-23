@@ -10,6 +10,9 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocu
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackNavigationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackNavigationEvidenceDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackNavigationNodeDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackOwnerExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
@@ -158,6 +161,48 @@ class NativeDecoderCallbackBaselineTest : NativeSmartModeFixtureTest() {
         val invoke = outer.invocations.values.single()
         assertSource(invoke.occurrence, DecoderFixtureModule.FLOW, "FlowScope().block()")
         assertEquals(runFlow.callable, (invoke.owner as QueryCallbackBodyDocument.Named).callable)
+        assertNestedNavigation(callback, outer, inner)
+    }
+
+    private fun assertNestedNavigation(
+        callback: QueryCallbackObservationDocument,
+        outer: QueryCallbackFlowDocument.Observed,
+        inner: QueryCallbackFlowDocument.Observed,
+    ) {
+        val navigation = callback.navigation as QueryCallbackNavigationDocument.Proven
+        val steps = navigation.steps.values
+        val expectedKinds =
+            listOf(
+                QueryCallbackNavigationEvidenceDocument.Supply::class,
+                QueryCallbackNavigationEvidenceDocument.Invoke::class,
+                QueryCallbackNavigationEvidenceDocument.Supply::class,
+                QueryCallbackNavigationEvidenceDocument.Invoke::class,
+                QueryCallbackNavigationEvidenceDocument.FunctionInvocation::class,
+            )
+        assertEquals(expectedKinds.indices.map { it + 1 }, steps.map { it.depth.value })
+        assertEquals(expectedKinds, steps.map { it.evidence::class })
+        assertEquals(
+            QueryCallbackNavigationNodeDocument.Callable(QueryCallbackBodyDocument.Named(callback.lexicalOwner)),
+            steps.first().source,
+        )
+        assertEquals(
+            QueryCallbackNavigationNodeDocument.Callable(QueryCallbackBodyDocument.Named(callback.target)),
+            steps.last().target,
+        )
+        steps.zipWithNext().forEach { (before, after) -> assertEquals(before.target, after.source) }
+        val evidence = steps.map { it.evidence }
+        assertEquals(
+            listOf(outer.binding, inner.binding),
+            evidence.filterIsInstance<QueryCallbackNavigationEvidenceDocument.Supply>().map { it.binding },
+        )
+        assertEquals(
+            outer.invocations.values + inner.invocations.values,
+            evidence.filterIsInstance<QueryCallbackNavigationEvidenceDocument.Invoke>().map { it.invocation },
+        )
+        assertEquals(
+            callback.occurrence,
+            (steps.last().evidence as QueryCallbackNavigationEvidenceDocument.FunctionInvocation).occurrence,
+        )
     }
 
     private fun assertDeferred(callback: QueryCallbackObservationDocument) {
@@ -173,6 +218,7 @@ class NativeDecoderCallbackBaselineTest : NativeSmartModeFixtureTest() {
         assertTrue(flow.ownerBindings.values.isEmpty())
         assertTrue(flow.obligations.values.isEmpty())
         assertEquals(QueryCallbackInvocationScanDocument.EXHAUSTIVE, flow.scan)
+        assertTrue((callback.navigation as QueryCallbackNavigationDocument.Proven).steps.values.isEmpty())
     }
 
     private fun assertSource(occurrence: RelationOccurrenceDocument, unit: DecoderFixtureModule, expected: String) {

@@ -48,6 +48,7 @@ internal fun RelationCallbackObservation.projectCallbackObservation(
     question: QueryRelationQuestion,
     subject: CallbackResultSubject,
 ): QueryCallbackObservationDocument? {
+    if (this.subject != subject.native) return null
     return projectCallbackObservation(authority, question.effectiveScope, question.effectiveConstraints, subject)
 }
 
@@ -57,7 +58,6 @@ private fun RelationCallbackObservation.projectCallbackObservation(
     constraints: io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints,
     resultSubject: CallbackResultSubject,
 ): QueryCallbackObservationDocument? {
-    if (subject != resultSubject.native) return null
     val projection = CallbackProjection(authority, basis)
     return QueryCallbackObservationDocument.create(
             projection.occurrence(occurrence) ?: return null,
@@ -72,11 +72,12 @@ private fun RelationCallbackObservation.projectCallbackObservation(
             QueryRelationDomainFingerprint.parse(effectiveDomain.value).callbackValue() ?: return null,
             resultProjection.projectResultProjection(projection, resultSubject) ?: return null,
             basis.identity.impactDocument().callbackValue() ?: return null,
+            projectNavigation(projection) ?: return null,
         )
         .callbackValue()
 }
 
-private fun CallbackNamedCallPolicy.projectPolicy(projection: CallbackProjection): QueryCallbackNamedPolicyDocument? =
+internal fun CallbackNamedCallPolicy.projectPolicy(projection: CallbackProjection): QueryCallbackNamedPolicyDocument? =
     when (this) {
         is CallbackNamedCallPolicy.Unavailable ->
             QueryCallbackNamedPolicyDocument.Unavailable(cause.protocolCallbackDocument())

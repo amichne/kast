@@ -15,7 +15,6 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
-import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
@@ -122,6 +121,8 @@ internal data class QueryCallbackObservationWireDocument(
     @SerialName("domain_fingerprint") val domainFingerprint: QueryRelationDomainFingerprint,
     @SerialName("result_projection") val resultProjection: QueryCallbackResultProjectionWireDocument,
     val basis: ImpactSemanticBasisDocument,
+    @kotlinx.serialization.EncodeDefault
+    val navigation: QueryCallbackNavigationWireDocument = QueryCallbackNavigationWireDocument.NotComputed,
 )
 
 @Serializable
@@ -188,14 +189,7 @@ internal fun QueryCallbackObservationDocument.toWireDocument() =
         target.callbackWire(),
         lexicalOwner.callbackWire(),
         callbackBody.callbackWire(),
-        when (val policy = namedPolicy) {
-            is QueryCallbackNamedPolicyDocument.Unavailable ->
-                QueryCallbackNamedPolicyWireDocument.Unavailable(policy.cause)
-            QueryCallbackNamedPolicyDocument.AdmittedInline -> QueryCallbackNamedPolicyWireDocument.AdmittedInline
-            QueryCallbackNamedPolicyDocument.AdmittedDirect -> QueryCallbackNamedPolicyWireDocument.AdmittedDirect
-            is QueryCallbackNamedPolicyDocument.Excluded ->
-                QueryCallbackNamedPolicyWireDocument.Excluded(policy.reason, policy.excludedBoundary.callbackWire())
-        },
+        namedPolicy.callbackWire(),
         flow.callbackWire(),
         relation,
         requestedDomain,
@@ -203,6 +197,7 @@ internal fun QueryCallbackObservationDocument.toWireDocument() =
         domainFingerprint,
         resultProjection.resultProjectionWire(),
         basis,
+        navigation.navigationWire(),
     )
 
 internal fun QueryWalkCallbackObservationDocument.toWireDocument() =
@@ -288,25 +283,12 @@ internal fun QueryCallbackObservationWireDocument.toContract():
         target.toContract().flatMapConverted { target ->
             lexicalOwner.toContract().flatMapConverted { owner ->
                 callbackBody.toContract().flatMapConverted { body ->
-                    val policy: WireDocumentConversion<QueryCallbackNamedPolicyDocument> =
-                        when (val policy = namedPolicy) {
-                            is QueryCallbackNamedPolicyWireDocument.Unavailable ->
-                                WireDocumentConversion.Converted(
-                                    QueryCallbackNamedPolicyDocument.Unavailable(policy.cause)
-                                )
-                            QueryCallbackNamedPolicyWireDocument.AdmittedInline ->
-                                WireDocumentConversion.Converted(QueryCallbackNamedPolicyDocument.AdmittedInline)
-                            QueryCallbackNamedPolicyWireDocument.AdmittedDirect ->
-                                WireDocumentConversion.Converted(QueryCallbackNamedPolicyDocument.AdmittedDirect)
-                            is QueryCallbackNamedPolicyWireDocument.Excluded ->
-                                policy.excludedBoundary.toContract().mapConverted {
-                                    QueryCallbackNamedPolicyDocument.Excluded(policy.reason, it)
-                                }
-                        }
-                    combineConverted(policy, flow.toContract(), resultProjection.toContract()) {
-                            policy,
-                            flow,
-                            resultProjection ->
+                    combineConverted(
+                            namedPolicy.toContract(),
+                            flow.toContract(),
+                            resultProjection.toContract(),
+                            navigation.toContract(),
+                        ) { policy, flow, resultProjection, navigation ->
                             QueryCallbackObservationDocument.create(
                                     occurrence,
                                     target,
@@ -320,6 +302,7 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                     domainFingerprint,
                                     resultProjection,
                                     basis,
+                                    navigation,
                                 )
                                 .toWireDocumentConversion()
                         }

@@ -4,7 +4,11 @@ import io.github.amichne.kast.kernel.Refinement
 
 internal fun QueryCallbackObservationDocument.admit(): Refinement<Unit, QueryCallbackDocumentFailure> {
     return when (val frame = admitFrame()) {
-        is Refinement.Refined -> admitContents()
+        is Refinement.Refined ->
+            when (val contents = admitContents()) {
+                is Refinement.Refined -> admitNavigation()
+                is Refinement.Rejected -> contents
+            }
         is Refinement.Rejected -> frame
     }
 }

@@ -60,6 +60,7 @@ internal class QueryCallbackEncodedSizeTest : CompleteOnlyCallbackQueryCase() {
                 assertInstanceOf(
                     ProjectedOperationOutcome.Complete::class.java,
                     CanonicalQueryCliDocuments.project(outcome),
+                    "Callback projection must retain its admitted outcome: $outcome",
                 )
             val actual =
                 Json.parseToJsonElement(projected.document.value)

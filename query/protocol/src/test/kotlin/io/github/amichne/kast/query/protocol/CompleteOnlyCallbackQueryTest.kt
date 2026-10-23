@@ -115,6 +115,13 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result = protocol.execute(strict, fixture.authority, budget, policy())
         assertTrue(result is OperationOutcome.Complete)
+        val presented =
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.project(result)
+                as io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome.Complete
+        assertTrue(
+            presented.document.value.contains("\"navigation\""),
+            "A complete callback query must expose its admitted navigation, not only nested proof witnesses",
+        )
         script.assertDrained()
     }
 
@@ -154,6 +161,11 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
             1,
             read.evidence.payload.relationObservations.values.flatMap { it.callbackObservations.values }.size,
         )
+        val callback = read.evidence.payload.relationObservations.values.single().callbackObservations.values.single()
+        val navigation =
+            callback.navigation as io.github.amichne.kast.protocol.contract.QueryCallbackNavigationDocument.Unproven
+        assertEquals(interpretation.callbackGraphFailure?.cause, navigation.cause)
+        assertTrue(navigation.prefix.values.isEmpty())
         script.assertDrained()
     }
 

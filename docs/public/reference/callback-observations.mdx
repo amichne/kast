@@ -50,6 +50,26 @@ Each parameter call keeps `forwardings`, even if the array is empty. Each hop na
 
 `callable_observations` records symbolic formal calls. It also records compiler targets without source.
 
+## Static route navigation
+
+Each callback observation has a `navigation` field. Relation and `WALK` results carry this field without adding named caller edges.
+
+| State | Meaning |
+| --- | --- |
+| `PROVEN` | `steps` contains the reachable, supported route from the named lexical owner. |
+| `UNPROVEN` | `prefix` keeps established steps. `cause` and the original flow keep the unresolved proof. |
+| `NOT_COMPUTED` | A legacy document has no navigation evidence. This state proves no route. |
+
+Each step keeps its source, target, depth, and evidence. Evidence distinguishes callback supply, formal forwarding, callback invocation, direct callback invocation, and ordinary function invocation.
+
+A formal node includes its supplier binding. Two calls to the same wrapper do not share a node merely because they select the same formal.
+
+Navigation uses breadth-first order. Depth counts each transition, starting at one; supply and invocation are separate transitions. Supply alone never reaches an anonymous body.
+
+The observation carries its full supported route independently of `WALK.maximumDepth`. That option limits named relationship expansion, not the evidence inside an observation. A retained page keeps the same route without new semantic reads.
+
+A returned callback has no invocation route unless proof shows that it is called. A non-inline callback route does not turn its lexical container into a direct named caller.
+
 ## Declared dependency effects
 
 Calls-in-place evidence keeps `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, or explicitly declared `UNKNOWN`.

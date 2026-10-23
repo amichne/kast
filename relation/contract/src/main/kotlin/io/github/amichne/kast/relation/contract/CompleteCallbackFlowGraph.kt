@@ -5,10 +5,11 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import java.util.Collections
 
 /** Complete static owner routes, independently of a particular target occurrence or named-call projection. */
-internal class CompleteCallbackFlowGraph
+class CompleteCallbackFlowGraph
 private constructor(
     val root: CompilerGroundedSymbolEvidence,
     val edges: List<StaticCallbackEdge>,
+    val basis: io.github.amichne.kast.workspace.contract.SemanticReadIdentity,
 ) {
     companion object {
         fun admit(flow: CallbackInvocationFlow): Refinement<CompleteCallbackFlowGraph, StaticCallbackGraphFailure> {
@@ -20,6 +21,7 @@ private constructor(
                         CompleteCallbackFlowGraph(
                             root.value,
                             Collections.unmodifiableList(composition.edges.distinct()),
+                            flow.basis,
                         )
                     )
             }
@@ -39,6 +41,7 @@ private constructor(
                         CompleteCallbackFlowGraph(
                             owner.evidence,
                             Collections.unmodifiableList(composition.edges.distinct()),
+                            flow.basis,
                         )
                     )
             }

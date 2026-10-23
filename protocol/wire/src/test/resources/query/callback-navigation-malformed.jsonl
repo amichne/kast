@@ -1,0 +1,12 @@
+{}
+{"type":"UNKNOWN"}
+{"type":"PROVEN"}
+{"type":"UNPROVEN","prefix":[]}
+{"type":"NOT_COMPUTED","steps":[]}
+{"type":"FORMAL"}
+{"type":"CALLABLE"}
+{"type":"SUPPLY"}
+{"type":"FORWARD"}
+{"type":"INVOKE"}
+{"type":"DIRECT_INVOKE"}
+{"type":"FUNCTION_INVOCATION"}
