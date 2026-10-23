@@ -1,6 +1,8 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.project.IExternalSystemSourceType
+import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.roots.SourceFolder
@@ -46,6 +48,7 @@ internal class LiveSelectedGradleModuleRoots(
     fun capture(
         sourceSetsFor: (Module) -> Map<String, ExternalSourceSet>,
         sourceFolders: (Module) -> List<SourceFolder>,
+        kotlinSourceSetNode: () -> DataNode<out ModuleData>?,
     ): Refinement<CapturedSelectedGradleModuleRoots, NamedGradleSourceScopeFailure> {
         when (val roots = captureIdeRoots(sourceFolders(admitted.module))) {
             is Refinement.Rejected -> return roots
@@ -53,7 +56,21 @@ internal class LiveSelectedGradleModuleRoots(
         }
         if (ideRoots.isEmpty() && absentRoots.isEmpty()) return completed()
         val owner = admitted.owner.project
-        when (val captured = captureSourceSets(owner, sourceSetsFor(admitted.module))) {
+        val sourceSets =
+            when (
+                val captured =
+                    CachedGradleSourceSets.capture(
+                        admitted,
+                        kotlinSourceSetNode(),
+                        { sourceSetsFor(admitted.module) },
+                        observation,
+                        limits,
+                    )
+            ) {
+                is Refinement.Rejected -> return captured
+                is Refinement.Refined -> captured.value
+            }
+        when (val captured = captureSourceSets(owner, sourceSets)) {
             is Refinement.Rejected -> return captured
             is Refinement.Refined -> Unit
         }

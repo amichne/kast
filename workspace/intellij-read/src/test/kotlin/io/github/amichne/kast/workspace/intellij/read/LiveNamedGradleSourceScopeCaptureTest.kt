@@ -36,6 +36,14 @@ class LiveNamedGradleSourceScopeCaptureTest {
         }
 
     @Test
+    fun `cached Gradle projects without live modules cannot establish an empty search model`() {
+        assertEquals(
+            Refinement.Rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE),
+            capture().capture(emptyList(), { error("No module may be observed") }),
+        )
+    }
+
+    @Test
     fun `all projects beyond former module capacity retain ownership`() {
         val projects =
             (0..258).map { index ->

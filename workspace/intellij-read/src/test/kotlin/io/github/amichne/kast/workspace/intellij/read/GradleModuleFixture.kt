@@ -17,7 +17,13 @@ import org.jetbrains.jps.model.module.JpsModuleSourceRoot
 import org.jetbrains.jps.model.module.JpsModuleSourceRootType
 
 /** Runs the real ExternalSystemApiUtil against the module's external-system service boundary. */
-internal fun gradleModule(name: String, build: String?, project: String?, system: String = "GRADLE"): Module {
+internal fun gradleModule(
+    name: String,
+    build: String?,
+    project: String?,
+    system: String = "GRADLE",
+    externalId: String? = null,
+): Module {
     val properties =
         object : ExternalSystemModulePropertyManager() {
             override fun getExternalSystemId() = system
@@ -32,7 +38,7 @@ internal fun gradleModule(name: String, build: String?, project: String?, system
 
             override fun getExternalModuleGroup(): String? = null
 
-            override fun getLinkedProjectId(): String? = null
+            override fun getLinkedProjectId(): String? = externalId
 
             override fun isMavenized() = false
 

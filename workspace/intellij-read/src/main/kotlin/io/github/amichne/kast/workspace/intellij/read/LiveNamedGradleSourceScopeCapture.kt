@@ -9,6 +9,7 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.*
 import kotlinx.coroutines.CancellationException
+import org.jetbrains.plugins.gradle.service.project.GradleModuleDataIndex
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
 
 /** Cached imported Gradle facts only. No resolver registration, sync, VFS refresh or project lookup. */
@@ -43,6 +44,7 @@ internal object LiveNamedGradleSourceScopeCapture {
                     .capture(
                         modules.toList(),
                         { module -> cache.findExternalProject(imported, module) },
+                        kotlinSourceSetNode = GradleModuleDataIndex::findModuleNode,
                     )
             }
         } catch (cancelled: CancellationException) {

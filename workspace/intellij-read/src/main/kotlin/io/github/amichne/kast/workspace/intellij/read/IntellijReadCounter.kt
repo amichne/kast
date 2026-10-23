@@ -54,6 +54,11 @@ enum class IntellijReadCounter {
     FOREIGN_GRADLE_MODULES,
     SOURCE_ROOTS,
     SOURCE_ROOTS_ABSENT,
+    /** Cached model selection outcomes; never evidence of semantic search completion. */
+    KOTLIN_GRADLE_SOURCE_SETS,
+    LEGACY_GRADLE_SOURCE_SETS,
+    GRADLE_SOURCE_SETS_UNAVAILABLE,
+    KOTLIN_GRADLE_SOURCE_SETS_INCOHERENT,
     EPOCH_READ_PREEMPTIONS,
     EPOCH_MOVED_RETRIES,
     NAMES_VISITED,

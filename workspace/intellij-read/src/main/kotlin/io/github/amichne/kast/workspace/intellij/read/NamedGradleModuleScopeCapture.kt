@@ -1,5 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read
 
+import com.intellij.openapi.externalSystem.model.DataNode
+import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.roots.ModuleRootManager
@@ -22,7 +24,9 @@ internal class NamedGradleModuleScopeCapture(
         sourceFolders: (Module) -> List<SourceFolder> = { module ->
             ModuleRootManager.getInstance(module).contentEntries.flatMap { it.sourceFolders.toList() }
         },
+        kotlinSourceSetNode: (Module) -> DataNode<out ModuleData>? = { null },
     ): Refinement<NamedGradleSourceScope, NamedGradleSourceScopeFailure> {
+        if (modules.isEmpty()) return rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE)
         val entries = ArrayList<WorkspaceSourceRootBoundary>()
         val ideRoots = ArrayList<IdeCodeSourceRoot>()
         val excludedRoots = linkedSetOf<Path>()
@@ -44,8 +48,12 @@ internal class NamedGradleModuleScopeCapture(
             val captured =
                 when (
                     val result =
-                        LiveSelectedGradleModuleRoots(admitted, observation, limits)
-                            .capture(sourceSetsFor, sourceFolders)
+                        LiveSelectedGradleModuleRoots(admitted, observation, limits).capture(
+                            sourceSetsFor,
+                            sourceFolders,
+                        ) {
+                            kotlinSourceSetNode(module)
+                        }
                 ) {
                     is Refinement.Rejected -> return result
                     is Refinement.Refined -> result.value
