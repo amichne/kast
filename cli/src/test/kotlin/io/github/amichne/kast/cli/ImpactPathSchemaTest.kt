@@ -77,8 +77,11 @@ import org.junit.jupiter.api.Test
 class ImpactPathSchemaTest {
     @Test
     fun `transfer schema requires closed normal completion evidence and preserves exact branch anchors`() {
-        val document = generatedRequestSchema(ImpactCompilerTransferDocument.serializer())
-        assertEquals(setOf("source", "target", "kind", "evidence"), requiredFields(document))
+        val document = independentImpactSchemaWithDefinitions(ImpactCompilerTransferDocument.serializer())
+        assertEquals(
+            setOf("source", "target", "kind", "evidence"),
+            requiredFields(CallbackSchemaFixture(document).definition("independentRoot")),
+        )
         val schema =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
         val f = Fixture()
@@ -154,7 +157,9 @@ class ImpactPathSchemaTest {
     fun `direct transfer schema requires explicit evidence discriminator`() {
         val schema =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
-                .getSchema(generatedRequestSchema(ImpactCompilerTransferDocument.serializer()).toString())
+                .getSchema(
+                    independentImpactSchemaWithDefinitions(ImpactCompilerTransferDocument.serializer()).toString()
+                )
         val f = Fixture()
         val target =
             ImpactValueSiteReferenceDocument(
@@ -184,8 +189,14 @@ class ImpactPathSchemaTest {
 
     @Test
     fun `path schema closes terminal evidence variants and preserves all required discriminator shapes`() {
-        val document = generatedRequestSchema(ImpactPathDocument.serializer())
-        val terminal = document.getValue("properties").jsonObject.getValue("terminal").jsonObject
+        val document = independentImpactSchemaWithDefinitions(ImpactPathDocument.serializer())
+        val terminal =
+            CallbackSchemaFixture(document)
+                .definition("independentRoot")
+                .getValue("properties")
+                .jsonObject
+                .getValue("terminal")
+                .jsonObject
         assertEquals(
             "type",
             terminal.getValue("discriminator").jsonObject.getValue("propertyName").jsonPrimitive.content,
@@ -225,9 +236,10 @@ class ImpactPathSchemaTest {
 
     @Test
     fun `peer path terminal requires exact target completed receipt and unresolved reason`() {
-        val document = generatedRequestSchema(ImpactPathTerminalDocument.serializer())
+        val document = independentImpactSchemaWithDefinitions(ImpactPathTerminalDocument.serializer())
         val peer =
-            document
+            CallbackSchemaFixture(document)
+                .definition("independentRoot")
                 .getValue("anyOf")
                 .jsonArray
                 .single {

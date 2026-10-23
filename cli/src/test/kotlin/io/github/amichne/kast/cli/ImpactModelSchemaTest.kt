@@ -38,12 +38,13 @@ import org.junit.jupiter.api.Test
 class ImpactModelSchemaTest {
     @Test
     fun `canonical model schema closes all variants and requires type enum discriminators`() {
-        val schemaDocument = generatedRequestSchema(ImpactModelDocument.serializer())
+        val schemaDocument = independentImpactSchemaWithDefinitions(ImpactModelDocument.serializer())
+        val root = CallbackSchemaFixture(schemaDocument).definition("independentRoot")
         assertEquals(
             "type",
-            schemaDocument.getValue("discriminator").jsonObject.getValue("propertyName").jsonPrimitive.content,
+            root.getValue("discriminator").jsonObject.getValue("propertyName").jsonPrimitive.content,
         )
-        val variants = schemaDocument.getValue("anyOf").jsonArray
+        val variants = root.getValue("anyOf").jsonArray
         assertEquals(
             setOf("REPRESENTATION", "BOUNDARY"),
             variants

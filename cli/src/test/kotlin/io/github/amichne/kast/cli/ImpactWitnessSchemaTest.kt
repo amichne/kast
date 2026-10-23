@@ -65,8 +65,8 @@ import org.junit.jupiter.api.Test
 class ImpactWitnessSchemaTest {
     @Test
     fun `witness schema closes each finite section record and requires its proof fields`() {
-        val document = generatedRequestSchema(ImpactWitnessDocument.serializer())
-        val variants = document.getValue("anyOf").jsonArray
+        val document = independentImpactSchemaWithDefinitions(ImpactWitnessDocument.serializer())
+        val variants = CallbackSchemaFixture(document).definition("independentRoot").getValue("anyOf").jsonArray
         assertEquals(
             setOf(
                 "PRODUCER",
@@ -115,7 +115,7 @@ class ImpactWitnessSchemaTest {
 
     @Test
     fun `finding schema requires both original path identity fields`() {
-        val document = generatedRequestSchema(ImpactWitnessDocument.serializer())
+        val document = independentImpactSchemaWithDefinitions(ImpactWitnessDocument.serializer())
         val schema =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
         val finding = witnessExamples().filterIsInstance<ImpactWitnessDocument.Finding>().single()
@@ -181,8 +181,8 @@ class ImpactWitnessSchemaTest {
 
     @Test
     fun `peer model witness requires tagged rule and completed admission receipt`() {
-        val document = generatedRequestSchema(ImpactWitnessDocument.serializer())
-        val peer = variant(document, "PEER_BOUNDARY_MODEL")
+        val document = independentImpactSchemaWithDefinitions(ImpactWitnessDocument.serializer())
+        val peer = variant(CallbackSchemaFixture(document).definition("independentRoot"), "PEER_BOUNDARY_MODEL")
         assertEquals(setOf("type", "reference", "rule", "admission"), requiredFields(peer))
         val admission = peer.getValue("properties").jsonObject.getValue("admission").jsonObject
         assertEquals(setOf("acquisition", "selection"), requiredFields(admission))

@@ -73,8 +73,8 @@ class QueryTextOutputSchemaTest {
     fun `canonical text request schema uses a required enum discriminator and closes source fields`() {
         val request = textRequest()
         val raw = Json.encodeToJsonElement(QueryRunRequest.serializer(), request).toString()
-        val contract = generatedRequestSchema(QueryRunRequest.serializer())
-        val sourceContract = generatedRequestSchema(QueryFromDocument.serializer())
+        val contract = independentImpactSchemaWithDefinitions(QueryRunRequest.serializer())
+        val sourceContract = independentImpactSchema(QueryFromDocument.serializer())
         val variant =
             sourceContract
                 .getValue("anyOf")

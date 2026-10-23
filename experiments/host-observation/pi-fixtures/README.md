@@ -1,5 +1,37 @@
 # Public canonical fixture provenance
 
+## 2026-10-23 callback schema refresh
+
+All three schema files were exported from the local callback changes based on
+source `7e8832dfa`. The exporter now uses `generatedOutputSchema` for question
+and qualification schemas. It cuts recursion only at the exact
+`ImpactInvocationReferenceDocument` serializer descriptor and includes its
+complete definition. The result schema still uses
+`installedSemanticResultSchema(QUERY_RUN)`.
+
+These offline exports establish serialized shapes, not native semantic behavior.
+The following digests identify the exporter, compiled artifact, and outputs.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `PiQuestionSchema.java` | `3fd516b232b68c42b849399ec147da751cd92f56c5d87ebf01e165d5222c2b28` |
+| `cli-0.50.2-all.jar` | `b4ce91a5cb13db39c6ad0fe828310cd2517f6d680e384c738861a23645c88cc9` |
+| `query-question.schema.json` | `d7e0bff0bf290095b985c461ef38cdfb57b97a0c029ba0a37dd2db56fb0ef8e5` |
+| `query-qualification.schema.json` | `d8bb99d97e575fb36f34594285a8306027853e990a5d38c455f5d9fc14e478b3` |
+| `query-result.schema.json` | `60b0c92d8f750e7e77b4ef68a5b2937ec44f39b471aac4ada9be3d8f7eaf3e0b` |
+
+Reproduce from the repository root after building the CLI artifact:
+
+```sh
+mise exec -- java -cp 'cli/build/libs/cli-0.50.2-all.jar:query/contract/build/classes/kotlin/main' \
+  experiments/host-observation/PiQuestionSchema.java \
+  experiments/host-observation/pi-fixtures/query-question.schema.json \
+  experiments/host-observation/pi-fixtures/query-qualification.schema.json \
+  experiments/host-observation/pi-fixtures/query-result.schema.json
+```
+
+## Historical 2026-10-18 schema export
+
 `query-question.schema.json`, `query-qualification.schema.json` and
 `query-result.schema.json` are exported
 offline by `PiQuestionSchema.java`. It calls the existing `generatedRequestSchema`

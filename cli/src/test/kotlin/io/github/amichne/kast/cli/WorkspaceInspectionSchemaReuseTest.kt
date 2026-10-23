@@ -9,6 +9,9 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
+import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelIdentity
@@ -203,7 +206,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     if (name == null) element.values.forEach(::visit)
                     else if (name !in visited) {
                         if (!visiting.add(name)) {
-                            assertTrue(name in setOf("callbackObservedFlow", "immutableCallbackFlow"), name)
+                            assertRecursiveDefinition(name)
                             return
                         }
                         visit(definitions.getValue(name))
@@ -217,9 +220,42 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
         visit(schema)
     }
 
+    private fun assertRecursiveDefinition(name: String) {
+        assertTrue(
+            name in
+                setOf(
+                    "callbackObservedFlow",
+                    "immutableCallbackFlow",
+                    "impactInvocationReference",
+                    "impactExecutionOwner",
+                    "impactCaptureInvocation",
+                ),
+            name,
+        )
+        if (name.startsWith("impact")) {
+            mapOf(
+                    "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+                    "impactExecutionOwner" to ImpactExecutionOwnerDocument.serializer(),
+                    "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
+                )
+                .filterKeys { it in definitions }
+                .forEach { (definition, serializer) ->
+                    compare(independentImpactSchema(serializer), definitions.getValue(definition), definition)
+                }
+        }
+    }
+
     private fun compare(expected: JsonElement, actual: JsonElement, path: String, allowDefinitions: Boolean = false) {
         if (expected is JsonObject && "\$ref" in expected) {
-            assertEquals(expected, actual, "Reference at $path")
+            if (
+                actual is JsonObject &&
+                    "\$ref" !in actual &&
+                    expected["\$ref"]?.jsonPrimitive?.content == "#/\$defs/impactInvocationReference"
+            ) {
+                compare(independentImpactSchema(ImpactInvocationReferenceDocument.serializer()), actual, path)
+            } else {
+                assertEquals(expected, actual, "Reference at $path")
+            }
             return
         }
         val name = (actual as? JsonObject)?.let(::referenceName)

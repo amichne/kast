@@ -2,8 +2,12 @@
 
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
+import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
+import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
@@ -35,6 +39,10 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
                         "impactDeclarationReference" to ImpactDeclarationReferenceDocument.serializer(),
                         "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+                        "impactExecutionOwner" to ImpactExecutionOwnerDocument.serializer(),
+                        "impactCapturedBody" to ImpactCapturedBodyDocument.serializer(),
+                        "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
+                        "impactCallFrame" to ImpactCallFrameDocument.serializer(),
                         "impactValueRole" to ImpactValueRoleDocument.serializer(),
                         "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                         "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),

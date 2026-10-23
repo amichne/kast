@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
@@ -20,7 +21,7 @@ class PublicImpactSourceSchemaTest {
 
     @Test
     fun `public impact syntax matches its input serializer owners`() {
-        val expected = generatedRequestSchema(QueryImpactSourceDocument.serializer()).getValue("properties").jsonObject
+        val expected = independentImpactSchema(QueryImpactSourceDocument.serializer()).getValue("properties").jsonObject
         val definitions = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS).getValue("\$defs").jsonObject
         val impact = definitions["ImpactSource"]
         assertNotNull(impact, expected.toString())
@@ -37,13 +38,13 @@ class PublicImpactSourceSchemaTest {
                 assertSchemaEquals(value, actualModels.getValue(key), definitions, "models.$key")
             }
         assertSchemaEquals(
-            generatedRequestSchema(ImpactRequestedModelDocument.serializer()),
+            independentImpactSchema(ImpactRequestedModelDocument.serializer()),
             actual.getValue("models").jsonObject.getValue("items"),
             definitions,
             "models.items",
         )
         assertSchemaEquals(
-            generatedRequestSchema(ImpactRequestedValueSiteDocument.serializer()),
+            independentImpactSchema(ImpactRequestedValueSiteDocument.serializer()),
             actual.getValue("requestedSites").jsonObject.getValue("items"),
             definitions,
             "requestedSites.items",
@@ -51,6 +52,16 @@ class PublicImpactSourceSchemaTest {
     }
 
     private fun assertSchemaEquals(expected: JsonElement, actual: JsonElement, definitions: JsonObject, path: String) {
+        if (expected is JsonObject && "\$ref" in expected) {
+            assertEquals("#/\$defs/impactInvocationReference", expected.getValue("\$ref").jsonPrimitive.content)
+            assertSchemaEquals(
+                independentImpactSchema(ImpactInvocationReferenceDocument.serializer()),
+                actual,
+                definitions,
+                path,
+            )
+            return
+        }
         if (actual is JsonObject && "\$ref" in actual) {
             val name = actual.getValue("\$ref").jsonPrimitive.content.removePrefix("#/\$defs/")
             assertSchemaEquals(expected, definitions.getValue(name), definitions, path)

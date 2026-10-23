@@ -10,6 +10,10 @@ import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackForwardingEvidenceWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackInvocationWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackNavigationEvidenceWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackNavigationNodeWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackNavigationStepWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackNavigationWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackParameterIdentityWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackParameterSupplierWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackSupplierInventoryWireDocument
@@ -47,5 +51,9 @@ object CanonicalCallbackSchemaDocuments {
                 "callbackInvocation" to QueryCallbackInvocationWireDocument.serializer(),
                 "callbackFormal" to QueryCallbackParameterIdentityWireDocument.serializer(),
                 "callbackForwardingEvidence" to QueryCallbackForwardingEvidenceWireDocument.serializer(),
+                "callbackNavigation" to QueryCallbackNavigationWireDocument.serializer(),
+                "callbackNavigationStep" to QueryCallbackNavigationStepWireDocument.serializer(),
+                "callbackNavigationNode" to QueryCallbackNavigationNodeWireDocument.serializer(),
+                "callbackNavigationEvidence" to QueryCallbackNavigationEvidenceWireDocument.serializer(),
             )
 }

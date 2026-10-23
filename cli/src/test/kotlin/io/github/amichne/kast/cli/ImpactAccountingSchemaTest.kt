@@ -32,8 +32,8 @@ import org.junit.jupiter.api.Test
 class ImpactAccountingSchemaTest {
     @Test
     fun `accounting schema requires finite qualifiers and rejects unknown extra and missing fields`() {
-        val document = generatedRequestSchema(ImpactAccountingDocument.serializer())
-        val variants = document.getValue("anyOf").jsonArray
+        val document = independentImpactSchemaWithDefinitions(ImpactAccountingDocument.serializer())
+        val variants = CallbackSchemaFixture(document).definition("independentRoot").getValue("anyOf").jsonArray
         assertEquals(
             setOf("NOT_APPLICABLE", "EVIDENCE_ONLY", "INVESTIGATED"),
             discriminatorValues(variants),
