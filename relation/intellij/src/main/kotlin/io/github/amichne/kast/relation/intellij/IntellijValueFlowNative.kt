@@ -59,7 +59,8 @@ internal class IntellijValueFlowNative(
         val compiledFormal =
             request.source.role is ValueRole.Formal && (element.containingFile as? KtFile)?.isCompiled == true
         if (!compiledFormal && element.isNativeReferenceBinding(request.source.role))
-            return IntellijLocalBindingReads(request, owner, scope, observation, started, onWork).read(element)
+            return IntellijLocalBindingReads(request, owner, scope, projection, observation, started, onWork)
+                .read(element)
 
         val base = ValueFlowStep.detachedByteCount(request.source, scope.request, emptyList(), emptyList()).value
         val reserved = reservedValueObligationBytes(request.source)

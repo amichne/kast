@@ -2,7 +2,7 @@ package io.github.amichne.kast.relation.contract
 
 internal class ValueFlowProofSharing(previous: Collection<ValueFlowStep>) {
     private val callables = linkedMapOf<RelationEndpoint.Resolved, CallableProof>()
-    private val executionOwners = linkedMapOf<RelationEndpoint, ValueExecutionOwner>()
+    private val executionOwners = linkedMapOf<Pair<RelationEndpoint, ValueExecutionIdentity>, ValueExecutionOwner>()
     private val sites = java.util.IdentityHashMap<ValueSite, ValueSite>()
 
     init {
@@ -24,7 +24,7 @@ internal class ValueFlowProofSharing(previous: Collection<ValueFlowStep>) {
         }
 
     fun executionOwner(owner: ValueExecutionOwner): ValueExecutionOwner =
-        executionOwners.getOrPut(owner.enclosing) { owner }
+        executionOwners.getOrPut(owner.enclosing to owner.identity) { owner }
 
     fun site(value: ValueSite): ValueSite = sites.getOrPut(value) { value.shareCallableEvidence(this) }
 

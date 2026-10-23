@@ -4,6 +4,18 @@ package io.github.amichne.kast.relation.contract
 internal fun valueStateStorageBytes(site: ValueSite): Long =
     valuePathStorageBytes(site.valuePath)
         .addBytes(site.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
+        .addBytes(
+            when (val context = site.executionOwner.context) {
+                ValueExecutionContext.Declaration -> 0L
+                is ValueExecutionContext.Callback ->
+                    context.invocations.fold(VALUE_CALL_PROOF_BYTES) { total, frame ->
+                        total
+                            .addBytes(frame.invocation.retainedBytes)
+                            .addBytes(valueSiteStorageBytes(frame.supply.invocation.resultSite()))
+                            .addBytes(VALUE_CALL_PROOF_BYTES)
+                    }
+            }
+        )
 
 private fun valuePathStorageBytes(path: ValueAccessPath): Long =
     path.segments.fold(0L) { sum, segment ->

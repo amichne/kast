@@ -57,8 +57,26 @@ private fun ImpactTransferKindDocument.admitsDirectState(
         ImpactTransferKindDocument.PROPERTY_ASSIGNMENT,
         ImpactTransferKindDocument.BRANCH_ALTERNATIVE,
         ImpactTransferKindDocument.WRAPPER_RETURN ->
-            source.valuePath == target.valuePath && source.callStack.hasSameCallStackIdentity(target.callStack)
+            source.valuePath == target.valuePath &&
+                source.callStack.hasSameCallStackIdentity(target.callStack) &&
+                admitsDirectOwner(source, target)
     }
+
+private fun ImpactTransferKindDocument.admitsDirectOwner(
+    source: ImpactValueSiteReferenceDocument,
+    target: ImpactValueSiteReferenceDocument,
+): Boolean {
+    if (source.executionOwner == target.executionOwner) return true
+    val binding =
+        source.role == ImpactValueRoleDocument.LocalBinding ||
+            (source.role as? ImpactValueRoleDocument.Formal)?.position is ImpactFormalPositionDocument.Parameter
+    return this == ImpactTransferKindDocument.LOCAL_READ &&
+        binding &&
+        target.role == ImpactValueRoleDocument.LocalRead &&
+        source.enclosing == target.enclosing &&
+        source.executionOwner == ImpactExecutionOwnerDocument.Declaration &&
+        target.executionOwner is ImpactExecutionOwnerDocument.Callback
+}
 
 private fun ImpactTransferEvidenceDocument.NormalBranchResult.admitsAnchors(
     source: ImpactSourceRangeDocument,

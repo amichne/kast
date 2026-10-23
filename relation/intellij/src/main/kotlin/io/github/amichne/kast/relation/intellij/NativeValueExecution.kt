@@ -8,6 +8,42 @@ import io.github.amichne.kast.relation.contract.ValueFlowRejection
 
 internal data class NativeValueExecution(val nativeOwner: PsiElement, val owner: ValueExecutionOwner)
 
+/** Restore only a retained, admitted capture on the identical semantic basis. New lexical seeds stay rejected. */
+internal fun restoreCapturedValueExecution(
+    element: PsiElement,
+    host: PsiElement,
+    expected: ValueExecutionOwner,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+): Refinement<NativeValueExecution, ValueFlowRejection> {
+    val context =
+        expected.context as? io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback
+            ?: return nativeValueExecutionOwner(element, host, expected.enclosing)
+    if (expected.basis != scope.request.subject.lease.identity)
+        return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+    var current: PsiElement? = element
+    while (current != null && current !== host) {
+        if (current is org.jetbrains.kotlin.psi.KtFunction && sourceValueRange(current) == context.body.range) {
+            val reader =
+                IntellijCallbackFlowContext(
+                    scope,
+                    projection,
+                    { CallbackWorkAdmission.READY },
+                    projection.observation,
+                    { CallbackExpiryAdmission.CURRENT },
+                )
+            return if (
+                reader.anonymous(current) == context.body &&
+                    valueNativeOwnership(element, current) == NativeValueOwnership.ADMITTED
+            )
+                Refinement.Refined(NativeValueExecution(current, expected))
+            else Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+        }
+        current = current.parent
+    }
+    return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+}
+
 /** Plain source values retain the existing rejection of nested execution bodies. */
 internal fun nativeValueExecutionOwner(
     element: PsiElement,

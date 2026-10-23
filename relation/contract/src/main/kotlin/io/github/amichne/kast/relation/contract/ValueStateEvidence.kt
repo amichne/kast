@@ -25,6 +25,22 @@ internal fun ValueCallFrame.stateEndpoints(): List<RelationEndpoint> = buildList
 }
 
 internal fun StringBuilder.valueState(site: ValueSite) {
+    when (val context = site.executionOwner.context) {
+        ValueExecutionContext.Declaration -> Unit
+        is ValueExecutionContext.Callback -> {
+            field("CAPTURED_EXECUTION")
+            field(context.body.compilerIdentity.value)
+            range(context.body.range)
+            field(context.invocations.size.toString())
+            context.invocations.forEach { frame ->
+                field(frame.body.compilerIdentity.value)
+                valueCall(frame.supply.invocation)
+                range(frame.supply.parameter.range)
+                field(frame.supply.position.value.toString())
+                field(frame.invocation.canonicalProjection())
+            }
+        }
+    }
     field(site.valuePath.depth.toString())
     site.valuePath.segments.forEach { segment ->
         when (segment) {

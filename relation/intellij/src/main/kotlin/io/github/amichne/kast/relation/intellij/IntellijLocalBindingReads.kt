@@ -33,10 +33,14 @@ internal class IntellijLocalBindingReads(
     private val request: ValueFlowRequest,
     private val owner: PsiElement,
     private val scope: CompiledRelationScope,
+    private val projection: IntellijK2RelationProjection,
     private val observation: IntellijReadObservation,
     private val started: Long,
     private val onWork: (RelationWorkCount) -> Unit,
 ) {
+    private val captureAllowance = IntellijRelationAllowance(started) { System.nanoTime() }
+    private var scannedWork = 1L
+
     fun read(element: PsiElement): ValueFlowRead =
         when (element) {
             is KtNamedDeclaration ->
@@ -83,7 +87,11 @@ internal class IntellijLocalBindingReads(
                 },
                 { ProgressManager.checkCanceled() },
                 { java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) },
-                onWork,
+                { work ->
+                    scannedWork = work.value - captureAllowance.examined
+                    onWork(work)
+                },
+                { captureAllowance.examined },
             )
             .read()
             .also { read ->
@@ -99,13 +107,32 @@ internal class IntellijLocalBindingReads(
             }
 
     private fun localReadTarget(element: PsiElement): LocalReferenceResolution {
-        val cause =
+        val execution =
             when (valueNativeOwnership(element, owner)) {
-                NativeValueOwnership.NESTED -> ValueFlowUnsupportedCause.NESTED_EXECUTION
-                NativeValueOwnership.UNAVAILABLE -> ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION
-                NativeValueOwnership.ADMITTED -> null
+                NativeValueOwnership.NESTED ->
+                    when (
+                        val captured =
+                            nativeValueCaptureOwner(
+                                element = element,
+                                host = owner,
+                                enclosing = request.source.enclosing,
+                                scope = scope,
+                                projection = projection,
+                                admitWork = ::admitCaptureWork,
+                                expiry = {
+                                    if (captureAllowance.elapsedLimitReached(request.budget.resources))
+                                        CallbackExpiryAdmission.EXPIRED
+                                    else CallbackExpiryAdmission.CURRENT
+                                },
+                            )
+                    ) {
+                        is Refinement.Refined -> captured.value.owner
+                        is Refinement.Rejected -> return LocalReferenceResolution.Unsupported(captured.failure)
+                    }
+                NativeValueOwnership.UNAVAILABLE ->
+                    return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                NativeValueOwnership.ADMITTED -> request.source.executionOwner
             }
-        if (cause != null) return LocalReferenceResolution.Unsupported(cause)
         if (!scope.nativeScope.contains(element.containingFile.virtualFile))
             return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
         val range =
@@ -119,7 +146,7 @@ internal class IntellijLocalBindingReads(
                     enclosing = request.source.enclosing,
                     range = range,
                     role = ValueRole.LocalRead,
-                    executionOwner = request.source.executionOwner,
+                    executionOwner = execution,
                     valuePath = request.source.valuePath,
                     callStack = request.source.callStack,
                 )
@@ -129,6 +156,17 @@ internal class IntellijLocalBindingReads(
                 LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }
     }
+
+    private fun admitCaptureWork(): CallbackWorkAdmission =
+        when {
+            captureAllowance.elapsedLimitReached(request.budget.resources) -> CallbackWorkAdmission.TIME_LIMIT_REACHED
+            !request.budget.resources.hasWorkCapacity(scannedWork + captureAllowance.examined) ->
+                CallbackWorkAdmission.WORK_LIMIT_REACHED
+            else -> {
+                captureAllowance.examine()
+                CallbackWorkAdmission.READY
+            }
+        }
 
     private fun nativeRange(element: PsiElement): Refinement<ExactDeclarationTextRange, ValueFlowUnsupportedCause> =
         when (val range = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {

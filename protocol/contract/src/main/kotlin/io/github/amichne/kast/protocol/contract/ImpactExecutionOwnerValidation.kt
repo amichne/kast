@@ -26,7 +26,24 @@ internal fun ImpactExecutionOwnerDocument.admits(
 ): Boolean =
     when (this) {
         ImpactExecutionOwnerDocument.Declaration -> host.range.containsExecutionRange(anchor)
+        is ImpactExecutionOwnerDocument.Callback ->
+            body.file == host.file &&
+                host.range.containsExecutionRange(body.range) &&
+                body.range.containsExecutionRange(anchor) &&
+                invocations.values.isNotEmpty() &&
+                invocations.values.any { it.body == body } &&
+                invocations.values.all { it.admitsCapture(host) }
     }
+
+private fun ImpactCaptureInvocationDocument.admitsCapture(host: ImpactDeclarationReferenceDocument): Boolean =
+    enclosing.basis == host.basis &&
+        supply.callable.basis == host.basis &&
+        body.file == host.file &&
+        host.range.containsExecutionRange(body.range) &&
+        supplyOwner.file == enclosing.file &&
+        supplyOwner.range.containsExecutionRange(supply.range) &&
+        supply.callable.range.containsExecutionRange(parameter) &&
+        invocationOwner.range.containsExecutionRange(invocation)
 
 private fun ImpactSourceRangeDocument.containsExecutionRange(other: ImpactSourceRangeDocument): Boolean =
     other.start.value < other.end.value && other.start.value >= start.value && other.end.value <= end.value
@@ -37,6 +54,8 @@ internal fun ImpactExecutionOwnerDocument.isOnBasis(basis: ImpactSemanticBasisDo
         is ImpactSemanticBasisDocument.Live ->
             when (this) {
                 ImpactExecutionOwnerDocument.Declaration -> true
+                is ImpactExecutionOwnerDocument.Callback ->
+                    invocations.values.all { it.enclosing.basis == basis && it.supply.callable.basis == basis }
             }
     }
 

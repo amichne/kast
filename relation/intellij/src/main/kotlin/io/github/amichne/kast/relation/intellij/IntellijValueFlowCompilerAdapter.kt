@@ -202,10 +202,12 @@ class IntellijValueFlowCompilerAdapter(
         val execution =
             when (
                 val admitted =
-                    nativeValueExecutionOwner(
+                    restoreCapturedValueExecution(
                         element = source,
                         host = prepared.owner,
-                        enclosing = request.source.enclosing,
+                        expected = request.source.executionOwner,
+                        scope = prepared.scope,
+                        projection = prepared.projection,
                     )
             ) {
                 is Refinement.Refined -> admitted.value

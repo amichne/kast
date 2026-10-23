@@ -18,7 +18,34 @@ data class ImpactInvocationReferenceDocument(
 @JsonClassDiscriminator("type")
 sealed interface ImpactExecutionOwnerDocument {
     @Serializable @SerialName("DECLARATION") data object Declaration : ImpactExecutionOwnerDocument
+
+    @Serializable
+    @SerialName("CALLBACK")
+    data class Callback(
+        val body: ImpactCapturedBodyDocument,
+        @ProtocolCollectionConstraint(maximumItems = 1024)
+        val invocations: BoundedProtocolList<ImpactCaptureInvocationDocument>,
+    ) : ImpactExecutionOwnerDocument
 }
+
+@Serializable
+data class ImpactCapturedBodyDocument(
+    val file: ProtocolText,
+    val range: ImpactSourceRangeDocument,
+    val compilerIdentity: ProtocolText,
+)
+
+@Serializable
+data class ImpactCaptureInvocationDocument(
+    val body: ImpactCapturedBodyDocument,
+    val enclosing: ImpactDeclarationReferenceDocument,
+    val supply: ImpactInvocationReferenceDocument,
+    val supplyOwner: ImpactCapturedBodyDocument,
+    val parameter: ImpactSourceRangeDocument,
+    val position: ProtocolOffset,
+    val invocation: ImpactSourceRangeDocument,
+    val invocationOwner: ImpactCapturedBodyDocument,
+)
 
 @Serializable
 @JsonClassDiscriminator("type")

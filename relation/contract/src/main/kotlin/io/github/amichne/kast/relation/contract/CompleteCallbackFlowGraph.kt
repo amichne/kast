@@ -47,8 +47,9 @@ private constructor(
             }
         }
 
-        fun admitImmutableOwners(flow: ImmutableCallbackInvocationFlow): Refinement<Unit, StaticCallbackGraphFailure> =
-            CallbackFlowComposition().appendImmutable(flow)
+        internal fun admitImmutableOwners(
+            flow: ImmutableCallbackInvocationFlow
+        ): Refinement<Unit, StaticCallbackGraphFailure> = CallbackFlowComposition().appendImmutable(flow)
     }
 }
 

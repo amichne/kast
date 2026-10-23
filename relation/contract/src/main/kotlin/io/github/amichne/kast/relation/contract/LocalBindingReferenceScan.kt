@@ -24,6 +24,7 @@ class LocalBindingReferenceScan<C>(
     private val checkCanceled: () -> Unit,
     private val elapsedMillis: () -> Long,
     private val onWork: (RelationWorkCount) -> Unit = {},
+    private val additionalWork: () -> Long = { 0L },
 ) {
     private val edges = mutableListOf<ValueTransfer>()
     private val obligations = mutableListOf<ValueFlowObligation>()
@@ -79,7 +80,14 @@ class LocalBindingReferenceScan<C>(
         }
         when (val transfer = ValueTransfer.fromCompiler(request.source, target, ValueTransferKind.LOCAL_READ)) {
             is Refinement.Rejected -> obligation(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-            is Refinement.Refined -> if (emitted.add(target.identity)) edges += transfer.value
+            is Refinement.Refined -> {
+                val bytes =
+                    ValueFlowStep.detachedByteCount(request.source, domain, edges + transfer.value, obligations).value
+                val reserve = 2048L.addBytes(request.source.retainedBytes)
+                if (!request.budget.permitsReturnedBytes(bytes.addBytes(reserve))) {
+                    obligation(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+                } else if (emitted.add(target.identity)) edges += transfer.value
+            }
         }
     }
 
@@ -112,7 +120,8 @@ class LocalBindingReferenceScan<C>(
     private fun permitted(): Boolean {
         suspension =
             when {
-                !request.budget.resources.hasWorkCapacity(work) -> ValueFlowSuspensionCause.WORK_LIMIT_REACHED
+                !request.budget.resources.hasWorkCapacity(work.addBytes(additionalWork())) ->
+                    ValueFlowSuspensionCause.WORK_LIMIT_REACHED
                 edges.size >= request.budget.outputResults.value -> ValueFlowSuspensionCause.RESULT_LIMIT_REACHED
                 !fitsCandidate() -> ValueFlowSuspensionCause.BYTE_LIMIT_REACHED
                 else -> null
@@ -136,7 +145,7 @@ class LocalBindingReferenceScan<C>(
     private fun remainder(): LocalBindingReadRemainder =
         LocalBindingReadRemainder.admit(request.source, request.boundary, consumed, emitted).value()
 
-    private fun count(): RelationWorkCount = RelationWorkCount.parse(work).value()
+    private fun count(): RelationWorkCount = RelationWorkCount.parse(work.addBytes(additionalWork())).value()
 
     private fun spend() {
         work++

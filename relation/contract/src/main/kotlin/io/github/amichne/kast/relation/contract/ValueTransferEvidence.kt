@@ -52,7 +52,8 @@ sealed interface ValueTransferEvidence {
             Direct ->
                 kind !in SOURCE_TRANSFER_KINDS &&
                     source.valuePath == target.valuePath &&
-                    source.callStack == target.callStack
+                    source.callStack == target.callStack &&
+                    admitsDirectOwner(source, target, kind)
             is ValueSourceTransfer -> admitsSource(source, target, kind)
             is NormalBranchResult -> admitsNormal(source, target, kind)
         }
@@ -65,6 +66,15 @@ sealed interface ValueTransferEvidence {
                 is NormalBranchResult -> 4096L
             }
 }
+
+private fun admitsDirectOwner(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
+    source.executionOwner == target.executionOwner ||
+        (kind == ValueTransferKind.LOCAL_READ &&
+            source.role.hasReferenceReads() &&
+            target.role == ValueRole.LocalRead &&
+            source.identity.owner == target.identity.owner &&
+            source.executionOwner.context == ValueExecutionContext.Declaration &&
+            target.executionOwner.context is ValueExecutionContext.Callback)
 
 private fun ValueTransferEvidence.NormalBranchResult.admitsNormal(
     source: ValueSite,

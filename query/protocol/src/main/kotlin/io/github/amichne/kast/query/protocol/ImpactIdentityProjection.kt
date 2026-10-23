@@ -125,7 +125,54 @@ internal fun ValueDeclarationIdentity.impactDocument(
         }
 
 internal fun ValueExecutionIdentity.impactDocument(): ImpactProjected<ImpactExecutionOwnerDocument> =
-    Refinement.Refined(ImpactExecutionOwnerDocument.Declaration)
+    when (val execution = context) {
+        io.github.amichne.kast.relation.contract.ValueExecutionContext.Declaration ->
+            Refinement.Refined(ImpactExecutionOwnerDocument.Declaration)
+        is io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback ->
+            execution.body
+                .impactCaptureBody()
+                .impactZip(execution.invocations.impactEach { it.impactCapture() })
+                .impactMap { (body, invocations) -> ImpactExecutionOwnerDocument.Callback(body, invocations) }
+    }
+
+private fun io.github.amichne.kast.relation.contract.RelationCallableBody.impactCaptureBody():
+    ImpactProjected<io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument> =
+    file.stableValue
+        .impactText()
+        .impactZip(range.impactDocument())
+        .impactZip(compilerIdentity.value.impactText())
+        .impactMap { (body, compiler) ->
+            io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument(body.first, body.second, compiler)
+        }
+
+private fun io.github.amichne.kast.relation.contract.ValueCaptureInvocation.impactCapture():
+    ImpactProjected<io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument> =
+    body
+        .impactCaptureBody()
+        .impactZip(supply.invocation.enclosing.impactDeclaration())
+        .impactZip(supply.invocation.impactDocument())
+        .impactZip(supply.invocationOwner.impactCaptureBody())
+        .impactZip(supply.parameter.range.impactDocument())
+        .impactZip(supply.position.value.impactOffset())
+        .impactZip(invocation.occurrence.range.impactDocument())
+        .impactZip(invocation.owner.impactCaptureBody())
+        .impactMap { (route, owner) ->
+            val (binding, occurrence) = route
+            val (parameter, position) = binding
+            val (supplying, parameterRange) = parameter
+            val (call, supplyOwner) = supplying
+            val (bodyEnclosing, supply) = call
+            io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument(
+                bodyEnclosing.first,
+                bodyEnclosing.second,
+                supply,
+                supplyOwner,
+                parameterRange,
+                position,
+                occurrence,
+                owner,
+            )
+        }
 
 private fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument> =
     when (this) {

@@ -151,11 +151,14 @@ internal constructor(
         )
     }
 
-    internal fun scope(observation: IntellijReadObservation): CompiledRelationScope =
+    internal fun scope(
+        observation: IntellijReadObservation,
+        selected: RelationRequest = request,
+    ): CompiledRelationScope =
         (IntellijRelationScopeCompiler()
                 .compile(
                     project = project,
-                    request = request,
+                    request = selected,
                     modelCompilation = model,
                     observation = observation,
                 ) as IntellijRelationScopeCompilation.Compiled)
