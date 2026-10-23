@@ -126,6 +126,16 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
             field("SEED_RETURN")
             callFrame(operation.frame)
         }
+        is ValueSourceOperation.CallbackReturn -> {
+            field("CALLBACK_RETURN")
+            field(operation.invocation.body.compilerIdentity.value)
+            range(operation.invocation.body.range)
+            valueCall(operation.invocation.supply.invocation)
+            range(operation.invocation.supply.parameter.range)
+            field(operation.invocation.supply.position.value.toString())
+            field(operation.invocation.invocation.canonicalProjection())
+            callFrame(operation.frame)
+        }
         is ValueSourceOperation.ReadField -> {
             field("READ_FIELD")
             endpoint(operation.field.declaration)

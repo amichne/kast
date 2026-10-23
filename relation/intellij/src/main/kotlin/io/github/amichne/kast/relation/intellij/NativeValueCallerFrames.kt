@@ -2,10 +2,13 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
 import io.github.amichne.kast.relation.contract.ValueInvocation
@@ -77,6 +80,7 @@ internal class NativeValueCallerFrames(
         call: KtCallElement,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
+        expectedOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
         val declaration =
             projection.observation.observedAnalyze(call) {
@@ -99,10 +103,12 @@ internal class NativeValueCallerFrames(
         val execution =
             when (
                 val value =
-                    nativeValueExecutionOwner(
+                    restoreCapturedValueExecution(
                         element = expression,
                         host = host,
-                        enclosing = enclosing,
+                        expected = expectedOwner,
+                        scope = scope,
+                        projection = projection,
                     )
             ) {
                 is Refinement.Refined -> value.value.owner
@@ -124,4 +130,74 @@ internal class NativeValueCallerFrames(
 
     private fun rejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
         Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
+}
+
+/** Initial anonymous seeds require the same bounded invocation proof as captured reads. */
+internal fun nativeValueInitialExecution(
+    element: PsiElement,
+    host: PsiElement,
+    enclosing: RelationEndpoint,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+    reservedWork: Long = 0L,
+): Refinement<NativeInitialValueRead, NativeInitialValueFailure> {
+    val plain = nativeValueExecutionOwner(element, host, enclosing)
+    when (plain) {
+        is Refinement.Refined -> return Refinement.Refined(initialValueRead(plain.value, 0L))
+        is Refinement.Rejected ->
+            if (plain.failure != ValueFlowRejection.NESTED_EXECUTION)
+                return Refinement.Rejected(NativeInitialValueFailure.Native(plain.failure))
+    }
+    val allowance = IntellijRelationAllowance(System.nanoTime()) { System.nanoTime() }
+    val captured =
+        nativeValueCaptureOwner(
+            element,
+            host,
+            enclosing,
+            scope,
+            projection,
+            admitWork = {
+                when {
+                    allowance.elapsedLimitReached(scope.request.budget.resources) ->
+                        CallbackWorkAdmission.TIME_LIMIT_REACHED
+                    !scope.request.budget.resources.hasWorkCapacity(reservedWork + allowance.examined) ->
+                        CallbackWorkAdmission.WORK_LIMIT_REACHED
+                    else -> {
+                        allowance.examine()
+                        CallbackWorkAdmission.READY
+                    }
+                }
+            },
+            expiry = {
+                if (allowance.elapsedLimitReached(scope.request.budget.resources)) CallbackExpiryAdmission.EXPIRED
+                else CallbackExpiryAdmission.CURRENT
+            },
+        )
+    return when (captured) {
+        is Refinement.Refined -> Refinement.Refined(initialValueRead(captured.value, allowance.examined))
+        is Refinement.Rejected -> Refinement.Rejected(NativeInitialValueFailure.Unsupported(captured.failure))
+    }
+}
+
+internal data class NativeInitialValueRead(
+    val owner: ValueExecutionOwner,
+    val examinedWork: io.github.amichne.kast.relation.contract.RelationWorkCount,
+)
+
+private fun initialValueRead(execution: NativeValueExecution, work: Long): NativeInitialValueRead =
+    when (val count = io.github.amichne.kast.relation.contract.RelationWorkCount.parse(work)) {
+        is Refinement.Refined -> NativeInitialValueRead(execution.owner, count.value)
+        is Refinement.Rejected -> error("Native capture work is nonnegative")
+    }
+
+internal sealed interface NativeInitialValueFailure {
+    data class Native(val cause: ValueFlowRejection) : NativeInitialValueFailure
+
+    data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeInitialValueFailure
+
+    fun seedRejection(): ValueFlowRejection =
+        when (this) {
+            is Native -> cause
+            is Unsupported -> ValueFlowRejection.NESTED_EXECUTION
+        }
 }

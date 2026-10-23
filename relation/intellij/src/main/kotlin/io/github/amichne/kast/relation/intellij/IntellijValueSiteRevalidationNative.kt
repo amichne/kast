@@ -66,7 +66,7 @@ internal class IntellijValueSiteRevalidationNative(
             if (!request.budget.resources.permitsWork(work))
                 return@nativeBoundary ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.WORK_LIMIT_REACHED)
             val started = System.nanoTime()
-            when (val role = positionRole(project, request, model)) {
+            when (val role = positionRole(project = project, request = request, model = model, reservedWork = work)) {
                 is Refinement.Refined -> boundedPosition(request, role.value, work, started)
                 is Refinement.Rejected ->
                     when (val failure = role.failure) {
@@ -80,6 +80,7 @@ internal class IntellijValueSiteRevalidationNative(
         project: Project,
         request: ValueSiteRevalidationRequest,
         model: WorkspaceSearchScopeModelCompilation,
+        reservedWork: Long,
     ): Refinement<NativeValuePosition, NativeSiteFailure> {
         // The exact owner is still restored under its retained selector scope. Workspace permits an actual
         // callee in another file; this validation never adopts or enumerates the investigation's D.
@@ -96,7 +97,13 @@ internal class IntellijValueSiteRevalidationNative(
                 is IntellijValueFlowCompilerAdapter.Prepared.Rejected -> return nativeSiteRejected(result.cause)
             }
         return when (val restored = prepared.owner.restoreValueSiteElement(request.anchor, request.role, observation)) {
-            is Refinement.Refined -> admittedRole(restored.value, request, prepared)
+            is Refinement.Refined ->
+                admittedRole(
+                    element = restored.value,
+                    request = request,
+                    prepared = prepared,
+                    reservedWork = reservedWork,
+                )
             is Refinement.Rejected ->
                 when (restored.failure) {
                     NativeValueSiteRestorationFailure.ANCHOR_UNAVAILABLE ->
@@ -113,19 +120,28 @@ internal class IntellijValueSiteRevalidationNative(
         element: PsiElement,
         request: ValueSiteRevalidationRequest,
         prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+        reservedWork: Long,
     ): Refinement<NativeValuePosition, NativeSiteFailure> {
         val enclosing = RelationEndpoint.subject(request.enclosing)
         val execution =
             when (
                 val admitted =
-                    nativeValueExecutionOwner(
+                    nativeValueInitialExecution(
                         element = element,
                         host = prepared.owner,
                         enclosing = enclosing,
+                        scope = prepared.scope,
+                        projection = prepared.projection,
+                        reservedWork = reservedWork,
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return nativeSiteRejected(admitted.failure)
+                is Refinement.Rejected ->
+                    return when (val failure = admitted.failure) {
+                        is NativeInitialValueFailure.Native -> nativeSiteRejected(failure.cause)
+                        is NativeInitialValueFailure.Unsupported ->
+                            Refinement.Rejected(NativeSiteFailure.Unsupported(failure.cause))
+                    }
             }
         return when (
             val result =
@@ -137,7 +153,8 @@ internal class IntellijValueSiteRevalidationNative(
                     executionOwner = execution.owner,
                 )
         ) {
-            is Refinement.Refined -> Refinement.Refined(NativeValuePosition(result.value, execution.owner))
+            is Refinement.Refined ->
+                Refinement.Refined(NativeValuePosition(result.value, execution.owner, execution.examinedWork))
             is Refinement.Rejected -> Refinement.Rejected(NativeSiteFailure.Unsupported(result.failure))
         }
     }
@@ -170,13 +187,18 @@ internal class IntellijValueSiteRevalidationNative(
         if (!request.budget.permitsReturnedBytes(site.retainedBytes))
             return ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.BYTE_LIMIT_REACHED)
         return when (val result = RevalidatedValueSite.fromCompiler(request, site)) {
-            is Refinement.Refined -> ValueModelSiteRead.Revalidated(result.value, siteWorkCount(work))
+            is Refinement.Refined ->
+                ValueModelSiteRead.Revalidated(result.value, siteWorkCount(work + position.captureWork.value))
             is Refinement.Rejected -> ValueModelSiteRead.ContractRejected(result.failure)
         }
     }
 }
 
-private data class NativeValuePosition(val role: ValueRole, val executionOwner: ValueExecutionOwner)
+private data class NativeValuePosition(
+    val role: ValueRole,
+    val executionOwner: ValueExecutionOwner,
+    val captureWork: RelationWorkCount,
+)
 
 private fun nativeRole(
     element: PsiElement,
@@ -328,6 +350,8 @@ private fun KtExpression.isReturnedExpression(): Boolean =
     when (val container = parent) {
         is KtReturnExpression -> container.returnedExpression === this
         is KtNamedFunction -> container.bodyExpression === this
+        is org.jetbrains.kotlin.psi.KtBlockExpression ->
+            container.parent is org.jetbrains.kotlin.psi.KtFunctionLiteral && container.statements.lastOrNull() === this
         else -> false
     }
 

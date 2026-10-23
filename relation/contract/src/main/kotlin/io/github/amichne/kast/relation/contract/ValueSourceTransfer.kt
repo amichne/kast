@@ -10,6 +10,8 @@ sealed interface ValueSourceOperation {
 
     data class SeedReturn(val frame: ValueCallFrame) : ValueSourceOperation
 
+    data class CallbackReturn(val invocation: ValueCaptureInvocation, val frame: ValueCallFrame) : ValueSourceOperation
+
     data class ReadField(val field: ValueField) : ValueSourceOperation
 
     data class ConstructField(val call: ValueInvocation, val storage: ValueConstructorStorage) : ValueSourceOperation
@@ -30,6 +32,7 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
                 admitsReturn(op.frame, source, target, kind) &&
                     source.callStack == ValueCallStack.Empty &&
                     target.callStack == ValueCallStack.Empty
+            is ValueSourceOperation.CallbackReturn -> op.admitsCallbackReturn(source, target, kind)
             is ValueSourceOperation.ReadField -> op.admitsField(source, target, kind)
             is ValueSourceOperation.ConstructField -> op.admitsConstruction(source, target, kind)
         }

@@ -130,14 +130,16 @@ class IntellijValueFlowCompilerAdapter(
         val execution =
             when (
                 val admitted =
-                    nativeValueExecutionOwner(
+                    nativeValueInitialExecution(
                         element = expression,
                         host = prepared.owner,
                         enclosing = RelationEndpoint.subject(enclosing),
+                        scope = prepared.scope,
+                        projection = prepared.projection,
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return ValueSiteResolution.Rejected(admitted.failure)
+                is Refinement.Rejected -> return ValueSiteResolution.Rejected(admitted.failure.seedRejection())
             }
         if (expression is KtNamedDeclaration) return ValueSiteResolution.Rejected(ValueFlowRejection.UNSUPPORTED_SEED)
         val nativeType =

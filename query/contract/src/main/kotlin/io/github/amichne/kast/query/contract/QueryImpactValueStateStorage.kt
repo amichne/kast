@@ -50,6 +50,7 @@ internal fun ValueSourceOperation.storageBytes(g: QueryImpactRetainedGraph): Lon
             is ValueSourceOperation.Enter -> frame.storageBytes(g).saturatedAdd(position.storageBytes(g))
             is ValueSourceOperation.Return -> frame.storageBytes(g)
             is ValueSourceOperation.SeedReturn -> frame.storageBytes(g)
+            is ValueSourceOperation.CallbackReturn -> frame.storageBytes(g).saturatedAdd(invocation.storageBytes(g))
             is ValueSourceOperation.ReadField -> g.node(field) { field.declaration.storageBytes(g) }
             is ValueSourceOperation.ConstructField ->
                 call

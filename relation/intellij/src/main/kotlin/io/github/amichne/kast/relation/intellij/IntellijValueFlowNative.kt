@@ -241,9 +241,16 @@ internal class IntellijValueFlowNative(
             is TryBranchResultPosition.Result -> tryBranchResult(expression, position)
             TryBranchResultPosition.Discarded -> Unit
             TryBranchResultPosition.Unavailable ->
-                if (owner is KtFunctionLiteral && block === owner.bodyExpression)
-                    unresolved(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-                else if (block.parent !is KtNamedFunction) unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                if (owner is KtFunctionLiteral && block === owner.bodyExpression) {
+                    if (
+                        request.source.executionOwner.context
+                            !is io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback
+                    )
+                        unresolved(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+                    else if (block.statements.lastOrNull() === expression)
+                        emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
+                } else if (block.parent !is KtNamedFunction)
+                    unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }
     }
 

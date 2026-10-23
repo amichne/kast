@@ -9,9 +9,14 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueCaptureInvocation
+import io.github.amichne.kast.relation.contract.ValueExecutionContext
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSourceOperation
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -32,6 +37,70 @@ internal class NativeValueSourceReturns(
     private val frames = NativeValueCallerFrames(source, scope, projection)
     val isMatched: Boolean
         get() = source.callStack.frames.isNotEmpty()
+
+    val isCallback: Boolean
+        get() = source.executionOwner.context is ValueExecutionContext.Callback
+
+    fun callback(permit: () -> Boolean, consume: (NativeValueReturnEffect) -> Boolean): Boolean {
+        val context = source.executionOwner.context as? ValueExecutionContext.Callback ?: return consume(unsupported())
+        val invocations = context.invocations.filter { it.body == context.body }
+        if (invocations.isEmpty()) return consume(unsupported())
+        for (invocation in invocations) {
+            if (!permit() || !consume(NativeValueReturnEffect.Transfer(callbackTransfer(invocation)))) return false
+        }
+        return true
+    }
+
+    private fun callbackTransfer(
+        invocation: ValueCaptureInvocation
+    ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
+        val supplier =
+            when (val value = source.executionOwner.supplierOf(invocation)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return value
+            }
+        val supplied = invocation.supply.invocation
+        val rebound =
+            when (
+                val value =
+                    ValueInvocation.fromCompiler(supplied.enclosing, supplied.range, supplied.callable, supplier)
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return returnRejected()
+            }
+        val callee = ValueExecutionOwner.declaration(rebound.callable)
+        val frame =
+            when (val value = ValueCallFrame.direct(rebound, callee)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return returnRejected()
+            }
+        val stack =
+            when (val value = source.callStack.enter(frame)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativeCallCause())
+            }
+        val target =
+            when (
+                val value =
+                    ValueSite.fromCompiler(
+                        enclosing = callee.enclosing,
+                        range = invocation.invocation.occurrence.range,
+                        role = ValueRole.ExpressionResult,
+                        executionOwner = callee,
+                        valuePath = source.valuePath,
+                        callStack = stack,
+                    )
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return returnRejected()
+            }
+        return sourceTransfer(
+            source,
+            target,
+            ValueTransferKind.SOURCE_CALL_RETURN,
+            ValueSourceOperation.CallbackReturn(invocation, frame),
+        )
+    }
 
     fun matched(consume: (NativeValueReturnEffect) -> Boolean): Boolean {
         val expected = source.callStack.frames.lastOrNull() ?: return consume(unsupported())
@@ -64,7 +133,7 @@ internal class NativeValueSourceReturns(
                 is KtQualifiedExpression -> expression.selectorExpression as? KtCallElement
                 else -> null
             } ?: return returnRejected()
-        return frames.invocation(call, host, expected.enclosing)
+        return frames.invocation(call, host, expected.enclosing, expected.executionOwner)
     }
 
     private fun matchedTransfer(

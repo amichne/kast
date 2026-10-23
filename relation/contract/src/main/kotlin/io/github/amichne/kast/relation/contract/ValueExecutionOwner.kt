@@ -47,6 +47,30 @@ private constructor(
     fun hasSameProofAs(other: ValueExecutionOwner): Boolean =
         identity == other.identity && enclosing.hasSameProofAs(other.enclosing)
 
+    /** Retain the admitted route when a wrapper returns into its exact supplier's execution body. */
+    fun supplierOf(invocation: ValueCaptureInvocation): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
+        when (val execution = context) {
+            ValueExecutionContext.Declaration -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            is ValueExecutionContext.Callback ->
+                if (invocation.body != execution.body || invocation !in execution.invocations)
+                    Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+                else supplierOwner(invocation.supply.invocationOwner, execution)
+        }
+
+    private fun supplierOwner(
+        supplier: RelationCallableBody,
+        execution: ValueExecutionContext.Callback,
+    ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
+        when (supplier) {
+            is RelationCallableBody.Named ->
+                if (enclosing.matchesCallbackRoot(supplier.evidence)) Refinement.Refined(declaration(enclosing))
+                else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            is RelationCallableBody.Anonymous ->
+                if (execution.invocations.any { it.body == supplier })
+                    Refinement.Refined(ValueExecutionOwner(enclosing, execution.copy(body = supplier)))
+                else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+        }
+
     companion object {
         fun declaration(enclosing: RelationEndpoint): ValueExecutionOwner = ValueExecutionOwner(enclosing)
 

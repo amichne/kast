@@ -211,7 +211,7 @@ internal fun ValueDeclarationIdentity.storageBytes(g: QueryImpactRetainedGraph):
 
 internal fun ValueExecutionIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        host.storageBytes(g).saturatedAdd(g.node(basis) { 0L })
+        host.storageBytes(g).saturatedAdd(g.node(basis) { 0L }).saturatedAdd(context.storageBytes(g))
     }
 
 internal fun ValueExecutionOwner.storageBytes(g: QueryImpactRetainedGraph): Long =

@@ -39,6 +39,7 @@ internal class NativeValueReturnFlow(
     fun read(): Refinement<Unit, ValueFlowRejection> {
         val exhausted =
             when {
+                returns.isCallback -> returns.callback(permit = permit, consume = ::accept)
                 returns.isMatched -> returns.matched(consume = ::accept)
                 else -> namedCallers()
             }

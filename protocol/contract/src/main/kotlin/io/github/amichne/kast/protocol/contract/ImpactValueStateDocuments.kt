@@ -88,6 +88,11 @@ sealed interface ImpactSourceOperationDocument {
     data class SeedReturn(val frame: ImpactCallFrameDocument) : ImpactSourceOperationDocument
 
     @Serializable
+    @SerialName("CALLBACK_RETURN")
+    data class CallbackReturn(val invocation: ImpactCaptureInvocationDocument, val frame: ImpactCallFrameDocument) :
+        ImpactSourceOperationDocument
+
+    @Serializable
     @SerialName("READ_FIELD")
     data class ReadField(val field: ImpactDeclarationReferenceDocument) : ImpactSourceOperationDocument
 

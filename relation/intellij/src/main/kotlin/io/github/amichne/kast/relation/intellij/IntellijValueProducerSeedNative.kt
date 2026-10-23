@@ -9,9 +9,12 @@ import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueInvocationSelection
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
@@ -125,7 +128,17 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
     ): Refinement<IntellijValueFlowCompilerAdapter.Prepared.Ready, ValueProducerSeedRejection> =
         when (
             val result =
-                adapter.prepare(project, RelationRequest.start(selector, RelationMeaning.References, budget), model)
+                adapter.prepare(
+                    project,
+                    RelationRequest.start(
+                        selector,
+                        RelationMeaning.References,
+                        budget,
+                        if (declaration == NativeSeedDeclaration.ENCLOSING) RelationSearchBoundary.WORKSPACE_EXPANSION
+                        else RelationSearchBoundary.RETAINED_SUBJECT,
+                    ),
+                    model,
+                )
         ) {
             is IntellijValueFlowCompilerAdapter.Prepared.Ready -> Refinement.Refined(result)
             is IntellijValueFlowCompilerAdapter.Prepared.Rejected ->
@@ -170,9 +183,10 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             when (
                 val result =
                     ValueInvocation.fromCompiler(
-                        RelationEndpoint.subject(request.enclosing),
-                        sourceValueRange(expression.expression),
-                        endpoint,
+                        enclosing = RelationEndpoint.subject(request.enclosing),
+                        range = sourceValueRange(expression.expression),
+                        callable = endpoint,
+                        executionOwner = expression.executionOwner,
                     )
             ) {
                 is Refinement.Rejected ->
@@ -188,7 +202,8 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 is Refinement.Rejected -> return ValueProducerSeedRead.ContractRejected(selected.failure)
             }
         return when (val result = ValueProducerSeed.fromCompiler(request, site, selection)) {
-            is Refinement.Refined -> ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS))
+            is Refinement.Refined ->
+                ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS + expression.captureWork.value))
             is Refinement.Rejected -> ValueProducerSeedRead.ContractRejected(result.failure)
         }
     }
@@ -227,7 +242,12 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
     }
 }
 
-private data class NativeSeedExpression(val expression: KtExpression, val call: KtCallElement)
+private data class NativeSeedExpression(
+    val expression: KtExpression,
+    val call: KtCallElement,
+    val executionOwner: ValueExecutionOwner,
+    val captureWork: RelationWorkCount,
+)
 
 private fun exactSeedExpression(
     enclosing: IntellijValueFlowCompilerAdapter.Prepared.Ready,
@@ -236,8 +256,6 @@ private fun exactSeedExpression(
     val expression =
         enclosing.owner.exactValueElement(request.anchor)
             ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
-    if (valueNativeOwnership(expression, enclosing.owner) != NativeValueOwnership.ADMITTED)
-        return Refinement.Rejected(ValueProducerSeedRejection.OWNER_MISMATCH)
     val call =
         when (expression) {
             is KtCallElement -> expression
@@ -249,8 +267,37 @@ private fun exactSeedExpression(
             ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
     if (expression !== call && expression !== canonical)
         return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
-    return Refinement.Refined(NativeSeedExpression(canonical, call))
+    return when (
+        val execution =
+            nativeValueInitialExecution(
+                element = canonical,
+                host = enclosing.owner,
+                enclosing = RelationEndpoint.subject(request.enclosing),
+                scope = enclosing.scope,
+                projection = enclosing.projection,
+                reservedWork = SEED_WORK_UNITS,
+            )
+    ) {
+        is Refinement.Refined ->
+            Refinement.Refined(
+                NativeSeedExpression(canonical, call, execution.value.owner, execution.value.examinedWork)
+            )
+        is Refinement.Rejected -> Refinement.Rejected(execution.failure.producerCause())
+    }
 }
+
+private fun NativeInitialValueFailure.producerCause(): ValueProducerSeedRejection =
+    when (this) {
+        is NativeInitialValueFailure.Native -> cause.seedCause()
+        is NativeInitialValueFailure.Unsupported ->
+            when (cause) {
+                ValueFlowUnsupportedCause.WORK_LIMIT_REACHED -> ValueProducerSeedRejection.WORK_LIMIT_REACHED
+                ValueFlowUnsupportedCause.TIME_LIMIT_REACHED -> ValueProducerSeedRejection.TIME_LIMIT_REACHED
+                ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED -> ValueProducerSeedRejection.BYTE_LIMIT_REACHED
+                ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED -> ValueProducerSeedRejection.GRANT_TOO_SMALL
+                else -> ValueProducerSeedRejection.OWNER_MISMATCH
+            }
+    }
 
 private fun projectDeclaration(
     native: IntellijValueFlowCompilerAdapter.Prepared.Ready,

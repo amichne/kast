@@ -145,7 +145,7 @@ private fun io.github.amichne.kast.relation.contract.RelationCallableBody.impact
             io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument(body.first, body.second, compiler)
         }
 
-private fun io.github.amichne.kast.relation.contract.ValueCaptureInvocation.impactCapture():
+internal fun io.github.amichne.kast.relation.contract.ValueCaptureInvocation.impactCapture():
     ImpactProjected<io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument> =
     body
         .impactCaptureBody()

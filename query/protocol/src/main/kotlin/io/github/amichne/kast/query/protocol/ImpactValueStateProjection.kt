@@ -90,6 +90,10 @@ internal fun ValueSourceOperation.impactDocument(): ImpactProjected<ImpactSource
         is ValueSourceOperation.Return -> frame.impactDocument().impactMap(ImpactSourceOperationDocument::Return)
         is ValueSourceOperation.SeedReturn ->
             frame.impactDocument().impactMap(ImpactSourceOperationDocument::SeedReturn)
+        is ValueSourceOperation.CallbackReturn ->
+            invocation.impactCapture().impactZip(frame.impactDocument()).impactMap { (invocation, frame) ->
+                ImpactSourceOperationDocument.CallbackReturn(invocation, frame)
+            }
         is ValueSourceOperation.ReadField ->
             field.declaration.impactDeclaration().impactMap(ImpactSourceOperationDocument::ReadField)
         is ValueSourceOperation.ConstructField ->

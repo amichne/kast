@@ -37,6 +37,10 @@ internal fun sourceEvidenceStorageBytes(operation: ValueSourceOperation): Long =
         is ValueSourceOperation.Enter -> valueFrameStorageBytes(operation.frame).addBytes(VALUE_CALL_PROOF_BYTES)
         is ValueSourceOperation.Return -> valueFrameStorageBytes(operation.frame)
         is ValueSourceOperation.SeedReturn -> valueFrameStorageBytes(operation.frame)
+        is ValueSourceOperation.CallbackReturn ->
+            valueFrameStorageBytes(operation.frame)
+                .addBytes(operation.invocation.invocation.retainedBytes)
+                .addBytes(valueSiteStorageBytes(operation.invocation.supply.invocation.resultSite()))
         is ValueSourceOperation.ReadField ->
             VALUE_FIELD_PROOF_BYTES.addBytes(operation.field.declaration.detachedTextUnits().multiplyBytes(2))
         is ValueSourceOperation.ConstructField ->

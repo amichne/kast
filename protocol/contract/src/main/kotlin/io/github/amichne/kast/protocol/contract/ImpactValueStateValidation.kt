@@ -59,6 +59,7 @@ internal fun ImpactSourceOperationDocument.admits(
         is ImpactSourceOperationDocument.Enter -> admitsEntry(source, target, kind)
         is ImpactSourceOperationDocument.Return -> admitsReturn(source, target, kind)
         is ImpactSourceOperationDocument.SeedReturn -> admitsSeedReturn(source, target, kind)
+        is ImpactSourceOperationDocument.CallbackReturn -> admitsCallbackReturn(source, target, kind)
         is ImpactSourceOperationDocument.ReadField -> admitsFieldRead(source, target, kind)
         is ImpactSourceOperationDocument.ConstructField -> admitsConstruction(source, target, kind)
     }
