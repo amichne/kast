@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RevalidatedValueSite
+import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -214,7 +215,12 @@ private fun nativeRole(
         ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, observation)
         ValueSiteRoleClaim.LocalRead -> localReadRole(element, prepared.owner, observation)
         ValueSiteRoleClaim.Return ->
-            returnRole(element, observation, prepared.scope.request.budget.resources.workAllowance)
+            returnRole(
+                element = element,
+                observation = observation,
+                workAllowance = prepared.scope.request.budget.resources.workAllowance,
+                executionOwner = executionOwner,
+            )
         is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
         is ValueSiteRoleClaim.Receiver -> receiverRole(element, prepared, executionOwner)
     }
@@ -267,28 +273,31 @@ private fun returnRole(
     element: PsiElement,
     observation: IntellijReadObservation,
     workAllowance: WorkAllowance,
+    executionOwner: ValueExecutionOwner,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    if (element.parent is KtReturnExpression && executionOwner.context is ValueExecutionContext.Callback)
+        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
     if (element !is KtExpression || !element.hasNativeType(observation)) return roleRejected()
     val block = element.parent as? org.jetbrains.kotlin.psi.KtBlockExpression
     val callback = block?.parent as? org.jetbrains.kotlin.psi.KtFunctionLiteral
-    return if (callback != null && block.statements.lastOrNull() === element)
-        when (
-            val semantics =
-                nativeCallbackReturnSemantics(
-                    expression = element,
-                    function = callback,
-                    observation = observation,
-                    workAllowance = workAllowance,
-                )
-        ) {
-            is Refinement.Refined ->
-                when (semantics.value) {
-                    NativeCallbackReturnSemantics.VALUE -> Refinement.Refined(ValueRole.Return)
-                    NativeCallbackReturnSemantics.UNIT_COERCION -> roleRejected()
-                }
-            is Refinement.Rejected -> semantics
-        }
-    else if (element.isReturnedExpression()) Refinement.Refined(ValueRole.Return) else roleRejected()
+    if (callback == null || block.statements.lastOrNull() !== element)
+        return if (element.isReturnedExpression()) Refinement.Refined(ValueRole.Return) else roleRejected()
+    return when (
+        val semantics =
+            nativeCallbackReturnSemantics(
+                expression = element,
+                function = callback,
+                observation = observation,
+                workAllowance = workAllowance,
+            )
+    ) {
+        is Refinement.Refined ->
+            when (semantics.value) {
+                NativeCallbackReturnSemantics.VALUE -> Refinement.Refined(ValueRole.Return)
+                NativeCallbackReturnSemantics.UNIT_COERCION -> roleRejected()
+            }
+        is Refinement.Rejected -> semantics
+    }
 }
 
 private fun argumentRole(

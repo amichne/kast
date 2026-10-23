@@ -43,8 +43,14 @@ private constructor(
     ) {
         private val outgoing = admittedEdges.groupBy { it.source }
         private val roots =
-            outgoing.keys.filterIsInstance<StaticCallbackNode.Named>().filter {
-                it.callable.evidence == root
+            outgoing.keys.filter { node ->
+                when (node) {
+                    is StaticCallbackNode.Named -> node.callable.evidence == root
+                    is StaticCallbackNode.DeferredSupplier -> node.owner.evidence == root
+                    is StaticCallbackNode.Anonymous,
+                    is StaticCallbackNode.Formal,
+                    is StaticCallbackNode.ClassReference -> false
+                }
             }
         private val pending =
             ArrayDeque<Pair<StaticCallbackNode, TraversalDepth>>().apply {

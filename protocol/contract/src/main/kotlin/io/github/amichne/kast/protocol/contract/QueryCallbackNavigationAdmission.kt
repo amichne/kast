@@ -106,15 +106,33 @@ private class NavigationWitnesses {
                             )
                         )
                     }
+                    is QueryCallbackBindingDocument.DeferredDependency -> deferred(binding.execution)
                     is QueryCallbackBindingDocument.Default,
                     is QueryCallbackBindingDocument.DependencyContract,
-                    is QueryCallbackBindingDocument.DeferredDependency,
                     is QueryCallbackBindingDocument.Unavailable -> Unit
                 }
             }
             is QueryCallbackFlowDocument.Immutable -> immutable(flow.flow)
             is QueryCallbackFlowDocument.Unavailable,
             is QueryCallbackFlowDocument.ContractRejected -> Unit
+        }
+    }
+
+    private fun deferred(execution: QueryDeferredSupplierExecutionDocument) {
+        when (execution) {
+            is QueryDeferredSupplierExecutionDocument.Invoked ->
+                execution.steps.values.forEach { step ->
+                    edges.add(
+                        NavigationEdge(
+                            callable(step.binding.owner),
+                            callable(step.body),
+                            QueryCallbackNavigationEvidenceDocument.DirectInvoke(step.binding),
+                        )
+                    )
+                }
+            QueryDeferredSupplierExecutionDocument.Declaration,
+            is QueryDeferredSupplierExecutionDocument.Accessor,
+            is QueryDeferredSupplierExecutionDocument.Initializer -> Unit
         }
     }
 

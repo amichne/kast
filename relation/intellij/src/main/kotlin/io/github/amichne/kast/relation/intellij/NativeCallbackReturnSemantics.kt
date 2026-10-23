@@ -5,7 +5,7 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.relation.contract.ValueExecutionContext
-import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
@@ -13,25 +13,26 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtReturnExpression
 
 internal enum class NativeCallbackReturnSemantics {
     VALUE,
     UNIT_COERCION,
 }
 
-internal fun ValueExecutionOwner.callbackReturnSemantics(
+internal fun ValueFlowRequest.callbackReturnSemantics(
     expression: KtExpression,
     function: KtFunctionLiteral,
     observation: IntellijReadObservation,
-    workAllowance: WorkAllowance,
 ): Refinement<NativeCallbackReturnSemantics, ValueFlowUnsupportedCause> =
-    if (context !is ValueExecutionContext.Callback) Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    if (source.executionOwner.context !is ValueExecutionContext.Callback)
+        Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
     else
         nativeCallbackReturnSemantics(
             expression = expression,
             function = function,
             observation = observation,
-            workAllowance = workAllowance,
+            workAllowance = budget.resources.workAllowance,
         )
 
 /** The expression's own type alone does not prove that a lambda returns its value. */
@@ -41,20 +42,22 @@ internal fun nativeCallbackReturnSemantics(
     observation: IntellijReadObservation,
     workAllowance: WorkAllowance,
 ): Refinement<NativeCallbackReturnSemantics, ValueFlowUnsupportedCause> =
-    observation.observedAnalyze(function) {
-        val expressionType = expression.expressionType
-        val returnType = function.symbol.returnType
-        if (expressionType == null) Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        else
-            when (nativeCompilerTypeProof(listOf(expressionType, returnType), workAllowance)) {
-                NativeCompilerTypeProof.ERROR_TYPE,
-                NativeCompilerTypeProof.UNSUPPORTED_TYPE ->
-                    Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
-                    Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
-                NativeCompilerTypeProof.ADMITTED -> callbackReturnTypes(expressionType, returnType)
-            }
-    }
+    if (expression is KtReturnExpression) Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    else
+        observation.observedAnalyze(function) {
+            val expressionType = expression.expressionType
+            val returnType = function.symbol.returnType
+            if (expressionType == null) Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            else
+                when (nativeCompilerTypeProof(listOf(expressionType, returnType), workAllowance)) {
+                    NativeCompilerTypeProof.ERROR_TYPE,
+                    NativeCompilerTypeProof.UNSUPPORTED_TYPE ->
+                        Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                    NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
+                        Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+                    NativeCompilerTypeProof.ADMITTED -> callbackReturnTypes(expressionType, returnType)
+                }
+        }
 
 private fun KaSession.callbackReturnTypes(
     expressionType: KaType,

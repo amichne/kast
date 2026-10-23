@@ -66,6 +66,17 @@ class NativeCallbackReturnFlowTest : NativeReferenceFixtureTest() {
     fun testAnyReturnCanBeReadmitted() =
         checkReturnReadmission("fun target(): Any = anyResult { decode() }", admitted = true)
 
+    fun testNamedExplicitReturnCanBeReadmitted() =
+        checkReturnReadmission("fun target(): String { return decode() }", admitted = true)
+
+    fun testNonlocalReturnCannotBeReadmittedAsCallbackResult() = runBlocking {
+        fixture(
+                "inline fun call(block: () -> String): String = block()\n" +
+                    "fun target(): String { return call { return decode() } }"
+            )
+            .checkExplicitCallbackReturnAnchors(project)
+    }
+
     fun testRunnerControlledCallbackReturnAndReadmissionExceedLegacyTypeCap() = runBlocking {
         val deepType = "Box<".repeat(40) + "Leaf" + ">".repeat(40)
         fixture(
@@ -351,6 +362,44 @@ private const val MAX_NATIVE_ROUTE_SITES = 80
 private const val EXPECTED_NESTED_RETURN_TRANSFERS = 4
 private const val NULLABLE_UNIT_CALLER =
     "fun target(flag: Boolean): Unit? = nullableResult { if (flag) return@nullableResult Unit; decode() }"
+
+private suspend fun ReturnFixture.checkExplicitCallbackReturnAnchors(project: com.intellij.openapi.project.Project) {
+    checkExplicitCallbackReturn(project)
+    val call = seeds.single()
+    val returned =
+        io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange.parse(
+                call.startInclusive - "return ".length,
+                call.endExclusive,
+            )
+            .nativeRefined()
+    copy(seeds = listOf(returned)).checkExplicitCallbackReturn(project)
+}
+
+private suspend fun ReturnFixture.checkExplicitCallbackReturn(project: com.intellij.openapi.project.Project) {
+    org.junit.Assert.assertEquals(
+        io.github.amichne.kast.relation.contract.ValueModelSiteRead.Unsupported(
+            io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.NESTED_EXECUTION
+        ),
+        revalidateReturn(project),
+    )
+    val resolved =
+        IntellijValueFlowCompilerAdapter()
+            .resolve(
+                project = project,
+                current = owner.lease,
+                enclosing = owner,
+                anchor = seeds.single(),
+                domain = domain,
+                model = model,
+            )
+    org.junit.Assert.assertTrue(resolved is ValueSiteResolution.Found)
+    val steps = traceSteps(project, (resolved as ValueSiteResolution.Found).site)
+    org.junit.Assert.assertTrue(steps.flatMap { it.transfers }.isEmpty())
+    org.junit.Assert.assertEquals(
+        listOf(io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.NESTED_EXECUTION),
+        steps.flatMap { it.obligations }.map { it.cause },
+    )
+}
 
 private suspend fun ReturnFixture.checkDeepReturnBudgets(project: com.intellij.openapi.project.Project) {
     val runner =

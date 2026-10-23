@@ -237,20 +237,14 @@ internal class IntellijValueFlowNative(
     }
 
     private fun blockDestination(expression: KtExpression, block: KtBlockExpression) {
-        val execution = request.source.executionOwner
         when (val position = tryBranchResultPosition(expression)) {
             is TryBranchResultPosition.Result -> tryBranchResult(expression, position)
             TryBranchResultPosition.Discarded -> Unit
             TryBranchResultPosition.Unavailable ->
                 if (owner is KtFunctionLiteral && block === owner.bodyExpression) {
                     if (block.statements.lastOrNull() === expression)
-                        execution
-                            .callbackReturnSemantics(
-                                expression = expression,
-                                function = owner,
-                                observation = observation,
-                                workAllowance = request.budget.resources.workAllowance,
-                            )
+                        request
+                            .callbackReturnSemantics(expression, owner, observation)
                             .onCallbackReturn(
                                 { emit(expression, ValueRole.Return, ValueTransferKind.RETURN) },
                                 ::unresolved,

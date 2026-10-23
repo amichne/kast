@@ -7,6 +7,8 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphUnprovenExclusionReasonDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackNavigationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackNavigationEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -193,6 +195,7 @@ class NativeSemanticOwnersTraceTest : NativeSmartModeFixtureTest() {
         val bytes = projection.document.value.toByteArray(Charsets.UTF_8).size
         println("semanticOwners case=$id queryMillis=$queryMillis status=Complete")
         val result = outcome.evidence.payload
+        assertDeferredNavigation(result, case)
         val oracle = NativeSemanticOwnersPublicOracle(Path.of(fixture.lease.workspaceRoot.value))
         val actual = oracle.actual(result)
         assertEquals("Public semantic records for $id", case.expected(), actual)
@@ -203,6 +206,34 @@ class NativeSemanticOwnersTraceTest : NativeSmartModeFixtureTest() {
             "semanticOwners case=$id projectedMillis=$completedMillis encodedBytes=$bytes " +
                 "counters=${fixture.observation.snapshot()}"
         )
+    }
+
+    private fun assertDeferredNavigation(
+        result: io.github.amichne.kast.protocol.contract.QueryRunResult,
+        case: NativeSemanticOwnersCase,
+    ) {
+        val callbacks = result.relationObservations.values.flatMap { it.callbackObservations.values }
+        assertTrue("Deferred observations must remain inspectable", callbacks.isNotEmpty())
+        assertTrue(
+            "Deferred supply must not become a proven invocation route",
+            callbacks.all { it.navigation is QueryCallbackNavigationDocument.Unproven },
+        )
+        callbacks.forEach { callback ->
+            val prefix = (callback.navigation as QueryCallbackNavigationDocument.Unproven).prefix.values
+            assertEquals(case.directOuterCalls.size, prefix.size)
+            assertEquals(
+                case.directOuterCalls,
+                prefix
+                    .map { step ->
+                        (step.evidence as QueryCallbackNavigationEvidenceDocument.DirectInvoke)
+                            .binding
+                            .occurrence
+                            .range
+                            .semanticOwnersSpan()
+                    }
+                    .toSet(),
+            )
+        }
     }
 
     private fun unresolvedRouteCauses(cause: QueryCallbackGraphCauseDocument): Set<QueryCallbackFlowCauseDocument> {
