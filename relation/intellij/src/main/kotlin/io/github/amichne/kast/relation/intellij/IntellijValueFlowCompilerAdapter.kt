@@ -186,10 +186,7 @@ class IntellijValueFlowCompilerAdapter(
                     is Prepared.Ready -> readPrepared(prepared, request, started) { observedWork = it }
                 }
             }
-            .also {
-                if (it is ValueFlowRead.Rejected || it is ValueFlowRead.ContractRejected)
-                    observation.count(IntellijReadCounter.VALUE_FLOW_REJECTIONS)
-            }
+            .also(observation::valueFlowRead)
     }
 
     private fun readPrepared(

@@ -158,10 +158,11 @@ class QueryStateStore(
         protectedResults: Set<QueryResultReference> = emptySet(),
         executionMode: io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument =
             io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument.BOUNDED,
+        reservation: QueryInitialReservation = QueryInitialReservation.SEMANTIC_WORK,
     ): QueryInitialAcquisition {
         if (lifetime == Lifetime.RETIRED) return QueryInitialAcquisition.Unavailable
         expire()
-        return acquisition.acquireInitial(lease, protectedResults, executionMode).also {
+        return acquisition.acquireInitial(lease, protectedResults, executionMode, reservation).also {
             if (it is QueryInitialAcquisition.Acquired) retainedBytes()
         }
     }

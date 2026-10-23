@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueFlowExpressionKind
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -52,7 +53,7 @@ internal class NativeValueFlowTransfers(
     ) {
         when (val result = target(element, role)) {
             is Refinement.Refined -> emitTarget(result.value, kind, evidence)
-            is Refinement.Rejected -> unresolved(result.failure)
+            is Refinement.Rejected -> unresolvedAt(result.failure, element)
         }
     }
 
@@ -126,6 +127,13 @@ internal class NativeValueFlowTransfers(
         record(ValueFlowObligation(request.source, cause))
     }
 
+    fun unresolvedAt(cause: ValueFlowUnsupportedCause, element: PsiElement) {
+        when (recordEvidence(nativeValueObligation(request.source, cause, element))) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+        }
+    }
+
     fun unresolvedImplementation(
         cause: ValueFlowUnsupportedCause,
         dispatch: ValueImplementationDispatch,
@@ -168,3 +176,26 @@ private fun nativeRange(element: PsiElement): Refinement<ExactDeclarationTextRan
         is Refinement.Refined -> range
         is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
     }
+
+internal fun nativeValueObligation(
+    source: ValueSite,
+    cause: ValueFlowUnsupportedCause,
+    element: PsiElement,
+): ValueFlowObligation {
+    if (element.containingFile?.virtualFile?.path != source.enclosing.file.stableValue)
+        return ValueFlowObligation(source, cause)
+    val kind =
+        when (val result = ValueFlowExpressionKind.fromCompiler(element.javaClass.simpleName)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return ValueFlowObligation(source, cause)
+        }
+    val range =
+        when (val result = nativeRange(element)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return ValueFlowObligation(source, cause)
+        }
+    return when (val result = ValueFlowObligation.fromExpression(source, cause, kind, range)) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> ValueFlowObligation(source, cause)
+    }
+}

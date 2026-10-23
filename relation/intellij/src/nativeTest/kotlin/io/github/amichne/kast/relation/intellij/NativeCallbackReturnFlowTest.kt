@@ -14,8 +14,10 @@ import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueFlowObligationEvidence
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -68,6 +70,74 @@ class NativeCallbackReturnFlowTest : NativeReferenceFixtureTest() {
 
     fun testNamedExplicitReturnCanBeReadmitted() =
         checkReturnReadmission("fun target(): String { return decode() }", admitted = true)
+
+    fun testBooleanConditionConsumesValueWithoutDataFlow() = runBlocking {
+        fixture(
+                "fun target(): Int { return if (decode()) 1 else 2 }",
+                "fun decode(): Boolean = true",
+            )
+            .checkValueRoute(project, emptyList())
+    }
+
+    fun testExplicitNamedReturnExhaustsWithoutAnUnsupportedReturn() = runBlocking {
+        fixture("fun target(): String { return decode() }").checkValueRoute(project, listOf(ValueTransferKind.RETURN))
+    }
+
+    fun testConditionalBranchStillCarriesItsDataResult() = runBlocking {
+        fixture("fun target(flag: Boolean): String = if (flag) decode() else \"other\"")
+            .checkValueRoute(project, listOf(ValueTransferKind.BRANCH_ALTERNATIVE, ValueTransferKind.RETURN))
+    }
+
+    fun testGenericExplicitReturnExhaustsWithoutAnUnsupportedReturn() = runBlocking {
+        fixture(
+                "fun target(): Result<List<String>> { return decode() }",
+                "fun decode(): Result<List<String>> = Result.success(emptyList())",
+            )
+            .checkValueRoute(project, listOf(ValueTransferKind.RETURN))
+    }
+
+    fun testLibraryReceiverRefusalNamesExactExpression() = runBlocking {
+        fixture("fun target() = decode().takeLast(4)")
+            .checkExpressionRefusal(
+                project = project,
+                cause = ValueFlowUnsupportedCause.EXTERNAL_CALL,
+                kind = "KtDotQualifiedExpression",
+                expression = "decode().takeLast(4)",
+            )
+    }
+
+    fun testLibraryCallableReferenceRefusalNamesExactExpression() = runBlocking {
+        fixture("class Wrapper(val value: String)\nfun target() = decode().let(::Wrapper)")
+            .checkExpressionRefusal(
+                project = project,
+                cause = ValueFlowUnsupportedCause.EXTERNAL_CALL,
+                kind = "KtDotQualifiedExpression",
+                expression = "decode().let(::Wrapper)",
+            )
+    }
+
+    fun testCapturedWithRefusalNamesTheReadRatherThanTheBinding() = runBlocking {
+        fixture("fun target() { val x = decode(); with(Unit) { println(x) } }")
+            .checkExpressionRefusal(
+                project = project,
+                cause = ValueFlowUnsupportedCause.NESTED_EXECUTION,
+                kind = "KtNameReferenceExpression",
+                expression = "x",
+            )
+    }
+
+    fun testSafeCallElvisRefusalNamesExactExpression() = runBlocking {
+        fixture(
+                "fun target(value: Unit?): String { return value?.decode() ?: return \"fallback\" }",
+                "fun Unit.decode(): String = \"decoded\"",
+            )
+            .checkExpressionRefusal(
+                project = project,
+                cause = ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION,
+                kind = "KtSafeQualifiedExpression",
+                expression = "value?.decode()",
+            )
+    }
 
     fun testNonlocalReturnCannotBeReadmittedAsCallbackResult() = runBlocking {
         fixture(
@@ -296,72 +366,130 @@ class NativeCallbackReturnFlowTest : NativeReferenceFixtureTest() {
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
         }
-        return readAction { describeFixture(base) }
+        return readAction { describeFixture(project, module.name, base) }
     }
+}
 
-    private fun describeFixture(base: NativeReferenceFixture): ReturnFixture {
-        val file = psiManager.findFile(base.callerFile) as KtFile
-        val owner = file.declarations.filterIsInstance<KtNamedFunction>().single { it.name == "target" }
-        val workspaceRoot = base.request.subject.lease.workspaceRoot
-        val projection = IntellijK2RelationProjection(project, workspaceRoot, workAllowance = WorkAllowance.Unlimited)
-        val evidence = (projection.project(owner) as IntellijRelationDeclarationProjection.Projected).evidence
-        val budget =
-            io.github.amichne.kast.relation.contract.RelationBudget(
-                base.request.budget.resources as io.github.amichne.kast.kernel.ResourceBudget.Bounded,
-                io.github.amichne.kast.relation.contract.RelationByteLimit.parse(8_000_000L).nativeRefined(),
-            )
-        val domain =
-            reissuedNativeRelationRequest(
-                request = base.request,
-                evidence = evidence,
-                meaning = RelationMeaning.References,
-                budget = budget,
-            )
-        val root = base.callerFile.parent
-        val model =
-            WorkspaceSearchScopeModel.compile(
-                domain.subject.lease.workspaceRoot,
-                ImportedWorkspaceModelState.COMPLETE,
-                listOf(
-                    WorkspaceSourceRootBoundary(
-                        ideaModuleName = module.name,
-                        linkedBuildRoot = project.basePath.let { Path.of(checkNotNull(it)) },
-                        gradleProjectPath = ":main",
-                        sourceSetName = "main",
-                        sourceRoot = root.toNioPath(),
-                        sourceKind = WorkspaceSourceRootKind.PRODUCTION,
-                        provenance = WorkspaceSourceRootProvenance.AUTHORED,
-                    )
-                ),
-            )
-        val seeds =
-            PsiTreeUtil.collectElementsOfType(owner, KtCallExpression::class.java)
-                .filter { it.calleeExpression?.text == "decode" }
-                .map(::sourceValueRange)
-        return ReturnFixture(
-            owner = (domain.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector,
-            domain = domain,
-            model = model,
-            seeds = seeds,
-            decoder = decoderSelector(base, file, projection),
+private fun describeFixture(
+    project: com.intellij.openapi.project.Project,
+    moduleName: String,
+    base: NativeReferenceFixture,
+): ReturnFixture {
+    val file = com.intellij.psi.PsiManager.getInstance(project).findFile(base.callerFile) as KtFile
+    val owner = file.declarations.filterIsInstance<KtNamedFunction>().single { it.name == "target" }
+    val workspaceRoot = base.request.subject.lease.workspaceRoot
+    val projection = IntellijK2RelationProjection(project, workspaceRoot, workAllowance = WorkAllowance.Unlimited)
+    val evidence = (projection.project(owner) as IntellijRelationDeclarationProjection.Projected).evidence
+    val budget =
+        io.github.amichne.kast.relation.contract.RelationBudget(
+            base.request.budget.resources as io.github.amichne.kast.kernel.ResourceBudget.Bounded,
+            io.github.amichne.kast.relation.contract.RelationByteLimit.parse(8_000_000L).nativeRefined(),
         )
-    }
+    val domain =
+        reissuedNativeRelationRequest(
+            request = base.request,
+            evidence = evidence,
+            meaning = RelationMeaning.References,
+            budget = budget,
+        )
+    val root = base.callerFile.parent
+    val model =
+        WorkspaceSearchScopeModel.compile(
+            domain.subject.lease.workspaceRoot,
+            ImportedWorkspaceModelState.COMPLETE,
+            listOf(
+                WorkspaceSourceRootBoundary(
+                    ideaModuleName = moduleName,
+                    linkedBuildRoot = project.basePath.let { Path.of(checkNotNull(it)) },
+                    gradleProjectPath = ":main",
+                    sourceSetName = "main",
+                    sourceRoot = root.toNioPath(),
+                    sourceKind = WorkspaceSourceRootKind.PRODUCTION,
+                    provenance = WorkspaceSourceRootProvenance.AUTHORED,
+                )
+            ),
+        )
+    val seeds =
+        PsiTreeUtil.collectElementsOfType(owner, KtCallExpression::class.java)
+            .filter { it.calleeExpression?.text == "decode" }
+            .map(::sourceValueRange)
+    return ReturnFixture(
+        owner = (domain.subject as io.github.amichne.kast.relation.contract.RelationEndpoint.Subject).selector,
+        domain = domain,
+        model = model,
+        seeds = seeds,
+        decoder = decoderSelector(base, file, projection),
+    )
+}
 
-    private fun decoderSelector(
-        base: NativeReferenceFixture,
-        file: KtFile,
-        projection: IntellijK2RelationProjection,
-    ): SymbolSelector {
-        val decoder = file.declarations.filterIsInstance<KtNamedFunction>().single { it.name == "decode" }
-        val evidence = (projection.project(decoder) as IntellijRelationDeclarationProjection.Projected).evidence
-        return SymbolSelector.issue(base.request.subject.lease, base.request.searchScope, evidence)
-    }
+private fun decoderSelector(
+    base: NativeReferenceFixture,
+    file: KtFile,
+    projection: IntellijK2RelationProjection,
+): SymbolSelector {
+    val decoder = file.declarations.filterIsInstance<KtNamedFunction>().single { it.name == "decode" }
+    val evidence = (projection.project(decoder) as IntellijRelationDeclarationProjection.Projected).evidence
+    return SymbolSelector.issue(base.request.subject.lease, base.request.searchScope, evidence)
 }
 
 private const val MAX_NATIVE_ROUTE_SITES = 80
 private const val EXPECTED_NESTED_RETURN_TRANSFERS = 4
 private const val NULLABLE_UNIT_CALLER =
     "fun target(flag: Boolean): Unit? = nullableResult { if (flag) return@nullableResult Unit; decode() }"
+
+private suspend fun ReturnFixture.checkExpressionRefusal(
+    project: com.intellij.openapi.project.Project,
+    cause: ValueFlowUnsupportedCause,
+    kind: String,
+    expression: String,
+) {
+    val resolved =
+        IntellijValueFlowCompilerAdapter()
+            .resolve(
+                project = project,
+                current = owner.lease,
+                enclosing = owner,
+                anchor = seeds.single(),
+                domain = domain,
+                model = model,
+            )
+    org.junit.Assert.assertTrue("Producer must be admitted: $resolved", resolved is ValueSiteResolution.Found)
+    val obligations = traceSteps(project, (resolved as ValueSiteResolution.Found).site).flatMap { it.obligations }
+    org.junit.Assert.assertEquals(listOf(cause), obligations.map { it.cause })
+    val evidence = obligations.single().evidence
+    org.junit.Assert.assertTrue(
+        "Expected precise expression evidence, received $evidence",
+        evidence is ValueFlowObligationEvidence.Expression,
+    )
+    evidence as ValueFlowObligationEvidence.Expression
+    org.junit.Assert.assertEquals(kind, evidence.kind.value)
+    val text = java.nio.file.Files.readString(Path.of(ownerEndpoint().file.stableValue))
+    org.junit.Assert.assertEquals(
+        expression,
+        text.substring(evidence.range.startInclusive, evidence.range.endExclusive),
+    )
+}
+
+private suspend fun ReturnFixture.checkValueRoute(
+    project: com.intellij.openapi.project.Project,
+    expected: List<ValueTransferKind>,
+) {
+    val resolved =
+        IntellijValueFlowCompilerAdapter()
+            .resolve(
+                project = project,
+                current = owner.lease,
+                enclosing = owner,
+                anchor = seeds.single(),
+                domain = domain,
+                model = model,
+            )
+    org.junit.Assert.assertTrue("Producer must be admitted: $resolved", resolved is ValueSiteResolution.Found)
+    val steps = traceSteps(project, (resolved as ValueSiteResolution.Found).site)
+    org.junit.Assert.assertEquals(expected, steps.flatMap { it.transfers }.map { it.kind })
+    val causes = steps.flatMap { it.obligations }.map { it.cause }
+    org.junit.Assert.assertTrue("Expected complete native route, found $causes", causes.isEmpty())
+}
 
 private suspend fun ReturnFixture.checkExplicitCallbackReturnAnchors(project: com.intellij.openapi.project.Project) {
     checkExplicitCallbackReturn(project)

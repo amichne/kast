@@ -1,9 +1,13 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiReference
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
+import org.jetbrains.kotlin.psi.KtFunction
 
 /** Auxiliary references can prove callback invocation sites. They cannot emit ordinary named caller edges. */
 internal class IntellijCallbackCallerProjection(
@@ -33,7 +37,13 @@ internal class IntellijCallbackCallerProjection(
         }
         val policy =
             when (val owner = reference.element.nearestSupportedCallable(projection)) {
-                is SupportedContainingDeclaration.Found -> NativeCallbackPolicy.Inline
+                is SupportedContainingDeclaration.Found -> {
+                    if (isNamedLibraryInlineArgument(reference)) {
+                        observation.count(IntellijReadCounter.CALLBACK_RESULTS_EXCLUDED)
+                        return collector.dismissProviderItem()
+                    }
+                    NativeCallbackPolicy.Inline
+                }
                 is SupportedContainingDeclaration.Excluded -> NativeCallbackPolicy.Excluded(owner.evidence)
                 SupportedContainingDeclaration.Unresolved ->
                     NativeCallbackPolicy.Unavailable(CallOwnershipFailure.UnresolvedArgumentMapping)
@@ -41,6 +51,19 @@ internal class IntellijCallbackCallerProjection(
                     NativeCallbackPolicy.Unavailable(CallOwnershipFailure.UnsupportedBoundary)
             }
         return callbacks.retain(reference, plan.subject, policy)
+    }
+
+    /** An excluded named supplier's inline binary argument has no imported-source formal invocation site. */
+    private fun isNamedLibraryInlineArgument(reference: PsiReference): Boolean {
+        val deferred = reference.element.nearestDeclaration() as? ContainingDeclaration.Deferred ?: return false
+        val literal = deferred.boundary as? KtFunction ?: return false
+        val supply = classifyCallbackFunctionSupply(literal) as? IntellijCallbackLambdaSupply.Argument ?: return false
+        val call = supplyingCallbackCall(supply.argument) ?: return false
+        if (call.nearestDeclaration() !is ContainingDeclaration.Found) return false
+        return when (val mapped = nativeArgumentBinding(call, supply.expression, observation)) {
+            is Refinement.Refined -> mapped.value.origin == KaSymbolOrigin.LIBRARY
+            is Refinement.Rejected -> false
+        }
     }
 
     companion object {

@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.query.contract.*
+import io.github.amichne.kast.query.protocol.QueryInitialReservation.PRESENTATION
 import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.workspace.contract.*
 import java.util.Collections
@@ -119,7 +120,7 @@ class CanonicalQueryProtocol(
                     is QueryExecutionContinuation.Output -> executeOutput(continuation, lease, budget)
                 }
             is QueryRunRequest.ReadResult ->
-                when (val acquired = state.acquireInitial(lease, setOf(request.result))) {
+                when (val acquired = state.acquireInitial(lease, setOf(request.result), reservation = PRESENTATION)) {
                     is QueryInitialAcquisition.Acquired ->
                         pagePublication.execute(acquired.claim) {
                             projection.readRetained(request, lease, acquired.claim, budget.outputResults)

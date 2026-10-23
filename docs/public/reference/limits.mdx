@@ -6,15 +6,27 @@ icon: "gauge"
 
 Execution allowances limit resource use. They do not change the requested source scope, traversal extent, or output shape.
 
+## Execution modes
+
+Public `RUN` defaults to `RUNNER_CONTROLLED`. This mode bypasses semantic work, internal result, checkpoint-byte, and continuation-store capacity quotas.
+It has no implicit semantic deadline. An explicit `maxElapsedMs` sets a timeout that includes model capture. `maxWorkUnits` rejects in this mode.
+Caller cancellation or disconnection stops execution. A runner can impose its own deadline.
+
+Output stays finite: `maxResults` and `maxReturnedBytes` limit each presentation page. Preparation and transport frames keep their limits.
+Retained output still needs its issued authority and lifetime. Quota bypass does not renew an external token's TTL or prove semantic completion.
+
+Explicit `BOUNDED` selects the configured time and work grants below. [Program tracing](/reference/program-tracing#runner-controlled-execution) shows a runner-controlled request.
+
 ## Execution budget
 
-`executionBudget` accepts these optional fields. If a field is omitted or `null`, it uses the default setting. Positive requests cannot exceed operator or transport limits.
+`executionBudget` accepts these optional fields. The table lists configured defaults for `BOUNDED` queries; presentation defaults also apply to `RUNNER_CONTROLLED`.
+If a field is omitted or `null`, bounded execution uses the default setting. Positive bounded requests cannot exceed operator or transport limits.
 
 | Field | Query default | Meaning |
 | --- | --: | --- |
 | `maxElapsedMs` | 15,000 ms | Time allowed for semantic work. This limit does not impose a wait. |
 | `maxWorkUnits` | 2,000,000 work units | Limit on charged semantic work. Response size has its own limit. |
-| `maxResults` | 128 rows | Result allowance. A row limit alone does not prove completed semantic work. |
+| `maxResults` | 128 rows | Result allowance in `BOUNDED`; rows per output page in `RUNNER_CONTROLLED`. Neither proves completed semantic work. |
 | `maxReturnedBytes` | 49,152 bytes | Limit on the encoded response, equal to 48 KiB. Evidence storage has its own quotas. |
 
 More time does not raise the work allowance. More work does not raise the output limit.
@@ -27,7 +39,7 @@ An internal continuation shares the original call's grant. Public output continu
 
 ## Operator controls
 
-The Host selects defaults from its admitted settings. These settings also have IDE JVM properties, such as `kast.read.semantic.work`.
+For `BOUNDED`, the Host selects defaults from its admitted settings. These settings also have IDE JVM properties, such as `kast.read.semantic.work`.
 
 | Per-call field | Default setting | Operator ceiling |
 | --- | --- | --- |
@@ -40,7 +52,7 @@ Each operator ceiling defaults to 2,147,483,646. A lower ceiling clamps both def
 
 The installed `share/kast/configuration-schema.json` lists each setting. It gives the range, accepted source, and default. The public CLI does not expose a `config` command. Read the admitted grant in the response to find the limits for this call.
 
-The default host deadline is 30,000 ms. Capturing the model and proving completion also count toward this deadline. If the host deadline is less than 15,000 ms, `KAST_READ_SEMANTIC_MILLIS` has to fit that deadline. If settings conflict, Kast rejects before semantic work starts.
+The default bounded host deadline is 30,000 ms. Capturing the model and proving completion also count toward this deadline. If the host deadline is less than 15,000 ms, `KAST_READ_SEMANTIC_MILLIS` has to fit that deadline. If settings conflict, Kast rejects before semantic work starts.
 
 The [settings guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md) explains saved settings, IDE properties, and service lifetimes.
 
@@ -53,7 +65,14 @@ The [settings guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-
 | `KAST_READ_QUERY_CONTINUATION_ENTRIES` | 64 | Entries per query continuation store. |
 | `KAST_READ_QUERY_CONTINUATION_TTL_MILLIS` | 600,000 ms | Continuation lifetime. |
 
-The checkpoint limit cannot exceed the store limit. Charged bytes use a conservative count. They do not measure the heap. Larger response pages do not raise these quotas. Public `RESUME` shows existing output. It cannot continue semantic work that has not finished.
+The checkpoint limit cannot exceed the store limit. Charged bytes use a conservative count. They do not measure the heap. Larger response pages do not raise these quotas.
+`RUNNER_CONTROLLED` bypasses the byte and entry quotas, not the external continuation lifetime. Public `RESUME` shows existing output. It cannot continue semantic work that has not finished.
+
+## MCP concurrency
+
+An MCP connection admits one active semantic invocation at a time. A second tool invocation while a runner-controlled call is active returns `MCP_REJECTED` with `error.code: INVOCATION_IN_PROGRESS`.
+Wait for the current response or cancel the current query before another tool call. This is a transport rejection, not a query completion failure.
+[Results](/reference/responses#procedures-and-source-evidence) describes its envelope.
 
 ## Completion failures
 
@@ -69,13 +88,14 @@ This table groups common failures. The generated result schemas define every clo
 
 ## Identity and state failures
 
-Exact references need current compiler identity checks. Retained results and output continuations need their original state. That includes workspace, owner, read state, and lifetime.
+Fresh `RUN` queries can reacquire exact references through current compiler identity checks. Retained results and output continuations need their original state. That includes workspace, owner, read state, and lifetime.
 
 Expiry, eviction, owner retirement, an identity mismatch, or stale state can block reuse. A larger resource grant cannot restore missing state. [Staleness](/reference/staleness) explains these failures.
 
 For `compiler-identity-unavailable`, investigate identity or refinement. Clean file diagnostics do not prove identity for every declaration.
 
-`READ_SOURCE` accepts an issued `candidateSelector` as `candidateRef`. An exact symbol reference does not belong to that action's token family.
+`READ_SOURCE.candidateRef` accepts an issued candidate, exact symbol, or source selector. It checks the original snapshot without exact-reference reacquisition.
+After a source change, use a fresh `RUN` to get current references before `READ_SOURCE`. A larger grant cannot refresh an old source snapshot or retained result.
 
 ## Write failures
 
@@ -93,10 +113,11 @@ The [change procedure](/reference/change#read-the-receipt) proves the effect bef
 
 ## Budget example
 
-This profile sets the execution defaults for one call. It leaves response allowances at their default settings.
+This bounded profile sets time and work allowances for one call. It leaves response allowances at their default settings.
 
 ```json
 {
+  "executionMode": "BOUNDED",
   "executionBudget": {
     "maxElapsedMs": 15000,
     "maxWorkUnits": 2000000

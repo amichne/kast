@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.LocalReferenceKey
 import io.github.amichne.kast.relation.contract.LocalReferenceKind
 import io.github.amichne.kast.relation.contract.LocalReferenceResolution
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -127,12 +128,21 @@ internal class IntellijLocalBindingReads(
                             )
                     ) {
                         is Refinement.Refined -> captured.value.owner
-                        is Refinement.Rejected -> return LocalReferenceResolution.Unsupported(captured.failure)
+                        is Refinement.Rejected ->
+                            return LocalReferenceResolution.Unresolved(
+                                nativeValueObligation(request.source, captured.failure, element)
+                            )
                     }
                 NativeValueOwnership.UNAVAILABLE ->
-                    return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                    return LocalReferenceResolution.Unresolved(
+                        nativeValueObligation(request.source, ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
+                    )
                 NativeValueOwnership.ADMITTED -> request.source.executionOwner
             }
+        return localReadTarget(element, execution)
+    }
+
+    private fun localReadTarget(element: PsiElement, execution: ValueExecutionOwner): LocalReferenceResolution {
         if (!scope.nativeScope.contains(element.containingFile.virtualFile))
             return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
         val range =

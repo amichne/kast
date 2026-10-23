@@ -3,6 +3,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -77,6 +78,43 @@ class HostedValueFlowDiagnosticsTest {
                 assertEquals("NONE", counter.getValue("contributor").jsonPrimitive.content)
                 assertEquals("1", counter.getValue("count").jsonPrimitive.content)
             }
+        }
+    }
+
+    @Test
+    fun `value flow causes encode additive bounded reasons without changing the diagnostic outcome`() {
+        val expected =
+            listOf(
+                IntellijReadTermination.VALUE_FLOW_SUPPORTED_DOMAIN_EXHAUSTED to
+                    "VALUE_FLOW_SUPPORTED_DOMAIN_EXHAUSTED",
+                IntellijReadTermination.VALUE_FLOW_UNRESOLVED_REFERENCE to "VALUE_FLOW_UNRESOLVED_REFERENCE",
+                IntellijReadTermination.VALUE_FLOW_REJECTED_AUTHORITY_MOVED to "VALUE_FLOW_REJECTED_AUTHORITY_MOVED",
+                IntellijReadTermination.VALUE_FLOW_CONTRACT_SOURCE_MISMATCH to "VALUE_FLOW_CONTRACT_SOURCE_MISMATCH",
+                IntellijReadTermination.VALUE_FLOW_SUSPENDED_WORK_LIMIT_REACHED to
+                    "VALUE_FLOW_SUSPENDED_WORK_LIMIT_REACHED",
+            )
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val diagnostics = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        expected.forEach { (reason, _) -> repeat(2) { diagnostics.terminated(reason) } }
+        diagnostics.finish(HostedDiagnosticOutcome.Completed)
+        diagnostics.terminated(IntellijReadTermination.COMPLETE)
+        val receipt = receipts.single()
+        assertEquals(HostedDiagnosticOutcome.Completed, receipt.outcome)
+        assertEquals(
+            expected.map { HostedNativeTermination(it.first, IntellijReadContributor.NONE) },
+            receipt.terminations,
+        )
+        val document = Json.parseToJsonElement(receipt.encode()).jsonObject
+        assertEquals("16", document.getValue("schemaVersion").jsonPrimitive.content)
+        val terminations = document.getValue("terminations").jsonArray
+        assertEquals(
+            expected.map { it.second },
+            terminations.map { it.jsonObject.getValue("reason").jsonPrimitive.content },
+        )
+        terminations.forEach {
+            val termination = it.jsonObject
+            assertEquals(setOf("reason", "contributor"), termination.keys)
+            assertEquals("NONE", termination.getValue("contributor").jsonPrimitive.content)
         }
     }
 

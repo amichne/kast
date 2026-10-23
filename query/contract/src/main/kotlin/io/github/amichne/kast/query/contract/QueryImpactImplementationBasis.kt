@@ -25,7 +25,8 @@ internal fun ValueCallFrame.hasForeignBasis(lease: SemanticReadAuthority): Boole
 internal fun ValueFlowObligation.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     site.hasForeignBasis(lease) ||
         when (val proof = evidence) {
-            ValueFlowObligationEvidence.None -> false
+            ValueFlowObligationEvidence.None,
+            is ValueFlowObligationEvidence.Expression -> false
             is ValueFlowObligationEvidence.ImplementationDispatch -> proof.dispatch.hasForeignBasis(lease)
         }
 

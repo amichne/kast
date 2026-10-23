@@ -271,6 +271,31 @@ class ValueSourceFlowOracleTest {
         )
     }
 
+    @Test
+    fun `unsupported expression evidence retains its precise location but cannot escape the source declaration`() {
+        val site = callCase(20).call.resultSite()
+        val kind = ValueFlowExpressionKind.fromCompiler("KtSafeQualifiedExpression").flowRefined()
+        val expression = flowRange(20, 80)
+        val obligation =
+            ValueFlowObligation.fromExpression(site, ValueFlowUnsupportedCause.EXTERNAL_CALL, kind, expression)
+                .flowRefined()
+        val evidence = obligation.evidence as ValueFlowObligationEvidence.Expression
+        assertSame(site, obligation.site)
+        assertEquals(ValueFlowUnsupportedCause.EXTERNAL_CALL, obligation.cause)
+        assertEquals("KtSafeQualifiedExpression", evidence.kind.value)
+        assertEquals(expression, evidence.range)
+        assertEquals(
+            Refinement.Rejected(ValueFlowObligationFailure.EXPRESSION_OUTSIDE_OWNER),
+            ValueFlowObligation.fromExpression(site, obligation.cause, kind, flowRange(190, 201)),
+        )
+        for (invalid in listOf("", "KtCallExpression\nsource payload", "x".repeat(129))) {
+            assertEquals(
+                Refinement.Rejected(ValueFlowExpressionKindFailure.INVALID_KIND),
+                ValueFlowExpressionKind.fromCompiler(invalid),
+            )
+        }
+    }
+
     private fun rejectTransfer(
         source: ValueSite,
         target: ValueSite,

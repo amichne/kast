@@ -31,6 +31,7 @@ private fun ValueFlowObligationEvidence.storageBytes(g: QueryImpactRetainedGraph
     g.node(this) {
         when (this) {
             ValueFlowObligationEvidence.None -> 0L
+            is ValueFlowObligationEvidence.Expression -> g.text(kind.value).saturatedAdd(g.node(range) { 0L })
             is ValueFlowObligationEvidence.ImplementationDispatch -> dispatch.storageBytes(g)
         }
     }

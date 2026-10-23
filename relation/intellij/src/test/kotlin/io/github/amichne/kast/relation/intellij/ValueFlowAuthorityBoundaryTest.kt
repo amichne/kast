@@ -68,6 +68,7 @@ class ValueFlowAuthorityBoundaryTest {
         assertEquals(ValueFlowRejection.AUTHORITY_MOVED, rejected.cause)
         assertEquals(0L, rejected.examinedWorkUnits.value)
         assertEquals(listOf(IntellijReadCounter.VALUE_FLOW_REJECTIONS), observation.counts)
+        assertEquals(listOf(IntellijReadTermination.VALUE_FLOW_REJECTED_AUTHORITY_MOVED), observation.reasons)
     }
 
     @Test
@@ -88,6 +89,7 @@ class ValueFlowAuthorityBoundaryTest {
             observation.counts,
         )
         assertFalse(IntellijReadCounter.VALUE_PRODUCER_SEEDS_CONFIRMED in observation.counts)
+        assertTrue(observation.reasons.isEmpty())
     }
 
     @Test
@@ -115,6 +117,7 @@ class ValueFlowAuthorityBoundaryTest {
             observation.counts,
         )
         assertTrue(observation.failures.isEmpty())
+        assertTrue(observation.reasons.isEmpty())
     }
 
     @Test
@@ -148,19 +151,23 @@ class ValueFlowAuthorityBoundaryTest {
             ),
             observation.counts,
         )
+        assertTrue(observation.reasons.isEmpty())
     }
 
     private class Observation : IntellijReadObservation {
         val counts = mutableListOf<IntellijReadCounter>()
         val failures = mutableListOf<IntellijReadUnexpectedFailure>()
+        val reasons = mutableListOf<IntellijReadTermination>()
 
         override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
             assertEquals(1, amount)
             counts += counter
         }
 
-        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) =
-            error("Moved authority is not a native termination")
+        override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) {
+            assertEquals(IntellijReadContributor.NONE, contributor)
+            reasons += reason
+        }
 
         override fun unexpected(failure: IntellijReadUnexpectedFailure) {
             failures += failure

@@ -37,6 +37,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueFlowExpressionKind
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
@@ -72,6 +73,29 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImpactImplementationTargetProjectionTest {
+
+    @Test
+    fun `compact unresolved finding preserves the native expression kind and exact range`() {
+        val f = ImpactPathProjectionFixture()
+        val obligation =
+            ValueFlowObligation.fromExpression(
+                    f.call.resultSite(),
+                    ValueFlowUnsupportedCause.EXTERNAL_CALL,
+                    ValueFlowExpressionKind.fromCompiler("KtDotQualifiedExpression").value(),
+                    range(30, 50),
+                )
+                .value()
+        val terminal = QueryImpactTerminal.Unresolved.Flow(obligation).findingDocument().value()
+        val encoded = Json.encodeToJsonElement(ImpactFindingTerminalDocument.serializer(), terminal).jsonObject
+        assertEquals("EXTERNAL_CALL", encoded.getValue("cause").jsonPrimitive.content)
+        val evidence = encoded.getValue("evidence").jsonObject
+        assertEquals(setOf("type", "kind", "range"), evidence.keys)
+        assertEquals("EXPRESSION", evidence.getValue("type").jsonPrimitive.content)
+        assertEquals("KtDotQualifiedExpression", evidence.getValue("kind").jsonPrimitive.content)
+        val location = evidence.getValue("range").jsonObject
+        assertEquals("30", location.getValue("start").jsonPrimitive.content)
+        assertEquals("50", location.getValue("end").jsonPrimitive.content)
+    }
 
     @Test
     fun `implementation frame preserves the static call all targets and imported source owner`() {
