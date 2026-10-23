@@ -11,6 +11,12 @@ import io.github.amichne.kast.query.protocol.QueryStateKey as Key
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.UUID
 
+/** Presentation pins existing evidence without reserving semantic work or acquiring a runner lifetime. */
+internal enum class QueryInitialReservation {
+    SEMANTIC_WORK,
+    PRESENTATION,
+}
+
 /** Claims use the existing store maps under its monitor. */
 internal class QueryStateAcquisition(
     private val entries: MutableMap<Key, Entry>,
@@ -24,14 +30,21 @@ internal class QueryStateAcquisition(
         lease: SemanticReadAuthority,
         protectedResults: Set<QueryResultReference>,
         executionMode: QueryExecutionModeDocument,
+        reservation: QueryInitialReservation,
     ): QueryInitialAcquisition {
         val origin = entries.initialOrigin(lease, protectedResults, clock(), ttlMillis)
+        val mode =
+            when (reservation) {
+                QueryInitialReservation.SEMANTIC_WORK -> executionMode
+                QueryInitialReservation.PRESENTATION -> QueryExecutionModeDocument.BOUNDED
+            }
         if (
-            executionMode != QueryExecutionModeDocument.RUNNER_CONTROLLED &&
+            reservation == QueryInitialReservation.SEMANTIC_WORK &&
+                mode != QueryExecutionModeDocument.RUNNER_CONTROLLED &&
                 !retention.evictFor(origin.accountedClaimBytes(), entries.dependencyClosure(origin.inputs))
         )
             return QueryInitialAcquisition.CapacityExceeded
-        val claim = QueryExecutionClaim(origin, UUID.randomUUID(), executionMode)
+        val claim = QueryExecutionClaim(origin, UUID.randomUUID(), mode)
         transientClaims[claim.identity] = claim
         return QueryInitialAcquisition.Acquired(claim)
     }

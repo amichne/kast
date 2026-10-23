@@ -72,6 +72,9 @@ Kast composes anonymous owners through exact supplier bindings, source summaries
 
 Reviewed calls-in-place contracts keep their declared call kind. Missing effects or effects that conflict cannot become `UNKNOWN`. That value cannot stand in for missing proof.
 
+The `inline` modifier alone does not prove a callback route. Standard-library `with`, `apply`, and `let` declare `callsInPlace` effects.
+Collection `map` and `forEach` do not declare those effects. Their inline modifier is not a substitute; missing dependency effects remain explicit proof gaps.
+
 The reviewed `kotlin.lazy` model records deferred initializer supply. It does not prove that the property was read or that the initializer ran.
 
 [Callback evidence](/reference/callbacks) describes these mechanisms. [Callback observation fields](/reference/callback-observations) defines their encoded variants.
@@ -118,14 +121,17 @@ Every public `RUN` uses `COMPILER_RESOLVED_STATIC_V1` with `COMPLETE_ONLY`. To c
 
 `TRACE` from source symbols separates source completeness from callback execution. Proven nested routes compose without a nesting gap. Unproved owner routes and missing library effects remain explicit evidence gaps under `SOURCE_RELATIONSHIPS`. Kast does not infer an invocation from lexical containment or supply.
 
-Invocation queries still need complete callback graphs. Unresolved source identity, missing result membership, and exhausted grants reject both interpretations. A rejection keeps proved evidence when retention admits it. [Results](/reference/responses#run-completion) defines the rule for composed queries.
+Explicit `CALLERS` expansion still needs a complete callback invocation graph. A source `TRACE` can therefore complete while `CALLERS` rejects a missing dependency effect.
+This distinction is deliberate: source relationships and proved invocation routes answer different questions.
+
+Unresolved source identity, missing result membership, and exhausted grants reject both interpretations. A rejection keeps proved evidence when retention admits it. [Results](/reference/responses#run-completion) defines the rule for composed queries.
 
 The model proves source relationships resolved by the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
 
 ## Runner-controlled execution
 
-`executionMode` defaults to `BOUNDED`. To rerun a query without semantic quotas, submit a fresh `RUN` with `executionMode: "RUNNER_CONTROLLED"`.
-Kast then omits its semantic time, work, internal byte, and internal result quotas.
+Public `RUN` defaults to `RUNNER_CONTROLLED`. This mode omits implicit semantic time, work, internal byte, and internal result quotas.
+An explicit `maxElapsedMs` sets a timeout that includes model capture. Omission adds no semantic deadline.
 Caller cancellation or a disconnected caller stops the operation.
 
 ```json
@@ -164,14 +170,21 @@ Caller cancellation or a disconnected caller stops the operation.
 ```
 
 In this mode, `maxResults` and `maxReturnedBytes` control output pages.
-Explicit `maxElapsedMs` or `maxWorkUnits` conflict with the mode and reject the request.
+Explicit `maxWorkUnits` conflicts with the mode and rejects the request.
 Preparation and transport frames keep their existing limits.
 A runner can enforce its own timeout, so its deadline controls determine the maximum caller lifetime.
+
+The example separates discovery scope from expansion scope. Discovery uses `scope.sourceSetNames` and `relativeDirectoryPath`; expansion uses `expansionScope.sourceSets` and optional `directory`.
+The seed's directory does not restrict later destinations. `WORKSPACE` expansion can include test sources, even when discovery selects `main`.
+For production-only relationships, use `SOURCE_DOMAIN` with exact imported source-set names, `sourcePolicy: "PRODUCTION_ONLY"`, and an explicit generated-source policy, as shown.
+These constraints apply before native enumeration, unlike a later row filter.
 
 Completion still needs exhaustive compiler proof.
 Source changes, unsupported effects, and invalid continuations still reject the operation.
 `RESUME` presents produced output only.
-After source changes, get fresh symbol references before a new `RUN`.
+After source changes, a fresh `RUN` can reacquire earlier exact references through current identity checks.
+This does not refresh `READ_SOURCE` snapshots or immutable retained results.
+Runner-controlled quota bypass does not remove finite output pages or extend external handles' retention TTL.
 
 ## Source evidence
 

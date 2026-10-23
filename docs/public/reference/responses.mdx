@@ -73,6 +73,8 @@ If retention succeeds, use the retained reference and cursor with `READ_RESULT` 
 
 A preview that leaves rows out does not change producer coverage. A complete retained result stays complete as you read its pages.
 
+Row counts describe logical output rows, not graph nodes, connections, or evidence observations. Those tables can contain several entries for one row.
+
 Row and evidence cursors move on their own. A page with only evidence can advance `evidence_window`. Its row cursor can stay unchanged.
 
 Evidence appears in this order:
@@ -125,6 +127,22 @@ Keep each handle's issued spelling and owning resource. Equal names, paths, or o
 
 Compact output is the default. `verbose: true` adds execution details without a stronger semantic answer.
 
+When `relation_graph` is present, compact rows use table IDs instead of repeating symbol and relationship documents:
+
+| Row or table field | Join target |
+| --- | --- |
+| `exact-symbol-node.node` | `relation_graph.nodes[].id` |
+| `exact-symbol-node.connections[]` | `relation_graph.connection_witnesses[].id` |
+| Direct connection `source` and `target` | `relation_graph.nodes[].id` |
+| Reference-backed connection `witness` | `relation_graph.witnesses[].id` |
+| `reference-edge.witness` | `relation_graph.witnesses[].id` |
+| Witness `target` and declaration-owned `ownership.declaration` | `relation_graph.nodes[].id` |
+
+Each node keeps its exact reference in `node.symbol.selector`. Pass that selector, not the node ID, to a fresh `SYMBOL_REFS` query.
+Node, connection, and witness IDs describe evidence within `relation_graph.basis`; they are not live declaration selectors.
+
+`relation_graph.detail` supplies arguments for a detailed retained read. Table joins recover compact descriptions; they do not advance row or evidence cursors.
+
 ```json
 {
   "request": {
@@ -150,7 +168,10 @@ That receipt counts proof storage with a conservative charge. It does not measur
 
 ## Saved state and identity
 
-Exact references can get fresh compiler authority. Retained results and output continuations need their original workspace, owner, read state, and lifetime.
+Fresh `RUN` queries can reacquire exact references under current compiler authority. This does not refresh earlier rows or evidence.
+Public `READ_SOURCE` instead checks the issued snapshot, including when `candidateRef` contains an exact reference. It does not reacquire that reference.
+
+Retained results and output continuations need their original workspace, owner, read state, and lifetime.
 
 Changed epochs, owner retirement, expiry, or eviction can block reuse. Reading output cannot move an answer to another epoch.
 
@@ -161,5 +182,9 @@ Changed epochs, owner retirement, expiry, or eviction can block reuse. Reading o
 [Read retained evidence](/how-to/read-retained-evidence) gives cursor steps. [Lifecycles](/reference/lifecycles) names distinct owners for execution, settlement, and transport delivery.
 
 Direct MCP puts the operation document in `result.structuredContent`. Tool RPC and completed hosted calls carry `document`.
+
+MCP transport rejection uses a distinct envelope: `result.isError` is `true`, and `result.structuredContent` contains `type: "MCP_REJECTED"`, `status: "rejected"`, and `error`.
+For an overlapping invocation, `error.code` is `INVOCATION_IN_PROGRESS`. This is not a canonical semantic rejection or evidence that the active query failed.
+[MCP concurrency](/reference/limits#mcp-concurrency) describes the per-connection limit and recovery.
 
 `health_check` has its own readiness shape. [The source map](/reference/source-map#query-execution-and-retention) identifies the query and retention owners.

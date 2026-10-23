@@ -40,6 +40,10 @@ internal fun ValueCallTarget.impactDocument(): ImpactProjected<ImpactCallTargetD
 internal fun ValueFlowObligationEvidence.impactDocument(): ImpactProjected<ImpactFlowObligationEvidenceDocument> =
     when (this) {
         ValueFlowObligationEvidence.None -> Refinement.Refined(ImpactFlowObligationEvidenceDocument.None)
+        is ValueFlowObligationEvidence.Expression ->
+            kind.value.impactText().impactZip(range.impactDocument()).impactMap { (kind, range) ->
+                ImpactFlowObligationEvidenceDocument.Expression(kind, range)
+            }
         is ValueFlowObligationEvidence.ImplementationDispatch ->
             dispatch.impactDocument().impactMap(ImpactFlowObligationEvidenceDocument::ImplementationDispatch)
     }

@@ -8,6 +8,8 @@ sealed interface LocalReferenceResolution {
 
     data class Unsupported(val cause: ValueFlowUnsupportedCause) : LocalReferenceResolution
 
+    data class Unresolved(val obligation: ValueFlowObligation) : LocalReferenceResolution
+
     data object OtherBinding : LocalReferenceResolution
 }
 
@@ -67,6 +69,8 @@ class LocalBindingReferenceScan<C>(
         when (val result = confirm(candidate)) {
             LocalReferenceResolution.OtherBinding -> Unit
             is LocalReferenceResolution.Unsupported -> obligation(result.cause)
+            is LocalReferenceResolution.Unresolved ->
+                if (result.obligation !in obligations) obligations += result.obligation
             is LocalReferenceResolution.Transfer -> transfer(result.target)
         }
         consumed += address

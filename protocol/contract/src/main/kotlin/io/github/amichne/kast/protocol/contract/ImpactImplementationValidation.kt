@@ -27,6 +27,11 @@ internal fun ImpactFlowObligationEvidenceDocument.admitsObligation(
 ): Boolean =
     when (this) {
         ImpactFlowObligationEvidenceDocument.None -> true
+        is ImpactFlowObligationEvidenceDocument.Expression ->
+            kind.value.matches(Regex("^[A-Z][A-Za-z0-9_]{0,127}$")) &&
+                range.end.value > range.start.value &&
+                range.start.value >= site.enclosing.range.start.value &&
+                range.end.value <= site.enclosing.range.end.value
         is ImpactFlowObligationEvidenceDocument.ImplementationDispatch ->
             dispatch.admitsImplementation(basis) &&
                 when (val position = site.role) {
