@@ -44,7 +44,7 @@ run {
         }
     val modelLimits = if (policy == null) loader.loadClass("io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits").declaredFields
         .filter { it.name.startsWith("MAX_") }.associate { it.isAccessible = true; it.name to it.get(null) }
-        else mapOf("MAX_MODULES" to effective.getValue("MODEL_MODULES"), "MAX_SOURCE_ROOTS_PER_MODULE" to effective.getValue("MODEL_SOURCE_ROOTS_PER_MODULE"))
+        else effective.filterKeys { it.startsWith("MODEL_") }
     // Current hosts admit budgets per request. Configuration proves defaults; every
     // replay response independently retains its actual admitted execution budget.
     val legacyBudget = if (policy == null) constant("io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt", "hostedQueryBudget") else null

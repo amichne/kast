@@ -246,6 +246,13 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
         group = "verification"
         testClassesDirs = nativeTest.output.classesDirs
         classpath = nativeTest.runtimeClasspath
+        inputs
+            .files(
+                rootProject.fileTree("experiments/host-observation/nested-callback-fixture") {
+                    include("*/src/main/kotlin/**/*.kt")
+                }
+            )
+            .withPathSensitivity(PathSensitivity.RELATIVE)
         dependsOn("detektNativeTest")
         if (selectedClasses.isNotEmpty()) {
             dependsOn(":verifyKotlinSemanticInputs")
