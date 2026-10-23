@@ -92,11 +92,21 @@ Under normal completion, the final value of a try or catch body can supply the t
 
 Throws do not supply a normal result. Transfers across `finally` keep `FINALLY_UNSUPPORTED` because its effect remains outside the supported proof.
 
-These transfers do not prove payload flow through containers, subtype or non-null branch conditions, anonymous function execution, or collection-element selection. They supply no automatic models for logging, headers, or errors. Field transfers require compiler-proven storage. Other property access keeps its proof obligations. Unsupported evidence still prevents strict completion.
+These transfers do not prove payload flow through containers, subtype or non-null branch conditions, or collection-element selection. They supply no automatic models for logging, headers, or errors. Field transfers require compiler-proven storage. Other property access keeps its proof obligations. Unsupported evidence still prevents strict completion.
 
 The retained witness lists producers, models, native reads, read rejections, and findings. It also keeps the record for each requested site. A site identity alone cannot prove a producer relationship.
 
 [Query forms](/reference/api#investigate-value-impact) defines inputs and witness sections.
+
+## Values through invoked callbacks
+
+Supported immutable captures keep their exact binding and anonymous owner. A captured argument remains distinct from a captured receiver or the wrapper's receiver. Invocation-dependent transfers require an admitted callback route, not lexical containment.
+
+Callback results can enter the exact formal invocation and return through its matching wrapper call. Each `CALLBACK_RETURN` keeps the supplier occurrence, invocation owner, and source-call frame. Separate wrapper calls keep separate result identities. A wrapper that discards the result does not transfer it into its constant return.
+
+Immutable constructor fields and normal try branches preserve this result provenance. A successful `Attempt.Value.value` path does not supply the exceptional `Attempt.Failure` branch. This proves neither runtime execution nor a dependency from a decoder's argument to its result.
+
+This support requires source-backed callback supply and invocation with one invocation context per anonymous body. Mutable captures, unsupported routes, and unresolved owners keep explicit obligations. A callback that is returned but not called gains no invocation-dependent value or result path.
 
 ## Completion and limits
 

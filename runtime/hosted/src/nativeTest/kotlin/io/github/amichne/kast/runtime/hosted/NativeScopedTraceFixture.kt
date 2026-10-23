@@ -93,6 +93,9 @@ internal class NativeScopedTraceFixture(
 
     fun sourceProtocol() = CanonicalSourceReadProtocol(source(), references)
 
+    fun valueServices() =
+        NativePacketQueryServices(project = project, root = lease.workspaceRoot, model = model, files = files)
+
     fun protocol(): CanonicalQueryProtocol {
         val symbols =
             ProjectBoundIntellijSymbolPorts.create(
