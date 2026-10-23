@@ -85,8 +85,11 @@ private constructor(
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             if (graph.edges.any { it !is StaticCallbackEdge.Supply && it !is StaticCallbackEdge.Invoke })
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            // Formal reachability cannot prove an anonymous invocation owner; do not truncate its inventory.
+            if (graph.edges.filterIsInstance<StaticCallbackEdge.Invoke>().any { it.owner !is StaticCallbackNode.Named })
+                return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             val invocations =
-                graph.edges.filterIsInstance<StaticCallbackEdge.Invoke>().map { edge ->
+                invokedFromRoot(graph).map { edge ->
                     ValueCaptureInvocation(edge.target.body, edge.source.supply, edge.evidence)
                 }
             if (invocations.none { it.body == body })
@@ -102,6 +105,24 @@ private constructor(
                     ),
                 )
             )
+        }
+
+        private fun invokedFromRoot(graph: CompleteCallbackFlowGraph): List<StaticCallbackEdge.Invoke> {
+            val outgoing = graph.edges.groupBy { it.source }
+            val roots =
+                outgoing.keys.filterIsInstance<StaticCallbackNode.Named>().filter {
+                    it.callable.evidence == graph.root
+                }
+            val pending = ArrayDeque<StaticCallbackNode>().apply { addAll(roots) }
+            val reached = roots.toMutableSet<StaticCallbackNode>()
+            val invocations = mutableListOf<StaticCallbackEdge.Invoke>()
+            while (pending.isNotEmpty()) {
+                for (edge in outgoing[pending.removeFirst()].orEmpty()) {
+                    if (edge is StaticCallbackEdge.Invoke) invocations.add(edge)
+                    if (reached.add(edge.target)) pending.add(edge.target)
+                }
+            }
+            return invocations
         }
     }
 

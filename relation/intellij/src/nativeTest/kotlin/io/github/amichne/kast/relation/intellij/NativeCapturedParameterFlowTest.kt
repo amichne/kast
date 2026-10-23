@@ -43,6 +43,25 @@ class NativeCapturedParameterFlowTest : NativeReferenceFixtureTest() {
             false,
         )
 
+    fun testIgnoredOuterCallbackDoesNotActivateInnerCapturedReads() =
+        checkCapture(
+            "fun target(value: String, decoder: Decoder) = ignore { capture { decoder.decode(value) } }",
+            false,
+        )
+
+    fun testReturnedOuterCallbackDoesNotActivateInnerCapturedReads() =
+        checkCapture(
+            "fun target(value: String, decoder: Decoder): () -> String = { capture { decoder.decode(value) } }",
+            false,
+        )
+
+    fun testIgnoredInvocationOwnerDoesNotActivateCapturedReads() =
+        checkCapture(
+            "fun hidden(block: () -> String): String = ignore { block() }\n" +
+                "fun target(value: String, decoder: Decoder) = runFlow { hidden { decoder.decode(value) } }",
+            false,
+        )
+
     fun testShadowedValueDoesNotAcquireOuterParameterProvenance() =
         checkCapture(
             caller =
@@ -108,7 +127,11 @@ class NativeCapturedParameterFlowTest : NativeReferenceFixtureTest() {
                     } else if (invoked) assertCaptureContinuation(step, owner, scope, projection, index)
                     else {
                         assertTrue(step.transfers.isEmpty())
-                        assertTrue("Uninvoked capture must remain explicit", step.obligations.isNotEmpty())
+                        assertEquals(
+                            listOf(io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.NESTED_EXECUTION),
+                            step.obligations.map { it.cause },
+                        )
+                        assertEquals(source, step.obligations.single().site)
                     }
                 }
             }
@@ -144,6 +167,7 @@ class NativeCapturedParameterFlowTest : NativeReferenceFixtureTest() {
                             "interface Decoder { fun decode(value: String): String }\n" +
                             "class FlowScope\n" +
                             "fun <T> runFlow(block: FlowScope.() -> T): T = FlowScope().block()\n" +
+                            "fun ignore(block: () -> String): String = \"constant\"\n" +
                             "fun <T> capture(block: () -> T): T = block()\n$caller\n")
                         .toByteArray()
                 )
