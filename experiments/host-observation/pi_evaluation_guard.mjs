@@ -1,4 +1,4 @@
-import { decodeEnvelope, READ_TOOLS, Outcome } from './pi_evaluation_policy.mjs';
+import { decodeEnvelope, measureToolResult, READ_TOOL_IDENTITIES, readToolName, Outcome } from './pi_evaluation_policy.mjs';
 
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
 import { finalQueryPresentation, finalProviderIdentity } from './pi_evaluation_presentation.mjs';
@@ -13,7 +13,7 @@ export function evaluationGuard(policy,record,projectProviderInput) {
       return {type:'recorded'};
     };
     pi.on('session_start',(_event,ctx)=>{
-      pi.setActiveTools([...READ_TOOLS]);
+      pi.setActiveTools([...READ_TOOL_IDENTITIES]);
       const recorded=observe({type:'session_settings',provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),toolNames:pi.getActiveTools()},ctx);
     });
     pi.on('context',(event,ctx)=>{
@@ -55,11 +55,14 @@ export function evaluationGuard(policy,record,projectProviderInput) {
     });
     pi.on('tool_execution_start',event=>policy.adapterStarted(event.toolCallId));
     pi.on('tool_result',(event,ctx)=>{
-      const textBytes=(event.content??[]).reduce((sum,c)=>sum+(c.type==='text'?Buffer.byteLength(c.text):0),0);
-      const envelope=decodeEnvelope(event.content,event.toolName,event.details);
-      const admission=policy.toolResult(envelope,textBytes,event.toolCallId,event.isError);
-      const recorded=observe({type:'native_reply',callId:event.toolCallId,envelopeType:envelope.type,hostIsError:typeof event.isError==='boolean'?event.isError:null,deliveryStop:envelope.delivery?.stop??null,physicalRpcsReported:envelope.delivery?.rpc_count??null,textBytes,decision:admission},ctx);
+      const envelope=decodeEnvelope(event.content,event.toolName,event.details,event.structuredContent);
+      const native=event.toolName!==readToolName(event.toolName);
+      const measured=measureToolResult(event.content,event.toolName,envelope);
+      const admission=measured.type==='invalid'?policy.stop(Outcome.INVALID):policy.toolResult(envelope,measured.bytes,event.toolCallId,event.isError);
+      const recorded=observe({type:'native_reply',callId:event.toolCallId,envelopeType:envelope.type,hostIsError:typeof event.isError==='boolean'?event.isError:null,deliveryStop:envelope.delivery?.stop??null,physicalRpcsReported:envelope.delivery?.rpc_count??null,...(measured.type==='measured'?{textBytes:measured.bytes}:{}),decision:admission},ctx);
       if(recorded.type!=='failure'&&!admission.allow) ctx.abort();
+      if(envelope.type!=='invalid'&&native&&measured.type==='measured'&&measured.bytes<=policy.config.maximumToolTextBytes)
+        return {details:{...event.details,kastEvaluation:{type:'MCP_CANONICAL_RESULT',envelope}}};
     });
     const observeResponse=(message,ctx)=>{
       let bytes;

@@ -3,8 +3,21 @@ import { isDeepStrictEqual } from 'node:util';
 import { isAdmittedPayload, isVerifiedInputCalibration, PayloadFailure } from './pi_evaluation_payload.mjs';
 import { decodeQueryDelivery, deliverySummary, partialEvidenceSummary } from './pi_evaluation_delivery.mjs';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
-export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', DELIVERY_BLOCKED:'CLIENT_DELIVERY_BLOCKED', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', PAYLOAD_UNSUPPORTED:PayloadFailure.UNSUPPORTED, INPUT_BOUND_UNAVAILABLE:PayloadFailure.UNPROVEN, INPUT_CALIBRATION_EXCEEDED:'HARNESS_INPUT_CALIBRATION_EXCEEDED', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
+export const READ_TOOL_IDENTITIES=Object.freeze([...READ_TOOLS,...READ_TOOLS.map(name=>`mcp__kast__${name}`)]);
+export function readToolName(name) {
+  return READ_TOOLS.find(tool=>name===tool||name===`mcp__kast__${tool}`);
+}
+export function measureToolResult(content,toolName,envelope) {
+  try {
+    const visibleBytes=content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0);
+    const canonicalBytes=toolName!==readToolName(toolName)&&envelope.type!=='invalid'
+      ?Buffer.byteLength(JSON.stringify(envelope)):0;
+    return {type:'measured',bytes:Math.max(visibleBytes,canonicalBytes)};
+  } catch {return {type:'invalid'};}
+}
+export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', MCP_REJECTION:'MCP_TRANSPORT_REJECTION', DELIVERY_BLOCKED:'CLIENT_DELIVERY_BLOCKED', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', PAYLOAD_UNSUPPORTED:PayloadFailure.UNSUPPORTED, INPUT_BOUND_UNAVAILABLE:PayloadFailure.UNPROVEN, INPUT_CALIBRATION_EXCEEDED:'HARNESS_INPUT_CALIBRATION_EXCEEDED', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
 const RPC_FAILURES=Object.freeze(['INSTALLATION_STOPPED','OBSERVATION_UNAVAILABLE','CATALOG_UNAVAILABLE','INVALID_COMMAND','REQUEST_TOO_LARGE','UNKNOWN_TOOL','INVALID_ARGUMENTS','OUT_OF_SCOPE','INVOCATION_FAILED','INVALID_RESULT','QUERY_SESSION_TRANSITION_REJECTED']);
+const MCP_FAILURES=Object.freeze(['INVALID_ARGUMENTS','UNKNOWN_TOOL','NOT_GRADLE_WORKSPACE','INVOCATION_FAILED','INVOCATION_IN_PROGRESS','INVALID_RESULT_SCHEMA']);
 const emptyUsage=()=>({input:0,cacheRead:0,cacheWrite:0,output:0,reasoning:0,totalTokens:0});
 const integer=n=>Number.isSafeInteger(n)&&n>=0;
 const decision=(allow,reason,phase)=>({allow,reason,phase});
@@ -15,6 +28,13 @@ export function decodeUsage(value) {
   return {type:'usage',value:result};
 }
 function decodeCanonical(envelope,toolName='query_symbols') {
+    if(envelope?.type==='mcp_rejected') {
+      const document=envelope.document;
+      return document?.status==='rejected'&&(
+        document.type==='MCP_REJECTED'&&MCP_FAILURES.includes(document.error?.code)&&typeof document.error?.message==='string'||
+        document.type==='BOUNDARY_REJECTED'&&document.document!==null&&typeof document.document==='object'&&!Array.isArray(document.document))
+        ?envelope:{type:'invalid'};
+    }
     if(!['complete','qualified','rejected_document','rejected'].includes(envelope?.type)) return {type:'invalid'};
     if(envelope.type==='rejected'&&!RPC_FAILURES.includes(envelope.failure)) return {type:'invalid'};
     if(envelope.type==='rejected_document'&&(envelope.document?.status!=='rejected'||typeof envelope.document?.rejection?.type!=='string')) return {type:'invalid'};
@@ -22,9 +42,25 @@ function decodeCanonical(envelope,toolName='query_symbols') {
     if(envelope.type==='qualified' && (envelope.document?.status!=='qualified'||envelope.document.coverage?.exhaustive!==false||!Array.isArray(envelope.document.items)||!integer(envelope.document.qualification?.knownMinimum)||!Array.isArray(envelope.document.qualification?.limitations)||!['resumable','terminal_incomplete','retention_unavailable'].includes(envelope.document.qualification?.progress?.type))) return {type:'invalid'};
     return envelope;
 }
-export function decodeEnvelope(content,toolName='query_symbols',canonicalDetails) {
+export function decodeEnvelope(content,toolName='query_symbols',canonicalDetails,structuredContent) {
   if(!Array.isArray(content)||content.length!==1||content[0]?.type!=='text') return {type:'invalid'};
+  const canonicalName=readToolName(toolName);
+  if(canonicalName===undefined)return {type:'invalid'};
   try {
+    if(toolName!==canonicalName) {
+      // Pi preserves the complete MCP CallToolResult in structuredContent.
+      // Its details identify the connector, not the semantic result.
+      if(canonicalDetails?.server!=='kast'||canonicalDetails?.tool!==canonicalName)return {type:'invalid'};
+      // Agent-core omits structuredContent from saved ToolResultMessage values.
+      // The guard carries its admitted envelope in details before that step.
+      if(structuredContent===undefined&&canonicalDetails.kastEvaluation?.type==='MCP_CANONICAL_RESULT')
+        return decodeCanonical(canonicalDetails.kastEvaluation.envelope,canonicalName);
+      if(!Array.isArray(structuredContent?.content)||typeof structuredContent?.structuredContent!=='object')return {type:'invalid'};
+      const document=structuredContent.structuredContent;
+      const type=['MCP_REJECTED','BOUNDARY_REJECTED'].includes(document?.type)?'mcp_rejected':
+        {complete:'complete',qualified:'qualified',rejected:'rejected_document'}[document?.status];
+      return decodeCanonical({type,document},canonicalName);
+    }
     // SDK details retain the canonical query independently of its human presentation.
     // Validate them with the same closed decoder; unavailable details keep legacy text support.
     const envelope=toolName==='query_symbols'&&canonicalDetails!==undefined?canonicalDetails:JSON.parse(content[0].text);
@@ -140,8 +176,9 @@ export class CasePolicy {
   toolCall(toolName,args,callId) {
     const proposal={callId,toolName,requestType:args?.request?.type??null,harnessDecision:undefined,adapterStartObserved:false,rpcReplyObserved:false,nativeReplyObserved:false};this.proposals.push(proposal);
     let allowed=false;
-    if(this.phase==='WORK') allowed=READ_TOOLS.includes(toolName) && (toolName!=='query_symbols'||args?.request?.type==='RUN') && this.tools<this.config.work.tools && !this.activeToolCall;
-    if(this.phase==='DELIVERY'&&this.evidenceRequest) allowed=toolName==='query_symbols' && isDeepStrictEqual(args?.request,this.evidenceRequest) && !this.activeToolCall;
+    const canonicalName=readToolName(toolName);
+    if(this.phase==='WORK') allowed=canonicalName!==undefined && (canonicalName!=='query_symbols'||args?.request?.type==='RUN') && this.tools<this.config.work.tools && !this.activeToolCall;
+    if(this.phase==='DELIVERY'&&this.evidenceRequest) allowed=canonicalName==='query_symbols' && isDeepStrictEqual(args?.request,this.evidenceRequest) && !this.activeToolCall;
     if(this.phase==='STOPPED') {proposal.harnessDecision=this.outcome;return decision(false,this.outcome,this.phase);}
     if(!allowed) {proposal.harnessDecision=Outcome.TOOL_BLOCKED;return this.stop(Outcome.TOOL_BLOCKED);}
     this.tools++;this.activeToolCall=callId;proposal.harnessDecision='ADMITTED';return decision(true,'ADMITTED',this.phase);
@@ -150,7 +187,7 @@ export class CasePolicy {
   toolResult(envelope,textBytes=0,callId,hostIsError) {
     const observed=this.observeToolResult(envelope,textBytes,callId,hostIsError);
     if(!observed.allow||this.config.finalPresentation!=='compact')return observed;
-    const query=this.restoringReceived||this.proposals.some(proposal=>proposal.callId===callId&&proposal.toolName==='query_symbols');
+    const query=this.restoringReceived||this.proposals.some(proposal=>proposal.callId===callId&&readToolName(proposal.toolName)==='query_symbols');
     if(query) {
       const identity=this.restoringReceived?this.restoringCallId:callId;
       if(typeof identity!=='string'||!identity.length)return this.stop(Outcome.INVALID);
@@ -170,7 +207,7 @@ export class CasePolicy {
     if(callId!==undefined&&!proposal) return this.stop(Outcome.INVALID);
     if(callId===this.activeToolCall) this.activeToolCall=undefined;
     if(envelope.type==='invalid') return this.stop(Outcome.INVALID);
-    if(proposal) {proposal.rpcReplyObserved=true;proposal.nativeReplyObserved=envelope.type!=='rejected';proposal.hostIsErrorObserved=typeof hostIsError==='boolean'?hostIsError:null;}
+    if(proposal) {proposal.rpcReplyObserved=true;proposal.nativeReplyObserved=!['rejected','mcp_rejected'].includes(envelope.type);proposal.hostIsErrorObserved=typeof hostIsError==='boolean'?hostIsError:null;}
     if(this.toolTextBytes>this.config.maximumToolTextBytes) return this.stop(Outcome.BUDGET);
     if(envelope.type==='query_delivery') {
       this.queryDeliveries.push(deliverySummary(envelope,callId,this.restoringReceived===true?'SAVED_RESULT':'TOOL_RESULT'));
@@ -188,10 +225,11 @@ export class CasePolicy {
       }
       return observed;
     }
-    if(proposal&&proposal.toolName!=='query_symbols'&&envelope.type==='complete')return decision(true,'READ_TOOL_REPLY',this.phase);
+    if(proposal&&readToolName(proposal.toolName)!=='query_symbols'&&envelope.type==='complete')return decision(true,'READ_TOOL_REPLY',this.phase);
     return this.acceptQuery(envelope,false);
   }
   acceptQuery(envelope,clientDelivered) {
+    if(envelope.type==='mcp_rejected') {this.nativeOutcome='UNOBSERVED';this.mcpRejection=structuredClone(envelope.document);return this.stop(Outcome.MCP_REJECTION);}
     if(envelope.type==='rejected') {this.nativeOutcome='UNOBSERVED';this.rpcRejection={failure:envelope.failure};return this.stop(Outcome.RPC_REJECTION);}
     if(envelope.type==='rejected_document') {
       this.exhaustiveEvidence=false;this.nativeOutcome='REJECTED';this.rejection=structuredClone(envelope);
@@ -235,6 +273,6 @@ export class CasePolicy {
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),inputCalibrationFailure:structuredClone(this.inputCalibrationFailure??null),measuredInputFloor:this.lastMeasuredInput,
       bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,maximumProviderPayloadBytes:this.maximumProviderPayloadBytes,maximumProviderRequests:this.maximumProviderRequests,maximumReportedTokens:this.maximumReportedTokens,maximumProviderResponseBytes:this.maximumProviderResponseBytes,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
-      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,requestAdmissionMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',tokenAccountingQualification:'POST_RESPONSE_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',maximumObservedResponseBytes:this.maximumObservedResponseBytes??0,providerRequests:this.requests.WORK+this.requests.DELIVERY,outputCapApplied:this.outputCapApplied,backendOutputCapQualification:'UNQUALIFIED'};
+      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),mcpRejection:structuredClone(this.mcpRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||readToolName(p.toolName)==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,requestAdmissionMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',tokenAccountingQualification:'POST_RESPONSE_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',maximumObservedResponseBytes:this.maximumObservedResponseBytes??0,providerRequests:this.requests.WORK+this.requests.DELIVERY,outputCapApplied:this.outputCapApplied,backendOutputCapQualification:'UNQUALIFIED'};
   }
 }

@@ -20,19 +20,19 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["agent_efficiency*.py", "efficiency-tests", "test_agent_efficiency*.py"]
+include = ["agent_efficiency*.py", "efficiency-tests", "test_agent_efficiency*.py", "log_visibility.py", "log-tests", "campaign_queries.py", "campaign-tests"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["agent_efficiency*.py", "test_agent_efficiency*.py", "efficiency-tests/*.py"]
+include = ["agent_efficiency*.py", "test_agent_efficiency*.py", "efficiency-tests/*.py", "log_visibility.py", "log-tests/*.py", "campaign_queries.py", "campaign-tests/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
-python_files = ["test_agent_efficiency_metrics.py", "test_coordinator.py", "test_integrity.py", "test_optimization.py", "test_subject.py", "test_tokens.py", "test_timing.py"]
+python_files = ["test_agent_efficiency_metrics.py", "test_coordinator.py", "test_integrity.py", "test_optimization.py", "test_subject.py", "test_tokens.py", "test_timing.py", "test_log_visibility.py", "test_campaign_queries.py"]
 pythonpath = ["."]

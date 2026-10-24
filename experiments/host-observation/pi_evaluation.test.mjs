@@ -3,13 +3,15 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { createHash } from 'node:crypto';
+import { findPackageJSON } from 'node:module';
+import { dirname } from 'node:path';
 import { inspectProviderPayload, verifyInputCalibration } from './pi_evaluation_payload.mjs';
-import { CasePolicy, decodeEnvelope, decodeUsage } from './pi_evaluation_policy.mjs';
+import { CasePolicy, decodeEnvelope, decodeUsage, Outcome } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
 import { summarizeGuard } from './pi_evaluation_records.mjs';
 import { driveSession, runOwnedWorker } from './pi_evaluation_controller.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
-import { isolatedSettings } from './pi_evaluation_worker.mjs';
+import { isolatedSettings, restoreReceivedMessage } from './pi_evaluation_worker.mjs';
 import { admittedQueryDocument } from './pi_evaluation_question.mjs';
 
 const runRequest=()=>({type:'RUN',source:{type:'ALL_DECLARATIONS'},terminalStep:{type:'EMIT'}});
@@ -32,6 +34,86 @@ const fixture=name=>JSON.parse(readFileSync(new URL(`./pi-fixtures/${name}-docum
 const denseRejected={type:'rejected_document',document:fixture('rejected')};
 const negativeComplete={type:'complete',document:fixture('complete')};
 const qualified={type:'qualified',document:fixture('qualified')};
+
+test('saved native result admits canonical bytes rather than only its short display',()=>{
+  const message={role:'toolResult',toolName:'mcp__kast__query_symbols',toolCallId:'saved-call',
+    content:[{type:'text',text:'Short display'}],
+    details:{server:'kast',tool:'query_symbols',kastEvaluation:{type:'MCP_CANONICAL_RESULT',envelope:negativeComplete}}};
+  const canonicalBytes=Buffer.byteLength(JSON.stringify(negativeComplete));
+  assert.ok(canonicalBytes>100);
+  for(const cap of [100,canonicalBytes-1,canonicalBytes]) {
+    const policy=makePolicy({...config(),maximumToolTextBytes:cap});
+    const observed=restoreReceivedMessage(policy,message);
+    assert.equal(observed.allow,cap===canonicalBytes);
+    assert.equal(policy.report().toolTextBytes,canonicalBytes);
+    assert.equal(observed.reason,cap===canonicalBytes?'SAVED_RESULT_DELIVERY':Outcome.BUDGET);
+    assert.equal(policy.report().providerRequests,0);
+  }
+});
+
+test('native MCP read identity preserves canonical results and rejects foreign or renamed tools',()=>{
+  const name='mcp__kast__query_symbols';
+  for(const envelope of [negativeComplete,qualified,denseRejected]) {
+    const policy=makePolicy(config()),guard=callbacks(policy);
+    assert.equal(guard.emit('tool_call',{toolName:name,toolCallId:'call-1',input:{request:runRequest()}}),undefined);
+    const wire={content:[{type:'text',text:JSON.stringify(envelope.document)}],structuredContent:envelope.document,
+      isError:envelope.type==='rejected_document'};
+    assert.deepEqual(decodeEnvelope(wire.content,name,{server:'kast',tool:'query_symbols'},wire),envelope);
+    const persisted=guard.emit('tool_result',{toolName:name,toolCallId:'call-1',content:wire.content,
+      details:{server:'kast',tool:'query_symbols'},structuredContent:wire,isError:wire.isError});
+    assert.deepEqual(decodeEnvelope(wire.content,name,persisted?.details),envelope,
+      'The SDK transcript omits structuredContent, so the guard must preserve admitted canonical evidence');
+    assert.equal(policy.report().nativeRepliesObserved,1);
+    assert.equal(policy.report().semanticRepliesObserved,1);
+    assert.notEqual(policy.report().outcome,Outcome.INVALID);
+    assert.equal(summarizeGuard({type:'model_tool_proposal',toolName:name,requestType:'RUN',
+      decision:{allow:true,reason:'ADMITTED',phase:'WORK'}}).toolName,name);
+  }
+  for(const name of ['mcp__other__query_symbols','mcp__kast__query_symbols_renamed','mcp__kast__replace_body','mcp__kast__add_declaration','bash']) {
+    const policy=makePolicy(config());
+    assert.equal(policy.toolCall(name,{request:runRequest()},'blocked').reason,Outcome.TOOL_BLOCKED);
+    assert.equal(policy.report().nativeRepliesObserved,0);
+  }
+});
+
+test('native MCP result requires matching identity and preserved structured evidence',()=>{
+  const content=[{type:'text',text:'A human-readable summary is not canonical evidence.'}];
+  const wire={content:[{type:'text',text:JSON.stringify(negativeComplete.document)}],structuredContent:negativeComplete.document,isError:false};
+  assert.deepEqual(decodeEnvelope(content,'mcp__kast__query_symbols',{server:'kast',tool:'query_symbols'},wire),negativeComplete);
+  for(const [details,structured] of [
+    [{server:'other',tool:'query_symbols'},wire],
+    [{server:'kast',tool:'replace_body'},wire],
+    [{server:'kast',tool:'query_symbols'},undefined],
+    [{server:'kast',tool:'query_symbols'},{...wire,structuredContent:{status:'invented'}}],
+  ])assert.deepEqual(decodeEnvelope(content,'mcp__kast__query_symbols',details,structured),{type:'invalid'});
+});
+
+test('native MCP transport rejection keeps its typed cause without a semantic success claim',()=>{
+  for(const code of ['INVALID_ARGUMENTS','UNKNOWN_TOOL','NOT_GRADLE_WORKSPACE','INVOCATION_FAILED','INVOCATION_IN_PROGRESS','INVALID_RESULT_SCHEMA']) {
+    const document={type:'MCP_REJECTED',status:'rejected',error:{code,message:'Synthetic public message'}};
+    const wire={content:[{type:'text',text:JSON.stringify(document)}],structuredContent:document,isError:true};
+    const envelope=decodeEnvelope(wire.content,'mcp__kast__query_symbols',{server:'kast',tool:'query_symbols'},wire);
+    assert.deepEqual(envelope,{type:'mcp_rejected',document});
+    const policy=makePolicy(config());
+    policy.toolCall('mcp__kast__query_symbols',{request:runRequest()},'call-1');
+    assert.equal(policy.toolResult(envelope,100,'call-1',true).reason,'MCP_TRANSPORT_REJECTION');
+    assert.equal(policy.report().nativeRepliesObserved,0);
+    assert.deepEqual(policy.report().mcpRejection,document);
+  }
+});
+
+test('native structured results cannot bypass the tool byte bound through a short display summary',()=>{
+  for(const stopped of [false,true]) {
+  const policy=makePolicy({...config(),maximumToolTextBytes:100}),guard=callbacks(policy);
+  guard.emit('tool_call',{toolName:'mcp__kast__query_symbols',toolCallId:'call-1',input:{request:runRequest()}});
+  if(stopped)policy.stop(Outcome.CANCELLED);
+  const preserved=guard.emit('tool_result',{toolName:'mcp__kast__query_symbols',toolCallId:'call-1',
+    content:[{type:'text',text:'Short display'}],details:{server:'kast',tool:'query_symbols'},isError:false,
+    structuredContent:{content:[],structuredContent:negativeComplete.document,isError:false}});
+  assert.equal(policy.report().outcome,stopped?Outcome.CANCELLED:Outcome.BUDGET);
+  assert.equal(preserved,undefined,'Oversized canonical evidence must not enter saved details');
+  }
+});
 
 test('recorded terminal dense rejection stops the next provider request immediately',()=>{
   const policy=makePolicy({...config(),name:'positive',expectedSemanticCalls:2,work:{...config().work,reportedTokens:60000,requests:3}});
@@ -1330,7 +1412,8 @@ test('installed Pi request-time context runner preserves raw state and serialize
     const root=process.env.KAST_PI_PACKAGE;
     const {ExtensionRunner}=await import(pathToFileURL(join(root,'dist/core/extensions/runner.js')));
     const {convertToLlm}=await import(pathToFileURL(join(root,'dist/core/messages.js')));
-    const {convertResponsesMessages}=await import(pathToFileURL(join(root,'../pi-ai/dist/api/openai-responses-shared.js')));
+    const aiRoot=dirname(findPackageJSON('@earendil-works/pi-ai',pathToFileURL(join(root,'package.json'))));
+    const {convertResponsesMessages}=await import(pathToFileURL(join(aiRoot,'dist/api/openai-responses-shared.js')));
     const model={id:'gpt-6.1-sol',provider:'openai-codex',api:'openai-codex-responses',input:['text'],reasoning:true,compat:{}};
     const bodies=[];
     for(const saved of [false,true]) {
@@ -1367,7 +1450,8 @@ test('installed converter binds normalized selected provider identity on fresh a
     const {pathToFileURL}=await import('node:url'),{join}=await import('node:path');
     const root=process.env.KAST_PI_PACKAGE;
     const {convertToLlm}=await import(pathToFileURL(join(root,'dist/core/messages.js')));
-    const {convertResponsesMessages}=await import(pathToFileURL(join(root,'../pi-ai/dist/api/openai-responses-shared.js')));
+    const aiRoot=dirname(findPackageJSON('@earendil-works/pi-ai',pathToFileURL(join(root,'package.json'))));
+    const {convertResponsesMessages}=await import(pathToFileURL(join(aiRoot,'dist/api/openai-responses-shared.js')));
     const model={id:'gpt-6.1-sol',provider:'openai-codex',api:'openai-codex-responses',input:['text'],reasoning:true,compat:{}};
     const project=(target,messages)=>convertResponsesMessages(target,{messages:convertToLlm(messages)},new Set(['openai-codex']),{includeSystemPrompt:false});
     const sources=[

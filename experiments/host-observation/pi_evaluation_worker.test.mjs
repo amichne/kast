@@ -5,8 +5,46 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { isolatedSettings, createEvaluationSession, worker, publishWorkerResult } from './pi_evaluation_worker.mjs';
+import { pathToFileURL } from 'node:url';
+import { isolatedSettings, createEvaluationSession, disposeEvaluationSession, worker, publishWorkerResult } from './pi_evaluation_worker.mjs';
 import { CasePolicy, Outcome } from './pi_evaluation_policy.mjs';
+
+test('installed SDK shutdown handler failures remain finite and still dispose the session',
+  {skip:!process.env.KAST_PI_PACKAGE},async()=>{
+    const {ExtensionRunner}=await import(pathToFileURL(path.join(process.env.KAST_PI_PACKAGE,'dist/core/extensions/runner.js')));
+    for(const broken of [false,true]) {
+      const runner=Object.create(ExtensionRunner.prototype),effects=[];
+      runner.createContext=()=>({});runner.errorListeners=new Set();
+      runner.extensions=[{path:'synthetic-mcp-extension',handlers:new Map([['session_shutdown',[async()=>{
+        effects.push('shutdown');if(broken)throw Error('PRIVATE-SHUTDOWN-ERROR');
+      }]]])}];
+      const result=await disposeEvaluationSession({extensionRunner:runner,dispose:()=>effects.push('dispose')},'WORKER_EXECUTION');
+      assert.equal(result.type,broken?'failure':'observed');
+      if(broken)assert.deepEqual(result.failure,{stage:'WORKER_EXECUTION',operation:'SESSION_SHUTDOWN',reason:'EXTENSION_HANDLER_FAILED'});
+      assert.deepEqual(effects,['shutdown','dispose']);
+      assert.equal(runner.errorListeners.size,0);
+      assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
+    }
+  });
+
+test('shutdown preserves its first finite failure and always releases observation and disposes',async()=>{
+  for(const first of ['observer','handler','emit','release','dispose']) {
+    const effects=[];let listener;
+    const session={extensionRunner:{
+      onError:callback=>{effects.push('observe');if(first==='observer')throw Error('PRIVATE-OBSERVER');listener=callback;
+        return ()=>{effects.push('release');if(first==='release')throw Error('PRIVATE-RELEASE');};},
+      emit:async()=>{effects.push('emit');if(first==='handler')listener({event:'session_shutdown',error:'PRIVATE-HANDLER'});
+        if(first==='emit')throw Error('PRIVATE-EMIT');},
+    },dispose:()=>{effects.push('dispose');throw Error('PRIVATE-DISPOSE');}};
+    const result=await disposeEvaluationSession(session,'WORKER_EXECUTION');
+    assert.equal(result.type,'failure');
+    assert.equal(result.failure.operation,{observer:'SESSION_SHUTDOWN_OBSERVER',handler:'SESSION_SHUTDOWN',
+      emit:'SESSION_SHUTDOWN',release:'SESSION_SHUTDOWN_OBSERVER_RELEASE',dispose:'SESSION_DISPOSE'}[first]);
+    assert.equal(result.failure.reason,first==='handler'?'EXTENSION_HANDLER_FAILED':'EFFECT_FAILED');
+    assert.equal(effects.at(-1),'dispose');assert.equal(effects.includes('release'),first!=='observer');
+    assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
+  }
+});
 import { WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 
 const failure=(operation,reason)=>({type:'failure',failure:{stage:'WORKER_SETUP',operation,reason}});
@@ -133,9 +171,11 @@ function construction(options={}) {
   const effects=[],model={id:options.model??'gpt-6.1-sol',provider:'openai-codex'};
   const settings={getTransport:()=>options.transport??'sse',getCacheWarmingMode:()=>options.warming??'off'};
   const session={model,thinkingLevel:options.effort??'high',agent:{abort:()=>effects.push('abort')},
+    extensionRunner:{onError:()=>()=>{},emit:async event=>{assert.equal(event.type,'session_shutdown');effects.push('shutdown');}},
     bindExtensions:async value=>{effects.push(['bind',value.mode]);if(options.bindError)throw Error('PRIVATE-BIND');},
     dispose:()=>{effects.push('dispose');if(options.disposeError)throw Error('PRIVATE-DISPOSE');}};
-  const sdk={SettingsManager:{inMemory:value=>{effects.push(['settings',value]);return settings;}},
+  const sdk={createMcpExtension:options=>pi=>{effects.push(['mcp',options,pi]);},
+    SettingsManager:{inMemory:value=>{effects.push(['settings',value]);return settings;}},
     DefaultResourceLoader:class {
       constructor(value){effects.push(['loader',value]);}
       async reload(){effects.push('reload');if(options.loadError)throw Error('PRIVATE-LOAD');}
@@ -168,11 +208,31 @@ test('session construction preserves settings model resources and binding withou
   const loader=fixture.effects[2][1],created=fixture.effects[4][1];
   assert.equal(loader.settingsManager,fixture.settings);assert.equal(loader.noExtensions,true);
   assert.deepEqual(loader.additionalExtensionPaths,['/synthetic-adapter']);
-  assert.equal(loader.extensionFactories.length,1);
+  assert.equal(loader.extensionFactories.length,2);
   for(const field of ['noSkills','noPromptTemplates','noThemes','noContextFiles'])assert.equal(loader[field],true);
   assert.equal(created.model,fixture.session.model);assert.equal(created.thinkingLevel,'high');
-  assert.deepEqual(created.tools,['query_symbols','check_diagnostics','health_check']);
+  assert.deepEqual(created.tools,['query_symbols','check_diagnostics','health_check',
+    'mcp__kast__query_symbols','mcp__kast__check_diagnostics','mcp__kast__health_check']);
   assert.equal(created.sessionManager,fixture.input.manager);
+});
+
+test('native MCP factory keeps the registered command and isolates read-only exposure',async()=>{
+  const fixture=construction();
+  await createEvaluationSession(fixture.input);
+  const loader=fixture.effects.find(value=>Array.isArray(value)&&value[0]==='loader')[1];
+  assert.equal(loader.extensionFactories.length,2,'The actual SDK connector must own native MCP');
+  const registration={name:'kast',config:{command:'/installed/kast-mcp-complete',timeout:180},extensionPath:'/synthetic-adapter'};
+  const snapshot=structuredClone(registration);
+  const pi={getMcpServers:()=>[registration]};
+  loader.extensionFactories[1](pi);
+  const [,options,receivedPi]=fixture.effects.find(value=>Array.isArray(value)&&value[0]==='mcp');
+  assert.equal(receivedPi,pi);
+  const loaded=options.loadConfig();
+  assert.deepEqual(loaded,{errors:[],autoEnableCodemode:false,servers:[{name:'kast',source:'/synthetic-adapter',scope:'extension',
+    config:{command:'/installed/kast-mcp-complete',timeout:180,exposure:'hidden',
+      toolExposure:{query_symbols:'direct',check_diagnostics:'direct',health_check:'direct'}}}]});
+  assert.deepEqual(registration,snapshot);
+  assert.equal(options.logPath,'/synthetic-private/mcp.log');
 });
 
 test('compact session construction requires the runtime converter before any SDK setup effects',async()=>{
@@ -226,6 +286,7 @@ test('unsupported effort fallback and binding dispose rejected constructed sessi
   ]) {
     const fixture=construction(options),result=await createEvaluationSession(fixture.input);
     assert.deepEqual(result,expected);assert.equal(fixture.effects.filter(value=>value==='dispose').length,1);
+    assert.ok(fixture.effects.indexOf('shutdown')>=0&&fixture.effects.indexOf('shutdown')<fixture.effects.indexOf('dispose'));
     assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
   }
 });
@@ -283,8 +344,9 @@ test('worker pin credential and SDK-load failures retain lifecycle and closed cl
   } finally {if(send===undefined)delete process.send;else process.send=send;}
 });
 
-test('actual worker retains received identity failure over later archive umask restoration failure',async t=>{
-  const root=owned(t),pi=path.join(root,'pi'),output=path.join(root,'output');
+for(const layout of ['nested','hoisted','nested-compact'])
+test(`actual worker resolves ${layout} Pi dependencies and retains received identity failure over later archive failure`,async t=>{
+  const root=owned(t),pi=path.join(root,'node_modules/@earendil-works/pi-coding-agent'),output=path.join(root,'output');
   fs.mkdirSync(path.join(pi,'dist/core'),{recursive:true,mode:0o700});fs.mkdirSync(output,{mode:0o700});
   fs.writeFileSync(path.join(pi,'package.json'),JSON.stringify({type:'module',version:'synthetic-pinned'}),{mode:0o600});
   // These modules expose only the external observations needed to reach the
@@ -293,8 +355,10 @@ test('actual worker retains received identity failure over later archive umask r
 export class SessionManager { static open(){return {getCwd(){return '/synthetic-wrong-workspace';}};}}
 `,{mode:0o600});
   fs.writeFileSync(path.join(pi,'dist/core/auth-storage.js'),'export class ReadOnlyAuthStorage {}\n',{mode:0o600});
-  const ai=path.join(root,'pi-ai');fs.mkdirSync(path.join(ai,'dist/api'),{recursive:true,mode:0o700});
-  fs.writeFileSync(path.join(ai,'package.json'),'{"type":"module"}',{mode:0o600});
+  const ai=layout==='hoisted'?path.join(root,'node_modules/@earendil-works/pi-ai'):path.join(pi,'node_modules/@earendil-works/pi-ai');fs.mkdirSync(path.join(ai,'dist/api'),{recursive:true,mode:0o700});
+  fs.writeFileSync(path.join(ai,'package.json'),JSON.stringify({name:'@earendil-works/pi-ai',type:'module',exports:{'.':'./dist/index.js','./api/*':'./dist/api/*.js'}}),{mode:0o600});
+  fs.writeFileSync(path.join(ai,'dist/index.js'),'export const synthetic=true;\n',{mode:0o600});
+  fs.writeFileSync(path.join(ai,'dist/api/openai-responses-shared.js'),'export function convertResponsesMessages(){throw Error("Unexpected provider projection");}\n',{mode:0o600});
   fs.writeFileSync(path.join(ai,'dist/api/openai-codex-responses.js'),
     'export function closeOpenAICodexWebSocketSessions(){throw Error("Unexpected transport effect");}\n',{mode:0o600});
   const adapter=path.join(root,'adapter'),auth=path.join(root,'auth.json'),models=path.join(root,'models.json'),source=path.join(root,'source.jsonl');
@@ -303,7 +367,7 @@ export class SessionManager { static open(){return {getCwd(){return '/synthetic-
   fs.writeFileSync(models,'{}',{mode:0o600});fs.writeFileSync(source,'PRIVATE-EXACT-REPLAY\n',{mode:0o600});
   const plan={piPackageRoot:pi,kastAdapter:adapter,workspaceRoot:root,outputRoot:output,authPath:auth,modelsStorePath:models,
     kastAdapterSha256:createHash('sha256').update('SYNTHETIC-ADAPTER').digest('hex'),piVersion:'synthetic-pinned',
-    cases:[{name:'received',mode:'received-result',receivedSessionFile:source,receivedResultEntryId:'synthetic-entry',
+    cases:[{name:'received',mode:'received-result',finalPresentation:layout==='nested-compact'?'compact':'canonical',receivedSessionFile:source,receivedResultEntryId:'synthetic-entry',
       receivedSessionSha256:createHash('sha256').update('PRIVATE-EXACT-REPLAY\n').digest('hex'),
       receivedContextSha256:'0'.repeat(64),wallSeconds:1,work:{reportedTokens:2000,requests:1,outputReserve:100,tools:1},
       delivery:{reportedTokens:2000,requests:1,outputReserve:100},inputTokenCeiling:300,declarationByteCeiling:4096,
