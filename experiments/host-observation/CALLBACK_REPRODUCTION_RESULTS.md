@@ -1,7 +1,7 @@
 # Kast callback completion issues
 
 The installed candidate fixes the nested-supplier failure. The scoped-caller failure did not recur in the two-module fixture.
-The comparison ran on October 24, 2026, with baseline `0.0.3708` and candidate `0.20261024.193313`.
+The comparison ran on October 24, 2026, with baseline `0.0.3708` and candidate `0.20261024.195221`.
 
 ## 1. A nested supplier blocks a known callee
 
@@ -61,7 +61,7 @@ The scoped-caller repair preceded the baseline in PR #1088. This run found no ne
 | Installed version | Relation queries | Complete | Rejected |
 | --- | ---: | ---: | ---: |
 | `0.0.3708` | 22 | 14 | 8 |
-| `0.20261024.193313` | 22 | 16 | 6 |
+| `0.20261024.195221` | 22 | 16 | 6 |
 
 Each version ran eleven relations twice, plus 22 discoveries and eight compiler diagnostic queries.
 All candidate oracles passed. The six candidate rejections were expected controls.
@@ -75,6 +75,11 @@ DEBUG output remained enabled.
 Eight native callee tests and five native scope tests passed with SDK `262.9437.185`.
 They cover known nested owners, forwarding, defaults, and explicit rejection of unproved execution.
 Contract and wire tests reject missing, duplicate, stale, and substituted owner proofs.
+
+The full gate found a stale schema fixture and excessive schema duplication.
+One shared definition and a regenerated fixture resolved both failures. All 28 selected schema tests passed.
+The capability document occupies 1,025,211 bytes within the unchanged 1,044,480-byte threshold.
+Host and Control need paired installation because the supplier evidence shape changed.
 
 The install exposed two separate failures: a Gradle configuration-cache capture and rejection of stopped tool-session receipts.
 Both repairs passed the standard installation. All 54 lifecycle tests passed, including live-process and held-lock rejection controls.

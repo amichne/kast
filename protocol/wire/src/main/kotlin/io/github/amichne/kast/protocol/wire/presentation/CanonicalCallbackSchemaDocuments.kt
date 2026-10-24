@@ -1,6 +1,7 @@
 package io.github.amichne.kast.protocol.wire.presentation
 
 import io.github.amichne.kast.protocol.wire.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackBodyBindingWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackCallableWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryBodyCallWireDocument
@@ -45,6 +46,7 @@ object CanonicalCallbackSchemaDocuments {
                 "callbackBody" to QueryCallbackBodyWireDocument.serializer(),
                 "callbackCallable" to QueryCallbackCallableWireDocument.serializer(),
                 "callbackBinding" to QueryCallbackBindingWireDocument.serializer(),
+                "callbackBodyBinding" to QueryCallbackBodyBindingWireDocument.serializer(),
                 "callbackObservedFlow" to QueryCallbackFlowWireDocument.Observed.serializer(),
                 "callbackCompilerTarget" to
                     io.github.amichne.kast.protocol.wire.QueryExcludedCompilerTargetWireDocument.serializer(),
