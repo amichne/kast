@@ -13,8 +13,9 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackParameterSupplierDo
 import io.github.amichne.kast.protocol.contract.QueryCallbackSupplierSelectionDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueOriginDocument
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.MissingFieldException
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -55,6 +56,7 @@ class QueryCallbackDefaultSupplierWireTest {
     }
 
     @Test
+    @OptIn(ExperimentalSerializationApi::class)
     fun `default selection encodes the required invocation enclosing identity`() {
         val inventory = inventory(QueryCallbackWireFixture())
         val selection =
@@ -71,12 +73,17 @@ class QueryCallbackDefaultSupplierWireTest {
             ),
             encoded.getValue("invocation_enclosing"),
         )
-        assertThrows(SerializationException::class.java) {
-            wireJson.decodeFromString(
-                QueryCallbackSupplierSelectionWireDocument.serializer(),
-                JsonObject(encoded - "invocation_enclosing").toString(),
-            )
-        }
+        val failure =
+            assertThrows(MissingFieldException::class.java) {
+                wireJson.decodeFromString(
+                    QueryCallbackSupplierSelectionWireDocument.serializer(),
+                    wireJson.encodeToString(
+                        DefaultWithoutEnclosing.serializer(),
+                        DefaultWithoutEnclosing("DEFAULT", selection.declaration),
+                    ),
+                )
+            }
+        assertEquals(listOf("invocation_enclosing"), failure.missingFields)
     }
 
     private fun inventory(fixture: QueryCallbackWireFixture): QueryCallbackSupplierInventoryWireDocument.Exhaustive {
@@ -128,3 +135,6 @@ class QueryCallbackDefaultSupplierWireTest {
 
     private fun <T, F> Refinement<T, F>.value(): T = (this as Refinement.Refined).value
 }
+
+@Serializable
+private data class DefaultWithoutEnclosing(val type: String, val declaration: QueryCallbackBindingWireDocument)
