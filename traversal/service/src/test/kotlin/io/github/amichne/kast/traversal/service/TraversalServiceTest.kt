@@ -378,8 +378,11 @@ class TraversalServiceTest {
     }
 
     @Test
-    fun `bounded fan out depth remains terminal`() {
-        val graph = linkedMapOf(a to listOf(b), b to emptyList())
+    fun `bounded fan out completes at requested depth without expanding boundary nodes`() {
+        val fixture = TraversalTestFixture()
+        val a = fixture.selector("a", 10)
+        val b = fixture.selector("b", 20)
+        val reader = InMemoryRelationReader(linkedMapOf(a to listOf(b), b to emptyList()), fixture)
         val plan =
             TraversalPlan.start(
                     a,
@@ -391,18 +394,14 @@ class TraversalServiceTest {
 
         val result =
             assertInstanceOf(
-                TraversalResult.Qualified::class.java,
-                runSuspend { TraversalService(InMemoryRelationReader(graph, fixture)).run(plan) },
+                TraversalResult.Complete::class.java,
+                runSuspend { TraversalService(reader).run(plan) },
             )
 
-        assertEquals(
-            setOf(TraversalLimitation.DEPTH_LIMIT_REACHED),
-            result.qualification.limitations,
-        )
-        assertInstanceOf(
-            TraversalQualification.TerminalIncomplete::class.java,
-            result.qualification,
-        )
+        assertEquals(listOf("a"), reader.requests.map { it.node.endpoint.name.value })
+        assertEquals(listOf("b"), result.page.records.map { it.related.name.value })
+        assertEquals(1, result.coverage.exactRecordCount.value)
+        assertTrue(result.page.partialExpansions.isEmpty())
     }
 
     @Test

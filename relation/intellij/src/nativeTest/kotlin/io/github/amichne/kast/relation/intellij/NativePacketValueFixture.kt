@@ -279,6 +279,29 @@ internal constructor(
             PacketExpression(selector(host), range(argument))
         }
 
+    fun markedExpression(owner: PacketDeclaration, marker: String): PacketExpression = nativeRead {
+        val host = function(owner.path, owner.owner, owner.name)
+        val opening = "/*<$marker>*/"
+        val closing = "/*</$marker>*/"
+        val text = host.text
+        val start = text.indexOf(opening)
+        val end = text.indexOf(closing)
+        check(start >= 0 && start == text.lastIndexOf(opening)) { "Expected one opening marker: $marker" }
+        check(end > start + opening.length && end == text.lastIndexOf(closing)) {
+            "Expected one closing marker after the expression: $marker"
+        }
+        val anchor =
+            ExactDeclarationTextRange.parse(
+                    host.textRange.startOffset + start + opening.length,
+                    host.textRange.startOffset + end,
+                )
+                .nativeRefined()
+        check(PsiTreeUtil.collectElementsOfType(host, KtExpression::class.java).any { range(it) == anchor }) {
+            "Marker must delimit one exact Kotlin expression: $marker"
+        }
+        PacketExpression(selector(host), anchor)
+    }
+
     fun formalParameter(owner: PacketDeclaration, position: Int): PacketExpression = nativeRead {
         val host = function(owner.path, owner.owner, owner.name)
         PacketExpression(selector(host), range(host.valueParameters[position]))

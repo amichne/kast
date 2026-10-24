@@ -227,7 +227,7 @@ internal class KastMcpServer(
                 return rejected(id, McpCallFailure.INVOCATION_FAILED, modern)
             }
         val canonical = runCatching { mcpWire.parseToJsonElement(exit.document.value) as? JsonObject }.getOrNull()
-        if (exit is CliExit.BoundaryRejected) {
+        if (exit is CliExit.BoundaryRejected || exit is CliExit.PublicInputRejected) {
             if (canonical == null) return rejected(id, McpCallFailure.INVALID_RESULT_SCHEMA, modern)
             report(call.name, McpCallStage.EXECUTION, McpCallOutcome.REJECTED, McpStructuredResults.variant(canonical))
             return transportRejected(id, McpTransportRejection.BoundaryFailure(canonical), modern)

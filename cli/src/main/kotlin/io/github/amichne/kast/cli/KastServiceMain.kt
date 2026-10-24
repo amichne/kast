@@ -47,6 +47,7 @@ object KastServiceMain {
                 is CliExit.Complete -> println(exit.document.value)
                 is CliExit.Qualified -> println(exit.document.value)
                 is CliExit.OperationRejected -> println(exit.document.value)
+                is CliExit.PublicInputRejected,
                 is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
                 is CliExit.Delegated -> Unit
             }

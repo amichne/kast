@@ -1,6 +1,7 @@
 package io.github.amichne.kast.traversal.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
@@ -9,12 +10,15 @@ import io.github.amichne.kast.traversal.contract.TraversalQualification
 import io.github.amichne.kast.traversal.contract.TraversalQualificationFailure
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestFactory
 
 class TraversalTimeOverrunTest {
     private val fixture = TraversalTestFixture()
@@ -73,6 +77,35 @@ class TraversalTimeOverrunTest {
             TraversalResult.qualifiedTerminal(result.page, setOf(TraversalLimitation.DEPTH_LIMIT_REACHED), emptySet()),
         )
     }
+
+    @TestFactory
+    fun `requested depth does not hide an observed time overrun or invent resumable work`() =
+        listOf(TraversalStrategy.BreadthFirst, TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined())).map {
+            strategy ->
+            dynamicTest(strategy.toString()) {
+                val fixture = TraversalTestFixture()
+                val root = fixture.selector("root", 0)
+                val child = fixture.selector("child", 10)
+                val reads = mutableListOf<OneHopRelationRequest>()
+                val reader = OneHopRelationReader { request ->
+                    reads += request
+                    fixture.completeRead(request, listOf(child), elapsedMillis = 6L)
+                }
+                val budget =
+                    fixture.plan(root, depth = 1, aggregateTime = 5L, oneHop = fixture.relationBudget(time = 5L)).budget
+                val plan = TraversalPlan.start(root, RelationMeaning.Callees, budget, strategy).refined()
+                val result =
+                    assertInstanceOf(
+                        TraversalResult.Qualified::class.java,
+                        runSuspend { TraversalService(reader).run(plan) },
+                    )
+                assertEquals(1, reads.size)
+                assertEquals(6L, result.page.elapsedMillis.value)
+                assertEquals(listOf(child.fingerprint.value), result.page.records.map { it.related.fingerprint.value })
+                assertEquals(setOf(TraversalLimitation.TIME_LIMIT_REACHED), result.qualification.limitations)
+                assertInstanceOf(TraversalQualification.TerminalIncomplete::class.java, result.qualification)
+            }
+        }
 
     private fun <T> runSuspend(block: suspend () -> T): T {
         var outcome: Result<T>? = null

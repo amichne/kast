@@ -134,6 +134,8 @@ internal sealed interface TraversalWorkAvailability {
 internal sealed interface TraversalReadAdmission {
     data class Admitted(val budget: RelationBudget) : TraversalReadAdmission
 
+    data object RequestedBoundaryReached : TraversalReadAdmission
+
     data class Limited(val limitation: TraversalLimitation) : TraversalReadAdmission
 
     data object Rejected : TraversalReadAdmission

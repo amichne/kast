@@ -34,6 +34,8 @@ internal fun methodTraceService(
     reads: MutableList<Pair<String, RelationMeaning>>,
     incompleteReferences: Boolean = false,
     referenceStarts: List<Int> = listOf(200, 201),
+    branchObservation: io.github.amichne.kast.query.contract.QueryBranchObservation =
+        io.github.amichne.kast.query.contract.QueryBranchObservation.None,
 ): QueryService {
     val seed = symbols.seed
     val adapter = symbols.adapter
@@ -67,6 +69,7 @@ internal fun methodTraceService(
             val completed = RelationCompilation.complete(batch)
             RelationReadResult.Complete(completed.batch, completed.coverage)
         },
+        branchObservation = branchObservation,
     )
 }
 
@@ -130,7 +133,13 @@ internal fun traceFunction(
     )
 }
 
-internal fun traceService(fixture: QueryServiceTest, relations: RelationOperations) =
+internal fun traceService(
+    fixture: QueryServiceTest,
+    relations: RelationOperations,
+    branchObservation: io.github.amichne.kast.query.contract.QueryBranchObservation =
+        io.github.amichne.kast.query.contract.QueryBranchObservation.None,
+    clock: QueryNanoClock = QueryNanoClock { 0L },
+) =
     QueryService(
         fixture.discoveryEmpty(false),
         fixture.exactOperations(
@@ -146,7 +155,8 @@ internal fun traceService(fixture: QueryServiceTest, relations: RelationOperatio
         relations,
         unexpectedQueryTraversal(),
         queryTestTraversalCeiling(),
-        clock = QueryNanoClock { 0L },
+        clock = clock,
+        branchObservation = branchObservation,
     )
 
 internal fun traceFact(read: RelationRequest, start: Int) =

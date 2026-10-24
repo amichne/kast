@@ -11,6 +11,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.query.contract.QueryBranchObservation
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
@@ -96,7 +97,7 @@ internal class NativeScopedTraceFixture(
     fun valueServices() =
         NativePacketQueryServices(project = project, root = lease.workspaceRoot, model = model, files = files)
 
-    fun protocol(): CanonicalQueryProtocol {
+    fun protocol(branchObservation: QueryBranchObservation = QueryBranchObservation.None): CanonicalQueryProtocol {
         val symbols =
             ProjectBoundIntellijSymbolPorts.create(
                 project = project,
@@ -126,6 +127,7 @@ internal class NativeScopedTraceFixture(
                 relations = relations,
                 traversal = hostedTraversalOperations(relations, observation),
                 traversalCeiling = traversalBudget,
+                branchObservation = branchObservation,
             ),
             references,
         )

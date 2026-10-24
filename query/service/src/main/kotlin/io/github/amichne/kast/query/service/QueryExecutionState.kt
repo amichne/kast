@@ -26,9 +26,12 @@ import io.github.amichne.kast.traversal.contract.TraversalQualification
 internal class QueryExecutionState(
     val request: QueryExecutionRequest,
     private val clock: QueryNanoClock,
+    branchObservation: io.github.amichne.kast.query.contract.QueryBranchObservation =
+        io.github.amichne.kast.query.contract.QueryBranchObservation.None,
 ) {
     private val startedAt = clock.now()
     private var usedWork = 0L
+    val branches = QueryBranchObserver(this, clock, branchObservation)
 
     fun consumedWork(): io.github.amichne.kast.query.contract.QueryWorkCount =
         io.github.amichne.kast.query.contract.QueryWorkCount.parse(usedWork).refined()

@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
@@ -168,6 +169,11 @@ sealed interface CliExit {
 
     data class OperationRejected(override val document: CanonicalJsonDocument) : CliExit {
         override val code: Int = 0
+    }
+
+    class PublicInputRejected internal constructor(val failure: PublicToolInputFailure) : CliExit {
+        override val code: Int = CliBoundaryExitStatus.USAGE.code
+        override val document: CanonicalJsonDocument = CliBoundaryDocuments.publicInputRejected(failure)
     }
 
     data class BoundaryRejected(

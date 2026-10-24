@@ -17,9 +17,10 @@ import io.github.amichne.kast.traversal.contract.TraversalStrategy
 /**
  * Proof transition: `(TraversalPlan, TraversalFrontierEntry, TraversalAccounting) -> TraversalReadAdmission`.
  *
- * Establishes either attenuated authority bounded by both the configured one-hop ceiling and the exact remaining
- * aggregate capacity, or one closed aggregate limitation before effects occur. [TraversalReadAdmission.Rejected] closes
- * impossible internal refinement failure. Raw counters remain inside the pure engine.
+ * Establishes requested semantic exhaustion before considering execution capacity. Otherwise establishes attenuated
+ * authority bounded by both the configured one-hop ceiling and the exact remaining aggregate capacity, or one closed
+ * aggregate limitation before effects occur. [TraversalReadAdmission.Rejected] closes impossible internal refinement
+ * failure. Raw counters remain inside the pure engine.
  */
 internal fun admitTraversalRead(
     plan: TraversalPlan,
@@ -34,8 +35,7 @@ internal fun admitTraversalRead(
                 budget.returnedBytes.value - accounting.encodedBytes
         }
     return when {
-        !plan.budget.extent.permitsExpansion(next.depth) ->
-            TraversalReadAdmission.Limited(TraversalLimitation.DEPTH_LIMIT_REACHED)
+        !plan.budget.extent.permitsExpansion(next.depth) -> TraversalReadAdmission.RequestedBoundaryReached
         !plan.budget.hasFrontierCapacity(accounting.expandedFrontier) ->
             TraversalReadAdmission.Limited(TraversalLimitation.FRONTIER_LIMIT_REACHED)
         remainingRecords <= 0 -> TraversalReadAdmission.Limited(TraversalLimitation.RECORD_LIMIT_REACHED)

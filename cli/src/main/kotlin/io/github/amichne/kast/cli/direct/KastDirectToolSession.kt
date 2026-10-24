@@ -167,6 +167,6 @@ private fun admitAndInvokePublic(
             ?: return boundaryExit(CliBoundaryExitStatus.USAGE, "direct-tool-unsupported")
     return when (val admitted = PublicToolContract.admit(identity, arguments)) {
         is Refinement.Refined -> invoke(admitted.value)
-        is Refinement.Rejected -> boundaryExit(CliBoundaryExitStatus.USAGE, "invalid-public-tool-arguments")
+        is Refinement.Rejected -> CliExit.PublicInputRejected(admitted.failure)
     }
 }

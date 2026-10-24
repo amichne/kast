@@ -55,23 +55,19 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
             val readBudget =
                 when (val admission = admitTraversalRead(plan, work.entry, accounting)) {
                     is TraversalReadAdmission.Admitted -> admission.budget
+                    TraversalReadAdmission.RequestedBoundaryReached -> {
+                        state.begin(work)
+                        state.pending = TraversalPendingState.None
+                        continue
+                    }
                     is TraversalReadAdmission.Limited ->
-                        return if (admission.limitation == TraversalLimitation.DEPTH_LIMIT_REACHED) {
-                            terminalIncomplete(
-                                plan,
-                                accounting,
-                                state.limitationsWith(admission.limitation),
-                                state.terminalRelationLimitations,
-                            )
-                        } else {
-                            resumable(
-                                plan,
-                                state,
-                                accounting,
-                                state.limitationsWith(admission.limitation),
-                                state.terminalRelationLimitations,
-                            )
-                        }
+                        return resumable(
+                            plan,
+                            state,
+                            accounting,
+                            state.limitationsWith(admission.limitation),
+                            state.terminalRelationLimitations,
+                        )
                     TraversalReadAdmission.Rejected ->
                         return TraversalResult.Rejected(TraversalRejection.TraversalContractViolation)
                 }
@@ -178,12 +174,6 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
                 is Refinement.Rejected -> return TraversalResult.Rejected(retained.failure)
             }
             for (record in records) {
-                // Breadth-first results at the requested depth need no further expansion.
-                if (
-                    plan.strategy == TraversalStrategy.BreadthFirst && !plan.budget.extent.permitsExpansion(nextDepth)
-                ) {
-                    continue
-                }
                 val node =
                     when (val related = TraversalNode.related(plan, record.related)) {
                         is Refinement.Refined -> related.value
@@ -274,22 +264,28 @@ class TraversalService internal constructor(private val reader: OneHopRelationRe
         accounting: TraversalAccounting,
     ): TraversalResult {
         val limitations = state.limitationsWith(TraversalLimitation.TIME_LIMIT_REACHED)
-        return when (state.peek()) {
-            TraversalWorkAvailability.Exhausted ->
-                terminalIncomplete(
-                    plan = plan,
-                    accounting = accounting,
-                    limitations = limitations,
-                    relationLimitations = state.terminalRelationLimitations,
-                )
-            is TraversalWorkAvailability.Ready ->
-                resumable(
-                    plan = plan,
-                    state = state,
-                    accounting = accounting,
-                    limitations = limitations,
-                    relationLimitations = state.terminalRelationLimitations,
-                )
+        val exhausted =
+            when (val available = state.peek()) {
+                TraversalWorkAvailability.Exhausted -> true
+                is TraversalWorkAvailability.Ready ->
+                    admitTraversalRead(plan, available.entry, accounting) ==
+                        TraversalReadAdmission.RequestedBoundaryReached
+            }
+        return if (exhausted) {
+            terminalIncomplete(
+                plan = plan,
+                accounting = accounting,
+                limitations = limitations,
+                relationLimitations = state.terminalRelationLimitations,
+            )
+        } else {
+            resumable(
+                plan = plan,
+                state = state,
+                accounting = accounting,
+                limitations = limitations,
+                relationLimitations = state.terminalRelationLimitations,
+            )
         }
     }
 

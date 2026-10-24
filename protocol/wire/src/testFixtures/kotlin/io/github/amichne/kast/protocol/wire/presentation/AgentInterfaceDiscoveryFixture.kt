@@ -47,6 +47,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
+import io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindow
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
@@ -132,6 +133,14 @@ object AgentInterfaceDiscoveryFixture {
             failures = bounded(emptyList()),
             discoveryObservations = bounded(listOf(observation(measurement, progress))),
             retention = QueryResultRetention.Retained(QueryResultReference.parse(RESULT).value()),
+            presentationWindow =
+                QueryRetainedPresentationWindow.create(
+                        QueryResultReference.parse(RESULT).value(),
+                        QueryResultCursor.parse(if (evidenceOnly) 4 else 0).value(),
+                        QueryResultCursor.parse(4).value(),
+                        QueryResultCursor.parse(8).value(),
+                    )
+                    .value(),
             nextCursor = QueryResultCursor.parse(4).value(),
         )
 

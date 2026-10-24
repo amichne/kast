@@ -61,6 +61,7 @@ fun main(args: Array<String>) {
         is CliExit.Complete -> System.out.println(exit.document.value)
         is CliExit.Qualified -> System.out.println(exit.document.value)
         is CliExit.OperationRejected -> System.out.println(exit.document.value)
+        is CliExit.PublicInputRejected,
         is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
     }
     exitProcess(exit.code)
