@@ -9,6 +9,7 @@ private constructor(
     val formal: CallbackParameterIdentity,
     val suppliers: List<CallbackParameterSupplier>,
     val incoming: List<CallbackParameterForwarding>,
+    val ownerBindings: List<CallbackBodyBinding>,
 ) {
     companion object {
         fun fromCompiler(
@@ -16,16 +17,12 @@ private constructor(
             suppliers: List<CallbackParameterSupplier>,
             incoming: List<CallbackParameterForwarding>,
             scan: CallbackInvocationScan,
+            ownerBindings: List<CallbackBodyBinding> = emptyList(),
         ): Refinement<CompleteCallbackSupplierPartition, CallbackSupplierFailure> {
             if (scan != CallbackInvocationScan.EXHAUSTIVE)
                 return Refinement.Rejected(CallbackSupplierFailure.INCOMPLETE_SCAN)
             if (suppliers.distinct().size != suppliers.size || incoming.distinct().size != incoming.size)
                 return Refinement.Rejected(CallbackSupplierFailure.DUPLICATE_INPUT)
-            if (
-                suppliers.any { it.binding.invocationOwner !is RelationCallableBody.Named } ||
-                    incoming.any { it.target.invocationOwner !is RelationCallableBody.Named }
-            )
-                return Refinement.Rejected(CallbackSupplierFailure.UNPROVEN_OWNER)
             if (suppliers.any { it.formal != formal })
                 return Refinement.Rejected(CallbackSupplierFailure.FORMAL_MISMATCH)
             for (edge in incoming) {
@@ -35,11 +32,16 @@ private constructor(
                     is Refinement.Rejected -> return Refinement.Rejected(CallbackSupplierFailure.FORMAL_MISMATCH)
                 }
             }
+            when (val admitted = admitSupplierOwners(formal, suppliers, incoming, ownerBindings)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
             return Refinement.Refined(
                 CompleteCallbackSupplierPartition(
                     formal,
                     Collections.unmodifiableList(suppliers.toList()),
                     Collections.unmodifiableList(incoming.toList()),
+                    Collections.unmodifiableList(ownerBindings.toList()),
                 )
             )
         }
@@ -56,7 +58,11 @@ private constructor(
     val retainedBytes: Long =
         partitions.fold(root.retainedBytes.addBytes(4096L)) { bytes, partition ->
             partition.suppliers.fold(
-                partition.incoming.fold(bytes.addBytes(partition.formal.retainedBytes)) { total, edge ->
+                partition.incoming.fold(
+                    partition.ownerBindings.fold(bytes.addBytes(partition.formal.retainedBytes)) { total, owner ->
+                        total.addBytes(owner.retainedBytes)
+                    }
+                ) { total, edge ->
                     total.addBytes(edge.retainedBytes)
                 }
             ) { total, supplier ->

@@ -4,6 +4,7 @@ import json
 import hashlib
 import importlib.util
 import io
+import os
 from contextlib import redirect_stderr
 from dataclasses import asdict, dataclass
 from unittest.mock import patch
@@ -29,6 +30,13 @@ class ThreadStoreLayoutFixture:
 @dataclass(frozen=True)
 class InvocationStoreLayoutFixture:
     schemaVersion: int = 2
+
+
+@dataclass(frozen=True)
+class InstalledToolInvocationFixture:
+    pid: int
+    schemaVersion: int = 1
+    startEpochMillis: int = 1
 
 
 def initialized_stopped_profile(state):
@@ -145,6 +153,97 @@ class UnregisteredBrokerStateTest(unittest.TestCase):
         lock.chmod(0o600)
         with patch.object(lifecycle.os, 'getuid', return_value=lifecycle.os.getuid() + 1):
             self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+
+class StoppedToolInvocationStateTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = tempfile.TemporaryDirectory(prefix='kast-stopped-tools-')
+        self.root = Path(self.fixture.name).resolve()
+        self.state = self.root / 'state'
+        self.state.mkdir(mode=0o700)
+        (self.state / 'run').mkdir(mode=0o700)
+        initialized_stopped_profile(self.state)
+        self.run = self.state / 'run'
+        self.records = self.run / 'tool-sessions'
+        self.records.mkdir(mode=0o755)
+        (self.run / 'one-shot').mkdir(mode=0o755)
+        self.lock = self.run / 'c.sock.lock'
+        self.lock.touch(mode=0o600)
+        child = subprocess.Popen([sys.executable, '-c', 'pass'])
+        self.finished_pid = child.pid
+        self.assertEqual(0, child.wait(timeout=10))
+        self.record = self.records / (str(uuid.uuid4()) + '.json')
+        self.write_record(InstalledToolInvocationFixture(self.finished_pid))
+
+    def tearDown(self):
+        self.fixture.cleanup()
+
+    def write_record(self, value):
+        self.record.write_text(json.dumps(asdict(value)))
+        self.record.chmod(0o600)
+
+    def test_finished_transport_records_and_socket_lock_admit(self):
+        self.assertTrue(lifecycle.admits_unregistered_broker_state(self.state))
+        self.assertTrue(self.record.exists())
+
+    def test_live_or_reused_pid_rejects_without_signaling_it(self):
+        self.write_record(InstalledToolInvocationFixture(os.getpid()))
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_unavailable_process_observation_rejects(self):
+        with patch.object(lifecycle.os, 'kill', side_effect=PermissionError):
+            self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_unknown_record_fields_and_invalid_identity_reject(self):
+        invalid = ('{}', '{"schemaVersion":1,"pid":1,"startEpochMillis":1,"extra":0}',
+                   '{"schemaVersion":1,"pid":true,"startEpochMillis":1}',
+                   '{"schemaVersion":1,"pid":0,"startEpochMillis":1}',
+                   '{"schemaVersion":1,"pid":1,"startEpochMillis":0}',
+                   '{"schemaVersion":1.0,"pid":1,"startEpochMillis":1}',
+                   '{"schemaVersion":1,"pid":1,"pid":2,"startEpochMillis":1}')
+        for raw in invalid:
+            with self.subTest(raw=raw):
+                self.record.write_text(raw)
+                self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_unknown_files_and_unbounded_records_reject(self):
+        unknown = self.run / 'unknown'
+        unknown.touch()
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        unknown.unlink()
+        self.record.rename(self.records / 'invalid.json')
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        (self.records / 'invalid.json').unlink()
+        for number in range(257):
+            self.record = self.records / (str(uuid.UUID(int=number)) + '.json')
+            self.write_record(InstalledToolInvocationFixture(self.finished_pid))
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_record_links_and_writable_or_foreign_state_reject(self):
+        self.record.chmod(0o666)
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        self.record.chmod(0o600)
+        self.records.chmod(0o777)
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        self.records.chmod(0o755)
+        with patch.object(lifecycle.os, 'getuid', return_value=os.getuid() + 1):
+            self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        outside = self.root / 'record.json'
+        self.record.rename(outside)
+        self.record.symlink_to(outside)
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_active_or_nonempty_socket_lock_rejects(self):
+        self.lock.write_text('unknown')
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        self.lock.write_bytes(b'')
+        with subprocess.Popen([sys.executable, '-c',
+                               'import fcntl,sys; f=open(sys.argv[1],"r+"); '
+                               'fcntl.lockf(f,fcntl.LOCK_EX); print("locked",flush=True); sys.stdin.read()',
+                               str(self.lock)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True) as child:
+            self.assertEqual('locked\n', child.stdout.readline())
+            self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+            child.communicate(timeout=10)
 
 
 class ScriptedRetirementExecutor:

@@ -1,16 +1,19 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackBodyBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterForwarding
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CallbackParameterSupplier
+import io.github.amichne.kast.relation.contract.CallbackSupplierFailure
 import io.github.amichne.kast.relation.contract.CallbackSupplierInventoryEvidence
 import io.github.amichne.kast.relation.contract.CompleteCallbackSupplierInventory
 import io.github.amichne.kast.relation.contract.CompleteCallbackSupplierPartition
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 
@@ -107,7 +110,12 @@ internal class IntellijCallbackSupplierInventory(
                 }
             val suppliers = mutableListOf<CallbackParameterSupplier>()
             val incoming = mutableListOf<CallbackParameterForwarding>()
+            val owners = mutableListOf<CallbackBodyBinding>()
             for (call in selected) {
+                when (val read = owner(call, owners)) {
+                    is Refinement.Refined -> Unit
+                    is Refinement.Rejected -> return read
+                }
                 when (val read = call(call, current.formal)) {
                     is Refinement.Refined ->
                         when (val result = read.value) {
@@ -124,11 +132,41 @@ internal class IntellijCallbackSupplierInventory(
                         suppliers,
                         incoming,
                         CallbackInvocationScan.EXHAUSTIVE,
+                        owners,
                     )
             ) {
                 is Refinement.Refined -> admitted
-                is Refinement.Rejected -> unresolved()
+                is Refinement.Rejected -> partitionFailure(admitted.failure)
             }
+        }
+
+        private fun owner(
+            call: NativeCallbackSupplierCall,
+            owners: MutableList<CallbackBodyBinding>,
+        ): Refinement<Unit, CallbackInvocationFlowCause> {
+            val body =
+                when (val owner = call.binding.invocationOwner) {
+                    is RelationCallableBody.Named -> return Refinement.Refined(Unit)
+                    is RelationCallableBody.Anonymous -> owner
+                }
+            if (owners.any { it.body == body }) return Refinement.Refined(Unit)
+            val literal =
+                (call.call.nearestDeclaration() as? ContainingDeclaration.Deferred)?.boundary as? KtFunction
+                    ?: return Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
+            val owner =
+                when (
+                    val read =
+                        IntellijCallbackOwnerBindingReader(context, summaries)
+                            .read(literal, body, call.binding.invocation.enclosing)
+                ) {
+                    is Refinement.Refined -> read.value
+                    is Refinement.Rejected -> return unresolved()
+                }
+            when (val retained = summaries.retention.admitOwner(owner)) {
+                is Refinement.Refined -> owners += owner
+                is Refinement.Rejected -> return retained
+            }
+            return Refinement.Refined(Unit)
         }
 
         private fun call(
@@ -136,8 +174,6 @@ internal class IntellijCallbackSupplierInventory(
             formal: CallbackParameterIdentity,
         ): Refinement<Selection, CallbackInvocationFlowCause> {
             summaries.observation.count(IntellijReadCounter.CALLBACK_SUPPLIER_CALLS_EXAMINED)
-            if (call.binding.invocationOwner !is RelationCallableBody.Named)
-                return Refinement.Rejected(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
             if (call.selection == NativeCallbackSupplierSelection.EXPLICIT) {
                 when (val origin = formals.read(call.value, call.lexicalOwner)) {
                     is Refinement.Rejected -> return origin
@@ -192,6 +228,11 @@ internal class IntellijCallbackSupplierInventory(
     }
 
     private fun unresolved() = Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+
+    private fun partitionFailure(failure: CallbackSupplierFailure) =
+        if (failure == CallbackSupplierFailure.UNPROVEN_OWNER)
+            Refinement.Rejected(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
+        else unresolved()
 
     private companion object {
         const val ROOT_RETENTION_BYTES = 4096L

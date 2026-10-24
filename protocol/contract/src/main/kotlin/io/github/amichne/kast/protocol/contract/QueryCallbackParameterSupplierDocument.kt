@@ -6,7 +6,10 @@ sealed interface QueryCallbackSupplierSelectionDocument {
     data class Explicit(val argument: ImpactValueSiteReferenceDocument) : QueryCallbackSupplierSelectionDocument
 
     /** The enclosing supplier binding identifies the exact call whose argument was omitted. */
-    data class Default(val declaration: QueryCallbackBindingDocument.Default) : QueryCallbackSupplierSelectionDocument
+    data class Default(
+        val declaration: QueryCallbackBindingDocument.Default,
+        val invocationEnclosing: ImpactDeclarationReferenceDocument,
+    ) : QueryCallbackSupplierSelectionDocument
 }
 
 enum class QueryCallbackSupplierFailure {
@@ -65,7 +68,8 @@ private fun QueryCallbackSupplierSelectionDocument.admitSupplier(
         }
         is QueryCallbackSupplierSelectionDocument.Default -> {
             if (
-                !declaration.parameter.sameParameter(binding.parameterIdentity()) ||
+                !admitsInvocation(binding) ||
+                    !declaration.parameter.sameParameter(binding.parameterIdentity()) ||
                     !declaration.parameter.parameter.contains(declaration.defaultValue)
             )
                 return Refinement.Rejected(QueryCallbackSupplierFailure.INVALID_SELECTION)
@@ -74,6 +78,27 @@ private fun QueryCallbackSupplierSelectionDocument.admitSupplier(
         }
     }
     return Refinement.Refined(Unit)
+}
+
+internal fun QueryCallbackSupplierSelectionDocument.Default.admitsInvocation(
+    binding: QueryCallbackBindingDocument.Bound
+): Boolean {
+    val owner =
+        when (val admitted = binding.invocationOwner.admitOwner()) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return false
+        }
+    if (invocationEnclosing.basis != binding.invocation.callable.basis || invocationEnclosing.file != owner.file)
+        return false
+    if (
+        invocationEnclosing.range.start.value > owner.range.startInclusive.value ||
+            invocationEnclosing.range.end.value < owner.range.endExclusive.value
+    )
+        return false
+    return when (val body = binding.invocationOwner) {
+        is QueryCallbackBodyDocument.Named -> body.callable.reference(invocationEnclosing.basis) == invocationEnclosing
+        is QueryCallbackBodyDocument.Anonymous -> true
+    }
 }
 
 private fun ImpactValueSiteReferenceDocument.matchesSelectedDefault(

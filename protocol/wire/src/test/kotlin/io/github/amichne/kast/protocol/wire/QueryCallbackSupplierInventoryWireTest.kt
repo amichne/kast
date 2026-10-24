@@ -22,7 +22,13 @@ class QueryCallbackSupplierInventoryWireTest {
         val flow = callback.flow as QueryCallbackFlowDocument.Observed
         val binding = flow.binding as QueryCallbackBindingDocument.Bound
         val formal = QueryCallbackParameterIdentityDocument(binding.callable, binding.position, binding.parameter)
-        val partition = QueryCallbackSupplierPartitionDocument(formal, bounded(emptyList()), bounded(emptyList()))
+        val partition =
+            QueryCallbackSupplierPartitionDocument(
+                formal,
+                bounded(emptyList()),
+                bounded(emptyList()),
+                bounded(emptyList()),
+            )
         val proof =
             (QueryCallbackSupplierInventoryDocument.Exhaustive.create(
                     formal,
@@ -37,7 +43,7 @@ class QueryCallbackSupplierInventoryWireTest {
         assertEquals(setOf("type", "root", "basis", "domain", "partitions"), encoded.keys)
         assertEquals(JsonPrimitive("EXHAUSTIVE"), encoded.getValue("type"))
         val serializedPartition = encoded.getValue("partitions").jsonArray.single().jsonObject
-        assertEquals(setOf("formal", "suppliers", "incoming"), serializedPartition.keys)
+        assertEquals(setOf("formal", "suppliers", "incoming", "owner_bindings"), serializedPartition.keys)
         assertEquals(0, serializedPartition.getValue("suppliers").jsonArray.size)
         assertEquals(0, serializedPartition.getValue("incoming").jsonArray.size)
         val admitted = wire.toContract() as WireDocumentConversion.Converted

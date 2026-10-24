@@ -37,12 +37,23 @@ private class CallbackWorkspaceFiles {
                 files += target.parameter.parameter.file
                 invocation(target.invocation)
                 val proof = target.suppliers
-                if (proof is CallbackSupplierInventoryEvidence.Exhaustive)
-                    files += proof.inventory.requiredSourceFiles()
+                if (proof is CallbackSupplierInventoryEvidence.Exhaustive) inventory(proof.inventory)
             }
             is RelationCallableTarget.UnavailableSupply,
             is RelationCallableTarget.UnavailableReference,
             is RelationCallableTarget.SourceLess -> Unit
+        }
+    }
+
+    private fun inventory(value: CompleteCallbackSupplierInventory) {
+        files += value.root.callable.file
+        files += value.root.parameter.file
+        value.partitions.forEach { partition ->
+            files += partition.formal.callable.file
+            files += partition.formal.parameter.file
+            partition.suppliers.forEach(::supplier)
+            partition.incoming.forEach(::edge)
+            partition.ownerBindings.forEach(::owner)
         }
     }
 

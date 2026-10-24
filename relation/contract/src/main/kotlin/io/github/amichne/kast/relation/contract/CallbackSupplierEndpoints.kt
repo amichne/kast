@@ -50,6 +50,11 @@ private class CallbackSupplierEndpoints {
             formal(partition.formal)
             partition.incoming.forEach(::edge)
             partition.suppliers.forEach(::supplier)
+            partition.ownerBindings.forEach { owner ->
+                CallbackSummaryEndpoints.collect(owner).forEach(::endpoint)
+                files += CallbackSummaryEndpoints.sourceFiles(owner)
+                declarations += CallbackSummaryEndpoints.declarations(owner)
+            }
         }
     }
 

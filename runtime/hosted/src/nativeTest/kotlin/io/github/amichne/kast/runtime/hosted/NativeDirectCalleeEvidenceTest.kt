@@ -69,11 +69,63 @@ class NativeDirectCalleeEvidenceTest : NativeSmartModeFixtureTest() {
             QueryCallbackFlowCauseDocument.EXTERNAL_CALLABLE,
         )
 
-    fun testNestedSupplierKeepsDirectCalleeAndTypedGapInOneResponse() =
+    fun testUnprovenNestedSupplierKeepsDirectCalleeAndTypedGapInOneResponse() =
         assertIncompleteSupplier(
-            "fun entry() = kotlin.run { wrapper { \"x\" } }\n",
+            "fun entry() = listOf(1).map { wrapper { \"x\" } }\n",
             QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION,
         )
+
+    fun testKnownNestedSupplierCompletesDirectCalleeQuery() =
+        assertCompleteSupplier("fun entry() = kotlin.run { wrapper { \"x\" } }\n")
+
+    fun testTwoKnownNestedOwnersCompleteDirectCalleeQuery() =
+        assertCompleteSupplier("fun entry() = kotlin.run { kotlin.run { wrapper { \"x\" } } }\n", NESTED_PROOF_BYTES)
+
+    fun testKnownNestedForwardingCompletesDirectCalleeQuery() =
+        assertCompleteSupplier(
+            "fun forward(f: () -> String) = kotlin.run { wrapper(f) }\nfun entry() = forward { \"x\" }\n"
+        )
+
+    fun testKnownNestedDefaultSupplierCompletesDirectCalleeQuery() =
+        assertCompleteFixture(
+            prepare(
+                "package consumer\nfun sink(value: String) = value\n" +
+                    "fun wrapper(f: () -> String = { \"x\" }) = sink(f())\n" +
+                    "fun entry() = kotlin.run { wrapper() }\n"
+            )
+        )
+
+    private fun assertCompleteSupplier(
+        supplier: String,
+        returnedBytes: Long = NativeScopedTraceFixture.RETURNED_BYTES,
+    ) = assertCompleteFixture(prepareCallees(supplier), returnedBytes)
+
+    private fun assertCompleteFixture(
+        fixture: NativeScopedTraceFixture,
+        returnedBytes: Long = NativeScopedTraceFixture.RETURNED_BYTES,
+    ) = runBlocking {
+        val outcome =
+            fixture
+                .protocol()
+                .execute(
+                    request = callees("wrapper", returnedBytes),
+                    lease = fixture.lease,
+                    budget =
+                        QueryBudget(
+                            NativeScopedTraceFixture.resources,
+                            QueryByteLimit.parse(returnedBytes).traceRefined(),
+                        ),
+                    policy = policy,
+                )
+        assertTrue(
+            "Expected the proved run owner route, received $outcome; " +
+                "terminations=${fixture.observation.terminations}; failures=${fixture.observation.unexpectedFailures}",
+            outcome is OperationOutcome.Complete,
+        )
+        val result = (outcome as OperationOutcome.Complete).evidence.payload
+        val sink = result.items.values.single() as QueryResultItemDocument.ExactSymbol
+        assertEquals("consumer.sink", declaredIdentity(checkNotNull(sink.signature)))
+    }
 
     private fun assertIncompleteSupplier(supplier: String, cause: QueryCallbackFlowCauseDocument) = runBlocking {
         val fixture = prepareCallees(supplier)
@@ -202,7 +254,7 @@ class NativeDirectCalleeEvidenceTest : NativeSmartModeFixtureTest() {
             generatedSources = QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
         )
 
-    private fun callees(name: String) =
+    private fun callees(name: String, returnedBytes: Long = NativeScopedTraceFixture.RETURNED_BYTES) =
         QueryRunRequest.Run(
             from =
                 QueryFromDocument.Symbols(
@@ -228,7 +280,7 @@ class NativeDirectCalleeEvidenceTest : NativeSmartModeFixtureTest() {
                     maxElapsedMillis = NativeScopedTraceFixture.resources.elapsedTimeLimit,
                     maxWorkUnits = NativeScopedTraceFixture.resources.workUnitLimit,
                     maxResults = NativeScopedTraceFixture.resources.resultLimit,
-                    maxReturnedBytes = ReturnedByteLimit.parse(NativeScopedTraceFixture.RETURNED_BYTES).traceRefined(),
+                    maxReturnedBytes = ReturnedByteLimit.parse(returnedBytes).traceRefined(),
                 ),
         )
 
@@ -244,6 +296,10 @@ class NativeDirectCalleeEvidenceTest : NativeSmartModeFixtureTest() {
             retainedBytes = QueryByteLimit.parse(32_000_000L).traceRefined(),
             previewBytes = CanonicalQueryCliDocuments::previewBytes,
         )
+
+    private companion object {
+        const val NESTED_PROOF_BYTES = 2_000_000L
+    }
 }
 
 private fun gapText(value: String) = ProtocolText.parse(value).traceRefined()

@@ -160,7 +160,9 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     dependsOn(stageKastControlProduct)
     from(controlProductDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set(controlArchivePlatform.map { "kast-control-v${controlVersion.get()}-$it.tar.gz" })
+    archiveFileName.set(controlArchivePlatform.zip(controlVersion) { platform, version ->
+        "kast-control-v$version-$platform.tar.gz"
+    })
     compression = Compression.GZIP
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
