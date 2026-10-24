@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
+import kotlinx.serialization.Serializable
 
 class QueryCallbackOwnerExecutionWireFixture {
     private val fixture = QueryCallbackWireFixture()
@@ -17,6 +18,19 @@ class QueryCallbackOwnerExecutionWireFixture {
 
     fun nestedImmutableObservationExample(): String =
         wireJson.encodeToString(QueryCallbackObservationWireDocument.serializer(), nestedImmutable())
+
+    fun missingOwnerExecutionExample(): String {
+        val owner = (composed().flow as QueryCallbackFlowWireDocument.Observed).ownerBindings.single()
+        return wireJson.encodeToString(
+            MissingCallbackOwnerExecutionDocument.serializer(),
+            MissingCallbackOwnerExecutionDocument(
+                body = owner.body,
+                supply = owner.supply,
+                binding = owner.binding,
+                obligations = owner.obligations,
+            ),
+        )
+    }
 
     internal fun nestedImmutable(): QueryCallbackObservationWireDocument {
         val wire = immutable()
@@ -147,3 +161,12 @@ class QueryCallbackOwnerExecutionWireFixture {
 
     private fun occurrence(start: Int, end: Int) = fixture.occurrence("Boundary.kt", start, end).callbackWire()
 }
+
+/** Deliberately malformed owner proof omits only the required execution field. */
+@Serializable
+private data class MissingCallbackOwnerExecutionDocument(
+    val body: QueryCallbackBodyWireDocument.Anonymous,
+    val supply: QueryCallbackBodySupplyWireDocument,
+    val binding: QueryCallbackBindingWireDocument,
+    val obligations: List<QueryCallbackFlowCauseDocument>,
+)

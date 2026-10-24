@@ -83,7 +83,11 @@ class CallbackOwnerExecutionSchemaTest {
                 .jsonObject
         val validator = fixture.validator("callbackBodyBinding")
         assertTrue(validator.validate(owner.toString(), InputFormat.JSON).isEmpty())
-        assertTrue(validator.validate(JsonObject(owner - "execution").toString(), InputFormat.JSON).isNotEmpty())
+        val malformed = QueryCallbackOwnerExecutionWireFixture().missingOwnerExecutionExample()
+        val missingExecution = Json.parseToJsonElement(malformed).jsonObject
+        assertEquals(owner.keys - "execution", missingExecution.keys)
+        missingExecution.forEach { (key, value) -> assertEquals(owner.getValue(key), value) }
+        assertTrue(validator.validate(malformed, InputFormat.JSON).isNotEmpty())
         val selection =
             fixture.definition("callbackSupplier").getValue("properties").jsonObject.getValue("selection").jsonObject
         val default = variants(selection).getValue("DEFAULT")
