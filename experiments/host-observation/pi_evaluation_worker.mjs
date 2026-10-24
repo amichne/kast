@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { findPackageJSON } from 'node:module';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { CasePolicy, Outcome, decodeEnvelope } from './pi_evaluation_policy.mjs';
+import { CasePolicy, Outcome, decodeEnvelope, measureToolResult, READ_TOOLS, READ_TOOL_IDENTITIES, readToolName } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
 import { driveSession, WorkerIpcExitCodes, WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 import { createEvaluationRecords, withPrivateReplaySession } from './pi_evaluation_records.mjs';
@@ -35,6 +36,30 @@ export function isolatedSettings(SettingsManager) {
   return {type:'settings',settingsManager:settings};
 }
 
+export async function disposeEvaluationSession(session,stage='WORKER_SETUP') {
+  // The SDK's dispose() invalidates extension contexts but does not emit the
+  // lifecycle event that closes native MCP connections.
+  // ExtensionRunner emits handler errors to listeners instead of rejecting.
+  let handlerFailure;
+  const observed=effect('SESSION_SHUTDOWN_OBSERVER',()=>{
+    const unsubscribe=session.extensionRunner.onError(()=>{
+      handlerFailure??=failure('SESSION_SHUTDOWN','EXTENSION_HANDLER_FAILED',stage);
+    });
+    if(typeof unsubscribe!=='function')throw Error('SHUTDOWN_OBSERVER_UNAVAILABLE');
+    return unsubscribe;
+  },stage);
+  const shutdown=await asyncEffect('SESSION_SHUTDOWN',()=>session.extensionRunner.emit({type:'session_shutdown',reason:'exit'}),stage);
+  const released=failed(observed)?observed:effect('SESSION_SHUTDOWN_OBSERVER_RELEASE',observed.value,stage);
+  const disposed=effect('SESSION_DISPOSE',()=>session.dispose(),stage);
+  return [observed,handlerFailure,shutdown,released,disposed].find(failed)??disposed;
+}
+
+export function restoreReceivedMessage(policy,message) {
+  const envelope=decodeEnvelope(message.content,message.toolName,message.details,message.structuredContent);
+  const measured=measureToolResult(message.content,message.toolName,envelope);
+  return measured.type==='invalid'?policy.stop(Outcome.INVALID):policy.restoreReceivedResult(envelope,measured.bytes,message.toolCallId);
+}
+
 // Shared real-SDK construction boundary. A no-inference SDK check can supply
 // synthetic in-memory auth/catalog storage; it cannot replace these rules.
 export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager,projectProviderInput}) {
@@ -52,13 +77,23 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
   if(failed(found)) return found;
   const model=found.value;
   if(!model || model.id!=='gpt-6.1-sol' || model.provider!=='openai-codex')return failure('MODEL_LOOKUP','MODEL_UNAVAILABLE');
-  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:[plan.kastAdapter],extensionFactories:[evaluationGuard(policy,observeRecord,projectProviderInput)],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
+  const nativeMcp=pi=>sdk.createMcpExtension({
+    // Use the admitted adapter's registration. Do not read host/project MCP
+    // settings or replace the adapter's command, timeout, or connection owner.
+    loadConfig:()=>({errors:[],autoEnableCodemode:false,servers:pi.getMcpServers().map(({name,config,extensionPath})=>{
+      if(name!=='kast')throw Error('UNAPPROVED_MCP_SERVER');
+      return {name,source:extensionPath,scope:'extension',config:{...config,exposure:'hidden',
+        toolExposure:Object.fromEntries(READ_TOOLS.map(tool=>[tool,'direct']))}};
+    })}),
+    logPath:path.join(directory,'mcp.log'),
+  })(pi);
+  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:[plan.kastAdapter],extensionFactories:[evaluationGuard(policy,observeRecord,projectProviderInput),nativeMcp],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
   if(failed(resources)) return resources;
   const loader=resources.value;
   const loaded=await asyncEffect('RESOURCE_LOAD',()=>loader.reload());if(failed(loaded)) return loaded;
   const extensions=effect('RESOURCE_EXTENSIONS',()=>loader.getExtensions());if(failed(extensions)) return extensions;
   if(!Array.isArray(extensions.value?.errors)||extensions.value.errors.length!==0)return failure('RESOURCE_EXTENSIONS','EXTENSION_LOAD_FAILED');
-  const created=await asyncEffect('SESSION_CREATE',()=>createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:['query_symbols','check_diagnostics','health_check'],sessionManager:manager}));
+  const created=await asyncEffect('SESSION_CREATE',()=>createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:[...READ_TOOL_IDENTITIES],sessionManager:manager}));
   if(failed(created)) return created;
   const session=created.value?.session;
   if(!session)return failure('SESSION_CREATE','SESSION_UNAVAILABLE');
@@ -72,7 +107,7 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
     const bound=await asyncEffect('EXTENSIONS_BIND',()=>session.bindExtensions({mode:'rpc',abortHandler:()=>session.agent.abort()}));
     result=observationFailure??(failed(bound)?bound:{type:'session',session,settingsManager});
   }
-  if(failed(result)) effect('SESSION_DISPOSE',()=>session.dispose());
+  if(failed(result))await disposeEvaluationSession(session);
   return result;
 }
 
@@ -119,9 +154,12 @@ export async function worker(planFile,index) {
         return failure('CREDENTIAL_VALIDITY','CREDENTIAL_UNAVAILABLE');
       const loaded=await asyncEffect('SDK_LOAD',async()=>{
         const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
+        const aiManifest=findPackageJSON('@earendil-works/pi-ai',pathToFileURL(path.join(plan.piPackageRoot,'package.json')));
+        if(aiManifest===undefined)throw Error('PI_AI_DEPENDENCY_UNAVAILABLE');
+        const loadAi=relative=>import(pathToFileURL(path.join(path.dirname(aiManifest),relative)).href);
         return {sdk:await load('dist/index.js'),auth:await load('dist/core/auth-storage.js'),
-          transport:await import(pathToFileURL(path.join(plan.piPackageRoot,'../pi-ai/dist/api/openai-codex-responses.js')).href),
-          responses:item.finalPresentation==='compact'?await load('../pi-ai/dist/api/openai-responses-shared.js'):undefined};
+          transport:await loadAi('dist/api/openai-codex-responses.js'),
+          responses:item.finalPresentation==='compact'?await loadAi('dist/api/openai-responses-shared.js'):undefined};
       });
       if(failed(loaded))return loaded;
       const {sdk,auth,transport,responses}=loaded.value;
@@ -143,7 +181,7 @@ export async function worker(planFile,index) {
           const entries=effect('RECEIVED_ENTRY',()=>manager.getEntries().find(e=>e.id===item.receivedResultEntryId));
           if(failed(entries))return entries;
           const received=entries.value;
-          if(received?.message?.role!=='toolResult'||received.message.toolName!=='query_symbols')return failure('RECEIVED_ENTRY','RECEIVED_RESULT_UNAVAILABLE');
+          if(received?.message?.role!=='toolResult'||readToolName(received.message.toolName)!=='query_symbols')return failure('RECEIVED_ENTRY','RECEIVED_RESULT_UNAVAILABLE');
           const context=effect('RECEIVED_BRANCH',()=>{manager.branch(received.id);return manager.buildSessionContext().messages;});
           if(failed(context))return context;
           if(context.value.at(-1)?.role!=='toolResult'||sha(JSON.stringify(context.value))!==item.receivedContextSha256)
@@ -151,7 +189,7 @@ export async function worker(planFile,index) {
           const receivedSignal=record({type:'received_context',contextSha256:sha(JSON.stringify(context.value)),toolResultSha256:sha(JSON.stringify(received.message)),newUserMessages:0});
           if(failed(receivedSignal))return receivedSignal;
           // Continuation uses its separate declared delivery allowance.
-          const restored=effect('RECEIVED_POLICY',()=>policy.restoreReceivedResult(decodeEnvelope(received.message.content,received.message.toolName,received.message.details),received.message.content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0),received.message.toolCallId));
+          const restored=effect('RECEIVED_POLICY',()=>restoreReceivedMessage(policy,received.message));
           if(failed(restored))return restored;
           if(!restored.value.allow)return failure('RECEIVED_POLICY','RECEIVED_RESULT_REJECTED');
         }
@@ -187,7 +225,7 @@ export async function worker(planFile,index) {
         } catch {sessionResult=retain(failure('SESSION_BOUNDARY','EFFECT_FAILED',stage));}
         finally {
           if(failed(sessionResult))retain(sessionResult);
-          retain(effect('SESSION_DISPOSE',()=>session.dispose(),stage));
+          retain(await disposeEvaluationSession(session,stage));
           retain(effect('TRANSPORT_CLOSE',()=>transport.closeOpenAICodexWebSocketSessions(manager.getSessionId()),stage));
         }
         if(firstFailure)return firstFailure;

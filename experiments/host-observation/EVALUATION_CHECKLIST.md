@@ -4,7 +4,9 @@ This checklist defines repeatable evaluations for Kast consumers, maintainers, a
 
 The [installed-repository report](https://chatgpt.com/space/page_6adcb2ba8434819183a1878064ad321a) records the current baseline and unresolved failures.
 
-**Status: planned coverage, with a separate recorded baseline.** An unchecked case is not run for this checklist. Each listed variant needs a separate result before its case passes.
+**Status: partial execution.** The [DEBUG campaign report](DEBUG_CAMPAIGN_REPORT.md) records completed variants and open gaps.
+An unchecked case lacks full evidence for its declared variants. It can include completed variants.
+Each listed variant needs a separate result before its case passes.
 
 The protected invariant is exact, scoped compiler evidence with honest completion and recovery. A missing edge, failed read, or incomplete empty result cannot prove absence.
 
@@ -63,11 +65,11 @@ Pin that application's revision and dependency binaries before inclusion. Reposi
 **Negative control:** Use a mismatched root or contract in a disposable setup. **Evidence:** Installation receipt, catalog, process identity, preparation result, and first semantic response.
 
 - [ ] **A01 — Published installation.** Exercise the standard installer from outside a Kast checkout. Record channel, selected release, source identity, Control, Host, and adapter digests.
-- [ ] **A02 — Loaded installation.** Restart the selected IDEA instance, then compare loaded plugin bytes with the installed receipt. A version string alone cannot pass.
+- [x] **A02 — Loaded installation.** Restart the selected IDEA instance, then compare loaded plugin bytes with the installed receipt. A version string alone cannot pass. T2 passed with 39 installed-file and 71 class-resource hashes.
 - [ ] **A03 — Workspace admission.** Run a useful scoped query in the exact clone. Exercise trust, import, saved-document, committed-PSI, and smart-mode prerequisites separately.
 - [ ] **A04 — Preparation recovery.** Resolve one declared prerequisite, then issue fresh demand. Keep the first failure and its recovery evidence. Never infer readiness from registration.
-- [ ] **A05 — MCP and Tool RPC parity.** Run equivalent positive, negative, and rejected cases through both installed transports. Compare canonical facts and qualifications.
-- [ ] **A06 — Session capability.** Exercise MCP initialization, catalog discovery, Tool RPC one-shot calls, and the advertised `querySession` path. Respect absent capabilities.
+- [x] **A05 — MCP and Tool RPC parity.** Run equivalent positive, negative, and rejected cases through both installed transports. Compare canonical facts and qualifications. Recorded tier: T2, ten comparisons across Spring and Kast.
+- [ ] **A06 — Session capability.** Exercise MCP initialization, catalog discovery, Tool RPC one-shot calls, and the advertised `querySession` path. Respect absent capabilities. T2 covered both transports and second-RUN rejection. Issued-output, unrelated-result, READ_SOURCE, and request-limit variants remain open.
 - [ ] **A07 — Agent registration.** Exercise each installed Codex, Pi, or Copilot adapter selected for the campaign. Prove catalog delivery and exact workspace binding independently.
 - [ ] **A08 — Health and lifecycle separation.** Exercise `health_check` as a distinct readiness contract. Exercise hosted `workspace_lifecycle` only where its catalog exposes it.
 - [ ] **A09 — Compatibility rejection.** Exercise a mismatched schema, unsupported Host, missing plugin, and stale registration in owned fixtures. Keep the specific failed stage.
@@ -179,7 +181,7 @@ The primitive operators are `EQUALS`, `NOT_EQUALS`, `STARTS_WITH`, and `ENDS_WIT
 - [ ] **G06 — Reviewed models.** Exercise `BOUNDARY` rules `CONTINUATION` and `TERMINAL`. Exercise `REPRESENTATION` rules `CONSUMER_EXPECTATION`, `ORIGIN`, `TRANSFER`, and `TRANSFORMATION`.
 - [ ] **G07 — Model controls.** Contrast missing, matching, changed, and conflicting models. Cover `CONTRACT_COMPATIBLE`, `REPRESENTATION_PRESERVED`, domain limits, and model provenance.
 - [ ] **G08 — Requested sites.** Cover `ARGUMENT`, `EXPRESSION_RESULT`, `LOCAL_BINDING`, `LOCAL_READ`, `PROPERTY_ASSIGNMENT`, and `RETURN`. Site identity cannot prove producer membership.
-- [ ] **G09 — Witness completeness.** Read `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`. Preserve unmodeled representation and incomplete investigation status.
+- [x] **G09 — Witness completeness.** Read `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`. Preserve unmodeled representation and incomplete investigation status. Recorded tier: T2 with complete Kast and qualified kotlinx.coroutines controls.
 
 Model site kinds are `SERIALIZATION`, `PERSISTENCE`, and `EXTERNAL_SYSTEM`. Terminal meanings are `REVIEWED_DISPOSAL`, `REVIEWED_EXTERNAL_SINK`, and `REVIEWED_RETENTION`.
 
@@ -194,7 +196,7 @@ Representation positions are `ARGUMENT` and `RESULT`. Declaration-basis forms `L
 **Evidence:** Exact `check_diagnostics` request, canonical response, continuation pages, source hashes, and separate compiler/build results.
 
 - [ ] **H01 — Path scopes.** Exercise a file, directory, and workspace root. Reject absolute paths, traversal, globs, and package names used as paths.
-- [ ] **H02 — Positive and empty controls.** Find the intended error, remove it in the disposable copy, and repeat. Keep scope and source-state changes explicit.
+- [x] **H02 — Positive and empty controls.** Find the intended error, remove it in the disposable copy, and repeat. Keep scope and source-state changes explicit. T2 passed in all four corpora. Three clean reads used recreated files. Kast kept one file through restoration.
 - [ ] **H03 — Diagnostic progress.** Exercise `maxDiagnostics`, execution grants, and same-basis `continuation`. Reject a changed path or stale continuation.
 - [ ] **H04 — Coverage limits.** Contrast imports, generated roots, unsupported files, and incomplete enumeration. IDEA diagnostics do not prove a successful project build.
 
@@ -206,8 +208,8 @@ Representation positions are `ARGUMENT` and `RESULT`. Declaration-basis forms `L
 
 - [ ] **I01 — MCP concurrency.** Hold one runner-controlled call, then issue another on that connection. Expect `MCP_REJECTED` with `INVOCATION_IN_PROGRESS`.
 - [ ] **I02 — Workspace lanes.** Exercise hosted App Server queue admission, queue timeout, same-workspace serialization, and independent workspace lanes.
-- [ ] **I03 — Controlled native waits.** Exercise dumb-mode and write-action waits through existing native fixtures. Cancel each wait and prove drainage before a fresh successful request.
-- [ ] **I04 — Peer disconnect.** Disconnect a caller after native entry. Prove operation cancellation and connection release with actual owner evidence.
+- [x] **I03 — Controlled native waits.** Exercise dumb-mode and write-action waits through existing native fixtures. Cancel each wait and prove drainage before a fresh successful request. Recorded tier: T1.
+- [x] **I04 — Peer disconnect.** Disconnect a caller after native entry. Prove operation cancellation and connection release with actual owner evidence. Recorded tier: T1.
 - [ ] **I05 — Source movement during reads.** Change the controlled prerequisite at a known stage. Keep the failed stage and reject stale evidence without a silent new query.
 - [ ] **I06 — Uncertain writes.** Lose the response after write dispatch in an owned fixture. Keep recovery evidence and the write fence until source effects settle.
 - [ ] **I07 — Process and session isolation.** Reject handles from another root, host generation, or unrelated result owner. Preserve separate simultaneous read correlations.
@@ -220,8 +222,8 @@ Representation positions are `ARGUMENT` and `RESULT`. Declaration-basis forms `L
 
 **Evidence:** `add_declaration` or `replace_body` request, preimage, change receipt, source effect, fresh reference, diff, and project assertions.
 
-- [ ] **J01 — Add one declaration.** Insert a valid declaration into the selected existing file. Assert insertion ownership and unchanged surrounding source.
-- [ ] **J02 — Replace one body.** Replace a named non-inline Kotlin function's complete block body. Keep its signature and all source outside the body.
+- [x] **J01 — Add one declaration.** Insert a valid declaration into the selected existing file. Assert insertion ownership and unchanged surrounding source. Recorded tier: T2 on all four corpora.
+- [x] **J02 — Replace one body.** Replace a named non-inline Kotlin function's complete block body. Keep its signature and all source outside the body. Recorded tier: T2 on all four corpora.
 - [ ] **J03 — Reject unsupported forms.** Cover expression bodies, inline functions, contracts, unsupported owners, malformed blocks, and trailing input.
 - [ ] **J04 — Stale preimages.** Change the target after discovery. Reject the stale planned source effect or return precise recovery evidence for a later failure.
 - [ ] **J05 — Follow-up authority.** Use returned `freshRef` after success. Contrast old source selectors and unrelated exact targets.
@@ -238,7 +240,7 @@ The public write tools own their internal plan and authority sequence. The catal
 **Evidence:** Control logs, IDEA plugin logs, bounded exception frames, capture cursors, logger settings, hashes, and correlation results.
 
 - [ ] **K01 — Log discovery.** Examine conventional Control and IDEA paths against the selected process. Reject ambiguous IDEA instances or unproved process-to-path mappings.
-- [ ] **K02 — Debug activation.** Enable only source-backed Kast logger categories through the supported mechanism. Record the effective setting and restart need, if present.
+- [x] **K02 — Debug activation.** Enable only source-backed Kast logger categories through the supported mechanism. Record the effective setting and restart need, if present. Recorded tier: T2 with loaded logger and emission evidence.
 - [ ] **K03 — One-request capture.** Mark the log position before the call. Capture only the bounded appended interval after it, including process stderr.
 - [ ] **K04 — Exact joins.** Join `kast_transport_read` by `connectionId` and `readId`. Preserve distinct retries under one connection and never join by time proximity alone.
 - [ ] **K05 — Semantic diagnostics.** Keep `kast_semantic_read`, transport phases, effective grants, counters, termination reasons, and bounded unexpected-failure frames.
@@ -272,11 +274,11 @@ The existing replay collector already owns bounded appended-log capture and timi
 
 - [ ] **M01 — Selection discipline.** Give an ambiguous overloaded task. Assess scoped discovery, exact selection, preservation of references, and qualified handling of ambiguity.
 - [ ] **M02 — Complete-use answer.** Ask for affected uses. Assess imports, aliases, companion qualifiers, unmatched sites, and explicit limits before an exhaustive claim.
-- [ ] **M03 — Typed rejection answer.** Supply a callback rejection with known direct edges. Demand the useful facts and unresolved obligations without invented completeness.
+- [x] **M03 — Typed rejection answer.** Supply a callback rejection with known direct edges. Demand the useful facts and unresolved obligations without invented completeness. Recorded tier: T3, two actual callback answers.
 - [ ] **M04 — Output recovery.** Supply a multi-page result. Assess only issued output continuations, no redundant RUN, fixed scope, and preservation of the initial outcome.
-- [ ] **M05 — Received-result interpretation.** Resume an admitted saved result with zero new semantic calls. Keep provider delivery separate from native completeness.
+- [x] **M05 — Received-result interpretation.** Resume an admitted saved result with zero new semantic calls. Keep provider delivery separate from native completeness. Recorded tier: T3, two saved-result answers with zero new tool calls.
 - [ ] **M06 — Complete change task.** On a disposable copy, connect identity, scoped relations, exact change, diagnostics, and project assertions. Reject unsupported edits.
-- [ ] **M07 — Tool visibility.** Exercise the selected Pi exposure and installed host extensions. A listed plugin does not prove discoverable tools or a successful semantic call.
+- [ ] **M07 — Tool visibility.** Exercise the selected Pi exposure and installed host extensions. A listed plugin does not prove discoverable tools or a successful semantic call. T3 direct exposure passed. `codemode`, deferred exposure, and the disabled-extension control remain open.
 - [ ] **M08 — Resource and stop policy.** Assert request counts, payload limits, cancellation, and rejection stops. Token estimates cannot prove a tokenizer or spend bound.
 
 Static schemas, scripted providers, and native fixtures do not establish model behavior. A model sentence cannot establish independent source correctness.
@@ -326,6 +328,39 @@ A new discriminator, enum value, response variant, or lifecycle command needs an
 
 The inventory covers the public tool catalog. Lower-level operations need separate selection from the installed operation registry and their owning tests.
 
+## Campaign coverage
+
+This table separates completed assertions from remaining cases. Native controls, installed calls, and model answers carry distinct evidence tiers.
+
+| Family | Completed mechanisms | Remaining gaps |
+| --- | --- | --- |
+| A — Installation and host | Loaded plugin files and class hashes match the installation receipt. Later scoped queries pass in all four corpora. The later IDEA exit rests on the user report. | Channel selection, compatibility contrasts, rejected locations, and the remaining adapter combinations need their declared controls. |
+| B — Sources and identity | Four corpora cover exact discovery, issued references, source reads, direct-directory enumeration, and text queries. Ktor text discovery keeps an explicit incomplete result. | Full declaration inventories, package contrasts, local and anonymous identity, structural source ranges, and negative location cases remain partial. |
+| C — Relations | Public relation probes cover all four corpora. Saved replies preserve direct edges and typed rejections. | Class hierarchies, overrides, aliases, and complete independent relation inventories remain partial. Ktor metadata failures and callback completion gaps remain open. |
+| D — Callback semantics | Native controls cover unknown, nested, and absent callback suppliers. Cross-module controls cover scoped callback admission. | The remaining adversarial variants and their selected real-corpus contrasts need separate evidence. Native controls do not prove every installed graph. |
+| E — Query composition | Public probes cover predicate combinations, ordering, projection, and terminal forms. Sixty-eight source-based identity assertions pass. | Positive non-public declarations, independent ordering and reduction oracles, joins, and the remaining combinations need evidence. |
+| F — Output and freshness | Issued result reads drain real row pages. Exact row identities do not repeat. Mutation controls reject an old retained result. | Evidence-only pages, grant changes, foreign or expired handles, cancellation, and every freshness transition remain partial. |
+| G — Impact | Four corpora cover whole-invocation anchors, called-name rejection, and all six witness sections. Complete and unresolved closure remain distinct. | Declaration mismatch, published basis, value-transfer variants, reviewed models, and requested-site controls remain open. |
+| H — Diagnostics | Eight exact type errors and exhaustive clean controls pass. Twenty-two calls have exact log joins. Same-basis pagination passes. | Workspace scope, one directory result with unread pages, changed-path and stale continuations, and import or generated-source limits remain open. |
+| I — Concurrency and cancellation | Native controls prove cancellation during waits, drainage, peer disconnect, and a subsequent fresh operation. | Public same-connection concurrency, workspace queues, cross-workspace lanes, shared-work cancellation, and caller-specific recovery remain partial. |
+| J — Mutations | Four owned controls pass exact insertion, exact body replacement, typed receipts, scoped diagnostics, compiler controls, and source restoration. Invalid bodies preserve source. | Unsupported owners and body forms, stale write targets, recovery phases, and project-wide assertions remain partial. |
+| K — Logs and DEBUG | Loaded logger settings and a DEBUG marker prove effective output. Public receipts preserve exact read joins and semantic diagnostic fields. | Full loss, rotation, interruption, export, and restoration variants need their exact receipts before this family closes. |
+| L — Lifecycle | The standard installer and selected IDEA restart support the installed campaign. Process and loaded-byte evidence remain distinct. | Stop, upgrade, force, uninstall, recovery, and workspace lifecycle matrices remain open. |
+| M — Model behavior | Seven corrected fresh cases produce six final answers and one expected request-limit stop. Two saved cases produce answers with zero new semantic calls. Typed rejection and private direct exposure pass. | Two original setup failures remain recorded. Unresolved ambiguity, complete-use variants, output recovery, complete change tasks, disabled-extension behavior, and live cancellation remain partial or blocked. |
+| N — Scale and timing | Twelve Kast replay trials complete with 51 matched calls. The repaired comparator finds all four measured pairs equivalent. Every pair reports `lessWork=false`. | Runtime-to-source correspondence, dense controls, noise contrasts, and other corpus profiles remain open. No performance improvement follows these trials. |
+
+The diagnostic controls use one uninterrupted file lifetime in Kast. The other three corpora use guarded restoration, deletion, and recreation before final clean queries.
+
+The replay uses existing host caches and serial requests. These results establish no performance improvement or cold-cache measurement.
+
+The model campaign used 23 provider requests. This count includes two original setup failures, 19 corrected fresh requests, and two saved-result requests. The corrected fresh cases returned 13 native replies. All 44 protected source hashes match their pre-run values.
+
+The model log window contains 14 exact internal connection/read joins. Native MCP documents omit `readId`, so an exact answer-to-log join remains unavailable. No join uses timestamp proximity.
+
+The kotlinx.coroutines reference at the `KDoc` link carries `CODE`. The contract uses `CODE` as a residual syntax context. The model preserved the unresolved distinction between a reference and an invocation. The label needs a precise description, but no executable-use contract defect is proved.
+
+Whole model cases M03 and M05 pass at T3. M01, M02, M07, and M08 remain partial. M04 and M06 remain blocked by the selected read-only harness.
+
 ## Recorded baseline and open holes
 
 The attached real-repository report records 46 core queries: 31 complete results and 15 explicit rejections.
@@ -366,7 +401,8 @@ The examined checkout was clean at `b668498eb44248c45f818301e46df3ec25079989`. T
 
 The installed catalog has schema version 17 and SHA-256 `2243fa9c1303b49d517a3da135079e7d64bb283b53cedf3bc6cdd9a479f37c2e`.
 
-Source inspection found documentation drift: `RELATION_WORK_REDUCTION` maps to contract 17 in the runner, while its procedure still states 14.
+The earlier source inspection found documentation drift: the `RELATION_WORK_REDUCTION` procedure stated contract 14 while its runner admitted 17.
+The DEBUG campaign corrected the [procedure](SEMANTIC_REPRODUCTION.md) to contract 17.
 
 Use the source gate and actual catalog for admission. The other qualification slices keep their own versions and owners.
 

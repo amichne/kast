@@ -100,6 +100,7 @@ class Run:
     steps: list[References | WherePublic]
     terminalStep: Emit
     executionBudget: ExecutionBudget
+    executionMode: str = field(default='BOUNDED', init=False)
     type: str = field(default='RUN', init=False)
 
 

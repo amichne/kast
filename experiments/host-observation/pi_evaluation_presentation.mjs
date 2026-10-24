@@ -1,20 +1,20 @@
 // Presentation of one already admitted source. Canonical admission remains in
 // the existing policy; this boundary checks identity, supported view and bounds.
 import { createHash } from 'node:crypto';
-import { decodeEnvelope } from './pi_evaluation_policy.mjs';
+import { decodeEnvelope, readToolName } from './pi_evaluation_policy.mjs';
 import { queryPresentation } from '../../cli/src/main/js/query-presentation.mjs';
 
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const failed=failure=>({type:'failure',failure});
 export function finalQueryPresentation(messages,binding,maximumBytes) {
   if(!binding||!Array.isArray(messages))return failed('SOURCE_UNAVAILABLE');
-  const matches=messages.filter(message=>message?.role==='toolResult'&&message.toolName==='query_symbols'&&message.toolCallId===binding.callId);
+  const matches=messages.filter(message=>message?.role==='toolResult'&&readToolName(message.toolName)==='query_symbols'&&message.toolCallId===binding.callId);
   if(matches.length!==1)return failed('SOURCE_IDENTITY_MISMATCH');
   const source=matches[0];
   const issued=messages.flatMap(message=>message?.role==='assistant'&&Array.isArray(message.content)
     ?message.content.filter(block=>block?.type==='toolCall'&&block.id===binding.callId).map(call=>({message,call})):[]);
-  if(issued.length!==1||issued[0].call.name!=='query_symbols')return failed('SOURCE_IDENTITY_MISMATCH');
-  const envelope=decodeEnvelope(source.content,source.toolName,source.details);
+  if(issued.length!==1||issued[0].call.name!==source.toolName)return failed('SOURCE_IDENTITY_MISMATCH');
+  const envelope=decodeEnvelope(source.content,source.toolName,source.details,source.structuredContent);
   const canonical=JSON.stringify(envelope);
   if(canonical!==binding.canonical)return failed('SOURCE_IDENTITY_MISMATCH');
   if(Buffer.byteLength(canonical)>maximumBytes)return failed('SOURCE_LIMIT');
@@ -41,7 +41,7 @@ export function finalProviderIdentity(view,model,projectProviderInput) {
   try {input=projectProviderInput(model,view.issuedMessages);} catch {return failed('PROVIDER_IDENTITY_UNAVAILABLE');}
   if(!Array.isArray(input))return failed('PROVIDER_IDENTITY_MISMATCH');
   const calls=input.filter(item=>item?.type==='function_call'),outputs=input.filter(item=>item?.type==='function_call_output');
-  if(calls.length!==1||outputs.length!==1||calls[0].name!=='query_symbols'||
+  if(calls.length!==1||outputs.length!==1||readToolName(calls[0].name)!=='query_symbols'||
     typeof calls[0].call_id!=='string'||!calls[0].call_id.length||outputs[0].call_id!==calls[0].call_id||
     outputs[0].output!==view.text)return failed('PROVIDER_IDENTITY_MISMATCH');
   return {type:'bound',callId:calls[0].call_id,observation:{providerCallIdSha256:sha(calls[0].call_id)}};

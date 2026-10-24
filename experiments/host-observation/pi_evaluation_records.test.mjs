@@ -400,7 +400,8 @@ test('real guard callbacks flow through persisted allowlist with an actual polic
     declarationByteCeiling:4096,expectedSemanticCalls:1,maximumToolTextBytes:4096});
   const handlers=new Map();let tools=[],aborted=0;
   evaluationGuard(policy,records.guard)({on:(name,handler)=>handlers.set(name,handler),
-    setActiveTools:value=>{tools=value;},getActiveTools:()=>tools,getThinkingLevel:()=> 'high'});
+    setActiveTools:value=>{tools=value.filter(name=>['query_symbols','check_diagnostics','health_check'].includes(name));},
+    getActiveTools:()=>tools,getThinkingLevel:()=> 'high'});
   const ctx={model:{provider:'openai-codex',id:'gpt-6.1-sol'},abort:()=>{aborted++;}};
   handlers.get('session_start')({},ctx);
   handlers.get('tool_call')({toolName:'secret tool name',toolCallId:'secret ID',

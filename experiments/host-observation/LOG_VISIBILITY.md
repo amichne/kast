@@ -188,3 +188,19 @@ uv run --locked --script log_visibility.py --self-test
 ```
 
 Use [the reusable evaluation checklist](EVALUATION_CHECKLIST.md) to record captured evidence and unresolved gaps for each repository.
+
+## Installed campaign evidence
+
+The October 24, 2026 campaign restarted IntelliJ IDEA `IU-262.10968.63` after the VM-option change.
+The new process exposed the expected `idea.log.debug.categories` property.
+The `HostedEndpointService` and `HostedReadDiagnostics` logger instances both reported DEBUG enabled.
+A unique DEBUG marker appeared in `idea.log` with the JUL display level `FINE`.
+The marker proves that the loaded logger emitted DEBUG output.
+It does not add semantic evidence to the existing INFO records.
+
+The bounded watches kept exact byte segments and reported log rotation explicitly.
+Per-call captures kept semantic records, transport phases, and exact correlation outcomes beside the raw segments.
+The user-requested DEBUG setting remains enabled.
+The private configuration receipt preserves the original bytes for guarded restoration.
+
+The [campaign report](DEBUG_CAMPAIGN_REPORT.md) separates loaded logger evidence, semantic results, fixture failures, and unresolved native exceptions.

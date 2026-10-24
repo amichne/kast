@@ -2,6 +2,7 @@
 """Opt-in native reproduction. Setup/import and read-only replay are separate commands."""
 import argparse
 import base64
+import copy
 from collections import Counter
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
@@ -1161,22 +1162,19 @@ def drain_workload(request, invoke, max_calls):
             break
         live = basis
         token = continuation(response)
-        grant = replay_wire.ExecutionBudget(**initial['request']['executionBudget'])
+        grant = initial['request'].get('executionBudget')
         if token is not None:
             if token in seen: break
             seen.add(token)
-            request = asdict(replay_wire.Query(replay_wire.Resume(token, grant)))
+            request = dict(verbose=True, request=dict(type='RESUME', continuation=token,
+                                                     executionBudget=grant))
         else:
             progress = presentation(calls)
             if not isinstance(progress, PresentationNext): break
-            selected = initial['request']['terminalStep']['output']
-            if selected['type'] == 'SYMBOLS':
-                output = replay_wire.Symbols([replay_wire.SymbolField(f) for f in selected['fields']])
-            elif selected['type'] == 'OCCURRENCES':
-                output = replay_wire.Occurrences()
-            else: raise ValueError('UNSUPPORTED_WORKLOAD_OUTPUT')
-            request = asdict(replay_wire.Query(replay_wire.ReadResult(
-                progress.result.value, progress.cursor.value, output, grant, progress.evidence_cursor.value)))
+            selected = initial['request']['terminalStep'].get('output')
+            request = dict(verbose=True, request=dict(type='READ_RESULT', result=progress.result.value,
+                cursor=progress.cursor.value, output=selected, executionBudget=grant,
+                evidence_cursor=progress.evidence_cursor.value))
     return calls
 
 
@@ -1482,6 +1480,49 @@ def work_does_not_increase(counters):
     return all(delta <= 0 for delta in work_counter_deltas(counters).values())
 
 
+@dataclass(frozen=True)
+class ComparisonSemantics:
+    value: dict
+
+
+def comparison_semantics(trial):
+    """Compare issued row authority only after the existing presentation owner admits it.
+
+    Trial receipts keep their exact result and row handles. The comparison replaces only
+    this answer's top-level row IDs and terminal result handle with their proven positions.
+    Full row payloads, order, source locations, provenance and retention kind remain facts.
+    """
+    semantic = trial.semantic
+    owner = semantic.get('terminal', {}).get('retention', {})
+    if owner.get('kind') != 'retained':
+        return ComparisonSemantics(semantic)
+    presented = presentation(trial.calls)
+    if isinstance(presented, PresentationRejected): return presented
+    if isinstance(presented, PresentationNext):
+        return PresentationRejected(PresentationFailure.UNREAD)
+    reference = owner.get('reference')
+    if (not isinstance(reference, str) or
+            not re.fullmatch(r'result:v1:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', reference) or
+            any(call.response.get('retention') != owner for call in trial.calls)):
+        return PresentationRejected(PresentationFailure.OWNER)
+    live = trial.calls[0].response.get('live')
+    if not isinstance(live, dict) or not live or any(call.response.get('live') != live for call in trial.calls):
+        return PresentationRejected(PresentationFailure.LIVE)
+    rows = [item for call in trial.calls for item in call.response.get('items', [])]
+    identities = [item.get('row_id') for item in rows]
+    if (any(not isinstance(identity, str) or
+            not re.fullmatch(r'result-row:v1:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', identity)
+            for identity in identities) or len(set(identities)) != len(identities) or
+            Counter(item.get('row_id') for item in semantic['items']) != Counter(identities)):
+        return PresentationRejected(PresentationFailure.ROWS)
+    positions = {identity: index for index, identity in enumerate(identities)}
+    normalized = copy.deepcopy(semantic)
+    for item in normalized['items']:
+        item['row_id'] = dict(type='RETAINED_ROW_POSITION', position=positions[item['row_id']])
+    normalized['terminal']['retention']['reference'] = dict(type='RETAINED_ANSWER', rowCount=len(rows))
+    return ComparisonSemantics(normalized)
+
+
 def compare_trials(baseline, candidate, same_artifact):
     deltas = {}
     missing = sorted(set(baseline.unavailable + candidate.unavailable))
@@ -1509,11 +1550,17 @@ def compare_trials(baseline, candidate, same_artifact):
     state = 'EQUIVALENT'
     if baseline.type != 'COMPLETE' or candidate.type != 'COMPLETE': state = 'INCOMPLETE'
     elif baseline.semantic is None or candidate.semantic is None: state = 'MISSING_EVIDENCE'
-    elif baseline.semantic != candidate.semantic: state = 'SEMANTIC_REGRESSION'
-    elif {json.dumps(c.response.get('execution_budget'), sort_keys=True) for c in baseline.calls} != {json.dumps(c.response.get('execution_budget'), sort_keys=True) for c in candidate.calls}:
+    else:
+        compared = [comparison_semantics(trial) for trial in (baseline, candidate)]
+        rejected = [item.failure.value for item in compared if isinstance(item, PresentationRejected)]
+        if rejected:
+            state = 'MISSING_EVIDENCE'
+            missing.extend(rejected)
+        elif compared[0].value != compared[1].value: state = 'SEMANTIC_REGRESSION'
+    if state == 'EQUIVALENT' and {json.dumps(c.response.get('execution_budget'), sort_keys=True) for c in baseline.calls} != {json.dumps(c.response.get('execution_budget'), sort_keys=True) for c in candidate.calls}:
         state = 'MISSING_EVIDENCE'
         missing.append('EFFECTIVE_BUDGETS_DIFFER')
-    elif missing: state = 'MISSING_EVIDENCE'
+    elif state == 'EQUIVALENT' and missing: state = 'MISSING_EVIDENCE'
     counters = deltas.get('counters')
     less_work = (state == 'EQUIVALENT' and not same_artifact and work_does_not_increase(counters) and
                  any(x < 0 for x in work_counter_deltas(counters).values()))
@@ -1841,6 +1888,135 @@ def replay_workloads(args):
     return 0 if all(load_trial(output / p, profile).type == 'COMPLETE' for p in manifest['trials']) else 2
 
 
+
+def campaign_exit_status(manifest):
+    return 0 if (manifest.get('sourceAtEnd') == 'UNCHANGED' and
+                 all(v['outcome']['status'] == 'PASSED' for v in manifest['variants'])) else 2
+
+
+def campaign(args):
+    """Run declared variants through the existing session, drain, and timing owners."""
+    import campaign_queries as campaign_wire
+    os.umask(0o077)
+    output = fresh(args.output)
+    corpus = next(c for c in campaign_wire.CORPORA if c.name == args.repository)
+    witness = campaign_wire.load_witness(corpus, args.fixture.resolve(strict=True))
+    if isinstance(witness, campaign_wire.Blocked):
+        write(output / 'blocked.json', witness.model_dump(mode='json'))
+        return 2
+    manifest = dict(schemaVersion=1, type='CHECKLIST_VARIANTS', repository=corpus.name,
+        fixture=str(args.fixture.resolve()), sourceWitness=corpus.model_dump(mode='json'),
+        cli=dict(path=str(args.cli.resolve()), sha256=digest(args.cli)),
+        harness={name: digest(HERE / name) for name in ('campaign_queries.py',
+            'reproduce_semantic_queries.py', 'replay_requests.py', 'hosted_timing.py', 'retained_pages.py')},
+        authority='INSTALLED_CALLS_WITH_SOURCE_WITNESS_NOT_FULL_NATIVE_PIN',
+        checklistClaim='VARIANTS_ONLY_NO_CASE_OR_FAMILY_COMPLETION',
+        tranche=args.tranche, timeoutSeconds=args.timeout, maxCalls=args.max_calls, variants=[])
+    write(output / 'campaign.json', manifest)
+    try:
+        session = McpReplaySession(args.cli.resolve(), args.fixture.resolve(), output, args.timeout)
+    except (OSError, ValueError):
+        write(output / 'blocked.json', campaign_wire.Blocked(
+            reason=campaign_wire.Failure.PROCESS_UNAVAILABLE).model_dump(mode='json'))
+        return 2
+    def execute(case):
+        request = json.loads(case.request_json)
+        directory = fresh(output / case.id)
+        calls = []
+        def invoke(request):
+            call_dir = fresh(directory / f'call-{len(calls):04d}')
+            try: before = args.idea_log.stat()
+            except OSError: before = None
+            process = session.call(request)
+            response = None
+            try:
+                envelope = json.loads(process['stdout'])
+                if isinstance(envelope.get('error'), dict):
+                    response = dict(failure=str(envelope['error'].get('code')), status='rejected')
+                else:
+                    response = envelope.get('result', {}).get('structuredContent')
+                if not isinstance(response, dict): response = None
+            except (ValueError, AttributeError): pass
+            capture_started = time.monotonic_ns()
+            observations = (collect_observations(args.idea_log, before,
+                ready=lambda window: response_read_released(response, window)) if before else
+                ObservationWindow(failures=(TimingFailure.LOG_UNAVAILABLE,)))
+            capture_nanos = time.monotonic_ns() - capture_started
+            correlated = correlate_diagnostic(response, observations.diagnostics)
+            diagnostics = ([correlated.document] if isinstance(correlated, MatchedDiagnostic)
+                           else list(observations.diagnostics))
+            correlation = 'MATCHED' if isinstance(correlated, MatchedDiagnostic) else correlated.failure.value
+            call = ReplayCall(request['request']['type'], request, process, response,
+                diagnostics, list(observations.phases), correlation, observations, capture_nanos)
+            calls.append(call)
+            write(call_dir / 'request.json', request)
+            write(call_dir / 'process.json', process)
+            write(call_dir / 'hosted-observations.json', asdict(observations))
+            write(call_dir / 'hosted-timing.json', asdict(call_timing(call)))
+            if response is not None: write(call_dir / 'response.json', response)
+            return call
+        if request['request']['type'] == 'RUN':
+            drain_workload(request, invoke, args.max_calls)
+        else:
+            invoke(request)
+        documents = tuple(campaign_wire.json_object(json.dumps(call.response)) for call in calls)
+        if any(isinstance(doc, campaign_wire.Blocked) for doc in documents):
+            outcome = campaign_wire.Blocked(reason=campaign_wire.Failure.INVALID_RESPONSE)
+        else:
+            outcome = campaign_wire.assess(case.oracle, documents,
+                all(c.process['outcome'] == 'completed' for c in calls), witness)
+        result = dict(id=case.id, scope=case.scope, oracle=case.oracle.model_dump(mode='json'),
+            outcome=outcome.model_dump(mode='json'), calls=len(calls),
+            correlations=[c.correlation for c in calls],
+            responseStates=[c.response.get('status', c.response.get('outcome')) if c.response else None for c in calls])
+        write(directory / 'variant.json', result)
+        manifest['variants'].append(result)
+        write(output / 'campaign.json', manifest)
+        print(f"{corpus.name} {case.id}: {outcome.status}", flush=True)
+        return calls
+    try:
+        catalog = session.catalog()
+        write(output / 'catalog.json', catalog)
+        manifest['catalogSha256'] = digest(output / 'catalog.json')
+        discovery = campaign_wire.variant('B02-source-anchored-selection',
+            campaign_wire.run(campaign_wire.search(corpus, corpus.name_selected)),
+            campaign_wire.CompleteWitness(name=corpus.name_selected))
+        bootstrap = execute(discovery)
+        selected = campaign_wire.select_exact(bootstrap[-1].response or {}, witness)
+        if isinstance(selected, campaign_wire.Blocked):
+            write(output / 'blocked.json', selected.model_dump(mode='json'))
+            return 2
+        retained_case = campaign_wire.variant('B05-retain-exact-seed',
+            campaign_wire.run(dict(type='SYMBOL_REFS', symbolRefs=[selected.ref]), retain=True),
+            campaign_wire.CompleteCount(count=1))
+        retained_calls = execute(retained_case)
+        retained = campaign_wire.retained_result(retained_calls[-1].response or {})
+        if isinstance(retained, campaign_wire.Blocked):
+            write(output / 'blocked.json', retained.model_dump(mode='json'))
+            return 2
+        if args.tranche == 'relations':
+            variants = campaign_wire.relation_variants(witness, selected)
+        elif args.tranche == 'sources':
+            variants = campaign_wire.source_variants(corpus)
+        else:
+            variants = (*campaign_wire.discovery_variants(corpus),
+                        *campaign_wire.selected_variants(witness, selected, retained))
+        for case in variants:
+            if args.case_prefix and not any(case.id.startswith(p) for p in args.case_prefix.split(',')):
+                manifest['variants'].append(dict(id=case.id, outcome=dict(status='NOT_RUN', reason='NOT_SELECTED')))
+                continue
+            calls = execute(case)
+            if any(c.process['outcome'] != 'completed' for c in calls):
+                manifest['stop'] = 'PROCESS_DID_NOT_COMPLETE'
+                break
+        ending = campaign_wire.load_witness(corpus, args.fixture.resolve())
+        manifest['sourceAtEnd'] = ending.model_dump(mode='json') if isinstance(ending, campaign_wire.Blocked) else 'UNCHANGED'
+        write(output / 'campaign.json', manifest)
+    finally:
+        session.close()
+    return campaign_exit_status(manifest)
+
+
 def load_run(path):
     value = json.loads(path.read_text())
     from dataclasses import fields
@@ -2047,6 +2223,17 @@ def main():
     workload.add_argument('--source-archive', type=Path, help='Immutable git archive required for KAST_SOURCE')
     workload.add_argument('--source-commit', help='Exact local Git commit corresponding to source archive')
     workload.set_defaults(run=replay_workloads)
+    campaign_parser = commands.add_parser("campaign", help="Run independently declared checklist variants on one real corpus")
+    campaign_parser.add_argument("--repository", choices=("spring-framework", "ktor", "kotlinx.coroutines", "kast"), required=True)
+    campaign_parser.add_argument("--fixture", type=Path, required=True)
+    campaign_parser.add_argument("--cli", type=Path, required=True)
+    campaign_parser.add_argument("--idea-log", type=Path, required=True)
+    campaign_parser.add_argument("--output", type=Path, required=True)
+    campaign_parser.add_argument("--tranche", choices=("baseline", "relations", "sources"), default="baseline")
+    campaign_parser.add_argument("--case-prefix", help="Comma-separated case ID prefixes; all other variants remain NOT_RUN")
+    campaign_parser.add_argument("--max-calls", type=int, choices=range(1, 1025), default=64, metavar="N")
+    campaign_parser.add_argument("--timeout", type=int, choices=range(1, 301), default=60, metavar="SECONDS")
+    campaign_parser.set_defaults(run=campaign)
     compare = commands.add_parser("compare", help="Compare two complete workload runs; retain rejected trials")
     compare.add_argument("--baseline", type=Path, required=True)
     compare.add_argument("--candidate", type=Path, required=True)

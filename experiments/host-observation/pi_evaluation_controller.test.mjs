@@ -15,9 +15,25 @@ sendAll().catch(()=>{process.exitCode=1;});`;
 };
 const controllerFailure=(operation,reason)=>({stage:'WORKER_CONTROLLER',operation,reason});
 
+test('owned deadline reaches the worker without adding a reserved Kast configuration key',async()=>{
+  const script=`process.send({type:'report',report:{deadline:Number(process.env[process.argv[1]]),
+kastKeys:Object.keys(process.env).filter(key=>key.startsWith('KAST_'))}},()=>process.disconnect());`;
+  const before=Date.now();
+  const received=await runOwnedWorker(process.execPath,['-e',script,WorkerDeadlineEnvironmentKey],options);
+  assert.equal(received.type,'report');
+  assert.deepEqual(received.report.kastKeys,[]);
+  assert.ok(received.report.deadline>=before+options.wallMillis);
+  assert.equal(received.ownedChildReaped,true);
+});
+
 test('finite worker calibration and records failure IPC survives owned child exit',async()=>{
   for(const failure of [
     {stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'},
+    ...['WORKER_SETUP','WORKER_EXECUTION'].flatMap(stage=>[
+      {stage,operation:'SESSION_SHUTDOWN',reason:'EXTENSION_HANDLER_FAILED'},
+      ...['SESSION_SHUTDOWN','SESSION_SHUTDOWN_OBSERVER','SESSION_SHUTDOWN_OBSERVER_RELEASE']
+        .map(operation=>({stage,operation,reason:'EFFECT_FAILED'})),
+    ]),
     {stage:'INPUT_CALIBRATION',operation:'VERIFY_DIGEST',reason:'DIGEST_MISMATCH'},
     {stage:'RECORD_CLOSE',reason:'IO_FAILED'},
     ...[['COPY_SOURCE_INSPECT','SIZE_REJECTED'],['COPY_SOURCE_INSPECT','REFERENCE_REJECTED'],
@@ -211,8 +227,8 @@ await publishWorkerResult({type:'report',report:{case:'delayed-callback',payload
 });
 
 test('parent deadline overrides child environment and already elapsed setup is charged before spawn completion',async()=>{
-  const script=`process.send({type:'report',report:{deadline:Number(process.env.KAST_EVALUATION_DEADLINE_MS),started:Date.now()}},()=>process.disconnect());`;
-  const before=Date.now(),pending=runOwnedWorker(process.execPath,['-e',script],{...options,
+  const script=`process.send({type:'report',report:{deadline:Number(process.env[process.argv[1]]),started:Date.now()}},()=>process.disconnect());`;
+  const before=Date.now(),pending=runOwnedWorker(process.execPath,['-e',script,WorkerDeadlineEnvironmentKey],{...options,
     env:{[WorkerDeadlineEnvironmentKey]:String(before+60000)}}),dispatched=Date.now();
   const received=await pending;
   assert.equal(received.type,'report');assert.ok(received.report.deadline>=before+5000);

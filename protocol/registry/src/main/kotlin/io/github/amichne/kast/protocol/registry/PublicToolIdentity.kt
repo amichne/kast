@@ -50,10 +50,11 @@ enum class PublicToolIdentity(
         HostedToolLoading.EAGER,
     ),
     ADD_DECLARATION("add_declaration", CanonicalOperation.CHANGE,
-        "Add one declaration to an existing Kotlin source file selected by an exact Kast symbol reference. " +
-            "Kast plans, applies, verifies, and reports a verified receipt or finite failure with recovery evid" +
-            "ence. Preserve the returned result; a cancelled or missing response does not prove no write occurr" +
-            "ed.",
+        "Add one declaration at an exact top-level Kotlin target. A class or object target inserts into its" +
+            " existing body. A function, property, or type alias target inserts after that declaration. Kast pl" +
+            "ans and applies the change, examines the resulting source, and reports a verified receipt or finit" +
+            "e failure with recovery evidence. Preserve the returned result. A cancelled or missing response do" +
+            "es not prove that no write occurred.",
         HostedToolLoading.DEFERRED,
     ),
     REPLACE_BODY("replace_body", CanonicalOperation.CHANGE,
