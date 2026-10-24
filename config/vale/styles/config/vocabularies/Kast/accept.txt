@@ -72,3 +72,15 @@ unwired
 worktrees
 RPCs
 nonadvancing
+
+# Established terms in real-repository evaluation and local log capture.
+DSLs
+Ktor
+multiplatform
+classpath
+tokenizer
+enum
+Pydantic
+FIFOs
+multiline
+inode
