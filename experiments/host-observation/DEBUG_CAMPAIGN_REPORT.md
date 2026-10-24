@@ -207,7 +207,8 @@ The corrected fresh cases received 13 native replies.
 All 44 protected source files and both original saved-session archives kept their hashes.
 The canonical model replies omit read IDs, so exact response-to-log correlation remains unproved.
 
-Each request kept its declared byte, output, and request-count limits.
+Each request stayed within its declared payload and request-count limits.
+Each provider request carried the declared output cap.
 Reported token totals remain post-response measurements, without a guaranteed spend bound.
 The request-limit control passed its stop oracle and did not complete a semantic answer.
 
