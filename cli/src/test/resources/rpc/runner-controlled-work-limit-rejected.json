@@ -1,0 +1,1 @@
+{"type":"rejected","failure":"INVALID_ARGUMENTS","detail":{"type":"REQUEST_CONSTRAINT_REJECTED","parameters":["executionMode","executionBudget.maxWorkUnits"],"rule":"RUNNER_CONTROLLED_WORK_LIMIT","remedies":["REMOVE_MAX_WORK_UNITS","SELECT_BOUNDED"]}}

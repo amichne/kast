@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.rpc
 
+import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.appserver.query.PublicToolParameter
 import io.github.amichne.kast.appserver.query.PublicToolRule
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
@@ -16,7 +17,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-/** RPC rejection preserves request constraints and local authority; the semantic owner decides source freshness. */
+/** Shared tool rejection detail; the semantic owner decides source freshness. */
 @Serializable
 internal sealed interface QuerySessionRejectionDetail {
     @Serializable
@@ -86,6 +87,26 @@ internal sealed interface QuerySessionRejectionDetail {
         val nextAction: SourceAnchorRecoveryAction = SourceAnchorRecoveryAction.USE_ISSUED_CANDIDATE_SELECTOR
     }
 }
+
+/** One projection for RPC and direct MCP. Absence retains the legacy coarse rejection shape. */
+internal fun publicToolInputRejectionDetail(failure: PublicToolInputFailure): QuerySessionRejectionDetail? =
+    when (failure) {
+        is PublicToolInputFailure.Constraint ->
+            when (failure.rule) {
+                PublicToolRule.RUNNER_CONTROLLED_WORK_LIMIT ->
+                    QuerySessionRejectionDetail.RequestConstraint(failure.parameters, failure.rule)
+                PublicToolRule.SIMPLE_NAME,
+                PublicToolRule.INDEXED_WORD,
+                PublicToolRule.WORKSPACE_RELATIVE_PATH,
+                PublicToolRule.PACKAGE_NAME,
+                PublicToolRule.CANONICAL_STEP_LIMIT -> null
+            }
+        is PublicToolInputFailure.Parameter,
+        is PublicToolInputFailure.SourceAnchor,
+        PublicToolInputFailure.SchemaMismatch,
+        PublicToolInputFailure.SchemaRejected,
+        PublicToolInputFailure.SyntaxRejected -> null
+    }
 
 @Serializable
 internal enum class QuerySessionRecoveryAction {

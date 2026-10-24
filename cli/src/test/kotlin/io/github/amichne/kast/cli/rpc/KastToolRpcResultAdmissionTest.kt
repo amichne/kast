@@ -75,14 +75,13 @@ class KastToolRpcResultAdmissionTest {
     fun `RPC retains schema admitted qualified continuation and every rejection family`() {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val qualified = qualifiedSourceDocument()
-        val rejection = sourceRejectionDocument()
         val endpoint = CanonicalJsonDocument.generated(TestHostRejected.serializer()).create(TestHostRejected())
         val preauthority =
             CanonicalJsonDocument.generated(TestPreauthorityRejected.serializer()).create(TestPreauthorityRejected())
         val exits =
             listOf(
                 CliExit.Qualified(qualified),
-                CliExit.OperationRejected(rejection),
+                CliExit.OperationRejected(sourceRejectionDocument()),
                 CliExit.OperationRejected(endpoint),
                 CliExit.OperationRejected(preauthority),
             )
@@ -105,6 +104,7 @@ class KastToolRpcResultAdmissionTest {
                 is CliExit.Qualified -> assertEquals(ToolRpcReply.Qualified(expected), result)
                 is CliExit.OperationRejected -> assertEquals(ToolRpcReply.RejectedDocument(expected), result)
                 is CliExit.Complete,
+                is CliExit.PublicInputRejected,
                 is CliExit.BoundaryRejected,
                 is CliExit.Delegated -> error("Fixture only contains qualified or rejected outcomes")
             }

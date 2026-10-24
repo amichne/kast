@@ -18,11 +18,11 @@ import org.junit.jupiter.api.Test
 
 class KastToolRpcConstraintAdmissionTest {
     @Test
-    fun `direct RUN ingress preserves the work constraint in its encoded rejection`() {
+    fun `one-shot RPC RUN ingress preserves the work constraint in its encoded rejection`() {
         for (json in encoders()) {
             for (mode in listOf(null, QueryExecutionModeDocument.RUNNER_CONTROLLED)) {
                 val input = json.encodeToString(ConstraintAdmissionInput(runWithWork(mode, 1)))
-                assertConstraint(json, directReply(input))
+                assertConstraint(json, oneShotReply(input))
             }
         }
     }
@@ -43,7 +43,7 @@ class KastToolRpcConstraintAdmissionTest {
         for (json in encoders()) {
             for (run in listOf(invalidName, runWithWork(QueryExecutionModeDocument.BOUNDED, 0))) {
                 val input = json.encodeToString(ConstraintAdmissionInput(run))
-                for (reply in listOf(directReply(input), sessionReply(input))) {
+                for (reply in listOf(oneShotReply(input), sessionReply(input))) {
                     assertEquals(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS), reply)
                     val encoded = json.parseToJsonElement(json.encodeToString<ToolRpcReply>(reply)).jsonObject
                     assertEquals(setOf("type", "failure"), encoded.keys)
@@ -61,7 +61,7 @@ class KastToolRpcConstraintAdmissionTest {
             executionBudget = ConstraintAdmissionBudget(work),
         )
 
-    private fun directReply(input: String): ToolRpcReply {
+    private fun oneShotReply(input: String): ToolRpcReply {
         val registration =
             DirectToolRegistration(setOf(directToolName("query_symbols"))) {
                 error("Rejected input cannot project the catalog")
@@ -85,6 +85,11 @@ class KastToolRpcConstraintAdmissionTest {
 
     private fun assertConstraint(json: Json, reply: ToolRpcReply) {
         val encoded = json.parseToJsonElement(json.encodeToString<ToolRpcReply>(reply)).jsonObject
+        val adapterOracle =
+            requireNotNull(javaClass.getResourceAsStream("/rpc/runner-controlled-work-limit-rejected.json"))
+                .bufferedReader()
+                .use { json.parseToJsonElement(it.readText()) }
+        assertEquals(adapterOracle, encoded, "The actual Kotlin rejection must match both adapter decoders' wire input")
         assertEquals(setOf("type", "failure", "detail"), encoded.keys)
         assertEquals("rejected", encoded.getValue("type").jsonPrimitive.content)
         assertEquals("INVALID_ARGUMENTS", encoded.getValue("failure").jsonPrimitive.content)

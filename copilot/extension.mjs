@@ -659,6 +659,12 @@ function isToolResult(value) {
     if (keys(value, ["type", "failure"])) return true;
     if (!keys(value, ["type", "failure", "detail"]) || !object(value.detail) || typeof value.detail.type !== "string") return false;
     const detail = value.detail;
+    if (detail.type === "REQUEST_CONSTRAINT_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
+      keys(detail, ["type", "parameters", "rule", "remedies"]) && detail.rule === "RUNNER_CONTROLLED_WORK_LIMIT" &&
+      Array.isArray(detail.parameters) && detail.parameters.length === 2 &&
+      detail.parameters.includes("executionMode") && detail.parameters.includes("executionBudget.maxWorkUnits") &&
+      Array.isArray(detail.remedies) && detail.remedies.length === 2 &&
+      detail.remedies.includes("REMOVE_MAX_WORK_UNITS") && detail.remedies.includes("SELECT_BOUNDED");
     if (detail.type === "SOURCE_ANCHOR_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
       keys(detail, ["type", "cause", "next_action"]) && detail.next_action === "USE_ISSUED_CANDIDATE_SELECTOR" && typeof detail.cause === "string" &&
       ["UNKNOWN_TOKEN_FAMILY", "INVALID_TOKEN_STRUCTURE", "INVALID_PAYLOAD_ENCODING", "PAYLOAD_DIGEST_MISMATCH"].includes(detail.cause);

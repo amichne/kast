@@ -64,6 +64,7 @@ internal object McpStructuredResults {
                 variant(document) in setOf(McpResultVariant.REJECTED, McpResultVariant.HOST_REJECTED) ||
                     document["outcome"] == JsonPrimitive("rejected")
             is CliExit.BoundaryRejected,
+            is CliExit.PublicInputRejected,
             is CliExit.Delegated -> false
         }
 

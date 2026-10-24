@@ -10,5 +10,6 @@ internal fun CliExit.present(detail: ToolOutputDetail): CliExit =
         is CliExit.Qualified -> copy(document = document.present(detail))
         is CliExit.OperationRejected -> copy(document = document.present(detail))
         is CliExit.BoundaryRejected -> copy(document = document.present(detail))
+        is CliExit.PublicInputRejected,
         is CliExit.Delegated -> this
     }
