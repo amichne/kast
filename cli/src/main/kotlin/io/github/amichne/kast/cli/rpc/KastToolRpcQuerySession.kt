@@ -145,10 +145,11 @@ private fun admitQuerySessionInput(bytes: ByteArray): Refinement<QuerySessionInp
                 when (val failure = admitted.failure) {
                     is PublicToolInputFailure.SourceAnchor ->
                         ToolRpcReply.Rejected.querySession(QuerySessionRejectionDetail.SourceAnchor(failure.cause))
+                    is PublicToolInputFailure.Constraint,
                     is PublicToolInputFailure.Parameter,
                     PublicToolInputFailure.SchemaMismatch,
                     PublicToolInputFailure.SchemaRejected,
-                    PublicToolInputFailure.SyntaxRejected -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+                    PublicToolInputFailure.SyntaxRejected -> ToolRpcReply.Rejected.publicInput(failure)
                 }
             )
     }

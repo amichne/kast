@@ -1,10 +1,6 @@
 package io.github.amichne.kast.appserver.query
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.ReturnedByteLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.*
 
 /** Pure normalization/lowering; nullable controls exist only in the generated ingress documents. */
@@ -76,7 +72,13 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
         (executionMode ?: PublicToolDefaults.executionMode) == QueryExecutionModeDocument.RUNNER_CONTROLLED &&
             executionBudget?.maxWorkUnits != null
     ) {
-        return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
+        return Refinement.Rejected(
+            PublicToolInputFailure.Constraint(
+                firstParameter = PublicToolParameter.EXECUTION_MODE,
+                remainingParameters = setOf(PublicToolParameter.EXECUTION_BUDGET_MAX_WORK_UNITS),
+                rule = PublicToolRule.RUNNER_CONTROLLED_WORK_LIMIT,
+            )
+        )
     }
     val from =
         when (val from = source.lower()) {
@@ -166,14 +168,6 @@ private fun PublicToolReadResultAction.lowerReadResultRequest(): QueryRunRequest
             QueryRunRequest.ReadResult.bindingRows(result, retainedCursor, budget, evidenceCursor)
     }
 }
-
-internal fun PublicToolExecutionBudget.lower(): ExecutionBudgetDocument =
-    ExecutionBudgetDocument(
-        maxElapsedMillis = maxElapsedMs?.let { proven(ElapsedTimeLimitMillis.parse(it)) },
-        maxWorkUnits = maxWorkUnits?.let { proven(WorkUnitLimit.parse(it)) },
-        maxResults = maxResults?.let { proven(ResultLimit.parse(it)) },
-        maxReturnedBytes = maxReturnedBytes?.let { proven(ReturnedByteLimit.parse(it)) },
-    )
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
     when (this) {

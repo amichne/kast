@@ -2,6 +2,10 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryBranch
+import io.github.amichne.kast.query.contract.QueryBranchAccounting
+import io.github.amichne.kast.query.contract.QueryBranchObservation
+import io.github.amichne.kast.query.contract.QueryBranchOutcome
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
@@ -11,6 +15,7 @@ import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.query.contract.QueryTracePhase
+import io.github.amichne.kast.query.contract.QueryWorkUsage
 import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationSemanticIdentity
@@ -158,6 +163,14 @@ class QueryTraceMembersTest {
             f.state.consumedWork().value,
             "One source ceiling plus one refinement stays inside the shared 100-unit grant",
         )
+        assertEquals(
+            listOf(QueryBranch.TRACE_MEMBERS, QueryBranch.TRACE_MEMBER_REFINEMENT),
+            f.receipts.map { it.branch },
+        )
+        assertEquals(listOf(50L, 1L), f.receipts.map { it.chargedWorkUnits.value })
+        assertEquals(listOf(1, 1), f.receipts.map { it.emittedFacts.value })
+        assertTrue(f.receipts.all { it.examinedWorkUnits == QueryWorkUsage.Unobserved })
+        assertTrue(f.receipts.all { it.outcome == QueryBranchOutcome.COMPLETE })
     }
 
     @Test
@@ -200,6 +213,8 @@ class QueryTraceMembersTest {
         assertTrue(QueryLimitation.SOURCE_INCOMPLETE in f.state.limitations)
         val failure = assertInstanceOf(QueryItemFailure.Source::class.java, f.state.drainFailures().single())
         assertEquals(QuerySourceFailure.Rejected(SourceReadRejection.CONTRACT_VIOLATION), failure.reason)
+        assertEquals(QueryBranchOutcome.REJECTED, f.receipts.single().outcome)
+        assertEquals(0, f.receipts.single().emittedFacts.value)
     }
 
     @Test
@@ -322,6 +337,8 @@ class QueryTraceMembersTest {
         assertTrue(QueryLimitation.REFINEMENT_INCOMPLETE in f.state.limitations)
         val failure = assertInstanceOf(QueryItemFailure.Refinement::class.java, f.state.drainFailures().single())
         assertEquals(SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE, failure.reason)
+        assertEquals(QueryBranchOutcome.REJECTED, f.receipts.last().outcome)
+        assertEquals(QueryWorkUsage.Unobserved, f.receipts.last().examinedWorkUnits)
     }
 
     private class Fixture {
@@ -337,7 +354,13 @@ class QueryTraceMembersTest {
             )
         val task = PipelineTask.TraceMembers(QuerySymbol(SymbolDescription.from(owner), emptyList()), stage)
         val plan = fixture.symbolPlan()
-        val state = QueryExecutionState(fixture.request(plan, 100L), QueryNanoClock { 0L })
+        val receipts = mutableListOf<QueryBranchAccounting>()
+        val state =
+            QueryExecutionState(
+                fixture.request(plan, 100L),
+                QueryNanoClock { 0L },
+                QueryBranchObservation(receipts::add),
+            )
 
         fun compiler(rejectRefinement: Boolean = false, failure: SymbolExactRejection? = null): SymbolExactOperations =
             fixture.exactOperations(

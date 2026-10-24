@@ -156,7 +156,10 @@ class QueryWalkRetainedProgressTest {
                 .tasks
                 .filterIsInstance<PipelineTask.Walk>()
                 .mapNotNull { it.cursor }
-                .forEach { cursor -> assertTrue(cursor.checkpoint.frontier.all { it.depth.value < 2 }) }
+                .forEach { cursor ->
+                    // Boundary nodes may remain queued; traversal admission completes them without another read.
+                    assertTrue(cursor.checkpoint.frontier.all { cursor.extent.permitsRecord(it.depth) })
+                }
         }
         assertEquals(QueryWalkCoverage.Complete, pages.flatMap { it.result().walkObservations }.last().coverage)
     }

@@ -107,6 +107,23 @@ class QuerySessionRejectionDetailTest {
     }
 
     @Test
+    fun `constraint details reject unknown parameter paths rules and remedies`() {
+        // Deliberately invalid external values; valid encoded shapes are proved through both RPC ingress owners.
+        val cases =
+            listOf(
+                InvalidConstraintDetail(parameters = listOf("EXECUTION_MODE", "executionBudget.maxWorkUnits")),
+                InvalidConstraintDetail(rule = "UNKNOWN"),
+                InvalidConstraintDetail(remedies = listOf("START_NEW_QUERY_SESSION")),
+            )
+        for (detail in cases) {
+            val malformed = Json.encodeToString(detail)
+            assertThrows(SerializationException::class.java) {
+                Json.decodeFromString<QuerySessionRejectionDetail>(malformed)
+            }
+        }
+    }
+
+    @Test
     fun `legacy rejection stays exactly two fields`() {
         val reply = ToolRpcReply.Rejected(ToolRpcFailure.OUT_OF_SCOPE)
         val encoded = Json.encodeToJsonElement<ToolRpcReply>(reply).jsonObject
@@ -127,4 +144,12 @@ private data class ContradictorySessionDetail(
     @Required
     @SerialName("next_action")
     val nextAction: SourceAnchorRecoveryAction = SourceAnchorRecoveryAction.USE_ISSUED_CANDIDATE_SELECTOR,
+)
+
+@Serializable
+private data class InvalidConstraintDetail(
+    @Required val type: String = "REQUEST_CONSTRAINT_REJECTED",
+    @Required val parameters: List<String> = listOf("executionMode", "executionBudget.maxWorkUnits"),
+    @Required val rule: String = "RUNNER_CONTROLLED_WORK_LIMIT",
+    @Required val remedies: List<String> = listOf("REMOVE_MAX_WORK_UNITS", "SELECT_BOUNDED"),
 )

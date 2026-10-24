@@ -1,6 +1,8 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.QueryBranch
+import io.github.amichne.kast.query.contract.QueryBranchOutcome
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QuerySourceFailure
@@ -41,6 +43,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 /** Direct structural membership admitted from the exact class anchor; no textual or package ownership inference. */
 internal class QueryTraceMember
 private constructor(
+    val owner: SymbolSelector,
     val selection: SymbolDiscoverySelection,
     val selector: SourceSelector.Entity,
     val kind: CompilerSymbolKind,
@@ -71,7 +74,7 @@ private constructor(
                     declaration.parentSelector.fingerprint == region.selector.fingerprint
             if (!direct || !selection.admitsOwner(owner, kind) || !selection.admitsEntity(location, entity, owner))
                 return Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-            return Refinement.Refined(QueryTraceMember(selection, declaration.selector, kind))
+            return Refinement.Refined(QueryTraceMember(owner, selection, declaration.selector, kind))
         }
     }
 }
@@ -96,31 +99,40 @@ internal class QueryTraceMembers(private val source: SourceReadOperations, priva
         val budget = state.indexedDiscoveryBudget() ?: return false
         val entityLimit = SourceEntityLimit.parse(minOf(1_000, budget.outputResults.value)).refined()
         val request = memberRequest(task, budget, entityLimit)
-        val result = source.read(request)
-        // Source pages expose no measured work. Charge the full transferred ceiling conservatively.
-        when (val resources = budget.resources) {
-            is io.github.amichne.kast.kernel.ResourceBudget.Bounded -> state.consume(resources.workUnitLimit.value)
-            io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled -> state.consume(1L)
-        }
-        state.observeTime()
-        return when (result) {
-            is SourceReadResult.Rejected -> reject(task, result.reason, state, tasks)
-            is SourceReadResult.Complete ->
-                consumePage(
-                    task,
-                    MemberPage(result.snapshot, result.region, result.entities, null),
-                    entityLimit,
-                    state,
-                    tasks,
-                )
-            is SourceReadResult.Qualified ->
-                consumePage(
-                    task,
-                    MemberPage(result.snapshot, result.region, result.entities, result.qualification),
-                    entityLimit,
-                    state,
-                    tasks,
-                )
+        return state.branches.read(
+            QueryBranch.TRACE_MEMBERS,
+            io.github.amichne.kast.relation.contract.RelationEndpoint.subject(task.owner.selector),
+            io.github.amichne.kast.relation.contract.RelationSearchBoundary.RETAINED_SUBJECT,
+        ) { receipt ->
+            val result = source.read(request)
+            // Source pages expose no measured work. Attribute the conservative charge, not invented native work.
+            when (val resources = budget.resources) {
+                is io.github.amichne.kast.kernel.ResourceBudget.Bounded -> state.consume(resources.workUnitLimit.value)
+                io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled -> state.consume(1L)
+            }
+            state.observeTime()
+            receipt.sourceResult(result)
+            when (result) {
+                is SourceReadResult.Rejected -> reject(task, result.reason, state, tasks)
+                is SourceReadResult.Complete ->
+                    consumePage(
+                        task,
+                        MemberPage(result.snapshot, result.region, result.entities, null),
+                        entityLimit,
+                        state,
+                        tasks,
+                        receipt,
+                    )
+                is SourceReadResult.Qualified ->
+                    consumePage(
+                        task,
+                        MemberPage(result.snapshot, result.region, result.entities, result.qualification),
+                        entityLimit,
+                        state,
+                        tasks,
+                        receipt,
+                    )
+            }
         }
     }
 
@@ -156,14 +168,20 @@ internal class QueryTraceMembers(private val source: SourceReadOperations, priva
         limit: SourceEntityLimit,
         state: QueryExecutionState,
         tasks: ArrayDeque<PipelineTask>,
+        receipt: QueryBranchRead,
     ): Boolean {
         val owner = task.owner.selector
-        if (!page.admits(owner) || page.entities.size > limit.value)
+        if (!page.admits(owner) || page.entities.size > limit.value) {
+            receipt.returned(QueryBranchOutcome.REJECTED, 0, setOf(QueryLimitation.SOURCE_INCOMPLETE))
             return reject(task, SourceReadRejection.CONTRACT_VIOLATION, state, tasks)
+        }
         val members = mutableListOf<QueryTraceMember>()
         for (entity in page.entities) when (val admitted = QueryTraceMember.admit(owner, page.region, entity)) {
             is Refinement.Refined -> members += admitted.value
-            is Refinement.Rejected -> return reject(task, admitted.failure, state, tasks)
+            is Refinement.Rejected -> {
+                receipt.returned(QueryBranchOutcome.REJECTED, 0, setOf(QueryLimitation.SOURCE_INCOMPLETE))
+                return reject(task, admitted.failure, state, tasks)
+            }
         }
         tasks.removeFirst()
         page.qualification?.let { retainContinuation(task, it, state, tasks) }
@@ -208,19 +226,34 @@ internal class QueryTraceMembers(private val source: SourceReadOperations, priva
         state: QueryExecutionState,
         tasks: ArrayDeque<PipelineTask>,
     ): Boolean {
+        val workBefore = state.consumedWork()
         if (!state.consumeUnit()) return false
-        val symbols = stages.refine(task.member.selection, null, state)
-        tasks.removeFirst()
-        for (symbol in symbols.asReversed()) {
-            val member = task.member
-            if (!member.admitsExact(symbol.selector)) {
-                state.failure(
-                    QueryItemFailure.Refinement(member.selection, SymbolExactRejection.COMPILER_CONTRACT_VIOLATION)
-                )
-                state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
-            } else tasks.addFirst(PipelineTask.Symbol(symbol, task.stage.copy(phase = QueryTracePhase.SEED)))
+        return state.branches.read(
+            QueryBranch.TRACE_MEMBER_REFINEMENT,
+            io.github.amichne.kast.relation.contract.RelationEndpoint.subject(task.member.owner),
+            io.github.amichne.kast.relation.contract.RelationSearchBoundary.RETAINED_SUBJECT,
+            workBefore,
+        ) { receipt ->
+            val symbols = stages.refine(task.member.selection, null, state)
+            tasks.removeFirst()
+            var accepted = 0
+            for (symbol in symbols.asReversed()) {
+                val member = task.member
+                if (!member.admitsExact(symbol.selector)) {
+                    state.failure(
+                        QueryItemFailure.Refinement(member.selection, SymbolExactRejection.COMPILER_CONTRACT_VIOLATION)
+                    )
+                    state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
+                } else {
+                    tasks.addFirst(PipelineTask.Symbol(symbol, task.stage.copy(phase = QueryTracePhase.SEED)))
+                    accepted += 1
+                }
+            }
+            if (accepted == 0)
+                receipt.returned(QueryBranchOutcome.REJECTED, 0, setOf(QueryLimitation.REFINEMENT_INCOMPLETE))
+            else receipt.returned(QueryBranchOutcome.COMPLETE, accepted)
+            true
         }
-        return true
     }
 
     private fun reject(
@@ -291,5 +324,15 @@ private data class MemberPage(
                 region.selector.range.startInclusive.value == owner.range.startInclusive &&
                 region.selector.range.endExclusive.value == owner.range.endExclusive
         return authority && range
+    }
+}
+
+private fun QueryBranchRead.sourceResult(result: SourceReadResult) {
+    when (result) {
+        is SourceReadResult.Complete -> returned(QueryBranchOutcome.COMPLETE, result.entities.size)
+        is SourceReadResult.Qualified ->
+            returned(QueryBranchOutcome.QUALIFIED, result.entities.size, setOf(QueryLimitation.SOURCE_INCOMPLETE))
+        is SourceReadResult.Rejected ->
+            returned(QueryBranchOutcome.REJECTED, 0, setOf(QueryLimitation.SOURCE_INCOMPLETE))
     }
 }

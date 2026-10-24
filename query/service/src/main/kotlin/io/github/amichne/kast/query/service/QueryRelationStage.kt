@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryBranchOutcome
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOccurrence
@@ -53,12 +54,31 @@ internal class QueryRelationStage(private val relations: RelationOperations) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return QueryRelationStageResult.ContractRejected
             }
+        return state.branches.read(
+            child.meaning.queryBranch(),
+            child.subject,
+            child.boundary,
+        ) { receipt ->
+            read(child, task, state, receipt)
+        }
+    }
+
+    private suspend fun read(
+        child: RelationRequest,
+        task: PipelineTask.Related,
+        state: QueryExecutionState,
+        receipt: QueryBranchRead,
+    ): QueryRelationStageResult {
         val result = relations.read(child)
         val cursor = observeCoverage(result, task, state)
+        receipt.relationResult(result)
         val omissions =
             when (val admitted = result.queryOmissions(task.value.selector, task.stage.meaning)) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return QueryRelationStageResult.ContractRejected
+                is Refinement.Rejected -> {
+                    receipt.returned(QueryBranchOutcome.REJECTED, 0)
+                    return QueryRelationStageResult.ContractRejected
+                }
             }
         preserveMeasuredPageOmissions(result, omissions, state)
         val facts =
@@ -199,4 +219,19 @@ private fun RelationOmissionEvidence?.isPersistentOmission(reason: RelationLimit
 private enum class QueryRelationStageOmissionFailure {
     INCONSISTENT_COVERAGE,
     PROVIDER_MISMATCH,
+}
+
+private fun QueryBranchRead.relationResult(result: RelationReadResult) {
+    when (result) {
+        is RelationReadResult.Complete -> {
+            measured(result.batch.examinedWorkUnits.value)
+            returned(QueryBranchOutcome.COMPLETE, result.batch.facts.size)
+        }
+        is RelationReadResult.Qualified -> {
+            measured(result.batch.examinedWorkUnits.value)
+            returned(QueryBranchOutcome.QUALIFIED, result.batch.facts.size, setOf(QueryLimitation.RELATION_INCOMPLETE))
+        }
+        is RelationReadResult.Rejected ->
+            returned(QueryBranchOutcome.REJECTED, 0, setOf(QueryLimitation.RELATION_INCOMPLETE))
+    }
 }

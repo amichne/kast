@@ -38,6 +38,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocumen
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
+import io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindow
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -203,7 +204,16 @@ internal object QueryDeliveryFixtures {
         val items = rows.subList(start, end)
         val outputOnly = output || outputSuffix
         val window = if (outputOnly) null else evidenceWindow(evidenceStart, evidenceEnd, evidenceTotal)
-        val nextCursor = if (end < ROW_COUNT && !output) QueryResultCursor.parse(end).refined() else null
+        val rowWindow =
+            if (outputOnly) null
+            else
+                QueryRetainedPresentationWindow.create(
+                        reference,
+                        QueryResultCursor.parse(start).refined(),
+                        QueryResultCursor.parse(end).refined(),
+                        QueryResultCursor.parse(ROW_COUNT).refined(),
+                    )
+                    .refined()
         val invocation = if (summary) previewSummary(items) else null
         val result =
             QueryRunResult(
@@ -211,7 +221,8 @@ internal object QueryDeliveryFixtures {
                 bounded(items),
                 bounded(evidence.subList(evidenceStart, evidenceEnd)),
                 retention = retention(outputOnly),
-                nextCursor = nextCursor,
+                presentationWindow = rowWindow,
+                nextCursor = rowWindow?.nextCursor,
                 invocation = invocation,
                 evidenceWindow = window,
                 interpretation = interpretation(rejectedProof),

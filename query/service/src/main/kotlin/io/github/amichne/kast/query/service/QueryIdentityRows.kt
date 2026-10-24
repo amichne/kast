@@ -84,6 +84,13 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<QueryIdentit
     fun flushDistinct(stage: ExactQueryStage.Distinct): List<QuerySymbol> =
         rows.remove(stage)?.values?.toList().orEmpty()
 
+    fun advanceDistinct(task: PipelineTask.FlushDistinct, tasks: ArrayDeque<PipelineTask>): Boolean {
+        val rows = flushDistinct(task.stage)
+        tasks.removeFirst()
+        rows.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.stage.next)) }
+        return true
+    }
+
     fun acceptSet(stage: ExactQueryStage.Set, incoming: QuerySymbol): Refinement<Unit, QueryIdentityRowFailure> {
         val right =
             when (val grouped = groupedRight(stage)) {

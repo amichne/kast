@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryBranchObservation
 import io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryContinuationState
@@ -43,6 +44,7 @@ class QueryService(
     private val valueFlow: ValueFlowCompilerPort = unavailableValueFlowPort,
     private val presentation: QueryPresentationExecution? = null,
     private val checkpointObservation: QueryCheckpointStorageObservation = QueryCheckpointStorageObservation.None,
+    private val branchObservation: QueryBranchObservation = QueryBranchObservation.None,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
     private val traceMembers = QueryTraceMembers(source, stages)
@@ -67,7 +69,7 @@ class QueryService(
     @Suppress("LargeClass")
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
         private val emittedBefore = checkpoint?.emittedCount ?: 0.queryCount()
-        private val state = QueryExecutionState(request, clock)
+        private val state = QueryExecutionState(request, clock, branchObservation)
         private var seed: PipelineSeed = checkpoint?.seed ?: PipelineSeed.Unmeasured
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
@@ -149,7 +151,7 @@ class QueryService(
                 is PipelineTask.Walk -> walk(task)
                 is PipelineTask.Feed -> feed(task)
                 is PipelineTask.FlushSet -> flushSet(task)
-                is PipelineTask.FlushDistinct -> flushDistinct(task)
+                is PipelineTask.FlushDistinct -> identityRows.advanceDistinct(task, tasks)
                 is PipelineTask.JoinEvidence -> joinStage.emitRightEvidence(task)
                 is PipelineTask.Join ->
                     when (val result = joinStage.advance(task)) {
@@ -228,13 +230,6 @@ class QueryService(
                     stage.right.discoveryObservations.map { PipelineTask.DiscoveryObservation(it) } +
                     stage.right.relationObservations.map(PipelineTask::RelationObservation)
             values.asReversed().forEach(tasks::addFirst)
-            return true
-        }
-
-        private fun flushDistinct(task: PipelineTask.FlushDistinct): Boolean {
-            val rows = identityRows.flushDistinct(task.stage)
-            tasks.removeFirst()
-            rows.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.stage.next)) }
             return true
         }
 

@@ -14,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
+import io.github.amichne.kast.protocol.contract.QueryRowWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -136,7 +137,8 @@ private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?):
             discoveryObservations = result.discoveryObservations.values.map(QueryDiscoveryObservationCliDocument::from),
             relationObservations = result.relationObservations.values.map { it.toWireDocument() },
             retention = result.retention,
-            nextCursor = result.nextCursor,
+            rowWindow = result.presentationWindow?.let(QueryRowWindowDocument::from),
+            nextCursor = result.presentationWindow?.nextCursor,
             coverage = QueryCoverageCliDocument(exhaustive = true),
             pageProgress = result.pageProgress(),
             executionBudget = result.executionBudget,
@@ -169,7 +171,8 @@ private fun projectQualified(
             discoveryObservations = result.discoveryObservations.values.map(QueryDiscoveryObservationCliDocument::from),
             relationObservations = result.relationObservations.values.map { it.toWireDocument() },
             retention = result.retention,
-            nextCursor = result.nextCursor,
+            rowWindow = result.presentationWindow?.let(QueryRowWindowDocument::from),
+            nextCursor = result.presentationWindow?.nextCursor,
             coverage = QueryCoverageCliDocument(exhaustive = false),
             pageProgress = result.pageProgress(),
             qualification =
@@ -221,6 +224,9 @@ private data class QueryCompleteCliDocument(
     val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("row_window")
+    val rowWindow: QueryRowWindowDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
     val nextCursor: QueryResultCursor? = null,
     val coverage: QueryCoverageCliDocument,
@@ -267,6 +273,9 @@ private data class QueryQualifiedCliDocument(
     @SerialName("relation_observations")
     val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
     val retention: QueryResultRetention,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("row_window")
+    val rowWindow: QueryRowWindowDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
     val nextCursor: QueryResultCursor? = null,
@@ -318,17 +327,6 @@ private data class QueryQualificationCliDocument(
         >,
     val progress: QueryQualifiedProgressDocument,
 )
-
-@Serializable
-private data class QueryRelationOmissionCliDocument(
-    @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(pattern = "^exact:v[2345]:") val subject: String,
-    @Serializable(with = RelationKindCliSerializer::class)
-    val relation: io.github.amichne.kast.protocol.contract.RelationKindDocument,
-    val evidence: RelationOmissionCliDocument,
-)
-
-private fun QueryRelationOmissionDocument.toCliDocument() =
-    QueryRelationOmissionCliDocument(subject.toCliDocument(), relation, evidence.toCliDocument())
 
 private val completeFactory =
     CanonicalJsonDocument.generated(QueryCompleteCliDocument.serializer()) {

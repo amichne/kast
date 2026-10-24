@@ -4,6 +4,8 @@ import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolInputFailure
+import io.github.amichne.kast.appserver.query.PublicToolRule
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.direct.DirectToolStage
@@ -137,7 +139,7 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
                         }
                 ) {
                     is Refinement.Refined -> admission.value
-                    is Refinement.Rejected -> return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+                    is Refinement.Rejected -> return ToolRpcReply.Rejected.publicInput(admission.failure)
                 }
         return invoke(name) {
             if (admitted == null) session.invoke(name, arguments) else session.invokeAdmitted(admitted)
@@ -228,9 +230,31 @@ internal sealed interface ToolRpcReply {
         constructor(failure: ToolRpcFailure) : this(failure, null)
 
         companion object {
+            fun publicInput(failure: PublicToolInputFailure): Rejected =
+                when (failure) {
+                    is PublicToolInputFailure.Constraint ->
+                        when (failure.rule) {
+                            PublicToolRule.RUNNER_CONTROLLED_WORK_LIMIT ->
+                                querySession(
+                                    QuerySessionRejectionDetail.RequestConstraint(failure.parameters, failure.rule)
+                                )
+                            PublicToolRule.SIMPLE_NAME,
+                            PublicToolRule.INDEXED_WORD,
+                            PublicToolRule.WORKSPACE_RELATIVE_PATH,
+                            PublicToolRule.PACKAGE_NAME,
+                            PublicToolRule.CANONICAL_STEP_LIMIT -> Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+                        }
+                    is PublicToolInputFailure.Parameter,
+                    is PublicToolInputFailure.SourceAnchor,
+                    PublicToolInputFailure.SchemaMismatch,
+                    PublicToolInputFailure.SchemaRejected,
+                    PublicToolInputFailure.SyntaxRejected -> Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+                }
+
             fun querySession(detail: QuerySessionRejectionDetail): Rejected =
                 Rejected(
                     when (detail) {
+                        is QuerySessionRejectionDetail.RequestConstraint,
                         is QuerySessionRejectionDetail.SourceAnchor -> ToolRpcFailure.INVALID_ARGUMENTS
                         is QuerySessionRejectionDetail.NewRun,
                         is QuerySessionRejectionDetail.SourceRead,

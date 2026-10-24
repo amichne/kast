@@ -197,6 +197,7 @@ private fun hostedCanonicalQueryProtocol(
             valueFlow = services.valueFlow,
             presentation = presentation,
             checkpointObservation = hostedQueryCheckpointStorageObservation(context.observation),
+            branchObservation = hostedQueryBranchObservation(context.readTrace),
         ),
         services.readReferences,
         continuations.queryState,

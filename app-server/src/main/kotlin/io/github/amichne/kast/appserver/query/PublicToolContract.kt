@@ -20,6 +20,15 @@ sealed interface PublicToolInputFailure {
     data class SourceAnchor(val cause: SourceReadAnchorDocumentFailure) : PublicToolInputFailure
 
     data class Parameter(val parameter: PublicToolParameter, val rule: PublicToolRule) : PublicToolInputFailure
+
+    /** A required first parameter makes the constraint's affected parameter set non-empty by construction. */
+    data class Constraint(
+        val firstParameter: PublicToolParameter,
+        val remainingParameters: Set<PublicToolParameter>,
+        val rule: PublicToolRule,
+    ) : PublicToolInputFailure {
+        val parameters: Set<PublicToolParameter> = setOf(firstParameter) + remainingParameters
+    }
 }
 
 @Serializable
@@ -31,6 +40,8 @@ enum class PublicToolParameter(val path: String) {
     PACKAGE("scope.packageName"),
     DIAGNOSTIC_PATH("relativePath"),
     TERMINAL_STEP("terminalStep"),
+    EXECUTION_MODE("executionMode"),
+    EXECUTION_BUDGET_MAX_WORK_UNITS("executionBudget.maxWorkUnits"),
 }
 
 @Serializable
@@ -42,6 +53,9 @@ enum class PublicToolRule(val correction: String) {
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),
     PACKAGE_NAME("Supply a Kotlin package name such as com.example.orders."),
     CANONICAL_STEP_LIMIT("Use at most 1000 steps before EMIT or 999 before the canonical TRACE suffix."),
+    RUNNER_CONTROLLED_WORK_LIMIT(
+        "RUNNER_CONTROLLED does not accept maxWorkUnits; remove executionBudget.maxWorkUnits or select BOUNDED."
+    ),
 }
 
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */
@@ -200,6 +214,7 @@ fun PublicToolInputFailure.explanation(): String =
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
         is PublicToolInputFailure.SourceAnchor -> "candidateRef: source anchor rejected (${cause.name})."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"
+        is PublicToolInputFailure.Constraint -> "${parameters.joinToString { it.path }}: ${rule.correction}"
     }
 
 class PublicToolRequestSerializer(private val identity: PublicToolIdentity) : KSerializer<AdmittedPublicTool> {

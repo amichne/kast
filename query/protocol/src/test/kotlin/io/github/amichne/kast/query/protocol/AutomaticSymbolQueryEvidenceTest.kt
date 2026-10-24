@@ -15,6 +15,12 @@ import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireDecoding
+import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.query.contract.QueryResult
@@ -29,7 +35,13 @@ import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
@@ -79,6 +91,34 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
     }
 
     @Test
+    fun `qualified evidence can advance while the final row window remains unchanged`() = runTest {
+        val script = failureScript()
+        val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
+        val rejection =
+            completionRejection(
+                protocol.execute(request, fixture.authority, budget, policy(retainedBytes = 128_000_000))
+            )
+        val evidence = retainedEvidence(rejection)
+        val first = readEvidence(protocol, evidence.result, 11, null) as OperationOutcome.Qualified
+        val last =
+            readEvidence(protocol, evidence.result, 11, first.evidence.payload.evidenceWindow!!.nextCursor)
+                as OperationOutcome.Qualified
+        for (detail in ToolOutputDetail.entries) {
+            val firstDocument = publicPage(first, detail)
+            val lastDocument = publicPage(last, detail)
+            assertWindow(firstDocument, "row_window", "FINAL", 11, 11, 11)
+            assertWindow(firstDocument, "evidence_window", "MORE", 0, 1000, 1100)
+            assertEquals(firstDocument["row_window"], lastDocument["row_window"])
+            assertWindow(lastDocument, "evidence_window", "FINAL", 1000, 1100, 1100)
+            assertFalse(firstDocument.containsKey("next_cursor"))
+            assertFalse(lastDocument.containsKey("next_cursor"))
+            assertEquals("qualified", firstDocument.getValue("status").jsonPrimitive.content)
+            assertEquals(firstDocument["qualification"], lastDocument["qualification"])
+        }
+        script.assertDrained()
+    }
+
+    @Test
     fun `large complete observation sequence remains complete through independent row and evidence reads`() = runTest {
         val script = observationScript()
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
@@ -100,6 +140,16 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
         assertEquals(10, suffix.evidence.payload.items.values.size)
         assertNull(suffix.evidence.payload.nextCursor)
         assertEquals(1000, suffix.evidence.payload.relationObservations.values.size)
+        for (detail in ToolOutputDetail.entries) {
+            val initialDocument = publicPage(result, detail)
+            val suffixDocument = publicPage(suffix, detail)
+            assertWindow(initialDocument, "row_window", "MORE", 0, 1, 11)
+            assertEquals("1", initialDocument.getValue("next_cursor").jsonPrimitive.content)
+            assertWindow(suffixDocument, "row_window", "FINAL", 1, 11, 11)
+            assertWindow(suffixDocument, "evidence_window", "MORE", 1, 1001, 1100)
+            assertFalse(suffixDocument.containsKey("next_cursor"))
+            assertEquals("complete", suffixDocument.getValue("status").jsonPrimitive.content)
+        }
         val final =
             readEvidence(protocol, reference, 11, suffix.evidence.payload.evidenceWindow!!.nextCursor)
                 as OperationOutcome.Complete
@@ -148,6 +198,29 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
             )
             script.assertDrained()
         }
+
+    private fun publicPage(page: QueryPublishedPage, detail: ToolOutputDetail): JsonObject {
+        val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(page) as WireEncoding.Encoded
+        val restored =
+            (CanonicalOperationWireBindings.queryRun.decodeOutcome(encoded.document) as WireDecoding.Decoded).value
+        val projected = CanonicalQueryCliDocuments.project(restored)
+        val document =
+            when (projected) {
+                is ProjectedOperationOutcome.Complete -> projected.document
+                is ProjectedOperationOutcome.Qualified -> projected.document
+                is ProjectedOperationOutcome.Rejected -> error("Retained page unexpectedly rejected")
+            }
+        return Json.parseToJsonElement(document.present(detail).value).jsonObject
+    }
+
+    private fun assertWindow(document: JsonObject, field: String, type: String, start: Int, end: Int, total: Int) {
+        val window = assertInstanceOf(JsonObject::class.java, document[field], "Missing $field")
+        assertEquals(setOf("type", "start", "end", "total"), window.keys)
+        assertEquals(type, window.getValue("type").jsonPrimitive.content)
+        assertEquals(start.toString(), window.getValue("start").jsonPrimitive.content)
+        assertEquals(end.toString(), window.getValue("end").jsonPrimitive.content)
+        assertEquals(total.toString(), window.getValue("total").jsonPrimitive.content)
+    }
 
     private suspend fun readEvidence(
         protocol: CanonicalQueryProtocol,
