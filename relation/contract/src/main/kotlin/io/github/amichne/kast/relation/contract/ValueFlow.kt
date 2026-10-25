@@ -34,7 +34,7 @@ private constructor(
     val kind: ValueTransferKind,
     val evidence: ValueTransferEvidence,
 ) {
-    internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ValueTransfer {
+    internal fun shareCallableEvidence(proofs: ValueFlowSiteSharing): ValueTransfer {
         val sharedSource = proofs.site(source)
         val sharedTarget = proofs.site(target)
         return if (sharedSource === source && sharedTarget === target) this
@@ -115,13 +115,16 @@ private constructor(
      * Shares full callable and execution-owner proofs across retained reads. Each invocation, role, range, branch, and
      * read stays distinct. The temporary lookup is local to this pure transformation.
      */
-    fun shareCallableEvidence(previous: Collection<ValueFlowStep>): ValueFlowStep {
-        val proofs = ValueFlowProofSharing(previous)
-        val sharedSource = proofs.site(source)
-        val sharedTransfers = transfers.map { it.shareCallableEvidence(proofs) }
-        val sharedReviewed = reviewedTransfers.map { it.shareCallableEvidence(proofs) }
+    fun shareCallableEvidence(previous: Collection<ValueFlowStep>): ValueFlowStep =
+        shareCallableEvidence(ValueFlowProofSharing(previous))
+
+    internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ValueFlowStep {
+        val sites = ValueFlowSiteSharing(proofs)
+        val sharedSource = sites.site(source)
+        val sharedTransfers = transfers.map { it.shareCallableEvidence(sites) }
+        val sharedReviewed = reviewedTransfers.map { it.shareCallableEvidence(sites) }
         val sharedObligations = obligations.map { obligation ->
-            val sharedSite = proofs.site(obligation.site)
+            val sharedSite = sites.site(obligation.site)
             if (sharedSite === obligation.site) obligation else obligation.shareCallableEvidence { sharedSite }
         }
         if (sharedSource === source && evidenceReferencesUnchanged(sharedTransfers, sharedReviewed, sharedObligations))

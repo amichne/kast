@@ -13,6 +13,8 @@ import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryResult
+import io.github.amichne.kast.query.contract.QueryRetainedBasisObservation
+import io.github.amichne.kast.query.contract.QueryRetainedCapture
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryStorageAllowance
@@ -26,6 +28,7 @@ import java.util.IdentityHashMap
 internal class QueryInvocationFacts(
     private val lease: SemanticReadAuthority,
     private val policy: QueryInvocationPolicy,
+    private val basisObservation: QueryRetainedBasisObservation = QueryRetainedBasisObservation.None,
 ) {
     private val pages = mutableListOf<SymbolInvocationPage>()
     private var observedEmptyRows: QueryRows? = null
@@ -36,6 +39,7 @@ internal class QueryInvocationFacts(
     private val limitations = linkedSetOf<QueryLimitation>()
     private var impactGraph = QueryImpactRetainedGraph()
     private var investigation: QueryImpactLedger? = null
+    private var capture: QueryRetainedCapture = QueryRetainedCapture.Initial
     private var originalOrdinals: Map<QueryImpactPath, Int> = emptyMap()
     private val selectedPaths = Collections.newSetFromMap(IdentityHashMap<QueryImpactPath, Boolean>())
     var retentionEstimate = QueryInvocationFactsRetentionEstimate.Empty
@@ -78,9 +82,10 @@ internal class QueryInvocationFacts(
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return captured
             }
-        if (!capacity.permits(charge.total.value.saturatedAdd(retainedBytes)))
+        if (!capacity.permits(charge.estimate.total.value.saturatedAdd(retainedBytes)))
             return Refinement.Rejected(QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT))
-        retentionEstimate += charge
+        retentionEstimate += charge.estimate
+        capture = charge.capture
         if (observedEmptyRows == null) observedEmptyRows = emptyRows(current)
         if (current is QueryRows.ValuePaths) {
             investigation = selection.ledger
@@ -131,22 +136,27 @@ internal class QueryInvocationFacts(
         return Refinement.Refined(ImpactSelection(ledger, candidateOrdinals, newLedger))
     }
 
+    private data class CapturedCharge(
+        val estimate: QueryInvocationFactsRetentionEstimate,
+        val capture: QueryRetainedCapture.Captured,
+    )
+
     private fun storageCharge(
         page: SymbolInvocationPage,
         selection: ImpactSelection,
         graph: QueryImpactRetainedGraph,
-    ): Refinement<QueryInvocationFactsRetentionEstimate, QueryInvocationTransition.Stopped> {
-        val rows = page.result.rows
-        val snapshot =
-            when (val captured = QueryRetainedResult.capture(lease, page.execution)) {
+    ): Refinement<CapturedCharge, QueryInvocationTransition.Stopped> {
+        val captured =
+            when (val captured = capture.capture(lease, page.execution, basisObservation)) {
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return Refinement.Rejected(invalidInvocation())
             }
+        val snapshot = captured.result
+        val impactStorage = (snapshot as? QueryRetainedResult.ValuePaths)?.retainedStorage(graph)
         val snapshotBytes =
-            (if (rows is QueryRows.ValuePaths) {
-                (snapshot as QueryRetainedResult.ValuePaths)
-                    .retainedBytes(graph)
-                    .saturatedAdd(rows.values.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L)
+            (if (impactStorage != null) {
+                impactStorage.totalBytes
+                    .saturatedAdd(snapshot.rowCount.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L)
                     .saturatedAdd(
                         if (selection.newLedger)
                             selection.ordinals.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L
@@ -159,15 +169,18 @@ internal class QueryInvocationFacts(
         val semanticBytes =
             if (checkpoint == null || snapshotBytes == Long.MAX_VALUE) snapshotBytes
             else {
-                val standaloneCheckpoint = checkpoint.retainedBytes
+                val standaloneCheckpoint = impactStorage?.checkpointBytes ?: checkpoint.retainedBytes
                 if (standaloneCheckpoint > snapshotBytes) return Refinement.Rejected(invalidInvocation())
                 (snapshotBytes - standaloneCheckpoint).saturatedAdd(checkpoint.retainedBytes(graph))
             }
         return Refinement.Refined(
-            QueryInvocationFactsRetentionEstimate(
-                QueryRetentionByteCount.measured(semanticBytes),
-                QueryRetentionByteCount.measured(policy.previewBytes(page.items)),
-                QueryRetentionByteCount.measured(page.items.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES),
+            CapturedCharge(
+                QueryInvocationFactsRetentionEstimate(
+                    QueryRetentionByteCount.measured(semanticBytes),
+                    QueryRetentionByteCount.measured(policy.previewBytes(page.items)),
+                    QueryRetentionByteCount.measured(page.items.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES),
+                ),
+                captured,
             )
         )
     }

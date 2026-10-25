@@ -7,6 +7,8 @@ internal fun captureRetainedQueryResult(
     lease: SemanticReadAuthority,
     execution: QueryExecutionResult,
     rowScope: QueryRetainedCaptureRows = QueryRetainedCaptureRows.PRESENTED,
+    basis: QueryRetainedCapture = QueryRetainedCapture.Initial,
+    observation: QueryRetainedBasisObservation = QueryRetainedBasisObservation.None,
 ): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
     val result: QueryResult
     val coverage: QueryCoverage
@@ -28,7 +30,7 @@ internal fun captureRetainedQueryResult(
         is QueryExecutionResult.Rejection -> return Refinement.Rejected(QueryRetainedResultFailure.EXECUTION_REJECTED)
     }
     if (
-        result.hasForeignBasis(lease) ||
+        result.hasForeignBasis(lease, basis, observation) ||
             (progress as? QueryContinuationState.Resumable)?.checkpoint?.lease?.let { it != lease } == true
     ) {
         return Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH)

@@ -2,7 +2,8 @@ package io.github.amichne.kast.query.protocol
 
 /**
  * Accepted facts only. Fixed aggregate bookkeeping stays within the admitted snapshot's existing 512-byte structure
- * allowance. Observation snapshots, capture temporaries and rejected staging are not retained by this owner.
+ * allowance. The latest successful capture keeps its detached-basis proof. Observation snapshots and rejected staging
+ * are not retained by this owner.
  */
 data class QueryInvocationFactsRetentionEstimate(
     val semantic: QueryRetentionByteCount,

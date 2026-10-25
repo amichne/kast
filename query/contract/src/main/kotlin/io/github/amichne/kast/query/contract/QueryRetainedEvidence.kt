@@ -34,8 +34,12 @@ internal fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean 
                 fact.target.lease != lease
         }
 
-internal fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    rows.hasForeignBasis(lease) ||
+internal fun QueryResult.hasForeignBasis(
+    lease: SemanticReadAuthority,
+    basis: QueryRetainedCapture = QueryRetainedCapture.Initial,
+    observation: QueryRetainedBasisObservation = QueryRetainedBasisObservation.None,
+): Boolean =
+    rows.hasForeignBasis(lease, basis, observation) ||
         failures.any { it.hasForeignBasis(lease) } ||
         omissions.any { it.subject.lease != lease } ||
         walkObservations.any { it.subject.lease != lease } ||
@@ -43,7 +47,11 @@ internal fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean 
         discoveryObservations.any { it.authority != lease } ||
         relationObservations.any { it.question.subject.lease != lease }
 
-private fun QueryRows.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+private fun QueryRows.hasForeignBasis(
+    lease: SemanticReadAuthority,
+    basis: QueryRetainedCapture,
+    observation: QueryRetainedBasisObservation,
+): Boolean =
     when (val resultRows = this) {
         is QueryRows.ImpactWitness -> resultRows.view.ledger.hasForeignBasis(lease)
         is QueryRows.Symbols -> resultRows.values.any { it.hasForeignBasis(lease) }
@@ -51,7 +59,8 @@ private fun QueryRows.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
             resultRows.values.any { it.hasForeignBasis(lease) } ||
                 when (val witness = resultRows.accounting) {
                     QueryValuePathAccounting.EvidenceOnly -> false
-                    is QueryValuePathAccounting.Investigated -> witness.ledger.hasForeignBasis(lease)
+                    is QueryValuePathAccounting.Investigated ->
+                        basis.hasForeignLedgerBasis(witness.ledger, lease, observation)
                 }
         is QueryRows.Occurrences ->
             resultRows.values.any { occurrence ->
@@ -89,6 +98,7 @@ internal fun retainedStorageBytes(
     references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>,
     discoveries: List<QueryDiscoveryObservation>,
     relations: List<QueryRelationObservation>,
+    checkpointBytes: Long = (progress as? QueryContinuationState.Resumable)?.checkpoint?.retainedBytes ?: 0L,
 ): Long {
     val sourceText =
         rows.fold(0L) { size, row ->
@@ -124,7 +134,7 @@ internal fun retainedStorageBytes(
         .saturatedAdd(relations.sumOf { it.retainedBytes })
         .saturatedMultiply(RETAINED_STATE_OVERHEAD_MULTIPLIER)
         // These owners already provide conservative byte charges; retain them without scaling their proof again.
-        .saturatedAdd(checkpoint?.retainedBytes ?: 0L)
+        .saturatedAdd(checkpointBytes)
         .saturatedAdd(priorRetainedSource)
 }
 

@@ -18,7 +18,7 @@ private constructor(
     val retainedBytes: Long
         get() = 8192L.addBytes(source.retainedBytes).addBytes(target.retainedBytes)
 
-    internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ReviewedValueTransfer =
+    internal fun shareCallableEvidence(proofs: ValueFlowSiteSharing): ReviewedValueTransfer =
         ReviewedValueTransfer(proofs.site(source), proofs.site(target), binding)
 
     companion object {

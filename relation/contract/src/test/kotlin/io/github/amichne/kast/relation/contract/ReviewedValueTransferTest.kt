@@ -119,6 +119,32 @@ class ReviewedValueTransferTest {
     }
 
     @Test
+    fun `incremental proof sharing retains reviewed evidence and separate source epochs`() {
+        val fixture = ReviewedValueFixture()
+        val first = observed(fixture, fixture.transfer()).flowRefined()
+        val second = observed(fixture, fixture.transfer()).flowRefined()
+        val proofs = ValueFlowProofSharing(listOf(first))
+        val shared = proofs.share(second)
+        assertEquals(second.reviewedTransfers, shared.reviewedTransfers)
+        assertEquals(second.receipts, shared.receipts)
+        assertTrue(shared.transfers.isEmpty())
+        assertSame(first.source.executionOwner, shared.source.executionOwner)
+        assertSame(
+            first.reviewedTransfers.single().target.executionOwner,
+            shared.reviewedTransfers.single().target.executionOwner,
+        )
+        assertEquals(
+            listOf(ValuePathSegment.Element, ValuePathSegment.Field(fixture.field)),
+            shared.reviewedTransfers.single().target.valuePath.segments,
+        )
+        val later = ReviewedValueFixture(generation = 2)
+        val foreign = observed(later, later.transfer()).flowRefined()
+        val foreignResult = proofs.share(foreign)
+        assertEquals(foreign.reviewedTransfers, foreignResult.reviewedTransfers)
+        assertSame(foreign.source.executionOwner, foreignResult.source.executionOwner)
+    }
+
+    @Test
     fun `reviewed output cannot escape detached capacity or source identity`() {
         val fixture = ReviewedValueFixture()
         val transfer = fixture.transfer()

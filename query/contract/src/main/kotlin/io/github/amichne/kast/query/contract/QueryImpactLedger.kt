@@ -111,7 +111,8 @@ private constructor(
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
-            when (val admitted = validateReadReceipts(readReceipts, observations, readRejections, domain)) {
+            val observationsBySource = observations.associateBy { it.source }
+            when (val admitted = validateReadReceipts(readReceipts, observationsBySource, readRejections, domain)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
@@ -132,7 +133,7 @@ private constructor(
                     snapshot(representationModels),
                     snapshot(boundaryModels),
                     snapshot(observations),
-                    snapshotReceipts(readReceipts, observations),
+                    snapshotReceipts(readReceipts, observationsBySource),
                     snapshot(readRejections),
                     snapshot(paths),
                     closure,
@@ -162,22 +163,6 @@ private fun investigationClosure(
     return if (required.isEmpty()) QueryImpactClosure.Discharged
     else QueryImpactClosure.Unresolved(Collections.unmodifiableSet(required))
 }
-
-internal fun QueryImpactPath.hasModeledArrival(index: Int): Boolean =
-    when (steps.getOrNull(index)) {
-        is QueryImpactStep.ModeledRepresentation,
-        is QueryImpactStep.ModeledBoundary -> true
-        is QueryImpactStep.Compiler,
-        is QueryImpactStep.ReviewedLibrary -> false
-        null ->
-            when (terminal) {
-                is QueryImpactTerminal.Consumer,
-                is QueryImpactTerminal.ModeledTerminal -> true
-                is QueryImpactTerminal.Unresolved,
-                is QueryImpactTerminal.SupportedDomainEnd,
-                is QueryImpactTerminal.ExplicitScopeExclusion -> false
-            }
-    }
 
 internal fun QueryImpactTerminal.isEstablishedBy(observed: ValueFlowStep): Boolean =
     when (this) {
@@ -296,11 +281,12 @@ private fun producerEvidence(
 
 private fun validateReadReceipts(
     receipts: Map<ValueSite, List<ValueFlowWorkReceipt>>,
-    observations: List<ValueFlowStep>,
+    observations: Map<ValueSite, ValueFlowStep>,
     rejections: List<QueryImpactReadRejection>,
     domain: RelationSearchBoundary,
 ): Refinement<Unit, QueryImpactLedgerFailure> {
-    if (receipts.keys.any { site -> observations.none { it.source == site } && rejections.none { it.source == site } })
+    val rejectedSources = rejections.mapTo(hashSetOf()) { it.source }
+    if (receipts.keys.any { it !in observations && it !in rejectedSources })
         return Refinement.Rejected(QueryImpactLedgerFailure.UNACCOUNTED_NATIVE_READ)
     if (receipts.any { (site, values) -> values.any { !it.belongsTo(site, domain) } })
         return Refinement.Rejected(QueryImpactLedgerFailure.DOMAIN_MISMATCH)
@@ -317,10 +303,10 @@ private fun RelationEndpoint.hasOwner(site: ValueSite): Boolean =
 
 private fun snapshotReceipts(
     receipts: Map<ValueSite, List<ValueFlowWorkReceipt>>,
-    observations: List<ValueFlowStep>,
+    observations: Map<ValueSite, ValueFlowStep>,
 ): Map<ValueSite, List<ValueFlowWorkReceipt>> =
     Collections.unmodifiableMap(
         receipts.mapValues { (site, values) ->
-            observations.firstOrNull { it.source == site && it.receipts == values }?.receipts ?: snapshot(values)
+            observations[site]?.takeIf { it.receipts == values }?.receipts ?: snapshot(values)
         }
     )

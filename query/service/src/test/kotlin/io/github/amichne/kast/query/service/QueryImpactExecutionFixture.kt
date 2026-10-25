@@ -70,7 +70,7 @@ internal data class ImpactReadExpectation(
     val work: Long = 1,
 )
 
-internal class QueryImpactExecutionFixture(generation: Long = 1) {
+internal class QueryImpactExecutionFixture(generation: Long = 1, ownerEnd: Int = 200) {
     val lease =
         SemanticReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/fixture")).value(),
@@ -98,7 +98,7 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
         CompilerGroundedSymbolEvidence.fromBoundary(
                 file,
                 0,
-                200,
+                ownerEnd,
                 "owner",
                 "fixture.owner",
                 CompilerSymbolKind.FUNCTION,
