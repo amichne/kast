@@ -263,7 +263,10 @@ protected constructor(
             get() = retainedBytes(QueryImpactRetainedGraph())
 
         /** A request-local graph charges shared original ledger objects once across admitted pages. */
-        fun retainedBytes(graph: QueryImpactRetainedGraph): Long = valuePathRetainedBytes(this, graph)
+        fun retainedBytes(graph: QueryImpactRetainedGraph): Long = retainedStorage(graph).totalBytes
+
+        fun retainedStorage(graph: QueryImpactRetainedGraph): QueryValuePathRetainedStorage =
+            QueryValuePathRetainedStorage.measure(this, graph)
 
         override fun selectRows(indices: List<Int>): Refinement<ValuePaths, QueryRetainedResultFailure> {
             validateIndices(indices)?.let {

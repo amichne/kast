@@ -89,6 +89,7 @@ internal fun retainedStorageBytes(
     references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>,
     discoveries: List<QueryDiscoveryObservation>,
     relations: List<QueryRelationObservation>,
+    checkpointBytes: Long = (progress as? QueryContinuationState.Resumable)?.checkpoint?.retainedBytes ?: 0L,
 ): Long {
     val sourceText =
         rows.fold(0L) { size, row ->
@@ -124,7 +125,7 @@ internal fun retainedStorageBytes(
         .saturatedAdd(relations.sumOf { it.retainedBytes })
         .saturatedMultiply(RETAINED_STATE_OVERHEAD_MULTIPLIER)
         // These owners already provide conservative byte charges; retain them without scaling their proof again.
-        .saturatedAdd(checkpoint?.retainedBytes ?: 0L)
+        .saturatedAdd(checkpointBytes)
         .saturatedAdd(priorRetainedSource)
 }
 

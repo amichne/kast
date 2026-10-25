@@ -136,17 +136,16 @@ internal class QueryInvocationFacts(
         selection: ImpactSelection,
         graph: QueryImpactRetainedGraph,
     ): Refinement<QueryInvocationFactsRetentionEstimate, QueryInvocationTransition.Stopped> {
-        val rows = page.result.rows
         val snapshot =
             when (val captured = QueryRetainedResult.capture(lease, page.execution)) {
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return Refinement.Rejected(invalidInvocation())
             }
+        val impactStorage = (snapshot as? QueryRetainedResult.ValuePaths)?.retainedStorage(graph)
         val snapshotBytes =
-            (if (rows is QueryRows.ValuePaths) {
-                (snapshot as QueryRetainedResult.ValuePaths)
-                    .retainedBytes(graph)
-                    .saturatedAdd(rows.values.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L)
+            (if (impactStorage != null) {
+                impactStorage.totalBytes
+                    .saturatedAdd(snapshot.rowCount.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L)
                     .saturatedAdd(
                         if (selection.newLedger)
                             selection.ordinals.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L
@@ -159,7 +158,7 @@ internal class QueryInvocationFacts(
         val semanticBytes =
             if (checkpoint == null || snapshotBytes == Long.MAX_VALUE) snapshotBytes
             else {
-                val standaloneCheckpoint = checkpoint.retainedBytes
+                val standaloneCheckpoint = impactStorage?.checkpointBytes ?: checkpoint.retainedBytes
                 if (standaloneCheckpoint > snapshotBytes) return Refinement.Rejected(invalidInvocation())
                 (snapshotBytes - standaloneCheckpoint).saturatedAdd(checkpoint.retainedBytes(graph))
             }
