@@ -12,11 +12,60 @@ import org.junit.jupiter.api.Test
 
 class ValueFlowProofSharingTest {
     @Test
+    fun `checkpoint proof inventory is traversed once across new reads`() {
+        val count = 1_024
+        val endpoint = flowEndpoint("owner", 0, count * 10 + 100)
+        fun step(index: Int): ValueFlowStep {
+            val site =
+                ValueSite.fromCompiler(endpoint, flowRange(index * 10 + 1, index * 10 + 2), ValueRole.LocalRead)
+                    .flowRefined()
+            val domain =
+                RelationRequest.start(
+                    endpoint,
+                    RelationMeaning.References,
+                    RelationBudget(
+                        io.github.amichne.kast.kernel.ResourceBudget.RunnerControlled,
+                        RelationByteLimit.parse(100_000).flowRefined(),
+                        io.github.amichne.kast.kernel.ResultLimit.parse(1).flowRefined(),
+                    ),
+                    RelationSearchBoundary.WORKSPACE_EXPANSION,
+                )
+            return ValueFlowStep.fromCompiler(
+                    site,
+                    emptyList(),
+                    emptyList(),
+                    ValueFlowTerminal.SupportedDomainExhausted,
+                    domain,
+                    RelationWorkCount.parse(1).flowRefined(),
+                )
+                .flowRefined()
+        }
+        val retained = List(count, ::step)
+        var visited = 0
+        val previous =
+            object : AbstractCollection<ValueFlowStep>() {
+                override val size = retained.size
+
+                override fun iterator(): Iterator<ValueFlowStep> = retained.asSequence().onEach { visited++ }.iterator()
+            }
+        val proofs = ValueFlowProofSharing(previous)
+        repeat(count) { index ->
+            val input = step(index)
+            val shared = proofs.share(input)
+            assertEquals(input.source.identity, shared.source.identity)
+            assertSame(retained.first().source.executionOwner, shared.source.executionOwner)
+            assertSame(input.domain, shared.domain)
+            assertEquals(input.receipts, shared.receipts)
+        }
+        assertEquals(count, visited, "Prior proof visits must not grow with the number of new reads")
+    }
+
+    @Test
     fun `one input site keeps one output object and distinct equal inputs stay distinct`() {
         val endpoint = flowEndpoint("owner", 0, 200)
         val first = ValueSite.fromCompiler(endpoint, flowRange(10, 20), ValueRole.LocalRead).flowRefined()
         val second = ValueSite.fromCompiler(endpoint, flowRange(10, 20), ValueRole.LocalRead).flowRefined()
-        val proofs = ValueFlowProofSharing(emptyList())
+        val proofs = ValueFlowSiteSharing(ValueFlowProofSharing())
         val sharedFirst = proofs.site(first)
         val sharedSecond = proofs.site(second)
         assertEquals(first, second)

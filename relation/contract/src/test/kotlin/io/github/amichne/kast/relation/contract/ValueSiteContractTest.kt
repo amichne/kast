@@ -60,7 +60,7 @@ class ValueSiteContractTest {
                     RelationWorkCount.parse(1).refined(),
                 )
                 .refined()
-        val shared = step.shareCallableEvidence(emptyList())
+        val shared = ValueFlowProofSharing().share(step)
         assertEquals(listOf(edge), shared.transfers)
         assertEquals(listOf(obligation), shared.obligations)
         assertSame(proof, shared.transfers.single().evidence)
@@ -300,7 +300,7 @@ class ValueFlowStepContractTest {
         }
         val first = read(endpoint("submit", 210, 250, parameters = listOf("String")), 20)
         val second = read(endpoint("submit", 210, 250, parameters = listOf("String")), 60)
-        val shared = second.shareCallableEvidence(listOf(first))
+        val shared = ValueFlowProofSharing(listOf(first)).share(second)
         assertSame(
             (first.source.role as ValueRole.Argument).call.callable,
             (shared.source.role as ValueRole.Argument).call.callable,

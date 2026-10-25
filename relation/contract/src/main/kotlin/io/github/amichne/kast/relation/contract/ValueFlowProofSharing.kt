@@ -1,9 +1,9 @@
 package io.github.amichne.kast.relation.contract
 
-internal class ValueFlowProofSharing(previous: Collection<ValueFlowStep>) {
+/** One execution shares full proofs. A restored checkpoint seeds its lookup once. */
+class ValueFlowProofSharing(previous: Collection<ValueFlowStep> = emptyList()) {
     private val callables = linkedMapOf<RelationEndpoint.Resolved, CallableProof>()
     private val executionOwners = linkedMapOf<Pair<RelationEndpoint, ValueExecutionIdentity>, ValueExecutionOwner>()
-    private val sites = java.util.IdentityHashMap<ValueSite, ValueSite>()
 
     init {
         for (step in previous) {
@@ -12,21 +12,21 @@ internal class ValueFlowProofSharing(previous: Collection<ValueFlowStep>) {
         }
     }
 
-    class CallableProof(invocation: ValueInvocation) {
+    fun share(step: ValueFlowStep): ValueFlowStep = step.shareCallableEvidence(this)
+
+    internal class CallableProof(invocation: ValueInvocation) {
         val endpoint = invocation.callable
         val signature = invocation.signature
     }
 
-    fun callable(invocation: ValueInvocation): CallableProof =
+    internal fun callable(invocation: ValueInvocation): CallableProof =
         when (val endpoint = invocation.callable) {
             is RelationEndpoint.Resolved -> callables.getOrPut(endpoint) { CallableProof(invocation) }
             is RelationEndpoint.Subject -> CallableProof(invocation)
         }
 
-    fun executionOwner(owner: ValueExecutionOwner): ValueExecutionOwner =
+    internal fun executionOwner(owner: ValueExecutionOwner): ValueExecutionOwner =
         executionOwners.getOrPut(owner.enclosing to owner.identity) { owner }
-
-    fun site(value: ValueSite): ValueSite = sites.getOrPut(value) { value.shareCallableEvidence(this) }
 
     private fun remember(site: ValueSite) {
         executionOwner(site.executionOwner)
@@ -44,4 +44,11 @@ internal class ValueFlowProofSharing(previous: Collection<ValueFlowStep>) {
         callable(invocation)
         executionOwner(invocation.executionOwner)
     }
+}
+
+/** Input sites stay local to one transformation. Only their full proofs survive across reads. */
+internal class ValueFlowSiteSharing(private val proofs: ValueFlowProofSharing) {
+    private val sites = java.util.IdentityHashMap<ValueSite, ValueSite>()
+
+    fun site(value: ValueSite): ValueSite = sites.getOrPut(value) { value.shareCallableEvidence(proofs) }
 }

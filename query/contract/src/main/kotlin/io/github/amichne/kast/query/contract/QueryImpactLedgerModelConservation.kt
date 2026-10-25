@@ -16,8 +16,10 @@ internal class QueryImpactLedgerModelConservation(
     private val producers: List<QueryImpactProducer>,
     private val representations: List<RepresentationRule>,
     private val boundaries: List<BoundaryModel>,
-    private val paths: List<QueryImpactPath>,
+    private val paths: QueryImpactLedgerPaths,
 ) {
+    private val arrivals = mutableMapOf<QueryImpactLedgerPaths.Prefix, Refinement<Unit, QueryImpactLedgerFailure>>()
+
     fun validate(): Refinement<Unit, QueryImpactLedgerFailure> {
         for (producer in producers) {
             when (val admitted = originBranches(producer)) {
@@ -25,7 +27,7 @@ internal class QueryImpactLedgerModelConservation(
                 is Refinement.Rejected -> return admitted
             }
         }
-        for (path in paths) {
+        for (path in paths.all) {
             when (val admitted = arrivalBranches(path)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
@@ -38,7 +40,7 @@ internal class QueryImpactLedgerModelConservation(
         for (rule in representations.filterIsInstance<RepresentationRule.Origin>()) {
             val admitted = RepresentationEvidence.origin(producer.site, producer.invocation, rule)
             if (admitted is Refinement.Rejected) continue
-            if (paths.none { it.retainsOrigin(producer, rule) }) return missingBranch()
+            if (paths.from(producer.site).none { it.retainsOrigin(producer, rule) }) return missingBranch()
         }
         return Refinement.Refined(Unit)
     }
@@ -46,18 +48,29 @@ internal class QueryImpactLedgerModelConservation(
     private fun arrivalBranches(path: QueryImpactPath): Refinement<Unit, QueryImpactLedgerFailure> {
         for (index in 0..path.steps.size) {
             if (path.stopsBeforeModels(index)) continue
-            val site = if (index == 0) path.producer else path.steps[index - 1].target
-            val siblings = paths.filter { it.sameModeledPrefix(path, index) }
-            if (!representationBranches(path, site.role, siblings, index)) return missingBranch()
-            val retained =
-                boundaries
-                    .filter { it.source.site == site }
-                    .all { model ->
-                        siblings.any { it.retainsBoundary(index, model) }
-                    }
-            if (!retained) return missingBranch()
+            val prefix = paths.at(path, index)
+            when (val admitted = arrivals.getOrPut(prefix) { arrivalBranches(path, index, prefix.paths) }) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
         }
         return Refinement.Refined(Unit)
+    }
+
+    private fun arrivalBranches(
+        path: QueryImpactPath,
+        index: Int,
+        siblings: List<QueryImpactPath>,
+    ): Refinement<Unit, QueryImpactLedgerFailure> {
+        val site = if (index == 0) path.producer else path.steps[index - 1].target
+        if (!representationBranches(path, site.role, siblings, index)) return missingBranch()
+        val retained =
+            boundaries
+                .filter { it.source.site == site }
+                .all { model ->
+                    siblings.any { it.retainsBoundary(index, model) }
+                }
+        return if (retained) Refinement.Refined(Unit) else missingBranch()
     }
 
     private fun representationBranches(
@@ -119,13 +132,7 @@ private fun QueryImpactPath.retainsRepresentation(index: Int, rule: Representati
 private fun QueryImpactPath.retainsOrigin(producer: QueryImpactProducer, rule: RepresentationRule.Origin): Boolean =
     this.producer == producer.site && origins().any { it.rule == rule && it.invocation == producer.invocation }
 
-/** Exact steps retain every preceding model application; origin histories retain seed modeling provenance. */
-internal fun QueryImpactPath.sameModeledPrefix(other: QueryImpactPath, index: Int): Boolean {
-    if (origins() != other.origins()) return false
-    return producer == other.producer && steps.size >= index && steps.take(index) == other.steps.take(index)
-}
-
-private fun QueryImpactPath.origins(): Set<RepresentationHistory.Origin> =
+internal fun QueryImpactPath.origins(): Set<RepresentationHistory.Origin> =
     when (val current = representation) {
         QueryImpactRepresentation.NotModeled -> emptySet()
         is QueryImpactRepresentation.Present ->

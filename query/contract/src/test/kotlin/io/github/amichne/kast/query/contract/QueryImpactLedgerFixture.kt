@@ -37,7 +37,7 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import java.nio.file.Path
 
-internal class QueryImpactLedgerFixture {
+internal class QueryImpactLedgerFixture(results: Int = 20, returnedBytes: Long = 100000) {
     val lease =
         SemanticReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/fixture")).value(),
@@ -79,11 +79,11 @@ internal class QueryImpactLedgerFixture {
             RelationMeaning.References,
             RelationBudget(
                 ResourceBudget(
-                    ResultLimit.parse(20).value(),
+                    ResultLimit.parse(results).value(),
                     WorkUnitLimit.parse(100).value(),
                     ElapsedTimeLimitMillis.parse(1000).value(),
                 ),
-                RelationByteLimit.parse(100000).value(),
+                RelationByteLimit.parse(returnedBytes).value(),
             ),
             RelationSearchBoundary.WORKSPACE_EXPANSION,
         )

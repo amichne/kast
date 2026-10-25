@@ -26,6 +26,8 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
@@ -67,6 +69,9 @@ class QueryImpactModelConservationTest {
         val f = QueryImpactLedgerFixture()
         val rules = origins(f)
         val paths = rules.flatMap { rule -> nativePaths(f, rule) }
+        val prefixes = QueryImpactLedgerPaths(paths)
+        assertSame(prefixes.at(paths[0], 0), prefixes.at(paths[1], 0))
+        assertNotSame(prefixes.at(paths[0], 0), prefixes.at(paths[2], 0))
         fun ledger(retained: List<QueryImpactPath>) =
             QueryImpactLedger.fromEvidence(
                 listOf(f.producer),

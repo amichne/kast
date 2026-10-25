@@ -9,6 +9,8 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import java.util.IdentityHashMap
 
 /** Pure conservation checks for the sole ledger constructor, preserving the first rejected invariant. */
 internal class QueryImpactLedgerValidation(
@@ -23,7 +25,11 @@ internal class QueryImpactLedgerValidation(
     private val peers: List<QueryImpactPeerBoundary>,
 ) {
     private val native = observations.groupBy { it.source }
+    private val nativeTransfers = IdentityHashMap<ValueFlowStep, Set<ValueTransfer>>()
     private val rejected = rejections.groupBy { it.source }
+    private val prefixes by lazy(LazyThreadSafetyMode.NONE) { QueryImpactLedgerPaths(paths) }
+    private val conservedPrefixes =
+        mutableMapOf<QueryImpactLedgerPaths.Prefix, Refinement<Unit, QueryImpactLedgerFailure>>()
 
     fun validate(): Refinement<Unit, QueryImpactLedgerFailure> {
         for (check in listOf(::origins, ::models, ::nativeDomain, ::observedPaths, ::modeledBranches, ::unaccounted)) {
@@ -37,13 +43,14 @@ internal class QueryImpactLedgerValidation(
 
     private fun origins(): Refinement<Unit, QueryImpactLedgerFailure> {
         if (seeds.isEmpty()) return reject(QueryImpactLedgerFailure.EMPTY_SEEDS)
-        if (seeds.distinct().size != seeds.size) return reject(QueryImpactLedgerFailure.DUPLICATE_SEED)
+        val distinctSeeds = seeds.toSet()
+        if (distinctSeeds.size != seeds.size) return reject(QueryImpactLedgerFailure.DUPLICATE_SEED)
         if (producers.isNotEmpty() && producers.map { it.site } != seeds)
             return reject(QueryImpactLedgerFailure.PRODUCER_IDENTITY_MISMATCH)
         if (paths.distinct().size != paths.size) return reject(QueryImpactLedgerFailure.DUPLICATE_PATH)
-        if (paths.any { it.producer !in seeds }) return reject(QueryImpactLedgerFailure.FOREIGN_PRODUCER)
-        if (seeds.any { seed -> paths.none { it.producer == seed } })
-            return reject(QueryImpactLedgerFailure.MISSING_SEED_PATH)
+        if (paths.any { it.producer !in distinctSeeds }) return reject(QueryImpactLedgerFailure.FOREIGN_PRODUCER)
+        val retainedProducers = paths.mapTo(hashSetOf()) { it.producer }
+        if (seeds.any { it !in retainedProducers }) return reject(QueryImpactLedgerFailure.MISSING_SEED_PATH)
         return Refinement.Refined(Unit)
     }
 
@@ -192,17 +199,22 @@ internal class QueryImpactLedgerValidation(
         index: Int,
         observed: ValueFlowStep,
     ): Refinement<Unit, QueryImpactLedgerFailure> {
-        val siblings = paths.filter { it.sameModeledPrefix(path, index) }
         val step = path.steps.getOrNull(index)
-        if (step is QueryImpactStep.Compiler && step.transfer !in observed.transfers)
+        val transfers = nativeTransfers.getOrPut(observed) { observed.transfers.toSet() }
+        if (step is QueryImpactStep.Compiler && step.transfer !in transfers)
             return reject(QueryImpactLedgerFailure.UNPROVEN_COMPILER_STEP)
-        if (
-            observed.transfers.any { edge ->
-                siblings.none { it.steps.getOrNull(index) == QueryImpactStep.Compiler(edge) }
-            }
-        )
+        val prefix = prefixes.at(path, index)
+        return conservedPrefixes.getOrPut(prefix) { conservePrefix(prefix, observed) }
+    }
+
+    private fun conservePrefix(
+        prefix: QueryImpactLedgerPaths.Prefix,
+        observed: ValueFlowStep,
+    ): Refinement<Unit, QueryImpactLedgerFailure> {
+        if (observed.transfers.any { QueryImpactStep.Compiler(it) !in prefix.steps })
             return reject(QueryImpactLedgerFailure.MISSING_BRANCH)
-        if (observed.obligations.any { !obligationRetained(it, observed.source, siblings, index) })
+        val modeled = prefix.hasModeledArrival()
+        if (observed.obligations.any { !obligationRetained(it, observed.source, prefix, modeled) })
             return reject(QueryImpactLedgerFailure.MISSING_OBLIGATION)
         return Refinement.Refined(Unit)
     }
@@ -210,21 +222,19 @@ internal class QueryImpactLedgerValidation(
     private fun obligationRetained(
         obligation: ValueFlowObligation,
         source: ValueSite,
-        siblings: List<QueryImpactPath>,
-        index: Int,
+        prefix: QueryImpactLedgerPaths.Prefix,
+        hasModeledArrival: Boolean,
     ): Boolean {
-        val retained = siblings.any {
-            it.steps.size == index && (it.terminal as? QueryImpactTerminal.Unresolved.Flow)?.obligation == obligation
-        }
+        val retained = QueryImpactTerminal.Unresolved.Flow(obligation) in prefix.terminals
         val modeled =
             obligation.site == source &&
                 obligation.cause == ValueFlowUnsupportedCause.UNMODELED_CALL &&
-                siblings.any { it.hasModeledArrival(index) }
+                hasModeledArrival
         return retained || modeled
     }
 
     private fun modeledBranches(): Refinement<Unit, QueryImpactLedgerFailure> =
-        QueryImpactLedgerModelConservation(producers, representations, boundaries, paths).validate()
+        QueryImpactLedgerModelConservation(producers, representations, boundaries, prefixes).validate()
 
     private fun unaccounted(): Refinement<Unit, QueryImpactLedgerFailure> {
         val visited = paths.flatMap { path -> listOf(path.producer) + path.steps.map { it.target } }.toSet()
@@ -236,6 +246,24 @@ internal class QueryImpactLedgerValidation(
     private fun accounted(): Refinement<PositionWitness, QueryImpactLedgerFailure> =
         Refinement.Refined(PositionWitness.Accounted)
 }
+
+private fun QueryImpactLedgerPaths.Prefix.hasModeledArrival(): Boolean =
+    steps.any {
+        when (it) {
+            is QueryImpactStep.ModeledRepresentation,
+            is QueryImpactStep.ModeledBoundary -> true
+            is QueryImpactStep.Compiler -> false
+        }
+    } ||
+        terminals.any {
+            when (it) {
+                is QueryImpactTerminal.Consumer,
+                is QueryImpactTerminal.ModeledTerminal -> true
+                is QueryImpactTerminal.Unresolved,
+                is QueryImpactTerminal.SupportedDomainEnd,
+                is QueryImpactTerminal.ExplicitScopeExclusion -> false
+            }
+        }
 
 private fun reject(cause: QueryImpactLedgerFailure): Refinement.Rejected<QueryImpactLedgerFailure> =
     Refinement.Rejected(cause)

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryImpactExecutionFailure
@@ -13,9 +14,11 @@ import io.github.amichne.kast.query.contract.QueryImpactScopeExclusion
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QueryStorageAllowance
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
+import io.github.amichne.kast.relation.contract.ValueFlowProofSharing
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -42,6 +45,7 @@ internal class QueryImpactTasks(
     checkpoint: QueryImpactSnapshot?,
 ) {
     private val reads = checkpoint?.reads?.toMutableMap() ?: linkedMapOf()
+    private val proofs = ValueFlowProofSharing(reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step })
     private val receipts = checkpoint?.receipts?.toMutableMap() ?: linkedMapOf()
     private val remainders = checkpoint?.remainders?.toMutableMap() ?: linkedMapOf()
     private val readRejections = checkpoint?.readRejections?.toMutableMap() ?: linkedMapOf()
@@ -161,10 +165,13 @@ internal class QueryImpactTasks(
         observation: ValueFlowStep,
         retainedBytes: (QueryImpactRetainedGraph) -> Long,
     ): QueryImpactTaskTransition {
-        val required = requiredImpactExpansionBytes(route, observation, source, retainedBytes)
-        if (!request.budget.storage.permits(required)) {
-            val cutoff = impactCapacityStop(route, required, request.budget.checkpointBytes.value)
-            return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(cutoff))
+        val storage = request.budget.storage
+        if (storage is QueryStorageAllowance.Bounded) {
+            val required = requiredImpactExpansionBytes(route, observation, source, retainedBytes)
+            if (!storage.permits(required)) {
+                val cutoff = impactCapacityStop(route, required, storage.limit.value)
+                return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(cutoff))
+            }
         }
         val compilerTasks =
             when (val branches = compilerImpactArrivals(route, observation)) {
@@ -216,25 +223,28 @@ internal class QueryImpactTasks(
     ): QueryImpactReadAcquisition {
         val cached = reads[route.site]
         if (cached != null && route.site !in remainders) return QueryImpactReadAcquisition.Ready(cached)
-        val graph = QueryImpactRetainedGraph()
-        val current = retainedBytes(graph)
-        val remaining =
-            when (val storage = request.budget.storage) {
-                io.github.amichne.kast.query.contract.QueryStorageAllowance.Unlimited ->
-                    request.budget.returnedBytes.value
-                is io.github.amichne.kast.query.contract.QueryStorageAllowance.Bounded ->
-                    (storage.limit.value - current).coerceAtLeast(0L)
+        val budget =
+            when (val resources = request.budget.resources) {
+                ResourceBudget.RunnerControlled -> state.impactBudget(checkpointRemaining = 0L, itemBytes = 0L)
+                is ResourceBudget.Bounded -> {
+                    val graph = QueryImpactRetainedGraph()
+                    val current = retainedBytes(graph)
+                    val remaining = (request.budget.checkpointBytes.value - current).coerceAtLeast(0L)
+                    val itemBytes =
+                        saturatedAdd(route.retainedBytes(graph), saturatedAdd(graph.site(route.site), 4096L))
+                    val reserve = saturatedAdd(itemBytes, itemBytes)
+                    if (remaining < reserve)
+                        return QueryImpactReadAcquisition.Cutoff(
+                            impactCapacityStop(
+                                route,
+                                saturatedAdd(current, reserve),
+                                request.budget.checkpointBytes.value,
+                            )
+                        )
+                    state.impactBudget(remaining / 2L, itemBytes)
+                }
             }
-        val itemBytes = saturatedAdd(route.retainedBytes(graph), saturatedAdd(graph.site(route.site), 4096L))
-        val reserve = saturatedAdd(itemBytes, itemBytes)
-        if (
-            request.budget.storage is io.github.amichne.kast.query.contract.QueryStorageAllowance.Bounded &&
-                remaining < reserve
-        )
-            return QueryImpactReadAcquisition.Cutoff(
-                impactCapacityStop(route, saturatedAdd(current, reserve), request.budget.checkpointBytes.value)
-            )
-        val budget = state.impactBudget(remaining / 2L, itemBytes) ?: return QueryImpactReadAcquisition.NotStarted
+        if (budget == null) return QueryImpactReadAcquisition.NotStarted
         val requested = ValueFlowRequest(route.site, budget, source.domain, remainders[route.site])
         val read = shareRead(validateImpactRead(port.read(requested), requested, source))
         recordReceipt(route, requested, read)
@@ -242,15 +252,13 @@ internal class QueryImpactTasks(
         return retainRead(route, read, cached)
     }
 
-    private fun shareRead(read: ValueFlowRead): ValueFlowRead {
-        val previous = reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step }
-        return when (read) {
-            is ValueFlowRead.Observed -> ValueFlowRead.Observed(read.step.shareCallableEvidence(previous))
-            is ValueFlowRead.Suspended -> read.copy(step = read.step.shareCallableEvidence(previous))
+    private fun shareRead(read: ValueFlowRead): ValueFlowRead =
+        when (read) {
+            is ValueFlowRead.Observed -> ValueFlowRead.Observed(proofs.share(read.step))
+            is ValueFlowRead.Suspended -> read.copy(step = proofs.share(read.step))
             is ValueFlowRead.Rejected,
             is ValueFlowRead.ContractRejected -> read
         }
-    }
 
     private fun recordReceipt(route: QueryImpactRoute, request: ValueFlowRequest, read: ValueFlowRead) {
         val actual =
