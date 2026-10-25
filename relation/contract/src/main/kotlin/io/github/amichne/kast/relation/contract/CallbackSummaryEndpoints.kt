@@ -167,6 +167,15 @@ internal class CallbackSummaryEndpoints private constructor() {
     }
 
     companion object {
+        fun sourceFiles(owner: CallbackBodyBinding): Set<SymbolDiscoveryFileIdentity> =
+            CallbackSummaryEndpoints().also { it.owner(owner) }.files.toSet()
+
+        fun collect(owner: CallbackBodyBinding): List<RelationEndpoint> =
+            CallbackSummaryEndpoints().also { it.owner(owner) }.endpoints.toList()
+
+        fun declarations(owner: CallbackBodyBinding): Set<CompilerGroundedSymbolEvidence> =
+            CallbackSummaryEndpoints().also { it.owner(owner) }.declarations.toSet()
+
         fun sourceFiles(summary: CallbackParameterSummary): Set<SymbolDiscoveryFileIdentity> =
             CallbackSummaryEndpoints().also { it.summary(summary) }.files.toSet()
 

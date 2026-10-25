@@ -703,7 +703,7 @@ def admits_unregistered_broker_state(state):
     if any(entry.name not in allowed or entry.is_symlink() for entry in state.iterdir()):
         return False
     run = state / 'run'
-    if run.exists() and (not run.is_dir() or run.stat().st_uid != os.getuid() or any(run.iterdir())):
+    if run.exists() and not admits_stopped_run_directory(run):
         return False
     broker = state / 'broker'
     if not broker.exists():
@@ -752,6 +752,93 @@ def admits_unregistered_broker_state(state):
             else:
                 return False
     return True
+
+
+@dataclass(frozen=True)
+class InstalledToolInvocationRecord:
+    schemaVersion: int
+    pid: int
+    startEpochMillis: int
+
+    @classmethod
+    def admit(cls, document: dict[str, object]) -> Optional['InstalledToolInvocationRecord']:
+        if document.keys() != {'schemaVersion', 'pid', 'startEpochMillis'}:
+            return None
+        version, pid, start = document['schemaVersion'], document['pid'], document['startEpochMillis']
+        if (type(version) is not int or version != 1 or type(pid) is not int or not 0 < pid < 2 ** 63
+                or type(start) is not int or not 0 < start < 2 ** 63):
+            return None
+        return cls(version, pid, start)
+
+
+def absent_tool_process(record: InstalledToolInvocationRecord) -> bool:
+    # Signal zero only reads existence. A live or reused PID never grants admission.
+    try:
+        os.kill(record.pid, 0)
+    except ProcessLookupError:
+        return True
+    except (OSError, OverflowError):
+        return False
+    return False
+
+
+def admits_stopped_tool_records(path: Path) -> bool:
+    try:
+        observed = path.lstat()
+        # Files.createDirectories uses the user's umask inside the private run directory.
+        if (not stat.S_ISDIR(observed.st_mode) or observed.st_uid != os.getuid()
+                or stat.S_IMODE(observed.st_mode) & 0o022):
+            return False
+        with os.scandir(path) as entries:
+            for count, entry in enumerate(entries, 1):
+                record_path = Path(entry.path)
+                if (count > 256 or not re.fullmatch(
+                        r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json', entry.name)
+                        or not owned_private_broker_file(record_path)):
+                    return False
+                record = InstalledToolInvocationRecord.admit(read_json(record_path, 4096, Failure.REGISTRY_REJECTED))
+                if record is None or not absent_tool_process(record):
+                    return False
+        return True
+    except (OSError, Rejected):
+        return False
+
+
+def admits_inactive_socket_lock(path: Path) -> bool:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor, 'rb') as source:
+            observed = os.fstat(source.fileno())
+            if (not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid()
+                    or stat.S_IMODE(observed.st_mode) != 0o600 or observed.st_size != 0):
+                return False
+            # FileChannel's exclusive lease conflicts with this POSIX read lock.
+            fcntl.lockf(source, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            return True
+    except OSError:
+        return False
+
+
+def admits_stopped_run_directory(path: Path) -> bool:
+    try:
+        observed = path.lstat()
+        if not stat.S_ISDIR(observed.st_mode) or observed.st_uid != os.getuid():
+            return False
+        if stat.S_IMODE(observed.st_mode) != 0o700:
+            return not any(path.iterdir())
+        with os.scandir(path) as entries:
+            for entry in entries:
+                if entry.name in {'c.sock.lock', 'u.sock.lock'}:
+                    if not admits_inactive_socket_lock(Path(entry.path)):
+                        return False
+                elif entry.name in {'one-shot', 'tool-sessions'}:
+                    if not admits_stopped_tool_records(Path(entry.path)):
+                        return False
+                else:
+                    return False
+        return True
+    except OSError:
+        return False
 
 
 def owned_private_broker_directory(path: Path) -> bool:

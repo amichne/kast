@@ -90,8 +90,10 @@ private fun QueryCallbackFactoryCaptureDocument.admitsFactoryContext(
     val owner = binding.invocationOwner as? QueryCallbackBodyDocument.Named ?: return false
     if (owner.callable.reference(enclosing.basis) != enclosing) return false
     if (!admitsCapturedInvocations(returned, enclosing.basis)) return false
-    val selected = selection
-    return selected !is QueryCallbackSupplierSelectionDocument.Explicit || selected.argument.enclosing == enclosing
+    return when (val selected = selection) {
+        is QueryCallbackSupplierSelectionDocument.Explicit -> selected.argument.enclosing == enclosing
+        is QueryCallbackSupplierSelectionDocument.Default -> selected.invocationEnclosing == enclosing
+    }
 }
 
 private fun QueryCallbackFactoryCaptureDocument.admitsCapturedInvocations(

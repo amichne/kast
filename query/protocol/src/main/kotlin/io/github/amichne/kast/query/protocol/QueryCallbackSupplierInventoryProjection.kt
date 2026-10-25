@@ -43,6 +43,8 @@ private fun io.github.amichne.kast.relation.contract.CompleteCallbackSupplierInv
             projection.parameter(partition.formal) ?: return null,
             suppliers,
             incoming,
+            BoundedProtocolList.create(partition.ownerBindings.map { projection.ownerBinding(it) ?: return null })
+                .supplierValue() ?: return null,
         )
     }
     return QueryCallbackSupplierInventoryDocument.Exhaustive.create(

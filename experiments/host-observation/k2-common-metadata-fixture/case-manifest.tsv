@@ -1,0 +1,8 @@
+case	target	expectedCaller	forbiddenCaller	callerFile	purpose
+plain	plainTarget	plainCaller	NONE	Case.kt	Direct call
+literal	literalTarget	literalCaller	unrelatedLiteral	Case.kt	Ordinary string
+deprecated	annotationTarget	annotationCaller	unrelatedDeprecated	Case.kt	Library annotation string
+sourceannotation	sourceTarget	sourceCaller	unrelatedSourceAnnotation	Case.kt	Source annotation string
+replacewith	replacementTarget	replacementCaller	unrelatedReplacement	Case.kt	Nested library annotation
+template	templateTarget	templateCaller	NONE	Case.kt	String-template invocation
+alias	aliasTarget	aliasCaller	NONE	Caller.kt	Import alias invocation

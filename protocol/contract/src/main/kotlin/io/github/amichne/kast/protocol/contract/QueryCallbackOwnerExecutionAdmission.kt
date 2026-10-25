@@ -127,7 +127,7 @@ internal fun QueryImmutableCallbackFlowDocument.admitExecutionInventory():
     return executionOwnerBindings().admitExecutionInventory(bodies)
 }
 
-private fun List<QueryCallbackBodyBindingDocument>.admitExecutionInventory(
+internal fun List<QueryCallbackBodyBindingDocument>.admitExecutionInventory(
     roots: Set<QueryCallbackBodyDocument.Anonymous>
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     val remaining = ArrayDeque<OwnerExecutionFrame>()

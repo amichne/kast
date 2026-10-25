@@ -224,6 +224,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
         assertTrue(
             name in
                 setOf(
+                    "callbackBodyBinding",
                     "callbackObservedFlow",
                     "immutableCallbackFlow",
                     "impactInvocationReference",

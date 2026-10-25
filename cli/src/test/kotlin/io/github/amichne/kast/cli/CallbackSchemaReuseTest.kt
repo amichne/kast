@@ -23,6 +23,9 @@ class CallbackSchemaReuseTest {
                 "callbackCompilerTarget" to
                     io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers
                         .getValue("callbackCompilerTarget"),
+                "callbackBodyBinding" to
+                    io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers
+                        .getValue("callbackBodyBinding"),
                 "callbackObservation" to CanonicalQueryCliDocuments.callbackObservationSerializer,
                 "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
                 "localDeclarationAddress" to LocalDeclarationAddressCliDocument.serializer(),

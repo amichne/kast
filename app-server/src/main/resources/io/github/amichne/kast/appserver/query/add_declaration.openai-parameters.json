@@ -7,7 +7,7 @@
     },
     "exactTarget": {
       "type": "string",
-      "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+      "description": "Opaque exact-symbol reference to a top-level Kotlin declaration. Member and local targets reject. Copy the issued reference unchanged."
     },
     "declaration": {
       "type": "string",

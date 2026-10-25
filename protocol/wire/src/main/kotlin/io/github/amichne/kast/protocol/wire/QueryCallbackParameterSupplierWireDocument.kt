@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterSupplierDocument
@@ -19,7 +20,10 @@ internal sealed interface QueryCallbackSupplierSelectionWireDocument {
 
     @Serializable
     @SerialName("DEFAULT")
-    data class Default(val declaration: QueryCallbackBindingWireDocument) : QueryCallbackSupplierSelectionWireDocument
+    data class Default(
+        val declaration: QueryCallbackBindingWireDocument,
+        @SerialName("invocation_enclosing") val invocationEnclosing: ImpactDeclarationReferenceDocument,
+    ) : QueryCallbackSupplierSelectionWireDocument
 }
 
 @Serializable
@@ -36,7 +40,10 @@ internal fun QueryCallbackParameterSupplierDocument.callbackSupplierWire() =
             is QueryCallbackSupplierSelectionDocument.Explicit ->
                 QueryCallbackSupplierSelectionWireDocument.Explicit(selected.argument)
             is QueryCallbackSupplierSelectionDocument.Default ->
-                QueryCallbackSupplierSelectionWireDocument.Default(selected.declaration.callbackWire())
+                QueryCallbackSupplierSelectionWireDocument.Default(
+                    selected.declaration.callbackWire(),
+                    selected.invocationEnclosing,
+                )
         },
         value.immutableCallbackWire(),
     )
@@ -49,7 +56,9 @@ internal fun QueryCallbackSupplierSelectionWireDocument.toContract():
         is QueryCallbackSupplierSelectionWireDocument.Default ->
             declaration.toContract().flatMapConverted {
                 if (it is QueryCallbackBindingDocument.Default)
-                    WireDocumentConversion.Converted(QueryCallbackSupplierSelectionDocument.Default(it))
+                    WireDocumentConversion.Converted(
+                        QueryCallbackSupplierSelectionDocument.Default(it, invocationEnclosing)
+                    )
                 else WireDocumentConversion.Rejected
             }
     }

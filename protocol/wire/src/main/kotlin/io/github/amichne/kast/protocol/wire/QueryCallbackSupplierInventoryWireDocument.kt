@@ -18,6 +18,9 @@ internal data class QueryCallbackSupplierPartitionWireDocument(
     val formal: QueryCallbackParameterIdentityWireDocument,
     @ProtocolCollectionConstraint(maximumItems = 1000) val suppliers: List<QueryCallbackParameterSupplierWireDocument>,
     @ProtocolCollectionConstraint(maximumItems = 1000) val incoming: List<QueryCallbackForwardingWireDocument>,
+    @ProtocolCollectionConstraint(maximumItems = 1000)
+    @SerialName("owner_bindings")
+    val ownerBindings: List<QueryCallbackBodyBindingWireDocument> = emptyList(),
 )
 
 @Serializable
@@ -53,6 +56,7 @@ internal fun QueryCallbackSupplierInventoryDocument.supplierInventoryWire():
                         partition.formal.callbackWire(),
                         partition.suppliers.values.map { it.callbackSupplierWire() },
                         partition.incoming.values.map { it.callbackWire() },
+                        partition.ownerBindings.values.map { it.callbackWire() },
                     )
                 },
             )
@@ -75,8 +79,11 @@ internal fun QueryCallbackSupplierInventoryWireDocument.toContract():
                             partition.incoming
                                 .convertEach { it.toContract() }
                                 .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() },
-                        ) { formal, suppliers, incoming ->
-                            QueryCallbackSupplierPartitionDocument(formal, suppliers, incoming)
+                            partition.ownerBindings
+                                .convertEach { it.toContract() }
+                                .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() },
+                        ) { formal, suppliers, incoming, owners ->
+                            QueryCallbackSupplierPartitionDocument(formal, suppliers, incoming, owners)
                         }
                     }
                     .flatMapConverted { values -> BoundedProtocolList.create(values).toWireDocumentConversion() }

@@ -27,6 +27,8 @@ internal fun CallbackSupplierInventoryEvidence.canonicalProjection(): String =
                     partition.incoming.forEach { field(it.canonicalProjection()) }
                     field(partition.suppliers.size.toString())
                     partition.suppliers.forEach { field(it.canonicalProjection()) }
+                    field(partition.ownerBindings.size.toString())
+                    partition.ownerBindings.forEach { field(it.canonicalProjection()) }
                 }
             }
     }

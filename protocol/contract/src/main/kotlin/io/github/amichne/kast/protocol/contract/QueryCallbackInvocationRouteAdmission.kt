@@ -318,11 +318,17 @@ private fun rejected(failure: QueryCallbackDocumentFailure): Refinement.Rejected
 
 /** Reuses the forwarding owner proof for a reverse supplier inventory edge. */
 internal fun QueryCallbackForwardingDocument.admitSupplierForwarding(
-    basis: ImpactSemanticBasisDocument
+    basis: ImpactSemanticBasisDocument,
+    ownerBindings: List<QueryCallbackBodyBindingDocument> = emptyList(),
 ): Refinement<Unit, QueryCallbackDocumentFailure> =
     when (
         val admitted =
-            admitForwarding(CallbackInvocationReceiver(source, source.callable.reference(basis)), basis, emptyList())
+            admitForwarding(
+                CallbackInvocationReceiver(source, source.callable.reference(basis)),
+                basis,
+                emptyList(),
+                ownerBindings,
+            )
     ) {
         is Refinement.Refined -> Refinement.Refined(Unit)
         is Refinement.Rejected -> admitted

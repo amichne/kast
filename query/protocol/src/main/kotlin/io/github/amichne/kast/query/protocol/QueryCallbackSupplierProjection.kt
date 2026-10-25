@@ -22,7 +22,11 @@ internal fun CallbackParameterSupplier.projectCallbackSupplier(
                     QueryCallbackBindingDocument.Default(
                         projection.parameter(selected.declaration.parameter) ?: return null,
                         projection.occurrence(selected.declaration.defaultValue) ?: return null,
-                    )
+                    ),
+                    when (val enclosing = selected.omission.binding.invocation.enclosing.impactDeclaration()) {
+                        is Refinement.Refined -> enclosing.value
+                        is Refinement.Rejected -> return null
+                    },
                 )
         }
     return when (

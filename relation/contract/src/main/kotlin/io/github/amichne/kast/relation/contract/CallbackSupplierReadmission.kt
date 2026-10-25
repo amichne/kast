@@ -19,13 +19,16 @@ internal class CallbackSupplierReadmission(private val endpoints: CallbackEndpoi
         evidence.formal(previous.formal).then { formal ->
             readmitEach(previous.suppliers, ::supplier).then { suppliers ->
                 readmitEach(previous.incoming, evidence::edge).then { incoming ->
-                    CompleteCallbackSupplierPartition.fromCompiler(
-                            formal,
-                            suppliers,
-                            incoming,
-                            CallbackInvocationScan.EXHAUSTIVE,
-                        )
-                        .supplier()
+                    readmitEach(previous.ownerBindings, evidence::ownerBinding).then { owners ->
+                        CompleteCallbackSupplierPartition.fromCompiler(
+                                formal,
+                                suppliers,
+                                incoming,
+                                CallbackInvocationScan.EXHAUSTIVE,
+                                owners,
+                            )
+                            .supplier()
+                    }
                 }
             }
         }

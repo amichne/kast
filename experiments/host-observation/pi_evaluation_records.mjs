@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { Outcome, READ_TOOLS } from './pi_evaluation_policy.mjs';
+import { Outcome, READ_TOOLS, READ_TOOL_IDENTITIES } from './pi_evaluation_policy.mjs';
 import { isAdmittedPayload, PayloadFailure } from './pi_evaluation_payload.mjs';
 
 const maximumSummaryBytes = 64 * 1024;
@@ -39,7 +39,7 @@ export function summarizeGuard(value) {
     switch(value?.type) {
       case 'session_settings': return {stage:'SESSION_SETTINGS',...settings(value),
         toolNames:Array.isArray(value.toolNames) && value.toolNames.length <= READ_TOOLS.length
-          ? value.toolNames.map(name=>choice(name,READ_TOOLS)) : ['OBSERVATION_INVALID']};
+          ? value.toolNames.map(name=>choice(name,READ_TOOL_IDENTITIES)) : ['OBSERVATION_INVALID']};
       case 'provider_admission': {
         const o=value.observation,p=o?.payload;
         if(!isAdmittedPayload(p)) return {stage:'PROVIDER_ADMISSION',...settings(o),
@@ -54,10 +54,10 @@ export function summarizeGuard(value) {
           restoredDeclarations:count(p.restoredDeclarations),outputTokenCap:count(p.outputTokenCap),
           decision:decision(value.decision)};
       }
-      case 'model_tool_proposal': return {stage:'TOOL_PROPOSAL',toolName:choice(value.toolName,READ_TOOLS),
+      case 'model_tool_proposal': return {stage:'TOOL_PROPOSAL',toolName:choice(value.toolName,READ_TOOL_IDENTITIES),
         requestType:choice(value.requestType,['RUN','RESUME','READ_RESULT']),decision:decision(value.decision)};
       case 'native_reply': return {stage:'NATIVE_REPLY',envelopeType:choice(value.envelopeType,
-        ['complete','qualified','rejected_document','rejected','query_delivery','invalid']),
+        ['complete','qualified','rejected_document','rejected','mcp_rejected','query_delivery','invalid']),
         hostIsError:bool(value.hostIsError),deliveryStop:value.deliveryStop == null ? null
           : choice(value.deliveryStop,deliveryStops),physicalRpcsReported:count(value.physicalRpcsReported),
         textBytes:count(value.textBytes),decision:decision(value.decision)};
@@ -90,7 +90,7 @@ export function summarizeSessionEvent(value) {
       }
     }
     if(event.startsWith('tool_execution_')) {
-      summary.toolName=choice(value.toolName,READ_TOOLS);
+      summary.toolName=choice(value.toolName,READ_TOOL_IDENTITIES);
       if(event==='tool_execution_end') summary.isError=bool(value.isError);
     }
     if(event==='auto_retry_end') summary.success=bool(value.success);

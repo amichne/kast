@@ -38,7 +38,8 @@ private fun QueryCallbackSupplierSelectionDocument.matchesCapture(
     when (this) {
         is QueryCallbackSupplierSelectionDocument.Explicit -> matchesExplicitCapture(binding)
         is QueryCallbackSupplierSelectionDocument.Default ->
-            declaration.parameter.sameParameter(binding.parameterIdentity()) &&
+            admitsInvocation(binding) &&
+                declaration.parameter.sameParameter(binding.parameterIdentity()) &&
                 declaration.parameter.parameter.contains(declaration.defaultValue)
     }
 

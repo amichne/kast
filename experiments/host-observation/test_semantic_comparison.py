@@ -53,6 +53,37 @@ class ScriptedInvocation:
 
 
 class SemanticComparisonTest(unittest.TestCase):
+    def test_campaign_success_requires_final_source_admission(self):
+        passed = [dict(outcome=dict(status='PASSED'))]
+        self.assertEqual(0, r.campaign_exit_status(dict(variants=passed, sourceAtEnd='UNCHANGED')))
+        for source in (dict(status='BLOCKED', reason='SOURCE_CHANGED'),
+                       dict(status='BLOCKED', reason='INPUT_UNAVAILABLE'), None):
+            with self.subTest(source=source):
+                self.assertEqual(2, r.campaign_exit_status(dict(variants=passed, sourceAtEnd=source)))
+        self.assertEqual(2, r.campaign_exit_status(dict(
+            variants=[dict(outcome=dict(status='FAILED'))], sourceAtEnd='UNCHANGED')))
+
+    def test_fixed_work_grants_select_bounded_execution_explicitly(self):
+        for profile in r.WorkloadProfile:
+            for name, request in r.comparison_requests(profile).items():
+                with self.subTest(profile=profile, workload=name):
+                    self.assertIn('maxWorkUnits', request['request']['executionBudget'])
+                    self.assertEqual('BOUNDED', request['request'].get('executionMode'))
+
+    def test_retained_drain_preserves_partial_grants_and_output_projection(self):
+        from dataclasses import replace
+        for output in ({'type': 'BINDING_ROWS'}, {'type': 'TRAVERSAL_RECORDS'}):
+            original, pages = self.retained_script()
+            request = copy.deepcopy(original.request)
+            request['request']['executionBudget'] = {'maxResults': 20}
+            request['request']['terminalStep']['output'] = output
+            original = replace(original, request=request)
+            with self.subTest(output=output):
+                calls, seen = self.run_retained_script(original, pages)
+                self.assertEqual(2, len(calls))
+                self.assertEqual(output, seen[1]['request']['output'])
+                self.assertEqual({'maxResults': 20}, seen[1]['request']['executionBudget'])
+
     def test_exact_negative_is_usable_only_after_complete_empty_answer_in_both_profiles(self):
         for profile in r.WorkloadProfile:
             with self.subTest(profile=profile):
@@ -407,7 +438,7 @@ class SemanticComparisonTest(unittest.TestCase):
             with self.subTest(workload=workload):
                 jsonschema.Draft202012Validator(schema).validate(requests[workload])
                 self.assertEqual(dict(verbose=True, request=dict(type='RUN', **semantic_request,
-                                 executionBudget=budget)), requests[workload])
+                                 executionBudget=budget, executionMode='BOUNDED')), requests[workload])
         for request in r.comparison_requests().values():
             self.assertEqual(dict(maxElapsedMs=2000, maxWorkUnits=100000, maxResults=20,
                                   maxReturnedBytes=49152), request['request']['executionBudget'])
@@ -845,6 +876,58 @@ class SemanticComparisonTest(unittest.TestCase):
         self.assertEqual([row['row_id'] for page in pages for row in page['items']],
                          [row['row_id'] for row in trial.semantic['items']])
         self.assertNotIn(r.PresentationFailure.UNREAD.value, trial.unavailable)
+
+    def reissued_retained_trials(self):
+        """Independent token assignments for the same case-owned row payloads."""
+        original, pages = self.retained_script()
+        reissued = copy.deepcopy(pages)
+        ordinal = 100
+        for page in reissued:
+            page['retention']['reference'] = 'result:v1:11111111-1111-1111-1111-111111111111'
+            for item in page['items']:
+                item['row_id'] = f'result-row:v1:11111111-1111-1111-1111-{ordinal:012x}'
+                ordinal += 1
+        trials = []
+        for responses in (pages, reissued):
+            calls, _ = self.run_retained_script(original, responses)
+            trials.append(r.finish_trial('scoped-all', 0, False, calls, 400, 200,
+                                         r.WorkloadProfile.KAST_SOURCE))
+        return trials
+
+    def test_retained_comparison_accepts_reissued_handles_without_changing_receipts(self):
+        a, b = self.reissued_retained_trials()
+        originals = copy.deepcopy([asdict(a), asdict(b)])
+        self.assertNotEqual(a.semantic, b.semantic, 'Each receipt keeps its issued handles')
+        comparison = r.compare_trials(a, b, same_artifact=True)
+        self.assertEqual(r.ComparisonState.EQUIVALENT, comparison.type)
+        self.assertFalse(comparison.lessWork)
+        self.assertEqual(originals, [asdict(a), asdict(b)])
+
+    def test_retained_comparison_preserves_changed_row_facts_and_order(self):
+        for change in ('source-range', 'provenance', 'order'):
+            a, b = self.reissued_retained_trials()
+            if change == 'source-range':
+                b.semantic['items'][0]['location']['range']['endExclusive'] += 1
+            elif change == 'provenance':
+                b.semantic['items'][0]['provenance'] = 'different-provider'
+            else:
+                b.semantic['items'][0], b.semantic['items'][1] = b.semantic['items'][1], b.semantic['items'][0]
+            with self.subTest(change=change):
+                self.assertEqual(r.ComparisonState.SEMANTIC_REGRESSION,
+                                 r.compare_trials(a, b, same_artifact=True).type)
+
+    def test_retained_comparison_rejects_unproved_owner_or_duplicate_rows(self):
+        for change in ('owner', 'duplicate'):
+            a, b = self.reissued_retained_trials()
+            if change == 'owner':
+                b.calls[1].response['retention']['reference'] = 'result:v1:22222222-2222-2222-2222-222222222222'
+            else:
+                b.calls[1].response['items'][0]['row_id'] = b.calls[0].response['items'][0]['row_id']
+            with self.subTest(change=change):
+                # A persisted COMPLETE label cannot discharge presentation admission.
+                result = r.compare_trials(a, b, same_artifact=True)
+                self.assertEqual(r.ComparisonState.MISSING_EVIDENCE, result.type)
+                self.assertFalse(result.lessWork)
 
     def test_empty_initial_prefix_can_read_the_first_row_with_the_original_grant(self):
         original, pages = self.retained_script()

@@ -41,7 +41,8 @@ private fun CallbackFactoryCapture.projectFactoryCapture(
                     QueryCallbackBindingDocument.Default(
                         projection.parameter(selected.declaration.parameter) ?: return null,
                         projection.occurrence(selected.declaration.defaultValue) ?: return null,
-                    )
+                    ),
+                    binding.invocation.enclosing.impactDeclaration().factoryValue() ?: return null,
                 )
         }
     val content =

@@ -59,7 +59,10 @@ private class CallbackFactoryEncoding {
                         is QueryCallbackSupplierSelectionDocument.Explicit ->
                             QueryCallbackSupplierSelectionWireDocument.Explicit(selection.argument)
                         is QueryCallbackSupplierSelectionDocument.Default ->
-                            QueryCallbackSupplierSelectionWireDocument.Default(selection.declaration.callbackWire())
+                            QueryCallbackSupplierSelectionWireDocument.Default(
+                                selection.declaration.callbackWire(),
+                                selection.invocationEnclosing,
+                            )
                     },
                     when (val content = capture.content) {
                         QueryCallbackFactoryCaptureContentDocument.Scalar ->
