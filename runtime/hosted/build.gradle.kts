@@ -175,10 +175,11 @@ tasks.named("test") {
 // Platform status and wait cleanup have a separate effect-boundary lane.
 val nativeTest = sourceSets.create("nativeTest")
 
-val reviewedCallbackSources = configurations.create("reviewedCallbackSources") {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val reviewedCallbackSources =
+    configurations.create("reviewedCallbackSources") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 dependencies {
     reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
