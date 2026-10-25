@@ -37,11 +37,11 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import java.nio.file.Path
 
-internal class QueryImpactLedgerFixture(results: Int = 20, returnedBytes: Long = 100000) {
+internal class QueryImpactLedgerFixture(results: Int = 20, returnedBytes: Long = 100000, generation: Long = 1) {
     val lease =
         SemanticReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/fixture")).value(),
-            EvidenceGeneration.parse(1).value(),
+            EvidenceGeneration.parse(generation).value(),
         )
     val scope =
         SymbolSearchScope.Workspace(

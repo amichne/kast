@@ -48,8 +48,10 @@ import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 
-internal class ImpactWitnessPresentationFixture(resumedBinding: Boolean = false) {
-    val symbols = RelationPagingFixture.published()
+internal class ImpactWitnessPresentationFixture(
+    resumedBinding: Boolean = false,
+    val symbols: RelationPagingFixture = RelationPagingFixture.published(),
+) {
     val budget =
         QueryBudget(
             ResourceBudget(

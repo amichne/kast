@@ -158,6 +158,11 @@ class QueryImpactPeerLedgerTest {
             Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH),
             QueryRetainedResult.capture(f.peerLease, result),
         )
+        val captured = QueryRetainedCapture.Initial.capture(f.server.lease, result).peerValue()
+        assertEquals(
+            Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH),
+            captured.capture(f.peerLease, result),
+        )
     }
 
     @Test

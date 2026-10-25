@@ -166,6 +166,10 @@ class QueryValuePathRetentionTest {
             Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH),
             QueryRetainedResult.capture(fixture.lease, complete),
         )
+        assertEquals(
+            Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH),
+            QueryRetainedCapture.Initial.capture(fixture.lease, complete),
+        )
     }
 
     private fun qualified(rows: QueryRows.ValuePaths) =
