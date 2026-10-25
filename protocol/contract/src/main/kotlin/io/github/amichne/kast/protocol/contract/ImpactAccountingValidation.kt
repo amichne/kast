@@ -186,6 +186,7 @@ private fun ImpactWitnessDocument.section(): ImpactWitnessSectionDocument =
         is ImpactWitnessDocument.BoundaryModel,
         is ImpactWitnessDocument.PeerBoundaryModel -> ImpactWitnessSectionDocument.MODELS
         is ImpactWitnessDocument.NativeRead,
+        is ImpactWitnessDocument.ReviewedTransfer,
         is ImpactWitnessDocument.CompilerTransfer,
         is ImpactWitnessDocument.FlowObligation -> ImpactWitnessSectionDocument.NATIVE_READS
         is ImpactWitnessDocument.ReadRejection -> ImpactWitnessSectionDocument.READ_REJECTIONS

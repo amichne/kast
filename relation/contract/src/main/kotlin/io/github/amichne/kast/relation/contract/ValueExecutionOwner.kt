@@ -12,6 +12,9 @@ sealed interface ValueExecutionContext {
         val body: RelationCallableBody.Anonymous,
         val invocations: List<ValueCaptureInvocation>,
     ) : ValueExecutionContext
+
+    /** Conditional library value correspondence remains distinct from source invocation evidence. */
+    data class ReviewedCallback internal constructor(val binding: ReviewedCallbackValueBinding) : ValueExecutionContext
 }
 
 data class ValueCaptureInvocation
@@ -39,6 +42,7 @@ private constructor(
         when (context) {
             ValueExecutionContext.Declaration -> enclosing.range
             is ValueExecutionContext.Callback -> context.body.range
+            is ValueExecutionContext.ReviewedCallback -> context.binding.body.range
         }
     val identity = ValueExecutionIdentity(enclosing.valueIdentity, basis, context)
 
@@ -51,6 +55,7 @@ private constructor(
     fun supplierOf(invocation: ValueCaptureInvocation): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
         when (val execution = context) {
             ValueExecutionContext.Declaration -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            is ValueExecutionContext.ReviewedCallback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.Callback ->
                 if (invocation.body != execution.body || invocation !in execution.invocations)
                     Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
@@ -73,6 +78,9 @@ private constructor(
 
     companion object {
         fun declaration(enclosing: RelationEndpoint): ValueExecutionOwner = ValueExecutionOwner(enclosing)
+
+        fun reviewedCallback(binding: ReviewedCallbackValueBinding): ValueExecutionOwner =
+            ValueExecutionOwner(binding.enclosing, ValueExecutionContext.ReviewedCallback(binding))
 
         fun callback(
             enclosing: RelationEndpoint,

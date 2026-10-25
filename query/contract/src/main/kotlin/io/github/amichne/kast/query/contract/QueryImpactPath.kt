@@ -8,6 +8,7 @@ import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
@@ -22,6 +23,14 @@ sealed interface QueryImpactStep {
     val target: ValueSite
 
     data class Compiler(val transfer: ValueTransfer) : QueryImpactStep {
+        override val source: ValueSite
+            get() = transfer.source
+
+        override val target: ValueSite
+            get() = transfer.target
+    }
+
+    data class ReviewedLibrary(val transfer: ReviewedValueTransfer) : QueryImpactStep {
         override val source: ValueSite
             get() = transfer.source
 
@@ -175,11 +184,15 @@ sealed interface QueryImpactTerminal {
             fun admit(observation: ValueFlowStep): Refinement<SupportedDomainEnd, QueryImpactPathFailure> =
                 if (
                     observation.terminal == ValueFlowTerminal.SupportedDomainExhausted &&
-                        observation.transfers.isEmpty() &&
-                        observation.obligations.isEmpty()
+                        hasNoOutgoingEvidence(observation)
                 )
                     Refinement.Refined(SupportedDomainEnd(observation))
                 else Refinement.Rejected(QueryImpactPathFailure.TERMINAL_UNPROVEN)
+
+            private fun hasNoOutgoingEvidence(observation: ValueFlowStep): Boolean =
+                observation.transfers.isEmpty() &&
+                    observation.reviewedTransfers.isEmpty() &&
+                    observation.obligations.isEmpty()
         }
     }
 
@@ -269,6 +282,8 @@ private fun List<RepresentationHistory>.supports(producer: ValueSite, steps: Lis
         when (history) {
             is RepresentationHistory.CompilerTransfer ->
                 step is QueryImpactStep.Compiler && history.transfer == step.transfer
+            is RepresentationHistory.ReviewedTransfer ->
+                step is QueryImpactStep.ReviewedLibrary && history.transfer == step.transfer
             is RepresentationModelApplication ->
                 step is QueryImpactStep.ModeledRepresentation && history == step.application
             is RepresentationHistory.BoundaryModel ->

@@ -7,6 +7,7 @@ internal fun valueStateStorageBytes(site: ValueSite): Long =
         .addBytes(
             when (val context = site.executionOwner.context) {
                 ValueExecutionContext.Declaration -> 0L
+                is ValueExecutionContext.ReviewedCallback -> context.binding.retainedBytes
                 is ValueExecutionContext.Callback ->
                     context.invocations.fold(VALUE_CALL_PROOF_BYTES) { total, frame ->
                         total
@@ -20,6 +21,7 @@ internal fun valueStateStorageBytes(site: ValueSite): Long =
 private fun valuePathStorageBytes(path: ValueAccessPath): Long =
     path.segments.fold(0L) { sum, segment ->
         when (segment) {
+            ValuePathSegment.Element -> sum.addBytes(VALUE_FIELD_PROOF_BYTES)
             is ValuePathSegment.Field ->
                 sum.addBytes(VALUE_FIELD_PROOF_BYTES)
                     .addBytes(segment.field.declaration.detachedTextUnits().multiplyBytes(2))

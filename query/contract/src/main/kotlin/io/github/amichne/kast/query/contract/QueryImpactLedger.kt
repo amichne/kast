@@ -14,7 +14,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.Collections
 
-/** The versioned supported compiler transfer domain, separate from reviewed model vocabulary. */
+/** The versioned static flow includes compiler transfers and qualified reviewed-library correspondence. */
 enum class QueryImpactFlowSemantics {
     KOTLIN_FORWARD_V1
 }
@@ -29,6 +29,7 @@ enum class QueryImpactLedgerFailure {
     CONFLICTING_OBSERVATIONS,
     MISSING_NATIVE_OBSERVATION,
     UNPROVEN_COMPILER_STEP,
+    UNPROVEN_REVIEWED_STEP,
     MISSING_BRANCH,
     MISSING_OBLIGATION,
     UNDECLARED_MODEL,
@@ -182,7 +183,8 @@ internal fun QueryImpactPath.usesDeclaredModels(
 ): Boolean =
     steps.all { step ->
         when (step) {
-            is QueryImpactStep.Compiler -> true
+            is QueryImpactStep.Compiler,
+            is QueryImpactStep.ReviewedLibrary -> true
             is QueryImpactStep.ModeledRepresentation ->
                 when (val model = step.application) {
                     is RepresentationModelApplication.Transfer -> model.rule in representations
@@ -199,6 +201,7 @@ internal fun QueryImpactPath.usesDeclaredModels(
                         when (history) {
                             is RepresentationHistory.Origin -> history.rule in representations
                             is RepresentationHistory.CompilerTransfer,
+                            is RepresentationHistory.ReviewedTransfer,
                             is RepresentationHistory.Unmodeled -> true
                             is RepresentationModelApplication.Transfer -> history.rule in representations
                             is RepresentationModelApplication.Transformation -> history.rule in representations

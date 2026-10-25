@@ -38,6 +38,16 @@ internal fun requiredImpactExpansionBytes(
         repeat(branches + 2) { next = saturatedAdd(next, graph.step(step)) }
         required = saturatedAdd(required, next)
     }
+    for (transfer in observation.reviewedTransfers) {
+        val step = QueryImpactStep.ReviewedLibrary(transfer)
+        var next =
+            saturatedAdd(
+                route.retainedBytes(graph),
+                saturatedAdd(graph.site(transfer.target), saturatedAdd(8192L, futureImpactRouteStorageBytes(route))),
+            )
+        repeat(branches + 2) { next = saturatedAdd(next, graph.step(step)) }
+        required = saturatedAdd(required, next)
+    }
     for (obligation in observation.obligations) required = saturatedAdd(required, terminalReserve)
     required = saturatedAdd(required, reviewedImpactExpansionBytes(route, source, terminalReserve, branches, graph))
     return saturatedAdd(required, terminalReserve)

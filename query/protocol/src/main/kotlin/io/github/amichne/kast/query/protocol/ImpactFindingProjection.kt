@@ -28,7 +28,15 @@ internal fun QueryImpactFinding.findingDocument(
         .impactZip(path.representation.findingDocument())
         .impactZip(path.terminal.findingDocument())
         .impactZip(path.boundaryObligations().impactEach { it.impactDocument() })
-        .impactMap { (finding, obligations) ->
+        .impactZip(
+            path.steps
+                .filterIsInstance<QueryImpactStep.ReviewedLibrary>()
+                .map { it.transfer.binding }
+                .distinct()
+                .impactEach { it.impactDocument() }
+        )
+        .impactMap { (fields, reviewed) ->
+            val (finding, obligations) = fields
             ImpactFindingDocument(
                 ImpactFindingEvidenceReferenceDocument(finding.first.first.first.first, rowId),
                 finding.first.first.first.second,
@@ -36,6 +44,7 @@ internal fun QueryImpactFinding.findingDocument(
                 finding.first.second,
                 finding.second,
                 obligations,
+                reviewed,
             )
         }
 
@@ -59,6 +68,8 @@ internal fun QueryImpactRepresentation.findingDocument(): ImpactProjected<Impact
 
 private fun RepresentationHistory.findingDocument(): ImpactProjected<ImpactFindingProvenanceDocument> =
     when (this) {
+        is RepresentationHistory.ReviewedTransfer ->
+            transfer.binding.impactDocument().impactMap(ImpactFindingProvenanceDocument::ReviewedLibrary)
         is RepresentationHistory.Origin ->
             reference.impactDocument().impactZip(rule.state.impactDocument()).impactMap { (reference, state) ->
                 ImpactFindingProvenanceDocument.Origin(reference, state)
@@ -79,6 +90,7 @@ private fun QueryImpactPath.boundaryObligations(): List<BoundaryObligation> =
         when (step) {
             is QueryImpactStep.ModeledBoundary -> step.connection.obligations
             is QueryImpactStep.Compiler,
+            is QueryImpactStep.ReviewedLibrary,
             is QueryImpactStep.ModeledRepresentation -> emptyList()
         }
     } +

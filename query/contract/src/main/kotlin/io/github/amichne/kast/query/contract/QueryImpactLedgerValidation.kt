@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
@@ -26,10 +27,10 @@ internal class QueryImpactLedgerValidation(
 ) {
     private val native = observations.groupBy { it.source }
     private val nativeTransfers = IdentityHashMap<ValueFlowStep, Set<ValueTransfer>>()
+    private val reviewedTransfers = IdentityHashMap<ValueFlowStep, Set<ReviewedValueTransfer>>()
     private val rejected = rejections.groupBy { it.source }
     private val prefixes by lazy(LazyThreadSafetyMode.NONE) { QueryImpactLedgerPaths(paths) }
-    private val conservedPrefixes =
-        mutableMapOf<QueryImpactLedgerPaths.Prefix, Refinement<Unit, QueryImpactLedgerFailure>>()
+    private val conservedPrefixes = mutableMapOf<QueryImpactLedgerPaths.Prefix, Refinement<Unit, QueryImpactLedgerFailure>>()
 
     fun validate(): Refinement<Unit, QueryImpactLedgerFailure> {
         for (check in listOf(::origins, ::models, ::nativeDomain, ::observedPaths, ::modeledBranches, ::unaccounted)) {
@@ -50,7 +51,8 @@ internal class QueryImpactLedgerValidation(
         if (paths.distinct().size != paths.size) return reject(QueryImpactLedgerFailure.DUPLICATE_PATH)
         if (paths.any { it.producer !in distinctSeeds }) return reject(QueryImpactLedgerFailure.FOREIGN_PRODUCER)
         val retainedProducers = paths.mapTo(hashSetOf()) { it.producer }
-        if (seeds.any { it !in retainedProducers }) return reject(QueryImpactLedgerFailure.MISSING_SEED_PATH)
+        if (seeds.any { it !in retainedProducers })
+            return reject(QueryImpactLedgerFailure.MISSING_SEED_PATH)
         return Refinement.Refined(Unit)
     }
 
@@ -200,9 +202,14 @@ internal class QueryImpactLedgerValidation(
         observed: ValueFlowStep,
     ): Refinement<Unit, QueryImpactLedgerFailure> {
         val step = path.steps.getOrNull(index)
-        val transfers = nativeTransfers.getOrPut(observed) { observed.transfers.toSet() }
-        if (step is QueryImpactStep.Compiler && step.transfer !in transfers)
-            return reject(QueryImpactLedgerFailure.UNPROVEN_COMPILER_STEP)
+        if (
+            step is QueryImpactStep.Compiler &&
+                step.transfer !in nativeTransfers.getOrPut(observed) { observed.transfers.toSet() }
+        ) return reject(QueryImpactLedgerFailure.UNPROVEN_COMPILER_STEP)
+        if (
+            step is QueryImpactStep.ReviewedLibrary &&
+                step.transfer !in reviewedTransfers.getOrPut(observed) { observed.reviewedTransfers.toSet() }
+        ) return reject(QueryImpactLedgerFailure.UNPROVEN_REVIEWED_STEP)
         val prefix = prefixes.at(path, index)
         return conservedPrefixes.getOrPut(prefix) { conservePrefix(prefix, observed) }
     }
@@ -212,6 +219,8 @@ internal class QueryImpactLedgerValidation(
         observed: ValueFlowStep,
     ): Refinement<Unit, QueryImpactLedgerFailure> {
         if (observed.transfers.any { QueryImpactStep.Compiler(it) !in prefix.steps })
+            return reject(QueryImpactLedgerFailure.MISSING_BRANCH)
+        if (observed.reviewedTransfers.any { QueryImpactStep.ReviewedLibrary(it) !in prefix.steps })
             return reject(QueryImpactLedgerFailure.MISSING_BRANCH)
         val modeled = prefix.hasModeledArrival()
         if (observed.obligations.any { !obligationRetained(it, observed.source, prefix, modeled) })
@@ -252,7 +261,8 @@ private fun QueryImpactLedgerPaths.Prefix.hasModeledArrival(): Boolean =
         when (it) {
             is QueryImpactStep.ModeledRepresentation,
             is QueryImpactStep.ModeledBoundary -> true
-            is QueryImpactStep.Compiler -> false
+            is QueryImpactStep.Compiler,
+            is QueryImpactStep.ReviewedLibrary -> false
         }
     } ||
         terminals.any {

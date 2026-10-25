@@ -14,6 +14,7 @@ import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.contract.QueryPresentationExecution
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryResultRetentionEvidence
@@ -189,7 +190,8 @@ internal class NativePacketQueryServices(
             frontier = TraversalFrontierLimit.parse(100).packetQueryRefined(),
             oneHop = RelationBudget(resources, RelationByteLimit.parse(RETURNED_BYTES).packetQueryRefined()),
         )
-    private val operations =
+
+    private fun operations(presentation: QueryPresentationExecution?) =
         QueryService(
             discovery = SymbolDiscoveryService(validation, symbols.discovery),
             exact = SymbolExactService(validation, symbols.exact),
@@ -198,18 +200,25 @@ internal class NativePacketQueryServices(
             traversal = hostedTraversalOperations(relations, observation),
             traversalCeiling = traversal,
             valueFlow = valueFlow,
+            presentation = presentation,
         )
-    val protocol =
-        CanonicalQueryProtocol(
+
+    private val state = QueryStateStore()
+    val protocol = protocol()
+
+    fun protocol(presentation: QueryPresentationExecution? = null): CanonicalQueryProtocol {
+        val operations = operations(presentation)
+        return CanonicalQueryProtocol(
             operations =
                 QueryOperations { request ->
                     operations.run(request).also { lastExecution = it }
                 },
             authority = references,
-            state = QueryStateStore(),
+            state = state,
             producerSeeds = producers,
             retentionObservation = QueryResultRetentionObservation { lastRetention = it },
         )
+    }
 
     companion object {
         const val RETURNED_BYTES = 4_000_000L

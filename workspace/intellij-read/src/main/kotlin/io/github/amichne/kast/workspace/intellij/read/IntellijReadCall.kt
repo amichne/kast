@@ -5,7 +5,10 @@ import kotlinx.coroutines.CancellationException
 
 /** Counts invocation of the named boundary, never the hidden work inside a native executor. */
 enum class IntellijReadCall {
+    VALUE_REVIEWED_CALLBACK_ADMISSION,
     K2_ANALYSIS,
+    VALUE_RETURN_CALL_BINDING,
+    VALUE_RETURN_OWNER_ADMISSION,
     RELATION_READ_ATTEMPT,
     RELATION_SCOPE_COMPILE,
     /** Request-scope API calls, including pre-processor index checks and provider rechecks. */

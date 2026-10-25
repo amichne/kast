@@ -206,7 +206,8 @@
             "MIGRATION_PROOF"
           ]
         }
-      ]
+      ],
+      "reviewedRelations": []
     }
   }
 }

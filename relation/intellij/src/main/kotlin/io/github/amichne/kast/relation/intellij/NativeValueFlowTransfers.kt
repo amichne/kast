@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowExpressionKind
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
@@ -28,6 +29,10 @@ internal class NativeValueFlowTransfers(
     private val observation: IntellijReadObservation,
 ) {
     private val emitted = mutableListOf<ValueTransfer>()
+    private val reviewed = mutableListOf<ReviewedValueTransfer>()
+    val reviewedEdges: List<ReviewedValueTransfer>
+        get() = reviewed
+
     private val unresolved = mutableListOf<ValueFlowObligation>()
     val edges: List<ValueTransfer>
         get() = emitted
@@ -36,7 +41,32 @@ internal class NativeValueFlowTransfers(
         get() = unresolved
 
     val resultCount: Int
-        get() = edges.size
+        get() = edges.size + reviewed.size
+
+    fun adoptReviewed(result: Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause>) {
+        val transfer =
+            when (result) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> {
+                    unresolved(result.failure)
+                    return
+                }
+            }
+        if (transfer in reviewed) return
+        if (resultCount >= request.budget.outputResults.value) {
+            unresolved(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
+            return
+        }
+        val bytes =
+            ValueFlowStep.detachedByteCount(request.source, scope.request, edges, obligations, reviewed + transfer)
+                .value
+        if (!request.budget.permitsReturnedBytes(bytes + reservedValueObligationBytes(request.source))) {
+            unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+            return
+        }
+        reviewed += transfer
+        observation.count(IntellijReadCounter.VALUE_REVIEWED_TRANSFERS)
+    }
 
     fun adopt(result: Refinement<ValueTransfer, ValueFlowUnsupportedCause>) {
         when (result) {
@@ -108,6 +138,7 @@ internal class NativeValueFlowTransfers(
                                 domain = scope.request,
                                 transfers = edges + transfer.value,
                                 obligations = obligations,
+                                reviewedTransfers = reviewed,
                             )
                             .value
                     if (!request.budget.permitsReturnedBytes(bytes + reservedValueObligationBytes(request.source))) {
@@ -153,6 +184,7 @@ internal class NativeValueFlowTransfers(
                     domain = scope.request,
                     transfers = edges,
                     obligations = (obligations + obligation).distinct(),
+                    reviewedTransfers = reviewed,
                 )
                 .value
         if (!request.budget.permitsReturnedBytes(bytes + reservedValueObligationBytes(request.source))) {

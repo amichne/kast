@@ -128,6 +128,8 @@ internal fun ValueExecutionIdentity.impactDocument(): ImpactProjected<ImpactExec
     when (val execution = context) {
         io.github.amichne.kast.relation.contract.ValueExecutionContext.Declaration ->
             Refinement.Refined(ImpactExecutionOwnerDocument.Declaration)
+        is io.github.amichne.kast.relation.contract.ValueExecutionContext.ReviewedCallback ->
+            execution.binding.impactDocument().impactMap(ImpactExecutionOwnerDocument::ReviewedCallback)
         is io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback ->
             execution.body
                 .impactCaptureBody()
@@ -135,7 +137,7 @@ internal fun ValueExecutionIdentity.impactDocument(): ImpactProjected<ImpactExec
                 .impactMap { (body, invocations) -> ImpactExecutionOwnerDocument.Callback(body, invocations) }
     }
 
-private fun io.github.amichne.kast.relation.contract.RelationCallableBody.impactCaptureBody():
+internal fun io.github.amichne.kast.relation.contract.RelationCallableBody.impactCaptureBody():
     ImpactProjected<io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument> =
     file.stableValue
         .impactText()

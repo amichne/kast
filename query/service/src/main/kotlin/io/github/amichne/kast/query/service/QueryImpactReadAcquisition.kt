@@ -78,11 +78,11 @@ internal fun validateImpactRead(
             step.domain.boundary != request.boundary -> ValueFlowStepFailure.DOMAIN_MISMATCH
             !request.budget.resources.permitsWork(step.examinedWorkUnits.value) ->
                 ValueFlowStepFailure.WORK_LIMIT_EXCEEDED
-            step.transfers.size > request.budget.outputResults.value -> ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED
+            step.outputCount > request.budget.outputResults.value -> ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED
             !request.budget.permitsReturnedBytes(saturatedAdd(step.retainedBytes, remainderBytes)) ->
                 ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED
             receipt.returnedBytes.value != step.retainedBytes + remainderBytes ||
-                receipt.returnedResults.value != step.transfers.size ||
+                receipt.returnedResults.value != step.outputCount ||
                 receipt.examinedWorkUnits != step.examinedWorkUnits -> ValueFlowStepFailure.INVALID_PROGRESS
             read is ValueFlowRead.Observed && step.terminal == ValueFlowTerminal.ResourceSuspended ->
                 ValueFlowStepFailure.INVALID_PROGRESS

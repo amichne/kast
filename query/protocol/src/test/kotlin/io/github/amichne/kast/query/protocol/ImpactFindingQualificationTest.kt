@@ -133,6 +133,7 @@ class ImpactFindingQualificationTest {
                 when (it) {
                     is ImpactFindingProvenanceDocument.Origin -> it.reference.rule.value
                     is ImpactFindingProvenanceDocument.BoundaryModel -> it.reference.rule.value
+                    is ImpactFindingProvenanceDocument.ReviewedLibrary,
                     is ImpactFindingProvenanceDocument.ModeledTransfer,
                     is ImpactFindingProvenanceDocument.ModeledTransformation,
                     ImpactFindingProvenanceDocument.Unmodeled -> error("Unexpected model provenance")

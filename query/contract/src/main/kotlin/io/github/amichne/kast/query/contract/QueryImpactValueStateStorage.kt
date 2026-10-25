@@ -13,6 +13,7 @@ internal fun ValueAccessPath.storageBytes(g: QueryImpactRetainedGraph): Long =
         g.collection(segments) { segment ->
             g.node(segment) {
                 when (segment) {
+                    ValuePathSegment.Element -> 0L
                     is ValuePathSegment.Field -> g.node(segment.field) { segment.field.declaration.storageBytes(g) }
                 }
             }
