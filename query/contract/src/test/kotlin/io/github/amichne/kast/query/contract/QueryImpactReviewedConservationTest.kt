@@ -17,9 +17,11 @@ import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueField
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValuePathSegment
 import io.github.amichne.kast.relation.contract.ValueRole
@@ -33,6 +35,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -68,6 +72,82 @@ class QueryImpactReviewedConservationTest {
             Refinement.Rejected(QueryImpactLedgerFailure.UNPROVEN_REVIEWED_STEP),
             fixture.ledger(listOf(fixture.path), listOf(fixture.observe(fixture.source)) + fixture.observations.last()),
         )
+    }
+
+    @Test
+    fun `a conserved prefix cannot admit a later unproven reviewed step`() {
+        val fixture = ReviewedLedgerFixture()
+        val emptyObservation = fixture.observe(fixture.source)
+        val first =
+            QueryImpactPath.fromEvidence(
+                    fixture.source,
+                    emptyList(),
+                    QueryImpactRepresentation.NotModeled,
+                    QueryImpactTerminal.SupportedDomainEnd.admit(emptyObservation).value(),
+                )
+                .value()
+        assertEquals(
+            Refinement.Rejected(QueryImpactLedgerFailure.UNPROVEN_REVIEWED_STEP),
+            fixture.ledger(listOf(first, fixture.path), listOf(emptyObservation, fixture.observations.last())),
+        )
+    }
+
+    @Test
+    fun `an omitted reviewed branch precedes missing obligations and an unproven terminal`() {
+        val fixture = ReviewedLedgerFixture()
+        val obligation = ValueFlowObligation(fixture.source, ValueFlowUnsupportedCause.UNMODELED_CALL)
+        val observed = fixture.observe(fixture.source, listOf(fixture.edge), listOf(obligation))
+        val truncated =
+            QueryImpactPath.fromEvidence(
+                    fixture.source,
+                    emptyList(),
+                    QueryImpactRepresentation.NotModeled,
+                    QueryImpactTerminal.SupportedDomainEnd.admit(fixture.observe(fixture.source)).value(),
+                )
+                .value()
+        assertEquals(
+            Refinement.Rejected(QueryImpactLedgerFailure.MISSING_BRANCH),
+            fixture.ledger(listOf(truncated), listOf(observed, fixture.observations.last())),
+        )
+    }
+
+    @Test
+    fun `a reviewed step cannot discharge an unmodeled call obligation`() {
+        val fixture = ReviewedLedgerFixture()
+        val obligation = ValueFlowObligation(fixture.source, ValueFlowUnsupportedCause.UNMODELED_CALL)
+        val observed = fixture.observe(fixture.source, listOf(fixture.edge), listOf(obligation))
+        val observations = listOf(observed, fixture.observations.last())
+        assertEquals(
+            Refinement.Rejected(QueryImpactLedgerFailure.MISSING_OBLIGATION),
+            fixture.ledger(listOf(fixture.path), observations),
+        )
+        val unresolved =
+            QueryImpactPath.fromEvidence(
+                    fixture.source,
+                    emptyList(),
+                    QueryImpactRepresentation.NotModeled,
+                    QueryImpactTerminal.Unresolved.Flow(obligation),
+                )
+                .value()
+        assertTrue(
+            fixture.ledger(listOf(fixture.path, unresolved), observations).value().closure
+                is QueryImpactClosure.Unresolved
+        )
+    }
+
+    @Test
+    fun `distinct reviewed bindings cannot share prefix evidence at equal source ranges`() {
+        val first = ReviewedLedgerFixture()
+        val second = ReviewedLedgerFixture(occurrenceStart = 21)
+        assertEquals(first.source.enclosing, second.source.enclosing)
+        assertEquals(first.source.range, second.source.range)
+        assertNotEquals(first.binding, second.binding)
+        assertNotEquals(first.source, second.source)
+        val prefixes = QueryImpactLedgerPaths(listOf(first.path, second.path))
+        assertNotSame(prefixes.at(first.path, 0), prefixes.at(second.path, 0))
+        assertNotSame(prefixes.at(first.path, 1), prefixes.at(second.path, 1))
+        assertEquals(listOf(first.path), prefixes.at(first.path, 0).paths)
+        assertEquals(listOf(second.path), prefixes.at(second.path, 0).paths)
     }
 
     @Test
@@ -146,7 +226,7 @@ class QueryImpactReviewedConservationTest {
     }
 }
 
-private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "map") {
+private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "map", occurrenceStart: Int = 20) {
     private val base = QueryImpactLedgerFixture()
     private val lease = SemanticReadLease(base.lease.workspaceRoot, EvidenceGeneration.parse(generation).value())
     private val owner = RelationEndpoint.resolve(lease, base.scope, base.evidence).value()
@@ -194,7 +274,7 @@ private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "
         ReviewedCallbackValueBinding.admit(
                 enclosing = owner,
                 body = body,
-                occurrence = RelationOccurrence.fromBoundary(base.file, 20, 100).value(),
+                occurrence = RelationOccurrence.fromBoundary(base.file, occurrenceStart, 100).value(),
                 supplier = RelationCallableBody.Named.fromCompiler(owner.evidence).value(),
                 selected = ReviewedIterableMapCallable.admit(target, ValueArgumentPosition.parse(0).value()).value(),
                 artifact =
@@ -267,12 +347,18 @@ private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "
             )
             .value()
 
-    fun observe(source: ValueSite, reviewed: List<ReviewedValueTransfer> = emptyList()) =
+    fun observe(
+        source: ValueSite,
+        reviewed: List<ReviewedValueTransfer> = emptyList(),
+        obligations: List<ValueFlowObligation> = emptyList(),
+    ) =
         ValueFlowStep.fromEvidence(
                 source = source,
                 transfers = emptyList(),
-                obligations = emptyList(),
-                terminal = ValueFlowTerminal.SupportedDomainExhausted,
+                obligations = obligations,
+                terminal =
+                    if (obligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted
+                    else ValueFlowTerminal.Unresolved,
                 domain = domain,
                 examinedWorkUnits = RelationWorkCount.parse(1).value(),
                 reviewedTransfers = reviewed,
