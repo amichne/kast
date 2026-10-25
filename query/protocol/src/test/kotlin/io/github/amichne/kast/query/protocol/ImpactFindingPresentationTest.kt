@@ -201,7 +201,15 @@ class ImpactFindingPresentationTest {
     private fun assertCompactShapeAndSize(finding: ImpactFindingDocument, expanded: QueryResultItemDocument.ValuePath) {
         val encoded = Json.encodeToJsonElement(ImpactFindingDocument.serializer(), finding).jsonObject
         assertEquals(
-            setOf("path", "producer", "destination", "representation", "terminal", "boundaryObligations"),
+            setOf(
+                "path",
+                "producer",
+                "destination",
+                "representation",
+                "terminal",
+                "boundaryObligations",
+                "reviewedRelations",
+            ),
             encoded.keys,
         )
         assertEquals(setOf("pathOrdinal", "pathRowId"), encoded.getValue("path").jsonObject.keys)

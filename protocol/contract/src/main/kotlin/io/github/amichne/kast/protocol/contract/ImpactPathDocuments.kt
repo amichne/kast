@@ -103,6 +103,10 @@ data class ImpactBoundaryConnectionDocument(
 @JsonClassDiscriminator("type")
 sealed interface ImpactPathStepDocument {
     @Serializable
+    @SerialName("REVIEWED_LIBRARY")
+    data class ReviewedLibrary(val transfer: ImpactReviewedValueTransferDocument) : ImpactPathStepDocument
+
+    @Serializable
     @SerialName("COMPILER")
     data class Compiler(val transfer: ImpactCompilerTransferDocument) : ImpactPathStepDocument
 
@@ -144,6 +148,10 @@ sealed interface ImpactRepresentationCurrentDocument {
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactRepresentationHistoryDocument {
+    @Serializable
+    @SerialName("REVIEWED_TRANSFER")
+    data class ReviewedTransfer(val transfer: ImpactReviewedValueTransferDocument) : ImpactRepresentationHistoryDocument
+
     @Serializable
     @SerialName("ORIGIN")
     data class Origin(

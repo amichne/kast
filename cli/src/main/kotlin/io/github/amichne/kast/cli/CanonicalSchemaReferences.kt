@@ -10,6 +10,8 @@ import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocume
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
@@ -46,6 +48,8 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "impactValueRole" to ImpactValueRoleDocument.serializer(),
                         "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                         "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
+                        "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
+                        "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
                         "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
                     )
             )

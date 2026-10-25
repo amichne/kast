@@ -20,6 +20,10 @@ sealed interface ImpactExecutionOwnerDocument {
     @Serializable @SerialName("DECLARATION") data object Declaration : ImpactExecutionOwnerDocument
 
     @Serializable
+    @SerialName("REVIEWED_CALLBACK")
+    data class ReviewedCallback(val binding: ImpactReviewedValueBindingDocument) : ImpactExecutionOwnerDocument
+
+    @Serializable
     @SerialName("CALLBACK")
     data class Callback(
         val body: ImpactCapturedBodyDocument,

@@ -190,6 +190,14 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument.serializer()
                 ),
+            "impactReviewedValueBinding" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument.serializer()
+                ),
+            "impactReviewedValueTransfer" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument.serializer()
+                ),
             "impactImplementationDispatch" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument.serializer()

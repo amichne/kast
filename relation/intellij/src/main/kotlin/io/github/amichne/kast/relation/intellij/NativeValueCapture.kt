@@ -46,7 +46,17 @@ internal fun nativeValueCaptureOwner(
             callbackExpiry = expiry,
         )
     return when (val graph = captureGraph(read, evidence)) {
-        is Refinement.Rejected -> graph
+        is Refinement.Rejected -> {
+            if (graph.failure != ValueFlowUnsupportedCause.NESTED_EXECUTION) return graph
+            val context = IntellijCallbackFlowContext(scope, projection, admitWork, projection.observation, expiry)
+            when (val reviewed = readReviewedCallbackValueBinding(anonymous, enclosing, context)) {
+                is Refinement.Refined ->
+                    Refinement.Refined(
+                        NativeValueExecution(anonymous, ValueExecutionOwner.reviewedCallback(reviewed.value))
+                    )
+                is Refinement.Rejected -> Refinement.Rejected(reviewed.failure.valueFlowCause())
+            }
+        }
         is Refinement.Refined ->
             when (val owner = ValueExecutionOwner.callback(enclosing, graph.value.first, graph.value.second)) {
                 is Refinement.Refined -> Refinement.Refined(NativeValueExecution(anonymous, owner.value))

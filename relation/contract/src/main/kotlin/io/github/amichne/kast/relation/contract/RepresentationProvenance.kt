@@ -35,6 +35,8 @@ sealed interface RepresentationHistory {
 
     data class CompilerTransfer(val transfer: ValueTransfer) : RepresentationHistory
 
+    data class ReviewedTransfer(val transfer: ReviewedValueTransfer) : RepresentationHistory
+
     data class Unmodeled(val source: ValueSiteIdentity, val target: ValueSiteIdentity) : RepresentationHistory
 
     data class BoundaryModel(
@@ -164,6 +166,19 @@ class RepresentationEvidence private constructor(val site: ValueSite, val branch
             )
         )
     }
+
+    fun reviewedTransfer(
+        transfer: ReviewedValueTransfer
+    ): Refinement<RepresentationEvidence, RepresentationPropagationFailure> =
+        if (site.identity != transfer.source.identity)
+            Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
+        else
+            Refinement.Refined(
+                create(
+                    transfer.target,
+                    branches.map { it.withHistory(RepresentationHistory.ReviewedTransfer(transfer)) },
+                )
+            )
 
     /** This is a modeled edge, not a newly manufactured compiler-flow edge. */
     fun transform(

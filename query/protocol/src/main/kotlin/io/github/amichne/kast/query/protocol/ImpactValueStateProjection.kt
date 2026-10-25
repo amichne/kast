@@ -24,6 +24,7 @@ import io.github.amichne.kast.relation.contract.ValueSourceOperation
 internal fun ValueAccessPath.impactDocument(): ImpactProjected<BoundedProtocolList<ImpactValuePathSegmentDocument>> =
     segments.impactEach { segment ->
         when (segment) {
+            ValuePathSegment.Element -> Refinement.Refined(ImpactValuePathSegmentDocument.Element)
             is ValuePathSegment.Field ->
                 segment.field.declaration.impactDeclaration().impactMap(ImpactValuePathSegmentDocument::Field)
         }

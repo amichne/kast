@@ -20,6 +20,13 @@ internal fun compilerImpactArrivals(
             is Refinement.Refined -> tasks += PipelineTask.ImpactExplore(branch.value)
         }
     }
+    for (transfer in observation.reviewedTransfers) {
+        when (val branch = route.reviewed(transfer)) {
+            is Refinement.Rejected ->
+                return Refinement.Rejected(QueryImpactExecutionFailure.Representation(branch.failure))
+            is Refinement.Refined -> tasks += PipelineTask.ImpactExplore(branch.value)
+        }
+    }
     return Refinement.Refined(tasks)
 }
 
@@ -56,4 +63,4 @@ private fun supportedEndPath(
 }
 
 private fun ValueFlowStep.isSupportedEnd(): Boolean =
-    transfers.isEmpty() && obligations.isEmpty() && terminal == ValueFlowTerminal.SupportedDomainExhausted
+    outputCount == 0 && obligations.isEmpty() && terminal == ValueFlowTerminal.SupportedDomainExhausted

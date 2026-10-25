@@ -46,6 +46,7 @@ private fun ImpactSourceOperationDocument.CallbackReturn.matchesSupplier(
         supplied.range == invocation.supply.range &&
         supplied.callable == invocation.supply.callable &&
         when (val execution = supplied.executionOwner) {
+            is ImpactExecutionOwnerDocument.ReviewedCallback -> false
             ImpactExecutionOwnerDocument.Declaration -> invocation.supplyOwner.matches(source.enclosing)
             is ImpactExecutionOwnerDocument.Callback ->
                 execution.body == invocation.supplyOwner && execution.invocations == context.invocations

@@ -55,6 +55,7 @@ private fun BoundedProtocolList<ImpactRepresentationHistoryDocument>.hasValidPee
 private fun ImpactPathStepDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         is ImpactPathStepDocument.Compiler -> transfer.isOnBasis(basis)
+        is ImpactPathStepDocument.ReviewedLibrary -> transfer.admitsEvidence() && transfer.binding.basis == basis
         is ImpactPathStepDocument.ModeledRepresentation -> application.isOnBasis(basis)
         is ImpactPathStepDocument.ModeledBoundary ->
             connection.rule.source.site.isOnBasis(basis) &&
@@ -67,6 +68,8 @@ private fun ImpactRepresentationHistoryDocument.isOnBasis(basis: ImpactSemanticB
         is ImpactRepresentationHistoryDocument.Origin ->
             output.isOnBasis(basis) && invocation.callable.basis == basis && rule.output.declaration.basis == basis
         is ImpactRepresentationHistoryDocument.CompilerTransfer -> transfer.isOnBasis(basis)
+        is ImpactRepresentationHistoryDocument.ReviewedTransfer ->
+            transfer.admitsEvidence() && transfer.binding.basis == basis
         is ImpactRepresentationHistoryDocument.ModeledApplication -> application.isOnBasis(basis)
         is ImpactRepresentationHistoryDocument.Unmodeled -> source.isOnBasis(basis) && target.isOnBasis(basis)
         is ImpactRepresentationHistoryDocument.BoundaryModel ->
@@ -126,6 +129,7 @@ private fun ImpactPathTerminalDocument.isOnBasis(basis: ImpactSemanticBasisDocum
 private fun ImpactPathStepDocument.destination(): ImpactValueSiteReferenceDocument =
     when (this) {
         is ImpactPathStepDocument.Compiler -> transfer.target
+        is ImpactPathStepDocument.ReviewedLibrary -> transfer.target
         is ImpactPathStepDocument.ModeledRepresentation -> application.target
         is ImpactPathStepDocument.ModeledBoundary -> connection.rule.target.site
     }

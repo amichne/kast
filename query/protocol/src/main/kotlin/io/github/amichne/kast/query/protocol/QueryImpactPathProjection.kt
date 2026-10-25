@@ -43,6 +43,8 @@ internal fun QueryImpactPath.impactDocument(): ImpactProjected<ImpactPathDocumen
 internal fun QueryImpactStep.impactDocument(): ImpactProjected<ImpactPathStepDocument> =
     when (this) {
         is QueryImpactStep.Compiler -> transfer.impactDocument().impactMap(ImpactPathStepDocument::Compiler)
+        is QueryImpactStep.ReviewedLibrary ->
+            transfer.impactDocument().impactMap(ImpactPathStepDocument::ReviewedLibrary)
         is QueryImpactStep.ModeledRepresentation ->
             application.impactDocument().impactMap(ImpactPathStepDocument::ModeledRepresentation)
         is QueryImpactStep.ModeledBoundary ->

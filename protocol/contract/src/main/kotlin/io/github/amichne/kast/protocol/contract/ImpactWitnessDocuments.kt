@@ -77,6 +77,9 @@ sealed interface ImpactWitnessDocument {
         val obligationCount: QueryDiscoveryCountDocument,
         val receipts: BoundedProtocolList<ImpactNativeReadReceiptDocument> =
             (BoundedProtocolList.create(emptyList<ImpactNativeReadReceiptDocument>()) as Refinement.Refined).value,
+        @EncodeDefault
+        val reviewedTransferCount: QueryDiscoveryCountDocument =
+            (QueryDiscoveryCountDocument.parse(0) as Refinement.Refined).value,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -85,6 +88,14 @@ sealed interface ImpactWitnessDocument {
         val observationOrdinal: QueryDiscoveryCountDocument,
         val transferOrdinal: QueryDiscoveryCountDocument,
         val transfer: ImpactCompilerTransferDocument,
+    ) : ImpactWitnessDocument
+
+    @Serializable
+    @SerialName("REVIEWED_TRANSFER")
+    data class ReviewedTransfer(
+        val observationOrdinal: QueryDiscoveryCountDocument,
+        val transferOrdinal: QueryDiscoveryCountDocument,
+        val transfer: ImpactReviewedValueTransferDocument,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -115,6 +126,9 @@ data class ImpactFindingDocument(
     val representation: ImpactFindingRepresentationDocument,
     val terminal: ImpactFindingTerminalDocument,
     val boundaryObligations: BoundedProtocolList<ImpactBoundaryObligationDocument>,
+    @EncodeDefault
+    val reviewedRelations: BoundedProtocolList<ImpactReviewedValueBindingDocument> =
+        (BoundedProtocolList.create(emptyList<ImpactReviewedValueBindingDocument>()) as Refinement.Refined).value,
 )
 
 @Serializable
@@ -143,6 +157,10 @@ sealed interface ImpactFindingRepresentationDocument {
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactFindingProvenanceDocument {
+    @Serializable
+    @SerialName("REVIEWED_LIBRARY")
+    data class ReviewedLibrary(val binding: ImpactReviewedValueBindingDocument) : ImpactFindingProvenanceDocument
+
     @Serializable
     @SerialName("ORIGIN")
     data class Origin(val reference: ImpactRuleReferenceDocument, val state: ImpactRepresentationStateDocument) :

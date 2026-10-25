@@ -77,13 +77,14 @@ internal class IntellijValueFlowNative(
             if (obligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted else ValueFlowTerminal.Unresolved
         return when (
             val step =
-                ValueFlowStep.fromCompiler(
+                ValueFlowStep.fromEvidence(
                     request.source,
                     edges,
                     obligations,
                     terminal,
                     scope.request,
                     nativeWorkCount(examined),
+                    retained.reviewedEdges,
                 )
         ) {
             is Refinement.Refined -> ValueFlowRead.Observed(step.value)

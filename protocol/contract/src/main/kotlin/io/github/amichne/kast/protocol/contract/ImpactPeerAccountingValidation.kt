@@ -76,6 +76,7 @@ private fun ImpactFindingDocument.hasValidPeerEvidence(
     basis: ImpactSemanticBasisDocument,
     status: ImpactAccountingStatusDocument,
 ): Boolean {
+    if (!reviewedEvidenceHasSourceBasis(basis)) return false
     val peer =
         terminal as? ImpactFindingTerminalDocument.UnresolvedPeerContinuation
             ?: return ImpactWitnessDocument.Finding(this).hasSourceBasis(basis)

@@ -5,6 +5,7 @@ import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationCoverage
@@ -14,6 +15,9 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 /** One native return read reports its facts and diagnostic questions to the existing transfer collector. */
 internal sealed interface NativeValueReturnEffect {
     data class Transfer(val value: Refinement<ValueTransfer, ValueFlowUnsupportedCause>) : NativeValueReturnEffect
+
+    data class Reviewed(val value: Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause>) :
+        NativeValueReturnEffect
 
     data class Dispatch(val value: ValueImplementationDispatch) : NativeValueReturnEffect
 
@@ -39,6 +43,7 @@ internal class NativeValueReturnFlow(
     fun read(): Refinement<Unit, ValueFlowRejection> {
         val exhausted =
             when {
+                returns.isReviewedCallback -> returns.reviewedCallback(owner, ::accept)
                 returns.isCallback -> returns.callback(permit = permit, consume = ::accept)
                 returns.isMatched -> returns.matched(consume = ::accept)
                 else -> namedCallers()
@@ -60,6 +65,7 @@ internal class NativeValueReturnFlow(
     private fun accept(effect: NativeValueReturnEffect): Boolean {
         when (effect) {
             is NativeValueReturnEffect.Transfer -> retained.adopt(effect.value)
+            is NativeValueReturnEffect.Reviewed -> retained.adoptReviewed(effect.value)
             is NativeValueReturnEffect.Dispatch -> recordCoverage(effect.value)
             is NativeValueReturnEffect.UnsupportedDispatch ->
                 result = retained.unresolvedImplementation(effect.cause, effect.dispatch)

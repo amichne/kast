@@ -11,6 +11,8 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactValuePathSegmentDocument {
+    @Serializable @SerialName("ELEMENT") data object Element : ImpactValuePathSegmentDocument
+
     @Serializable
     @SerialName("FIELD")
     data class Field(val declaration: ImpactDeclarationReferenceDocument) : ImpactValuePathSegmentDocument

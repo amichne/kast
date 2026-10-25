@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read
 
 /** Bounded vocabulary at the native effect boundary. No names, paths, references, or PSI. */
 enum class IntellijReadCounter {
+    VALUE_REVIEWED_TRANSFERS,
     /** Structural selection only; no source framing or publication claim. */
     SOURCE_REGION_SELECTED,
     SOURCE_REGION_ABSENT,
@@ -237,6 +238,10 @@ enum class IntellijReadCounter {
     VALUE_SITE_SHAPES_REJECTED,
     VALUE_FLOW_WRAPPER_RETURNS,
     VALUE_FLOW_READS,
+    VALUE_RETURN_CALL_BINDINGS_ADMITTED,
+    VALUE_RETURN_CALL_BINDINGS_REJECTED,
+    VALUE_RETURN_OWNERS_ADMITTED,
+    VALUE_RETURN_OWNERS_REJECTED,
     VALUE_FLOW_TRANSFERS,
     VALUE_FLOW_BRANCH_RESULT_CANDIDATES,
     LOCAL_DECLARATION_IDENTITIES_ADMITTED,

@@ -294,6 +294,7 @@ class ImpactWitnessPresentationTest {
                 "retainedBytes",
                 "terminal",
                 "transferCount",
+                "reviewedTransferCount",
                 "obligationCount",
                 "receipts",
             ),

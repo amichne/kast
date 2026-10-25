@@ -17,6 +17,7 @@ import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
 import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -54,6 +55,23 @@ internal data class QueryImpactRoute(
                         Refinement.Refined(
                             copy(
                                 steps = steps + QueryImpactStep.Compiler(transfer),
+                                representation = QueryImpactRepresentation.Present(next.value),
+                            )
+                        )
+                }
+        }
+
+    fun reviewed(transfer: ReviewedValueTransfer): Refinement<QueryImpactRoute, RepresentationPropagationFailure> =
+        when (val current = representation) {
+            QueryImpactRepresentation.NotModeled ->
+                Refinement.Refined(copy(steps = steps + QueryImpactStep.ReviewedLibrary(transfer)))
+            is QueryImpactRepresentation.Present ->
+                when (val next = current.evidence.reviewedTransfer(transfer)) {
+                    is Refinement.Rejected -> next
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            copy(
+                                steps = steps + QueryImpactStep.ReviewedLibrary(transfer),
                                 representation = QueryImpactRepresentation.Present(next.value),
                             )
                         )
