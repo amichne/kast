@@ -340,19 +340,6 @@ data class ValueFlowRequest(
     val remainder: LocalBindingReadRemainder? = null,
 )
 
-private fun ValueFlowTerminal.validateObligations(
-    obligations: List<ValueFlowObligation>
-): Refinement<Unit, ValueFlowStepFailure> =
-    when (this) {
-        ValueFlowTerminal.ResourceSuspended -> Refinement.Refined(Unit)
-        ValueFlowTerminal.SupportedDomainExhausted ->
-            if (obligations.isEmpty()) Refinement.Refined(Unit)
-            else Refinement.Rejected(ValueFlowStepFailure.UNRESOLVED_OBLIGATIONS)
-        ValueFlowTerminal.Unresolved ->
-            if (obligations.isNotEmpty()) Refinement.Refined(Unit)
-            else Refinement.Rejected(ValueFlowStepFailure.MISSING_OBLIGATION)
-    }
-
 private fun validProgress(source: ValueSite, transfers: List<ValueTransfer>, terminal: ValueFlowTerminal): Boolean =
     transfers.distinct().size == transfers.size &&
         (terminal != ValueFlowTerminal.ResourceSuspended || source.role.hasReferenceReads())
@@ -363,27 +350,6 @@ private fun validReviewedProgress(
 ): Boolean =
     transfers.distinct().size == transfers.size &&
         (terminal != ValueFlowTerminal.ResourceSuspended || transfers.isEmpty())
-
-private fun ValueFlowTerminal.validateStepEvidence(
-    source: ValueSite,
-    domain: RelationRequest,
-    transfers: List<ValueTransfer>,
-    reviewedTransfers: List<ReviewedValueTransfer>,
-    obligations: List<ValueFlowObligation>,
-): Refinement<Unit, ValueFlowStepFailure> {
-    if (
-        domain.subject.lease.identity != source.basis ||
-            ValueDeclarationIdentity(domain.subject.compilerIdentity, domain.subject.file, domain.subject.range) !=
-                source.identity.owner
-    )
-        return Refinement.Rejected(ValueFlowStepFailure.DOMAIN_MISMATCH)
-    if (transfers.any { it.source != source }) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
-    if (reviewedTransfers.any { it.source != source }) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
-    if (obligations.any { it.site.basis != source.basis })
-        return Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
-    if (obligations.any { it.site != source }) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
-    return validateObligations(obligations)
-}
 
 private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite): Boolean =
     when (this) {
