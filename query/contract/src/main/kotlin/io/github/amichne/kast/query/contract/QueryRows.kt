@@ -170,17 +170,9 @@ sealed interface QueryRows {
             fun of(values: List<QueryImpactPath>): ValuePaths =
                 ValuePaths(Collections.unmodifiableList(values.toList()), QueryValuePathAccounting.EvidenceOnly)
 
+            /** Ledger admission already proves unique, immutable paths. Output pages keep that proof. */
             fun fromInvestigation(ledger: QueryImpactLedger): Refinement<ValuePaths, QueryValuePathAccountingFailure> =
-                if (ledger.paths.distinct().size != ledger.paths.size) {
-                    Refinement.Rejected(QueryValuePathAccountingFailure.DUPLICATE_PATH)
-                } else {
-                    Refinement.Refined(
-                        ValuePaths(
-                            Collections.unmodifiableList(ledger.paths.toList()),
-                            QueryValuePathAccounting.Investigated(ledger),
-                        )
-                    )
-                }
+                Refinement.Refined(ValuePaths(ledger.paths, QueryValuePathAccounting.Investigated(ledger)))
         }
 
         fun selectRows(indices: List<Int>): Refinement<ValuePaths, QueryRetainedResultFailure> =

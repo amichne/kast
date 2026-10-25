@@ -44,6 +44,9 @@ internal data class PipelineCheckpoint(
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
     val impact: QueryImpactSnapshot? = null,
 ) : QueryCheckpointPartialSymbols {
+    // Equality still compares every field when progress values collide.
+    override fun hashCode(): Int = 31 * emittedCount.hashCode() + tasks.size
+
     override val plan: AdmittedQueryPlan
         get() = seed.plan
 
