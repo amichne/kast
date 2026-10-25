@@ -31,6 +31,9 @@ class ValueField private constructor(val declaration: RelationEndpoint) {
 
 sealed interface ValuePathSegment {
     data class Field(val field: ValueField) : ValuePathSegment
+
+    /** An element position preserves the rest of the path without an index or cardinality assertion. */
+    data object Element : ValuePathSegment
 }
 
 sealed interface ValuePathSelection {

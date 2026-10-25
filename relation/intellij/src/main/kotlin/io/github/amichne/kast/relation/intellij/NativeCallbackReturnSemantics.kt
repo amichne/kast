@@ -25,7 +25,7 @@ internal fun ValueFlowRequest.callbackReturnSemantics(
     function: KtFunctionLiteral,
     observation: IntellijReadObservation,
 ): Refinement<NativeCallbackReturnSemantics, ValueFlowUnsupportedCause> =
-    if (source.executionOwner.context !is ValueExecutionContext.Callback)
+    if (source.executionOwner.context == ValueExecutionContext.Declaration)
         Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
     else
         nativeCallbackReturnSemantics(

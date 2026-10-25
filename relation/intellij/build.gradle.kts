@@ -110,6 +110,20 @@ tasks.named("test") {
 // Indexed Platform fixtures own a separate process and task; parser/pure tests stay fast.
 val nativeTest = sourceSets.create("nativeTest")
 
+val reviewedCallbackSources = configurations.create("reviewedCallbackSources") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
+}
+
+tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
+    from(reviewedCallbackSources) { into("reviewed-libraries") }
+    from("testData/r1-value-flow") { into("r1-value-flow") }
+}
+
 configurations[nativeTest.implementationConfigurationName].extendsFrom(configurations.implementation.get())
 
 nativeTest.compileClasspath += sourceSets.main.get().output

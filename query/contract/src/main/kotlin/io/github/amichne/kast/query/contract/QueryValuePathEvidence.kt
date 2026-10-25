@@ -31,6 +31,7 @@ internal fun QueryImpactStep.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         when (this) {
             is QueryImpactStep.Compiler -> transfer.storageBytes(g)
+            is QueryImpactStep.ReviewedLibrary -> transfer.storageBytes(g)
             is QueryImpactStep.ModeledRepresentation -> application.storageBytes(g)
             is QueryImpactStep.ModeledBoundary -> connection.storageBytes(g)
         }

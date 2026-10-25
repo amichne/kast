@@ -76,6 +76,7 @@ class ImpactWitnessSchemaTest {
                 "PEER_BOUNDARY_MODEL",
                 "NATIVE_READ",
                 "COMPILER_TRANSFER",
+                "REVIEWED_TRANSFER",
                 "FLOW_OBLIGATION",
                 "READ_REJECTION",
                 "FINDING",
@@ -302,6 +303,7 @@ private fun witnessExamples(): List<ImpactWitnessDocument> {
         listOf(
             ImpactWitnessDocument.Producer(site, ImpactInvocationReferenceDocument(site.range, owner)),
             ImpactWitnessDocument.ProducerSiteOnly(site),
+            ImpactWitnessDocument.ReviewedTransfer(count(0), count(0), reviewedTransferSchemaFixture()),
             findingExample(site),
             siteAccountingExample(site),
             peerModelExample(site),

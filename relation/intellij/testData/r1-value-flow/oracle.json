@@ -1,0 +1,257 @@
+{
+  "created_at": "2026-10-25T03:07:48.589417+00:00",
+  "authority": "Authored from frozen Kotlin source semantics before IMPACT output. Compiler bindings remain separate necessary evidence.",
+  "encoding": "UTF-8 LF; anchors count UTF-16 code units; ranges half-open",
+  "domain": {
+    "type": "SOURCE_DOMAIN",
+    "sourceSets": [
+      "test"
+    ],
+    "directory": "src/test/kotlin",
+    "includeSubdirectories": true,
+    "sourcePolicy": "TEST_ONLY",
+    "generatedSources": "EXCLUDE"
+  },
+  "variants": [
+    {
+      "id": "E0",
+      "sha256": "babe9037f525c8c3102305bd5d34ce4d5455faccb37f32a52c87d335302780d2",
+      "bytes": 460,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload",
+        "toClientEnvelope.call.result.payload",
+        "callback.RETURN.payload",
+        "convert.map.result.Element.payload",
+        "convert.RETURN.Element.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E1",
+      "sha256": "9a7ae785438f45cc6fd1580bedd6b2476dc8018735c8b39414be0bd04ffc08bb",
+      "bytes": 355,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E2",
+      "sha256": "6bc8d9364ea7b5d2701157086e4b42eb7647a705f0960732d628dce38a730724",
+      "bytes": 438,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload",
+        "convertOne.toClientEnvelope.call.result.payload",
+        "convertOne.RETURN.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E3",
+      "sha256": "1c712ee3b3fef49f5135a9717c20dd1bff886cb2b4e5dbd1b86a9e98e7e4872b",
+      "bytes": 454,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "callback.toClientValue.call.result",
+        "callback.RETURN",
+        "convert.map.result.Element",
+        "convert.RETURN.Element"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E4",
+      "sha256": "4d98aed3d4e9b6c46e1ce5f6cafc350d88d475cd85d2f1fbec3199a11a615035",
+      "bytes": 478,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility",
+        "seed reaches convert returned constant or empty element"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E5",
+      "sha256": "bcc02012a91a3e651e3d1dc35cd4e19b94abf11004b608679e9ac6ffed00c044",
+      "bytes": 535,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility",
+        "seed reaches convert returned constant or empty element"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E6",
+      "sha256": "b4b969c5cf9dd73195bc13e7fa348eb62a74da0427b9ac4e7a35075333737223",
+      "bytes": 455,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload",
+        "toClientEnvelope.call.result.payload",
+        "callback.RETURN.payload",
+        "convert.map.result.Element.payload",
+        "convert.RETURN.Element.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    },
+    {
+      "id": "E8",
+      "sha256": "8a78ed8339ef529c33e723f53f7d39a3c1bf49e751c1a8ab8ac5df7b770217bf",
+      "bytes": 454,
+      "seed": {
+        "file": "src/test/kotlin/kast/repro/Repro.kt",
+        "start": 232,
+        "end": 252,
+        "text": "ClientValue(id = id)"
+      },
+      "expected_path": [
+        "seed.ClientValue.result",
+        "toClientValue.RETURN",
+        "toClientValue.call.result",
+        "ClientEnvelope.payload.argument",
+        "ClientEnvelope.result.payload",
+        "toClientEnvelope.RETURN.payload",
+        "toClientEnvelope.call.result.payload",
+        "callback.RETURN.payload",
+        "supply.body.invoke.result.payload",
+        "supply.RETURN.payload",
+        "convert.supply.call.result.payload",
+        "convert.RETURN.payload"
+      ],
+      "forbidden": [
+        "seed result == WireValue or WireValue.id",
+        "seed result == whole ClientEnvelope",
+        "seed result == whole List",
+        "actual callback invocation/count from static possibility"
+      ],
+      "baseline_status": "UNMEASURED diagnostic baseline"
+    }
+  ],
+  "minimum_edges": [
+    "constructor produced ClientValue flows unchanged into envelope payload",
+    "envelope result has payload path for original ClientValue",
+    "callback result is envelope with payload path",
+    "possible map result element is envelope with payload path",
+    "return-to-caller pairs exact call occurrence and owning callable"
+  ],
+  "exclusions": [
+    "No actual invocation assertion",
+    "No taint/derived edge relabeled exact",
+    "No collection-object equality from element flow",
+    "No incomplete result proves absence",
+    "E7 NOT_APPLICABLE until a dependency model is proposed; unmatched overload remains a negative obligation"
+  ]
+}

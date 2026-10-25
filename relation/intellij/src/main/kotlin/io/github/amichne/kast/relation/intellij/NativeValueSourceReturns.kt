@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.util.PsiTreeUtil
@@ -40,6 +41,12 @@ internal class NativeValueSourceReturns(
 
     val isCallback: Boolean
         get() = source.executionOwner.context is ValueExecutionContext.Callback
+
+    val isReviewedCallback: Boolean
+        get() = source.executionOwner.context is ValueExecutionContext.ReviewedCallback
+
+    fun reviewedCallback(owner: PsiElement, consume: (NativeValueReturnEffect) -> Boolean): Boolean =
+        consume(nativeReviewedCallbackReturn(request, scope, projection, allowance, owner))
 
     fun callback(permit: () -> Boolean, consume: (NativeValueReturnEffect) -> Boolean): Boolean {
         val context = source.executionOwner.context as? ValueExecutionContext.Callback ?: return consume(unsupported())
@@ -301,7 +308,12 @@ internal class NativeValueSourceReturns(
                 is Refinement.Refined -> value.value
                 is Refinement.Rejected -> return value
             }
-        return frames.invocation(call, lexical.declaration, enclosing)
+        return frames.initialInvocation(
+            call = call,
+            host = lexical.declaration,
+            enclosing = enclosing,
+            allowance = allowance,
+        )
     }
 
     private fun seedReturn(
@@ -331,15 +343,15 @@ internal class NativeValueSourceReturns(
             operation = operation,
         )
     }
-
-    private fun outcome(
-        result: Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
-        target: NativeValueCallerTarget,
-    ): NativeValueReturnEffect =
-        if (result is Refinement.Rejected && target is NativeValueCallerTarget.Implementation)
-            NativeValueReturnEffect.UnsupportedDispatch(result.failure, target.dispatch)
-        else NativeValueReturnEffect.Transfer(result)
 }
+
+private fun outcome(
+    result: Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
+    target: NativeValueCallerTarget,
+): NativeValueReturnEffect =
+    if (result is Refinement.Rejected && target is NativeValueCallerTarget.Implementation)
+        NativeValueReturnEffect.UnsupportedDispatch(result.failure, target.dispatch)
+    else NativeValueReturnEffect.Transfer(result)
 
 private fun returnRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
     Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)

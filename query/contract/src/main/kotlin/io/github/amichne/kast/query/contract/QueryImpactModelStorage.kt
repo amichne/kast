@@ -131,6 +131,7 @@ internal fun RepresentationHistory.storageBytes(g: QueryImpactRetainedGraph): Lo
                 is RepresentationHistory.Origin ->
                     rule.storageBytes(g).saturatedAdd(output.storageBytes(g)).saturatedAdd(invocation.storageBytes(g))
                 is RepresentationHistory.CompilerTransfer -> transfer.storageBytes(g)
+                is RepresentationHistory.ReviewedTransfer -> transfer.storageBytes(g)
                 is RepresentationHistory.Unmodeled -> source.storageBytes(g).saturatedAdd(target.storageBytes(g))
                 is RepresentationHistory.BoundaryModel ->
                     reference.storageBytes(g).saturatedAdd(source.storageBytes(g)).saturatedAdd(target.storageBytes(g))

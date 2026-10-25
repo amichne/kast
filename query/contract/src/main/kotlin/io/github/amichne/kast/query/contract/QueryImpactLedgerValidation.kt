@@ -196,9 +196,17 @@ internal class QueryImpactLedgerValidation(
         val step = path.steps.getOrNull(index)
         if (step is QueryImpactStep.Compiler && step.transfer !in observed.transfers)
             return reject(QueryImpactLedgerFailure.UNPROVEN_COMPILER_STEP)
+        if (step is QueryImpactStep.ReviewedLibrary && step.transfer !in observed.reviewedTransfers)
+            return reject(QueryImpactLedgerFailure.UNPROVEN_REVIEWED_STEP)
         if (
             observed.transfers.any { edge ->
                 siblings.none { it.steps.getOrNull(index) == QueryImpactStep.Compiler(edge) }
+            }
+        )
+            return reject(QueryImpactLedgerFailure.MISSING_BRANCH)
+        if (
+            observed.reviewedTransfers.any { edge ->
+                siblings.none { it.steps.getOrNull(index) == QueryImpactStep.ReviewedLibrary(edge) }
             }
         )
             return reject(QueryImpactLedgerFailure.MISSING_BRANCH)

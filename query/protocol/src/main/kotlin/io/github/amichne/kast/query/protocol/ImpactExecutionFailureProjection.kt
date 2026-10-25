@@ -69,6 +69,7 @@ private fun QueryImpactLedgerFailure.executionCauseDocument(): ImpactExecutionLe
         QueryImpactLedgerFailure.CONFLICTING_OBSERVATIONS -> ImpactExecutionLedgerCause.CONFLICTING_OBSERVATIONS
         QueryImpactLedgerFailure.MISSING_NATIVE_OBSERVATION -> ImpactExecutionLedgerCause.MISSING_NATIVE_OBSERVATION
         QueryImpactLedgerFailure.UNPROVEN_COMPILER_STEP -> ImpactExecutionLedgerCause.UNPROVEN_COMPILER_STEP
+        QueryImpactLedgerFailure.UNPROVEN_REVIEWED_STEP -> ImpactExecutionLedgerCause.UNPROVEN_REVIEWED_STEP
         QueryImpactLedgerFailure.MISSING_BRANCH -> ImpactExecutionLedgerCause.MISSING_BRANCH
         QueryImpactLedgerFailure.MISSING_OBLIGATION -> ImpactExecutionLedgerCause.MISSING_OBLIGATION
         QueryImpactLedgerFailure.UNDECLARED_MODEL -> ImpactExecutionLedgerCause.UNDECLARED_MODEL

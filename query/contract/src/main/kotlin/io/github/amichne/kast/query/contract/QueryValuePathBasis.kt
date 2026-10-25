@@ -7,6 +7,7 @@ import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
@@ -130,6 +131,7 @@ private fun BoundaryArrival.hasForeignBasis(lease: SemanticReadAuthority): Boole
 internal fun QueryImpactStep.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (this) {
         is QueryImpactStep.Compiler -> transfer.hasForeignBasis(lease)
+        is QueryImpactStep.ReviewedLibrary -> transfer.hasForeignBasis(lease)
         is QueryImpactStep.ModeledRepresentation -> application.hasForeignBasis(lease)
         is QueryImpactStep.ModeledBoundary -> connection.hasForeignBasis(lease)
     }
@@ -142,6 +144,7 @@ private fun RepresentationHistory.hasForeignBasis(lease: SemanticReadAuthority):
         is RepresentationHistory.Origin ->
             output.hasForeignBasis(lease) || invocation.hasForeignBasis(lease) || rule.hasForeignBasis(lease)
         is RepresentationHistory.CompilerTransfer -> transfer.hasForeignBasis(lease)
+        is RepresentationHistory.ReviewedTransfer -> transfer.hasForeignBasis(lease)
         is RepresentationModelApplication -> hasForeignBasis(lease)
         is RepresentationHistory.Unmodeled -> source.basis != lease.identity || target.basis != lease.identity
         is RepresentationHistory.BoundaryModel -> source.basis != lease.identity || target.basis != lease.identity
@@ -201,10 +204,17 @@ internal fun ValueFlowStep.hasForeignBasis(lease: SemanticReadAuthority): Boolea
     source.hasForeignBasis(lease) ||
         domain.subject.lease != lease ||
         transfers.any { it.hasForeignBasis(lease) } ||
+        reviewedTransfers.any { it.hasForeignBasis(lease) } ||
         obligations.any { it.hasForeignBasis(lease) }
 
 private fun ValueTransfer.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     source.hasForeignBasis(lease) || target.hasForeignBasis(lease) || evidence.hasForeignBasis(lease)
+
+private fun ReviewedValueTransfer.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    source.hasForeignBasis(lease) ||
+        target.hasForeignBasis(lease) ||
+        binding.enclosing.lease != lease ||
+        binding.basis != lease.identity
 
 private fun ValueTransferEvidence.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (val proof = this) {

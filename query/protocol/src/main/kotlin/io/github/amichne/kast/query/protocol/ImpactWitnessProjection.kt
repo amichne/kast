@@ -92,16 +92,7 @@ private fun QueryImpactWitnessEntry.impactDocument(
         is QueryImpactWitnessEntry.Finding ->
             if (originalRowId == null) Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
             else finding.findingDocument(originalRowId).impactMap(ImpactWitnessDocument::Finding)
-        is QueryImpactWitnessEntry.Producer ->
-            when (val producer = evidence) {
-                is QueryImpactProducerEvidence.Invocation ->
-                    producer.site.impactDocument().impactZip(producer.producer.invocation.impactDocument()).impactMap {
-                        (site, invocation) ->
-                        ImpactWitnessDocument.Producer(site, invocation)
-                    }
-                is QueryImpactProducerEvidence.SiteOnly ->
-                    producer.site.impactDocument().impactMap(ImpactWitnessDocument::ProducerSiteOnly)
-            }
+        is QueryImpactWitnessEntry.Producer -> evidence.projectProducer()
         is QueryImpactWitnessEntry.RepresentationModel ->
             rule.reference.impactDocument().impactZip(rule.impactDocument()).impactMap { (reference, rule) ->
                 ImpactWitnessDocument.RepresentationModel(reference, rule)
@@ -112,6 +103,13 @@ private fun QueryImpactWitnessEntry.impactDocument(
                 ImpactWitnessDocument.BoundaryModel(reference, rule)
             }
         is QueryImpactWitnessEntry.ReadRejected -> projectReadRejection()
+        is QueryImpactWitnessEntry.ReviewedTransfer ->
+            count(observationOrdinal.value)
+                .impactZip(count(transferOrdinal.value))
+                .impactZip(transfer.impactDocument())
+                .impactMap { (position, transfer) ->
+                    ImpactWitnessDocument.ReviewedTransfer(position.first, position.second, transfer)
+                }
         is QueryImpactWitnessEntry.CompilerTransfer ->
             count(observationOrdinal.value)
                 .impactZip(count(transferOrdinal.value))
@@ -136,6 +134,16 @@ private fun QueryImpactWitnessEntry.impactDocument(
         is QueryImpactWitnessEntry.NativeRead -> projectNativeRead()
     }
 
+private fun QueryImpactProducerEvidence.projectProducer(): ImpactProjected<ImpactWitnessDocument> =
+    when (this) {
+        is QueryImpactProducerEvidence.Invocation ->
+            site.impactDocument().impactZip(producer.invocation.impactDocument()).impactMap { (site, invocation) ->
+                ImpactWitnessDocument.Producer(site, invocation)
+            }
+        is QueryImpactProducerEvidence.SiteOnly ->
+            site.impactDocument().impactMap(ImpactWitnessDocument::ProducerSiteOnly)
+    }
+
 private fun count(raw: Int) = count(raw.toLong())
 
 private fun count(raw: Long): ImpactProjected<QueryDiscoveryCountDocument> =
@@ -148,37 +156,40 @@ private fun QueryImpactWitnessEntry.ReadRejected.projectReadRejection(): ImpactP
     }
 
 private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjected<ImpactWitnessDocument> =
-    observation.receipts
-        .impactEach { it.receiptDocument() }
-        .impactThen { receipts ->
-            observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
-                (source, domain) ->
-                count(observationOrdinal.value)
-                    .impactZip(count(observation.examinedWorkUnits.value))
-                    .impactZip(count(observation.retainedBytes))
-                    .impactZip(count(observation.transfers.size))
-                    .impactZip(count(observation.obligations.size))
-                    .impactMap { (counts, obligations) ->
-                        ImpactWitnessDocument.NativeRead(
-                            counts.first.first.first,
-                            source,
-                            domain,
-                            counts.first.first.second,
-                            counts.first.second,
-                            when (observation.terminal) {
-                                ValueFlowTerminal.SupportedDomainExhausted ->
-                                    ImpactNativeObservationTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED
-                                ValueFlowTerminal.Unresolved -> ImpactNativeObservationTerminalDocument.UNRESOLVED
-                                ValueFlowTerminal.ResourceSuspended ->
-                                    ImpactNativeObservationTerminalDocument.RESOURCE_SUSPENDED
-                            },
-                            counts.second,
-                            obligations,
-                            receipts,
-                        )
-                    }
+    count(observation.reviewedTransfers.size).impactThen { reviewed ->
+        observation.receipts
+            .impactEach { it.receiptDocument() }
+            .impactThen { receipts ->
+                observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
+                    (source, domain) ->
+                    count(observationOrdinal.value)
+                        .impactZip(count(observation.examinedWorkUnits.value))
+                        .impactZip(count(observation.retainedBytes))
+                        .impactZip(count(observation.transfers.size))
+                        .impactZip(count(observation.obligations.size))
+                        .impactMap { (counts, obligations) ->
+                            ImpactWitnessDocument.NativeRead(
+                                counts.first.first.first,
+                                source,
+                                domain,
+                                counts.first.first.second,
+                                counts.first.second,
+                                when (observation.terminal) {
+                                    ValueFlowTerminal.SupportedDomainExhausted ->
+                                        ImpactNativeObservationTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED
+                                    ValueFlowTerminal.Unresolved -> ImpactNativeObservationTerminalDocument.UNRESOLVED
+                                    ValueFlowTerminal.ResourceSuspended ->
+                                        ImpactNativeObservationTerminalDocument.RESOURCE_SUSPENDED
+                                },
+                                counts.second,
+                                obligations,
+                                receipts,
+                                reviewed,
+                            )
+                        }
+                }
             }
-        }
+    }
 
 private fun ValueFlowWorkReceipt.receiptDocument(): ImpactProjected<ImpactNativeReadReceiptDocument> =
     domain

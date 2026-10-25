@@ -269,6 +269,8 @@ private fun RepresentationHistory.impactDocument(): ImpactProjected<ImpactRepres
                 }
         is RepresentationHistory.CompilerTransfer ->
             transfer.impactDocument().impactMap(ImpactRepresentationHistoryDocument::CompilerTransfer)
+        is RepresentationHistory.ReviewedTransfer ->
+            transfer.impactDocument().impactMap(ImpactRepresentationHistoryDocument::ReviewedTransfer)
         is RepresentationModelApplication ->
             impactDocument().impactMap(ImpactRepresentationHistoryDocument::ModeledApplication)
         is RepresentationHistory.Unmodeled ->

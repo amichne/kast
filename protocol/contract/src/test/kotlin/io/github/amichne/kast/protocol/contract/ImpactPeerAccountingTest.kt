@@ -2,6 +2,7 @@ package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImpactPeerAccountingTest {
@@ -117,6 +118,56 @@ class ImpactPeerAccountingTest {
                 .validateImpactAccounting(),
         )
     }
+
+    @Test
+    fun `final peer receipt cannot admit reviewed provenance from another source epoch`() {
+        val binding = ImpactReviewedValueFixture().binding
+        val staleBasis =
+            (binding.basis as ImpactSemanticBasisDocument.Published).copy(
+                generation = (ImpactEvidenceRevisionDocument.parse(8) as Refinement.Refined).value
+            )
+        val stale =
+            binding.copy(
+                basis = staleBasis,
+                enclosing = binding.enclosing.copy(basis = staleBasis),
+                selected = binding.selected.copy(declaration = binding.selected.declaration.copy(basis = staleBasis)),
+            )
+        assertTrue(stale.admits(stale.enclosing))
+        assertEquals(
+            Refinement.Refined(Unit),
+            witnessResult(ImpactWitnessSectionDocument.FINDINGS, ImpactWitnessDocument.Finding(peerFinding(binding)))
+                .validateImpactAccounting(),
+        )
+        assertEquals(
+            rejected,
+            witnessResult(ImpactWitnessSectionDocument.FINDINGS, ImpactWitnessDocument.Finding(peerFinding(stale)))
+                .validateImpactAccounting(),
+        )
+    }
+
+    private fun peerFinding(binding: ImpactReviewedValueBindingDocument): ImpactFindingDocument =
+        values
+            .finding(0)
+            .copy(
+                destination = fixture.target,
+                terminal = fixture.findingTerminal,
+                representation =
+                    ImpactFindingRepresentationDocument.Present(
+                        values.bounded(
+                            listOf(
+                                ImpactFindingBranchDocument(
+                                    ImpactRepresentationCurrentDocument.Known(values.state),
+                                    values.bounded(
+                                        listOf(
+                                            ImpactFindingProvenanceDocument.ReviewedLibrary(binding),
+                                            ImpactFindingProvenanceDocument.BoundaryModel(values.reference),
+                                        )
+                                    ),
+                                )
+                            )
+                        )
+                    ),
+            )
 
     @Test
     fun `foreign model or terminal cannot omit completed peer receipt by using ordinary alternatives`() {

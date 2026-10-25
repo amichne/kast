@@ -13,6 +13,9 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.call
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -80,39 +83,50 @@ internal class NativeValueCallerFrames(
         call: KtCallElement,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
-        expectedOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
+        expectedOwner: ValueExecutionOwner,
+    ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> =
+        boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Retained(expectedOwner))
+
+    fun initialInvocation(
+        call: KtCallElement,
+        host: PsiNamedElement,
+        enclosing: RelationEndpoint,
+        allowance: IntellijRelationAllowance,
+    ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> =
+        boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Initial(allowance))
+
+    private fun boundInvocation(
+        call: KtCallElement,
+        host: PsiNamedElement,
+        enclosing: RelationEndpoint,
+        admission: NativeCallerOwnerAdmission,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
-        val declaration =
-            projection.observation.observedAnalyze(call) {
-                (call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
-            } ?: return rejected()
+        val bound =
+            projection.observation.call(IntellijReadCall.VALUE_RETURN_CALL_BINDING) {
+                selectedCallable(call, enclosing)
+            }
+        projection.observation.count(
+            if (bound is Refinement.Refined) IntellijReadCounter.VALUE_RETURN_CALL_BINDINGS_ADMITTED
+            else IntellijReadCounter.VALUE_RETURN_CALL_BINDINGS_REJECTED
+        )
         val callee =
-            when (
-                val value =
-                    nativeValueCallableEndpoint(
-                        declaration = declaration,
-                        enclosing = enclosing,
-                        scope = scope,
-                        projection = projection,
-                    )
-            ) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return value
+            when (bound) {
+                is Refinement.Refined -> bound.value
+                is Refinement.Rejected -> return bound
             }
         val expression = call.valueInvocationExpression()
+        val admitted =
+            projection.observation.call(IntellijReadCall.VALUE_RETURN_OWNER_ADMISSION) {
+                executionOwner(expression, host, enclosing, admission)
+            }
+        projection.observation.count(
+            if (admitted is Refinement.Refined) IntellijReadCounter.VALUE_RETURN_OWNERS_ADMITTED
+            else IntellijReadCounter.VALUE_RETURN_OWNERS_REJECTED
+        )
         val execution =
-            when (
-                val value =
-                    restoreCapturedValueExecution(
-                        element = expression,
-                        host = host,
-                        expected = expectedOwner,
-                        scope = scope,
-                        projection = projection,
-                    )
-            ) {
-                is Refinement.Refined -> value.value.owner
-                is Refinement.Rejected -> return rejected()
+            when (admitted) {
+                is Refinement.Refined -> admitted.value.owner
+                is Refinement.Rejected -> return admitted
             }
         return when (
             val value =
@@ -128,8 +142,81 @@ internal class NativeValueCallerFrames(
         }
     }
 
+    private fun selectedCallable(
+        call: KtCallElement,
+        enclosing: RelationEndpoint,
+    ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
+        val declaration =
+            projection.observation.observedAnalyze(call) {
+                (call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
+            } ?: return rejected()
+        return nativeValueCallableEndpoint(
+            declaration = declaration,
+            enclosing = enclosing,
+            scope = scope,
+            projection = projection,
+        )
+    }
+
+    private fun executionOwner(
+        expression: PsiElement,
+        host: PsiNamedElement,
+        enclosing: RelationEndpoint,
+        admission: NativeCallerOwnerAdmission,
+    ): Refinement<NativeValueExecution, ValueFlowUnsupportedCause> =
+        when (admission) {
+            is NativeCallerOwnerAdmission.Retained ->
+                when (
+                    val result =
+                        restoreCapturedValueExecution(
+                            element = expression,
+                            host = host,
+                            expected = admission.owner,
+                            scope = scope,
+                            projection = projection,
+                        )
+                ) {
+                    is Refinement.Refined -> result
+                    is Refinement.Rejected -> rejected()
+                }
+            is NativeCallerOwnerAdmission.Initial ->
+                initialExecutionOwner(expression, host, enclosing, admission.allowance)
+        }
+
+    private fun initialExecutionOwner(
+        expression: PsiElement,
+        host: PsiNamedElement,
+        enclosing: RelationEndpoint,
+        allowance: IntellijRelationAllowance,
+    ): Refinement<NativeValueExecution, ValueFlowUnsupportedCause> =
+        when (val plain = nativeValueExecutionOwner(expression, host, enclosing)) {
+            is Refinement.Refined -> plain
+            is Refinement.Rejected ->
+                if (plain.failure != ValueFlowRejection.NESTED_EXECUTION) rejected()
+                else
+                    nativeValueCaptureOwner(
+                        element = expression,
+                        host = host,
+                        enclosing = enclosing,
+                        scope = scope,
+                        projection = projection,
+                        admitWork = { allowance.admitCallbackWork(scope.request.budget.resources) },
+                        expiry = {
+                            if (allowance.elapsedLimitReached(scope.request.budget.resources))
+                                CallbackExpiryAdmission.EXPIRED
+                            else CallbackExpiryAdmission.CURRENT
+                        },
+                    )
+        }
+
     private fun rejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
         Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
+}
+
+private sealed interface NativeCallerOwnerAdmission {
+    data class Initial(val allowance: IntellijRelationAllowance) : NativeCallerOwnerAdmission
+
+    data class Retained(val owner: ValueExecutionOwner) : NativeCallerOwnerAdmission
 }
 
 /** Initial anonymous seeds require the same bounded invocation proof as captured reads. */

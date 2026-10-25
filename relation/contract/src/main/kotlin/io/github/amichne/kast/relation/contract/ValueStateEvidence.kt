@@ -27,6 +27,18 @@ internal fun ValueCallFrame.stateEndpoints(): List<RelationEndpoint> = buildList
 internal fun StringBuilder.valueState(site: ValueSite) {
     when (val context = site.executionOwner.context) {
         ValueExecutionContext.Declaration -> Unit
+        is ValueExecutionContext.ReviewedCallback -> {
+            field("REVIEWED_CALLBACK_VALUE")
+            field(context.binding.body.compilerIdentity.value)
+            range(context.binding.body.range)
+            range(context.binding.occurrence.range)
+            field(context.binding.target.compilerIdentity.value)
+            field(context.binding.target.file.stableValue)
+            range(context.binding.target.range)
+            field(context.binding.position.value.toString())
+            field(context.binding.artifact.binaryArtifact.value)
+            field(context.binding.artifact.sourceArtifact.value)
+        }
         is ValueExecutionContext.Callback -> {
             field("CAPTURED_EXECUTION")
             field(context.body.compilerIdentity.value)
@@ -44,6 +56,7 @@ internal fun StringBuilder.valueState(site: ValueSite) {
     field(site.valuePath.depth.toString())
     site.valuePath.segments.forEach { segment ->
         when (segment) {
+            ValuePathSegment.Element -> field("ELEMENT")
             is ValuePathSegment.Field -> {
                 field("FIELD")
                 endpoint(segment.field.declaration)

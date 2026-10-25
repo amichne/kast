@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
@@ -55,6 +56,12 @@ sealed interface QueryImpactWitnessEntry {
         val observationOrdinal: QueryImpactWitnessOrdinal,
         val transferOrdinal: QueryImpactWitnessOrdinal,
         val transfer: ValueTransfer,
+    ) : QueryImpactWitnessEntry
+
+    data class ReviewedTransfer(
+        val observationOrdinal: QueryImpactWitnessOrdinal,
+        val transferOrdinal: QueryImpactWitnessOrdinal,
+        val transfer: ReviewedValueTransfer,
     ) : QueryImpactWitnessEntry
 
     data class FlowObligation(
@@ -136,7 +143,7 @@ private constructor(
                     QueryImpactWitnessSection.MODELS ->
                         ledger.representationModels.size.toLong() + ledger.boundaryModels.size
                     QueryImpactWitnessSection.NATIVE_READS ->
-                        ledger.observations.sumOf { 1L + it.transfers.size + it.obligations.size }
+                        ledger.observations.sumOf { 1L + it.outputCount + it.obligations.size }
                     QueryImpactWitnessSection.READ_REJECTIONS -> ledger.readRejections.size.toLong()
                 }
             return if (total > Int.MAX_VALUE) Refinement.Rejected(QueryImpactWitnessFailure.SECTION_TOO_LARGE)
@@ -237,6 +244,16 @@ private fun observationEntries(
             is Refinement.Refined -> collected.value
             is Refinement.Rejected -> return collected
         }
+    val reviewed =
+        when (
+            val collected =
+                observation.reviewedTransfers.withWitnessOrdinals { position, transfer ->
+                    QueryImpactWitnessEntry.ReviewedTransfer(ordinal, position, transfer)
+                }
+        ) {
+            is Refinement.Refined -> collected.value
+            is Refinement.Rejected -> return collected
+        }
     val obligations =
         when (
             val collected =
@@ -248,7 +265,7 @@ private fun observationEntries(
             is Refinement.Rejected -> return collected
         }
     return Refinement.Refined(
-        listOf(QueryImpactWitnessEntry.NativeRead(ordinal, observation)) + transfers + obligations
+        listOf(QueryImpactWitnessEntry.NativeRead(ordinal, observation)) + transfers + reviewed + obligations
     )
 }
 

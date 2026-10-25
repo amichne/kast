@@ -1,0 +1,289 @@
+{
+  "authority": "Ranges come only from frozen source literals. No Kast result or CodeQL result supplies expected edges.",
+  "originalOracleSha256": "77fa249b8dc566841b647b3683eb89305ba425915edf721bdf3b92e6f00fcc01",
+  "constructionSignatures": {
+    "seedConstructor": {
+      "qualifiedIdentity": "kast.repro.ClientValue.<init>",
+      "valueParameters": [
+        "kotlin/String?"
+      ]
+    },
+    "producer": {
+      "qualifiedIdentity": "kast.repro.toClientValue",
+      "receiver": "kast/repro/WireValue",
+      "valueParameters": []
+    },
+    "envelopeConstructor": {
+      "qualifiedIdentity": "kast.repro.ClientEnvelope.<init>",
+      "valueParameters": [
+        "kast/repro/ClientValue"
+      ]
+    },
+    "field": {
+      "qualifiedIdentity": "kast.repro.ClientEnvelope.payload",
+      "type": "kast/repro/ClientValue"
+    },
+    "mapper": {
+      "qualifiedIdentity": "kotlin.collections.map",
+      "receiver": "kotlin/collections/Iterable<T>",
+      "formalIndex": 0,
+      "formalName": "transform",
+      "formalType": "(T) -> R",
+      "returnType": "List<R>"
+    }
+  },
+  "variants": [
+    {
+      "variant": "E0",
+      "sourceSha256": "babe9037f525c8c3102305bd5d34ce4d5455faccb37f32a52c87d335302780d2",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "callbackEnvelopeCall",
+          "text": "it.toClientEnvelope()",
+          "start": 436,
+          "end": 457
+        }
+      ]
+    },
+    {
+      "variant": "E1",
+      "sourceSha256": "9a7ae785438f45cc6fd1580bedd6b2476dc8018735c8b39414be0bd04ffc08bb",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        }
+      ]
+    },
+    {
+      "variant": "E2",
+      "sourceSha256": "6bc8d9364ea7b5d2701157086e4b42eb7647a705f0960732d628dce38a730724",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "directEnvelopeCall",
+          "text": "item.toClientEnvelope()",
+          "start": 414,
+          "end": 437
+        }
+      ]
+    },
+    {
+      "variant": "E3",
+      "sourceSha256": "1c712ee3b3fef49f5135a9717c20dd1bff886cb2b4e5dbd1b86a9e98e7e4872b",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 436,
+          "end": 451
+        },
+        {
+          "role": "callbackValueCall",
+          "text": "it.toClientValue()",
+          "start": 433,
+          "end": 451
+        }
+      ]
+    },
+    {
+      "variant": "E4",
+      "sourceSha256": "4d98aed3d4e9b6c46e1ce5f6cafc350d88d475cd85d2f1fbec3199a11a615035",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "unrelatedConstant",
+          "text": "ClientValue(\"constant\")",
+          "start": 451,
+          "end": 474
+        }
+      ]
+    },
+    {
+      "variant": "E5",
+      "sourceSha256": "bcc02012a91a3e651e3d1dc35cd4e19b94abf11004b608679e9ac6ffed00c044",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "callbackEnvelopeCall",
+          "text": "it.toClientEnvelope()",
+          "start": 511,
+          "end": 532
+        }
+      ]
+    },
+    {
+      "variant": "E6",
+      "sourceSha256": "b4b969c5cf9dd73195bc13e7fa348eb62a74da0427b9ac4e7a35075333737223",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "callbackEnvelopeCall",
+          "text": "it.toClientEnvelope()",
+          "start": 431,
+          "end": 452
+        }
+      ]
+    },
+    {
+      "variant": "E8",
+      "sourceSha256": "8a78ed8339ef529c33e723f53f7d39a3c1bf49e751c1a8ab8ac5df7b770217bf",
+      "sites": [
+        {
+          "role": "seed",
+          "text": "ClientValue(id = id)",
+          "start": 232,
+          "end": 252
+        },
+        {
+          "role": "envelope",
+          "text": "ClientEnvelope(payload = toClientValue())",
+          "start": 313,
+          "end": 354
+        },
+        {
+          "role": "payloadArgument",
+          "text": "toClientValue()",
+          "start": 338,
+          "end": 353
+        },
+        {
+          "role": "directEnvelopeCall",
+          "text": "item.toClientEnvelope()",
+          "start": 428,
+          "end": 451
+        }
+      ]
+    }
+  ],
+  "negativeRequirements": {
+    "E4": "No edge from seed to independent ClientValue constant or convert return.",
+    "E5": "Local List.map that ignores transform cannot use a stdlib rule. No returned element exists.",
+    "E6": "Empty input has zero dynamic callbacks. Static possible routes do not assert execution or a count.",
+    "E7": "Future dependency model must reject unmatched overload, binary digest, source digest, compiler target, formal, or basis.",
+    "E8": "Evidence outside TEST_ONLY can establish supplier behavior but cannot enroll main-source output rows."
+  },
+  "coverage": "Positive paths are necessary static source-value relations. They do not prove all runtime routes or exact dynamic execution.",
+  "notes": [
+    "The E3 minimum route does not exclude its independent upstream wrapper branch.",
+    "Source declaration text and exact call occurrence are distinct. The class reference is not the constructor reference."
+  ]
+}

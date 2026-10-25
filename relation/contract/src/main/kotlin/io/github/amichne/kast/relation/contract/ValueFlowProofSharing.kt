@@ -9,6 +9,7 @@ internal class ValueFlowProofSharing(previous: Collection<ValueFlowStep>) {
         for (step in previous) {
             remember(step.source)
             step.transfers.forEach { remember(it.target) }
+            step.reviewedTransfers.forEach { remember(it.target) }
         }
     }
 

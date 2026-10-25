@@ -302,7 +302,7 @@ private fun updateContractClassDigest(
     else Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
 }
 
-private fun org.jetbrains.kotlin.analysis.api.KaSession.contractTarget(
+internal fun org.jetbrains.kotlin.analysis.api.KaSession.contractTarget(
     context: IntellijCallbackFlowContext,
     symbol: KaNamedFunctionSymbol,
     declaration: PsiNamedElement,

@@ -105,7 +105,7 @@ private fun RelationScopeExclusion.storageBytes(g: QueryImpactRetainedGraph): Lo
             .saturatedAdd(target.storageBytes(g))
     }
 
-private fun CompilerGroundedSymbolEvidence.storageBytes(g: QueryImpactRetainedGraph): Long =
+internal fun CompilerGroundedSymbolEvidence.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         g.node(file) { g.text(file.stableValue) }
             .saturatedAdd(g.node(range) { 0L })

@@ -16,14 +16,18 @@ internal fun restoreCapturedValueExecution(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
 ): Refinement<NativeValueExecution, ValueFlowRejection> {
-    val context =
-        expected.context as? io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback
-            ?: return nativeValueExecutionOwner(element, host, expected.enclosing)
+    val body =
+        when (val context = expected.context) {
+            io.github.amichne.kast.relation.contract.ValueExecutionContext.Declaration ->
+                return nativeValueExecutionOwner(element, host, expected.enclosing)
+            is io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback -> context.body
+            is io.github.amichne.kast.relation.contract.ValueExecutionContext.ReviewedCallback -> context.binding.body
+        }
     if (expected.basis != scope.request.subject.lease.identity)
         return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
     var current: PsiElement? = element
     while (current != null && current !== host) {
-        if (current is org.jetbrains.kotlin.psi.KtFunction && sourceValueRange(current) == context.body.range) {
+        if (current is org.jetbrains.kotlin.psi.KtFunction && sourceValueRange(current) == body.range) {
             val reader =
                 IntellijCallbackFlowContext(
                     scope,
@@ -33,7 +37,7 @@ internal fun restoreCapturedValueExecution(
                     { CallbackExpiryAdmission.CURRENT },
                 )
             return if (
-                reader.anonymous(current) == context.body &&
+                reader.anonymous(current) == body &&
                     valueNativeOwnership(element, current) == NativeValueOwnership.ADMITTED
             )
                 Refinement.Refined(NativeValueExecution(current, expected))

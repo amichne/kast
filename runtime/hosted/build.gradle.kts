@@ -175,6 +175,20 @@ tasks.named("test") {
 // Platform status and wait cleanup have a separate effect-boundary lane.
 val nativeTest = sourceSets.create("nativeTest")
 
+val reviewedCallbackSources = configurations.create("reviewedCallbackSources") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
+}
+
+tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
+    from(reviewedCallbackSources) { into("reviewed-libraries") }
+    from(rootProject.file("relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
+}
+
 configurations[nativeTest.implementationConfigurationName].apply {
     extendsFrom(configurations.implementation.get())
     // The pinned fixture distribution supplies coroutine core classes.

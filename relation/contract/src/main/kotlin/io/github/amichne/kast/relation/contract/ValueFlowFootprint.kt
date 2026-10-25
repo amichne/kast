@@ -27,6 +27,7 @@ internal fun valueFlowStorageBytes(
     domain: RelationRequest,
     transfers: List<ValueTransfer>,
     obligations: List<ValueFlowObligation>,
+    reviewedTransfers: List<ReviewedValueTransfer>,
 ): RelationByteCount {
     val bytes =
         VALUE_RECORD_OVERHEAD.addBytes(source.retainedBytes)
@@ -40,6 +41,7 @@ internal fun valueFlowStorageBytes(
                         .addBytes(edge.target.retainedBytes)
                 }
             )
+            .addBytes(reviewedTransfers.fold(0L) { sum, edge -> sum.addBytes(edge.retainedBytes) })
             .addBytes(
                 obligations.fold(0L) { sum, obligation ->
                     sum.addBytes(VALUE_RECORD_OVERHEAD)
