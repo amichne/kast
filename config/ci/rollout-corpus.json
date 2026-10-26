@@ -20,7 +20,8 @@
       "docs/tooling/value-journey/src/trace.ts",
       "docs/tooling/value-journey/tsconfig.json"
     ],
-    "sha256": "a7c11a4fab0cc9a57439e30b2b51792f315e9783b0289382f4961031d5fd6a23"
+    "sha256": "a7c11a4fab0cc9a57439e30b2b51792f315e9783b0289382f4961031d5fd6a23",
+    "patchAbbreviation": 10
   },
   {
     "name": "leaf-service",
@@ -33,7 +34,8 @@
       "query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactProofResumeTest.kt",
       "query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactStorageWorkTest.kt"
     ],
-    "sha256": "4242a93201285c27440e364d2fb16661c5f1521a321649164578cff643a32902"
+    "sha256": "4242a93201285c27440e364d2fb16661c5f1521a321649164578cff643a32902",
+    "patchAbbreviation": 10
   },
   {
     "name": "semantic-adapter",
@@ -43,7 +45,8 @@
       "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueImplementationDispatch.kt",
       "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeInheritedReceiverTest.kt"
     ],
-    "sha256": "8f46bf4c8bd5c8a005d721e462314c1f203f2466bafad02756693181985ac54b"
+    "sha256": "8f46bf4c8bd5c8a005d721e462314c1f203f2466bafad02756693181985ac54b",
+    "patchAbbreviation": 9
   },
   {
     "name": "shared-contract",
@@ -53,6 +56,7 @@
       "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRows.kt",
       "query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactRowsReuseTest.kt"
     ],
-    "sha256": "26ab92c84259e8c29443c468566ce861a042c596ef0e69578ba4b1892f32d2e1"
+    "sha256": "26ab92c84259e8c29443c468566ce861a042c596ef0e69578ba4b1892f32d2e1",
+    "patchAbbreviation": 10
   }
 ]

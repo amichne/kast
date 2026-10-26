@@ -32,6 +32,7 @@ class Case:
     after: str
     paths: tuple[str, ...]
     sha256: str
+    patchAbbreviation: int
 
 
 @dataclass(frozen=True)
@@ -66,10 +67,14 @@ def corpus(raw: bytes) -> tuple[Case, ...]:
             "after",
             "paths",
             "sha256",
+            "patchAbbreviation",
         }:
             raise ValueError("INVALID_CORPUS")
         name, before, after, digest = (row[key] for key in ("name", "before", "after", "sha256"))
         paths = verification_plan.strings(row["paths"])
+        abbreviation = row["patchAbbreviation"]
+        if type(abbreviation) is not int or not 4 <= abbreviation <= 40:
+            raise ValueError("INVALID_CORPUS")
         if (
             not isinstance(name, str)
             or not isinstance(before, str)
@@ -90,7 +95,7 @@ def corpus(raw: bytes) -> tuple[Case, ...]:
             )
         ):
             raise ValueError("INVALID_CORPUS")
-        result.append(Case(name, before, after, paths, digest))
+        result.append(Case(name, before, after, paths, digest, abbreviation))
     if {case.name for case in result} != {
         "documentation",
         "leaf-service",
@@ -110,6 +115,23 @@ def git(
     return subprocess.check_output(["git", *arguments], cwd=root, input=stdin, env=environment)
 
 
+def patch_arguments(case: Case) -> tuple[str, ...]:
+    return (
+        "diff",
+        "--binary",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--no-color",
+        "--unified=3",
+        "--diff-algorithm=myers",
+        f"--abbrev={case.patchAbbreviation}",
+        case.before,
+        case.after,
+        "--",
+        *case.paths,
+    )
+
+
 def prepare(root: Path, case: Case) -> Replay:
     # The runner owns this checkout. Never rewrite a local user's repository for a measurement.
     if (
@@ -120,7 +142,7 @@ def prepare(root: Path, case: Case) -> Replay:
     _, qualified_tree = source_validation.source_identity(root)
     commit_date = git(root, "show", "-s", "--format=%cI", "HEAD").decode().strip()
     environment = os.environ | {"GIT_AUTHOR_DATE": commit_date, "GIT_COMMITTER_DATE": commit_date}
-    patch = git(root, "diff", "--binary", case.before, case.after, "--", *case.paths)
+    patch = git(root, *patch_arguments(case))
     if hashlib.sha256(patch).hexdigest() != case.sha256:
         raise ValueError("CORPUS_PATCH_CHANGED")
     changed = tuple(

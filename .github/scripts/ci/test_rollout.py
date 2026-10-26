@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Frozen corpus bytes and disposable-checkout admission constrain measurement effects."""
 
+import hashlib
 import json
 import os
 import unittest
@@ -10,6 +11,14 @@ import rollout
 
 
 class RolloutTest(unittest.TestCase):
+    def test_frozen_patch_bytes_ignore_repository_default_abbreviation(self):
+        cases = rollout.corpus((rollout.ROOT / "config/ci/rollout-corpus.json").read_bytes())
+        for case in cases:
+            for abbreviation in (7, 40):
+                with self.subTest(case=case.name, abbreviation=abbreviation):
+                    raw = rollout.git(rollout.ROOT, "-c", f"core.abbrev={abbreviation}", *rollout.patch_arguments(case))
+                    self.assertEqual(case.sha256, hashlib.sha256(raw).hexdigest())
+
     def test_exact_corpus_and_invalid_identities(self):
         raw = (rollout.ROOT / "config/ci/rollout-corpus.json").read_bytes()
         self.assertEqual(4, len(rollout.corpus(raw)))
