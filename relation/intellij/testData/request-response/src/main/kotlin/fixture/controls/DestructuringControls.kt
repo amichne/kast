@@ -5,7 +5,7 @@ data class ComponentPacket(val first: String, val second: String)
 class AuthoredComponents(val first: String, val second: String) {
     operator fun component1(): String = second
 
-    operator fun component2(): String = "constant"
+    operator fun component2(): String { return "constant" }
 }
 
 class SkippedComponent(val value: String) {
@@ -15,26 +15,34 @@ class SkippedComponent(val value: String) {
 }
 
 class OrderedComponents(val value: String) {
-    operator fun component1(): String = error("Earlier component always fails")
+    operator fun component1(): String { return error("Earlier component always fails") }
 
     operator fun component2(): String = /*<ordered-return>*/value/*</ordered-return>*/
 }
 
 class ReorderedComponents(val first: String, val second: String) {
-    operator fun component1(): String = second
-    operator fun component2(): String = first
+    operator fun component1(): String { return second }
+    operator fun component2(): String { return first }
 }
 
 class LaterThrowingComponents(val value: String) {
     operator fun component1(): String = /*<later-return>*/value/*</later-return>*/
-    operator fun component2(): String = error("Later component prevents both uses")
+    operator fun component2(): String { return error("Later component prevents both uses") }
 }
 
 class UnclassifiedComponents(val value: String) {
     val other: String
         get() = value
     operator fun component1(): String = value
-    operator fun component2(): String = other
+    operator fun component2(): String { return other }
+}
+
+class SideEffectComponents(val value: String) {
+    operator fun component1(): String { return value }
+    operator fun component2(): String {
+        println("Side effect before the return")
+        return value
+    }
 }
 
 fun destructuringOrigin(): String = "origin"
@@ -70,6 +78,11 @@ fun skippedLaterThrowingComponent() {
 
 fun unclassifiedSibling() {
     val (payload, unused) = UnclassifiedComponents("origin")
+    payload.length
+}
+
+fun sideEffectSibling() {
+    val (payload, unused) = SideEffectComponents("origin")
     payload.length
 }
 

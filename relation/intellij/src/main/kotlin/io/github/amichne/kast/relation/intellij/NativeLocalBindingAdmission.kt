@@ -51,7 +51,7 @@ internal fun PsiElement.nativeLocalBindingMutability():
                         ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
                 if (name == "_" || declaration.nativeDestructuringContext() == NativeDestructuringContext.Unsupported)
                     return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                declaration.isVar
+                isVar
             }
             else -> return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }

@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
@@ -105,7 +106,7 @@ private fun componentResultRole(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    if (target is NativeComponentTarget.Source) {
+    if (target is NativeComponentTarget.Callable) {
         when (val allowed = permit()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return allowed
@@ -309,7 +310,7 @@ private fun receiverRole(
             is Refinement.Refined ->
                 when (val selected = target.value) {
                     is NativeComponentTarget.Field -> roleRejected()
-                    is NativeComponentTarget.Source ->
+                    is NativeComponentTarget.Callable ->
                         nativeComponentReceiver(
                             entry = element,
                             target = selected,
@@ -367,6 +368,7 @@ private fun KtExpression.isReturnedExpression(): Boolean =
     when (val container = parent) {
         is KtReturnExpression -> container.returnedExpression === this
         is KtNamedFunction -> container.bodyExpression === this
+        is KtPropertyAccessor -> container.isGetter && container.bodyExpression === this
         else -> false
     }
 

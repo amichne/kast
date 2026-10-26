@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -58,8 +59,11 @@ private constructor(
     val range: ExactDeclarationTextRange,
     val callable: RelationEndpoint,
     val executionOwner: ValueExecutionOwner,
-    val signature: CanonicalCompilerCallableSignature,
+    val operation: ValueInvocationOperation,
 ) {
+    val signature: CanonicalCompilerSignature
+        get() = operation.signature
+
     val basis: SemanticReadIdentity = enclosing.lease.identity
     val identity =
         ValueInvocationIdentity(
@@ -77,7 +81,7 @@ private constructor(
         val shared = proofs.callable(this)
         val owner = proofs.executionOwner(executionOwner)
         return if (shared.endpoint === callable && shared.signature === signature && owner === executionOwner) this
-        else ValueInvocation(enclosing, range, shared.endpoint, owner, shared.signature)
+        else ValueInvocation(enclosing, range, shared.endpoint, owner, shared.operation)
     }
 
     companion object {
@@ -89,18 +93,53 @@ private constructor(
             executionOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
         ): Refinement<ValueInvocation, ValueInvocationFailure> {
             val signature = callable.signature
+            return if (signature is CanonicalCompilerCallableSignature)
+                create(
+                    enclosing = enclosing,
+                    range = range,
+                    callable = callable,
+                    executionOwner = executionOwner,
+                    operation = ValueInvocationOperation.Function(signature),
+                )
+            else Refinement.Rejected(ValueInvocationFailure.NOT_CALLABLE)
+        }
+
+        /** The native boundary must verify a selected property read and its getter, never a setter. */
+        fun getterFromCompiler(
+            enclosing: RelationEndpoint,
+            range: ExactDeclarationTextRange,
+            callable: RelationEndpoint,
+            executionOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
+        ): Refinement<ValueInvocation, ValueInvocationFailure> {
+            val signature = callable.signature
+            return if (signature is CanonicalCompilerSignature.Property)
+                create(
+                    enclosing = enclosing,
+                    range = range,
+                    callable = callable,
+                    executionOwner = executionOwner,
+                    operation = ValueInvocationOperation.Getter(signature),
+                )
+            else Refinement.Rejected(ValueInvocationFailure.NOT_CALLABLE)
+        }
+
+        private fun create(
+            enclosing: RelationEndpoint,
+            range: ExactDeclarationTextRange,
+            callable: RelationEndpoint,
+            executionOwner: ValueExecutionOwner,
+            operation: ValueInvocationOperation,
+        ): Refinement<ValueInvocation, ValueInvocationFailure> {
             return when {
                 enclosing.lease.identity != callable.lease.identity ->
                     Refinement.Rejected(ValueInvocationFailure.BASIS_MISMATCH)
                 !enclosing.range.containsValueRange(range) ->
                     Refinement.Rejected(ValueInvocationFailure.ANCHOR_OUTSIDE_OWNER)
-                signature !is CanonicalCompilerCallableSignature ->
-                    Refinement.Rejected(ValueInvocationFailure.NOT_CALLABLE)
                 !executionOwner.belongsTo(enclosing) ->
                     Refinement.Rejected(ValueInvocationFailure.EXECUTION_OWNER_MISMATCH)
                 !executionOwner.range.containsValueRange(range) ->
                     Refinement.Rejected(ValueInvocationFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER)
-                else -> Refinement.Refined(ValueInvocation(enclosing, range, callable, executionOwner, signature))
+                else -> Refinement.Refined(ValueInvocation(enclosing, range, callable, executionOwner, operation))
             }
         }
     }
@@ -292,7 +331,7 @@ private constructor(
                             Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
                         !role.call.range.containsValueRange(range) ->
                             Refinement.Rejected(ValueSiteFailure.ARGUMENT_OUTSIDE_INVOCATION)
-                        role.position.value !in role.call.signature.valueParameters.indices ->
+                        role.position.value !in role.call.operation.valueParameters.indices ->
                             Refinement.Rejected(ValueSiteFailure.INVALID_ARGUMENT_POSITION)
                         else -> Refinement.Refined(Unit)
                     }

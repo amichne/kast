@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.psi.KtIsExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParenthesizedExpression
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtThrowExpression
@@ -92,6 +93,7 @@ internal class NativeValueExpressionFlow(
                 retained.unresolvedAt(ValueFlowUnsupportedCause.ABRUPT_COMPLETION, parent)
             }
             is KtNamedFunction -> functionDestination(expression, parent)
+            is KtPropertyAccessor -> getterDestination(expression, parent)
             is KtContainerNodeForControlStructureBody -> ifDestination(expression, parent)
             is KtContainerNode -> containerDestination(expression, parent)
             is KtWhenEntry -> {
@@ -207,6 +209,12 @@ internal class NativeValueExpressionFlow(
 
     private fun functionDestination(expression: KtExpression, function: KtNamedFunction) {
         if (function.bodyExpression === expression) emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
+        else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
+    }
+
+    private fun getterDestination(expression: KtExpression, getter: KtPropertyAccessor) {
+        if (getter.isGetter && getter.property === owner && getter.bodyExpression === expression)
+            emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
         else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
     }
 

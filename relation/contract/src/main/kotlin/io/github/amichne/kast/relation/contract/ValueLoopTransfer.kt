@@ -53,7 +53,8 @@ internal fun ValueLoopProtocol.admitsComponent(component: ValueInvocation): Bool
         next.range.containsValueRange(component.range) &&
         component.range != next.range &&
         component.callable.name.value.matches(Regex("component[1-9][0-9]*")) &&
-        component.signature.valueParameters.isEmpty()
+        component.operation is ValueInvocationOperation.Function &&
+        component.operation.valueParameters.isEmpty()
 
 internal fun ValueLoopProtocol.invocations(): List<ValueInvocation> = listOf(iterator, hasNext, next)
 

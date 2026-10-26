@@ -39,6 +39,14 @@ internal fun StringBuilder.valueState(site: ValueSite) {
     field(site.conditions.facts.size.toString())
     site.conditions.facts.forEach { condition ->
         when (condition) {
+            is ValueCondition.StableLocal -> {
+                field("STABLE_LOCAL")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                localVersion(condition.version)
+                field(condition.originalType.value)
+                field(condition.refinedType.value)
+            }
             is ValueCondition.StableReceiver -> {
                 field("STABLE_RECEIVER")
                 conditionOrigin(condition.origin)

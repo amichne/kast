@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
 import org.jetbrains.kotlin.psi.KtUserType
@@ -42,6 +43,38 @@ internal class NativeValueReceiverReads(
 
     private val workAllowance
         get() = request.budget.resources.workAllowance
+
+    fun getterRead(
+        property: KtProperty,
+        consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
+    ) {
+        val position = (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
+        if (position?.kind != ValueReceiverKind.DISPATCH) {
+            consume(Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION))
+            return
+        }
+        when (val body = nativeGetterBody(property, projection)) {
+            is Refinement.Rejected -> consume(body)
+            is Refinement.Refined ->
+                when (
+                    val read =
+                        nativeComponentFieldRead(
+                            source = source,
+                            expression = body.value.expression,
+                            parameter = body.value.parameter,
+                            scope = scope,
+                            projection = projection,
+                        )
+                ) {
+                    is Refinement.Rejected -> consume(read)
+                    is Refinement.Refined ->
+                        when (val value = read.value) {
+                            is NativeValueFieldRead.Transfer -> consume(Refinement.Refined(value.value))
+                            NativeValueFieldRead.DifferentField -> Unit
+                        }
+                }
+        }
+    }
 
     fun forEachRead(
         function: KtNamedFunction,

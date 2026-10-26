@@ -33,7 +33,11 @@ private constructor(
                     next.callable.name.value != "next"
             )
                 return Refinement.Rejected(ValueLoopProtocolFailure.OPERATION_IDENTITY_MISMATCH)
-            if (listOf(iterator, hasNext, next).any { it.signature.valueParameters.isNotEmpty() })
+            if (
+                listOf(iterator, hasNext, next).any {
+                    it.operation !is ValueInvocationOperation.Function || it.operation.valueParameters.isNotEmpty()
+                }
+            )
                 return Refinement.Rejected(ValueLoopProtocolFailure.OPERATION_IDENTITY_MISMATCH)
             return Refinement.Refined(ValueLoopProtocol(iterator, hasNext, next))
         }

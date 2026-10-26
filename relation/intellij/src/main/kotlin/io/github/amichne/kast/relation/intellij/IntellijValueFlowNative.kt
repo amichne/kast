@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtProperty
 
 /** All live elements and K2 values remain inside the caller's one native read action. */
 internal class IntellijValueFlowNative(
@@ -164,6 +165,14 @@ internal class IntellijValueFlowNative(
     }
 
     private fun receiverFields(element: PsiElement) {
+        if (element is KtProperty) {
+            if (
+                sourceScopeAllowance() == IntellijRelationProviderEnumerationAdmission.READY &&
+                    permitted() is Refinement.Refined
+            )
+                NativeValueReceiverReads(request, scope, projection).getterRead(element, retained::adopt)
+            return
+        }
         val function =
             element as? KtNamedFunction
                 ?: run {

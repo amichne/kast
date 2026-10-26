@@ -11,6 +11,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
@@ -39,6 +40,61 @@ class NativeLocalValueVersionTest : NativeLocalValueVersionFixtureTest() {
     fun testStableMutableLocalIfRefinementReachesExactConsumer() = assertStableRefinement("stableIfLocalPayload")
 
     fun testStableMutableLocalWhenRefinementReachesExactConsumer() = assertStableRefinement("stableWhenLocalPayload")
+
+    fun testStableMutableLocalShortCircuitReachesExactConsumer() =
+        assertStableRefinement("stableShortCircuitLocalPayload")
+
+    fun testStableMutableLocalGuardClauseReachesExactConsumer() = assertStableRefinement("stableGuardLocalPayload")
+
+    fun testStableMutableLocalInNestedBlockReachesExactConsumer() = assertStableRefinement("stableNestedLocalPayload")
+
+    fun testCompilerStableLocalRefinementDoesNotRequireAFinalInitializerType() {
+        val fixture = packetFixture(listOf(CONTROLS))
+        val owner = owner("stableUnknownLocalPayload")
+        val selected = fixture.markedExpression(owner, "selected")
+        assertCompilerStableRefinement(selected)
+        val source =
+            binding(
+                fixture,
+                seeded(fixture, owner, "unknownLocalPayload"),
+                initialBinding(fixture, owner, "unknownLocalPayload").anchor,
+            )
+        val reads = step(fixture, source)
+        assertTrue("Stable compiler fact was dropped: ${reads.obligations}", reads.obligations.isEmpty())
+        assertEquals(
+            setOf(fixture.markedExpression(owner, "guard").anchor, selected.anchor),
+            reads.transfers.map { it.target.range }.toSet(),
+        )
+        val refined = reads.transfers.single { it.target.range == selected.anchor }.target
+        val fact = refined.conditions.facts.single() as ValueCondition.StableLocal
+        assertEquals(source.localVersion, fact.version)
+        assertTrue(fact.origin.matches(source))
+        assertEquals(selected.anchor, fact.useRange)
+        assertEquals("kotlin.Any", fact.originalType.value)
+        assertEquals("fixture.controls.LocalVersionPayload", fact.refinedType.value)
+        assertTrue(reads.transfers.single { it.target.range != selected.anchor }.target.conditions.facts.isEmpty())
+        assertRefinedConsumer(fixture, refined, selected)
+        val resources = fixture.budget.resources as ResourceBudget.Bounded
+        val budget = fixture.budget.copy(resources = resources.copy(resultLimit = ResultLimit.parse(1).nativeRefined()))
+        val first = readPage(fixture = fixture, source = source, budget = budget, remainder = null)
+        assertTrue("Two reads must exercise pagination", first is ValueFlowRead.Suspended)
+        first as ValueFlowRead.Suspended
+        val second = readPage(fixture = fixture, source = source, budget = budget, remainder = first.remainder)
+        val pages =
+            when (second) {
+                is ValueFlowRead.Observed -> listOf(first.step, second.step)
+                is ValueFlowRead.Suspended -> {
+                    val last =
+                        readPage(fixture = fixture, source = source, budget = budget, remainder = second.remainder)
+                    assertTrue("Read enumeration did not exhaust", last is ValueFlowRead.Observed)
+                    listOf(first.step, second.step, (last as ValueFlowRead.Observed).step)
+                }
+                else -> error("Condition-bearing resume rejected: $second")
+            }
+        assertTrue(pages.all { it.obligations.isEmpty() })
+        assertEquals(reads.transfers.toSet(), pages.flatMap { it.transfers }.toSet())
+        assertEquals(reads.transfers.size, pages.sumOf { it.transfers.size })
+    }
 
     fun testStraightLineReassignmentBetweenStableIfAndWhenKeepsVersionsSeparate() {
         val fixture = packetFixture(listOf(CONTROLS))
@@ -135,6 +191,14 @@ class NativeLocalValueVersionTest : NativeLocalValueVersionFixtureTest() {
             "capturedLocalPayload",
             setOf(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW, ValueFlowUnsupportedCause.NESTED_EXECUTION),
         )
+    }
+
+    fun testCompoundMutationDoesNotReuseThePreviousDefinition() {
+        assertUnsupportedMutation("compoundAssignedLocalPayload", setOf(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW))
+    }
+
+    fun testParenthesizedIncrementDoesNotReuseThePreviousDefinition() {
+        assertUnsupportedMutation("incrementedLocalPayload", setOf(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW))
     }
 
     fun testRestoredInitializerAndReassignmentRetainTheExactVersion() {
@@ -451,8 +515,12 @@ abstract class NativeLocalValueVersionFixtureTest : NativePacketValueFixtureTest
         return step
     }
 
-    protected fun initialBinding(fixture: NativePacketValueFixture, enclosing: PacketDeclaration): PacketExpression {
-        val seed = fixture.selection(enclosing, "originalLocalPayload", owner("originalLocalPayload"))
+    protected fun initialBinding(
+        fixture: NativePacketValueFixture,
+        enclosing: PacketDeclaration,
+        producer: String = "originalLocalPayload",
+    ): PacketExpression {
+        val seed = fixture.selection(enclosing, producer, owner(producer))
         return ReadAction.compute<PacketExpression, RuntimeException> {
             val virtual = checkNotNull(LocalFileSystem.getInstance().findFileByPath(seed.enclosing.file.stableValue))
             val file = checkNotNull(PsiManager.getInstance(project).findFile(virtual))

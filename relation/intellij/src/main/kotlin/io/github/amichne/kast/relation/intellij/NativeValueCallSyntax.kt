@@ -81,7 +81,7 @@ internal fun KaSession.resolveNativeValueCall(syntax: NativeValueCallSyntax): Ka
     }
 
 internal fun KtDestructuringDeclarationEntry.isNativeComponent(): Boolean =
-    name != "_" &&
+    (name != "_" || hasInitializer()) &&
         (parent as? KtDestructuringDeclaration)?.let { declaration ->
             declaration.nativeDestructuringContext() != NativeDestructuringContext.Unsupported
         } == true

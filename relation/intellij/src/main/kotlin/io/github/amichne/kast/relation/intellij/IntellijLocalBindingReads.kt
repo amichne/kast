@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.LocalReferenceKey
 import io.github.amichne.kast.relation.contract.LocalReferenceKind
 import io.github.amichne.kast.relation.contract.LocalReferenceResolution
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
@@ -210,26 +211,46 @@ internal class IntellijLocalBindingReads(
             element as? KtExpression
                 ?: return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         return when (
-            nativeValueBranchAdmission(
-                source = request.source,
-                expression = expression,
-                binding = binding,
-                scope = scope,
-                projection = projection,
-                workAllowance = request.budget.resources.workAllowance,
-            )
+            val admission =
+                nativeValueBranchAdmission(
+                    source = request.source,
+                    expression = expression,
+                    binding = binding,
+                    scope = scope,
+                    projection = projection,
+                    workAllowance = request.budget.resources.workAllowance,
+                )
         ) {
             NativeValueBranchAdmission.ADMITTED,
-            NativeValueBranchAdmission.NOT_APPLICABLE ->
-                if (version is ValueLocalVersion.Defined) localReadTarget(element, request.source.executionOwner)
-                else localReadTarget(element)
+            NativeValueBranchAdmission.NOT_APPLICABLE,
+            NativeValueBranchAdmission.UNPROVEN -> branchReadTarget(expression, admission)
             NativeValueBranchAdmission.EXCLUDED -> LocalReferenceResolution.ExcludedBranch
-            NativeValueBranchAdmission.UNPROVEN ->
-                LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
             NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
                 LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
         }
     }
+
+    private fun branchReadTarget(
+        expression: KtExpression,
+        admission: NativeValueBranchAdmission,
+    ): LocalReferenceResolution =
+        if (request.source.localVersion is ValueLocalVersion.Defined) {
+            when (
+                val conditions =
+                    nativeLocalReadConditions(
+                        request.source,
+                        expression,
+                        admission,
+                        observation,
+                        request.budget.resources.workAllowance,
+                    )
+            ) {
+                is Refinement.Refined -> localReadTarget(expression, request.source.executionOwner, conditions.value)
+                is Refinement.Rejected -> LocalReferenceResolution.Unsupported(conditions.failure)
+            }
+        } else if (admission == NativeValueBranchAdmission.UNPROVEN)
+            LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        else localReadTarget(expression)
 
     private fun localReadTarget(element: PsiElement): LocalReferenceResolution {
         val execution =
@@ -266,7 +287,11 @@ internal class IntellijLocalBindingReads(
         return localReadTarget(element, execution)
     }
 
-    private fun localReadTarget(element: PsiElement, execution: ValueExecutionOwner): LocalReferenceResolution {
+    private fun localReadTarget(
+        element: PsiElement,
+        execution: ValueExecutionOwner,
+        conditions: ValueConditions = request.source.conditions,
+    ): LocalReferenceResolution {
         if (!scope.nativeScope.contains(element.containingFile.virtualFile))
             return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
         val range =
@@ -283,7 +308,7 @@ internal class IntellijLocalBindingReads(
                     executionOwner = execution,
                     valuePath = request.source.valuePath,
                     callStack = request.source.callStack,
-                    conditions = request.source.conditions,
+                    conditions = conditions,
                 )
         ) {
             is Refinement.Refined -> LocalReferenceResolution.Transfer(target.value)

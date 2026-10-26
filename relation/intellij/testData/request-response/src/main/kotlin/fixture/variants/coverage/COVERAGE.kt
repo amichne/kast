@@ -232,8 +232,8 @@ fun whenGuardCase() {
 }
 
 class SwappedParts(val first: Payload, val second: Payload) {
-    operator fun component1(): Payload = second
-    operator fun component2(): Payload = first
+    operator fun component1(): Payload { return second }
+    operator fun component2(): Payload { return first }
 }
 
 fun orderedComponentsCase() {
@@ -241,6 +241,31 @@ fun orderedComponentsCase() {
     val (output, unrelated) = input
     consume(/*<orderedComponents-use>*/output/*</orderedComponents-use>*/)
     forbidden(/*<orderedComponents-forbidden>*/unrelated/*</orderedComponents-forbidden>*/)
+}
+
+class SideEffectParts(val payload: Payload) {
+    operator fun component1(): Payload { return payload }
+    operator fun component2(): Payload {
+        println("Side effect before the return")
+        return payload
+    }
+}
+
+fun sideEffectComponentsCase() {
+    val input = SideEffectParts(origin())
+    val (output, unused) = /*<sideEffectComponents-input>*/input/*</sideEffectComponents-input>*/
+    forbidden(/*<sideEffectComponents-forbidden>*/output/*</sideEffectComponents-forbidden>*/)
+}
+
+class LaterThrowingParts(val payload: Payload) {
+    operator fun component1(): Payload { return payload }
+    operator fun component2(): Payload { return error("No component binding can be used") }
+}
+
+fun laterThrowingComponentsCase() {
+    val input = LaterThrowingParts(origin())
+    val (output, unused) = /*<laterThrowingComponents-input>*/input/*</laterThrowingComponents-input>*/
+    forbidden(/*<laterThrowingComponents-forbidden>*/output/*</laterThrowingComponents-forbidden>*/)
 }
 
 fun incompatiblePredicateCase() {
@@ -274,9 +299,9 @@ fun lambdaInputCase() {
 }
 
 class RepeatingParts(val item: SwappedParts) {
-    operator fun iterator(): RepeatingParts = this
+    operator fun iterator(): RepeatingParts { return this }
     operator fun hasNext(): Boolean = true
-    operator fun next(): SwappedParts = item
+    operator fun next(): SwappedParts { return item }
 }
 
 fun loopInputCase() {
@@ -304,3 +329,14 @@ fun holdsInCase() {
     consume(/*<holdsIn-use>*/output/*</holdsIn-use>*/)
     forbidden(/*<holdsIn-forbidden>*/Payload()/*</holdsIn-forbidden>*/)
 }
+
+fun widen(value: Payload): Any {
+    val output: Any = value
+    return output
+}
+
+fun stableLocalCase() /*<stableLocal-block>*/{
+    var value: Any = widen(origin())
+    if (value is Payload) consume(/*<stableLocal-use>*/value/*</stableLocal-use>*/)
+    forbidden(/*<stableLocal-forbidden>*/Payload()/*</stableLocal-forbidden>*/)
+}/*</stableLocal-block>*/

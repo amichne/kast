@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -9,6 +10,104 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ValueLocalVersionTest {
+    @Test
+    fun `stable local refinement preserves exact version use and resumable identity`() {
+        val owner = flowEndpoint("local", 0, 200)
+        val source = binding(owner, version(owner))
+        val use = flowRange(35, 36)
+        val target = refinedRead(source)
+        val fact = target.conditions.facts.single() as ValueCondition.StableLocal
+        val transfer = ValueTransfer.fromCompiler(source, target, ValueTransferKind.LOCAL_READ).flowRefined()
+        assertEquals(source.localVersion, fact.version)
+        assertTrue(fact.origin.matches(source))
+        assertEquals(use, fact.useRange)
+        assertSame(target.conditions, transfer.target.conditions)
+        assertEquals(
+            setOf(target.identity),
+            LocalBindingReadRemainder.admit(
+                    source,
+                    RelationSearchBoundary.RETAINED_SUBJECT,
+                    emptySet(),
+                    setOf(target.identity),
+                )
+                .flowRefined()
+                .emitted,
+        )
+        val erased = ValueSite.fromCompiler(owner, use, ValueRole.LocalRead).flowRefined()
+        assertNotEquals(target.identity, erased.identity)
+        assertNotEquals(buildString { site(target) }, buildString { site(erased) })
+        assertTrue(target.retainedBytes > erased.retainedBytes)
+        assertEquals(
+            Refinement.Rejected(ValueSiteFailure.CONDITIONS_NOT_PRESERVED),
+            target.withState(conditions = ValueConditions.Unconditional),
+        )
+    }
+
+    @Test
+    fun `read remainder charges its condition payload rather than the unqualified source`() {
+        val owner = flowEndpoint("local", 0, 200)
+        val source = binding(owner, version(owner))
+        val target = refinedRead(source)
+        val longer = refinedRead(source, "fixture." + "X".repeat(1000))
+        val shortRemainder =
+            LocalBindingReadRemainder.admit(
+                    source,
+                    RelationSearchBoundary.RETAINED_SUBJECT,
+                    emptySet(),
+                    setOf(target.identity),
+                )
+                .flowRefined()
+        val longRemainder =
+            LocalBindingReadRemainder.admit(
+                    source,
+                    RelationSearchBoundary.RETAINED_SUBJECT,
+                    emptySet(),
+                    setOf(longer.identity),
+                )
+                .flowRefined()
+        assertEquals(2L * (1008 - "fixture.Payload".length), longRemainder.retainedBytes - shortRemainder.retainedBytes)
+        assertNotEquals(buildString { site(target) }, buildString { site(longer) })
+    }
+
+    @Test
+    fun `stable local fact cannot be borrowed by another use or unversioned binding`() {
+        val owner = flowEndpoint("local", 0, 200)
+        val source = binding(owner, version(owner))
+        val target = refinedRead(source)
+        val fact = target.conditions.facts.single() as ValueCondition.StableLocal
+        val wrongUse =
+            ValueSite.fromCompiler(owner, flowRange(40, 41), ValueRole.LocalRead, conditions = target.conditions)
+                .flowRefined()
+        assertEquals(
+            Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH),
+            ValueTransfer.fromCompiler(source, wrongUse, ValueTransferKind.LOCAL_READ),
+        )
+        assertEquals(
+            Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH),
+            LocalBindingReadRemainder.admit(
+                source,
+                RelationSearchBoundary.RETAINED_SUBJECT,
+                emptySet(),
+                setOf(wrongUse.identity),
+            ),
+        )
+        for (range in listOf(flowRange(20, 21), flowRange(60, 61), flowRange(90, 91))) {
+            assertEquals(
+                Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_OWNER),
+                ValueCondition.StableLocal.fromCompiler(source, range, fact.originalType, fact.refinedType),
+            )
+        }
+        val unversioned = ValueSite.fromCompiler(owner, source.range, source.role).flowRefined()
+        assertEquals(
+            Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH),
+            ValueCondition.StableLocal.fromCompiler(unversioned, fact.useRange, fact.originalType, fact.refinedType),
+        )
+        assertEquals(
+            Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH),
+            ValueTransfer.fromCompiler(unversioned, target, ValueTransferKind.LOCAL_READ),
+        )
+    }
+
     @Test
     fun `next write RHS belongs to the old version but its LHS and later reads do not`() {
         val owner = flowEndpoint("local", 0, 200)
@@ -195,4 +294,22 @@ class ValueLocalVersionTest {
 
     private fun binding(owner: RelationEndpoint, version: ValueLocalVersion.Defined) =
         ValueSite.fromCompiler(owner, version.definition, ValueRole.LocalBinding, localVersion = version).flowRefined()
+
+    private fun refinedRead(source: ValueSite, type: String = "fixture.Payload"): ValueSite {
+        val fact =
+            ValueCondition.StableLocal.fromCompiler(
+                    source,
+                    flowRange(35, 36),
+                    CanonicalCompilerType.fromCompiler("kotlin.Any").flowRefined(),
+                    CanonicalCompilerType.fromCompiler(type).flowRefined(),
+                )
+                .flowRefined()
+        return ValueSite.fromCompiler(
+                source.enclosing,
+                fact.useRange,
+                ValueRole.LocalRead,
+                conditions = source.conditions.requiring(fact).flowRefined(),
+            )
+            .flowRefined()
+    }
 }

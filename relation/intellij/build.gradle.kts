@@ -119,12 +119,24 @@ val reviewedCallbackSources =
         isCanBeResolved = true
     }
 
+val contractFixtureStdlib =
+    configurations.create("contractFixtureStdlib") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        isTransitive = false
+    }
+
 dependencies {
     reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
+    contractFixtureStdlib(libs.kotlin.stdlib)
 }
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
     from(reviewedCallbackSources) { into("reviewed-libraries") }
+    from(contractFixtureStdlib) {
+        into("contract-libraries")
+        rename { "kotlin-stdlib.jar" }
+    }
     from("testData/r1-value-flow") { into("r1-value-flow") }
 }
 
@@ -273,6 +285,7 @@ registerRelationNativeFixtures(
         "*NativeTypeOperationFlowTest",
         "*NativeContractPayloadTest",
         "*NativeContractScopeTest",
+        "*NativeConfiguredDestructuringTest",
         "*NativeLocalValueVersionTest",
         "*NativeCallbackArgumentBindingTest",
         "*NativeCallbackInputTest",

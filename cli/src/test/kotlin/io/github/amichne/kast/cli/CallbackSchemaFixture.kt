@@ -6,6 +6,7 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,17 +42,22 @@ internal fun independentImpactSchema(serializer: KSerializer<*>): JsonObject =
         ),
     )
 
-internal fun independentImpactSchemaWithDefinitions(serializer: KSerializer<*>): JsonObject =
-    Json.encodeToJsonElement(
+/** Validation reuses the exact site descriptor; structural comparisons retain the expanded independent schema. */
+internal fun independentImpactSchemaWithDefinitions(serializer: KSerializer<*>): JsonObject {
+    val shared =
+        mapOf(
+            "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+            "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
+        )
+    val references = CanonicalSchemaReferences.from(shared)
+    return Json.encodeToJsonElement(
             DefinitionSchema.serializer(),
             DefinitionSchema(
                 reference = "#/\$defs/independentRoot",
                 definitions =
-                    mapOf(
-                        "independentRoot" to independentImpactSchema(serializer),
-                        "impactInvocationReference" to
-                            independentImpactSchema(ImpactInvocationReferenceDocument.serializer()),
-                    ),
+                    mapOf("independentRoot" to generatedOutputSchema(serializer, references)) +
+                        shared.mapValues { (_, definition) -> generatedOutputSchema(definition, references) },
             ),
         )
         .jsonObject
+}

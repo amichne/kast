@@ -34,7 +34,11 @@ internal fun StringBuilder.site(site: ValueSite) {
     endpoint(site.enclosing)
     range(site.range)
     valueRole(site.role)
-    when (val version = site.localVersion) {
+    localVersion(site.localVersion)
+}
+
+internal fun StringBuilder.localVersion(version: ValueLocalVersion) {
+    when (version) {
         ValueLocalVersion.Unversioned -> Unit
         is ValueLocalVersion.Defined -> {
             field("LOCAL_VALUE_VERSION")

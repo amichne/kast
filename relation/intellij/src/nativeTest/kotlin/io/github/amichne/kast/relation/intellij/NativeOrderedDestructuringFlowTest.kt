@@ -140,6 +140,22 @@ class NativeOrderedDestructuringFlowTest : NativeDestructuringFixtureTest() {
         )
     }
 
+    fun testSideEffectBeforeBlockReturnCannotBorrowStoredFieldCompletion() {
+        val fixture = controls()
+        assertUnsupported(
+            step(
+                fixture,
+                stored(
+                    fixture = fixture,
+                    function = "sideEffectSibling",
+                    constructor = "SideEffectComponents",
+                    literal = "origin",
+                ),
+            ),
+            ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION,
+        )
+    }
+
     fun testSkippedLaterThrowingComponentDoesNotPreventPayloadUse() {
         val fixture = controls()
         val returned =

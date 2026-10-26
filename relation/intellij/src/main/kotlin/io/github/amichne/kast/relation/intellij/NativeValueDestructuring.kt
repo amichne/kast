@@ -123,6 +123,8 @@ internal class NativeValueDestructuring(
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return allowed
             }
+            // A named ignored getter executes its call; only its returned result is discarded.
+            if (entry.name == "_" && target is NativeComponentTarget.Field) continue
             when (val projected = project(entry, target)) {
                 is Refinement.Refined ->
                     when (val read = projected.value) {
@@ -141,6 +143,7 @@ internal class NativeValueDestructuring(
         consume: () -> Unit,
         unsupported: (ValueFlowUnsupportedCause) -> Unit,
     ) {
+        if (entry.name == "_") return
         val declaration = entry.parent as? KtDestructuringDeclaration
         if (declaration == null || !entry.isNativeComponent()) {
             unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
@@ -177,7 +180,7 @@ internal class NativeValueDestructuring(
                     scope = scope,
                     projection = projection,
                 )
-            is NativeComponentTarget.Source ->
+            is NativeComponentTarget.Callable ->
                 when (
                     val receiver =
                         nativeComponentReceiver(

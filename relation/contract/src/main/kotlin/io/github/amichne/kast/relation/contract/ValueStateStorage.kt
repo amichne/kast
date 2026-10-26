@@ -5,9 +5,10 @@ internal fun valueStateStorageBytes(site: ValueSite): Long =
     valuePathStorageBytes(site.valuePath)
         .addBytes(site.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
         .addBytes(valueExecutionStorageBytes(site.executionOwner))
-        .addBytes(
-            site.conditions.facts.fold(0L) { sum, condition -> sum.addBytes(valueConditionStorageBytes(condition)) }
-        )
+        .addBytes(valueConditionsStorageBytes(site.conditions))
+
+internal fun valueConditionsStorageBytes(conditions: ValueConditions): Long =
+    conditions.facts.fold(0L) { sum, condition -> sum.addBytes(valueConditionStorageBytes(condition)) }
 
 private fun valueConditionStorageBytes(condition: ValueCondition): Long {
     val origin = condition.origin
@@ -17,6 +18,12 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
         .addBytes(origin.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
         .addBytes(
             when (condition) {
+                is ValueCondition.StableLocal ->
+                    VALUE_CALL_PROOF_BYTES.addBytes(
+                            condition.version.execution.enclosing.detachedTextUnits().multiplyBytes(2)
+                        )
+                        .addBytes(condition.originalType.value.length.toLong().multiplyBytes(2))
+                        .addBytes(condition.refinedType.value.length.toLong().multiplyBytes(2))
                 is ValueCondition.StableReceiver ->
                     condition.originalType.value.length
                         .toLong()

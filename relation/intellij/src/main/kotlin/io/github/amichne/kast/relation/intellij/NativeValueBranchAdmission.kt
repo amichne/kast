@@ -5,14 +5,20 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.WorkAllowance
+import io.github.amichne.kast.relation.contract.ValueCondition
+import io.github.amichne.kast.relation.contract.ValueConditions
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValuePathSegment
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
@@ -28,6 +34,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtWhenConditionIsPattern
 import org.jetbrains.kotlin.psi.KtWhenEntry
 import org.jetbrains.kotlin.psi.KtWhenExpression
+import org.jetbrains.kotlin.types.Variance
 
 internal enum class NativeValueBranchAdmission {
     ADMITTED,
@@ -176,7 +183,13 @@ private fun KaSession.versionIfAdmission(
     val inThen = branch.then?.let { PsiTreeUtil.isAncestor(it, expression, false) } == true
     val inElse = branch.`else`?.let { PsiTreeUtil.isAncestor(it, expression, false) } == true
     if (!inThen && !inElse) return NativeValueBranchAdmission.NOT_APPLICABLE
-    val condition = branch.condition as? KtIsExpression ?: return NativeValueBranchAdmission.UNPROVEN
+    val condition = branch.condition as? KtIsExpression
+    if (condition == null) {
+        // The version proves the value; the compiler, rather than a syntax whitelist, proves its use-site type.
+        val exact = versionFinalType(source, expression) ?: return NativeValueBranchAdmission.UNPROVEN
+        if (expression.smartCastInfo == null) return NativeValueBranchAdmission.UNPROVEN
+        return admitVersionSmartcast(source, expression, exact, workAllowance)
+    }
     val identity = expected ?: return NativeValueBranchAdmission.UNPROVEN
     when (branchExpressionIdentity(condition.leftHandSide, identity, workAllowance)) {
         NativeBranchIdentity.EXACT -> Unit
@@ -296,3 +309,67 @@ private fun KaSession.branchConditionMatches(
 private fun KaClassType.hasOnlyStarArguments(): Boolean =
     typeArguments.all { it is KaStarTypeProjection } &&
         qualifiers.all { qualifier -> qualifier.typeArguments.all { it is KaStarTypeProjection } }
+
+/** The caller has resolved this reference to the versioned binding; K2 supplies the scoped, stable type fact. */
+internal fun nativeLocalReadConditions(
+    source: ValueSite,
+    expression: KtExpression,
+    admission: NativeValueBranchAdmission,
+    observation: IntellijReadObservation,
+    allowance: WorkAllowance,
+): Refinement<ValueConditions, ValueFlowUnsupportedCause> =
+    observation.observedAnalyze(expression) { stableLocalConditions(source, expression, admission, allowance) }
+
+private fun KaSession.stableLocalConditions(
+    source: ValueSite,
+    expression: KtExpression,
+    admission: NativeValueBranchAdmission,
+    allowance: WorkAllowance,
+): Refinement<ValueConditions, ValueFlowUnsupportedCause> {
+    val fact = expression.smartCastInfo
+    if (fact == null)
+        return if (admission == NativeValueBranchAdmission.UNPROVEN) unsupportedLocalRefinement()
+        else Refinement.Refined(source.conditions)
+    if (!fact.isStable) return unsupportedLocalRefinement()
+    when (nativeCompilerTypeProof(listOf(fact.originalType, fact.smartCastType), allowance)) {
+        NativeCompilerTypeProof.ADMITTED -> Unit
+        NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
+            return Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+        NativeCompilerTypeProof.ERROR_TYPE,
+        NativeCompilerTypeProof.UNSUPPORTED_TYPE -> return unsupportedLocalRefinement()
+    }
+    val exact = versionFinalType(source, expression)
+    return if (exact != null && exact.isSubtypeOf(fact.smartCastType)) Refinement.Refined(source.conditions)
+    else requiringLocalRefinement(source, expression, fact.originalType, fact.smartCastType)
+}
+
+private fun KaSession.requiringLocalRefinement(
+    source: ValueSite,
+    expression: KtExpression,
+    originalType: KaType,
+    refinedType: KaType,
+): Refinement<ValueConditions, ValueFlowUnsupportedCause> {
+    val original =
+        CanonicalCompilerType.fromCompiler(
+            originalType.render(KaTypeRendererForSource.WITH_QUALIFIED_NAMES, Variance.INVARIANT)
+        )
+    val refined =
+        CanonicalCompilerType.fromCompiler(
+            refinedType.render(KaTypeRendererForSource.WITH_QUALIFIED_NAMES, Variance.INVARIANT)
+        )
+    if (original !is Refinement.Refined || refined !is Refinement.Refined) return unsupportedLocalRefinement()
+    return when (
+        val condition =
+            ValueCondition.StableLocal.fromCompiler(source, sourceValueRange(expression), original.value, refined.value)
+    ) {
+        is Refinement.Rejected -> unsupportedLocalRefinement()
+        is Refinement.Refined ->
+            when (val conditions = source.conditions.requiring(condition.value)) {
+                is Refinement.Refined -> conditions
+                is Refinement.Rejected -> unsupportedLocalRefinement()
+            }
+    }
+}
+
+private fun unsupportedLocalRefinement(): Refinement.Rejected<ValueFlowUnsupportedCause> =
+    Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)

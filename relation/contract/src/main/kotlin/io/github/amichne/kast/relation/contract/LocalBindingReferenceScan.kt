@@ -96,7 +96,9 @@ class LocalBindingReferenceScan<C>(
                 val bytes =
                     ValueFlowStep.detachedByteCount(request.source, domain, edges + transfer.value, obligations).value
                 val reserve = 2048L.addBytes(request.source.retainedBytes)
-                if (!request.budget.permitsReturnedBytes(bytes.addBytes(reserve))) {
+                val progress =
+                    LocalBindingReadRemainder.storageBytes(request.source, consumed.size + 1, emitted + target.identity)
+                if (!request.budget.permitsReturnedBytes(bytes.addBytes(progress).addBytes(reserve))) {
                     obligation(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
                 } else if (emitted.add(target.identity)) edges += transfer.value
             }
@@ -147,7 +149,7 @@ class LocalBindingReferenceScan<C>(
         val remaining = request.budget.returnedBytes.value - base
         val reserve = 2048L.addBytes(request.source.retainedBytes)
         val next =
-            LocalBindingReadRemainder.storageBytes(request.source, consumed.size, emitted.size) +
+            LocalBindingReadRemainder.storageBytes(request.source, consumed.size, emitted) +
                 1024L +
                 2048L +
                 3L * request.source.retainedBytes

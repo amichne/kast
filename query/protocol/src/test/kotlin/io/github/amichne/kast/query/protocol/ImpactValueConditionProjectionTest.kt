@@ -5,15 +5,20 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.ImpactCastKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument
+import io.github.amichne.kast.protocol.contract.ImpactLocalLifetimeEndDocument
+import io.github.amichne.kast.protocol.contract.ImpactLocalVersionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReceiverKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueConditionDocument
 import io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
 import io.github.amichne.kast.protocol.contract.hasSameValueIdentity
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
@@ -22,6 +27,7 @@ import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValuePathSegment
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
@@ -32,10 +38,66 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImpactValueConditionProjectionTest {
+    @Test
+    fun `stable local transfer and detached identity retain the exact defined version for both lifetimes`() {
+        val f = ImpactPathProjectionFixture()
+        fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).conditionValue()
+        fun wireRange(start: Int, end: Int) =
+            ImpactSourceRangeDocument(
+                ProtocolOffset.parse(start).conditionValue(),
+                ProtocolOffset.parse(end).conditionValue(),
+            )
+        for ((end, expectedEnd) in
+            listOf(
+                ValueLocalVersion.End.NextWrite(range(60, 80), range(70, 80)) to
+                    ImpactLocalLifetimeEndDocument.NextWrite(wireRange(60, 80), wireRange(70, 80)),
+                ValueLocalVersion.End.BlockEnd(range(5, 195)) to
+                    ImpactLocalLifetimeEndDocument.BlockEnd(wireRange(5, 195)),
+            )) {
+            val transfer = stableLocalTransfer(f.owner, end)
+            val target = transfer.target
+            val document = transfer.impactDocument().conditionValue()
+            val expectedVersion =
+                ImpactLocalVersionDocument.Defined(
+                    wireRange(10, 30),
+                    wireRange(5, 195),
+                    wireRange(10, 30),
+                    wireRange(20, 30),
+                    expectedEnd,
+                )
+            val projected =
+                assertInstanceOf(
+                    ImpactValueConditionDocument.StableLocal::class.java,
+                    document.target.conditions.values.single(),
+                )
+            assertEquals(expectedVersion, projected.version)
+            assertEquals(expectedVersion, document.source.localVersion)
+            assertEquals(ImpactLocalVersionDocument.Unversioned, document.target.localVersion)
+            assertEquals(ImpactValueRoleDocument.LocalBinding, projected.origin.role)
+            assertEquals(wireRange(10, 30), projected.origin.range)
+            assertEquals(wireRange(35, 36), projected.useRange)
+            assertEquals("kotlin/Any?", projected.originalType.value)
+            assertEquals("fixture/Request", projected.refinedType.value)
+            assertEquals(ImpactTransferKindDocument.LOCAL_READ, document.kind)
+            assertTrue(document.admitsEvidence())
+            assertEquals(document.target, target.identity.impactDocument().conditionValue())
+            val detached = f.site(90, 91, ValueRole.Return).withState(conditions = target.conditions).conditionValue()
+            val detachedDocument = detached.impactDocument().conditionValue()
+            assertEquals(detachedDocument, detached.identity.impactDocument().conditionValue())
+            assertEquals(listOf(projected), detachedDocument.conditions.values)
+            assertFalse(
+                detachedDocument.hasSameValueIdentity(
+                    f.site(90, 91, ValueRole.Return).impactDocument().conditionValue()
+                )
+            )
+        }
+    }
+
     @Test
     fun `site and identity projection retain originating state after the occurrence changes`() {
         val f = ImpactPathProjectionFixture()
@@ -159,6 +221,40 @@ class ImpactValueConditionProjectionTest {
             assertEquals(30, projected.useRange.end.value)
         }
     }
+}
+
+private fun stableLocalTransfer(owner: RelationEndpoint, end: ValueLocalVersion.End): ValueTransfer {
+    fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).conditionValue()
+    val version =
+        ValueLocalVersion.Defined.fromCompiler(
+                ValueExecutionOwner.declaration(owner),
+                range(10, 30),
+                range(5, 195),
+                range(10, 30),
+                range(20, 30),
+                end,
+            )
+            .conditionValue()
+    val source =
+        ValueSite.fromCompiler(owner, version.definition, ValueRole.LocalBinding, localVersion = version)
+            .conditionValue()
+    val fact =
+        ValueCondition.StableLocal.fromCompiler(
+                source,
+                range(35, 36),
+                CanonicalCompilerType.fromCompiler("kotlin/Any?").conditionValue(),
+                CanonicalCompilerType.fromCompiler("fixture/Request").conditionValue(),
+            )
+            .conditionValue()
+    val target =
+        ValueSite.fromCompiler(
+                owner,
+                fact.useRange,
+                ValueRole.LocalRead,
+                conditions = source.conditions.requiring(fact).conditionValue(),
+            )
+            .conditionValue()
+    return ValueTransfer.fromCompiler(source, target, ValueTransferKind.LOCAL_READ).conditionValue()
 }
 
 private fun <T, F> Refinement<T, F>.conditionValue(): T =

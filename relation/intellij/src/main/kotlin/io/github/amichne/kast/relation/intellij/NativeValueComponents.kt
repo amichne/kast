@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -11,6 +12,8 @@ import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.resolution.KaVariableAccessCall
+import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
@@ -22,11 +25,21 @@ import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** Generated accessors use field evidence; authored operators use the ordinary matched source-call machinery. */
 internal sealed interface NativeComponentTarget {
-    data class Source(val declaration: KtNamedFunction, val receiver: ValueReceiverKind) : NativeComponentTarget
+    sealed interface Callable : NativeComponentTarget {
+        val declaration: PsiNamedElement
+        val receiver: ValueReceiverKind
+    }
+
+    data class Source(override val declaration: KtNamedFunction, override val receiver: ValueReceiverKind) : Callable
+
+    data class Getter(override val declaration: KtProperty) : Callable {
+        override val receiver: ValueReceiverKind = ValueReceiverKind.DISPATCH
+    }
 
     data class Field(val parameter: KtParameter) : NativeComponentTarget
 }
@@ -36,10 +49,10 @@ internal fun nativeComponentTarget(
     projection: IntellijK2RelationProjection,
 ): Refinement<NativeComponentTarget, ValueFlowUnsupportedCause> =
     projection.observation.observedAnalyze(entry) {
+        val resolved = entry.resolveCall()
+        if (resolved is KaVariableAccessCall) return@observedAnalyze namedComponentTarget(resolved)
         val kind = nativeComponentReceiverKind(entry) ?: return@observedAnalyze componentRejected()
-        val symbol =
-            entry.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol
-                ?: return@observedAnalyze componentRejected()
+        val symbol = resolved?.signature?.symbol as? KaNamedFunctionSymbol ?: return@observedAnalyze componentRejected()
         if (symbol.returnType is KaErrorType) return@observedAnalyze componentRejected()
         if (symbol.origin == KaSymbolOrigin.SOURCE_MEMBER_GENERATED)
             return@observedAnalyze generatedComponentProperty(symbol).mapComponentField()
@@ -47,9 +60,39 @@ internal fun nativeComponentTarget(
         Refinement.Refined(NativeComponentTarget.Source(function, kind))
     }
 
+private fun KaSession.namedComponentTarget(
+    call: KaVariableAccessCall
+): Refinement<NativeComponentTarget, ValueFlowUnsupportedCause> {
+    val symbol = call.signature.symbol as? KaKotlinPropertySymbol ?: return componentRejected()
+    if (call.kind !is KaVariableAccessCall.Kind.Read || call.extensionReceiver != null || call.dispatchReceiver == null)
+        return componentRejected()
+    val property = symbol.psi as? KtProperty
+    return when {
+        property?.getter?.bodyExpression != null && !property.hasDelegate() && symbol.returnType !is KaErrorType ->
+            Refinement.Refined(NativeComponentTarget.Getter(property))
+        else -> namedComponentProperty(symbol).mapComponentField()
+    }
+}
+
+/** A resolved property must prove its own constructor storage; names and component ordinals are not that proof. */
+private fun KaSession.namedComponentProperty(
+    symbol: KaKotlinPropertySymbol
+): Refinement<KtParameter, ValueFlowUnsupportedCause> =
+    when (val parameter = symbol.psi) {
+        is KtParameter ->
+            if (
+                symbol.returnType !is KaErrorType &&
+                    (parameter.symbol as? KaValueParameterSymbol)?.generatedPrimaryConstructorProperty == symbol
+            )
+                Refinement.Refined(parameter)
+            else Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
+        // Authored getters require callable entry/return ownership, not a stored-field approximation.
+        else -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
+    }
+
 internal fun nativeComponentReceiver(
     entry: KtDestructuringDeclarationEntry,
-    target: NativeComponentTarget.Source,
+    target: NativeComponentTarget.Callable,
     executionOwner: ValueExecutionOwner,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
@@ -69,12 +112,20 @@ internal fun nativeComponentReceiver(
         }
     return when (
         val invocation =
-            ValueInvocation.fromCompiler(
-                enclosing = executionOwner.enclosing,
-                range = sourceValueRange(entry),
-                callable = callable,
-                executionOwner = executionOwner,
-            )
+            if (target is NativeComponentTarget.Getter)
+                ValueInvocation.getterFromCompiler(
+                    enclosing = executionOwner.enclosing,
+                    range = sourceValueRange(entry),
+                    callable = callable,
+                    executionOwner = executionOwner,
+                )
+            else
+                ValueInvocation.fromCompiler(
+                    enclosing = executionOwner.enclosing,
+                    range = sourceValueRange(entry),
+                    callable = callable,
+                    executionOwner = executionOwner,
+                )
     ) {
         is Refinement.Refined -> Refinement.Refined(ValueRole.Receiver(invocation.value, target.receiver))
         is Refinement.Rejected -> componentRejected()

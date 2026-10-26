@@ -18,6 +18,7 @@ class ValueFlowProofSharing(previous: Collection<ValueFlowStep> = emptyList()) {
     internal class CallableProof(invocation: ValueInvocation) {
         val endpoint = invocation.callable
         val signature = invocation.signature
+        val operation = invocation.operation
     }
 
     internal fun callable(invocation: ValueInvocation): CallableProof =

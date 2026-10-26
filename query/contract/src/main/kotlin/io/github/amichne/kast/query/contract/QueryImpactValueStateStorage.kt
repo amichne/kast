@@ -26,6 +26,11 @@ private fun ValueCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.node(useRange) { 0L })
             .saturatedAdd(
                 when (this) {
+                    is ValueCondition.StableLocal ->
+                        version
+                            .storageBytes(g)
+                            .saturatedAdd(g.text(originalType.value))
+                            .saturatedAdd(g.text(refinedType.value))
                     is ValueCondition.StableReceiver ->
                         g.node(kind) { 0L }
                             .saturatedAdd(g.text(originalType.value))

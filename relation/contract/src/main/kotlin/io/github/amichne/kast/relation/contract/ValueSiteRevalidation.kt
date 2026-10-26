@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
@@ -89,9 +90,15 @@ private constructor(
                         val signature = admitInvocation(enclosing, anchor, role.invocationAnchor, role.expectedCallable)
                     ) {
                         is Refinement.Rejected -> signature
-                        is Refinement.Refined ->
-                            if (role.position.value in signature.value.valueParameters.indices) Refinement.Refined(Unit)
+                        is Refinement.Refined -> {
+                            val callable = signature.value
+                            if (
+                                callable is CanonicalCompilerCallableSignature &&
+                                    role.position.value in callable.valueParameters.indices
+                            )
+                                Refinement.Refined(Unit)
                             else Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)
+                        }
                     }
                 is ValueSiteRoleClaim.Receiver ->
                     when (
@@ -112,7 +119,7 @@ private constructor(
             anchor: ExactDeclarationTextRange,
             invocation: ExactDeclarationTextRange,
             callable: SymbolSelector,
-        ): Refinement<CanonicalCompilerCallableSignature, ValueSiteRevalidationRequestFailure> =
+        ): Refinement<CanonicalCompilerSignature, ValueSiteRevalidationRequestFailure> =
             when {
                 callable.lease.identity != enclosing.lease.identity ->
                     Refinement.Rejected(ValueSiteRevalidationRequestFailure.BASIS_MISMATCH)
@@ -120,9 +127,10 @@ private constructor(
                     Refinement.Rejected(ValueSiteRevalidationRequestFailure.INVOCATION_OUTSIDE_ENCLOSING)
                 !invocation.containsValueRange(anchor) ->
                     Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_OUTSIDE_INVOCATION)
-                callable.signature !is CanonicalCompilerCallableSignature ->
+                callable.signature !is CanonicalCompilerCallableSignature &&
+                    callable.signature !is CanonicalCompilerSignature.Property ->
                     Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)
-                else -> Refinement.Refined(callable.signature as CanonicalCompilerCallableSignature)
+                else -> Refinement.Refined(callable.signature)
             }
 
         private fun admitLoopClaim(
@@ -135,7 +143,11 @@ private constructor(
             for (callable in listOf(role.expectedIterator, role.expectedHasNext, role.expectedNext)) {
                 when (val admitted = admitInvocation(enclosing, anchor, role.invocationAnchor, callable)) {
                     is Refinement.Rejected -> return admitted
-                    is Refinement.Refined -> Unit
+                    is Refinement.Refined ->
+                        if (admitted.value !is CanonicalCompilerCallableSignature)
+                            return Refinement.Rejected(
+                                ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE
+                            )
                 }
             }
             return Refinement.Refined(Unit)

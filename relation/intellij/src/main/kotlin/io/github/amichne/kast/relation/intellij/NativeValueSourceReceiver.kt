@@ -5,6 +5,7 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueInvocationOperation
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -24,6 +25,12 @@ internal fun IntellijRelationAllowance.nativeValueSourceReceiver(
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
     val role = source.role as? ValueRole.Receiver ?: return receiverRejected()
+    if (role.call.operation is ValueInvocationOperation.Getter) {
+        return when (val position = nativeGetterReceiverFormal(source, scope, projection)) {
+            is Refinement.Refined -> nativeSourceEntry(source, role.call, position.value)
+            is Refinement.Rejected -> position
+        }
+    }
     val function =
         when (val value = projection.subject(scope, role.call.callable)) {
             is IntellijRelationSubjectLookup.Found -> value.declaration as? KtNamedFunction
@@ -53,6 +60,8 @@ internal fun IntellijRelationAllowance.nativeValueReceiverFormal(
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueFormalPosition.Receiver, ValueFlowUnsupportedCause> {
     val role = source.role as? ValueRole.Receiver ?: return receiverRejected()
+    if (role.call.operation is ValueInvocationOperation.Getter)
+        return nativeGetterReceiverFormal(source, scope, projection)
     val function =
         when (val value = projection.subject(scope, role.call.callable)) {
             is IntellijRelationSubjectLookup.Found -> value.declaration as? KtNamedFunction

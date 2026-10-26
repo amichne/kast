@@ -31,14 +31,18 @@ private constructor(
     val emitted: Set<ValueSiteIdentity>,
 ) {
     val retainedBytes: Long
-        get() = storageBytes(source, consumed.size, emitted.size)
+        get() = storageBytes(source, consumed.size, emitted)
 
     companion object {
-        fun storageBytes(source: ValueSite, consumedCount: Int, emittedCount: Int): Long =
+        fun storageBytes(source: ValueSite, consumedCount: Int, emitted: Set<ValueSiteIdentity>): Long =
             2048L
                 .addBytes(source.retainedBytes)
                 .addBytes(consumedCount.toLong().multiplyBytes(REFERENCE_KEY_STORAGE_BYTES))
-                .addBytes(emittedCount.toLong().multiplyBytes(source.retainedBytes))
+                .addBytes(
+                    emitted.fold(0L) { sum, identity ->
+                        sum.addBytes(source.retainedBytes).addBytes(valueConditionsStorageBytes(identity.conditions))
+                    }
+                )
 
         fun admit(
             source: ValueSite,
@@ -113,7 +117,7 @@ private fun ValueSiteIdentity.isReadOf(source: ValueSite): Boolean =
         execution == source.identity.execution &&
         valuePath == source.valuePath &&
         callStack == source.callStack &&
-        conditions == source.conditions &&
+        source.conditions.admits(source, this, ValueTransferKind.LOCAL_READ) &&
         localVersion == ValueLocalVersion.Unversioned &&
         (source.localVersion !is ValueLocalVersion.Defined || source.localVersion.admitsRead(range)) &&
         role == ValueRole.LocalRead

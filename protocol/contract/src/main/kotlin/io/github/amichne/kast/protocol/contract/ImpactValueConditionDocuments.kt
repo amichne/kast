@@ -31,6 +31,16 @@ sealed interface ImpactValueConditionDocument {
     val originalType: ProtocolText
 
     @Serializable
+    @SerialName("STABLE_LOCAL")
+    data class StableLocal(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+        val version: ImpactLocalVersionDocument.Defined,
+        override val originalType: ProtocolText,
+        val refinedType: ProtocolText,
+    ) : ImpactValueConditionDocument
+
+    @Serializable
     @SerialName("STABLE_RECEIVER")
     data class StableReceiver(
         override val origin: ImpactValueConditionOriginDocument,

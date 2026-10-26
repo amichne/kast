@@ -27,6 +27,7 @@ internal class NativePacketQueryFixture(
     private val base: VirtualFile,
     private val module: com.intellij.openapi.module.Module,
     private val sdk: com.intellij.openapi.projectRoots.Sdk,
+    private val configureCompiler: () -> Unit = {},
 ) {
     fun prepare(variant: NativePacketQueryVariant = NativePacketQueryVariant.V0): NativePacketQueryCase {
         val prepared = prepareFiles(listOf(PacketQuerySourceInput(variant.sourcePath, variant.manifest)))
@@ -58,6 +59,7 @@ internal class NativePacketQueryFixture(
                 }
             prepareModule(source, testSource)
             WriteCommandAction.runWriteCommandAction(project) {
+                configureCompiler()
                 inputs.forEach { input -> files[input.path] = copyFrozenSource(source, testSource, input) }
             }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
@@ -153,7 +155,8 @@ internal enum class NativePacketQueryVariant(val directory: String, val concrete
     V2("v2", "BackendClient", "derived-sources.sha256"),
     V3("v3", "BackendClient", "derived-sources.sha256"),
     V8("v8", "BackendClient", "derived-sources.sha256"),
-    COVERAGE("coverage", "BindingScope", "frozen-sources.sha256");
+    COVERAGE("coverage", "BindingScope", "frozen-sources.sha256"),
+    CONFIGURED("configured", "Box", "frozen-sources.sha256");
 
     val sourcePath = "src/main/kotlin/fixture/variants/$directory/${directory.uppercase()}.kt"
 }

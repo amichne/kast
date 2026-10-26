@@ -9,6 +9,8 @@ import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactLocalLifetimeEndDocument
+import io.github.amichne.kast.protocol.contract.ImpactLocalVersionDocument
 import io.github.amichne.kast.protocol.contract.ImpactPathStepDocument
 import io.github.amichne.kast.protocol.contract.ImpactReceiverKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
@@ -17,6 +19,8 @@ import io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocume
 import io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -81,8 +85,20 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
         complete("whenGuard", "", "whenGuarded")
     }
 
+    fun testStableLocalRetainsItsDefinitionAndUseConditionThroughTheConsumer() = runBlocking {
+        complete("stableLocal", "", "widen")
+    }
+
     fun testOrderedComponentsReachOnlyTheExactSelectedConsumer() = runBlocking {
         complete("orderedComponents", "SwappedParts", "component1")
+    }
+
+    fun testSideEffectBeforeComponentBlockReturnDoesNotReleaseBindings() = runBlocking {
+        incompleteComponents(prepare(), "sideEffectComponents", "SideEffectParts")
+    }
+
+    fun testLaterThrowingComponentBlockReturnDoesNotReleaseBindings() = runBlocking {
+        incompleteComponents(prepare(), "laterThrowingComponents", "LaterThrowingParts")
     }
 
     fun testLambdaArgumentReachesTheDestructuredConsumerFromItsOriginalProducer() = runBlocking {
@@ -91,6 +107,27 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
 
     fun testIteratorResultReachesTheDestructuredConsumerFromItsOriginalProducer() = runBlocking {
         complete("loopInput", "SwappedParts", "component1")
+    }
+
+    fun testConfiguredGetterReachesTheConsumerThroughItsActualBody() = runBlocking {
+        complete(scenario = "namedGetter", operationOwner = "", operation = "getter", fixture = prepareConfigured())
+    }
+
+    fun testConfiguredSquareFormReachesOnlyTheSelectedConsumer() = runBlocking {
+        complete(scenario = "squareLocal", operationOwner = "", operation = "square", fixture = prepareConfigured())
+    }
+
+    fun testConfiguredLambdaNamesPreserveTheActualArgumentPayload() = runBlocking {
+        complete(scenario = "namedLambda", operationOwner = "", operation = "withValue", fixture = prepareConfigured())
+    }
+
+    fun testConfiguredLoopNamesPreserveTheActualNextResult() = runBlocking {
+        complete(
+            scenario = "namedLoop",
+            operationOwner = "Repeating",
+            operation = "next",
+            fixture = prepareConfigured(),
+        )
     }
 
     fun testExplicitBindReachesConsumerThroughInheritedBody() = runBlocking {
@@ -130,8 +167,13 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
         )
     }
 
-    private suspend fun complete(scenario: String, operationOwner: String, operation: String, owner: String = "") {
-        val fixture = prepare()
+    private suspend fun complete(
+        scenario: String,
+        operationOwner: String,
+        operation: String,
+        owner: String = "",
+        fixture: NativePacketQueryCase = prepare(),
+    ) {
         val source = fixture.source
         val method = "${scenario}Case"
         val expected = consumer(source, scenario, owner)
@@ -148,7 +190,13 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
         println("COMPILER_COVERAGE_TERMINALS $scenario ${Json.encodeToString(capture.paths.map { it.terminal })}")
         assertEndpoints(source = source, scenario = scenario, expected = expected, transfers = routes.flatten())
         assertTrue(
-            "No contiguous producer-to-consumer route crossed $operation",
+            "No contiguous producer-to-consumer route crossed $operation: " +
+                routes.map { route ->
+                    "seed=${route.firstOrNull()?.source?.range == producer.anchor} " +
+                        "contiguous=${route.zipWithNext().all { (first, second) -> first.target == second.source }} " +
+                        "entered=${route.filter { it.target.enclosing == entered }.map { it.kind }} " +
+                        "consumer=${route.any { it.target == expected }}"
+                },
             routes.any { route ->
                 route.isNotEmpty() &&
                     route.first().source.range == producer.anchor &&
@@ -217,8 +265,39 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
                     "shortCircuit" -> predicateConditions(source, scenario, "shortCircuited")
                     "whenGuard" -> predicateConditions(source, scenario, "whenGuarded")
                     "unknownCast" -> castConditions(source)
+                    "stableLocal" -> stableLocalConditions(source)
                     else -> EmptyImpactConditions
                 },
+        )
+
+    private suspend fun stableLocalConditions(source: NativePacketQuerySource) =
+        packetQueryList(
+            listOf<ImpactValueConditionDocument>(
+                ImpactValueConditionDocument.StableLocal(
+                    origin =
+                        ImpactValueConditionOriginDocument(
+                            execution =
+                                ImpactExecutionReferenceDocument(
+                                    source.reference(source.declaration("", "stableLocalCase"))
+                                ),
+                            range = source.expressionRange("", "stableLocalCase", "var value: Any = widen(origin())"),
+                            role = ImpactValueRoleDocument.LocalBinding,
+                        ),
+                    useRange = source.markedRange("stableLocal-use"),
+                    version =
+                        ImpactLocalVersionDocument.Defined(
+                            declaration =
+                                source.expressionRange("", "stableLocalCase", "var value: Any = widen(origin())"),
+                            block = source.markedRange("stableLocal-block"),
+                            definition =
+                                source.expressionRange("", "stableLocalCase", "var value: Any = widen(origin())"),
+                            rhs = source.expressionRange("", "stableLocalCase", "widen(origin())"),
+                            end = ImpactLocalLifetimeEndDocument.BlockEnd(source.markedRange("stableLocal-block")),
+                        ),
+                    originalType = packetQueryText("kotlin.Any"),
+                    refinedType = packetQueryText("fixture.coverage.Payload"),
+                )
+            )
         )
 
     private suspend fun castConditions(source: NativePacketQuerySource) = packetQueryList(listOf(castCondition(source)))
@@ -276,4 +355,47 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
             refinedType = packetQueryText("fixture.coverage.Selected"),
         )
     }
+}
+
+private suspend fun incompleteComponents(fixture: NativePacketQueryCase, scenario: String, componentOwner: String) {
+    val source = fixture.source
+    val method = "${scenario}Case"
+    val producer = source.producer("", method, "origin")
+    val capture =
+        NativePacketQueryCapture(fixture.services)
+            .capture(producer = producer, targets = emptyList(), outgoing = false, declarations = emptyList())
+    val predecessor =
+        ImpactValueSiteReferenceDocument(
+            enclosing = source.reference(source.declaration("", method)),
+            range = source.markedRange("$scenario-input"),
+            role = ImpactValueRoleDocument.LocalRead,
+            valuePath =
+                packetQueryList(listOf(ImpactValuePathSegmentDocument.Field(source.field(componentOwner, "payload")))),
+        )
+    val routes =
+        capture.paths.map { path ->
+            path.steps.values.filterIsInstance<ImpactPathStepDocument.Compiler>().map { it.transfer }
+        }
+    assertTrue(
+        "$scenario never reached the exact stored-field receiver before ordered admission",
+        routes.any { route ->
+            route.isNotEmpty() &&
+                route.first().source.range == producer.anchor &&
+                route.zipWithNext().all { (first, second) -> first.target == second.source } &&
+                route.any { it.target == predecessor }
+        },
+    )
+    val forbidden = source.reference(source.declaration("", "forbidden"))
+    assertTrue(
+        "$scenario released a binding before all invoked components completed",
+        routes.flatten().none { transfer ->
+            (transfer.target.role as? ImpactValueRoleDocument.Argument)?.invocation?.callable == forbidden ||
+                transfer.target.range == source.markedRange("$scenario-forbidden")
+        },
+    )
+    val outcome = capture.outcome
+    assertTrue(
+        "$scenario lost its unresolved component obligation: ${fixture.services.executionSummary()}",
+        outcome is OperationOutcome.Rejected && outcome.reason is QueryRunRejection.CompletionUnproven,
+    )
 }

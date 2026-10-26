@@ -13,6 +13,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.call
@@ -143,12 +144,20 @@ internal class NativeValueCallerFrames(
             }
         return when (
             val value =
-                ValueInvocation.fromCompiler(
-                    enclosing = enclosing,
-                    range = sourceValueRange(expression),
-                    callable = callee,
-                    executionOwner = execution,
-                )
+                if (call is NativeValueCallSyntax.Component && callee.signature is CanonicalCompilerSignature.Property)
+                    ValueInvocation.getterFromCompiler(
+                        enclosing = enclosing,
+                        range = sourceValueRange(expression),
+                        callable = callee,
+                        executionOwner = execution,
+                    )
+                else
+                    ValueInvocation.fromCompiler(
+                        enclosing = enclosing,
+                        range = sourceValueRange(expression),
+                        callable = callee,
+                        executionOwner = execution,
+                    )
         ) {
             is Refinement.Refined -> value
             is Refinement.Rejected -> rejected()
@@ -197,7 +206,7 @@ internal class NativeValueCallerFrames(
             is Refinement.Refined ->
                 when (val selected = target.value) {
                     is NativeComponentTarget.Field -> rejected()
-                    is NativeComponentTarget.Source ->
+                    is NativeComponentTarget.Callable ->
                         nativeValueCallableEndpoint(
                             declaration = selected.declaration,
                             enclosing = enclosing,

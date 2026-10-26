@@ -83,7 +83,7 @@ class ValueSiteRestorationTest {
         }
 
     @Test
-    fun `full form and square bracket entries retain unsupported shape`(@TempDir home: Path) =
+    fun `full form and square bracket entries restore before compiler selection`(@TempDir home: Path) =
         KotlinCallOwnershipTest().withParser(home) { factory ->
             for (declaration in listOf("(val first, var second) = pair()", "val [first, second] = pair()")) {
                 val owner =
@@ -98,10 +98,10 @@ class ValueSiteRestorationTest {
                     val container = entry.parent as KtDestructuringDeclaration
                     assertTrue(container.isFullForm || container.hasSquareBrackets())
                     for (claim in listOf(ValueSiteRoleClaim.LocalBinding, ValueSiteRoleClaim.ExpressionResult)) {
-                        assertEquals(
-                            Refinement.Rejected(NativeValueSiteRestorationFailure.ROLE_SHAPE_UNSUPPORTED),
-                            owner.restoreValueSiteElement(range(entry), claim, Observation()),
-                        )
+                        val observation = Observation()
+                        val result = owner.restoreValueSiteElement(range(entry), claim, observation)
+                        assertSame(entry, result.value())
+                        observation.assertOutcome(IntellijReadCounter.VALUE_SITE_SHAPES_RESTORED)
                     }
                 }
             }

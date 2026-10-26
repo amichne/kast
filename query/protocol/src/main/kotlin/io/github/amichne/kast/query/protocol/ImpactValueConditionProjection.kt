@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.ValueConditions
 internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolList<ImpactValueConditionDocument>> =
     facts.impactEach { condition ->
         when (condition) {
+            is ValueCondition.StableLocal -> condition.impactDocument()
             is ValueCondition.StableReceiver ->
                 condition.origin
                     .impactDocument()
@@ -31,6 +32,25 @@ internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolLi
             is ValueCondition.CastSuccess -> condition.impactDocument()
         }
     }
+
+private fun ValueCondition.StableLocal.impactDocument(): ImpactProjected<ImpactValueConditionDocument.StableLocal> =
+    origin
+        .impactDocument()
+        .impactZip(useRange.impactDocument())
+        .impactZip(version.impactDocument())
+        .impactZip(originalType.value.impactText())
+        .impactZip(refinedType.value.impactText())
+        .impactMap { (original, refinedType) ->
+            val (state, originalType) = original
+            val (occurrence, version) = state
+            ImpactValueConditionDocument.StableLocal(
+                occurrence.first,
+                occurrence.second,
+                version,
+                originalType,
+                refinedType,
+            )
+        }
 
 private fun ValueCondition.CastSuccess.impactDocument(): ImpactProjected<ImpactValueConditionDocument.CastSuccess> =
     origin

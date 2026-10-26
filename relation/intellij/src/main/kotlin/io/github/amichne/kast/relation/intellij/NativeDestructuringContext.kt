@@ -21,17 +21,15 @@ internal sealed interface NativeDestructuringContext {
 
 /** The compiler-selected component result does not establish provenance for its parameter or iteration input. */
 internal fun KtDestructuringDeclaration.nativeDestructuringContext(): NativeDestructuringContext =
-    if (isFullForm || hasSquareBrackets()) NativeDestructuringContext.Unsupported
-    else
-        when (val container = parent) {
-            is KtBlockExpression ->
-                when (val initializer = initializer) {
-                    null -> NativeDestructuringContext.Unsupported
-                    else -> NativeDestructuringContext.Local(initializer)
-                }
-            is KtParameter -> if (container.isLambdaParameter) parameterContext(container) else iterationContext()
-            else -> iterationContext()
-        }
+    when (val container = parent) {
+        is KtBlockExpression ->
+            when (val initializer = initializer) {
+                null -> NativeDestructuringContext.Unsupported
+                else -> NativeDestructuringContext.Local(initializer)
+            }
+        is KtParameter -> if (container.isLambdaParameter) parameterContext(container) else iterationContext()
+        else -> iterationContext()
+    }
 
 private fun KtDestructuringDeclaration.parameterContext(parameter: KtParameter): NativeDestructuringContext =
     if (!parameter.isLambdaParameter || parameter.destructuringDeclaration !== this)

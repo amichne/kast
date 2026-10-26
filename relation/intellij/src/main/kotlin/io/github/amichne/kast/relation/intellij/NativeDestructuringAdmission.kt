@@ -35,7 +35,7 @@ private constructor(val components: List<Pair<KtDestructuringDeclarationEntry, N
                     is Refinement.Refined -> selected.value
                     is Refinement.Rejected -> return selected
                 }
-            val ordered = components.size > 1 && components.any { it.second is NativeComponentTarget.Source }
+            val ordered = components.size > 1 && components.any { it.second is NativeComponentTarget.Callable }
             if (ordered) {
                 when (val admitted = admitOrderedContext(context, enclosing, scope, projection, permit)) {
                     is Refinement.Refined -> Unit
@@ -102,6 +102,7 @@ private fun NativeNormalComponentBody.admitSelected(
     when (target) {
         is NativeComponentTarget.Field -> stored(target.parameter)
         is NativeComponentTarget.Source -> if (requireNormalBody) read(entry, target) else Refinement.Refined(Unit)
+        is NativeComponentTarget.Getter -> readGetter(entry, target)
     }
 
 private fun selectComponents(
@@ -111,7 +112,8 @@ private fun selectComponents(
 ): Refinement<List<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>, ValueFlowUnsupportedCause> {
     val components = mutableListOf<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>()
     for (entry in declaration.entries) {
-        if (entry.name == "_") continue
+        // A positional underscore has no invocation; a named `_ = property` still evaluates its getter.
+        if (entry.name == "_" && !entry.hasInitializer()) continue
         when (val allowed = permit()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return allowed

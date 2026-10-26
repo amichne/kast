@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
+import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
 
@@ -33,13 +35,42 @@ internal class NativeNormalComponentBody(
     private val projection: IntellijK2RelationProjection,
     private val permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ) {
+    fun readGetter(
+        entry: KtDestructuringDeclarationEntry,
+        target: NativeComponentTarget.Getter,
+    ): Refinement<Unit, ValueFlowUnsupportedCause> {
+        when (val allowed = permit()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return allowed
+        }
+        val selected =
+            projection.observation.observedAnalyze(entry) {
+                val symbol = target.declaration.symbol
+                val call = entry.resolveCall()
+                val receiver = call?.dispatchReceiver?.type as? KaClassType
+                call?.signature?.symbol == symbol &&
+                    symbol.modality == KaSymbolModality.FINAL &&
+                    symbol.receiverParameter == null &&
+                    receiver?.isMarkedNullable == false
+            }
+        if (!selected) return unclassifiedBody()
+        return when (val body = nativeGetterBody(target.declaration, projection)) {
+            is Refinement.Rejected -> body
+            is Refinement.Refined -> stored(body.value.parameter)
+        }
+    }
+
     fun readLoop(function: KtNamedFunction): Refinement<Unit, ValueFlowUnsupportedCause> {
         when (val allowed = permit()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return allowed
         }
-        if (function.hasBlockBody()) return unclassifiedBody()
-        return when (val body = function.bodyExpression) {
+        val body =
+            when (val result = returnedExpression(function)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return result
+            }
+        return when (body) {
             is KtThisExpression ->
                 when (val receiver = nativeThisReceiverKind(function, body, projection.observation)) {
                     is Refinement.Rejected -> receiver
@@ -59,7 +90,7 @@ internal class NativeNormalComponentBody(
         target: NativeComponentTarget.Source,
     ): Refinement<Unit, ValueFlowUnsupportedCause> {
         val function = target.declaration
-        if (target.receiver != ValueReceiverKind.DISPATCH || function.hasBlockBody()) return unclassifiedBody()
+        if (target.receiver != ValueReceiverKind.DISPATCH) return unclassifiedBody()
         when (
             val callable =
                 nativeValueCallableEndpoint(
@@ -85,11 +116,38 @@ internal class NativeNormalComponentBody(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return allowed
         }
-        return when (val body = function.bodyExpression) {
+        val body =
+            when (val result = returnedExpression(function)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return result
+            }
+        return when (body) {
             is KtNameReferenceExpression -> field(body, target)
             is KtConstantExpression -> literal(body)
             is KtStringTemplateExpression -> stringLiteral(body)
             else -> unclassifiedBody()
+        }
+    }
+
+    /**
+     * Only a sole return can reuse the bounded expression proof; a return type proves neither effects nor termination.
+     */
+    private fun returnedExpression(function: KtNamedFunction): Refinement<KtExpression, ValueFlowUnsupportedCause> {
+        val body = function.bodyExpression
+        if (body == null) return unclassifiedBody()
+        if (body !is KtBlockExpression) return Refinement.Refined(body)
+        when (val allowed = permit()) {
+            is Refinement.Rejected -> return allowed
+            is Refinement.Refined -> Unit
+        }
+        val returned = body.statements.singleOrNull()
+        if (returned !is KtReturnExpression) return unclassifiedBody()
+        return projection.observation.observedAnalyze(returned) {
+            val target = returned.resolveSymbol()?.psi
+            val expression = returned.returnedExpression
+            if (target?.originalElement == function.originalElement && expression != null)
+                Refinement.Refined(expression)
+            else unclassifiedBody()
         }
     }
 

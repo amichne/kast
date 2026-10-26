@@ -20,20 +20,13 @@ import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtIfExpression
-import org.jetbrains.kotlin.psi.KtIsExpression
 import org.jetbrains.kotlin.psi.KtLoopExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtParenthesizedExpression
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtReturnExpression
-import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression
-import org.jetbrains.kotlin.psi.KtThrowExpression
-import org.jetbrains.kotlin.psi.KtTryExpression
 import org.jetbrains.kotlin.psi.KtUnaryExpression
-import org.jetbrains.kotlin.psi.KtWhenConditionIsPattern
-import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /** The native inventory remains read-local. Only exact anchors and the admitted execution identity escape. */
 internal data class NativeLocalValueVersion(val binding: KtNamedDeclaration, val proof: ValueLocalVersion.Defined)
@@ -69,8 +62,14 @@ internal fun nativeLocalValueVersion(
     return observation.observedAnalyze(expression) {
         val binding = localVersionBinding(expression) ?: return@observedAnalyze mutableVersionRejected()
         val block = binding.statement.parent as? KtBlockExpression ?: return@observedAnalyze mutableVersionRejected()
-        val function = block.parent as? KtNamedFunction ?: return@observedAnalyze mutableVersionRejected()
-        if (function.bodyExpression !== block || !hasVersionSymbol(binding.declaration))
+        val function =
+            PsiTreeUtil.getParentOfType(block, KtNamedFunction::class.java)
+                ?: return@observedAnalyze mutableVersionRejected()
+        if (
+            valueNativeOwnership(binding.declaration, function) != NativeValueOwnership.ADMITTED ||
+                PsiTreeUtil.getParentOfType(block, KtLoopExpression::class.java) != null ||
+                !hasVersionSymbol(binding.declaration)
+        )
             return@observedAnalyze mutableVersionRejected()
         if (!definition.isVersionPosition(binding, block)) return@observedAnalyze mutableVersionRejected()
         when (
@@ -185,14 +184,13 @@ private fun KaSession.classifyVersionElement(
     function: KtNamedFunction,
     writes: MutableList<KtBinaryExpression>,
 ): Refinement<Unit, ValueFlowUnsupportedCause> {
-    if (element.forbidsStraightLineVersion()) return mutableVersionRejected()
-    if (!admitsVersionReadControl(element, binding, block)) return mutableVersionRejected()
     if (element !is KtNameReferenceExpression || element.getReferencedName() != binding.name)
         return Refinement.Refined(Unit)
     val call = element.resolveCall() as? KaVariableAccessCall ?: return mutableVersionRejected()
     if (call.signature.symbol.psi !== binding) return Refinement.Refined(Unit)
     if (valueNativeOwnership(element, function) != NativeValueOwnership.ADMITTED)
         return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    if (element.isCompoundVersionWrite()) return mutableVersionRejected()
     return when (val kind = call.kind) {
         is KaVariableAccessCall.Kind.Read -> Refinement.Refined(Unit)
         is KaVariableAccessCall.Kind.Write ->
@@ -216,54 +214,18 @@ private fun recordDirectWrite(
     }
 }
 
-/** Only direct type-test statements may surround reads. The full scan still rejects every nested write or capture. */
-private fun KaSession.admitsVersionReadControl(
-    element: PsiElement,
-    binding: KtNamedDeclaration,
-    block: KtBlockExpression,
-): Boolean =
-    when (element) {
-        is KtIfExpression ->
-            element.parent === block &&
-                isExactVersionReference((element.condition as? KtIsExpression)?.leftHandSide, binding)
-        is KtWhenExpression ->
-            element.parent === block &&
-                element.subjectVariable == null &&
-                isExactVersionReference(element.subjectExpression, binding) &&
-                element.entries.all { entry ->
-                    entry.guard == null && (entry.isElse || entry.conditions.singleOrNull() is KtWhenConditionIsPattern)
-                }
-        else -> true
-    }
-
-private fun KaSession.isExactVersionReference(expression: KtExpression?, binding: KtNamedDeclaration): Boolean {
-    val reference = expression as? KtNameReferenceExpression ?: return false
-    val call = reference.resolveCall() as? KaVariableAccessCall ?: return false
-    return call.signature.symbol.psi === binding && call.kind is KaVariableAccessCall.Kind.Read
-}
-
-private fun PsiElement.forbidsStraightLineVersion(): Boolean =
-    when (this) {
-        is KtTryExpression,
-        is KtLoopExpression,
-        is KtReturnExpression,
-        is KtThrowExpression,
-        is KtSafeQualifiedExpression -> true
+/** Control syntax cannot invalidate a definition by itself; only an actual write to this binding can. */
+private fun KtNameReferenceExpression.isCompoundVersionWrite(): Boolean {
+    var operand: PsiElement = this
+    while (operand.parent is KtParenthesizedExpression) operand = operand.parent
+    return when (val operation = operand.parent) {
         is KtBinaryExpression ->
-            when (operationToken) {
-                KtTokens.ELVIS,
-                KtTokens.ANDAND,
-                KtTokens.OROR,
-                KtTokens.PLUSEQ,
-                KtTokens.MINUSEQ,
-                KtTokens.MULTEQ,
-                KtTokens.DIVEQ,
-                KtTokens.PERCEQ -> true
-                else -> false
-            }
-        is KtUnaryExpression -> operationToken == KtTokens.PLUSPLUS || operationToken == KtTokens.MINUSMINUS
+            operation.left === operand && operation.operationToken in KtTokens.AUGMENTED_ASSIGNMENTS
+        is KtUnaryExpression ->
+            operation.operationToken == KtTokens.PLUSPLUS || operation.operationToken == KtTokens.MINUSMINUS
         else -> false
     }
+}
 
 private fun KaSession.localVersionBinding(expression: KtExpression): NativeVersionBinding? =
     when (expression) {

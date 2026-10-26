@@ -70,6 +70,7 @@ abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
     protected fun packetFixture(
         paths: List<String>,
         sourceKinds: SymbolSourceKindPolicy = SymbolSourceKindPolicy.PRODUCTION_ONLY,
+        configureCompiler: () -> Unit = {},
     ): NativePacketValueFixture {
         lateinit var source: VirtualFile
         var testSource: VirtualFile? = null
@@ -87,6 +88,7 @@ abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
                     }
             preparePacketModule(source, testSource)
             WriteCommandAction.runWriteCommandAction(project) {
+                configureCompiler()
                 copyPacketFiles(source, testSource, paths).forEach { (path, file) -> files[path] = file }
             }
             PsiDocumentManager.getInstance(project).commitAllDocuments()

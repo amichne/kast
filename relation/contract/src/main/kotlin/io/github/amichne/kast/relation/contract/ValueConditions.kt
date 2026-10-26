@@ -37,6 +37,43 @@ sealed interface ValueCondition {
     val origin: ValueConditionOrigin
     val useRange: ExactDeclarationTextRange
 
+    /** A stable use-site refinement belongs to one exact reaching definition, not every value of the local. */
+    @ConsistentCopyVisibility
+    data class StableLocal
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+        val version: ValueLocalVersion.Defined,
+        val originalType: CanonicalCompilerType,
+        val refinedType: CanonicalCompilerType,
+    ) : ValueCondition {
+        companion object {
+            fun fromCompiler(
+                source: ValueSite,
+                useRange: ExactDeclarationTextRange,
+                originalType: CanonicalCompilerType,
+                refinedType: CanonicalCompilerType,
+            ): Refinement<StableLocal, ValueSiteFailure> {
+                val version = source.localVersion
+                return when {
+                    source.role != ValueRole.LocalBinding || version !is ValueLocalVersion.Defined ->
+                        Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+                    !version.admitsRead(useRange) -> Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_OWNER)
+                    else ->
+                        Refinement.Refined(
+                            StableLocal(
+                                ValueConditionOrigin.fromSite(source),
+                                useRange,
+                                version,
+                                originalType,
+                                refinedType,
+                            )
+                        )
+                }
+            }
+        }
+    }
+
     /**
      * Prerequisite that the cast completes preserving its operand. Unsafe failure is abrupt; safe failure produces
      * null, not the operand. Types describe the compiler operand and target, not a runtime generic check.
@@ -127,12 +164,20 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
 
     fun matchesBasis(basis: SemanticReadIdentity): Boolean = facts.all { it.origin.basis == basis }
 
-    internal fun admits(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean {
+    internal fun admits(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
+        admits(source, target.identity, kind)
+
+    internal fun admits(source: ValueSite, target: ValueSiteIdentity, kind: ValueTransferKind): Boolean {
         if (this == target.conditions) return kind != ValueTransferKind.CAST_RESULT
         if (target.conditions.facts.size != facts.size + 1) return false
         if (target.conditions.facts.dropLast(1) != facts) return false
         val added = target.conditions.facts.last()
         return when (added) {
+            is ValueCondition.StableLocal ->
+                kind == ValueTransferKind.LOCAL_READ &&
+                    added.origin.matches(source) &&
+                    added.version == source.localVersion &&
+                    added.useRange == target.range
             is ValueCondition.StableReceiver ->
                 kind == ValueTransferKind.FIELD_READ && added.origin.matches(source) && added.useRange == target.range
             is ValueCondition.CastSuccess ->
