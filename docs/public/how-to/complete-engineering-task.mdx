@@ -25,9 +25,9 @@ An unrelated compiler failure does not prove the defect. Neither does a missing 
 
 Use [scoped declaration discovery](/reference/search) with the known name, directory, source set, and declaration kind. Supply known constraints before discovery. Check each matching signature and location before you select an issued `ref`.
 
-Start with the execution defaults: 15,000 milliseconds and 2,000,000 work units. Keep the response defaults of 128 results and 49,152 bytes. If execution rejects, check the admitted grant and specific cause before another call.
+The default `RUNNER_CONTROLLED` mode has no implicit semantic work or time limit. Its default output page holds up to 128 rows and 49,152 bytes. If execution rejects, examine the specific cause before another call.
 
-More time does not fix a work-limit rejection. The [limits reference](/reference/limits) separates execution, response, and retention controls.
+An explicit `BOUNDED` mode uses work and time grants. More time does not fix a work-limit rejection. The [limits reference](/reference/limits) separates execution, response, and retention controls.
 
 ## 3. Explain the affected relationships
 

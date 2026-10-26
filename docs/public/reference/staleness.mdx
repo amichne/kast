@@ -12,6 +12,16 @@ Semantic evidence belongs to one workspace root and IDEA owner. It also belongs 
 
 A path or signature can help find a declaration. Neither value grants authority to reuse an earlier answer.
 
+## After a source change
+
+Suppose a query returns an exact reference and a retained result. You then edit the source.
+The two handles have different reuse rules:
+
+1. A fresh `RUN` can ask the compiler to prove the exact identity again.
+2. A retained result still needs the original read state. It cannot become an answer for the edited source.
+
+If identity cannot be proved again, discover the declaration under current authority. Do not infer identity from a matching name.
+
 ## What can change the read state
 
 | Signal | Meaning |

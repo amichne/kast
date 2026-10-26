@@ -8,6 +8,17 @@ A Kast answer states what the compiler proved for one admitted question. Identit
 
 Kast keeps those facts distinct because each supports a different claim. A stronger claim needs its own evidence.
 
+## Choose the claim
+
+| Question | Evidence to examine | Limit |
+| --- | --- | --- |
+| Which declaration is this? | Exact identity, signature, and location. | One identity does not prove that discovery found every match. |
+| Are there no matches? | Complete coverage of the requested supported scope. | An unfinished search cannot prove absence. |
+| Which callback route is supported? | Supply, argument mapping, and an admitted invocation route. | A static route does not prove runtime execution. |
+| Did the project behavior change? | The change receipt and the project's tests. | A receipt alone does not prove the whole project builds. |
+
+These questions need distinct evidence. [Program tracing](/reference/program-tracing) shows how the callback route keeps each source owner.
+
 ## Exact facts are not the same as exhaustive coverage
 
 An exact identity proves one declaration. Complete coverage also proves that the scan finished. This claim applies within the declared supported scope.

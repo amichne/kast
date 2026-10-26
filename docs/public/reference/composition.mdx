@@ -8,6 +8,9 @@ icon: "git-merge"
 
 Composition compares canonical identities from admitted references or retained rows. A display name or opaque reference string alone cannot prove that two declarations are the same.
 
+For example, two declarations named `load` can belong to different owners. `INTERSECT` keeps a declaration only when its canonical identity appears in both inputs.
+`DIFFERENCE` needs complete coverage of the right input before it can prove that an identity is absent.
+
 ## Set operations
 
 | Step | Input field | Output rule | Evidence rule |

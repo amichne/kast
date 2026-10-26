@@ -8,6 +8,28 @@ Kast keeps the anonymous body that owns a call. It also records how that body re
 
 Kast keeps these owners distinct because supplying a callback does not prove that it runs. The agent can trace the body without guessing a named caller.
 
+## Follow one callback
+
+This example illustrates source relationships. It is not a recorded Kast result.
+
+```kotlin
+fun relay(block: () -> Unit) {
+    block()
+}
+
+fun caller() {
+    relay { target() }
+}
+```
+
+| Question | Evidence | Limit |
+| --- | --- | --- |
+| Which body contains `target()`? | The anonymous body owns that source site. | Containment does not prove invocation. |
+| Which value reaches `block`? | The supplied lambda and its argument mapping identify the binding. | Supply alone does not prove invocation. |
+| What does `block()` call? | The formal invocation identifies its source site and owner. | It does not select a runtime function value. |
+
+The route needs evidence that connects supply, mapping, and invocation. [Program tracing](/reference/program-tracing#inside-a-function-body) shows a route with an alias and a forwarding hop.
+
 ## Named callers and lexical ownership
 
 `REFERENCES` can prove which named body contains a source site. `CALLERS` and `CALLEES` add callback observations. Their named-edge policy is distinct.
