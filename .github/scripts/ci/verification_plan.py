@@ -24,9 +24,6 @@ SOURCE_GUARDS = frozenset(
         ":verifyJsonContracts",
         ":verifyConfigurationIngress",
         ":verifyKnowledgeBase",
-        ":verifyDocumentationGlossary",
-        ":verifyDocumentationMarkdown",
-        ":documentationToolingTest",
         ":verifyVerificationGraph",
     }
 )
