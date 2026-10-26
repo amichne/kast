@@ -15,7 +15,8 @@ def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
         ("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"),
         ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/value-journey"),
         ("npm", "run", "build", "--prefix", "docs/tooling/value-journey"),
-        ("git", "diff", "--exit-code", "--", "docs/public/snippets/value-journey.jsx"),
+        ("git", "diff", "--exit-code", "--", "docs/public/snippets/value-journey.jsx",
+         "docs/public/images/value-journey.svg"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "python", ".github/scripts/code_kb.py",
          "check-documentation-inputs", "--repo", ".", "--docs", "openwiki", "--strict", "--format", "json"),
         (
