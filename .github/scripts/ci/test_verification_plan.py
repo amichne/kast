@@ -34,7 +34,6 @@ class VerificationPlanTest(unittest.TestCase):
                 "relation/intellij/src/main/kotlin/NativeValueImplementationDispatch.kt",
                 {":relation:intellij", ":runtime:hosted", ":query:protocol", ":cli"},
             ),
-            ("cli/src/main/js/query-delivery.mjs", {":cli", ":query:protocol", ":runtime:hosted"}),
         )
         for path, expected in matrix:
             with self.subTest(path=path):
@@ -45,11 +44,45 @@ class VerificationPlanTest(unittest.TestCase):
                     self.assertIn(owner + ":check", plan.tasks)
                     self.assertIn(owner + ":scopedCheck", plan.tasks)
                 self.assertIn(":verifySelectedKotlinSemanticCoverage", plan.tasks)
-                self.assertEqual(230 if ":relation:intellij" in expected else 82, len(plan.caseIds))
-                self.assertEqual(26 if ":relation:intellij" in expected else 10, len(plan.classes))
+                self.assertEqual(321 if ":relation:intellij" in expected else 106, len(plan.caseIds))
+                self.assertEqual(37 if ":relation:intellij" in expected else 12, len(plan.classes))
                 self.assertNotIn(":installedProductTest", plan.tasks)
                 self.assertNotIn(":distribution:cli:nativeCompile", plan.tasks)
                 self.assertNotIn(":topology:build:check", plan.tasks)
+
+    def test_query_delivery_keeps_app_server_generation_consumers(self):
+        plan = self.plan("cli/src/main/js/query-delivery.mjs")
+        self.assertIsInstance(plan, selection.Plan)
+        self.assertEqual(
+            {":app-server", ":cli", ":query:protocol", ":runtime:hosted"},
+            set(plan.consumers),
+        )
+        self.assertIn(":app-server:check", plan.tasks)
+        self.assertIn(":app-server:scopedCheck", plan.tasks)
+        self.assertEqual(106, len(plan.caseIds))
+        self.assertNotIn(":workspace:intellij-read:check", plan.tasks)
+
+    def test_hosted_failure_fixture_keeps_intellij_encoder_consumer(self):
+        plan = self.plan("cli/src/test/resources/hosted-read-failure-encodings.json")
+        self.assertIsInstance(plan, selection.Plan)
+        self.assertIn(":cli", plan.owners)
+        self.assertIn(":workspace:intellij-read", plan.consumers)
+        self.assertIn(":workspace:intellij-read:check", plan.tasks)
+        self.assertIn(":workspace:intellij-read:scopedCheck", plan.tasks)
+        self.assertNotIn(":app-server:check", plan.tasks)
+
+    def test_file_consumers_do_not_expand_neighboring_inputs(self):
+        for path in (
+            "cli/src/main/js/query-delivery.mjs.backup",
+            "cli/src/main/js/unrelated.mjs",
+            "cli/src/test/resources/hosted-read-failure-encodings.json.backup",
+            "cli/src/test/resources/unrelated.json",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertIsInstance(plan, selection.Plan)
+                self.assertNotIn(":app-server", plan.consumers)
+                self.assertNotIn(":workspace:intellij-read", plan.consumers)
 
     def test_kotlin_inputs_keep_source_guards_without_unrelated_prose_tooling(self):
         plan = self.plan("query/contract/src/main/kotlin/QueryRows.kt")
