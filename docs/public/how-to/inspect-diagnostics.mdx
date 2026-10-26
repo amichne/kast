@@ -4,7 +4,7 @@ description: "Inspect problems for one workspace-relative file or directory and 
 icon: "stethoscope"
 ---
 
-Use this guide to inspect the problems that IDEA reports for a selected source path.
+Use this guide to see the problems that IDEA reports for a source path.
 
 You need a connected client and a saved, indexed IDEA project for the exact repository. Check that the installed catalog exposes `check_diagnostics`.
 
@@ -24,7 +24,7 @@ Start with the smallest path that covers your question. The request for a file u
 }
 ```
 
-Replace the example path with an existing path. This is an input example. It does not record a native result.
+Replace the example path with an existing path. The example shows an input, not a recorded result.
 
 ## 2. Request the diagnostics
 
@@ -34,7 +34,7 @@ Ask your agent:
 Use Kast check_diagnostics for src/main/kotlin/tutorial/KastTutorial.kt. Show each problem's location and the response's reported scope and coverage. Do not change source.
 ```
 
-For a directory, the call covers its supported files. It includes files in subdirectories.
+For a directory, the call covers supported files in that directory and its subdirectories.
 
 ## 3. Read the result
 

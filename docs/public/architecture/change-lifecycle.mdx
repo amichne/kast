@@ -6,7 +6,7 @@ icon: "file-pen-line"
 
 import { ChangeLifecycleDiagram } from "/snippets/diagrams/change-lifecycle.jsx"
 
-A source change needs an exact target. It also needs authority for the source state in the plan. A successful read alone does not authorize a write.
+A source change needs an exact target and authority for the source state in its plan. A successful read alone does not authorize a write.
 
 ## From intent to source effect
 
@@ -32,7 +32,7 @@ The diagram shows the phases in order. It does not list every encoded result kin
 | Apply | Admitted authority and recovery record | Keep the specific failure and recovery state. |
 | Settle | Resulting source and phase evidence | Inspect an uncertain effect before another write. |
 
-Each phase carries the established identity into the next phase. A matching path or a successful earlier query cannot replace that identity.
+Each phase passes the established identity to the next. A matching path or an earlier query cannot replace that identity.
 
 <span id="what-verification-establishes" />
 

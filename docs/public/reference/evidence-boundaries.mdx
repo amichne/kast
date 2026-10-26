@@ -4,7 +4,7 @@ description: "Read coverage, identify evidence limits, and decide when to reuse 
 icon: "shield-check"
 ---
 
-A Kast answer states what the compiler proved for one admitted question. Identity, coverage, completion, and whether code ran are distinct facts.
+A Kast answer states what the compiler proved for one question. Identity, coverage, completion, and runtime execution are distinct facts.
 
 Kast keeps those facts distinct because each supports a different claim. A stronger claim needs its own evidence.
 
@@ -23,9 +23,9 @@ These questions need distinct evidence. [Program tracing](/reference/program-tra
 
 An exact identity proves one declaration. Complete coverage also proves that the scan finished. This claim applies within the declared supported scope.
 
-Qualified coverage keeps the proved declaration with its stated limits. More matches or proof still to do can remain.
+Qualified coverage keeps the proved declaration and its stated limits. More matches or unfinished proof can remain.
 
-A complete scan with no matches can prove absence within that supported scope. Qualified output with no rows cannot prove this.
+A complete scan with no matches can prove absence within its supported scope. An empty qualified result cannot prove absence.
 
 A completion rejection reports proof still needed for the execution, graph, or investigation. A finished scan alone cannot supply that proof.
 
@@ -37,7 +37,7 @@ An exact occurrence can still help when complete proof fails. Keep its stated li
 
 ## Evidence delivery cannot strengthen a proof
 
-A preview limits the output shown. It does not change the original semantic question.
+A preview shows the output that fits. It does not change the original question.
 
 `RESUME` and `READ_RESULT` show produced facts. They do no new semantic work. A final page cannot supply callback or investigation proof that is still missing.
 

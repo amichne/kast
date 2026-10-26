@@ -8,7 +8,7 @@ icon: "workflow"
 import { QueryLifecycleDiagram } from "/snippets/diagrams/query-lifecycle.jsx"
 import { QueryPublicationDiagram } from "/snippets/diagrams/query-publication.jsx"
 
-A public `RUN` answers one fixed source question. Its output can span several replies without more semantic work.
+A public `RUN` answers one question about source. Its output can span several replies without more semantic work.
 
 A complete answer can exceed one reply's byte limit. Query work and output delivery therefore have separate limits.
 
@@ -38,7 +38,7 @@ For source-symbol `TRACE`, `SOURCE_RELATIONSHIPS` keeps callback execution gaps 
 
 ## A preview describes delivery
 
-A complete run can produce more evidence than fits in one reply. The preview shows the rows that fit the output limit.
+A complete run can produce more evidence than fits in one reply. The preview shows the rows that fit.
 
 The row count does not count semantic work left to do. A small result also does not prove that the run had enough work or storage capacity.
 
@@ -79,7 +79,7 @@ Retained evidence belongs to its workspace, IDEA owner, read epoch, committed so
 
 The compiler can prove a fresh identity for an exact declaration. Retained results and output continuations need their original state.
 
-If that state is not available, start a new query. It produces a new answer. It cannot restore the old delivery.
+If that state is no longer available, start a new query. It produces a new answer but cannot restore the old output.
 
 [Read retained evidence](/how-to/read-retained-evidence) gives the procedure. [Results](/reference/responses) defines the fields and causes of rejection.
 
