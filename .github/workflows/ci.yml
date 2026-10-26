@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
+      source: ${{ steps.scope.outputs.source }}
       product: ${{ steps.scope.outputs.product }}
       portable: ${{ steps.scope.outputs.portable }}
       documentation: ${{ steps.scope.outputs.documentation }}
@@ -39,6 +40,8 @@ jobs:
       - name: Test CI decisions
         run: |
           python3 .github/scripts/ci/test_validation_scope.py
+          python3 .github/scripts/ci/test_source_validation.py
+          python3 .github/scripts/ci/test_routine_gate.py
           python3 .github/scripts/ci/test_required_checks.py
           python3 .github/scripts/ci/test_validation_outcome.py
           python3 .github/scripts/ci/test_verify_documentation.py
@@ -75,6 +78,71 @@ jobs:
 
       - name: Run offline packaging suites
         run: ./packaging/run-portable-tests-container.sh
+
+  source:
+    needs: scope
+    if: needs.scope.outputs.source == 'run'
+    name: Source validation
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up GraalVM Java 25
+        id: jdk25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: graalvm
+          java-version: 25.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+          cache: pip
+          cache-dependency-path: experiments/host-observation/requirements-test.txt
+
+      - name: Install host protocol and semantic test tools
+        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+
+      - name: Set up documentation parser runtime
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.21.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
+          # A main workflow_dispatch performs a full build to seed/refresh these entries.
+          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
+          cache-cleanup: on-success
+          # caches includes caches/build-cache-1, Gradle's local task-output cache.
+          # Cacheable IDEA extraction tasks restore their outputs from that cache. Cache the non-cacheable topology Sync separately.
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            native-build-tools
+            kast/topology-intellij-kotlin-plugin
+
+      - name: Validate complete source population
+        run: python3 .github/scripts/ci/source_validation.py
+
+      - name: Retain source evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-source-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            build/reports/
+            **/build/test-results/
+          if-no-files-found: error
+          retention-days: 14
 
   kotlin:
     needs: scope
@@ -187,9 +255,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  source-feedback:
+    name: Source feedback
+    needs: [scope, source, documentation]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Require source obligations
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: python3 .github/scripts/ci/required_checks.py --source-feedback
+
   required:
     name: CI required checks
-    needs: [scope, documentation, portable, kotlin]
+    needs: [scope, source, documentation, portable, kotlin]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

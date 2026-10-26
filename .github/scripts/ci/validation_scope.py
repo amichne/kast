@@ -113,8 +113,17 @@ PRODUCT_SOURCE_PREFIXES = tuple(
     f"{module}/src/{source_set}/kotlin/" for module in PRODUCT_MODULES for source_set in ("main", "test")
 )
 
+# Candidate preflight examines this inventory against the resolved native task graph.
+NATIVE_INPUT_MODULES = frozenset({
+    "change/apply", "change/contract", "change/recovery", "change/verify", "diagnostic/contract",
+    "distribution/cli", "distribution/contract", "distribution/managed", "evidence/contract", "evidence/sqlite",
+    "kernel", "relation/contract", "symbol/contract", "traversal/contract", "workspace/contract",
+})
+QUALIFICATION_MODULES = NATIVE_INPUT_MODULES | {"cli"}
+
 
 class Check(str, Enum):
+    SOURCE = "source"
     PRODUCT = "product"
     PORTABLE = "portable"
     DOCUMENTATION = "documentation"
@@ -122,7 +131,8 @@ class Check(str, Enum):
 
 
 ALL_CHECKS = frozenset(Check)
-PRODUCT_CHECKS = frozenset({Check.PRODUCT, Check.PORTABLE})
+PRODUCT_CHECKS = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
+SOURCE_CHECKS = frozenset({Check.SOURCE})
 DOCUMENTATION_CHECKS = frozenset({Check.DOCUMENTATION})
 
 
@@ -130,9 +140,15 @@ class Scope(str, Enum):
     FULL = "FULL"
     PRODUCT = "PRODUCT"
     DOCUMENTATION = "DOCUMENTATION"
+    SOURCE = "SOURCE"
 
 
-SCOPE_CHECKS = {Scope.FULL: ALL_CHECKS, Scope.PRODUCT: PRODUCT_CHECKS, Scope.DOCUMENTATION: DOCUMENTATION_CHECKS}
+SCOPE_CHECKS = {
+    Scope.FULL: ALL_CHECKS,
+    Scope.PRODUCT: PRODUCT_CHECKS,
+    Scope.DOCUMENTATION: DOCUMENTATION_CHECKS,
+    Scope.SOURCE: SOURCE_CHECKS,
+}
 
 
 class Reason(str, Enum):
@@ -164,7 +180,8 @@ def path_checks(path: str) -> frozenset[Check]:
     if path in DOCUMENTATION_PATHS:
         return DOCUMENTATION_CHECKS
     if path.endswith(".kt") and path.startswith(PRODUCT_SOURCE_PREFIXES):
-        return PRODUCT_CHECKS
+        owner = path.split("/src/", 1)[0]
+        return PRODUCT_CHECKS if owner in QUALIFICATION_MODULES else SOURCE_CHECKS
     return ALL_CHECKS
 
 
@@ -236,7 +253,11 @@ def select(event: str, base: str, head: str, root: Path = ROOT) -> Selection:
         return Selection(ALL_CHECKS, Reason.DIFF_UNAVAILABLE)
     if not diff.stdout:
         return Selection(ALL_CHECKS, Reason.NO_CHANGES)
-    return Selection(classify_diff(diff.stdout), Reason.CHANGED_INPUTS)
+    checks = classify_diff(diff.stdout)
+    # Main retains qualified candidates for developer promotion after source-only PR feedback.
+    if event == "push" and checks == SOURCE_CHECKS:
+        checks = PRODUCT_CHECKS
+    return Selection(checks, Reason.CHANGED_INPUTS)
 
 
 def main() -> None:

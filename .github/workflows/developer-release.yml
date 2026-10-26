@@ -48,7 +48,7 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Admit successful producer and merged source tree
+      - name: Admit qualified candidate producer and merged source tree
         id: candidate
         env:
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}

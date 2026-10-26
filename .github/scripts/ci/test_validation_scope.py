@@ -27,7 +27,8 @@ from validation_scope import (
 )
 
 DOCS = frozenset({Check.DOCUMENTATION})
-PRODUCT = frozenset({Check.PRODUCT, Check.PORTABLE})
+PRODUCT = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
+SOURCE_ONLY = frozenset({Check.SOURCE})
 PAGE = "docs/public/reference/api.mdx"
 SOURCE = "cli/src/main/kotlin/Management.kt"
 
@@ -101,9 +102,29 @@ class ValidationScopeTest(unittest.TestCase):
                 self.assertEqual(ALL_CHECKS, classify_paths((path,)))
 
     def test_product_sources_and_packaging_do_not_need_mintlify_or_graph_inspection(self):
-        for path in (SOURCE, "query/protocol/src/test/kotlin/QueryTest.kt"):
+        for path in (SOURCE, "distribution/cli/src/main/kotlin/Command.kt"):
             with self.subTest(path=path):
                 self.assertEqual(PRODUCT, classify_paths((path,)))
+
+    def test_source_checks_keep_semantic_adapters_and_contracts_without_candidate_assembly(self):
+        for path in (
+            "query/contract/src/main/kotlin/Query.kt",
+            "query/protocol/src/test/kotlin/QueryTest.kt",
+            "relation/intellij/src/main/kotlin/Adapter.kt",
+            "runtime/hosted/src/main/kotlin/Hosted.kt",
+            "source/service/src/main/kotlin/SourceService.kt",
+        ):
+            self.assertEqual(SOURCE_ONLY, classify_paths((path,)))
+
+    def test_native_and_installation_inputs_keep_qualification(self):
+        for path in (
+            "kernel/src/main/kotlin/Outcome.kt",
+            "evidence/sqlite/src/main/kotlin/Database.kt",
+            "change/recovery/src/main/kotlin/Recovery.kt",
+            "relation/contract/src/main/kotlin/Binding.kt",
+            "cli/src/main/kotlin/installation/Install.kt",
+        ):
+            self.assertEqual(PRODUCT, classify_paths((path,)))
 
     def test_build_wiring_and_unclassified_paths_keep_every_check(self):
         for path in (
@@ -195,7 +216,7 @@ class ValidationScopeTest(unittest.TestCase):
                 main()
             choose.assert_called_once_with("push", "a" * 40, "b" * 40)
             self.assertEqual(
-                "product=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\nscope=DOCUMENTATION\n",
+                "source=skip\nproduct=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\nscope=DOCUMENTATION\n",
                 output.read_text(),
             )
 
@@ -232,6 +253,12 @@ class ExactDiffTest(unittest.TestCase):
         self.write("docs/public/reference/search.mdx", "# Other\n")
         head = self.commit("second page edit")
         self.assertEqual(DOCS, select("push", self.base, head, self.root).checks)
+
+    def test_source_pr_defers_candidate_but_main_push_keeps_qualification(self):
+        self.write("query/service/src/main/kotlin/QueryService.kt", "class QueryService\n")
+        head = self.commit("source change")
+        self.assertEqual(SOURCE_ONLY, select("pull_request", self.base, head, self.root).checks)
+        self.assertEqual(PRODUCT, select("push", self.base, head, self.root).checks)
 
     def test_push_includes_product_changes_before_the_final_docs_commit(self):
         self.write(SOURCE, "class Management\n")
