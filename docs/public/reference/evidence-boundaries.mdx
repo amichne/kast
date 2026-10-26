@@ -4,17 +4,28 @@ description: "Read coverage, identify evidence limits, and decide when to reuse 
 icon: "shield-check"
 ---
 
-A Kast answer states what the compiler proved for one admitted question. Identity, coverage, completion, and whether code ran are distinct facts.
+A Kast answer states what the compiler proved for one question. Identity, coverage, completion, and runtime execution are distinct facts.
 
 Kast keeps those facts distinct because each supports a different claim. A stronger claim needs its own evidence.
+
+## Choose the claim
+
+| Question | Evidence to examine | Limit |
+| --- | --- | --- |
+| Which declaration is this? | Exact identity, signature, and location. | One identity does not prove that discovery found every match. |
+| Are there no matches? | Complete coverage of the requested supported scope. | An unfinished search cannot prove absence. |
+| Which callback route is supported? | Supply, argument mapping, and an admitted invocation route. | A static route does not prove runtime execution. |
+| Did the project behavior change? | The change receipt and the project's tests. | A receipt alone does not prove the whole project builds. |
+
+These questions need distinct evidence. [Program tracing](/reference/program-tracing) shows how the callback route keeps each source owner.
 
 ## Exact facts are not the same as exhaustive coverage
 
 An exact identity proves one declaration. Complete coverage also proves that the scan finished. This claim applies within the declared supported scope.
 
-Qualified coverage keeps the proved declaration with its stated limits. More matches or proof still to do can remain.
+Qualified coverage keeps the proved declaration and its stated limits. More matches or unfinished proof can remain.
 
-A complete scan with no matches can prove absence within that supported scope. Qualified output with no rows cannot prove this.
+A complete scan with no matches can prove absence within its supported scope. An empty qualified result cannot prove absence.
 
 A completion rejection reports proof still needed for the execution, graph, or investigation. A finished scan alone cannot supply that proof.
 
@@ -26,7 +37,7 @@ An exact occurrence can still help when complete proof fails. Keep its stated li
 
 ## Evidence delivery cannot strengthen a proof
 
-A preview limits the output shown. It does not change the original semantic question.
+A preview shows the output that fits. It does not change the original question.
 
 `RESUME` and `READ_RESULT` show produced facts. They do no new semantic work. A final page cannot supply callback or investigation proof that is still missing.
 

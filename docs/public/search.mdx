@@ -13,7 +13,7 @@ Use these prompts with your [connected agent](/agent-harnesses). Replace the exa
 
 > Use Kast to trace the result of submitOrder. Show the source connections through helpers, fields, and callbacks. Report where the evidence stops.
 
-A value can move through several functions without its original name. Kast can preserve those connections and distinguish a separate value with the same type.
+A value can move through several functions and take different names. Kast can trace those connections and distinguish another value of the same type.
 
 [Explore a value journey](/explanation/value-journey).
 
@@ -21,13 +21,13 @@ A value can move through several functions without its original name. Kast can p
 
 > Use Kast to find submitOrder. If several functions match, show their signatures so I can choose one. Then find its callers.
 
-Use the returned locations to review the code that calls your selected function.
+Use the returned locations to review the callers of your selected function.
 
 ## Which implementation matters?
 
 > Use Kast to find implementations of CacheManager in this project. Show their source locations.
 
-An implementation list describes source code. It does not choose the implementation that a live application uses.
+The list describes source code. It does not show which implementation a live application uses.
 
 ## What problems does IDEA report?
 
@@ -45,7 +45,7 @@ Review the diff and run your project's tests after a change.
 
 ## What if Kast cannot finish?
 
-Keep the reason from the result. Ask your agent to narrow the question or resolve the reported problem.
+Read the reason in the result. Ask your agent to narrow the question or resolve the problem.
 An unfinished search does not prove that no matches exist.
 
 [Troubleshoot Kast](/troubleshooting) to return to your task.

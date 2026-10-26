@@ -12,6 +12,16 @@ Semantic evidence belongs to one workspace root and IDEA owner. It also belongs 
 
 A path or signature can help find a declaration. Neither value grants authority to reuse an earlier answer.
 
+## After a source change
+
+Suppose a query returns an exact reference and a retained result. You then edit the source.
+The two handles have different reuse rules:
+
+1. A fresh `RUN` can ask the compiler to prove the exact identity again.
+2. A retained result still needs the original read state. It cannot become an answer for the edited source.
+
+If identity cannot be proved again, discover the declaration under current authority. Do not infer identity from a matching name.
+
 ## What can change the read state
 
 | Signal | Meaning |
@@ -34,7 +44,7 @@ An IDEA restart changes the live owner. Another worktree remains another workspa
 
 Kast keeps a locator for the original declaration. To get a fresh exact reference, it first examines the workspace and owner. The compiler must then prove the identity again.
 
-The compiler proves the declaration under current authority. Kast examines that authority again before it issues the fresh reference.
+Kast examines that authority again before it issues the fresh reference.
 
 <RetentionDiagram />
 
@@ -60,7 +70,7 @@ For a local declaration, the owning file has to stay unchanged. After a local ed
 
 Retained results hold rows and evidence that cannot change. Kast does not move them to a new epoch. A read of their output does not rerun the producer.
 
-Expiry, eviction, or owner retirement can block reuse. So can identity that does not match or source state that has changed. A larger grant cannot restore missing state.
+Expiry, eviction, or owner retirement can block reuse. A changed source state or identity mismatch can also block it. A larger grant cannot restore missing state.
 
 ## Rejection and recovery
 

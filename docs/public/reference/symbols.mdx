@@ -15,7 +15,7 @@ An exact reference carries a declaration identity proved by the compiler into th
 | `signature` | The identity and facts about a callable or property, proved by the compiler. |
 | `source` | A bounded slice of committed source, if requested. |
 
-Use signature and location to tell candidates apart. The issued `ref` gives Kast the identity to check for a semantic call.
+Use the signature and location to tell candidates apart. Pass the issued `ref` so Kast can check the selected identity.
 
 `SOURCE` adds a bounded slice of committed source. To read an anonymous body or exact occurrence, use the distinct anchored `READ_SOURCE` action.
 
@@ -27,7 +27,7 @@ A local property uses a `LOCAL_PROPERTY` signature. It states the type and wheth
 
 Each identity keeps the file and compiler identity. It also keeps the declaration range, the range of its containing declaration, and bounded lexical owner ranges.
 
-Equal names in distinct scopes can name distinct declarations. A local property identity does not prove how values are assigned to it.
+The same name can refer to different declarations in different scopes. A local property identity does not prove how values are assigned to it.
 
 To reacquire a local reference, the owning file must stay unchanged. After a local edit or move, run discovery again. Do so even if the displayed signature stays the same.
 

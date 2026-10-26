@@ -21,7 +21,7 @@ Use the installed catalog for your release. [Generated schemas](/reference/schem
 
 `RUN` produces a new answer. `RESUME` and `READ_RESULT` show produced evidence. They do no new semantic work.
 
-`READ_SOURCE` uses an issued `candidateRef` to select an anchored occurrence or anonymous body. An exact symbol reference belongs to a different input family.
+`READ_SOURCE` accepts an issued candidate, exact symbol, or source selector in `candidateRef`. It checks the reference against its original source state.
 
 ```json
 {

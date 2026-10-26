@@ -6,7 +6,7 @@ icon: "network"
 
 import { TopologyDiagram } from "/snippets/diagrams/topology.jsx"
 
-The agent connection carries requests. The IDEA project supplies semantic authority. An installed connection alone does not prove that the project is ready.
+Your agent sends requests through a connection. The IDEA project supplies semantic authority. An installed connection alone does not prove that the project is ready.
 
 ## Follow one request
 
@@ -17,7 +17,7 @@ The agent connection carries requests. The IDEA project supplies semantic author
 3. The canonical query uses domain services. The compiler and project indexes back those services.
 4. Retained query state keeps the evidence for later reads. It cannot replace current compiler authority.
 
-The arrows show who owns each part. They do not show every process or how it is deployed. MCP and Tool RPC have distinct session lifecycles. The current Codex plugin uses MCP. Codex owns its App Server and control socket.
+The arrows show who owns each part. They do not show every process or its deployment. MCP and Tool RPC have distinct session lifecycles. The current Codex plugin uses MCP. Codex owns its App Server and control socket.
 
 ## Find the source owner
 
@@ -30,7 +30,7 @@ The arrows show who owns each part. They do not show every process or how it is 
 | Stored evidence | `evidence`, `QueryStateStore` | Keep identities, rows, and validity requirements. |
 | Source changes | `change` | Plan, admit, apply, verify, and recover supported changes. |
 
-A module need not run in its own process. Stored change records and retained query state have distinct owners and lifetimes.
+A module does not need its own process. Change records and retained query state have distinct owners and lifetimes.
 
 Use [Lifecycles](/reference/lifecycles) for connection and daemon ownership. Use [Staleness](/reference/staleness) for reuse requirements.
 
