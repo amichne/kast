@@ -58,5 +58,5 @@ Select your Kotlin repository or worktree, then ask:
 
 Kast describes connections in source. Your project's build and tests establish behavior after a change.
 
-Kast uses the [MIT License](LICENSE).
+Kast uses the [GNU General Public License v3.0 only](LICENSE).
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
