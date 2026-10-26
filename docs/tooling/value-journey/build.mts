@@ -1,9 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 import dark from "@pierre/theme/pierre-dark";
 import light from "@pierre/theme/pierre-light";
 import { build } from "esbuild";
 import { codeToTokensWithThemes } from "shiki";
+import { petStoreNames } from "./src/pet-store.ts";
 
 // Shiki uses TextMate rules, not VS Code's separate semantic-token settings.
 const themes = Object.fromEntries(
@@ -25,12 +26,14 @@ const themes = Object.fromEntries(
 const syntax = Object.fromEntries(
   await Promise.all(
     ["E0", "E3", "E4"].map(async (variant) => {
-      const source = await readFile(
-        new URL(
-          `../../../relation/intellij/testData/r1-value-flow/${variant}.kt`,
-          import.meta.url,
+      const source = petStoreNames(
+        await readFile(
+          new URL(
+            `../../../relation/intellij/testData/r1-value-flow/${variant}.kt`,
+            import.meta.url,
+          ),
+          "utf8",
         ),
-        "utf8",
       );
       const lines = await codeToTokensWithThemes(source, {
         lang: "kotlin",
@@ -72,3 +75,22 @@ await build({
   footer: { js: "return KastValueJourney.ValueJourney(); };" },
   outfile: "../../public/snippets/value-journey.jsx",
 });
+
+// Build the README preview from the same admitted routes and source snapshots.
+const previewModule = await build({
+  entryPoints: ["src/preview.ts"],
+  bundle: true,
+  write: false,
+  platform: "node",
+  format: "esm",
+  loader: { ".kt": "text" },
+});
+const previewCode = previewModule.outputFiles[0];
+if (!previewCode) throw new Error("Missing preview bundle");
+const { buildPreview } = (await import(
+  `data:text/javascript;base64,${Buffer.from(previewCode.contents).toString("base64")}`
+)) as typeof import("./src/preview");
+await writeFile(
+  new URL("../../public/images/value-journey.svg", import.meta.url),
+  await buildPreview(),
+);

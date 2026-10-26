@@ -1,36 +1,35 @@
 ---
-title: "Follow a value through Kotlin"
-sidebarTitle: "A value journey"
-description: "Explore how one value keeps its identity through returns, fields, and a collection callback—and where missing proof stops the explanation."
+title: "Where does this value go?"
+sidebarTitle: "Follow a value"
+description: "Watch a value move through a helper, an object, and a list. Change the example to see the route change."
 icon: "route"
 ---
 
 import { ValueJourney } from "/snippets/value-journey.jsx"
 
-A value can cross several function boundaries without becoming a different value. This walkthrough follows one `ClientValue` through a field and a `map` callback, with each transfer attached to its source.
+Press **Follow the value**. The highlighted source and route move together.
+Then choose another example to see what changes.
 
 <ValueJourney />
 
-## What to notice
+## Try three changes
 
-The tracked value is the constructor's `ClientValue` result. It is not the input's `id`, the whole envelope, or the whole list.
+- **Return a different value:** the list contains a separate value. The original route does not reach it.
+- **Use the value twice:** choose either use of the same producer.
+- **Remove a library rule:** the route stops where the example lacks evidence.
 
-**Compiler evidence and reviewed rules answer different questions.** The compiler binds the lambda to `map.transform`. A reviewed library rule relates the callback result to a possible output element. Binding alone does not establish that relationship.
+A search for `Pet` finds text in all these examples. The connections explain why the answers differ.
 
-Choose **E0 · Missing proof** to remove that rule from the explanation without changing the source. The path stops at the callback result. It does not invent the missing transfer.
+## What the illustration means
 
-Choose **E3 · Two continuations** to follow either use of the same producer. Choose **E4 · Independent constant** to see why a separately constructed value is not a continuation of the original one.
+The example traces one `Pet`. A `PetListing` can carry it in `pet`, and a list can carry that listing in an element.
+The listing and list keep their own identities.
 
-**Story** shows the main transfers. **Normal** adds call crossings. **Proof** shows every expected step and its source anchor. These controls change presentation, not the underlying route.
+The compiler identifies the function and callback. A reviewed rule for `map` connects a callback result to a possible list element.
+Select **Evidence** to inspect that distinction and each source location.
 
-## What this example proves
+This illustration uses [fixed Kotlin fixtures](https://github.com/amichne/kast/tree/main/relation/intellij/testData/r1-value-flow) and authored expected routes.
+The displayed code uses pet-store names. The original fixtures stay unchanged.
+It does not query Kast or record execution. Its final step does not prove a complete investigation.
 
-This is an interactive illustration, not a recorded Kast response. Its source and expected routes come from the repository's frozen [R1 fixtures](https://github.com/amichne/kast/tree/main/relation/intellij/testData/r1-value-flow). The missing-proof comparison deliberately withholds one expected transfer.
-
-The example does not run Kotlin or query an IDE. It contains no captured compiler identities or investigation coverage ledger. Reaching its final step does not establish a complete investigation.
-
-Kast's static relationships do not prove that a callback ran, that a branch can run, or how often code runs. [Program tracing](/reference/program-tracing) defines those limits. [Evidence boundaries](/reference/evidence-boundaries) explains what an answer can establish.
-
-## Design references
-
-The [design proposal](https://gist.github.com/amichne/b71417bfaacca0428bc25c36f556b2f4) combines source-local inspection with explicit proof authority. This explainer borrows inline context from the [IntelliJ debugger](https://www.jetbrains.com/help/idea/examining-suspended-program.html) and presentation detail levels from [SARIF code flows](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html#_Toc34317764). It illustrates static relationships, not debugger execution.
+[Ask about your own code](/search) · [Program tracing reference](/reference/program-tracing)

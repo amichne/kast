@@ -21,7 +21,6 @@ Make sure that your terminal can run your agent's command. Replace `/path/to/kot
   <Tab title="Codex">
     The bundled plugin supplies MCP tools. It also gives the agent a short brief at session start. The brief includes absolute paths to the schema and examples.
 
-    After Codex admits the plugin, installation removes Kast-owned legacy MCP and App Server registrations. It leaves other registrations in place.
 
     ```shell
     kast plugin codex
@@ -124,7 +123,7 @@ Kast rejects unverified payloads and symbolic-link slots before replacement. `--
 
 `config.last-good.json` supplies a settings checkpoint. If both settings files fail, saved routing receipts can rebuild preferences. Kast keeps rejected copies.
 
-If an older receipt lacks routing proof, supply `--destination`. Keep the reported backup until recovery succeeds.
+If a receipt lacks routing proof, supply `--destination`. Keep the reported backup until recovery succeeds.
 
 <a id="disconnect-or-upgrade" />
 

@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 333.89 421.4" width="333.89" height="421.4" style="--bg:#171816;--fg:#F0F1EB;--accent:#8FA7FF;--muted:#B3B9AC;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 341.89 449.4" width="341.89" height="449.4" style="--bg:#171816;--fg:#F0F1EB;--line:#697265;--accent:#8FA7FF;--muted:#B3B9AC;--surface:#22251F;--border:#515B4B;background:var(--bg)">
 <style>
 
-  text { font-family: 'system-ui, sans-serif', system-ui, sans-serif; }
+  text { font-family: 'SUSE', system-ui, sans-serif; }
   svg {
     /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
     --_text:          var(--fg);
@@ -19,40 +19,40 @@
   }
 </style>
 <defs>
-  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+  <marker id="callback-route-arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
     <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
-  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+  <marker id="callback-route-arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
     <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
 </defs>
-<polyline class="edge" data-from="L" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="166.945,56.900000000000006 166.945,88.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="S" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="166.945,125.80000000000001 166.945,157.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="F" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="166.945,194.70000000000002 166.945,226.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="F" data-to="I" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="166.945,263.6 166.945,295.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="I" data-to="B" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="166.945,332.5 166.945,364.5" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="L" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="170.945,60.900000000000006 170.945,96.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#callback-route-arrowhead)" />
+<polyline class="edge" data-from="S" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="170.945,133.8 170.945,169.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#callback-route-arrowhead)" />
+<polyline class="edge" data-from="A" data-to="F" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="170.945,206.70000000000002 170.945,242.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#callback-route-arrowhead)" />
+<polyline class="edge" data-from="F" data-to="I" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="170.945,279.6 170.945,315.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#callback-route-arrowhead)" />
+<polyline class="edge" data-from="I" data-to="B" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="170.945,352.5 170.945,388.5" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#callback-route-arrowhead)" />
 <g class="node" data-id="L" data-label="Lambda containing charge()" data-shape="rectangle">
-  <rect x="64.46" y="20" width="204.97" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="166.945" y="38.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Lambda containing charge()</text>
+  <rect x="68.46" y="24" width="204.97" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="170.945" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Lambda containing charge()</text>
 </g>
 <g class="node" data-id="S" data-label="Supply to submit.block" data-shape="rectangle">
-  <rect x="81.503" y="88.9" width="170.884" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="166.945" y="107.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Supply to submit.block</text>
+  <rect x="85.503" y="96.9" width="170.884" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="170.945" y="115.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Supply to submit.block</text>
 </g>
 <g class="node" data-id="A" data-label="Immutable alias: action" data-shape="rectangle">
-  <rect x="82.244" y="157.8" width="169.402" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="166.945" y="176.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Immutable alias: action</text>
+  <rect x="86.244" y="169.8" width="169.402" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="170.945" y="188.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Immutable alias: action</text>
 </g>
 <g class="node" data-id="F" data-label="Forward to forward.next" data-shape="rectangle">
-  <rect x="75.575" y="226.70000000000002" width="182.73999999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="166.945" y="245.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Forward to forward.next</text>
+  <rect x="79.575" y="242.70000000000002" width="182.73999999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="170.945" y="261.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Forward to forward.next</text>
 </g>
 <g class="node" data-id="I" data-label="Invocation site: next()" data-shape="rectangle">
-  <rect x="85.20799999999997" y="295.6" width="163.47400000000005" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="166.945" y="314.05" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Invocation site: next()</text>
+  <rect x="89.20799999999997" y="315.6" width="163.47400000000005" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="170.945" y="334.05" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Invocation site: next()</text>
 </g>
 <g class="node" data-id="B" data-label="Anonymous body and charge() occurrence" data-shape="rectangle">
-  <rect x="20" y="364.5" width="293.89" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="166.945" y="382.95" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Anonymous body and charge() occurrence</text>
+  <rect x="24" y="388.5" width="293.89" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="170.945" y="406.95" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Anonymous body and charge() occurrence</text>
 </g>
 </svg>

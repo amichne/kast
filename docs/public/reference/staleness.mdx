@@ -5,7 +5,10 @@ description: "Understand read epochs, content admission, exact-reference reacqui
 icon: "history"
 ---
 
-Semantic evidence belongs to one workspace root, IDEA owner, read epoch, and source state. A later request needs fresh proof of the facts its action requires.
+import { RetentionDiagram } from "/snippets/diagrams/retention.jsx"
+import { IncrementalFactsDiagram } from "/snippets/diagrams/incremental-facts.jsx"
+
+Semantic evidence belongs to one workspace root and IDEA owner. It also belongs to one read epoch and source state. Each later request needs fresh proof for its action.
 
 A path or signature can help find a declaration. Neither value grants authority to reuse an earlier answer.
 
@@ -21,7 +24,7 @@ A path or signature can help find a declaration. Neither value grants authority 
 | Root model | Source roots or dependencies change. |
 | Indexing | IDEA enters or leaves an indexing cycle. |
 
-The read epoch is an opaque snapshot of these signals. Equal epochs do not replace checks of content and compiler identity.
+The read epoch is an opaque snapshot of these signals. Matching epochs do not prove that content or compiler identity matches.
 
 Kast also checks committed documents and the source evidence needed for a request. Unsaved documents or a missing project can block admission before semantic work.
 
@@ -29,30 +32,20 @@ An IDEA restart changes the live owner. Another worktree remains another workspa
 
 ## Exact references can get fresh authority
 
-To reacquire an exact reference, Kast keeps a locator for the original declaration. It checks the workspace and owner before it asks the compiler to revalidate the identity.
+Kast keeps a locator for the original declaration. To get a fresh exact reference, it first examines the workspace and owner. The compiler must then prove the identity again.
 
-The compiler proves the declaration under current authority. Kast checks that authority again before it issues the fresh reference.
+The compiler proves the declaration under current authority. Kast examines that authority again before it issues the fresh reference.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  E["Earlier exact reference"] --> A["Admit current workspace and owner"]
-  A --> C["Compiler revalidates declaration"]
-  C --> S["Reexamine current source state"]
-  S --> R["Issue fresh exact reference"]
-  A -->|Mismatch| X["Reject reacquisition"]
-  C -->|Changed identity| X
-  S -->|State moved| X
-```
+<RetentionDiagram />
 
 1. Admit the current workspace and IDEA owner.
-2. Revalidate the original declaration with the compiler.
-3. Check source state again before issuing a fresh exact reference.
+2. Use the compiler to prove the original declaration again.
+3. Examine source state again before the new exact reference.
 4. Reject reuse if identity or state cannot be proved.
 
 For a local declaration, the owning file has to stay unchanged. After a local edit or move, use discovery to prove a new identity.
 
-`reference_acquisitions` reports reacquisition when the operation supplies it. A different opaque token alone does not prove a source change.
+`reference_acquisitions` records this step when the operation supplies it. A different opaque token alone does not prove a source change.
 
 ## Retained evidence needs its original state
 
@@ -65,45 +58,35 @@ For a local declaration, the owning file has to stay unchanged. After a local ed
 | Row ID | The owning retained result must match. |
 | Result or evidence cursor | The cursor selects a position within its identified result. |
 
-Retained results hold rows and evidence that cannot change. Kast does not move them to a new epoch. Reading their output does not rerun the producer.
+Retained results hold rows and evidence that cannot change. Kast does not move them to a new epoch. A read of their output does not rerun the producer.
 
 Expiry, eviction, or owner retirement can block reuse. So can identity that does not match or source state that has changed. A larger grant cannot restore missing state.
 
 ## Rejection and recovery
 
-`FRESHNESS_REJECTED` means that the needed read state was not proved. Its stage and specific reason show whether the model admission or a later content check failed.
+`FRESHNESS_REJECTED` means that the needed read state was not proved. Its stage and reason name the failed step. The failure can occur at model admission or at a later content check.
 
 The returned action can call for a fresh read or new authority checks. The client keeps that cause and uses newly issued handles.
 
 A new `RUN` produces a new answer. It cannot restore the exact output from a retired result.
 
-For writes, staleness also protects the source state in the plan. If a response is lost, check the source effect and recovery state before another write.
+For writes, staleness also protects the source state in the plan. If a response is lost, examine the source effect and recovery state before another write.
 
 [Results](/reference/responses#saved-state-and-identity) defines handle use. [Troubleshooting](/reference/troubleshooting) gives recovery procedures.
 
 ## Incremental facts need new authority
 
-Some completed semantic facts can survive a source-state change. They follow a different rule from retained query answers.
+Some completed semantic facts can survive a source-state change. Their reuse rules differ from those for retained query answers.
 
-`SemanticCallbackFactStore` keeps bounded, detached callback summaries, supplier inventories, and named-relation facts under the project owner.
+`SemanticCallbackFactStore` keeps detached facts under the project owner, with fixed limits. These include callback summaries, supplier inventories, and named-relation facts.
 
-Its dependency snapshot records source inventories and resolution inputs. Equal paths, SDK names, or modification counters cannot prove equal content.
+Its dependency snapshot records source inventories and resolution inputs. Paths, SDK names, and change counters alone cannot prove that content matches.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  O["Stored completed fact and old snapshot"] --> C{"Current snapshot proves unchanged dependencies?"}
-  N["Current source and resolution inventories"] --> C
-  C -->|No| I["Invalidate entry with a finite cause"]
-  I --> F["Fresh native computation"]
-  C -->|Yes| P["Reuse proof from old to current snapshot"]
-  P --> A["Admit every endpoint and binding under current authority"]
-  A --> R["Current semantic fact"]
-```
+<IncrementalFactsDiagram />
 
-The comparison needs continuity of the live environment. It also needs matching resolution inputs, dependency domain, and source content.
+Reuse needs the same live environment. Resolution inputs, the dependency domain, and source content must also match.
 
-Even with that proof, old endpoints remain stale until current admission succeeds. The reuse proof never renews an old lease or continuation.
+That proof alone does not refresh old endpoints. Current admission must still succeed. The reuse proof never renews an old lease or continuation.
 
 <Accordion title="Changes that reject incremental reuse">
   - A source inventory changes or its dependency domain differs.
@@ -111,10 +94,10 @@ Even with that proof, old endpoints remain stale until current admission succeed
   - The live environment loses continuity or its project owner retires.
   - A saved fact refers to source outside the admitted inventory.
 
-  A rejected comparison invalidates the stored entry. Fresh computation still needs complete, admitted evidence before optional publication.
+  If the comparison fails, Kast invalidates the stored entry. Fresh work still needs complete, admitted evidence before Kast can publish it.
 </Accordion>
 
-An unchanged dependency set can permit fact reuse while an old query-result handle still rejects. Those objects have different validity rules.
+Kast can reuse a fact when its dependencies stay unchanged. An old query-result handle can still reject. Each object has its own validity rules.
 
 [Query reuse](/architecture/query-reuse) covers shorter lifetimes within one invocation. [Topology](/architecture/topology#state-owners-and-lifetimes) compares their owners.
 

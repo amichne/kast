@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 558.1339166666667 782.5369999999999" width="558.1339166666667" height="782.5369999999999" style="--bg:#171816;--fg:#F0F1EB;--accent:#8FA7FF;--muted:#B3B9AC;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 572.1339166666667 818.5369999999999" width="572.1339166666667" height="818.5369999999999" style="--bg:#171816;--fg:#F0F1EB;--line:#697265;--accent:#8FA7FF;--muted:#B3B9AC;--surface:#22251F;--border:#515B4B;background:var(--bg)">
 <style>
 
-  text { font-family: 'system-ui, sans-serif', system-ui, sans-serif; }
+  text { font-family: 'SUSE', system-ui, sans-serif; }
   svg {
     /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
     --_text:          var(--fg);
@@ -19,67 +19,67 @@
   }
 </style>
 <defs>
-  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+  <marker id="change-lifecycle-arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
     <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
-  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+  <marker id="change-lifecycle-arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
     <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
 </defs>
-<polyline class="edge" data-from="I" data-to="P" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="231.41249999999997,56.900000000000006 231.41249999999997,88.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="P" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="231.41249999999997,125.80000000000001 231.41249999999997,157.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="N" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Rejected" points="182.5063333333333,402.3308333333334 182.5063333333333,471.237 119.15049999999997,471.237 119.15049999999998,535.537" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="W" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Admitted" points="280.3186666666666,402.3308333333334 280.3186666666666,471.237 343.67449999999997,471.237 343.67449999999997,535.537" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="W" data-to="V" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="309.8833333333333,572.437 309.8833333333333,592.437 263.01649999999995,592.437 263.01649999999995,604.437" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="V" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="231.07783333333327,641.337 231.07783333333327,661.337 168.78124999999994,661.337 168.78124999999994,673.337" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="W" data-to="U" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Uncertain effect" points="377.4656666666666,572.437 377.4656666666666,629.037 451.95641666666666,629.037 451.95641666666666,713.637 460.6715833333333,713.637 460.6715833333333,725.637" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="V" data-to="U" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Recovery required" points="294.9551666666666,641.337 294.9551666666666,661.337 357.25174999999996,661.337 357.25174999999996,713.637 383.20924999999994,713.637 383.20924999999994,725.637" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="I" data-to="P" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="237.41249999999997,60.900000000000006 237.41249999999997,96.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="P" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="237.41249999999997,133.8 237.41249999999997,169.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="A" data-to="N" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Rejected" points="188.5063333333333,414.3308333333334 188.5063333333333,487.237 123.15049999999997,487.237 123.15049999999998,555.537" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="A" data-to="W" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Admitted" points="286.3186666666666,414.3308333333334 286.3186666666666,487.237 351.67449999999997,487.237 351.67449999999997,555.537" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="W" data-to="V" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="317.8833333333333,592.437 317.8833333333333,616.437 269.01649999999995,616.437 269.01649999999995,628.437" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="V" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="237.07783333333327,665.337 237.07783333333327,689.337 172.78124999999994,689.337 172.78124999999994,701.337" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="W" data-to="U" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Uncertain effect" points="385.4656666666666,592.437 385.4656666666666,657.037 461.95641666666666,657.037 461.95641666666666,745.637 470.6715833333333,745.637 470.6715833333333,757.637" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="V" data-to="U" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Recovery required" points="300.9551666666666,665.337 300.9551666666666,689.337 365.25174999999996,689.337 365.25174999999996,745.637 393.20924999999994,745.637 393.20924999999994,757.637" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#change-lifecycle-arrowhead)" />
 <g class="edge-label" data-from="A" data-to="N" data-label="Rejected">
-  <rect x="89.15049999999997" y="478.237" width="59.230000000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="118.76549999999997" y="493.387" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Rejected</text>
+  <rect x="93.15049999999997" y="494.237" width="59.230000000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="122.76549999999997" y="509.387" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Rejected</text>
 </g>
 <g class="edge-label" data-from="A" data-to="W" data-label="Admitted">
-  <rect x="315.17449999999997" y="478.237" width="56.854000000000006" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="343.6015" y="493.387" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Admitted</text>
+  <rect x="323.17449999999997" y="494.237" width="56.854000000000006" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="351.6015" y="509.387" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Admitted</text>
 </g>
 <g class="edge-label" data-from="W" data-to="U" data-label="Uncertain effect">
-  <rect x="406.45641666666666" y="636.037" width="90.71200000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="451.81241666666665" y="651.187" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Uncertain effect</text>
+  <rect x="416.45641666666666" y="664.037" width="90.71200000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="461.81241666666665" y="679.187" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Uncertain effect</text>
 </g>
 <g class="edge-label" data-from="V" data-to="U" data-label="Recovery required">
-  <rect x="302.75174999999996" y="668.337" width="108.53200000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="357.01775" y="683.487" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Recovery required</text>
+  <rect x="310.75174999999996" y="696.337" width="108.53200000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="365.01775" y="711.487" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Recovery required</text>
 </g>
 <g class="node" data-id="I" data-label="Authorized intent and exact target" data-shape="rectangle">
-  <rect x="113.36649999999997" y="20" width="236.09199999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="231.41249999999997" y="38.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Authorized intent and exact target</text>
+  <rect x="119.36649999999997" y="24" width="236.09199999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="237.41249999999997" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Authorized intent and exact target</text>
 </g>
 <g class="node" data-id="P" data-label="Plan supported change" data-shape="rectangle">
-  <rect x="142.26549999999997" y="88.9" width="178.29399999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="231.41249999999997" y="107.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Plan supported change</text>
+  <rect x="148.26549999999997" y="96.9" width="178.29399999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="237.41249999999997" y="115.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Plan supported change</text>
 </g>
 <g class="node" data-id="A" data-label="Admit stored plan and current preimage" data-shape="diamond">
-  <polygon points="231.41249999999997,157.8 378.131,304.5185 231.41249999999997,451.237 84.69399999999996,304.5185" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="231.41249999999997" y="304.5185" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Admit stored plan and current preimage</text>
+  <polygon points="237.41249999999997,169.8 384.131,316.5185 237.41249999999997,463.237 90.69399999999996,316.5185" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="237.41249999999997" y="316.5185" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Admit stored plan and current preimage</text>
 </g>
 <g class="node" data-id="N" data-label="Reject before source effect" data-shape="rectangle">
-  <rect x="20" y="535.537" width="198.30099999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="119.15049999999998" y="553.9870000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Reject before source effect</text>
+  <rect x="24" y="555.537" width="198.30099999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="123.15049999999998" y="573.9870000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Reject before source effect</text>
 </g>
 <g class="node" data-id="W" data-label="Apply with recovery record" data-shape="rectangle">
-  <rect x="242.30099999999996" y="535.537" width="202.74699999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="343.67449999999997" y="553.9870000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Apply with recovery record</text>
+  <rect x="250.30099999999996" y="555.537" width="202.74699999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="351.67449999999997" y="573.9870000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Apply with recovery record</text>
 </g>
 <g class="node" data-id="V" data-label="Examine resulting source" data-shape="rectangle">
-  <rect x="167.20049999999998" y="604.437" width="191.63199999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="263.01649999999995" y="622.8870000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Examine resulting source</text>
+  <rect x="173.20049999999998" y="628.437" width="191.63199999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="269.01649999999995" y="646.8870000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Examine resulting source</text>
 </g>
 <g class="node" data-id="R" data-label="Verification outcome and receipt" data-shape="rectangle">
-  <rect x="54.810749999999985" y="673.337" width="227.94099999999995" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="168.78124999999994" y="691.787" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Verification outcome and receipt</text>
+  <rect x="58.810749999999985" y="701.337" width="227.94099999999995" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="172.78124999999994" y="719.787" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Verification outcome and receipt</text>
 </g>
 <g class="node" data-id="U" data-label="Preserve evidence and recover" data-shape="rectangle">
-  <rect x="305.7469166666666" y="725.637" width="232.38699999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="421.9404166666666" y="744.087" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Preserve evidence and recover</text>
+  <rect x="315.7469166666666" y="757.637" width="232.38699999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="431.9404166666666" y="776.087" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Preserve evidence and recover</text>
 </g>
 </svg>

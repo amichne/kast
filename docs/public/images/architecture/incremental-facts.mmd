@@ -1,0 +1,8 @@
+flowchart TD
+  O["Stored completed fact and old snapshot"] --> C{"Current snapshot proves unchanged dependencies?"}
+  N["Current source and resolution inventories"] --> C
+  C -->|No| I["Invalidate entry with a finite cause"]
+  I --> F["Fresh native computation"]
+  C -->|Yes| P["Reuse proof from old to current snapshot"]
+  P --> A["Admit every endpoint and binding under current authority"]
+  A --> R["Current semantic fact"]

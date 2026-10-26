@@ -1,0 +1,12 @@
+flowchart TD
+  I["Native word-index read"] --> C{"Completed?"}
+  C -->|No| R["Typed stop<br/>no exclusion evidence"]
+  C -->|Yes| P["Immutable candidate paths"]
+  P --> V["Bounded VFS inventory"]
+  V --> E{"Candidate or<br/>protected file?"}
+  E -->|Yes| X["Source admission<br/>PSI and declaration AST"]
+  E -->|No| S["Skip declaration work"]
+  X --> K(["Compiler confirms<br/>exact identity"])
+  class P proof
+  class R stop
+  class K result

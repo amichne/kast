@@ -5,38 +5,22 @@ description: "Follow a question through admission, bounded execution, completion
 icon: "workflow"
 ---
 
+import { QueryLifecycleDiagram } from "/snippets/diagrams/query-lifecycle.jsx"
+import { QueryPublicationDiagram } from "/snippets/diagrams/query-publication.jsx"
+
 A public `RUN` answers one fixed source question. Its output can span several replies without more semantic work.
 
-Execution and delivery have distinct limits because a complete answer can exceed one response's byte allowance.
+A complete answer can exceed one reply's byte limit. Query work and output delivery therefore have separate limits.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
-flowchart TD
-  Q["Admitted question<br/>source, scope, and grant"] --> W["Prepare exact workspace<br/>join its current operation"]
-  W --> L["Acquire semantic lane<br/>bind current read authority"]
-  L --> S["Resolve exact source<br/>advance semantic tasks"]
-  S --> P{"Completion proof met?"}
-  P -->|Yes| A(["Complete answer"])
-  P -->|No| R["Typed rejection<br/>available evidence"]
-  A --> D["Fit and publish<br/>produced output"]
-  R --> D
-  D --> O["READ_RESULT or output RESUME<br/>no semantic replay"]
-  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
-  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
-  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
-  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
-  class L proof
-  class R stop
-  class A result
-```
+<QueryLifecycleDiagram />
 
-Preparation proves readiness for the exact root. Each semantic read still needs current authority. [Topology](/architecture/topology) locates these owners.
+Preparation proves that the exact root is ready. Each semantic read still needs current authority. [Topology](/architecture/topology) shows these owners.
 
-The diagram shows the path after workspace and lane admission succeed. Preparation or admission can reject before semantic tasks start.
+The diagram starts after Kast admits the workspace and lane. A failed preparation or admission can stop the query before semantic work.
 
-The interpreter keeps each operation's meaning. Direct relations read one named relationship. `TRACE` uses fixed phases, `WALK` tracks a frontier, and `IMPACT` keeps value routes.
+The interpreter keeps each operation's meaning. Direct relations read one named relationship. `TRACE` uses fixed phases. `WALK` tracks a frontier. `IMPACT` keeps value routes.
 
-Output actions need an issued retained-result reference or output continuation. A reply without that handle does not permit the corresponding read.
+Output actions need an issued retained-result reference or output continuation. Without that handle, the client cannot read more output.
 
 ## One question and one execution grant
 
@@ -46,7 +30,7 @@ The runner drains internal semantic pages under that grant. An empty page can st
 
 Every public run uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. To complete, the run must finish its work and meet all proof rules.
 
-Item failures, omitted evidence, and unmet proof rules prevent completion. Each investigation uses its declared interpretation of callback evidence.
+Item failures, omitted evidence, and unmet proof rules prevent completion. Each investigation has a stated rule for callback evidence.
 
 For source-symbol `TRACE`, `SOURCE_RELATIONSHIPS` keeps callback execution gaps as evidence. Invocation queries need the stricter callback graph proof.
 
@@ -54,7 +38,7 @@ For source-symbol `TRACE`, `SOURCE_RELATIONSHIPS` keeps callback execution gaps 
 
 ## A preview describes delivery
 
-A complete investigation can produce more evidence than fits in one reply. The preview shows the rows that fit the output limit.
+A complete run can produce more evidence than fits in one reply. The preview shows the rows that fit the output limit.
 
 The row count does not count semantic work left to do. A small result also does not prove that the run had enough work or storage capacity.
 
@@ -64,32 +48,15 @@ The row count does not count semantic work left to do. A small result also does 
 
 ## Publish a page and its successor together
 
-`QueryStateStore` owns detached checkpoints, retained results, output suffixes, and publication claims under shared entry, byte, and lifetime limits.
+`QueryStateStore` owns detached checkpoints, retained results, and output suffixes. It also owns publication claims. These objects share entry, byte, and lifetime limits.
 
-Before a producer advances, acquisition reserves replay space and claims its token. A concurrent acquisition of that unfinished token reports `InUse`.
+Before a producer advances, Kast reserves space for replay and claims its token. Another request for that unfinished token reports `InUse`.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
-flowchart TD
-  Ready["Ready checkpoint"] --> Running["Claim token<br/>reserve replay space"]
-  Running -.->|Concurrent acquisition| Busy["InUse<br/>existing claim stays owned"]
-  Running --> PrivatePage["Private page<br/>staged successor"]
-  PrivatePage -->|Atomic commit| Published(["Published page<br/>reachable successor"])
-  Published -->|Replay| Published
-  Running -.->|Cancel| Cleanup["Release claim and<br/>try-owned allocations"]
-  PrivatePage -.->|Publication rejected| Cleanup
-  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
-  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
-  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
-  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
-  class Running proof
-  class Busy,Cleanup stop
-  class Published result
-```
+<QueryPublicationDiagram />
 
-The page and its reachable successor become visible in one store transition. A later read of a published page replays its immutable output.
+The store publishes the page and its next handle in one step. Later reads replay the same output. That output cannot change.
 
-Cancellation or rejected publication releases only allocations owned by that try. It does not revoke an existing public page that the try reused.
+If the try stops or cannot publish, it releases only the space it owns. It does not revoke an existing public page that the try reused.
 
 This diagram shows internal publication. It does not expose producer checkpoints as public semantic `RESUME` inputs.
 
@@ -110,11 +77,11 @@ Neither action grants a stronger answer. A rejection can include a historical ex
 
 Retained evidence belongs to its workspace, IDEA owner, read epoch, committed source state, and lifetime.
 
-Kast can revalidate an exact declaration through the compiler. Retained results and output continuations need their original state.
+The compiler can prove a fresh identity for an exact declaration. Retained results and output continuations need their original state.
 
 If that state is not available, start a new query. It produces a new answer. It cannot restore the old delivery.
 
-[Read retained evidence](/how-to/read-retained-evidence) gives the procedure. [Results](/reference/responses) defines the encoded fields and rejection causes.
+[Read retained evidence](/how-to/read-retained-evidence) gives the procedure. [Results](/reference/responses) defines the fields and causes of rejection.
 
 ## Source evidence
 

@@ -179,3 +179,13 @@ An author review simulates a reader review. A prose score and docs build do not 
 The live site reads `docs/public` from `main`. Get separate approval to publish. After it is live, check the rendered tracks and redirects.
 
 If the deploy fails, restore the prior docs revision. Review local changes before they go live.
+
+## Public diagram source
+
+Use beautiful-mermaid for public diagrams.
+Keep the authored `.mmd` files in `docs/public/images/architecture`.
+The [diagram tool](tooling/diagrams/README.md) owns the renderer, page manifest, and output checks.
+
+Pages import generated JSX snippets. The inline SVG files inherit the site font and theme colors.
+Keep the source and generated SVG files at their established URLs.
+After a source edit, render the files and examine the page in light and dark themes.

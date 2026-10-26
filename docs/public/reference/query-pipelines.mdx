@@ -21,8 +21,7 @@ Every public run needs complete execution within `COMPILER_RESOLVED_STATIC_V1`. 
 
 A finished output page cannot supply producer proof that is missing. During later output reads, rejection evidence stays `POLICY_REJECTED_EVIDENCE`.
 
-The request examples use contract 17 syntax. The counts and replies come from the [historical recording](/reference/schemas#recorded-walkthrough) at `56df091`.
-Adding explicit EMIT terminals does not rerun those calls or establish current counts. The recorded request bytes remain unchanged.
+These examples describe a comparison between two query results. They are not captured replies. Replace each placeholder with an issued reference.
 
 <a id="retain-a-second-query-result" />
 
@@ -30,9 +29,9 @@ Adding explicit EMIT terminals does not rerun those calls or establish current c
 
 ## 1. Keep a second query result
 
-The recording's input A contains ten implementations of `QueryStepSyntax`. Input B contains two class-like declarations named `Concat`.
+Let input A contain implementations of a selected interface. Let input B contain declarations named `Concat`.
 
-Only `QueryStepSyntax.Concat` implements that interface. `ExactQueryStage.Concat` has a separate identity despite the equal name.
+The operations compare declaration identities. Two declarations with the same name can have distinct identities.
 
 ```json
 {
@@ -90,7 +89,7 @@ Use `UNION` to combine symbol identities. Apply a later `WHERE` to the combined 
 }
 ```
 
-Recorded call `04-union-filter` returned both declarations with exhaustive coverage. The filter acted after the union.
+The filter acts after the union. It keeps declarations named `Concat`.
 
 `CONCAT` uses `input` and keeps order and duplicates. It does not use union's identity reduction.
 
@@ -114,7 +113,7 @@ Use `INTERSECT` to keep identities present in both inputs.
 }
 ```
 
-Recorded call `05-intersection` returned `QueryStepSyntax.Concat`. The shared identity kept evidence from both producers.
+A shared identity keeps evidence from both producers.
 
 <a id="keep-the-matched-pair-then-select-a-side-and-continue" />
 
@@ -141,7 +140,7 @@ Use an `INNER` join to keep two named cells. Select one cell before a later symb
 }
 ```
 
-Recorded call `06-join-c` kept one pair as C. Both cells identified `QueryStepSyntax.Concat` through their own evidence.
+Keep the joined result reference as C for the next request. Each pair keeps the evidence from both inputs.
 
 ```json
 {
@@ -158,11 +157,7 @@ Recorded call `06-join-c` kept one pair as C. Both cells identified `QueryStepSy
 }
 ```
 
-Recorded call `07-project-references` found this compiler-confirmed occurrence.
-
-```kotlin
-is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
-```
+The projected query finds references to the declaration in the selected cell.
 
 Arbitrary-field joins and a general-purpose `MAP` have no supported contract. [Composition contracts](/reference/composition) defines legal row forms.
 
@@ -187,7 +182,7 @@ With an explicit walk depth, the default is the retained seed's scope. An explic
 }
 ```
 
-This current source-domain example does not change the recorded counts. A later `WHERE` cannot reduce work in the native scan.
+The scope restricts the native scan. A later `WHERE` cannot reduce that scan.
 
 ## Read source around an occurrence
 
@@ -245,7 +240,7 @@ Use `RESUME` for an issued output continuation. Use `READ_RESULT` for rows from 
 {"request":{"type":"READ_RESULT","result":"<result C>","output":{"type":"BINDING_ROWS"}}}
 ```
 
-Recorded calls `08-read-a` and `09-read-c` returned ten symbols and one pair. Both kept their original identities.
+These reads keep the original result identities.
 
 <a id="reject-an-incomplete-absence-check" />
 
@@ -253,19 +248,6 @@ Recorded calls `08-read-a` and `09-read-c` returned ten symbols and one pair. Bo
 
 `DIFFERENCE` and `ANTI` need complete right coverage. The right producer has to finish its work. A missing match in a prefix cannot prove absence.
 
-Recorded call `10-incomplete-right` supplied incomplete right coverage. Both absence operations returned this historical rejection.
-
-```json
-{
-  "status": "rejected",
-  "rejection": {
-    "type": "execution-rejected",
-    "reason": "right-input-incomplete"
-  },
-  "next_action": "correct_request"
-}
-```
-
-Current complete-only execution can reject before an incomplete answer becomes reusable. If resources run out, that still does not prove absence.
+Complete-only execution rejects incomplete proof. A resource limit does not prove absence.
 
 If the epoch changes, start fresh producing queries. [Staleness](/reference/staleness) defines reuse, and [Results](/reference/responses) defines independent row and evidence positions.

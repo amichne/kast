@@ -7,13 +7,38 @@ if (admitted.kind === "rejected") throw new Error(admitted.code);
 const examples = admitted.examples;
 
 describe("source-local value journey", () => {
+  it("presents the fixed example with pet-store names and exact source anchors", () => {
+    expect(examples[0].source).toBe(`package kast.repro
+
+internal data class PetRecord(val id: String?)
+internal data class Pet(val id: String?)
+internal data class PetListing(val pet: Pet)
+
+internal fun PetRecord.toPet(): Pet = Pet(id = id)
+internal fun PetRecord.toPetListing(): PetListing = PetListing(pet = toPet())
+internal fun convert(items: List<PetRecord>): List<PetListing> = items.map { it.toPetListing() }
+`);
+    for (const example of examples) {
+      for (const path of example.paths) {
+        for (const step of path.steps) {
+          expect(example.source.slice(step.anchor.start, step.anchor.end)).toBe(
+            step.anchor.text,
+          );
+        }
+      }
+    }
+    expect(
+      examples.find((example) => example.id === "constant")?.source,
+    ).toContain('PetListing(Pet("constant"))');
+  });
+
   it("advances across the reviewed rule without widening the tracked value", () => {
     let cursor = AnalysisCursor.start(examples[0]);
     for (let i = 0; i < 8; i++) cursor = cursor.move("next", "proof");
     expect(cursor.index).toBe(8);
     expect(cursor.step.authority).toBe("reviewed-library");
-    expect(cursor.step.value).toBe("List.Element<ClientEnvelope.payload>");
-    expect(cursor.step.anchor.text).toBe("items.map { it.toClientEnvelope() }");
+    expect(cursor.step.value).toBe("List.Element<PetListing.pet>");
+    expect(cursor.step.anchor.text).toBe("items.map { it.toPetListing() }");
     expect(cursor.move("next", "proof").step.id).toBe(
       "convert.RETURN.Element.payload",
     );
@@ -60,7 +85,9 @@ describe("source-local value journey", () => {
     expect(examples[0].paths[0].steps.map((step) => step.id)).toEqual(
       oracle.default.variants[0]?.expected_path,
     );
-    expect(SourceAnchor.admit(examples[0].source, 232, "WireValue")).toEqual({
+    expect(examples[0].fixtureSha256).toBe(oracle.default.variants[0]?.sha256);
+    expect(examples[0].sha256).not.toBe(examples[0].fixtureSha256);
+    expect(SourceAnchor.admit(examples[0].source, 232, "PetRecord")).toEqual({
       kind: "rejected",
       code: "INVALID_ANCHOR",
     });
@@ -82,9 +109,7 @@ describe("source-local value journey", () => {
     const constant = examples.find((example) => example.id === "constant");
     if (!constant) throw new Error("Missing constant fixture");
     expect(constant.paths[0].steps).toHaveLength(6);
-    expect(constant.paths[0].steps.at(-1)?.value).toBe(
-      "ClientEnvelope.payload",
-    );
+    expect(constant.paths[0].steps.at(-1)?.value).toBe("PetListing.pet");
     expect(constant.paths[0].ending.kind).toBe("excluded");
     expect(
       constant.paths[0].steps.every((step) => step.anchor.end <= 354),

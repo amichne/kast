@@ -48,14 +48,14 @@ MCP and Tool RPC carry canonical tool documents. The current Codex plugin uses M
 
 The shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
 
-Direct MCP and Tool RPC expose `health_check`. The hosted App Server has a distinct `workspace_lifecycle` contract. Its model pages describe that contract. [Compatibility](/reference/compatibility) distinguishes that earlier client surface from current Codex setup.
+Direct MCP and Tool RPC expose `health_check`. The hosted App Server has a distinct `workspace_lifecycle` contract. Its model pages describe that contract. [Compatibility](/reference/compatibility) describes the supported platform and Codex setup.
 
 ## Schemas and source owners
 
 [Schemas and samples](/reference/schemas) links inputs and outputs to generated contracts. Model pages describe each result kind.
 
-[Recorded query evidence](/reference/walkthrough) keeps a historical run. Its handles and counts do not describe your current workspace.
+[Query walkthrough](/reference/walkthrough) shows declaration, implementation, and caller requests.
 
-[The source map](/reference/source-map) links source owners and tests of invalid cases. Use the installed catalog for your release. The `main` branch can describe newer behavior.
+[The source map](/reference/source-map) links source owners and tests of invalid cases. Use the tool catalog from your Kast session.
 
 [Tutorials](/tutorials) gives a controlled exercise. [Guides](/how-to) gives commands and recovery steps. [Architecture](/explanation) explains the evidence model.

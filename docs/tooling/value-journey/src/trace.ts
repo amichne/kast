@@ -2,6 +2,7 @@ import e0 from "../../../../relation/intellij/testData/r1-value-flow/E0.kt?raw";
 import e3 from "../../../../relation/intellij/testData/r1-value-flow/E3.kt?raw";
 import e4 from "../../../../relation/intellij/testData/r1-value-flow/E4.kt?raw";
 import oracle from "../../../../relation/intellij/testData/r1-value-flow/oracle.json";
+import { petStoreNames } from "./pet-store";
 
 export type Detail = "story" | "normal" | "proof";
 export type ExampleId = "e0" | "gap" | "fork" | "constant";
@@ -80,6 +81,7 @@ export interface Example {
   readonly source: string;
   readonly variant: "E0" | "E3" | "E4";
   readonly sha256: string;
+  readonly fixtureSha256: string;
   /** An authored expectation is never a retained compiler witness or a coverage ledger. */
   readonly basis: { readonly kind: "authored-oracle"; readonly path: string };
   readonly paths: readonly [TracePath, ...TracePath[]];
@@ -122,27 +124,33 @@ export async function loadExamples(): Promise<ExampleAdmission> {
 
   const build = (
     variant: "E0" | "E3" | "E4",
-    source: string,
+    fixtureSource: string,
     sha256: string,
+    fixtureSha256: string,
   ): ExampleAdmission => {
-    const seed = SourceAnchor.admit(source, 232, "ClientValue(id = id)");
-    const call = SourceAnchor.admit(source, 338, "toClientValue()");
-    const envelope = SourceAnchor.admit(
-      source,
-      313,
-      "ClientEnvelope(payload = toClientValue())",
-    );
+    const source = petStoreNames(fixtureSource);
+    const anchor = (start: number, text: string): AnchorAdmission => {
+      const original = SourceAnchor.admit(fixtureSource, start, text);
+      if (original.kind === "rejected") return original;
+      return SourceAnchor.admit(
+        source,
+        petStoreNames(fixtureSource.slice(0, start)).length,
+        petStoreNames(text),
+      );
+    };
+    const seed = anchor(232, "ClientValue(id = id)");
+    const call = anchor(338, "toClientValue()");
+    const listing = anchor(313, "ClientEnvelope(payload = toClientValue())");
     if (seed.kind === "rejected") return seed;
     if (call.kind === "rejected") return call;
-    if (envelope.kind === "rejected") return envelope;
+    if (listing.kind === "rejected") return listing;
     const local = { kind: "local" } as const;
     const head: Step = {
       id: "seed.ClientValue.result",
       anchor: seed.value,
-      title: "A value begins here",
-      explanation:
-        "Follow only the ClientValue produced by this constructor. Not the WireValue, its id, or the enclosing object.",
-      value: "ClientValue",
+      title: "Start with this value",
+      explanation: "This constructor creates the Pet that we will trace.",
+      value: "Pet",
       authority: "compiler",
       operation: "PRODUCER",
       importance: "landmark",
@@ -151,9 +159,8 @@ export async function loadExamples(): Promise<ExampleAdmission> {
     const returned: Step = {
       ...head,
       id: "toClientValue.RETURN",
-      title: "Returned by toClientValue",
-      explanation:
-        "The expression body returns the same ClientValue. Its identity is preserved across this return.",
+      title: "Returned by toPet",
+      explanation: "The helper returns this Pet to its caller.",
       operation: "SEED_RETURN",
       importance: "detail",
     };
@@ -163,13 +170,12 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         id: "toClientValue.call.result",
         anchor: call.value,
         title: "Returned to this exact call",
-        explanation:
-          "The produced value becomes the result of this toClientValue() call, not every call with the same name.",
+        explanation: "This call receives the value from the helper.",
         operation: "RETURN",
         importance: "normal",
         context: {
           kind: "call",
-          title: "WireValue.toClientValue",
+          title: "PetRecord.toPet",
           anchor: seed.value,
         },
       },
@@ -177,31 +183,29 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         ...head,
         id: "ClientEnvelope.payload.argument",
         anchor: call.value,
-        title: "Passed as payload",
-        explanation:
-          "This call result is bound to the payload parameter of the selected ClientEnvelope constructor.",
+        title: "Passed as pet",
+        explanation: "The constructor receives the value as its pet argument.",
         operation: "ARGUMENT",
         importance: "detail",
       },
       {
         ...head,
         id: "ClientEnvelope.result.payload",
-        anchor: envelope.value,
-        title: "Stored in the payload field",
-        explanation:
-          "The envelope carries the original ClientValue in .payload. The envelope itself is not the tracked value.",
-        value: "ClientEnvelope.payload",
+        anchor: listing.value,
+        title: "Stored in the pet field",
+        explanation: "The object carries our value in its pet field.",
+        value: "PetListing.pet",
         operation: "CONSTRUCT_FIELD",
         importance: "landmark",
       },
       {
         ...head,
         id: "toClientEnvelope.RETURN.payload",
-        anchor: envelope.value,
-        title: "Returned inside an envelope",
+        anchor: listing.value,
+        title: "Returned inside a listing",
         explanation:
-          "toClientEnvelope returns an envelope whose payload carries the same ClientValue.",
-        value: "ClientEnvelope.payload",
+          "toPetListing returns a listing whose pet carries the same Pet.",
+        value: "PetListing.pet",
         operation: "SEED_RETURN",
         importance: "detail",
       },
@@ -210,15 +214,14 @@ export async function loadExamples(): Promise<ExampleAdmission> {
       kind: "authored-oracle",
       path: "relation/intellij/testData/r1-value-flow/oracle.json",
     } as const;
-    const base = { source, variant, sha256, basis };
+    const base = { source, variant, sha256, fixtureSha256, basis };
     const wrapperPath: TracePath = {
       id: "wrapper",
-      label: "Envelope payload",
+      label: "Listing pet",
       steps: [head, returned, ...wrapper],
       ending: {
         kind: "expected-end",
-        explanation:
-          "The authored route ends at the returned payload. This is not an investigation-completeness claim.",
+        explanation: "This example ends at the returned pet.",
       },
     };
     if (variant === "E4")
@@ -228,29 +231,27 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           {
             ...base,
             id: "constant",
-            label: "E4 · Independent constant",
+            label: "Return a different value",
             description:
-              "Why does the original value not reach this map result?",
+              "A different value has the same type. Does the original still reach the list?",
             paths: [
               {
                 ...wrapperPath,
                 ending: {
                   kind: "excluded",
                   explanation:
-                    'convert constructs a separate ClientValue("constant"). The oracle forbids an edge from the original seed to that value or the convert result.',
+                    'convert constructs a separate Pet("constant"). The original value does not reach this list.',
                 },
               },
             ],
           },
         ],
       };
-    const callback = SourceAnchor.admit(
-      source,
+    const callback = anchor(
       variant === "E0" ? 436 : 433,
       variant === "E0" ? "it.toClientEnvelope()" : "it.toClientValue()",
     );
-    const map = SourceAnchor.admit(
-      source,
+    const map = anchor(
       variant === "E0" ? 424 : 421,
       variant === "E0"
         ? "items.map { it.toClientEnvelope() }"
@@ -258,7 +259,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
     );
     if (callback.kind === "rejected") return callback;
     if (map.kind === "rejected") return map;
-    const payload = variant === "E0" ? "ClientEnvelope.payload" : "ClientValue";
+    const pet = variant === "E0" ? "PetListing.pet" : "Pet";
     const callbackStep: Step = {
       ...head,
       id:
@@ -267,25 +268,22 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           : "callback.toClientValue.call.result",
       anchor: callback.value,
       title: "Returned to the callback",
-      explanation: `The exact call result carries ${payload}. The callback body and the named function that supplies it are distinct owners.`,
-      value: payload,
+      explanation: `The helper returns ${pet} inside the map callback.`,
+      value: pet,
       operation: "RETURN",
       importance: "normal",
       context: {
         kind: "call",
-        title:
-          variant === "E0"
-            ? "WireValue.toClientEnvelope"
-            : "WireValue.toClientValue",
-        anchor: variant === "E0" ? envelope.value : seed.value,
+        title: variant === "E0" ? "PetRecord.toPetListing" : "PetRecord.toPet",
+        anchor: variant === "E0" ? listing.value : seed.value,
       },
     };
     const callbackReturn: Step = {
       ...callbackStep,
       id: variant === "E0" ? "callback.RETURN.payload" : "callback.RETURN",
-      title: "Bound to map’s transform",
+      title: "The callback returns it",
       explanation:
-        "The lambda result carries the tracked value. Compiler binding identifies the transform formal; it does not establish output-element propagation.",
+        "The callback returns our value inside its result. The next step needs the rule for map.",
       operation: "CALLBACK_RETURN",
       importance: "landmark",
       context: { kind: "callback" },
@@ -297,10 +295,10 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           ? "convert.map.result.Element.payload"
           : "convert.map.result.Element",
       anchor: map.value,
-      title: "Callback result → possible output element",
+      title: "Into a list element",
       explanation:
-        "The reviewed stdlib map rule relates a transform result to a possible output element. Compiler binding alone cannot establish this transfer.",
-      value: `List.Element<${payload}>`,
+        "The reviewed rule for map connects the callback result to a possible list element.",
+      value: `List.Element<${pet}>`,
       authority: "reviewed-library",
       operation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
     };
@@ -311,8 +309,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           ? "convert.RETURN.Element.payload"
           : "convert.RETURN.Element",
       title: "Returned from convert",
-      explanation:
-        "The returned list may contain an element carrying the original value. Neither the whole list nor the whole envelope becomes that value.",
+      explanation: "A returned list element can carry our original value.",
       authority: "compiler",
       operation: "SEED_RETURN",
       context: local,
@@ -320,7 +317,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
     const journey: TracePath = {
       id: "map",
       label:
-        variant === "E0" ? "Envelope → map element" : "Direct → map element",
+        variant === "E0" ? "Listing → map element" : "Direct → map element",
       steps: [
         head,
         returned,
@@ -333,7 +330,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
       ending: {
         kind: "expected-end",
         explanation:
-          "End of the authored expected route. A connected path does not establish complete investigation coverage.",
+          "The route reaches the returned list. The example ends here.",
       },
     };
     if (variant === "E3")
@@ -343,9 +340,9 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           {
             ...base,
             id: "fork",
-            label: "E3 · Two continuations",
+            label: "Use the value twice",
             description:
-              "One producer, two uses. Choose a continuation without losing the common prefix.",
+              "One producer has two uses. Choose a route to see where each leads.",
             paths: [journey, wrapperPath],
           },
         ],
@@ -356,15 +353,16 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         {
           ...base,
           id: "e0",
-          label: "E0 · Value journey",
-          description: "Where can this produced ClientValue go?",
+          label: "Follow the value",
+          description: "Where does this value go after the helper returns it?",
           paths: [journey],
         },
         {
           ...base,
           id: "gap",
-          label: "E0 · Missing proof",
-          description: "Same source. One deliberately withheld library rule.",
+          label: "Remove a library rule",
+          description:
+            "The code stays the same. This illustration removes the rule for map.",
           paths: [
             {
               ...journey,
@@ -373,7 +371,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
                 kind: "unresolved",
                 obligation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
                 explanation:
-                  "The callback result is known, but its relationship to a map output element is not admitted in this simulated gap. No downstream step is shown.",
+                  "The callback returns the value. Without the rule for map, this example cannot connect it to a list element.",
               },
             },
           ],
@@ -381,9 +379,9 @@ export async function loadExamples(): Promise<ExampleAdmission> {
       ],
     };
   };
-  const positive = build("E0", e0, digests[0]);
-  const fork = build("E3", e3, digests[1]);
-  const constant = build("E4", e4, digests[2]);
+  const positive = build("E0", e0, await digest(petStoreNames(e0)), digests[0]);
+  const fork = build("E3", e3, await digest(petStoreNames(e3)), digests[1]);
+  const constant = build("E4", e4, await digest(petStoreNames(e4)), digests[2]);
   if (positive.kind === "rejected") return positive;
   if (fork.kind === "rejected") return fork;
   if (constant.kind === "rejected") return constant;

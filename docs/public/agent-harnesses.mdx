@@ -1,67 +1,60 @@
 ---
 title: "Connect your agent"
-description: "Connect Codex, Copilot, or Pi and ask your first Kotlin question."
+description: "Use Kast from Codex, Copilot, or Pi."
 icon: "plug"
 ---
 
 <span id="choose-your-agent" />
 
-[Install Kast](/start) first. Codex is the default path below. Use this guide to load one integration in the agent that owns your selected repository or worktree.
+[Install Kast](/start), then select your agent.
 
-1. [Connect one agent.](#1-connect-your-agent)
-2. [Request a declaration in the selected worktree.](#2-request-a-declaration)
-3. [Compare the result with known source.](#3-compare-the-evidence)
-
-## 1. Connect your agent
+<span id="1-connect-your-agent" />
 
 <Tabs sync={false}>
   <Tab title="Codex">
-    The installer offers the Kast plugin in Codex by default. If you accepted it, restart Codex and select your Kotlin repository or worktree.
+    If you accepted the installer's Codex option, restart Codex and select your Kotlin repository or worktree.
+    Review and trust the Kast session context hook.
 
-    If you skipped plugin installation, run:
+    If you skipped that option, run this command before the restart:
 
     ```shell
     kast plugin codex
     ```
-
-    Restart Codex after installation. Review and trust its session context hook in Codex. Use [integration options](/reference/integrations) for startup requirements and compatibility commands.
   </Tab>
   <Tab title="Copilot">
+    Run this command:
+
     ```shell
     kast connect copilot
     ```
 
-    Restart Copilot to load Kast. Start Copilot from your Kotlin repository or worktree.
+    Restart Copilot from your Kotlin repository or worktree.
   </Tab>
   <Tab title="Pi">
+    Run this command:
+
     ```shell
     kast connect pi
     ```
 
-    Restart Pi to load Kast. Start Pi from your Kotlin repository or worktree.
+    Restart Pi from your Kotlin repository or worktree.
   </Tab>
 </Tabs>
 
 <span id="run-the-first-query" />
+<span id="2-request-a-declaration" />
 
-## 2. Request a declaration
+## Ask a question
 
-Select the exact Kotlin repository or worktree in the agent. Keep IDEA open with that project imported.
+Use the same project in IDEA and your agent.
 
-The plugin's MCP session starts IDEA setup for projects with `settings.gradle.kts`. Semantic calls wait for that setup. If it stops, they report the cause.
+> Use Kast to find a Kotlin function in this repository. Show its name and source location.
 
-<Prompt description="Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot." actions={["copy"]}>
-Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot.
-</Prompt>
+<span id="3-compare-the-evidence" />
 
-A Kast result identifies the declaration and its source location in the selected project. Trust, import, or indexing blockers need recovery before the next query.
+Open the returned location and compare the source with the answer.
+If Kast reports a trust, import, or indexing problem, resolve it in IDEA before another query.
 
-The request is an example, not a recorded native run. A listed catalog alone does not prove semantic readiness.
+[Example questions](/search) · [First-query exercise](/tutorials/first-query) · [Troubleshooting](/troubleshooting)
 
-## 3. Compare the evidence
-
-Use [the first-query exercise](/tutorials/first-query) to compare identity and caller evidence with known source.
-
-See [Example questions](/search) for more tasks. If the tools do not appear, use [Troubleshoot Kast](/troubleshooting).
-
-Custom clients and alternate connections belong in the [reference](/reference/integrations).
+For custom clients and connection options, use the [integration reference](/reference/integrations).

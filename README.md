@@ -1,73 +1,62 @@
 # Kast
 
-**Give your coding agent the Kotlin knowledge your IDE already uses.**
+**See where your Kotlin changes lead.**
 
-Kast connects your agent to IntelliJ IDEA so it can find exact declarations,
-trace their connections, inspect diagnostics, and make targeted source changes.
+Your agent can read a function. Kast lets it trace the connections through your
+Kotlin project: which function a call selects, where a value goes, and which
+code depends on it.
 
-[![Kast traces a response link through Kotlin fields and keeps an opaque transport boundary unproven.](docs/demo/kast-demo.svg)](docs/demo/kast-demo.mp4)
+## Can my agent already do that?
 
-Watch a 54-second edited evidence replay of Kast `v0.50.2` results from a small
-public Kotlin fixture. Follow a response into `FeatureResponse.link`, then inspect an outgoing
-request that remains unproven at the transport boundary. Recorded per-call waits
-are preserved; reading pauses are added. Results are static compiler evidence.
+Ask it where a value goes after a helper returns it inside an object, through a
+callback, and into a list. Then change the callback to return a different value.
+The names still match. The answer changes.
 
-[MP4](docs/demo/kast-demo.mp4) · [Still preview](docs/demo/kast-demo.png) ·
-[Transcript and reproduction](docs/demo/README.md)
+Kast gives your agent compiler-backed connections and source locations for that
+investigation. It also reports where the evidence stops.
 
-When several functions share a name, your agent needs to know which one matters.
-When you change a function, it needs to know who calls it.
-Kast gives it compiler-backed answers from your Kotlin project.
+[![Kast traces one value through a helper, a field, and a list. A separate value does not share the route.](docs/public/images/value-journey.svg)](https://kast.michne.com/explanation/value-journey/)
 
-## From a question to the code that matters
+[**Try the interactive example →**](https://kast.michne.com/explanation/value-journey/)
 
-Ask your agent:
+## Use it on your code
 
-> Find the callers of this function and show their source locations.
+> Use Kast to trace this function's result. Show where it goes and where the evidence stops.
 
-> Which classes implement this interface?
+> Use Kast to find the callers of this function before we change it.
 
-> Show the diagnostics in this directory before we change it.
+> Use Kast to inspect the diagnostics in this directory.
 
-Your agent gets declarations, relationships, and source locations that it can use
-in its next step. Kast keeps each answer tied to the selected repository or
-worktree and reports the limits of its evidence.
-
-Use it to investigate unfamiliar code, trace the impact of a change, or give your
-agent precise context for its next edit. Codex, Copilot, and Pi can all use Kast.
+Kast connects Codex, Copilot, or Pi to IntelliJ IDEA. Your agent can find exact
+code, trace relationships, inspect problems, and make targeted source changes.
 
 ## Get started
 
 You need an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA
 `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-
-Run this command:
+For Codex setup, you also need `codex` and Python 3.9 or later on `PATH`.
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer adds Kast and its IDEA plugin. Accept the default Codex connection.
-Restart IDEA and Codex. Select your Kotlin repository or worktree. Ask:
+Accept the default Codex connection. Restart IDEA and Codex.
+Select your Kotlin repository or worktree, then ask:
 
-> Use Kast to find a Kotlin declaration in this workspace. Show its signature
-> and source location.
+> Use Kast to find a Kotlin function in this workspace. Show its signature and source location.
 
-The plugin's MCP session starts preparation for `settings.gradle.kts` projects.
-Semantic calls wait for the project and report setup blockers.
-Codex owns its App Server and control socket. Pi uses native MCP without uv setup.
+[Installation guide](https://kast.michne.com/start/) ·
+[Copilot and Pi](https://kast.michne.com/agent-harnesses/) ·
+[Troubleshooting](https://kast.michne.com/troubleshooting/)
 
-[Use Copilot or Pi](https://kast.michne.com/agent-harnesses/) ·
-[Installation options](https://kast.michne.com/reference/installation/) ·
-[Troubleshoot setup](https://kast.michne.com/troubleshooting/)
+## Explore
 
-## Go further
-
-- [Try a guided query](https://kast.michne.com/tutorials/first-query/) with a known result.
-- [Find questions for your next task](https://kast.michne.com/search/).
-- [Read what an answer proves](https://kast.michne.com/reference/evidence-boundaries/).
-- [Upgrade or recover Kast](https://kast.michne.com/reference/management/).
+- [Questions to ask your agent](https://kast.michne.com/search/).
+- [Try a small exercise](https://kast.michne.com/tutorials/first-query/).
+- [Technical reference](https://kast.michne.com/reference/).
 - [Contribute to Kast](docs/development.md).
 
-Kast is under the [MIT License](LICENSE).
+Kast describes connections in source. Your project's build and tests establish behavior after a change.
+
+Kast uses the [MIT License](LICENSE).
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
