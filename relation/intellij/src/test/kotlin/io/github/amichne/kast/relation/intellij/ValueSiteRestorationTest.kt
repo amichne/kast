@@ -127,7 +127,7 @@ class ValueSiteRestorationTest {
         }
 
     @Test
-    fun `loop and lambda destructuring retain unsupported ownership`(@TempDir home: Path) =
+    fun `loop and lambda shapes restore their exact entries before semantic admission`(@TempDir home: Path) =
         KotlinCallOwnershipTest().withParser(home) { factory ->
             val owner =
                 factory
@@ -140,10 +140,18 @@ class ValueSiteRestorationTest {
             val entries = PsiTreeUtil.collectElementsOfType(owner, KtDestructuringDeclarationEntry::class.java)
             assertEquals(2, entries.size)
             entries.forEach { entry ->
-                assertEquals(
-                    Refinement.Rejected(NativeValueSiteRestorationFailure.ROLE_SHAPE_UNSUPPORTED),
-                    owner.restoreValueSiteElement(range(entry), ValueSiteRoleClaim.LocalBinding, Observation()),
-                )
+                for (claim in listOf(ValueSiteRoleClaim.LocalBinding, ValueSiteRoleClaim.ExpressionResult)) {
+                    assertEquals(
+                        Refinement.Refined(entry),
+                        owner.restoreValueSiteElement(range(entry), claim, Observation()),
+                    )
+                }
+                val context = (entry.parent as KtDestructuringDeclaration).nativeDestructuringContext()
+                when (entry.name) {
+                    "first" -> assertTrue(context is NativeDestructuringContext.Iteration)
+                    "second" -> assertTrue(context is NativeDestructuringContext.Parameter)
+                    else -> error("Unexpected destructuring entry")
+                }
             }
         }
 

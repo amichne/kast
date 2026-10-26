@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
@@ -31,10 +32,16 @@ import org.jetbrains.kotlin.psi.KtValueArgumentName
 
 /** Enumerates one source body; the existing flow coordinator owns every allowance and emitted transfer. */
 internal class NativeValueReceiverReads(
-    private val source: ValueSite,
+    private val request: ValueFlowRequest,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
 ) {
+    private val source
+        get() = request.source
+
+    private val workAllowance
+        get() = request.budget.resources.workAllowance
+
     fun forEachRead(
         function: KtNamedFunction,
         admitTraversal: () -> Boolean,
@@ -101,7 +108,17 @@ internal class NativeValueReceiverReads(
         when (val actual = nativeThisReceiverKind(function, expression, projection.observation)) {
             is Refinement.Refined -> {
                 val position = (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
-                if (position?.kind == actual.value) consume(nativeThisRead(source, expression))
+                if (position?.kind == actual.value) {
+                    when (nativeValueBranchAdmission(source, expression, function, scope, projection, workAllowance)) {
+                        NativeValueBranchAdmission.NOT_APPLICABLE,
+                        NativeValueBranchAdmission.ADMITTED -> consume(nativeThisRead(source, expression))
+                        NativeValueBranchAdmission.EXCLUDED -> Unit
+                        NativeValueBranchAdmission.UNPROVEN ->
+                            consume(Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION))
+                        NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
+                            consume(Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED))
+                    }
+                }
             }
             is Refinement.Rejected -> consume(actual)
         }
@@ -115,6 +132,21 @@ internal class NativeValueReceiverReads(
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
     ): Boolean {
         val read = NativeValueImplicitReceiverCalls(source, scope, projection).read(function, call)
+        if (read.receivers.isNotEmpty()) {
+            when (nativeValueBranchAdmission(source, call, function, scope, projection, workAllowance)) {
+                NativeValueBranchAdmission.NOT_APPLICABLE,
+                NativeValueBranchAdmission.ADMITTED -> Unit
+                NativeValueBranchAdmission.EXCLUDED -> return true
+                NativeValueBranchAdmission.UNPROVEN -> {
+                    consume(Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION))
+                    return true
+                }
+                NativeValueBranchAdmission.WORK_LIMIT_REACHED -> {
+                    consume(Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED))
+                    return true
+                }
+            }
+        }
         for (cause in read.causes) consume(Refinement.Rejected(cause))
         for ((index, receiver) in read.receivers.withIndex()) {
             if (index > 0 && !permit()) return false
@@ -147,13 +179,12 @@ internal class NativeValueReceiverReads(
 
     private fun receiverField(function: KtNamedFunction, expression: KtNameReferenceExpression): NativeReceiverField =
         projection.observation.observedAnalyze(expression) {
-            val position =
-                (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
-                    ?: return@observedAnalyze NativeReceiverField.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
             val call = expression.resolveCall() ?: return@observedAnalyze missingReceiverField(expression)
             val property =
                 call.signature.symbol as? KaKotlinPropertySymbol ?: return@observedAnalyze NativeReceiverField.Unrelated
-            when (val proof = receiverFieldGuard(function, position, expression, call.dispatchReceiver)) {
+            when (
+                val proof = receiverFieldGuard(function, expression, call.dispatchReceiver, request, scope, projection)
+            ) {
                 NativeReceiverFieldProof.Unrelated -> return@observedAnalyze NativeReceiverField.Unrelated
                 is NativeReceiverFieldProof.Unsupported ->
                     return@observedAnalyze NativeReceiverField.Unsupported(proof.cause)

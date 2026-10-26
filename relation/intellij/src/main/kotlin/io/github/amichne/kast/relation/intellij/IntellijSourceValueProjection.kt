@@ -50,8 +50,16 @@ internal fun nativeValueSourceArgument(
             is IntellijRelationSubjectLookup.Rejected -> null
         } ?: return sourceRejected()
     if (callable.bodyExpression == null) return Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
-    val final = projection.observation.observedAnalyze(callable) { callable.symbol.modality == KaSymbolModality.FINAL }
-    if (!final) return sourceRejected()
+    if (
+        nativeValueBodySelection(
+            function = callable,
+            source = source,
+            callable = argument.call.callable,
+            scope = scope,
+            projection = projection,
+        ) != NativeValueBodySelection.DIRECT
+    )
+        return sourceRejected()
     val parameter = callable.valueParameters.getOrNull(argument.position.value) ?: return sourceRejected()
     return when (val formal = nativeValueFormalParameter(argument, parameter)) {
         is Refinement.Refined -> nativeSourceEntry(source, argument.call, ValueFormalPosition.Parameter(formal.value))
