@@ -79,7 +79,7 @@ class SourceValidationTest(unittest.TestCase):
             expected = [row for row in csv.DictReader(manifest, delimiter="\t")
                         if row["verification_owner"] == ":runtime:hosted"]
         self.assertEqual(expected, actual)
-        self.assertEqual(82, len(actual))
+        self.assertEqual(106, len(actual))
         self.assertIn("-PkastSemanticOwners=:runtime:hosted", command)
         self.assertIn(":verifySelectedKotlinSemanticCoverage", command)
         self.assertNotIn("sourceValidationGate", command)
@@ -87,6 +87,33 @@ class SourceValidationTest(unittest.TestCase):
         self.assertIn(":cli:queryDeliveryContractTest", required)
         self.assertNotIn(":symbol:intellij:semanticCoverageFixtureTest", required)
         self.assertNotIn(":relation:intellij:semanticCoverageFixtureTest", required)
+
+    def test_direct_file_consumers_keep_full_owner_obligations_and_cases(self):
+        matrix = (
+            ("cli/src/main/js/query-delivery.mjs", {":app-server:check", ":app-server:test",
+              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
+            ("cli/src/test/resources/hosted-read-failure-encodings.json",
+             {":workspace:intellij-read:check", ":workspace:intellij-read:test"},
+             {":symbol:intellij", ":relation:intellij", ":runtime:hosted"}),
+        )
+        with (ROOT / verification_plan.MANIFEST).open() as manifest:
+            full_population = list(csv.DictReader(manifest, delimiter="\t"))
+        for path, required, semantic_owners in matrix:
+            with self.subTest(path=path):
+                plan = verification_plan.plan(
+                    ROOT, frozenset(":" + path.replace("/", ":") for path in PRODUCT_MODULES),
+                    (path,), "a" * 40, "b" * 40, "c" * 40, "d" * 40, "pull_request",
+                )
+                self.assertIsInstance(plan, verification_plan.Plan)
+                self.assertLessEqual(required, source.obligations(plan))
+                with tempfile.TemporaryDirectory() as temporary:
+                    destination = Path(temporary)
+                    source.selected_command(ROOT, destination, plan)
+                    with (destination / "selected-cases.tsv").open() as selected:
+                        actual = list(csv.DictReader(selected, delimiter="\t"))
+                expected = [row for row in full_population
+                            if row["verification_owner"] in semantic_owners]
+                self.assertEqual(expected, actual)
 
     def test_process_failure_and_source_change_never_emit_success(self):
         identity = ("a" * 40, "b" * 40)

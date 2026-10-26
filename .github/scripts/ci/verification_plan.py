@@ -38,6 +38,14 @@ SHARED_INPUTS = {
     "cli/src/main/js/": frozenset({":cli", ":query:protocol"}),
     "experiments/host-observation/": frozenset({":cli", ":query:protocol"}),
 }
+# File consumers without a Gradle project-dependency edge. Match exact paths so
+# neighboring inputs keep their existing owner closure.
+FILE_CONSUMERS = {
+    # kast.public-query-contract: verifyPublicQueryGeneration / verifyPublicQueryGeneratorRules.
+    "cli/src/main/js/query-delivery.mjs": frozenset({":app-server"}),
+    # HostedFailureEncodingFixtureTest compares IntelliJ encoder output with this CLI fixture.
+    "cli/src/test/resources/hosted-read-failure-encodings.json": frozenset({":workspace:intellij-read"}),
+}
 
 
 class Failure(str, Enum):
@@ -249,6 +257,7 @@ def plan(
             part in {"", ".", ".."} for part in path.split("/")
         ):
             return Failure.UNKNOWN_OWNER
+        owners.update(FILE_CONSUMERS.get(path, ()))
         shared = next(
             (value for prefix, value in SHARED_INPUTS.items() if path.startswith(prefix)), None
         )
