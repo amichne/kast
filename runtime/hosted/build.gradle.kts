@@ -1,5 +1,6 @@
 import java.security.MessageDigest
 import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
@@ -255,6 +256,19 @@ dependencies {
     add(nativeTest.runtimeOnlyConfigurationName, "com.jetbrains.intellij.platform:test-runner:$nativePlatformBuild")
 }
 
+val nativeDependencyFixture =
+    configurations.create("nativeDependencyFixture") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
+dependencies {
+    add(
+        nativeDependencyFixture.name,
+        project(path = ":relation:intellij", configuration = "nativeDependencyFixtureElements"),
+    )
+}
+
 fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>) =
     tasks.register<Test>(taskName) {
         description = "Runs native hosted wait and cancellation fixtures in the pinned IntelliJ Platform."
@@ -275,6 +289,11 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
         }
         maxParallelForks = 1
         jvmArgumentProviders.add(
+            objects.newInstance<DependencyFixtureArguments>().apply {
+                archives.from(nativeDependencyFixture)
+            }
+        )
+        jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
                 productInfo.set(nativeIdeaHome.file("product-info.json"))
                 pinnedBuild.set(nativePlatformBuild)
@@ -294,6 +313,13 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
     }
 
 registerHostedNativeFixtures("nativeFixtureTest", emptyList())
+
+val dependencyFixtureTest =
+    registerHostedNativeFixtures("dependencyFixtureTest", listOf("*DeclaredEffectArchiveIsolationTest"))
+
+tasks.named("check") { dependsOn(dependencyFixtureTest) }
+
+tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest) }
 
 registerHostedNativeFixtures(
     "semanticCoverageFixtureTest",

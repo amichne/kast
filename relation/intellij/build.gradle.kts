@@ -1,4 +1,7 @@
+import java.time.Duration
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import support.tasks.nativefixtures.CompileDependencyFixture
+import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
@@ -178,6 +181,32 @@ dependencies {
     )
 }
 
+val compileDeclaredEffectFixture =
+    tasks.register<CompileDependencyFixture>("compileDeclaredEffectFixture") {
+        sourceFile.set(layout.projectDirectory.file("src/nativeTest/resources/semantic-effects/DependencyEffects.kt"))
+        equivalentSources.from(
+            rootProject.file("runtime/hosted/src/nativeTest/resources/semantic-effects/DependencyEffects.kt")
+        )
+        compilerClasspath.from(
+            nativeIdeaHome.map { home ->
+                fileTree(home.dir("plugins/Kotlin/kotlinc/lib")) { include("*.jar") }
+            }
+        )
+        dependencies.from(nativeIdeaHome.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar"))
+        javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+        archiveFile.set(layout.buildDirectory.file("native-test/dependencies/effects.jar"))
+        timeout.set(Duration.ofSeconds(60))
+        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+    }
+
+val nativeDependencyFixtureElements =
+    configurations.create("nativeDependencyFixtureElements") {
+        isCanBeConsumed = true
+        isCanBeResolved = false
+    }
+
+artifacts.add(nativeDependencyFixtureElements.name, compileDeclaredEffectFixture.flatMap { it.archiveFile })
+
 fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<String>) =
     tasks.register<Test>(taskName) {
         description = "Runs headless indexed Kotlin fixtures in the pinned IntelliJ Platform."
@@ -191,6 +220,11 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
             filter { selectedClasses.forEach(::includeTestsMatching) }
         }
         maxParallelForks = 1
+        jvmArgumentProviders.add(
+            objects.newInstance<DependencyFixtureArguments>().apply {
+                archives.from(compileDeclaredEffectFixture.flatMap { it.archiveFile })
+            }
+        )
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
                 productInfo.set(nativeIdeaHome.file("product-info.json"))
@@ -211,6 +245,13 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
     }
 
 registerRelationNativeFixtures("nativeFixtureTest", emptyList())
+
+val dependencyFixtureTest =
+    registerRelationNativeFixtures("dependencyFixtureTest", listOf("*DeclaredEffectArchiveIsolationTest"))
+
+tasks.named("check") { dependsOn(dependencyFixtureTest) }
+
+tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest) }
 
 registerRelationNativeFixtures(
     "semanticCoverageFixtureTest",

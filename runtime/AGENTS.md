@@ -4,8 +4,8 @@ title: "Kast runtime"
 description: "Composes semantic services inside IntelliJ IDEA and owns hosted transport, query publication, diagnostics, and source changes."
 resource: "repo://runtime"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-26T11:36:07Z"
+source_revision: 371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a
 code_sources:
   - path: runtime/hosted/build.gradle.kts
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
@@ -54,6 +54,8 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 
 - Gradle project: `:runtime:hosted`.
 - Read `hosted/NATIVE_FIXTURES.md` and `hosted/native/README.md` before native qualification.
+- Hosted declared-effect fixtures consume the relation-owned `compileDeclaredEffectFixture` archive. Each case keeps its own archive copy and project state.
+- `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation.
 - [HostedQueryPublicationProjectionTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt) - publication and projection cases.
 - [HostedQueryRetainedPresentationTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryRetainedPresentationTest.kt) - retained output cases.
 
