@@ -1,0 +1,58 @@
+[
+  {
+    "name": "documentation",
+    "before": "abf9e57bd74189dff8377c5d8756c58c5dbfeb8e",
+    "after": "9269df7c457252907ec5153f8f6ef54db9caf466",
+    "paths": [
+      "docs/public/docs.json",
+      "docs/public/explanation.mdx",
+      "docs/public/explanation/value-journey.mdx",
+      "docs/public/snippets/value-journey.jsx",
+      "docs/public/style.css",
+      "docs/tooling/value-journey/.gitignore",
+      "docs/tooling/value-journey/README.md",
+      "docs/tooling/value-journey/build.mts",
+      "docs/tooling/value-journey/package-lock.json",
+      "docs/tooling/value-journey/package.json",
+      "docs/tooling/value-journey/src/ValueJourney.tsx",
+      "docs/tooling/value-journey/src/mintlify.d.ts",
+      "docs/tooling/value-journey/src/trace.test.ts",
+      "docs/tooling/value-journey/src/trace.ts",
+      "docs/tooling/value-journey/tsconfig.json"
+    ],
+    "sha256": "a7c11a4fab0cc9a57439e30b2b51792f315e9783b0289382f4961031d5fd6a23"
+  },
+  {
+    "name": "leaf-service",
+    "before": "9ff85c5156e6e838e5a2e46e6779db669dce35e6",
+    "after": "abf9e57bd74189dff8377c5d8756c58c5dbfeb8e",
+    "paths": [
+      "query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+      "query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt",
+      "query/service/src/test/kotlin/io/github/amichne/kast/query/service/PipelineCheckpointHashWorkTest.kt",
+      "query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactProofResumeTest.kt",
+      "query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactStorageWorkTest.kt"
+    ],
+    "sha256": "4242a93201285c27440e364d2fb16661c5f1521a321649164578cff643a32902"
+  },
+  {
+    "name": "semantic-adapter",
+    "before": "221087638323fbc8347ffcf1760b4333fd277348",
+    "after": "371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a",
+    "paths": [
+      "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueImplementationDispatch.kt",
+      "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeInheritedReceiverTest.kt"
+    ],
+    "sha256": "8f46bf4c8bd5c8a005d721e462314c1f203f2466bafad02756693181985ac54b"
+  },
+  {
+    "name": "shared-contract",
+    "before": "7e4136a05e3c91563ed1ef3b035bede55b27a602",
+    "after": "9ff85c5156e6e838e5a2e46e6779db669dce35e6",
+    "paths": [
+      "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRows.kt",
+      "query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactRowsReuseTest.kt"
+    ],
+    "sha256": "26ab92c84259e8c29443c468566ce861a042c596ef0e69578ba4b1892f32d2e1"
+  }
+]
