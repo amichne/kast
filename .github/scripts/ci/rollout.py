@@ -23,6 +23,7 @@ class Mode(str, Enum):
     WARM = "warm"
     CHANGED = "changed"
     REUSE = "reuse"
+    COLD = "cold"
 
 
 @dataclass(frozen=True)
@@ -246,10 +247,10 @@ def run(root: Path, case: Case, mode: Mode) -> Measurement:
         if plan is None:
             raise ValueError("CORPUS_SELECTION_REJECTED")
         arguments: tuple[str, ...] = ()
-        if mode == Mode.CHANGED:
+        if mode in {Mode.CHANGED, Mode.COLD}:
             script = destination / "changed-outputs.gradle.kts"
             script.write_text(forced_outputs(plan))
-            arguments = ("--init-script", str(script))
+            arguments = ("--init-script", str(script), "--info")
         evidence = source_validation.run(
             root, destination, None if mode == Mode.WARM else plan, arguments
         )
