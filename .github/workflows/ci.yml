@@ -109,7 +109,7 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
-          cache: ${{ inputs.rollout != 'cold' && 'pip' || '' }}
+          cache: pip
           cache-dependency-path: experiments/host-observation/requirements-test.txt
 
       - name: Install host protocol and semantic test tools
@@ -124,7 +124,6 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           validate-wrappers: true
-          cache-disabled: ${{ inputs.rollout == 'cold' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
           # A main workflow_dispatch performs a full build to seed/refresh these entries.
@@ -343,7 +342,7 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
-          cache: pip
+          cache: ${{ inputs.rollout != 'cold' && 'pip' || '' }}
           cache-dependency-path: experiments/host-observation/requirements-test.txt
 
       - name: Install host protocol and semantic test tools
@@ -358,6 +357,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           validate-wrappers: true
+          cache-disabled: ${{ inputs.rollout == 'cold' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Only the explicit rollout warm-up writes this branch-scoped cache.
           # Routine PR policy remains read-only.
