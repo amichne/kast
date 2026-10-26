@@ -17,6 +17,7 @@ import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatchFailure
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSourceOwnership
@@ -25,6 +26,7 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import java.nio.file.Path
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
@@ -54,10 +56,17 @@ internal class NativeValueImplementationDispatch(
     private val allowance: IntellijRelationAllowance,
 ) {
     fun read(): NativeValueArgumentDispatch {
-        val argument =
-            request.source.role as? ValueRole.Argument
-                ?: return NativeValueArgumentDispatch.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        return forCallable(argument.call.callable)
+        val invocation =
+            when (val role = request.source.role) {
+                is ValueRole.Argument -> role.call
+                is ValueRole.Receiver ->
+                    when (val formal = nativeValueReceiverFormal(request.source, scope, projection)) {
+                        is Refinement.Refined -> role.call
+                        is Refinement.Rejected -> return NativeValueArgumentDispatch.Unsupported(formal.failure)
+                    }
+                else -> return NativeValueArgumentDispatch.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            }
+        return forCallable(invocation.callable)
     }
 
     fun forCallable(callable: RelationEndpoint): NativeValueArgumentDispatch {
@@ -139,12 +148,17 @@ internal fun nativeValueImplementationEntry(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
-    val argument = source.role as? ValueRole.Argument ?: return implementationRejected()
+    val invocation =
+        when (val role = source.role) {
+            is ValueRole.Argument -> role.call
+            is ValueRole.Receiver -> role.call
+            else -> return implementationRejected()
+        }
     val frame =
         when (
             val value =
                 nativeValueImplementationFrame(
-                    invocation = argument.call,
+                    invocation = invocation,
                     dispatch = dispatch,
                     relation = relation,
                     scope = scope,
@@ -158,7 +172,7 @@ internal fun nativeValueImplementationEntry(
         when (
             val value =
                 implementationFormal(
-                    argument = argument,
+                    source = source,
                     callee = relation.source,
                     scope = scope,
                     projection = projection,
@@ -197,7 +211,7 @@ internal fun nativeValueImplementationFrame(
 }
 
 private fun implementationFormal(
-    argument: ValueRole.Argument,
+    source: ValueSite,
     callee: RelationEndpoint,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
@@ -208,11 +222,38 @@ private fun implementationFormal(
             is IntellijRelationSubjectLookup.Rejected -> null
         } ?: return implementationRejected()
     if (function.bodyExpression == null) return Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
-    val parameter = function.valueParameters.getOrNull(argument.position.value) ?: return implementationRejected()
-    return when (val value = nativeValueFormalParameter(callee, argument.position, parameter)) {
-        is Refinement.Refined -> Refinement.Refined(ValueFormalPosition.Parameter(value.value))
-        is Refinement.Rejected -> value
+    return when (val role = source.role) {
+        is ValueRole.Argument -> {
+            val parameter = function.valueParameters.getOrNull(role.position.value) ?: return implementationRejected()
+            when (val value = nativeValueFormalParameter(callee, role.position, parameter)) {
+                is Refinement.Refined -> Refinement.Refined(ValueFormalPosition.Parameter(value.value))
+                is Refinement.Rejected -> value
+            }
+        }
+        is ValueRole.Receiver -> implementationReceiverFormal(source, function, scope, projection)
+        else -> implementationRejected()
     }
+}
+
+private fun implementationReceiverFormal(
+    source: ValueSite,
+    function: KtNamedFunction,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+): Refinement<ValueFormalPosition.Receiver, ValueFlowUnsupportedCause> {
+    val formal =
+        when (val value = nativeValueReceiverFormal(source, scope, projection)) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> return value
+        }
+    val present =
+        projection.observation.observedAnalyze(function) {
+            when (formal.kind) {
+                ValueReceiverKind.EXTENSION -> function.symbol.receiverParameter != null
+                ValueReceiverKind.DISPATCH -> function.symbol.containingDeclaration is KaClassSymbol
+            }
+        }
+    return if (present) Refinement.Refined(formal) else implementationRejected()
 }
 
 internal fun nativeValueSourceOwnership(

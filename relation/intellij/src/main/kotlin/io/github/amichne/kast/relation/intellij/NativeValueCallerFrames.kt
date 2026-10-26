@@ -18,7 +18,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.call
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
-import org.jetbrains.kotlin.psi.KtCallElement
 
 /** A caller target keeps its static declaration separate from the admitted concrete execution. */
 internal sealed interface NativeValueCallerTarget {
@@ -80,7 +79,7 @@ internal class NativeValueCallerFrames(
     }
 
     fun invocation(
-        call: KtCallElement,
+        call: NativeValueCallSyntax,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         expectedOwner: ValueExecutionOwner,
@@ -88,7 +87,7 @@ internal class NativeValueCallerFrames(
         boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Retained(expectedOwner))
 
     fun initialInvocation(
-        call: KtCallElement,
+        call: NativeValueCallSyntax,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         allowance: IntellijRelationAllowance,
@@ -96,7 +95,7 @@ internal class NativeValueCallerFrames(
         boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Initial(allowance))
 
     private fun boundInvocation(
-        call: KtCallElement,
+        call: NativeValueCallSyntax,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         admission: NativeCallerOwnerAdmission,
@@ -114,7 +113,7 @@ internal class NativeValueCallerFrames(
                 is Refinement.Refined -> bound.value
                 is Refinement.Rejected -> return bound
             }
-        val expression = call.valueInvocationExpression()
+        val expression = call.anchor
         val admitted =
             projection.observation.call(IntellijReadCall.VALUE_RETURN_OWNER_ADMISSION) {
                 executionOwner(expression, host, enclosing, admission)
@@ -143,12 +142,12 @@ internal class NativeValueCallerFrames(
     }
 
     private fun selectedCallable(
-        call: KtCallElement,
+        call: NativeValueCallSyntax,
         enclosing: RelationEndpoint,
     ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
         val declaration =
-            projection.observation.observedAnalyze(call) {
-                (call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
+            projection.observation.observedAnalyze(call.element) {
+                (resolveNativeValueCall(call)?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
             } ?: return rejected()
         return nativeValueCallableEndpoint(
             declaration = declaration,

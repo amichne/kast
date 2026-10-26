@@ -5,11 +5,12 @@ import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationCoverage
+import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 
-/** One argument read borrows the enclosing coordinator's allowance and transfer collector. */
-internal class NativeValueArgumentFlow(
+/** Argument and receiver entries borrow the enclosing coordinator's allowance and transfer collector. */
+internal class NativeValueCallFlow(
     private val request: ValueFlowRequest,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
@@ -28,7 +29,13 @@ internal class NativeValueArgumentFlow(
                 .read()
         when (dispatch) {
             NativeValueArgumentDispatch.Direct -> {
-                retained.adopt(nativeValueArgumentReturn(request.source, scope, projection))
+                when (request.source.role) {
+                    is ValueRole.Argument ->
+                        retained.adopt(nativeValueArgumentReturn(request.source, scope, projection))
+                    is ValueRole.Receiver ->
+                        retained.adopt(nativeValueSourceReceiver(request.source, scope, projection))
+                    else -> retained.unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                }
                 if (retained.edges.any { it.kind == ValueTransferKind.WRAPPER_RETURN })
                     projection.observation.count(IntellijReadCounter.VALUE_FLOW_WRAPPER_RETURNS)
             }

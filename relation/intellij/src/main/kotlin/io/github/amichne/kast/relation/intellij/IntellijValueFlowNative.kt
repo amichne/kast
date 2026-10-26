@@ -20,6 +20,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtContainerNode
 import org.jetbrains.kotlin.psi.KtContainerNodeForControlStructureBody
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtFunctionLiteral
@@ -102,9 +104,9 @@ internal class IntellijValueFlowNative(
     private fun readRole(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
         when (request.source.role) {
             ValueRole.LocalBinding -> retained.unresolvedAt(element.nativeLocalBindingCause(), element)
-            is ValueRole.Argument -> return argumentReturn()
+            is ValueRole.Argument,
+            is ValueRole.Receiver -> return callEntry()
             is ValueRole.Formal -> receiverFields(element)
-            is ValueRole.Receiver -> retained.adopt(nativeValueSourceReceiver(request.source, scope, projection))
             ValueRole.Return -> return sourceReturn()
             ValueRole.PropertyAssignment -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
             ValueRole.ExpressionResult,
@@ -121,9 +123,9 @@ internal class IntellijValueFlowNative(
         return Refinement.Refined(Unit)
     }
 
-    private fun argumentReturn(): Refinement<Unit, ValueFlowRejection> {
+    private fun callEntry(): Refinement<Unit, ValueFlowRejection> {
         val result =
-            NativeValueArgumentFlow(
+            NativeValueCallFlow(
                     request = request,
                     scope = scope,
                     projection = projection,
@@ -202,9 +204,20 @@ internal class IntellijValueFlowNative(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return
         }
+        if (expression is KtDestructuringDeclarationEntry) {
+            NativeValueDestructuring(request.source, scope, projection)
+                .bind(
+                    entry = expression,
+                    permit = ::permitted,
+                    consume = { emit(expression, ValueRole.LocalBinding, ValueTransferKind.LOCAL_BINDING) },
+                    unsupported = { retained.unresolvedAt(it, expression) },
+                )
+            return
+        }
         when (val parent = expression.parent) {
             is KtParenthesizedExpression -> transferExpression(parent)
             is KtProperty -> propertyDestination(expression, parent)
+            is KtDestructuringDeclaration -> destructuringDestination(expression, parent)
             is KtValueArgument -> argument(expression, parent)
             is KtQualifiedExpression -> receiver(expression, parent)
             is KtReturnExpression -> returnDestination(expression, parent)
@@ -226,6 +239,16 @@ internal class IntellijValueFlowNative(
             else -> retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, parent)
         }
     }
+
+    private fun destructuringDestination(expression: KtExpression, declaration: KtDestructuringDeclaration) =
+        NativeValueDestructuring(request.source, scope, projection)
+            .read(
+                expression = expression,
+                declaration = declaration,
+                permit = ::permitted,
+                consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
+                unsupported = { retained.unresolvedAt(it, declaration) },
+            )
 
     private fun returnDestination(expression: KtExpression, returned: KtReturnExpression) {
         if (returnCrossesFinally(returned, owner)) {
@@ -319,33 +342,14 @@ internal class IntellijValueFlowNative(
         }
     }
 
-    private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) {
-        if (qualified.selectorExpression !is org.jetbrains.kotlin.psi.KtCallElement) {
-            when (val result = nativeValueFieldRead(request.source, qualified, scope, projection)) {
-                is Refinement.Refined ->
-                    when (val read = result.value) {
-                        is NativeValueFieldRead.Transfer ->
-                            retained.emitTarget(read.value.target, read.value.kind, read.value.evidence)
-                        NativeValueFieldRead.DifferentField -> Unit
-                    }
-                is Refinement.Rejected -> retained.unresolvedAt(result.failure, qualified)
-            }
-            return
-        }
-        when (
-            val role =
-                nativeValueReceiver(
-                    expression = expression,
-                    qualified = qualified,
-                    scope = scope,
-                    projection = projection,
-                    executionOwner = request.source.executionOwner,
-                )
-        ) {
-            is Refinement.Refined -> emit(expression, role.value, ValueTransferKind.RECEIVER)
-            is Refinement.Rejected -> retained.unresolvedAt(role.failure, qualified)
-        }
-    }
+    private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) =
+        NativeValueQualifiedReceiver(
+                source = request.source,
+                scope = scope,
+                projection = projection,
+                retained = retained,
+            )
+            .read(expression, qualified)
 
     private fun emit(
         element: PsiElement,
