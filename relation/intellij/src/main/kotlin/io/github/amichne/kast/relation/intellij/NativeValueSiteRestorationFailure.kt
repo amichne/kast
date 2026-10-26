@@ -9,6 +9,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
@@ -42,12 +43,18 @@ internal fun PsiElement.restoreValueSiteElement(
 
 private fun KtExpression.matchesRoleShape(role: ValueSiteRoleClaim): Boolean =
     when (role) {
-        ValueSiteRoleClaim.LocalBinding -> this is KtProperty || nativeLocalBindingMutability() is Refinement.Refined
+        is ValueSiteRoleClaim.LoopResult -> this is KtForExpression
+        ValueSiteRoleClaim.LocalBinding ->
+            this is KtProperty ||
+                nativeLocalBindingMutability() is Refinement.Refined ||
+                this is org.jetbrains.kotlin.psi.KtBinaryExpression &&
+                    operationToken == org.jetbrains.kotlin.lexer.KtTokens.EQ
         ValueSiteRoleClaim.PropertyAssignment -> this is KtProperty
         is ValueSiteRoleClaim.Argument -> (parent as? KtValueArgument)?.getArgumentExpression() === this
         is ValueSiteRoleClaim.Receiver ->
-            (parent as? KtQualifiedExpression)?.receiverExpression === this ||
-                (this is KtDestructuringDeclarationEntry && isNativeSingleComponent())
+            this is KtForExpression ||
+                (parent as? KtQualifiedExpression)?.receiverExpression === this ||
+                (this is KtDestructuringDeclarationEntry && isNativeComponent())
         ValueSiteRoleClaim.ExpressionResult ->
             this !is KtNamedDeclaration || (this is KtDestructuringDeclarationEntry && isNativeComponent())
         ValueSiteRoleClaim.LocalRead,

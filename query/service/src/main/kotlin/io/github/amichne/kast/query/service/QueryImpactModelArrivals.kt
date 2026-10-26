@@ -58,8 +58,13 @@ private fun representationArrival(
     evidence: RepresentationEvidence,
     argument: ValueRole.Argument,
     model: RepresentationRule,
-): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> =
-    when (model) {
+): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> {
+    val output =
+        when (val admitted = argument.call.resultSite().withState(conditions = route.site.conditions)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return Refinement.Rejected(QueryImpactExecutionFailure.Site(admitted.failure))
+        }
+    return when (model) {
         is RepresentationRule.Origin -> Refinement.Refined(QueryImpactModelArrivals(emptyList(), emptyList()))
         is RepresentationRule.ConsumerExpectation ->
             when (val expected = evidence.expect(model)) {
@@ -70,14 +75,15 @@ private fun representationArrival(
         is RepresentationRule.Transfer ->
             modeledRepresentation(
                 route,
-                evidence.modeledTransfer(argument.call.resultSite(), argument.call, model),
+                evidence.modeledTransfer(output, argument.call, model),
             )
         is RepresentationRule.Transformation ->
             modeledRepresentation(
                 route,
-                evidence.transform(argument.call.resultSite(), argument.call, model),
+                evidence.transform(output, argument.call, model),
             )
     }
+}
 
 private fun modeledRepresentation(
     route: QueryImpactRoute,

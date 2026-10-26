@@ -17,6 +17,7 @@ enum class ValueTransferKind {
     SOURCE_CALL_RETURN,
     FIELD_READ,
     CONSTRUCTOR_FIELD,
+    CAST_RESULT,
 }
 
 enum class ValueTransferFailure {
@@ -51,6 +52,8 @@ private constructor(
         ): Refinement<ValueTransfer, ValueTransferFailure> {
             if (source.basis != target.basis) return Refinement.Rejected(ValueTransferFailure.BASIS_MISMATCH)
             if (source.identity == target.identity) return Refinement.Rejected(ValueTransferFailure.SELF_EDGE)
+            if (!source.conditions.admits(source, target, kind))
+                return Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH)
             if (!evidence.admits(source, target, kind))
                 return Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH)
             val rolesMatch = kind.admitsRoles(source, target)
@@ -365,6 +368,9 @@ private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite):
         ValueTransferKind.RETURN -> target.role == ValueRole.Return
         ValueTransferKind.PROPERTY_ASSIGNMENT -> target.role == ValueRole.PropertyAssignment
         ValueTransferKind.BRANCH_ALTERNATIVE -> target.role == ValueRole.ExpressionResult
+        ValueTransferKind.CAST_RESULT ->
+            (source.role == ValueRole.ExpressionResult || source.role == ValueRole.LocalRead) &&
+                target.role == ValueRole.ExpressionResult
         ValueTransferKind.WRAPPER_RETURN ->
             source.role is ValueRole.Argument &&
                 target.enclosing.valueIdentity == source.role.call.enclosing.valueIdentity &&
@@ -372,7 +378,8 @@ private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite):
                 target.role == ValueRole.ExpressionResult &&
                 target.executionOwner == source.role.call.executionOwner
         ValueTransferKind.SOURCE_CALL_ENTRY -> target.role is ValueRole.Formal
-        ValueTransferKind.SOURCE_CALL_RETURN,
+        ValueTransferKind.SOURCE_CALL_RETURN ->
+            target.role == ValueRole.ExpressionResult || target.role is ValueRole.LoopResult
         ValueTransferKind.FIELD_READ,
         ValueTransferKind.CONSTRUCTOR_FIELD -> target.role == ValueRole.ExpressionResult
     }

@@ -7,5 +7,6 @@
   {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"MODEL_HISTORY","cause":"MISSING_APPLICATION"}},
   {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"SELECTION","cause":"PRESENTATION_ONLY_ROWS"}},
   {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"ROW_IDENTITY","cause":"CHANGED_RETAINED_ROWS"}},
-  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"PRESENTATION_ONLY"}}
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"PRESENTATION_ONLY"}},
+  {"type":"IMPACT_EXECUTION_REJECTED","cause":{"type":"SITE","cause":"CONDITIONS_NOT_PRESERVED"}}
 ]

@@ -46,6 +46,7 @@ private constructor(
                         executionOwner = ValueExecutionOwner.declaration(binding.enclosing),
                         valuePath = path,
                         callStack = source.callStack,
+                        conditions = source.conditions,
                     )
             ) {
                 is Refinement.Refined -> Refinement.Refined(ReviewedValueTransfer(source, target.value, binding))

@@ -12,7 +12,10 @@ internal fun ValueExecutionContext.storageBytes(g: QueryImpactRetainedGraph): Lo
         is ValueExecutionContext.ReviewedCallback -> g.node(this) { binding.storageBytes(g) }
         is ValueExecutionContext.Callback ->
             g.node(this) {
-                body.storageBytes(g).saturatedAdd(g.collection(invocations) { it.storageBytes(g) })
+                body
+                    .storageBytes(g)
+                    .saturatedAdd(g.collection(invocations) { it.storageBytes(g) })
+                    .saturatedAdd(selectedInvocation.storageBytes(g))
             }
     }
 

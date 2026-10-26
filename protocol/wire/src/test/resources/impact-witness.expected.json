@@ -31,7 +31,8 @@
             "type": "DECLARATION"
           },
           "valuePath": [],
-          "callStack": []
+          "callStack": [],
+          "conditions": []
         },
         "invocation": {
           "range": {
@@ -90,7 +91,8 @@
             "type": "DECLARATION"
           },
           "valuePath": [],
-          "callStack": []
+          "callStack": [],
+          "conditions": []
         }
       }
     }
@@ -129,7 +131,8 @@
             "type": "DECLARATION"
           },
           "valuePath": [],
-          "callStack": []
+          "callStack": [],
+          "conditions": []
         },
         "cause": "EXTERNAL_CALL",
         "evidence": {
@@ -172,7 +175,8 @@
               "type": "DECLARATION"
             },
             "valuePath": [],
-            "callStack": []
+            "callStack": [],
+            "conditions": []
           },
           "domain": {
             "type": "WORKSPACE"

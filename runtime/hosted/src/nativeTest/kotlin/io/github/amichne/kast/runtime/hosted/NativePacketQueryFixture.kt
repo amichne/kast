@@ -152,7 +152,8 @@ internal enum class NativePacketQueryVariant(val directory: String, val concrete
     V1("v1", "BackendClientImpl", "derived-sources.sha256"),
     V2("v2", "BackendClient", "derived-sources.sha256"),
     V3("v3", "BackendClient", "derived-sources.sha256"),
-    V8("v8", "BackendClient", "derived-sources.sha256");
+    V8("v8", "BackendClient", "derived-sources.sha256"),
+    COVERAGE("coverage", "BindingScope", "frozen-sources.sha256");
 
     val sourcePath = "src/main/kotlin/fixture/variants/$directory/${directory.uppercase()}.kt"
 }

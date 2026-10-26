@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
@@ -60,6 +61,8 @@ internal class NativeValueReceiverReads(
         permit: () -> Boolean,
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
     ): Boolean {
+        if (element is KtExpression && nativeContractDescriptionReference(element, function, projection.observation))
+            return true
         if (element is KtThisExpression) return thisRead(function, element, permit, consume)
         if (element is KtCallExpression) return permit() && calls(function, element, permit, consume)
         val name = element as? KtNameReferenceExpression ?: return true
@@ -174,7 +177,7 @@ internal class NativeValueReceiverReads(
                 is Refinement.Refined -> value.value
                 is Refinement.Rejected -> return value
             }
-        return sourceFieldTarget(source, candidate.expression, field)
+        return sourceFieldTarget(source, candidate.expression, field, candidate.conditions)
     }
 
     private fun receiverField(function: KtNamedFunction, expression: KtNameReferenceExpression): NativeReceiverField =
@@ -182,14 +185,16 @@ internal class NativeValueReceiverReads(
             val call = expression.resolveCall() ?: return@observedAnalyze missingReceiverField(expression)
             val property =
                 call.signature.symbol as? KaKotlinPropertySymbol ?: return@observedAnalyze NativeReceiverField.Unrelated
-            when (
-                val proof = receiverFieldGuard(function, expression, call.dispatchReceiver, request, scope, projection)
-            ) {
-                NativeReceiverFieldProof.Unrelated -> return@observedAnalyze NativeReceiverField.Unrelated
-                is NativeReceiverFieldProof.Unsupported ->
-                    return@observedAnalyze NativeReceiverField.Unsupported(proof.cause)
-                NativeReceiverFieldProof.Matched -> Unit
-            }
+            val conditions =
+                when (
+                    val proof =
+                        receiverFieldGuard(function, expression, call.dispatchReceiver, request, scope, projection)
+                ) {
+                    NativeReceiverFieldProof.Unrelated -> return@observedAnalyze NativeReceiverField.Unrelated
+                    is NativeReceiverFieldProof.Unsupported ->
+                        return@observedAnalyze NativeReceiverField.Unsupported(proof.cause)
+                    is NativeReceiverFieldProof.Matched -> proof.conditions
+                }
             val declaration =
                 property.psi as? PsiNamedElement
                     ?: return@observedAnalyze NativeReceiverField.Unsupported(
@@ -199,6 +204,7 @@ internal class NativeValueReceiverReads(
             NativeReceiverField.Selected(
                 declaration,
                 if (parent?.selectorExpression === expression) parent else expression,
+                conditions,
             )
         }
 }
@@ -247,6 +253,7 @@ private fun nativeThisRead(
                     executionOwner = source.executionOwner,
                     valuePath = source.valuePath,
                     callStack = source.callStack,
+                    conditions = source.conditions,
                 )
         ) {
             is Refinement.Refined -> admitted.value
@@ -265,6 +272,7 @@ private sealed interface NativeReceiverField {
     data class Selected(
         val declaration: PsiNamedElement,
         val expression: KtExpression,
+        val conditions: ValueConditions,
     ) : NativeReceiverField
 
     data object Unrelated : NativeReceiverField

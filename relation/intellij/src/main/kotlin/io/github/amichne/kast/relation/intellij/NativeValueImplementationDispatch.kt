@@ -59,7 +59,7 @@ internal class NativeValueImplementationDispatch(
             when (val role = request.source.role) {
                 is ValueRole.Argument -> role.call
                 is ValueRole.Receiver ->
-                    when (val formal = nativeValueReceiverFormal(request.source, scope, projection)) {
+                    when (val formal = allowance.nativeValueReceiverFormal(request.source, scope, projection)) {
                         is Refinement.Refined -> role.call
                         is Refinement.Rejected -> return NativeValueArgumentDispatch.Unsupported(formal.failure)
                     }
@@ -147,7 +147,7 @@ internal class NativeValueImplementationDispatch(
     }
 }
 
-internal fun nativeValueImplementationEntry(
+internal fun IntellijRelationAllowance.nativeValueImplementationEntry(
     source: ValueSite,
     dispatch: ValueImplementationDispatch,
     relation: RelationFact,
@@ -216,7 +216,7 @@ internal fun nativeValueImplementationFrame(
     }
 }
 
-private fun implementationFormal(
+private fun IntellijRelationAllowance.implementationFormal(
     source: ValueSite,
     callee: RelationEndpoint,
     scope: CompiledRelationScope,
@@ -241,7 +241,7 @@ private fun implementationFormal(
     }
 }
 
-private fun implementationReceiverFormal(
+private fun IntellijRelationAllowance.implementationReceiverFormal(
     source: ValueSite,
     function: KtNamedFunction,
     scope: CompiledRelationScope,

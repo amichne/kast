@@ -107,7 +107,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "kind": "PERSISTENCE",
       "contract": {
@@ -145,7 +146,8 @@
               "type": "DECLARATION"
             },
             "valuePath": [],
-            "callStack": []
+            "callStack": [],
+            "conditions": []
           },
           "kind": "PERSISTENCE",
           "contract": {
@@ -198,7 +200,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "domain": {
         "type": "WORKSPACE"
@@ -236,7 +239,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "domain": {
         "type": "WORKSPACE"
@@ -273,7 +277,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "kind": "PERSISTENCE",
       "contract": {
@@ -310,7 +315,8 @@
             "type": "DECLARATION"
           },
           "valuePath": [],
-          "callStack": []
+          "callStack": [],
+          "conditions": []
         },
         "kind": "PERSISTENCE",
         "contract": {
@@ -369,7 +375,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "domain": {
         "subject": {

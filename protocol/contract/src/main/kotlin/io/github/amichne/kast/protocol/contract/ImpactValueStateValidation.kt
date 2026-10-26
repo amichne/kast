@@ -12,7 +12,9 @@ internal fun ImpactValueSiteReferenceDocument.admitsValueState(): Boolean =
         callStack.values.withIndex().all { (index, frame) ->
             callStack.values.take(index).none { it.hasSameFrameIdentity(frame) }
         } &&
-        callStack.values.all { it.admits(enclosing.basis) }
+        callStack.values.all { it.admits(enclosing.basis) } &&
+        admitsConditions() &&
+        admitsLocalVersion()
 
 internal fun ImpactValuePathSegmentDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
@@ -47,7 +49,7 @@ internal fun ImpactFormalPositionDocument.admits(site: ImpactValueSiteReferenceD
         is ImpactFormalPositionDocument.Receiver -> true
     }
 
-private fun ImpactDeclarationReferenceDocument.validValueDeclaration(): Boolean =
+internal fun ImpactDeclarationReferenceDocument.validValueDeclaration(): Boolean =
     declarationFailure() is Refinement.Refined
 
 internal fun ImpactSourceOperationDocument.admits(
@@ -61,6 +63,7 @@ internal fun ImpactSourceOperationDocument.admits(
         is ImpactSourceOperationDocument.Return -> admitsReturn(source, target, kind)
         is ImpactSourceOperationDocument.SeedReturn -> admitsSeedReturn(source, target, kind)
         is ImpactSourceOperationDocument.CallbackReturn -> admitsCallbackReturn(source, target, kind)
+        is ImpactSourceOperationDocument.CallbackArgumentEntry -> admitsCallbackArgument(source, target, kind)
         is ImpactSourceOperationDocument.ReadField -> admitsFieldRead(source, target, kind)
         is ImpactSourceOperationDocument.ConstructField -> admitsConstruction(source, target, kind)
     }
@@ -199,7 +202,11 @@ internal fun ImpactValueSiteReferenceDocument.isIn(owner: ImpactExecutionReferen
 internal fun ImpactValueSiteReferenceDocument.isResultOf(frame: ImpactCallFrameDocument): Boolean =
     enclosing == frame.enclosing &&
         range == frame.invocation.range &&
-        role == ImpactValueRoleDocument.ExpressionResult &&
+        (role == ImpactValueRoleDocument.ExpressionResult ||
+            (role as? ImpactValueRoleDocument.LoopResult)?.let {
+                it.admits(this) &&
+                    it.result.invocation == (frame.invocation as? ImpactCallOccurrenceDocument.Declared)?.invocation
+            } == true) &&
         executionOwner == frame.invocation.executionOwner
 
 internal fun BoundedProtocolList<ImpactValuePathSegmentDocument>.selects(

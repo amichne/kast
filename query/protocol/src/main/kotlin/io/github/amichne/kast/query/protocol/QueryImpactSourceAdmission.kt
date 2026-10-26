@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.admitsExecutionOwner
+import io.github.amichne.kast.protocol.contract.protocol
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -184,6 +185,10 @@ internal fun QueryImpactSourceDocument.admitSiteClaims(
         val claims =
             listOf(declared.enclosing) +
                 when (val role = declared.role) {
+                    is ImpactValueRoleDocument.LoopResult ->
+                        role.result.protocol.let {
+                            listOf(it.enclosing, it.iterator.callable, it.hasNext.callable, it.next.callable)
+                        }
                     is ImpactValueRoleDocument.Argument -> listOf(role.invocation.callable)
                     is ImpactValueRoleDocument.Receiver -> listOf(role.invocation.callable)
                     is ImpactValueRoleDocument.Formal -> emptyList()

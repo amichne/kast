@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionPathCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRepresentationCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRowIdentityCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
+import io.github.amichne.kast.protocol.contract.ImpactExecutionSiteCause
 import io.github.amichne.kast.protocol.contract.ImpactPeerProofFailureDocument
 import io.github.amichne.kast.query.contract.QueryImpactExecutionFailure
 import io.github.amichne.kast.query.contract.QueryImpactLedgerFailure
@@ -20,6 +21,7 @@ import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.query.contract.QueryValuePathAccountingFailure
 import io.github.amichne.kast.relation.contract.BoundaryModelFailure
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
+import io.github.amichne.kast.relation.contract.ValueSiteFailure
 
 internal fun QueryImpactExecutionFailure.executionDocument(): ImpactExecutionFailureDocument =
     when (this) {
@@ -33,6 +35,7 @@ internal fun QueryImpactExecutionFailure.executionDocument(): ImpactExecutionFai
             ImpactExecutionFailureDocument.Accounting(cause.executionCauseDocument())
         is QueryImpactExecutionFailure.Representation ->
             ImpactExecutionFailureDocument.Representation(cause.executionCauseDocument())
+        is QueryImpactExecutionFailure.Site -> ImpactExecutionFailureDocument.Site(cause.executionCauseDocument())
         is QueryImpactExecutionFailure.Boundary ->
             ImpactExecutionFailureDocument.Boundary(cause.executionCauseDocument())
         is QueryImpactExecutionFailure.ModelHistory ->
@@ -91,6 +94,20 @@ private fun RepresentationPropagationFailure.executionCauseDocument(): ImpactExe
         RepresentationPropagationFailure.CALLABLE_MISMATCH -> ImpactExecutionRepresentationCause.CALLABLE_MISMATCH
         RepresentationPropagationFailure.POSITION_MISMATCH -> ImpactExecutionRepresentationCause.POSITION_MISMATCH
         RepresentationPropagationFailure.EMPTY_MERGE -> ImpactExecutionRepresentationCause.EMPTY_MERGE
+    }
+
+private fun ValueSiteFailure.executionCauseDocument(): ImpactExecutionSiteCause =
+    when (this) {
+        ValueSiteFailure.ANCHOR_OUTSIDE_OWNER -> ImpactExecutionSiteCause.ANCHOR_OUTSIDE_OWNER
+        ValueSiteFailure.INVOCATION_OWNER_MISMATCH -> ImpactExecutionSiteCause.INVOCATION_OWNER_MISMATCH
+        ValueSiteFailure.ARGUMENT_OUTSIDE_INVOCATION -> ImpactExecutionSiteCause.ARGUMENT_OUTSIDE_INVOCATION
+        ValueSiteFailure.INVALID_ARGUMENT_POSITION -> ImpactExecutionSiteCause.INVALID_ARGUMENT_POSITION
+        ValueSiteFailure.EXECUTION_OWNER_MISMATCH -> ImpactExecutionSiteCause.EXECUTION_OWNER_MISMATCH
+        ValueSiteFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER -> ImpactExecutionSiteCause.ANCHOR_OUTSIDE_EXECUTION_OWNER
+        ValueSiteFailure.RECEIVER_OUTSIDE_INVOCATION -> ImpactExecutionSiteCause.RECEIVER_OUTSIDE_INVOCATION
+        ValueSiteFailure.STATE_BASIS_MISMATCH -> ImpactExecutionSiteCause.STATE_BASIS_MISMATCH
+        ValueSiteFailure.CONDITIONS_NOT_PRESERVED -> ImpactExecutionSiteCause.CONDITIONS_NOT_PRESERVED
+        ValueSiteFailure.FORMAL_OWNER_MISMATCH -> ImpactExecutionSiteCause.FORMAL_OWNER_MISMATCH
     }
 
 private fun BoundaryModelFailure.executionCauseDocument(): ImpactExecutionBoundaryCause =

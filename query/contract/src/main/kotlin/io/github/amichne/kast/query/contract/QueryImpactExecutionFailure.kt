@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.BoundaryModelFailure
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
+import io.github.amichne.kast.relation.contract.ValueSiteFailure
 
 enum class QueryImpactModelHistoryFailure {
     MISSING_APPLICATION
@@ -24,6 +25,8 @@ sealed interface QueryImpactExecutionFailure {
     data class Accounting(val cause: QueryValuePathAccountingFailure) : QueryImpactExecutionFailure
 
     data class Representation(val cause: RepresentationPropagationFailure) : QueryImpactExecutionFailure
+
+    data class Site(val cause: ValueSiteFailure) : QueryImpactExecutionFailure
 
     data class Boundary(val cause: BoundaryModelFailure) : QueryImpactExecutionFailure
 

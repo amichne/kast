@@ -10,20 +10,18 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
-import io.github.amichne.kast.relation.contract.ValueCaptureInvocation
 import io.github.amichne.kast.relation.contract.ValueExecutionContext
-import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
-import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSourceOperation
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.idea.references.KtForLoopInReference
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
+import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
 /** Native callers come from actual references to the declaration or its compiler-proven overridden declarations. */
@@ -49,63 +47,8 @@ internal class NativeValueSourceReturns(
 
     fun callback(permit: () -> Boolean, consume: (NativeValueReturnEffect) -> Boolean): Boolean {
         val context = source.executionOwner.context as? ValueExecutionContext.Callback ?: return consume(unsupported())
-        val invocations = context.invocations.filter { it.body == context.body }
-        if (invocations.isEmpty()) return consume(unsupported())
-        for (invocation in invocations) {
-            if (!permit() || !consume(NativeValueReturnEffect.Transfer(callbackTransfer(invocation)))) return false
-        }
-        return true
-    }
-
-    private fun callbackTransfer(
-        invocation: ValueCaptureInvocation
-    ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
-        val supplier =
-            when (val value = source.executionOwner.supplierOf(invocation)) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return value
-            }
-        val supplied = invocation.supply.invocation
-        val rebound =
-            when (
-                val value =
-                    ValueInvocation.fromCompiler(supplied.enclosing, supplied.range, supplied.callable, supplier)
-            ) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return returnRejected()
-            }
-        val callee = ValueExecutionOwner.declaration(rebound.callable)
-        val frame =
-            when (val value = ValueCallFrame.direct(rebound, callee)) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return returnRejected()
-            }
-        val stack =
-            when (val value = source.callStack.enter(frame)) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativeCallCause())
-            }
-        val target =
-            when (
-                val value =
-                    ValueSite.fromCompiler(
-                        enclosing = callee.enclosing,
-                        range = invocation.invocation.occurrence.range,
-                        role = ValueRole.ExpressionResult,
-                        executionOwner = callee,
-                        valuePath = source.valuePath,
-                        callStack = stack,
-                    )
-            ) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return returnRejected()
-            }
-        return sourceTransfer(
-            source,
-            target,
-            ValueTransferKind.SOURCE_CALL_RETURN,
-            ValueSourceOperation.CallbackReturn(invocation, frame),
-        )
+        return permit() &&
+            consume(NativeValueReturnEffect.Transfer(nativeCallbackSourceReturn(source, context.selectedInvocation)))
     }
 
     fun matched(consume: (NativeValueReturnEffect) -> Boolean): Boolean {
@@ -133,12 +76,18 @@ internal class NativeValueSourceReturns(
                 is IntellijRelationSubjectLookup.Rejected -> return returnRejected()
             }
         val expression = host.exactValueElement(expected.range) ?: return returnRejected()
-        val call = expression.nativeValueCallSyntax() ?: return returnRejected()
+        val function =
+            when (val native = projection.subject(scope, expected.callable)) {
+                is IntellijRelationSubjectLookup.Found -> native.declaration as? KtNamedFunction
+                is IntellijRelationSubjectLookup.Rejected -> null
+            }
+        val call = expression.nativeValueCallSyntax(function) ?: return returnRejected()
         return frames.invocation(
             call = call,
             host = host,
             enclosing = expected.enclosing,
             expectedOwner = expected.executionOwner,
+            allowance = allowance,
         )
     }
 
@@ -246,7 +195,7 @@ internal class NativeValueSourceReturns(
     ): Boolean {
         if (!permit()) return false
         val invocation =
-            when (val value = seedInvocation(reference)) {
+            when (val value = seedInvocation(reference, callable)) {
                 is Refinement.Refined -> value.value
                 is Refinement.Rejected -> return consume(NativeValueReturnEffect.Transfer(value))
             }
@@ -283,8 +232,16 @@ internal class NativeValueSourceReturns(
             is NativeValueCallerTarget.Implementation -> consume(NativeValueReturnEffect.Dispatch(target.dispatch))
         }
 
-    private fun seedInvocation(reference: PsiReference): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
-        val call = nativeCallerSyntax(reference) ?: return returnRejected()
+    private fun seedInvocation(
+        reference: PsiReference,
+        callable: RelationEndpoint,
+    ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
+        val function =
+            when (val native = projection.subject(scope, callable)) {
+                is IntellijRelationSubjectLookup.Found -> native.declaration as? KtNamedFunction
+                is IntellijRelationSubjectLookup.Rejected -> null
+            }
+        val call = nativeCallerSyntax(reference, function) ?: return returnRejected()
         val lexicalAnchor = if (call is NativeValueCallSyntax.Component) call.entry.parent else call.anchor
         val lexical =
             when (val value = lexicalAnchor.nearestDeclaration()) {
@@ -328,8 +285,18 @@ internal class NativeValueSourceReturns(
         stack: ValueCallStack,
         operation: ValueSourceOperation,
     ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
+        val result =
+            when (
+                val value =
+                    nativeInvocationResultSite(frame.invocation, scope, projection) {
+                        allowance.permitDestructuring(scope)
+                    }
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return value
+            }
         val target =
-            when (val value = frame.invocation.resultSite().withState(source.valuePath, stack)) {
+            when (val value = result.withState(source.valuePath, stack, source.conditions)) {
                 is Refinement.Refined -> value.value
                 is Refinement.Rejected -> return returnRejected()
             }
@@ -342,7 +309,11 @@ internal class NativeValueSourceReturns(
     }
 }
 
-private fun nativeCallerSyntax(reference: PsiReference): NativeValueCallSyntax? {
+private fun nativeCallerSyntax(reference: PsiReference, expected: KtNamedFunction?): NativeValueCallSyntax? {
+    if (reference is KtForLoopInReference) {
+        val loop = reference.element as? KtForExpression ?: return null
+        return loop.nativeValueCallSyntax(expected)
+    }
     val entry = PsiTreeUtil.getParentOfType(reference.element, KtDestructuringDeclarationEntry::class.java, false)
     if (entry != null) return entry.nativeValueCallSyntax()
     val call = PsiTreeUtil.getParentOfType(reference.element, KtCallExpression::class.java, false) ?: return null

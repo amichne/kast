@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueCallBindingFailure
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueField
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -161,6 +162,7 @@ internal fun sourceFormalTarget(
                 executionOwner = frame.callee,
                 valuePath = source.valuePath,
                 callStack = stack,
+                conditions = source.conditions,
             )
     ) {
         is Refinement.Refined -> value
@@ -200,6 +202,7 @@ internal fun sourceFieldTarget(
     source: ValueSite,
     expression: KtExpression,
     field: ValueField,
+    conditions: ValueConditions = source.conditions,
 ): Refinement<NativeValueFieldRead, ValueFlowUnsupportedCause> {
     val selected =
         when (val value = source.valuePath.select(ValuePathSegment.Field(field))) {
@@ -216,6 +219,7 @@ internal fun sourceFieldTarget(
                     executionOwner = source.executionOwner,
                     valuePath = selected,
                     callStack = source.callStack,
+                    conditions = conditions,
                 )
         ) {
             is Refinement.Refined -> value.value

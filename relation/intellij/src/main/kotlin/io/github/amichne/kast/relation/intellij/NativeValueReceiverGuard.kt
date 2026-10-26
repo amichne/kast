@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
@@ -20,7 +21,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtThisExpression
 
 internal sealed interface NativeReceiverFieldProof {
-    data object Matched : NativeReceiverFieldProof
+    data class Matched(val conditions: ValueConditions) : NativeReceiverFieldProof
 
     data object Unrelated : NativeReceiverFieldProof
 
@@ -53,11 +54,16 @@ internal fun KaSession.receiverFieldGuard(
             return NativeReceiverFieldProof.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
     }
     return when (branchAdmission(source, expression, expected, scope, projection, workAllowance)) {
-        NativeValueBranchAdmission.ADMITTED -> NativeReceiverFieldProof.Matched
+        NativeValueBranchAdmission.ADMITTED -> NativeReceiverFieldProof.Matched(source.conditions)
         NativeValueBranchAdmission.NOT_APPLICABLE ->
-            if (receiver is KaSmartCastedReceiverValue) unsupportedReceiver() else NativeReceiverFieldProof.Matched
+            if (receiver is KaSmartCastedReceiverValue)
+                stableReceiverFieldProof(expression, receiver, request, position.kind)
+            else NativeReceiverFieldProof.Matched(source.conditions)
         NativeValueBranchAdmission.EXCLUDED -> NativeReceiverFieldProof.Unrelated
-        NativeValueBranchAdmission.UNPROVEN -> unsupportedReceiver()
+        NativeValueBranchAdmission.UNPROVEN ->
+            if (receiver is KaSmartCastedReceiverValue)
+                stableReceiverFieldProof(expression, receiver, request, position.kind)
+            else unsupportedReceiver()
         NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
             NativeReceiverFieldProof.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
     }

@@ -33,7 +33,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "destination": {
         "enclosing": {
@@ -60,7 +61,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "representation": {
         "type": "PRESENT",
@@ -191,7 +193,8 @@
                 "type": "DECLARATION"
               },
               "valuePath": [],
-              "callStack": []
+              "callStack": [],
+              "conditions": []
             },
             "kind": "PERSISTENCE",
             "contract": {

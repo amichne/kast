@@ -4,19 +4,45 @@ package io.github.amichne.kast.relation.contract
 internal fun valueStateStorageBytes(site: ValueSite): Long =
     valuePathStorageBytes(site.valuePath)
         .addBytes(site.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
+        .addBytes(valueExecutionStorageBytes(site.executionOwner))
         .addBytes(
-            when (val context = site.executionOwner.context) {
-                ValueExecutionContext.Declaration -> 0L
-                is ValueExecutionContext.ReviewedCallback -> context.binding.retainedBytes
-                is ValueExecutionContext.Callback ->
-                    context.invocations.fold(VALUE_CALL_PROOF_BYTES) { total, frame ->
-                        total
-                            .addBytes(frame.invocation.retainedBytes)
-                            .addBytes(valueSiteStorageBytes(frame.supply.invocation.resultSite()))
-                            .addBytes(VALUE_CALL_PROOF_BYTES)
-                    }
+            site.conditions.facts.fold(0L) { sum, condition -> sum.addBytes(valueConditionStorageBytes(condition)) }
+        )
+
+private fun valueConditionStorageBytes(condition: ValueCondition): Long {
+    val origin = condition.origin
+    return VALUE_CALL_PROOF_BYTES.addBytes(origin.execution.enclosing.detachedTextUnits().multiplyBytes(2))
+        .addBytes(valueExecutionStorageBytes(origin.execution))
+        .addBytes(valuePathStorageBytes(origin.valuePath))
+        .addBytes(origin.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
+        .addBytes(
+            when (condition) {
+                is ValueCondition.StableReceiver ->
+                    condition.originalType.value.length
+                        .toLong()
+                        .multiplyBytes(2)
+                        .addBytes(condition.refinedType.value.length.toLong().multiplyBytes(2))
+                is ValueCondition.CastSuccess ->
+                    condition.originalType.value.length
+                        .toLong()
+                        .multiplyBytes(2)
+                        .addBytes(condition.targetType.value.length.toLong().multiplyBytes(2))
             }
         )
+}
+
+private fun valueExecutionStorageBytes(execution: ValueExecutionOwner): Long =
+    when (val context = execution.context) {
+        ValueExecutionContext.Declaration -> 0L
+        is ValueExecutionContext.ReviewedCallback -> context.binding.retainedBytes
+        is ValueExecutionContext.Callback ->
+            (context.invocations + context.selectedInvocation).fold(VALUE_CALL_PROOF_BYTES) { total, frame ->
+                total
+                    .addBytes(frame.invocation.retainedBytes)
+                    .addBytes(valueSiteStorageBytes(frame.supply.invocation.resultSite()))
+                    .addBytes(VALUE_CALL_PROOF_BYTES)
+            }
+    }
 
 private fun valuePathStorageBytes(path: ValueAccessPath): Long =
     path.segments.fold(0L) { sum, segment ->
@@ -43,6 +69,14 @@ internal fun sourceEvidenceStorageBytes(operation: ValueSourceOperation): Long =
             valueFrameStorageBytes(operation.frame)
                 .addBytes(operation.invocation.invocation.retainedBytes)
                 .addBytes(valueSiteStorageBytes(operation.invocation.supply.invocation.resultSite()))
+        is ValueSourceOperation.CallbackArgumentEntry ->
+            valueFrameStorageBytes(operation.supplierFrame)
+                .addBytes(operation.invocation.invocation.retainedBytes)
+                .addBytes(valueSiteStorageBytes(operation.invocation.supply.invocation.resultSite()))
+                .addBytes(valueExecutionStorageBytes(operation.parameter.executionOwner))
+                .addBytes(operation.parameter.callable.detachedTextUnits().multiplyBytes(2))
+                .addBytes(operation.parameter.name.value.length.toLong().multiplyBytes(2))
+                .addBytes(VALUE_CALL_PROOF_BYTES)
         is ValueSourceOperation.ReadField ->
             VALUE_FIELD_PROOF_BYTES.addBytes(operation.field.declaration.detachedTextUnits().multiplyBytes(2))
         is ValueSourceOperation.ConstructField ->

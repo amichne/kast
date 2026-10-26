@@ -9,10 +9,18 @@ import io.github.amichne.kast.relation.contract.ValueExecutionIdentity
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
+import io.github.amichne.kast.relation.contract.ValueLoopIteration
+import io.github.amichne.kast.relation.contract.ValueLoopProtocol
+import io.github.amichne.kast.relation.contract.ValueLoopResult
+import io.github.amichne.kast.relation.contract.ValueLoopTransfer
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSiteIdentity
+import io.github.amichne.kast.relation.contract.ValueSourceOperation
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
 import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
@@ -152,12 +160,15 @@ internal fun ValueSite.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(executionOwner.storageBytes(g))
             .saturatedAdd(valuePath.storageBytes(g))
             .saturatedAdd(callStack.storageBytes(g))
+            .saturatedAdd(conditions.storageBytes(g))
+            .saturatedAdd(localVersion.storageBytes(g))
             .saturatedAdd(g.node(basis) { 0L })
     }
 
 internal fun ValueRole.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         when (this) {
+            is ValueRole.LoopResult -> result.storageBytes(g)
             is ValueRole.Argument -> call.storageBytes(g)
             is ValueRole.Receiver -> call.storageBytes(g).saturatedAdd(g.node(kind) { 0L })
             is ValueRole.Formal -> position.storageBytes(g)
@@ -199,7 +210,32 @@ internal fun ValueSiteIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(execution.storageBytes(g))
             .saturatedAdd(valuePath.storageBytes(g))
             .saturatedAdd(callStack.storageBytes(g))
+            .saturatedAdd(conditions.storageBytes(g))
+            .saturatedAdd(localVersion.storageBytes(g))
             .saturatedAdd(g.node(range) { 0L })
+    }
+
+internal fun ValueLocalVersion.storageBytes(g: QueryImpactRetainedGraph): Long =
+    when (this) {
+        ValueLocalVersion.Unversioned -> 0L
+        is ValueLocalVersion.Defined ->
+            g.node(this) {
+                execution
+                    .storageBytes(g)
+                    .saturatedAdd(g.node(declaration) { 0L })
+                    .saturatedAdd(g.node(block) { 0L })
+                    .saturatedAdd(g.node(definition) { 0L })
+                    .saturatedAdd(g.node(rhs) { 0L })
+                    .saturatedAdd(
+                        g.node(end) {
+                            when (val limit = end) {
+                                is ValueLocalVersion.End.BlockEnd -> g.node(limit.range) { 0L }
+                                is ValueLocalVersion.End.NextWrite ->
+                                    g.node(limit.range) { 0L }.saturatedAdd(g.node(limit.rhs) { 0L })
+                            }
+                        }
+                    )
+            }
     }
 
 internal fun ValueDeclarationIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -224,7 +260,38 @@ internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
         source
             .storageBytes(g)
             .saturatedAdd(target.storageBytes(g))
-            .saturatedAdd(g.node(evidence) { evidence.retainedBytes })
+            .saturatedAdd(
+                g.node(evidence) {
+                    when (val proof = evidence) {
+                        is ValueLoopTransfer ->
+                            proof.iteration.storageBytes(g).saturatedAdd(g.node(proof.receiverKind) { 0L })
+                        is ValueSourceTransfer ->
+                            if (proof.operation is ValueSourceOperation.CallbackArgumentEntry)
+                                proof.operation.storageBytes(g)
+                            else proof.retainedBytes
+                        ValueTransferEvidence.Direct,
+                        is ValueTransferEvidence.NormalBranchResult -> proof.retainedBytes
+                    }
+                }
+            )
+    }
+
+internal fun ValueLoopProtocol.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        iterator.storageBytes(g).saturatedAdd(hasNext.storageBytes(g)).saturatedAdd(next.storageBytes(g))
+    }
+
+internal fun ValueLoopIteration.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        protocol.storageBytes(g)
+    }
+
+internal fun ValueLoopResult.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        when (this) {
+            is ValueLoopResult.Iterator -> protocol.storageBytes(g)
+            is ValueLoopResult.Element -> iteration.storageBytes(g)
+        }
     }
 
 internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =

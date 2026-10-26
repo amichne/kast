@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryContractDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCallablePositionDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallbackSelectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactContentViewDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
@@ -89,12 +90,16 @@ internal fun ValueSiteIdentity.impactDocument(): ImpactProjected<ImpactValueSite
         .impactZip(execution.impactDocument())
         .impactZip(valuePath.impactDocument())
         .impactZip(callStack.impactDocument())
-        .impactMap { (state, stack) ->
+        .impactZip(conditions.impactDocument())
+        .impactMap { (site, conditions) ->
+            val (state, stack) = site
             val (core, path) = state
             val (position, execution) = core
             val (location, role) = position
-            ImpactValueSiteReferenceDocument(location.first, location.second, role, execution, path, stack)
+            ImpactValueSiteReferenceDocument(location.first, location.second, role, execution, path, stack, conditions)
         }
+        .impactZip(localVersion.impactDocument())
+        .impactMap { (site, version) -> site.copy(localVersion = version) }
 
 internal fun ValueSite.impactDocument(): ImpactProjected<ImpactValueSiteReferenceDocument> = identity.impactDocument()
 
@@ -134,7 +139,15 @@ internal fun ValueExecutionIdentity.impactDocument(): ImpactProjected<ImpactExec
             execution.body
                 .impactCaptureBody()
                 .impactZip(execution.invocations.impactEach { it.impactCapture() })
-                .impactMap { (body, invocations) -> ImpactExecutionOwnerDocument.Callback(body, invocations) }
+                .impactZip(execution.selectedInvocation.impactCapture())
+                .impactMap { (context, selected) ->
+                    val (body, invocations) = context
+                    val selection =
+                        if (execution.invocations.count { it.body == execution.body } == 1)
+                            ImpactCallbackSelectionDocument.Unique
+                        else ImpactCallbackSelectionDocument.Exact(selected)
+                    ImpactExecutionOwnerDocument.Callback(body, invocations, selection)
+                }
     }
 
 internal fun io.github.amichne.kast.relation.contract.RelationCallableBody.impactCaptureBody():
@@ -176,9 +189,10 @@ internal fun io.github.amichne.kast.relation.contract.ValueCaptureInvocation.imp
             )
         }
 
-private fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument> =
+internal fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument> =
     when (this) {
         ValueRole.ExpressionResult -> Refinement.Refined(ImpactValueRoleDocument.ExpressionResult)
+        is ValueRole.LoopResult -> result.impactDocument().impactMap(ImpactValueRoleDocument::LoopResult)
         ValueRole.LocalBinding -> Refinement.Refined(ImpactValueRoleDocument.LocalBinding)
         ValueRole.LocalRead -> Refinement.Refined(ImpactValueRoleDocument.LocalRead)
         ValueRole.Return -> Refinement.Refined(ImpactValueRoleDocument.Return)

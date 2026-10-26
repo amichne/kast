@@ -1,0 +1,24 @@
+[
+  {
+    "type": "STABLE_RECEIVER",
+    "origin": {
+      "execution": {
+        "enclosing": {
+          "basis": { "type": "PUBLISHED", "root": "/workspace", "generation": 7 },
+          "file": "/workspace/File.kt",
+          "range": { "start": 0, "end": 100 },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "executionOwner": { "type": "DECLARATION" }
+      },
+      "range": { "start": 10, "end": 11 },
+      "role": { "type": "FORMAL", "position": { "type": "RECEIVER", "kind": "EXTENSION" } },
+      "valuePath": [],
+      "callStack": []
+    },
+    "useRange": { "start": 20, "end": 21 },
+    "kind": "EXTENSION",
+    "originalType": "kotlin/Any?",
+    "refinedType": "fixture/Request"
+  }
+]

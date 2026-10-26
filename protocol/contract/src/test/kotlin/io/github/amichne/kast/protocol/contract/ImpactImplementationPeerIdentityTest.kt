@@ -58,6 +58,44 @@ class ImpactImplementationPeerIdentityTest {
         val wrongHistory = history.copy(target = history.target.copy(slot = f.values.id("another-slot")))
         assertFalse(f.path.copy(representation = f.representation(wrongHistory)).hasValidPeerContinuation(f.basis))
     }
+
+    @Test
+    fun `condition origin keeps exact call identity without freezing work observations`() {
+        val f = ImplementationShapeFixture()
+        val v = f.values
+        val condition =
+            ImpactValueConditionDocument.StableReceiver(
+                ImpactValueConditionOriginDocument(
+                    ImpactExecutionReferenceDocument(f.argument.enclosing, f.argument.executionOwner),
+                    f.argument.range,
+                    ImpactValueRoleDocument.Formal(
+                        ImpactFormalPositionDocument.Receiver(ImpactReceiverKindDocument.DISPATCH)
+                    ),
+                    callStack = v.bounded(listOf(f.frame)),
+                ),
+                f.argument.range,
+                ImpactReceiverKindDocument.DISPATCH,
+                v.text("kotlin/Any"),
+                v.text("fixture/Request"),
+            )
+        val site = f.argument.copy(conditions = v.bounded(listOf(condition)))
+        val observed = f.frame.copy(target = f.target.copy(dispatch = f.dispatch.copy(examinedWorkUnits = v.count(7))))
+        val fresh = condition.copy(origin = condition.origin.copy(callStack = v.bounded(listOf(observed))))
+        assertTrue(site.hasSameValueIdentity(site.copy(conditions = v.bounded(listOf(fresh)))))
+        val lost = condition.copy(origin = condition.origin.copy(callStack = EmptyImpactCallStack))
+        assertFalse(site.hasSameValueIdentity(site.copy(conditions = v.bounded(listOf(lost)))))
+        val changedOwner =
+            condition.copy(
+                origin =
+                    condition.origin.copy(
+                        execution =
+                            condition.origin.execution.copy(
+                                enclosing = f.argument.enclosing.copy(file = v.text("/workspace/Other.kt"))
+                            )
+                    )
+            )
+        assertFalse(site.hasSameValueIdentity(site.copy(conditions = v.bounded(listOf(changedOwner)))))
+    }
 }
 
 private class QualifiedPeerFixture {

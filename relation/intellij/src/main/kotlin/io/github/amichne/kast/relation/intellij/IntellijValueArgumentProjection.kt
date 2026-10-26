@@ -37,7 +37,9 @@ internal fun nativeValueArgumentReturn(
         }
     }
     val target =
-        when (val result = argument.call.resultSite().withState(source.valuePath, source.callStack)) {
+        when (
+            val result = argument.call.resultSite().withState(source.valuePath, source.callStack, source.conditions)
+        ) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
         }

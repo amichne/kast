@@ -33,7 +33,7 @@ internal class NativeValueCallFlow(
                     is ValueRole.Argument ->
                         retained.adopt(nativeValueArgumentReturn(request.source, scope, projection))
                     is ValueRole.Receiver ->
-                        retained.adopt(nativeValueSourceReceiver(request.source, scope, projection))
+                        retained.adopt(allowance.nativeValueSourceReceiver(request.source, scope, projection))
                     else -> retained.unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
                 }
                 if (retained.edges.any { it.kind == ValueTransferKind.WRAPPER_RETURN })
@@ -78,7 +78,7 @@ internal class NativeValueCallFlow(
         for (relation in dispatch.batch.facts) {
             if (!permit()) break
             retained.adopt(
-                nativeValueImplementationEntry(
+                allowance.nativeValueImplementationEntry(
                     source = request.source,
                     dispatch = dispatch,
                     relation = relation,

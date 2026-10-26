@@ -11,6 +11,7 @@ sealed interface ValueExecutionContext {
     internal constructor(
         val body: RelationCallableBody.Anonymous,
         val invocations: List<ValueCaptureInvocation>,
+        val selectedInvocation: ValueCaptureInvocation,
     ) : ValueExecutionContext
 
     /** Conditional library value correspondence remains distinct from source invocation evidence. */
@@ -57,7 +58,7 @@ private constructor(
             ValueExecutionContext.Declaration -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.ReviewedCallback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.Callback ->
-                if (invocation.body != execution.body || invocation !in execution.invocations)
+                if (invocation != execution.selectedInvocation)
                     Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
                 else supplierOwner(invocation.supply.invocationOwner, execution)
         }
@@ -70,10 +71,17 @@ private constructor(
             is RelationCallableBody.Named ->
                 if (enclosing.matchesCallbackRoot(supplier.evidence)) Refinement.Refined(declaration(enclosing))
                 else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-            is RelationCallableBody.Anonymous ->
-                if (execution.invocations.any { it.body == supplier })
-                    Refinement.Refined(ValueExecutionOwner(enclosing, execution.copy(body = supplier)))
+            is RelationCallableBody.Anonymous -> {
+                val selections = execution.invocations.filter { it.body == supplier }
+                if (selections.size == 1)
+                    Refinement.Refined(
+                        ValueExecutionOwner(
+                            enclosing,
+                            execution.copy(body = supplier, selectedInvocation = selections.single()),
+                        )
+                    )
                 else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            }
         }
 
     companion object {
@@ -86,6 +94,26 @@ private constructor(
             enclosing: RelationEndpoint,
             body: RelationCallableBody.Anonymous,
             graph: CompleteCallbackFlowGraph,
+        ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
+            admitCallback(enclosing, body, graph) { captures -> captures.filter { it.body == body } }
+
+        /** Select one exact supply and invocation from a complete graph; repeated bodies remain distinct executions. */
+        fun callback(
+            enclosing: RelationEndpoint,
+            body: RelationCallableBody.Anonymous,
+            graph: CompleteCallbackFlowGraph,
+            supply: CallbackArgumentBinding,
+            invocation: CallbackParameterInvocation,
+        ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
+            admitCallback(enclosing, body, graph) { captures ->
+                captures.filter { it.body == body && it.supply == supply && it.invocation == invocation }
+            }
+
+        private fun admitCallback(
+            enclosing: RelationEndpoint,
+            body: RelationCallableBody.Anonymous,
+            graph: CompleteCallbackFlowGraph,
+            select: (List<ValueCaptureInvocation>) -> List<ValueCaptureInvocation>,
         ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> {
             if (graph.basis != enclosing.lease.identity || !enclosing.matchesCallbackRoot(graph.root))
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
@@ -100,16 +128,15 @@ private constructor(
                 invokedFromRoot(graph).map { edge ->
                     ValueCaptureInvocation(edge.target.body, edge.source.supply, edge.evidence)
                 }
-            if (invocations.none { it.body == body })
-                return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-            if (invocations.groupBy { it.body }.values.any { it.size != 1 })
-                return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            val selected = select(invocations)
+            if (selected.size != 1) return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             return Refinement.Refined(
                 ValueExecutionOwner(
                     enclosing,
                     ValueExecutionContext.Callback(
                         body,
                         java.util.Collections.unmodifiableList(invocations),
+                        selected.single(),
                     ),
                 )
             )

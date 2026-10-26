@@ -33,6 +33,7 @@ import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RepresentationUnknownReason
+import io.github.amichne.kast.relation.contract.ValueLoopTransfer
 import io.github.amichne.kast.relation.contract.ValueSourceTransfer
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferEvidence
@@ -92,6 +93,7 @@ internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTrans
                 ValueTransferKind.SOURCE_CALL_RETURN -> ImpactTransferKindDocument.SOURCE_CALL_RETURN
                 ValueTransferKind.FIELD_READ -> ImpactTransferKindDocument.FIELD_READ
                 ValueTransferKind.CONSTRUCTOR_FIELD -> ImpactTransferKindDocument.CONSTRUCTOR_FIELD
+                ValueTransferKind.CAST_RESULT -> ImpactTransferKindDocument.CAST_RESULT
             },
             evidence,
         )
@@ -100,6 +102,7 @@ internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTrans
 private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransferEvidenceDocument> =
     when (this) {
         ValueTransferEvidence.Direct -> Refinement.Refined(ImpactTransferEvidenceDocument.Direct)
+        is ValueLoopTransfer -> impactDocument()
         is ValueSourceTransfer -> operation.impactDocument().impactMap(ImpactTransferEvidenceDocument::Source)
         is ValueTransferEvidence.NormalBranchResult ->
             tryRange.impactDocument().impactZip(branchRange.impactDocument()).impactMap { (enclosing, branch) ->

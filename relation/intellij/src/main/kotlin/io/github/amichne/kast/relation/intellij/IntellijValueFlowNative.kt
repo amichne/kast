@@ -14,9 +14,12 @@ import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtParameter
 
 /** All live elements and K2 values remain inside the caller's one native read action. */
 internal class IntellijValueFlowNative(
@@ -43,7 +46,10 @@ internal class IntellijValueFlowNative(
     fun read(element: PsiElement): ValueFlowRead {
         val compiledFormal =
             request.source.role is ValueRole.Formal && (element.containingFile as? KtFile)?.isCompiled == true
-        if (!compiledFormal && element.isNativeReferenceBinding(request.source.role))
+        val localBinding =
+            element.isNativeReferenceBinding(request.source.role) ||
+                request.source.localVersion is io.github.amichne.kast.relation.contract.ValueLocalVersion.Defined
+        if (!compiledFormal && element.destructuredValueParameter() == null && localBinding)
             return IntellijLocalBindingReads(request, owner, scope, projection, observation, started, onWork)
                 .read(element)
 
@@ -84,11 +90,16 @@ internal class IntellijValueFlowNative(
     }
 
     private fun readRole(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
-        when (request.source.role) {
+        when (val role = request.source.role) {
             ValueRole.LocalBinding -> retained.unresolvedAt(element.nativeLocalBindingCause(), element)
+            is ValueRole.LoopResult ->
+                if (element is KtForExpression)
+                    NativeValueLoopInput(request.source, scope, projection, retained, ::permitted)
+                        .result(element, role.result)
+                else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
             is ValueRole.Argument,
             is ValueRole.Receiver -> return callEntry()
-            is ValueRole.Formal -> receiverFields(element)
+            is ValueRole.Formal -> formalInput(element)
             ValueRole.Return -> return sourceReturn()
             ValueRole.PropertyAssignment -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
             ValueRole.ExpressionResult,
@@ -99,10 +110,23 @@ internal class IntellijValueFlowNative(
                             retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
                             return Refinement.Refined(Unit)
                         }
-                readExpression(expression)
+                return readExpression(expression)
             }
         }
         return Refinement.Refined(Unit)
+    }
+
+    private fun formalInput(element: PsiElement) {
+        val parameter = element.destructuredValueParameter()
+        if (parameter != null) {
+            NativeValueDestructuring(request.source, scope, projection)
+                .readParameter(
+                    parameter = parameter,
+                    permit = ::permitted,
+                    consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
+                    unsupported = { retained.unresolvedAt(it, element) },
+                )
+        } else receiverFields(element)
     }
 
     private fun callEntry(): Refinement<Unit, ValueFlowRejection> {
@@ -187,7 +211,7 @@ internal class IntellijValueFlowNative(
                 owner = owner,
                 scope = scope,
                 projection = projection,
-                observation = observation,
+                allowance = allowance,
                 retained = retained,
                 permit = ::permitted,
             )
@@ -200,4 +224,11 @@ private fun nativeWorkCount(examined: Long): RelationWorkCount =
     when (val count = RelationWorkCount.parse(examined)) {
         is Refinement.Refined -> count.value
         is Refinement.Rejected -> error("Native work counter cannot be negative")
+    }
+
+private fun PsiElement.destructuredValueParameter(): KtParameter? =
+    when (this) {
+        is KtParameter -> takeIf { destructuringDeclaration != null }
+        is KtDestructuringDeclaration -> (parent as? KtParameter)?.takeIf { it.destructuringDeclaration === this }
+        else -> null
     }

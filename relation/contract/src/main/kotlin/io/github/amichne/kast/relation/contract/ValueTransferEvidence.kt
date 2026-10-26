@@ -49,12 +49,9 @@ sealed interface ValueTransferEvidence {
 
     fun admits(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
         when (this) {
-            Direct ->
-                kind !in SOURCE_TRANSFER_KINDS &&
-                    source.valuePath == target.valuePath &&
-                    source.callStack == target.callStack &&
-                    admitsDirectOwner(source, target, kind)
+            Direct -> admitsDirect(source, target, kind)
             is ValueSourceTransfer -> admitsSource(source, target, kind)
+            is ValueLoopTransfer -> admitsLoop(source, target, kind)
             is NormalBranchResult -> admitsNormal(source, target, kind)
         }
 
@@ -63,14 +60,27 @@ sealed interface ValueTransferEvidence {
             when (this) {
                 Direct -> 0L
                 is ValueSourceTransfer -> sourceEvidenceStorageBytes(operation)
+                is ValueLoopTransfer -> storageBytes()
                 is NormalBranchResult -> 4096L
             }
 }
+
+private fun admitsDirect(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
+    kind !in SOURCE_TRANSFER_KINDS &&
+        source.admitsDirectLoop(target, kind) &&
+        (kind != ValueTransferKind.CAST_RESULT || source.conditions.admits(source, target, kind)) &&
+        (kind != ValueTransferKind.LOCAL_READ || source.localVersion.admitsRead(source, target)) &&
+        (target.localVersion !is ValueLocalVersion.Defined ||
+            kind == ValueTransferKind.LOCAL_BINDING && target.localVersion.rhs.containsValueRange(source.range)) &&
+        source.valuePath == target.valuePath &&
+        source.callStack == target.callStack &&
+        admitsDirectOwner(source, target, kind)
 
 private fun admitsDirectOwner(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
     source.executionOwner == target.executionOwner ||
         (kind == ValueTransferKind.LOCAL_READ &&
             source.role.hasReferenceReads() &&
+            source.localVersion == ValueLocalVersion.Unversioned &&
             target.role == ValueRole.LocalRead &&
             source.identity.owner == target.identity.owner &&
             source.executionOwner.context == ValueExecutionContext.Declaration &&

@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.RevalidatedValueSite
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValueModelSiteRead
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -25,6 +26,8 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 
 /** Revalidates one exact claimed role without exploring a flow or attaching model vocabulary. */
 internal class IntellijValueSiteRevalidationNative(
@@ -173,6 +176,7 @@ internal class IntellijValueSiteRevalidationNative(
                         range = request.anchor,
                         role = position.role,
                         executionOwner = position.executionOwner,
+                        localVersion = position.localVersion,
                     )
             ) {
                 is Refinement.Refined -> result.value
@@ -194,35 +198,65 @@ private fun nativeAdmittedPosition(
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     execution: NativeInitialValueRead,
     work: NativeComponentSiteWork,
-): Refinement<NativeValuePosition, NativeSiteFailure> =
-    when (
-        val result =
-            nativeValueSiteRole(
-                element = element,
-                claim = claim,
-                prepared = prepared,
-                executionOwner = execution.owner,
-                componentPermit = work::permit,
-            )
-    ) {
-        is Refinement.Refined ->
-            Refinement.Refined(
-                NativeValuePosition(
-                    result.value,
-                    execution.owner,
-                    siteWorkCount(execution.examinedWork.value + work.examined),
-                )
-            )
-        is Refinement.Rejected ->
-            Refinement.Rejected(
-                when (result.failure) {
-                    ValueFlowUnsupportedCause.WORK_LIMIT_REACHED ->
-                        NativeSiteFailure.Limited(ValueSiteRevalidationLimit.WORK_LIMIT_REACHED)
-                    ValueFlowUnsupportedCause.TIME_LIMIT_REACHED ->
-                        NativeSiteFailure.Limited(ValueSiteRevalidationLimit.TIME_LIMIT_REACHED)
-                    else -> NativeSiteFailure.Unsupported(result.failure)
-                }
-            )
+): Refinement<NativeValuePosition, NativeSiteFailure> {
+    val mutable = element.isMutableDefinitionClaim(claim)
+    val role =
+        if (mutable && element !is KtDestructuringDeclarationEntry) ValueRole.LocalBinding
+        else
+            when (
+                val result =
+                    nativeValueSiteRole(
+                        element = element,
+                        claim = claim,
+                        prepared = prepared,
+                        executionOwner = execution.owner,
+                        componentPermit = work::permit,
+                    )
+            ) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return Refinement.Rejected(nativePositionFailure(result.failure))
+            }
+    val localVersion =
+        if (mutable)
+            when (
+                val version =
+                    nativeLocalValueVersion(
+                        definition = element,
+                        execution = execution.owner,
+                        observation = prepared.projection.observation,
+                        permit = work::permit,
+                    )
+            ) {
+                is Refinement.Refined -> version.value.proof
+                is Refinement.Rejected -> return Refinement.Rejected(nativePositionFailure(version.failure))
+            }
+        else ValueLocalVersion.Unversioned
+    return Refinement.Refined(
+        NativeValuePosition(
+            role = role,
+            executionOwner = execution.owner,
+            additionalWork = siteWorkCount(execution.examinedWork.value + work.examined),
+            localVersion = localVersion,
+        )
+    )
+}
+
+private fun PsiElement.isMutableDefinitionClaim(claim: ValueSiteRoleClaim): Boolean =
+    claim == ValueSiteRoleClaim.LocalBinding &&
+        when (this) {
+            is org.jetbrains.kotlin.psi.KtProperty -> isVar
+            is org.jetbrains.kotlin.psi.KtBinaryExpression -> true
+            is KtDestructuringDeclarationEntry -> (parent as? KtDestructuringDeclaration)?.isVar == true
+            else -> false
+        }
+
+private fun nativePositionFailure(cause: ValueFlowUnsupportedCause): NativeSiteFailure =
+    when (cause) {
+        ValueFlowUnsupportedCause.WORK_LIMIT_REACHED ->
+            NativeSiteFailure.Limited(ValueSiteRevalidationLimit.WORK_LIMIT_REACHED)
+        ValueFlowUnsupportedCause.TIME_LIMIT_REACHED ->
+            NativeSiteFailure.Limited(ValueSiteRevalidationLimit.TIME_LIMIT_REACHED)
+        else -> NativeSiteFailure.Unsupported(cause)
     }
 
 private class NativeComponentSiteWork(
@@ -251,6 +285,7 @@ private data class NativeValuePosition(
     val role: ValueRole,
     val executionOwner: ValueExecutionOwner,
     val additionalWork: RelationWorkCount,
+    val localVersion: ValueLocalVersion = ValueLocalVersion.Unversioned,
 )
 
 private sealed interface NativeSiteFailure {

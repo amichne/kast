@@ -33,6 +33,7 @@ enum class ImpactTransferKindDocument {
     SOURCE_CALL_RETURN,
     FIELD_READ,
     CONSTRUCTOR_FIELD,
+    CAST_RESULT,
 }
 
 @Serializable
@@ -68,6 +69,13 @@ enum class ImpactInterpolationScalarKindDocument {
 @JsonClassDiscriminator("type")
 sealed interface ImpactTransferEvidenceDocument {
     @Serializable @SerialName("DIRECT") data object Direct : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("LOOP_ADVANCE")
+    data class LoopAdvance(
+        val iteration: ImpactLoopIterationDocument,
+        val receiverKind: ImpactReceiverKindDocument,
+    ) : ImpactTransferEvidenceDocument
 
     @Serializable
     @SerialName("SOURCE")

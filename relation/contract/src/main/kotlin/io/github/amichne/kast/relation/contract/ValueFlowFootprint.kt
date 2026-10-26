@@ -8,7 +8,15 @@ internal fun valueSiteStorageBytes(site: ValueSite): Long =
     VALUE_RECORD_OVERHEAD.addBytes(site.enclosing.detachedTextUnits().multiplyBytes(2))
         .addBytes(valueStateStorageBytes(site))
         .addBytes(
+            when (val version = site.localVersion) {
+                ValueLocalVersion.Unversioned -> 0L
+                is ValueLocalVersion.Defined ->
+                    VALUE_RECORD_OVERHEAD.addBytes(version.execution.enclosing.detachedTextUnits().multiplyBytes(2))
+            }
+        )
+        .addBytes(
             when (val role = site.role) {
+                is ValueRole.LoopResult -> role.result.protocol.retainedBytes()
                 is ValueRole.Argument ->
                     VALUE_RECORD_OVERHEAD.addBytes(role.call.callable.detachedTextUnits().multiplyBytes(2))
                 is ValueRole.Receiver ->

@@ -20,6 +20,59 @@ class OrderedComponents(val value: String) {
     operator fun component2(): String = /*<ordered-return>*/value/*</ordered-return>*/
 }
 
+class ReorderedComponents(val first: String, val second: String) {
+    operator fun component1(): String = second
+    operator fun component2(): String = first
+}
+
+class LaterThrowingComponents(val value: String) {
+    operator fun component1(): String = /*<later-return>*/value/*</later-return>*/
+    operator fun component2(): String = error("Later component prevents both uses")
+}
+
+class UnclassifiedComponents(val value: String) {
+    val other: String
+        get() = value
+    operator fun component1(): String = value
+    operator fun component2(): String = other
+}
+
+fun destructuringOrigin(): String = "origin"
+
+fun reorderedComponents() {
+    val (/*<left-binding>*/left/*</left-binding>*/, /*<right-binding>*/right/*</right-binding>*/) =
+        ReorderedComponents("unrelated", destructuringOrigin())
+    /*<left-use>*/left/*</left-use>*/.length
+    /*<right-use>*/right/*</right-use>*/.length
+}
+
+fun normalConstantSibling() {
+    val (/*<binding>*/payload/*</binding>*/, constant) = AuthoredComponents("unrelated", "origin")
+    /*<use>*/payload/*</use>*/.length
+    constant.length
+}
+
+fun laterThrowingComponents() {
+    val (/*<binding>*/payload/*</binding>*/, later) = LaterThrowingComponents("origin")
+    /*<use>*/payload/*</use>*/.length
+    later.length
+}
+
+fun unusedThrowingComponent() {
+    val (/*<binding>*/payload/*</binding>*/, unused) = LaterThrowingComponents("origin")
+    /*<use>*/payload/*</use>*/.length
+}
+
+fun skippedLaterThrowingComponent() {
+    val (/*<binding>*/payload/*</binding>*/, _) = LaterThrowingComponents("origin")
+    /*<use>*/payload/*</use>*/.length
+}
+
+fun unclassifiedSibling() {
+    val (payload, unused) = UnclassifiedComponents("origin")
+    payload.length
+}
+
 data class MutableComponent(var value: String)
 
 fun generatedComponents() {
@@ -90,4 +143,28 @@ fun loopDestructuring(values: List<ComponentPacket>) {
 
 fun lambdaDestructuring(values: List<ComponentPacket>) {
     values.forEach { (first) -> first.length }
+}
+
+fun mutableEntryUnchanged() {
+    var (/*<binding>*/first/*</binding>*/, /*<other-binding>*/second/*</other-binding>*/) =
+        ComponentPacket("first-value", "second-value")
+    /*<use>*/first/*</use>*/.length
+    /*<other-use>*/second/*</other-use>*/.length
+}
+
+fun mutableEntryReassigned() {
+    var (/*<binding>*/first/*</binding>*/, /*<other-binding>*/second/*</other-binding>*/) =
+        ComponentPacket("first-value", "second-value")
+    /*<before>*/first/*</before>*/.length
+    /*<other-before>*/second/*</other-before>*/.length
+    /*<replacement-binding>*/first/*</replacement-binding>*/ = /*<replacement>*/"replacement-value"/*</replacement>*/
+    /*<after>*/first/*</after>*/.length
+    /*<other-after>*/second/*</other-after>*/.length
+}
+
+fun mutableEntrySelfAssigned() {
+    var (first) = ComponentPacket("first-value", "second-value")
+    /*<before>*/first/*</before>*/.length
+    /*<write>*/first/*</write>*/ = /*<rhs>*/first/*</rhs>*/
+    /*<after>*/first/*</after>*/.length
 }

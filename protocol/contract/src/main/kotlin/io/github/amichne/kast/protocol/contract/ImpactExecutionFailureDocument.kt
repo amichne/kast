@@ -32,6 +32,10 @@ sealed interface ImpactExecutionFailureDocument {
     data class Representation(val cause: ImpactExecutionRepresentationCause) : ImpactExecutionFailureDocument
 
     @Serializable
+    @SerialName("SITE")
+    data class Site(val cause: ImpactExecutionSiteCause) : ImpactExecutionFailureDocument
+
+    @Serializable
     @SerialName("BOUNDARY")
     data class Boundary(val cause: ImpactExecutionBoundaryCause) : ImpactExecutionFailureDocument
 
@@ -95,6 +99,20 @@ enum class ImpactExecutionRepresentationCause {
     CALLABLE_MISMATCH,
     POSITION_MISMATCH,
     EMPTY_MERGE,
+}
+
+@Serializable
+enum class ImpactExecutionSiteCause {
+    ANCHOR_OUTSIDE_OWNER,
+    INVOCATION_OWNER_MISMATCH,
+    ARGUMENT_OUTSIDE_INVOCATION,
+    INVALID_ARGUMENT_POSITION,
+    EXECUTION_OWNER_MISMATCH,
+    ANCHOR_OUTSIDE_EXECUTION_OWNER,
+    RECEIVER_OUTSIDE_INVOCATION,
+    STATE_BASIS_MISMATCH,
+    CONDITIONS_NOT_PRESERVED,
+    FORMAL_OWNER_MISMATCH,
 }
 
 @Serializable

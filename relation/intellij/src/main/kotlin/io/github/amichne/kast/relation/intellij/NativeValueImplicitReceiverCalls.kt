@@ -133,6 +133,7 @@ internal fun nativeImplicitReceiverArrival(
                     executionOwner = source.executionOwner,
                     valuePath = source.valuePath,
                     callStack = source.callStack,
+                    conditions = source.conditions,
                 )
         ) {
             is Refinement.Refined -> value.value

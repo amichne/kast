@@ -113,6 +113,8 @@ private constructor(
 sealed interface ValueRole {
     data object ExpressionResult : ValueRole
 
+    data class LoopResult(val result: ValueLoopResult) : ValueRole
+
     data object LocalBinding : ValueRole
 
     data object LocalRead : ValueRole
@@ -137,6 +139,8 @@ internal constructor(
     val execution: ValueExecutionIdentity,
     val valuePath: ValueAccessPath,
     val callStack: ValueCallStack,
+    val conditions: ValueConditions,
+    val localVersion: ValueLocalVersion,
 )
 
 enum class ValueSiteFailure {
@@ -148,6 +152,7 @@ enum class ValueSiteFailure {
     ANCHOR_OUTSIDE_EXECUTION_OWNER,
     RECEIVER_OUTSIDE_INVOCATION,
     STATE_BASIS_MISMATCH,
+    CONDITIONS_NOT_PRESERVED,
     FORMAL_OWNER_MISMATCH,
 }
 
@@ -160,6 +165,8 @@ private constructor(
     val executionOwner: ValueExecutionOwner,
     val valuePath: ValueAccessPath,
     val callStack: ValueCallStack,
+    val conditions: ValueConditions,
+    val localVersion: ValueLocalVersion = ValueLocalVersion.Unversioned,
 ) {
     val retainedBytes: Long
         get() = valueSiteStorageBytes(this)
@@ -174,16 +181,26 @@ private constructor(
             executionOwner.identity,
             valuePath,
             callStack,
+            conditions,
+            localVersion,
         )
 
     /** Carries already admitted provenance through an occurrence without another compiler lookup. */
     fun withState(
         valuePath: ValueAccessPath = this.valuePath,
         callStack: ValueCallStack = this.callStack,
+        conditions: ValueConditions = this.conditions,
     ): Refinement<ValueSite, ValueSiteFailure> =
-        if (!valuePath.matchesBasis(basis) || !callStack.matchesBasis(basis))
-            Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
-        else Refinement.Refined(ValueSite(enclosing, range, role, executionOwner, valuePath, callStack))
+        when {
+            !valuePath.matchesBasis(basis) || !callStack.matchesBasis(basis) || !conditions.matchesBasis(basis) ->
+                Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
+            conditions.facts.take(this.conditions.facts.size) != this.conditions.facts ->
+                Refinement.Rejected(ValueSiteFailure.CONDITIONS_NOT_PRESERVED)
+            else ->
+                Refinement.Refined(
+                    ValueSite(enclosing, range, role, executionOwner, valuePath, callStack, conditions, localVersion)
+                )
+        }
 
     internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ValueSite {
         val owner = proofs.executionOwner(executionOwner)
@@ -198,6 +215,7 @@ private constructor(
                     if (shared === current.call) current else ValueRole.Receiver(shared, current.kind)
                 }
                 is ValueRole.Formal,
+                is ValueRole.LoopResult,
                 ValueRole.ExpressionResult,
                 ValueRole.LocalBinding,
                 ValueRole.LocalRead,
@@ -205,7 +223,7 @@ private constructor(
                 ValueRole.PropertyAssignment -> current
             }
         return if (sharedRole === role && owner === executionOwner) this
-        else ValueSite(enclosing, range, sharedRole, owner, valuePath, callStack)
+        else ValueSite(enclosing, range, sharedRole, owner, valuePath, callStack, conditions, localVersion)
     }
 
     companion object {
@@ -217,6 +235,7 @@ private constructor(
                 invocation.executionOwner,
                 ValueAccessPath.Whole,
                 ValueCallStack.Empty,
+                ValueConditions.Unconditional,
             )
 
         /** Called after K2 confirms this role in this exact containing declaration on its admitted basis. */
@@ -227,20 +246,30 @@ private constructor(
             executionOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
             valuePath: ValueAccessPath = ValueAccessPath.Whole,
             callStack: ValueCallStack = ValueCallStack.Empty,
+            conditions: ValueConditions = ValueConditions.Unconditional,
+            localVersion: ValueLocalVersion = ValueLocalVersion.Unversioned,
         ): Refinement<ValueSite, ValueSiteFailure> {
+            if (!localVersion.admitsSite(role, range, executionOwner))
+                return Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
             if (!enclosing.range.containsValueRange(range))
                 return Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_OWNER)
             if (!executionOwner.belongsTo(enclosing))
                 return Refinement.Rejected(ValueSiteFailure.EXECUTION_OWNER_MISMATCH)
             if (!executionOwner.range.containsValueRange(range))
                 return Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER)
-            if (!valuePath.matchesBasis(enclosing.lease.identity) || !callStack.matchesBasis(enclosing.lease.identity))
+            if (
+                !valuePath.matchesBasis(enclosing.lease.identity) ||
+                    !callStack.matchesBasis(enclosing.lease.identity) ||
+                    !conditions.matchesBasis(enclosing.lease.identity)
+            )
                 return Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
             when (val admitted = admitRole(enclosing, range, role, executionOwner)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
-            return Refinement.Refined(ValueSite(enclosing, range, role, executionOwner, valuePath, callStack))
+            return Refinement.Refined(
+                ValueSite(enclosing, range, role, executionOwner, valuePath, callStack, conditions, localVersion)
+            )
         }
 
         private fun admitRole(
@@ -250,6 +279,13 @@ private constructor(
             executionOwner: ValueExecutionOwner,
         ): Refinement<Unit, ValueSiteFailure> =
             when (role) {
+                is ValueRole.LoopResult ->
+                    if (
+                        role.result.invocation.matchesOwner(enclosing, executionOwner) &&
+                            role.result.invocation.range == range
+                    )
+                        Refinement.Refined(Unit)
+                    else Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
                 is ValueRole.Argument ->
                     when {
                         !role.call.matchesOwner(enclosing, executionOwner) ->

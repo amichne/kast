@@ -50,12 +50,14 @@ import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
+import org.jetbrains.kotlin.psi.KtBinaryExpressionWithTypeRHS
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /** Exact packet sources use a private indexed project and the pinned distribution's standard library. */
 abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
@@ -225,7 +227,7 @@ internal constructor(
                     file
                         .collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
                         .filter { it.severity == KaSeverity.ERROR }
-                        .map { it.factoryName }
+                        .map { "${it.factoryName}@${it.psi.textRange}" }
                 }
             check(errors.isEmpty()) { "Fixture prerequisite failed for $path: $errors" }
         }
@@ -305,6 +307,18 @@ internal constructor(
     fun formalParameter(owner: PacketDeclaration, position: Int): PacketExpression = nativeRead {
         val host = function(owner.path, owner.owner, owner.name)
         PacketExpression(selector(host), range(host.valueParameters[position]))
+    }
+
+    fun whenBranchExpression(owner: PacketDeclaration, index: Int): PacketExpression = nativeRead {
+        val host = function(owner.path, owner.owner, owner.name)
+        val branch = host.bodyExpression as KtWhenExpression
+        PacketExpression(selector(host), range(checkNotNull(branch.entries[index].expression)))
+    }
+
+    fun castExpression(owner: PacketDeclaration): PacketExpression = nativeRead {
+        val host = function(owner.path, owner.owner, owner.name)
+        val cast = PsiTreeUtil.collectElementsOfType(host, KtBinaryExpressionWithTypeRHS::class.java).single()
+        PacketExpression(selector(host), range(cast))
     }
 
     fun parameterNames(callable: PacketDeclaration): List<String> = nativeRead {

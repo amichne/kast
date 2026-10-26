@@ -5,6 +5,7 @@ import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
 import io.github.amichne.kast.relation.contract.RelationProviderRetainedGraph
 import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -78,6 +79,8 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
             .scaledStorage()
 
     fun site(value: ValueSite): Long = value.storageBytes(this).scaledStorage()
+
+    fun conditions(value: ValueConditions): Long = value.storageBytes(this).scaledStorage()
 
     fun read(value: ValueFlowRead): Long =
         node(value) {

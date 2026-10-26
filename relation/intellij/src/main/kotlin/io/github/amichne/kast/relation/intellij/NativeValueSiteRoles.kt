@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtForExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
@@ -35,8 +36,13 @@ internal fun nativeValueSiteRole(
     executionOwner: ValueExecutionOwner,
     componentPermit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val observation = prepared.projection.observation
+    if (
+        element is KtForExpression && (claim is ValueSiteRoleClaim.LoopResult || claim is ValueSiteRoleClaim.Receiver)
+    ) {
+        return nativeLoopSiteRole(element, claim, executionOwner, prepared.scope, prepared.projection, componentPermit)
+    }
     return when (claim) {
+        is ValueSiteRoleClaim.LoopResult -> roleRejected()
         ValueSiteRoleClaim.ExpressionResult ->
             if (element is KtDestructuringDeclarationEntry)
                 componentResultRole(
@@ -45,19 +51,38 @@ internal fun nativeValueSiteRole(
                     executionOwner = executionOwner,
                     permit = componentPermit,
                 )
-            else expressionRole(element, observation)
-        ValueSiteRoleClaim.LocalBinding -> localBindingRole(element, observation)
-        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, observation)
-        ValueSiteRoleClaim.LocalRead -> localReadRole(element, prepared.owner, observation)
+            else expressionRole(element, prepared.projection.observation)
+        ValueSiteRoleClaim.LocalBinding ->
+            localBindingRole(
+                element = element,
+                prepared = prepared,
+                executionOwner = executionOwner,
+                permit = componentPermit,
+            )
+        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, prepared.projection.observation)
+        ValueSiteRoleClaim.LocalRead ->
+            localReadRole(
+                element = element,
+                owner = prepared.owner,
+                observation = prepared.projection.observation,
+                executionOwner = executionOwner,
+                permit = componentPermit,
+            )
         ValueSiteRoleClaim.Return ->
             returnRole(
                 element = element,
-                observation = observation,
+                observation = prepared.projection.observation,
                 workAllowance = prepared.scope.request.budget.resources.workAllowance,
                 executionOwner = executionOwner,
             )
         is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
-        is ValueSiteRoleClaim.Receiver -> receiverRole(element, prepared, executionOwner)
+        is ValueSiteRoleClaim.Receiver ->
+            receiverRole(
+                element = element,
+                prepared = prepared,
+                executionOwner = executionOwner,
+                permit = componentPermit,
+            )
     }
 }
 
@@ -67,23 +92,19 @@ private fun componentResultRole(
     executionOwner: ValueExecutionOwner,
     permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (!entry.isNativeComponent()) return roleRejected()
-    val declaration = entry.parent as? KtDestructuringDeclaration ?: return roleRejected()
-    val targets =
+    val target =
         when (
             val admitted =
-                nativeDestructuringTargets(
-                    declaration = declaration,
-                    enclosing = executionOwner.enclosing,
-                    scope = prepared.scope,
-                    projection = prepared.projection,
+                componentSiteTarget(
+                    entry = entry,
+                    prepared = prepared,
+                    executionOwner = executionOwner,
                     permit = permit,
                 )
         ) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    val target = targets.singleOrNull { it.first === entry }?.second ?: return roleRejected()
     if (target is NativeComponentTarget.Source) {
         when (val allowed = permit()) {
             is Refinement.Refined -> Unit
@@ -106,6 +127,30 @@ private fun componentResultRole(
     return Refinement.Refined(ValueRole.ExpressionResult)
 }
 
+private fun componentSiteTarget(
+    entry: KtDestructuringDeclarationEntry,
+    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+): Refinement<NativeComponentTarget, ValueFlowUnsupportedCause> =
+    when (val declaration = entry.parent) {
+        is KtDestructuringDeclaration ->
+            when (
+                val admitted =
+                    NativeDestructuringAdmission.read(
+                        declaration = declaration,
+                        enclosing = executionOwner.enclosing,
+                        scope = prepared.scope,
+                        projection = prepared.projection,
+                        permit = permit,
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value.target(entry)
+                is Refinement.Rejected -> admitted
+            }
+        else -> roleRejected()
+    }
+
 private fun expressionRole(
     element: PsiElement,
     observation: IntellijReadObservation,
@@ -116,11 +161,31 @@ private fun expressionRole(
 
 private fun localBindingRole(
     element: PsiElement,
-    observation: IntellijReadObservation,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element.nativeLocalBindingMutability() is Refinement.Refined && element.hasNativeLocalDeclaration(observation))
+    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    if (element is KtDestructuringDeclarationEntry) {
+        when (
+            val admitted =
+                componentResultRole(
+                    entry = element,
+                    prepared = prepared,
+                    executionOwner = executionOwner,
+                    permit = permit,
+                )
+        ) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return admitted
+        }
+    }
+    return if (
+        element.nativeLocalBindingMutability() is Refinement.Refined &&
+            element.hasNativeLocalDeclaration(prepared.projection.observation)
+    )
         Refinement.Refined(ValueRole.LocalBinding)
     else roleRejected()
+}
 
 private fun propertyRole(
     element: PsiElement,
@@ -136,7 +201,23 @@ private fun localReadRole(
     element: PsiElement,
     owner: PsiElement,
     observation: IntellijReadObservation,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    if (element.isMutableLocalReference(observation)) {
+        return when (
+            val version =
+                nativeLocalValueVersion(
+                    definition = element,
+                    execution = executionOwner,
+                    observation = observation,
+                    permit = permit,
+                )
+        ) {
+            is Refinement.Refined -> Refinement.Refined(ValueRole.LocalRead)
+            is Refinement.Rejected -> version
+        }
+    }
     if (element is KtThisExpression) {
         val function = owner as? KtNamedFunction ?: return roleRejected()
         if (valueNativeOwnership(element, function) != NativeValueOwnership.ADMITTED) return roleRejected()
@@ -148,6 +229,17 @@ private fun localReadRole(
     return if (element is KtExpression && element.hasNativeLocalReference(observation))
         Refinement.Refined(ValueRole.LocalRead)
     else roleRejected()
+}
+
+private fun PsiElement.isMutableLocalReference(observation: IntellijReadObservation): Boolean {
+    if (this !is org.jetbrains.kotlin.psi.KtNameReferenceExpression) return false
+    val reference = references.filterIsInstance<KtReference>().singleOrNull() ?: return false
+    return when (val declaration = resolveLocalValueReference(reference, observation)) {
+        is NativeLocalValueReferenceResolution.Resolved ->
+            declaration.declaration.nativeLocalBindingMutability() ==
+                Refinement.Refined(NativeLocalBindingMutability.MUTABLE)
+        NativeLocalValueReferenceResolution.Unresolved -> false
+    }
 }
 
 private fun returnRole(
@@ -201,9 +293,18 @@ private fun receiverRole(
     element: PsiElement,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (element is KtDestructuringDeclarationEntry && element.isNativeSingleComponent())
-        return when (val target = nativeComponentTarget(element, prepared.projection)) {
+    if (element is KtDestructuringDeclarationEntry)
+        return when (
+            val target =
+                componentSiteTarget(
+                    entry = element,
+                    prepared = prepared,
+                    executionOwner = executionOwner,
+                    permit = permit,
+                )
+        ) {
             is Refinement.Rejected -> target
             is Refinement.Refined ->
                 when (val selected = target.value) {

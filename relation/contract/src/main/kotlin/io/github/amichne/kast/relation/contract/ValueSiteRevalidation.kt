@@ -9,6 +9,21 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 sealed interface ValueSiteRoleClaim {
     data object ExpressionResult : ValueSiteRoleClaim
 
+    data class LoopResult(
+        val invocationAnchor: ExactDeclarationTextRange,
+        val expectedIterator: SymbolSelector,
+        val expectedHasNext: SymbolSelector,
+        val expectedNext: SymbolSelector,
+        val phase: ValueLoopResultPhase,
+    ) : ValueSiteRoleClaim {
+        val expectedCallable: SymbolSelector
+            get() =
+                when (phase) {
+                    ValueLoopResultPhase.ITERATOR -> expectedIterator
+                    ValueLoopResultPhase.ELEMENT -> expectedNext
+                }
+    }
+
     data object LocalBinding : ValueSiteRoleClaim
 
     data object LocalRead : ValueSiteRoleClaim
@@ -68,6 +83,7 @@ private constructor(
             role: ValueSiteRoleClaim,
         ): Refinement<Unit, ValueSiteRevalidationRequestFailure> =
             when (role) {
+                is ValueSiteRoleClaim.LoopResult -> admitLoopClaim(enclosing, anchor, role)
                 is ValueSiteRoleClaim.Argument ->
                     when (
                         val signature = admitInvocation(enclosing, anchor, role.invocationAnchor, role.expectedCallable)
@@ -108,6 +124,22 @@ private constructor(
                     Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)
                 else -> Refinement.Refined(callable.signature as CanonicalCompilerCallableSignature)
             }
+
+        private fun admitLoopClaim(
+            enclosing: SymbolSelector,
+            anchor: ExactDeclarationTextRange,
+            role: ValueSiteRoleClaim.LoopResult,
+        ): Refinement<Unit, ValueSiteRevalidationRequestFailure> {
+            if (anchor != role.invocationAnchor)
+                return Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_OUTSIDE_INVOCATION)
+            for (callable in listOf(role.expectedIterator, role.expectedHasNext, role.expectedNext)) {
+                when (val admitted = admitInvocation(enclosing, anchor, role.invocationAnchor, callable)) {
+                    is Refinement.Rejected -> return admitted
+                    is Refinement.Refined -> Unit
+                }
+            }
+            return Refinement.Refined(Unit)
+        }
     }
 }
 
@@ -153,6 +185,7 @@ private fun ValueSiteRoleClaim.admitRole(
         ValueSiteRoleClaim.LocalRead -> admitSimpleRole(actual, ValueRole.LocalRead)
         ValueSiteRoleClaim.Return -> admitSimpleRole(actual, ValueRole.Return)
         ValueSiteRoleClaim.PropertyAssignment -> admitSimpleRole(actual, ValueRole.PropertyAssignment)
+        is ValueSiteRoleClaim.LoopResult -> admitLoopRole(actual, owner)
         is ValueSiteRoleClaim.Argument -> admitArgument(actual, owner)
         is ValueSiteRoleClaim.Receiver -> {
             when {

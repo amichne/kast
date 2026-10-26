@@ -83,8 +83,15 @@ internal class NativeValueCallerFrames(
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         expectedOwner: ValueExecutionOwner,
+        allowance: IntellijRelationAllowance,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> =
-        boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Retained(expectedOwner))
+        boundInvocation(
+            call = call,
+            host = host,
+            enclosing = enclosing,
+            admission = NativeCallerOwnerAdmission.Retained(expectedOwner),
+            allowance = allowance,
+        )
 
     fun initialInvocation(
         call: NativeValueCallSyntax,
@@ -92,17 +99,24 @@ internal class NativeValueCallerFrames(
         enclosing: RelationEndpoint,
         allowance: IntellijRelationAllowance,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> =
-        boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Initial(allowance))
+        boundInvocation(
+            call = call,
+            host = host,
+            enclosing = enclosing,
+            admission = NativeCallerOwnerAdmission.Initial(allowance),
+            allowance = allowance,
+        )
 
     private fun boundInvocation(
         call: NativeValueCallSyntax,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         admission: NativeCallerOwnerAdmission,
+        allowance: IntellijRelationAllowance,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
         val bound =
             projection.observation.call(IntellijReadCall.VALUE_RETURN_CALL_BINDING) {
-                selectedCallable(call, enclosing)
+                selectedCallable(call, enclosing, allowance)
             }
         projection.observation.count(
             if (bound is Refinement.Refined) IntellijReadCounter.VALUE_RETURN_CALL_BINDINGS_ADMITTED
@@ -144,7 +158,9 @@ internal class NativeValueCallerFrames(
     private fun selectedCallable(
         call: NativeValueCallSyntax,
         enclosing: RelationEndpoint,
+        allowance: IntellijRelationAllowance,
     ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
+        if (call is NativeValueCallSyntax.Component) return selectedComponent(call, enclosing, allowance)
         val declaration =
             projection.observation.observedAnalyze(call.element) {
                 (resolveNativeValueCall(call)?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
@@ -155,6 +171,41 @@ internal class NativeValueCallerFrames(
             scope = scope,
             projection = projection,
         )
+    }
+
+    private fun selectedComponent(
+        call: NativeValueCallSyntax.Component,
+        enclosing: RelationEndpoint,
+        allowance: IntellijRelationAllowance,
+    ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
+        val admission =
+            when (
+                val value =
+                    call.admit(
+                        enclosing = enclosing,
+                        scope = scope,
+                        projection = projection,
+                        permit = { allowance.permitDestructuring(scope) },
+                    )
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected ->
+                    return if (value.failure == ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION) rejected() else value
+            }
+        return when (val target = admission.target(call.entry)) {
+            is Refinement.Rejected -> target
+            is Refinement.Refined ->
+                when (val selected = target.value) {
+                    is NativeComponentTarget.Field -> rejected()
+                    is NativeComponentTarget.Source ->
+                        nativeValueCallableEndpoint(
+                            declaration = selected.declaration,
+                            enclosing = enclosing,
+                            scope = scope,
+                            projection = projection,
+                        )
+                }
+        }
     }
 
     private fun executionOwner(

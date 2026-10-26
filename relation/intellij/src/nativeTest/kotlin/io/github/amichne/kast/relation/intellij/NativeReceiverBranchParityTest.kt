@@ -4,6 +4,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
@@ -43,7 +44,7 @@ class NativeReceiverBranchParityTest : NativePacketValueFixtureTest() {
         assertTrue(read.transfers.none { it.kind == ValueTransferKind.FIELD_READ })
     }
 
-    fun testMissingConcreteFieldEvidenceKeepsTheConditionalFrontier() {
+    fun testMissingConcreteFieldEvidenceRetainsBothConditionalAlternatives() {
         val fixture = packetFixture(listOf(CONTROLS))
         val callable = fixture.callableDeclaration(owner("implicit"))
         val source =
@@ -54,8 +55,28 @@ class NativeReceiverBranchParityTest : NativePacketValueFixtureTest() {
                 )
                 .nativeRefined()
         val read = step(fixture, source)
-        assertTrue(read.obligations.any { it.cause == ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION })
-        assertTrue(read.transfers.none { it.kind == ValueTransferKind.FIELD_READ })
+        assertTrue("Stable receiver facts retained obligations: ${read.obligations}", read.obligations.isEmpty())
+        val fields = read.transfers.filter { it.kind == ValueTransferKind.FIELD_READ }
+        val expected =
+            mapOf(
+                fixture.markedExpression(owner("implicit"), "selected").anchor to "Selected",
+                fixture.markedExpression(owner("implicit"), "other").anchor to "Other",
+            )
+        assertEquals(expected.keys, fields.map { it.target.range }.toSet())
+        assertEquals(2, fields.size)
+        for (field in fields) {
+            val condition = field.target.conditions.facts.single()
+            assertTrue(condition is ValueCondition.StableReceiver)
+            condition as ValueCondition.StableReceiver
+            assertTrue(condition.origin.matches(source))
+            assertEquals(field.target.range, condition.useRange)
+            assertEquals(ValueReceiverKind.EXTENSION, condition.kind)
+            assertEquals("fixture.controls.branchreceiver.Choice", condition.originalType.value)
+            assertEquals(
+                "fixture.controls.branchreceiver.${expected.getValue(field.target.range)}",
+                condition.refinedType.value,
+            )
+        }
     }
 
     fun testDispatchReceiverCannotReplaceTheRefinedExtensionReceiver() {
@@ -88,11 +109,26 @@ class NativeReceiverBranchParityTest : NativePacketValueFixtureTest() {
     fun testStarProjectedFinalVariantsPreserveTheirDistinctPayloadFields() =
         assertField("genericCaller", "generic", "GenericSelected")
 
-    fun testUnprovedConcreteTypeArgumentsCannotExcludeACompatibleVariant() {
+    fun testCompilerEstablishedConcreteArgumentsRetainConditionalProof() {
         val fixture = packetFixture(listOf(CONTROLS))
-        val read = step(fixture, formal(fixture, "concreteCaller", "GenericSelected"))
-        assertTrue(read.obligations.any { it.cause == ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION })
-        assertTrue(read.transfers.none { it.kind == ValueTransferKind.FIELD_READ })
+        val source = formal(fixture, "concreteCaller", "GenericSelected")
+        val read = step(fixture, source)
+        assertTrue(
+            "Compiler-established arguments retained obligations: ${read.obligations}",
+            read.obligations.isEmpty(),
+        )
+        val field = read.transfers.single { it.kind == ValueTransferKind.FIELD_READ }
+        val expected = fixture.whenBranchExpression(owner("concrete"), 0).anchor
+        assertEquals(expected, field.target.range)
+        assertTrue(read.transfers.none { it.target.range == fixture.whenBranchExpression(owner("concrete"), 1).anchor })
+        val condition = field.target.conditions.facts.single()
+        assertTrue(condition is ValueCondition.StableReceiver)
+        condition as ValueCondition.StableReceiver
+        assertTrue(condition.origin.matches(source))
+        assertEquals(expected, condition.useRange)
+        assertEquals(ValueReceiverKind.EXTENSION, condition.kind)
+        assertEquals("fixture.controls.branchreceiver.GenericChoice<kotlin.String>", condition.originalType.value)
+        assertEquals("fixture.controls.branchreceiver.GenericSelected<kotlin.String>", condition.refinedType.value)
     }
 
     fun testPayloadLocalInsideAnAdmittedArmKeepsItsEstablishedIdentity() {

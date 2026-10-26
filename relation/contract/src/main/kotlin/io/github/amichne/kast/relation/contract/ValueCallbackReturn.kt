@@ -14,10 +14,12 @@ internal fun ValueSourceOperation.CallbackReturn.admitsCallbackReturn(
         source.valuePath == target.valuePath &&
         matchesOwners(source, target) &&
         matchesSupplier(source) &&
-        when (val stack = source.callStack.enter(frame)) {
-            is Refinement.Refined -> stack.value == target.callStack
-            is Refinement.Rejected -> false
-        }
+        (if (source.callStack.frames.lastOrNull() == frame) source.callStack == target.callStack
+        else
+            when (val stack = source.callStack.enter(frame)) {
+                is Refinement.Refined -> stack.value == target.callStack
+                is Refinement.Rejected -> false
+            })
 }
 
 private fun ValueSourceOperation.CallbackReturn.matchesOwners(source: ValueSite, target: ValueSite): Boolean {
@@ -26,7 +28,7 @@ private fun ValueSourceOperation.CallbackReturn.matchesOwners(source: ValueSite,
     return context != null &&
         owner != null &&
         context.body == invocation.body &&
-        invocation in context.invocations &&
+        invocation == context.selectedInvocation &&
         target.enclosing.matchesCallbackRoot(owner.evidence) &&
         target.range == invocation.invocation.occurrence.range &&
         target.executionOwner == frame.callee &&

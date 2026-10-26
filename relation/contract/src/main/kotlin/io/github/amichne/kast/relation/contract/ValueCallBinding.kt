@@ -40,8 +40,11 @@ private constructor(
             if (!executionOwner.belongsTo(callable))
                 return Refinement.Rejected(ValueCallBindingFailure.CALLABLE_MISMATCH)
             val signature =
-                callable.signature as? CanonicalCompilerCallableSignature
-                    ?: return Refinement.Rejected(ValueCallBindingFailure.INVALID_PARAMETER)
+                when (val context = executionOwner.context) {
+                    ValueExecutionContext.Declaration -> callable.signature as? CanonicalCompilerCallableSignature
+                    is ValueExecutionContext.Callback -> context.body.signature
+                    is ValueExecutionContext.ReviewedCallback -> context.binding.body.signature
+                } ?: return Refinement.Rejected(ValueCallBindingFailure.INVALID_PARAMETER)
             if (position.value !in signature.valueParameters.indices)
                 return Refinement.Rejected(ValueCallBindingFailure.INVALID_PARAMETER)
             if (!executionOwner.range.containsValueRange(range))

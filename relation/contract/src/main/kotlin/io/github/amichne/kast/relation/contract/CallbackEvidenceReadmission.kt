@@ -189,6 +189,7 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
                             execution,
                             previous.valuePath,
                             previous.callStack,
+                            previous.conditions,
                         )
                 ) {
                     is Refinement.Refined -> admitted
@@ -200,6 +201,8 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
 
     private fun role(previous: ValueRole): CallbackReadmission<ValueRole> =
         when (previous) {
+            is ValueRole.LoopResult ->
+                Refinement.Rejected(CallbackSummaryReadmissionFailure.Site(ValueSiteFailure.STATE_BASIS_MISMATCH))
             is ValueRole.Argument ->
                 call(previous.call).then { Refinement.Refined(ValueRole.Argument(it, previous.position)) }
             is ValueRole.Receiver ->

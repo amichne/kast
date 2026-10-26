@@ -20,7 +20,9 @@ fun ImpactValueSiteReferenceDocument.hasSameValueIdentity(other: ImpactValueSite
         role == other.role &&
         executionOwner == other.executionOwner &&
         valuePath == other.valuePath &&
-        callStack.hasSameCallStackIdentity(other.callStack)
+        callStack.hasSameCallStackIdentity(other.callStack) &&
+        conditions.hasSameConditions(other.conditions) &&
+        localVersion == other.localVersion
 
 internal fun ImpactBoundaryPositionDocument.hasSamePositionIdentity(other: ImpactBoundaryPositionDocument): Boolean =
     site.hasSameValueIdentity(other.site) && kind == other.kind && contract == other.contract && slot == other.slot

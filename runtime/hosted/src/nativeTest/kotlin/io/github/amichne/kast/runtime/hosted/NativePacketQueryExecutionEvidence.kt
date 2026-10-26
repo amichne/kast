@@ -12,7 +12,8 @@ internal fun NativePacketQueryServices.executionSummary(): String {
             is QueryExecutionResult.Rejected -> "REJECTED:${result.reason}"
             is QueryExecutionResult.ImpactRejected -> "IMPACT_REJECTED:${result.failure}"
             is QueryExecutionResult.Complete -> "COMPLETE:${result.result.valuePathCount()}"
-            is QueryExecutionResult.Qualified -> "QUALIFIED:${result.result.valuePathCount()}"
+            is QueryExecutionResult.Qualified ->
+                "QUALIFIED:${result.result.valuePathCount()}:${result.coverage.limitations}"
         }
     return "interpreter=$execution nativeFlowReads=$nativeFlowReads retention=$lastRetention"
 }

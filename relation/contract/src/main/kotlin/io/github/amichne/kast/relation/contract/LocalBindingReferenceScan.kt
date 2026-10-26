@@ -12,6 +12,9 @@ sealed interface LocalReferenceResolution {
 
     data object OtherBinding : LocalReferenceResolution
 
+    /** A confirmed write or a read supplied by a different admitted definition. */
+    data object OtherVersion : LocalReferenceResolution
+
     /** The exact binding remains established, but its branch cannot carry the tracked value. */
     data object ExcludedBranch : LocalReferenceResolution
 }
@@ -71,6 +74,7 @@ class LocalBindingReferenceScan<C>(
         spend()
         when (val result = confirm(candidate)) {
             LocalReferenceResolution.OtherBinding,
+            LocalReferenceResolution.OtherVersion,
             LocalReferenceResolution.ExcludedBranch -> Unit
             is LocalReferenceResolution.Unsupported -> obligation(result.cause)
             is LocalReferenceResolution.Unresolved ->

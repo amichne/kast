@@ -57,7 +57,7 @@ private fun QueryImpactTerminal.storageBytes(g: QueryImpactRetainedGraph): Long 
             is QueryImpactTerminal.ModeledTerminal -> boundary.storageBytes(g)
             is QueryImpactTerminal.Unresolved.ExecutionStop -> stop.storageBytes(g)
             is QueryImpactTerminal.Unresolved.ReadRejected -> rejection.storageBytes(g)
-            is QueryImpactTerminal.Unresolved.Flow -> g.node(obligation) { obligation.site.storageBytes(g) }
+            is QueryImpactTerminal.Unresolved.Flow -> obligation.storageBytes(g)
             is QueryImpactTerminal.Unresolved.Boundary -> boundary.storageBytes(g)
             is QueryImpactTerminal.Unresolved.PeerContinuation ->
                 boundary.storageBytes(g).saturatedAdd(connection.storageBytes(g))
@@ -156,6 +156,13 @@ internal fun QueryImpactRequestedSite.storageBytes(g: QueryImpactRetainedGraph):
                         .saturatedAdd(
                             g.node(request.role) {
                                 when (val role = request.role) {
+                                    is ValueSiteRoleClaim.LoopResult ->
+                                        role.expectedIterator
+                                            .storageBytes(g)
+                                            .saturatedAdd(role.expectedHasNext.storageBytes(g))
+                                            .saturatedAdd(role.expectedNext.storageBytes(g))
+                                            .saturatedAdd(g.node(role.invocationAnchor) { 0L })
+                                            .saturatedAdd(g.node(role.phase) { 0L })
                                     is ValueSiteRoleClaim.Argument ->
                                         role.expectedCallable
                                             .storageBytes(g)

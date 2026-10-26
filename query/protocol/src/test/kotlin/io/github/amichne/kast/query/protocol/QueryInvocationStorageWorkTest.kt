@@ -23,6 +23,7 @@ import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryWorkCount
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -54,7 +55,7 @@ class QueryInvocationStorageWorkTest {
         val accepted = case.facts()
         assertInstanceOf(Refinement.Refined::class.java, accepted.append(case.page, Long.MAX_VALUE))
         assertCharge(accepted)
-        val required = 352_800L
+        val required = 357_280L
         val rejected = case.facts()
 
         val failure = assertInstanceOf(Refinement.Rejected::class.java, rejected.append(case.page, required - 1))
@@ -87,11 +88,23 @@ class QueryInvocationStorageWorkTest {
         assertEquals(0, case.checkpoint.sharedMeasurements)
     }
 
+    @Test
+    fun `unconditional conditions share payload but charge each incoming reference`() {
+        val graph = QueryImpactRetainedGraph()
+        // Fresh graph: conditions and empty-list objects, each with a 512-byte base and an 8-byte reference, times 8.
+        assertEquals(8_320L, graph.conditions(ValueConditions.Unconditional))
+        // The immutable payload is already retained; only the next 8-byte reference remains, times 8.
+        assertEquals(64L, graph.conditions(ValueConditions.Unconditional))
+    }
+
     private fun assertCharge(facts: QueryInvocationFacts) {
-        assertEquals(349_880L, facts.retentionEstimate.semantic.value)
-        assertEquals(2_664L, facts.retentionEstimate.preview.value)
+        // Two sites and their two identities add four references to one shared conditions object.
+        // Its empty-list payload is already shared: (512 + 4 * 8 + 8) * 8 = 4,416 over the prior 349,880.
+        assertEquals(354_296L, facts.retentionEstimate.semantic.value)
+        // Producer, transfer source/target and terminal site each encode the required 16-byte ,"conditions":[] field.
+        assertEquals(2_728L, facts.retentionEstimate.preview.value)
         assertEquals(256L, facts.retentionEstimate.rowReferenceCells.value)
-        assertEquals(352_800L, facts.retainedBytes)
+        assertEquals(357_280L, facts.retainedBytes)
     }
 
     private class Case(overhead: Long = 1_024L) {

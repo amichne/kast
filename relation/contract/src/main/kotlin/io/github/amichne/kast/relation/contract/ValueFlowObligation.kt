@@ -30,6 +30,8 @@ value class ValueFlowExpressionKind private constructor(val value: String) {
 sealed interface ValueFlowObligationEvidence {
     data object None : ValueFlowObligationEvidence
 
+    data class CallbackInput internal constructor(val failure: ValueCallbackInputFailure) : ValueFlowObligationEvidence
+
     data class Expression
     internal constructor(val kind: ValueFlowExpressionKind, val range: ExactDeclarationTextRange) :
         ValueFlowObligationEvidence
@@ -60,6 +62,15 @@ private constructor(
     }
 
     companion object {
+        fun fromCallbackInput(
+            site: ValueSite,
+            failure: ValueCallbackInputFailure,
+            cause: ValueFlowUnsupportedCause = ValueFlowUnsupportedCause.NESTED_EXECUTION,
+        ): Refinement<ValueFlowObligation, ValueFlowObligationFailure> =
+            if (failure.matchesBasis(site.basis))
+                Refinement.Refined(ValueFlowObligation(site, cause, ValueFlowObligationEvidence.CallbackInput(failure)))
+            else Refinement.Rejected(ValueFlowObligationFailure.BASIS_MISMATCH)
+
         fun fromExpression(
             site: ValueSite,
             cause: ValueFlowUnsupportedCause,
@@ -87,6 +98,7 @@ private constructor(
                     // A return can preserve an unresolved caller investigation without asserting its relationship.
                     ValueRole.Return -> true
                     is ValueRole.Formal,
+                    is ValueRole.LoopResult,
                     ValueRole.ExpressionResult,
                     ValueRole.LocalBinding,
                     ValueRole.LocalRead,

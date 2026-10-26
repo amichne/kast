@@ -95,6 +95,15 @@ sealed interface ImpactSourceOperationDocument {
         ImpactSourceOperationDocument
 
     @Serializable
+    @SerialName("CALLBACK_ARGUMENT_ENTRY")
+    data class CallbackArgumentEntry(
+        val invocation: ImpactCaptureInvocationDocument,
+        val supplierFrame: ImpactCallFrameDocument,
+        val parameter: ImpactFormalParameterDocument,
+        val argumentRange: ImpactSourceRangeDocument,
+    ) : ImpactSourceOperationDocument
+
+    @Serializable
     @SerialName("READ_FIELD")
     data class ReadField(val field: ImpactDeclarationReferenceDocument) : ImpactSourceOperationDocument
 

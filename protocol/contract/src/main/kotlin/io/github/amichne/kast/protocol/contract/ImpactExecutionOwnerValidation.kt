@@ -5,6 +5,7 @@ fun ImpactValueSiteReferenceDocument.admitsExecutionOwner(): Boolean =
     executionOwner.admits(enclosing, range) &&
         admitsValueState() &&
         when (val position = role) {
+            is ImpactValueRoleDocument.LoopResult -> position.admits(this)
             is ImpactValueRoleDocument.Argument -> position.invocation.admitsOwner(enclosing, executionOwner)
             is ImpactValueRoleDocument.Receiver -> position.invocation.admitsOwner(enclosing, executionOwner)
             is ImpactValueRoleDocument.Formal -> position.position.admits(this)
@@ -33,7 +34,7 @@ internal fun ImpactExecutionOwnerDocument.admits(
                 host.range.containsExecutionRange(body.range) &&
                 body.range.containsExecutionRange(anchor) &&
                 invocations.values.isNotEmpty() &&
-                invocations.values.any { it.body == body } &&
+                admitsSelection() &&
                 invocations.values.all { it.admitsCapture(host) }
     }
 
@@ -59,7 +60,8 @@ internal fun ImpactExecutionOwnerDocument.isOnBasis(basis: ImpactSemanticBasisDo
                 is ImpactExecutionOwnerDocument.ReviewedCallback ->
                     binding.basis == basis && binding.admits(binding.enclosing)
                 is ImpactExecutionOwnerDocument.Callback ->
-                    invocations.values.all { it.enclosing.basis == basis && it.supply.callable.basis == basis }
+                    admitsSelection() &&
+                        invocations.values.all { it.enclosing.basis == basis && it.supply.callable.basis == basis }
             }
     }
 

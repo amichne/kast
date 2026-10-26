@@ -34,6 +34,24 @@ class ImpactCallbackReturnTest {
         assertEquals(transfer, decoded)
         assertTrue(decoded.admitsEvidence())
         assertEquals(transfer.source.valuePath, decoded.target.valuePath)
+        val expectedConditions =
+            Json.parseToJsonElement(
+                requireNotNull(javaClass.getResource("/impact-conditions.expected.json")).readText()
+            )
+        val document = Json.parseToJsonElement(encoded).jsonObject
+        assertEquals(expectedConditions, document.getValue("source").jsonObject.getValue("conditions"))
+        assertEquals(expectedConditions, document.getValue("target").jsonObject.getValue("conditions"))
+    }
+
+    @Test
+    fun `callback return preserves an already active exact supplier frame`() {
+        val transfer = callbackReturn()
+        val active = transfer.copy(source = transfer.source.copy(callStack = transfer.target.callStack))
+        val decoded = Json.decodeFromString<ImpactCompilerTransferDocument>(Json.encodeToString(active))
+        assertTrue(decoded.admitsEvidence())
+        assertEquals(active.source.callStack, decoded.target.callStack)
+        assertEquals(1, decoded.target.callStack.values.size)
+        assertFalse(decoded.copy(target = decoded.target.copy(callStack = EmptyImpactCallStack)).admitsEvidence())
     }
 
     @Test
@@ -56,6 +74,7 @@ class ImpactCallbackReturnTest {
                 transfer.copy(target = transfer.target.copy(range = range(fixture, 132, 139))),
                 transfer.copy(target = transfer.target.copy(valuePath = EmptyImpactValuePath)),
                 transfer.copy(target = transfer.target.copy(callStack = EmptyImpactCallStack)),
+                transfer.copy(target = transfer.target.copy(conditions = EmptyImpactConditions)),
                 transfer.copy(evidence = ImpactTransferEvidenceDocument.Source(wrongSupplier)),
                 transfer.copy(evidence = ImpactTransferEvidenceDocument.Direct),
             )
@@ -87,6 +106,7 @@ class ImpactCallbackReturnTest {
             )
         val frame = ImpactCallFrameDocument(host, invocation.supply, ImpactExecutionReferenceDocument(wrapper))
         val field = resultField(fixture)
+        val conditions = receiverConditions(fixture)
         val source =
             ImpactValueSiteReferenceDocument(
                 enclosing = host,
@@ -94,6 +114,7 @@ class ImpactCallbackReturnTest {
                 role = ImpactValueRoleDocument.Return,
                 executionOwner = ImpactExecutionOwnerDocument.Callback(body, fixture.bounded(listOf(invocation))),
                 valuePath = field,
+                conditions = conditions,
             )
         val target =
             ImpactValueSiteReferenceDocument(
@@ -102,6 +123,7 @@ class ImpactCallbackReturnTest {
                 role = ImpactValueRoleDocument.ExpressionResult,
                 valuePath = field,
                 callStack = fixture.bounded(listOf(frame)),
+                conditions = conditions,
             )
         return ImpactCompilerTransferDocument(
             source = source,
@@ -111,6 +133,25 @@ class ImpactCallbackReturnTest {
                 ImpactTransferEvidenceDocument.Source(ImpactSourceOperationDocument.CallbackReturn(invocation, frame)),
         )
     }
+
+    private fun receiverConditions(fixture: ImpactFindingFixture) =
+        fixture.bounded<ImpactValueConditionDocument>(
+            listOf(
+                ImpactValueConditionDocument.StableReceiver(
+                    ImpactValueConditionOriginDocument(
+                        ImpactExecutionReferenceDocument(fixture.declaration),
+                        fixture.producer.range,
+                        ImpactValueRoleDocument.Formal(
+                            ImpactFormalPositionDocument.Receiver(ImpactReceiverKindDocument.EXTENSION)
+                        ),
+                    ),
+                    fixture.destination.range,
+                    ImpactReceiverKindDocument.EXTENSION,
+                    fixture.text("kotlin/Any?"),
+                    fixture.text("fixture/Request"),
+                )
+            )
+        )
 
     private fun resultField(fixture: ImpactFindingFixture) =
         fixture.bounded<ImpactValuePathSegmentDocument>(

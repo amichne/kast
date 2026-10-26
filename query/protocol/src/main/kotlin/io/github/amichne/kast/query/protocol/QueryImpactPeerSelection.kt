@@ -14,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.protocol
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.Collections
 
@@ -214,6 +215,10 @@ fun QueryImpactSourceDocument.selectPeerSites(
 internal fun ImpactValueSiteReferenceDocument.declarationClaims(): List<ImpactDeclarationReferenceDocument> =
     listOf(enclosing) +
         when (val syntax = role) {
+            is ImpactValueRoleDocument.LoopResult ->
+                syntax.result.protocol.let {
+                    listOf(it.enclosing, it.iterator.callable, it.hasNext.callable, it.next.callable)
+                }
             is ImpactValueRoleDocument.Argument -> listOf(syntax.invocation.callable)
             is ImpactValueRoleDocument.Receiver -> listOf(syntax.invocation.callable)
             is ImpactValueRoleDocument.Formal -> emptyList()

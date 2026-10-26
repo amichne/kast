@@ -6,6 +6,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.WorkAllowance
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValuePathSegment
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtIfExpression
+import org.jetbrains.kotlin.psi.KtIsExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtWhenConditionIsPattern
@@ -57,7 +59,21 @@ internal fun nativeValueBranchAdmission(
                 }
                 else -> binding.symbol
             }
-        branchAdmission(source, expression, expected, scope, projection, workAllowance)
+        val branch = branchAdmission(source, expression, expected, scope, projection, workAllowance)
+        when (branch) {
+            NativeValueBranchAdmission.ADMITTED,
+            NativeValueBranchAdmission.NOT_APPLICABLE ->
+                when (val condition = versionIfAdmission(source, expression, expected, workAllowance)) {
+                    NativeValueBranchAdmission.NOT_APPLICABLE -> branch
+                    NativeValueBranchAdmission.ADMITTED,
+                    NativeValueBranchAdmission.EXCLUDED,
+                    NativeValueBranchAdmission.UNPROVEN,
+                    NativeValueBranchAdmission.WORK_LIMIT_REACHED -> condition
+                }
+            NativeValueBranchAdmission.EXCLUDED,
+            NativeValueBranchAdmission.UNPROVEN,
+            NativeValueBranchAdmission.WORK_LIMIT_REACHED -> branch
+        }
     }
 
 internal fun KaSession.branchAdmission(
@@ -114,9 +130,103 @@ private fun KaSession.admitExactBranch(
 ): NativeValueBranchAdmission {
     if (PsiTreeUtil.getParentOfType(expression, KtIfExpression::class.java, false) != null)
         return NativeValueBranchAdmission.UNPROVEN
-    val exactType = trackedFinalOwnerType(source, scope, projection) ?: return NativeValueBranchAdmission.UNPROVEN
+    val exactType =
+        trackedFinalOwnerType(source, scope, projection)
+            ?: versionFinalType(source, expression)
+            ?: return NativeValueBranchAdmission.UNPROVEN
     return when (nativeCompilerTypeProof(listOf(exactType), workAllowance)) {
-        NativeCompilerTypeProof.ADMITTED -> matchingArm(exactType, whenExpression, entry, workAllowance)
+        NativeCompilerTypeProof.ADMITTED ->
+            when (val branch = matchingArm(exactType, whenExpression, entry, workAllowance)) {
+                NativeValueBranchAdmission.ADMITTED ->
+                    admitVersionSmartcast(source, expression, exactType, workAllowance)
+                NativeValueBranchAdmission.NOT_APPLICABLE,
+                NativeValueBranchAdmission.EXCLUDED,
+                NativeValueBranchAdmission.UNPROVEN,
+                NativeValueBranchAdmission.WORK_LIMIT_REACHED -> branch
+            }
+        NativeCompilerTypeProof.WORK_LIMIT_REACHED -> NativeValueBranchAdmission.WORK_LIMIT_REACHED
+        NativeCompilerTypeProof.ERROR_TYPE,
+        NativeCompilerTypeProof.UNSUPPORTED_TYPE -> NativeValueBranchAdmission.UNPROVEN
+    }
+}
+
+/** The admitted definition identifies the RHS; K2's final non-null type establishes the exact possible class. */
+private fun KaSession.versionFinalType(source: ValueSite, expression: KtExpression): KaClassType? {
+    val version = source.localVersion as? ValueLocalVersion.Defined ?: return null
+    if (source.valuePath.segments.isNotEmpty()) return null
+    val rhs = expression.containingFile.exactValueElement(version.rhs) ?: return null
+    val type = rhs.expressionType as? KaClassType ?: return null
+    return type.takeIf {
+        !it.isMarkedNullable &&
+            it.symbol.modality == KaSymbolModality.FINAL &&
+            it.qualifiers.none { qualifier -> qualifier.typeArguments.isNotEmpty() }
+    }
+}
+
+private fun KaSession.versionIfAdmission(
+    source: ValueSite,
+    expression: KtExpression,
+    expected: KaSymbol?,
+    workAllowance: WorkAllowance,
+): NativeValueBranchAdmission {
+    if (source.localVersion !is ValueLocalVersion.Defined) return NativeValueBranchAdmission.NOT_APPLICABLE
+    val branch =
+        PsiTreeUtil.getParentOfType(expression, KtIfExpression::class.java, false)
+            ?: return NativeValueBranchAdmission.NOT_APPLICABLE
+    val inThen = branch.then?.let { PsiTreeUtil.isAncestor(it, expression, false) } == true
+    val inElse = branch.`else`?.let { PsiTreeUtil.isAncestor(it, expression, false) } == true
+    if (!inThen && !inElse) return NativeValueBranchAdmission.NOT_APPLICABLE
+    val condition = branch.condition as? KtIsExpression ?: return NativeValueBranchAdmission.UNPROVEN
+    val identity = expected ?: return NativeValueBranchAdmission.UNPROVEN
+    when (branchExpressionIdentity(condition.leftHandSide, identity, workAllowance)) {
+        NativeBranchIdentity.EXACT -> Unit
+        NativeBranchIdentity.WORK_LIMIT_REACHED -> return NativeValueBranchAdmission.WORK_LIMIT_REACHED
+        NativeBranchIdentity.OTHER,
+        NativeBranchIdentity.UNAVAILABLE -> return NativeValueBranchAdmission.UNPROVEN
+    }
+    return versionTypeTestAdmission(
+        source = source,
+        expression = expression,
+        condition = condition,
+        inThen = inThen,
+        workAllowance = workAllowance,
+    )
+}
+
+private fun KaSession.versionTypeTestAdmission(
+    source: ValueSite,
+    expression: KtExpression,
+    condition: KtIsExpression,
+    inThen: Boolean,
+    workAllowance: WorkAllowance,
+): NativeValueBranchAdmission {
+    val exact = versionFinalType(source, expression) ?: return NativeValueBranchAdmission.UNPROVEN
+    val tested = condition.typeReference?.type as? KaClassType ?: return NativeValueBranchAdmission.UNPROVEN
+    if (!tested.hasOnlyStarArguments()) return NativeValueBranchAdmission.UNPROVEN
+    when (nativeCompilerTypeProof(listOf(exact, tested), workAllowance)) {
+        NativeCompilerTypeProof.ADMITTED -> Unit
+        NativeCompilerTypeProof.WORK_LIMIT_REACHED -> return NativeValueBranchAdmission.WORK_LIMIT_REACHED
+        NativeCompilerTypeProof.ERROR_TYPE,
+        NativeCompilerTypeProof.UNSUPPORTED_TYPE -> return NativeValueBranchAdmission.UNPROVEN
+    }
+    val matches = exact.isSubtypeOf(tested) != condition.isNegated
+    return if (matches != inThen) NativeValueBranchAdmission.EXCLUDED
+    else admitVersionSmartcast(source, expression, exact, workAllowance)
+}
+
+private fun KaSession.admitVersionSmartcast(
+    source: ValueSite,
+    expression: KtExpression,
+    exactType: KaType,
+    workAllowance: WorkAllowance,
+): NativeValueBranchAdmission {
+    if (source.localVersion !is ValueLocalVersion.Defined) return NativeValueBranchAdmission.ADMITTED
+    val fact = expression.smartCastInfo ?: return NativeValueBranchAdmission.ADMITTED
+    if (!fact.isStable) return NativeValueBranchAdmission.UNPROVEN
+    return when (nativeCompilerTypeProof(listOf(fact.originalType, fact.smartCastType), workAllowance)) {
+        NativeCompilerTypeProof.ADMITTED ->
+            if (exactType.isSubtypeOf(fact.smartCastType)) NativeValueBranchAdmission.ADMITTED
+            else NativeValueBranchAdmission.UNPROVEN
         NativeCompilerTypeProof.WORK_LIMIT_REACHED -> NativeValueBranchAdmission.WORK_LIMIT_REACHED
         NativeCompilerTypeProof.ERROR_TYPE,
         NativeCompilerTypeProof.UNSUPPORTED_TYPE -> NativeValueBranchAdmission.UNPROVEN

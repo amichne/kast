@@ -113,4 +113,7 @@ private fun ValueSiteIdentity.isReadOf(source: ValueSite): Boolean =
         execution == source.identity.execution &&
         valuePath == source.valuePath &&
         callStack == source.callStack &&
+        conditions == source.conditions &&
+        localVersion == ValueLocalVersion.Unversioned &&
+        (source.localVersion !is ValueLocalVersion.Defined || source.localVersion.admitsRead(range)) &&
         role == ValueRole.LocalRead

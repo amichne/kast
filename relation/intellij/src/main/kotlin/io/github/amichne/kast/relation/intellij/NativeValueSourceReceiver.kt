@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** A direct source receiver enters its exact compiler receiver formal without asserting a result dependency. */
-internal fun nativeValueSourceReceiver(
+internal fun IntellijRelationAllowance.nativeValueSourceReceiver(
     source: ValueSite,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
@@ -47,7 +47,7 @@ internal fun nativeValueSourceReceiver(
 }
 
 /** The static call establishes its receiver slot independently of the selected execution body. */
-internal fun nativeValueReceiverFormal(
+internal fun IntellijRelationAllowance.nativeValueReceiverFormal(
     source: ValueSite,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
@@ -64,7 +64,11 @@ internal fun nativeValueReceiverFormal(
             is IntellijRelationSubjectLookup.Rejected -> return receiverRejected()
         }
     val expression = host.exactValueElement(role.call.range) ?: return receiverRejected()
-    val syntax = expression.nativeValueCallSyntax() ?: return receiverRejected()
+    val syntax = expression.nativeValueCallSyntax(function) ?: return receiverRejected()
+    when (val admitted = admitReceiverCall(syntax, role, function, scope, projection)) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admitted
+    }
     val position =
         nativeReceiverPosition(
             role = role,
@@ -75,6 +79,54 @@ internal fun nativeValueReceiverFormal(
         ) ?: return receiverRejected()
     if (position != role.kind) return receiverRejected()
     return Refinement.Refined(ValueFormalPosition.Receiver(position))
+}
+
+private fun IntellijRelationAllowance.admitReceiverCall(
+    syntax: NativeValueCallSyntax,
+    role: ValueRole.Receiver,
+    function: KtNamedFunction,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+): Refinement<Unit, ValueFlowUnsupportedCause> =
+    when (syntax) {
+        is NativeValueCallSyntax.Explicit -> Refinement.Refined(Unit)
+        is NativeValueCallSyntax.Component -> admitComponentReceiver(syntax, role, function, scope, projection)
+        is NativeValueCallSyntax.Loop ->
+            when (
+                val result =
+                    nativeLoopInvocationResult(syntax.loop, role.call, scope, projection) { permitDestructuring(scope) }
+            ) {
+                is Refinement.Refined -> Refinement.Refined(Unit)
+                is Refinement.Rejected -> result
+            }
+    }
+
+private fun IntellijRelationAllowance.admitComponentReceiver(
+    syntax: NativeValueCallSyntax.Component,
+    role: ValueRole.Receiver,
+    function: KtNamedFunction,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+): Refinement<Unit, ValueFlowUnsupportedCause> {
+    val admission =
+        when (
+            val admitted =
+                syntax.admit(
+                    enclosing = role.call.enclosing,
+                    scope = scope,
+                    projection = projection,
+                    permit = { permitDestructuring(scope) },
+                )
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
+        }
+    return when (val selected = admission.target(syntax.entry)) {
+        is Refinement.Rejected -> selected
+        is Refinement.Refined ->
+            if (selected.value == NativeComponentTarget.Source(function, role.kind)) Refinement.Refined(Unit)
+            else receiverRejected()
+    }
 }
 
 internal fun nativeReceiverPosition(
@@ -99,8 +151,19 @@ internal fun nativeReceiverPosition(
                 )
             is NativeValueCallSyntax.Component ->
                 if (range == sourceValueRange(syntax.entry)) nativeComponentReceiverKind(syntax.entry) else null
+            is NativeValueCallSyntax.Loop ->
+                loopReceiverPosition(range, syntax, resolved.extensionReceiver, resolved.dispatchReceiver)
         }
     }
+
+private fun loopReceiverPosition(
+    range: ExactDeclarationTextRange,
+    syntax: NativeValueCallSyntax.Loop,
+    extension: KaReceiverValue?,
+    dispatch: KaReceiverValue?,
+): ValueReceiverKind? =
+    if (range == sourceValueRange(syntax.loop) && dispatch != null && extension == null) ValueReceiverKind.DISPATCH
+    else null
 
 private fun matchedReceiverPosition(
     kind: ValueReceiverKind,

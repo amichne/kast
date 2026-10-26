@@ -95,6 +95,20 @@ internal fun ValueSourceOperation.impactDocument(): ImpactProjected<ImpactSource
             invocation.impactCapture().impactZip(frame.impactDocument()).impactMap { (invocation, frame) ->
                 ImpactSourceOperationDocument.CallbackReturn(invocation, frame)
             }
+        is ValueSourceOperation.CallbackArgumentEntry ->
+            invocation
+                .impactCapture()
+                .impactZip(supplierFrame.impactDocument())
+                .impactZip(parameter.impactDocument())
+                .impactZip(argumentRange.impactDocument())
+                .impactMap { (entry, argument) ->
+                    ImpactSourceOperationDocument.CallbackArgumentEntry(
+                        entry.first.first,
+                        entry.first.second,
+                        entry.second,
+                        argument,
+                    )
+                }
         is ValueSourceOperation.ReadField ->
             field.declaration.impactDeclaration().impactMap(ImpactSourceOperationDocument::ReadField)
         is ValueSourceOperation.ConstructField ->

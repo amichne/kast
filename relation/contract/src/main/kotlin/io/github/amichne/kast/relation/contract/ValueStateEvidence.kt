@@ -1,8 +1,18 @@
 package io.github.amichne.kast.relation.contract
 
 internal fun ValueSite.stateEndpoints(includeFormal: Boolean = true): List<RelationEndpoint> = buildList {
+    (role as? ValueRole.LoopResult)?.result?.protocol?.invocations()?.forEach {
+        add(it.enclosing)
+        add(it.callable)
+    }
     valuePath.segments.filterIsInstance<ValuePathSegment.Field>().forEach { add(it.field.declaration) }
     callStack.frames.forEach { addAll(it.stateEndpoints()) }
+    conditions.facts.forEach { condition ->
+        val origin = condition.origin
+        add(origin.execution.enclosing)
+        origin.valuePath.segments.filterIsInstance<ValuePathSegment.Field>().forEach { add(it.field.declaration) }
+        origin.callStack.frames.forEach { addAll(it.stateEndpoints()) }
+    }
     val formal = (role as? ValueRole.Formal)?.position as? ValueFormalPosition.Parameter
     if (includeFormal && formal != null) add(formal.parameter.callable)
 }
@@ -25,7 +35,45 @@ internal fun ValueCallFrame.stateEndpoints(): List<RelationEndpoint> = buildList
 }
 
 internal fun StringBuilder.valueState(site: ValueSite) {
-    when (val context = site.executionOwner.context) {
+    valueState(site.executionOwner, site.valuePath, site.callStack)
+    field(site.conditions.facts.size.toString())
+    site.conditions.facts.forEach { condition ->
+        when (condition) {
+            is ValueCondition.StableReceiver -> {
+                field("STABLE_RECEIVER")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                field(condition.kind.name)
+                field(condition.originalType.value)
+                field(condition.refinedType.value)
+            }
+            is ValueCondition.CastSuccess -> {
+                field("CAST_SUCCESS")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                field(condition.kind.name)
+                field(condition.originalType.value)
+                field(condition.targetType.value)
+            }
+        }
+    }
+}
+
+private fun StringBuilder.conditionOrigin(origin: ValueConditionOrigin) {
+    endpoint(origin.execution.enclosing)
+    range(origin.execution.range)
+    field(origin.execution.identity.host.compiler.value)
+    range(origin.range)
+    valueRole(origin.role)
+    valueState(origin.execution, origin.valuePath, origin.callStack)
+}
+
+private fun StringBuilder.valueState(
+    execution: ValueExecutionOwner,
+    path: ValueAccessPath,
+    stack: ValueCallStack,
+) {
+    when (val context = execution.context) {
         ValueExecutionContext.Declaration -> Unit
         is ValueExecutionContext.ReviewedCallback -> {
             field("REVIEWED_CALLBACK_VALUE")
@@ -51,10 +99,16 @@ internal fun StringBuilder.valueState(site: ValueSite) {
                 field(frame.supply.position.value.toString())
                 field(frame.invocation.canonicalProjection())
             }
+            field("SELECTED_INVOCATION")
+            valueCall(context.selectedInvocation.supply.invocation)
+            body(context.selectedInvocation.supply.invocationOwner)
+            occurrence(context.selectedInvocation.supply.parameter)
+            field(context.selectedInvocation.supply.position.value.toString())
+            field(context.selectedInvocation.invocation.canonicalProjection())
         }
     }
-    field(site.valuePath.depth.toString())
-    site.valuePath.segments.forEach { segment ->
+    field(path.depth.toString())
+    path.segments.forEach { segment ->
         when (segment) {
             ValuePathSegment.Element -> field("ELEMENT")
             is ValuePathSegment.Field -> {
@@ -63,8 +117,8 @@ internal fun StringBuilder.valueState(site: ValueSite) {
             }
         }
     }
-    field(site.callStack.frames.size.toString())
-    site.callStack.frames.forEach { frame -> callFrame(frame) }
+    field(stack.frames.size.toString())
+    stack.frames.forEach { frame -> callFrame(frame) }
 }
 
 internal fun StringBuilder.callFrame(frame: ValueCallFrame) {
@@ -148,6 +202,18 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
             field(operation.invocation.supply.position.value.toString())
             field(operation.invocation.invocation.canonicalProjection())
             callFrame(operation.frame)
+        }
+        is ValueSourceOperation.CallbackArgumentEntry -> {
+            field("CALLBACK_ARGUMENT_ENTRY")
+            field(operation.invocation.body.compilerIdentity.value)
+            range(operation.invocation.body.range)
+            valueCall(operation.invocation.supply.invocation)
+            range(operation.invocation.supply.parameter.range)
+            field(operation.invocation.supply.position.value.toString())
+            field(operation.invocation.invocation.canonicalProjection())
+            callFrame(operation.supplierFrame)
+            formalPosition(ValueFormalPosition.Parameter(operation.parameter))
+            range(operation.argumentRange)
         }
         is ValueSourceOperation.ReadField -> {
             field("READ_FIELD")

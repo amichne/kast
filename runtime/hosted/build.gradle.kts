@@ -334,5 +334,7 @@ registerHostedNativeFixtures(
         "*NativeCrossModuleCallbackRejectionTest",
         "*NativeCrossModuleCallbackProjectionTest",
         "*NativeTraceEffectGapTest",
+        "*NativeCompilerCoverageQueryTest",
+        "*NativeCompilerCoverageControlsTest",
     ),
 )

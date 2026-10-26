@@ -26,7 +26,8 @@
         "type": "DECLARATION"
       },
       "valuePath": [],
-      "callStack": []
+      "callStack": [],
+      "conditions": []
     },
     "steps": [],
     "representation": {
@@ -59,7 +60,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "cause": "EXTERNAL_CALL",
       "evidence": {

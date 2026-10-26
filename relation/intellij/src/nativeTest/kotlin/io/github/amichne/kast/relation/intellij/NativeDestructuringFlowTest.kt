@@ -1,19 +1,18 @@
 package io.github.amichne.kast.relation.intellij
 
-import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.relation.contract.RelationRequest
-import io.github.amichne.kast.relation.contract.RelationSearchBoundary
-import io.github.amichne.kast.relation.contract.ValueFlowRead
-import io.github.amichne.kast.relation.contract.ValueFlowRequest
-import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
+import io.github.amichne.kast.relation.contract.ValueModelSiteRead
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
+import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import kotlinx.coroutines.runBlocking
 
 /** Tests payload provenance and exact implicit invocation returns with compiler-resolved source declarations. */
-class NativeDestructuringFlowTest : NativePacketValueFixtureTest() {
+class NativeDestructuringFlowTest : NativeDestructuringFixtureTest() {
     override val fixtureSdkName = "destructuring-flow-jdk"
 
     fun testGeneratedComponentsKeepSameTypedFieldsAndEntryBindingsDistinct() {
@@ -187,7 +186,91 @@ class NativeDestructuringFlowTest : NativePacketValueFixtureTest() {
                 constructor = "ComponentPacket",
                 literal = "first-value",
             )
-        assertUnsupported(step(fixture, stored), ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW)
+        val result = next(fixture, stored, ValueTransferKind.FIELD_READ)
+        val initial = next(fixture, result, ValueTransferKind.LOCAL_BINDING)
+        assertTrue(initial.localVersion is ValueLocalVersion.Defined)
+        assertEquals(result.range, initial.range)
+        assertExhausted(step(fixture, initial))
+    }
+
+    fun testUnchangedMutableEntriesReachOnlyTheirExactSameTypedUses() {
+        val fixture = controls()
+        val function = "mutableEntryUnchanged"
+        val first = mutableBinding(fixture, function, "first-value")
+        val second = mutableBinding(fixture, function, "second-value")
+        assertEquals(marked(fixture, function, "binding").anchor, first.range)
+        assertEquals(marked(fixture, function, "other-binding").anchor, second.range)
+        assertFalse(first.identity == second.identity)
+        assertMutableReads(fixture, first, listOf(marked(fixture, function, "use")))
+        assertMutableReads(fixture, second, listOf(marked(fixture, function, "other-use")))
+        val request =
+            ValueSiteRevalidationRequest.create(
+                    enclosing = marked(fixture, function, "binding").enclosing,
+                    anchor = first.range,
+                    role = ValueSiteRoleClaim.LocalBinding,
+                    budget = fixture.budget,
+                )
+                .nativeRefined()
+        val restored = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .revalidateSite(project = project, current = fixture.lease, request = request, model = fixture.model)
+        }
+        assertTrue("Initial mutable entry did not restore: $restored", restored is ValueModelSiteRead.Revalidated)
+        val site = (restored as ValueModelSiteRead.Revalidated).position.site
+        assertEquals(first.localVersion, site.localVersion)
+        assertEquals(ValueRole.LocalBinding, site.role)
+        assertEquals(first.range, site.range)
+        assertTrue(site.valuePath.segments.isEmpty())
+        assertMutableReads(fixture, site, listOf(marked(fixture, function, "use")))
+    }
+
+    fun testMutableEntryReplacementCannotImportOldPayloadOrChangeItsSibling() {
+        val fixture = controls()
+        val function = "mutableEntryReassigned"
+        val original = mutableBinding(fixture, function, "first-value")
+        val sibling = mutableBinding(fixture, function, "second-value")
+        assertMutableReads(fixture, original, listOf(marked(fixture, function, "before")))
+        assertMutableReads(
+            fixture,
+            sibling,
+            listOf(marked(fixture, function, "other-before"), marked(fixture, function, "other-after")),
+        )
+        val replacement =
+            next(fixture, resolve(fixture, marked(fixture, function, "replacement")), ValueTransferKind.LOCAL_BINDING)
+        assertTrue(replacement.localVersion is ValueLocalVersion.Defined)
+        assertFalse(original.identity == replacement.identity)
+        val assignment =
+            ExactDeclarationTextRange.parse(
+                    marked(fixture, function, "replacement-binding").anchor.startInclusive,
+                    marked(fixture, function, "replacement").anchor.endExclusive,
+                )
+                .nativeRefined()
+        assertEquals(assignment, replacement.range)
+        assertEquals(
+            (original.localVersion as ValueLocalVersion.Defined).declaration,
+            (replacement.localVersion as ValueLocalVersion.Defined).declaration,
+        )
+        assertMutableReads(fixture, replacement, listOf(marked(fixture, function, "after")))
+    }
+
+    fun testMutableEntrySelfAssignmentReadsOldVersionAndDefinesNewVersion() {
+        val fixture = controls()
+        val function = "mutableEntrySelfAssigned"
+        val initial = mutableBinding(fixture, function, "first-value")
+        val rhs = marked(fixture, function, "rhs")
+        assertMutableReads(fixture, initial, listOf(marked(fixture, function, "before"), rhs))
+        val oldRead = step(fixture, initial).transfers.single { it.target.range == rhs.anchor }.target
+        val replacement = next(fixture, oldRead, ValueTransferKind.LOCAL_BINDING)
+        assertTrue(replacement.localVersion is ValueLocalVersion.Defined)
+        assertFalse(initial.identity == replacement.identity)
+        val assignment =
+            ExactDeclarationTextRange.parse(
+                    marked(fixture, function, "write").anchor.startInclusive,
+                    rhs.anchor.endExclusive,
+                )
+                .nativeRefined()
+        assertEquals(assignment, replacement.range)
+        assertMutableReads(fixture, replacement, listOf(marked(fixture, function, "after")))
     }
 
     fun testMutableGeneratedPropertyKeepsItsObligation() {
@@ -216,91 +299,27 @@ class NativeDestructuringFlowTest : NativePacketValueFixtureTest() {
         assertUnsupported(step(fixture, returned), ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
     }
 
-    private fun controls() = packetFixture(listOf(CONTROLS))
+    private fun mutableBinding(fixture: NativePacketValueFixture, function: String, literal: String): ValueSite {
+        val input = stored(fixture = fixture, function = function, constructor = "ComponentPacket", literal = literal)
+        val result = next(fixture, input, ValueTransferKind.FIELD_READ)
+        val binding = next(fixture, result, ValueTransferKind.LOCAL_BINDING)
+        assertTrue(binding.localVersion is ValueLocalVersion.Defined)
+        assertEquals(result.valuePath, binding.valuePath)
+        assertEquals(result.callStack, binding.callStack)
+        return binding
+    }
 
-    private fun marked(fixture: NativePacketValueFixture, function: String, marker: String) =
-        fixture.markedExpression(owner(function), marker)
-
-    private fun owner(function: String) = PacketDeclaration(CONTROLS, "", function)
-
-    private fun stored(
+    private fun assertMutableReads(
         fixture: NativePacketValueFixture,
-        function: String,
-        constructor: String,
-        literal: String,
-    ): ValueSite {
-        val expression = fixture.argumentExpression(owner(function), constructor, "\"$literal\"")
-        val argument = next(fixture, resolve(fixture, expression), ValueTransferKind.ARGUMENT)
-        return next(fixture, argument, ValueTransferKind.CONSTRUCTOR_FIELD)
-    }
-
-    private fun authoredReturn(fixture: NativePacketValueFixture, stored: ValueSite): ValueSite {
-        var site = stored
-        for (kind in
-            listOf(
-                ValueTransferKind.RECEIVER,
-                ValueTransferKind.SOURCE_CALL_ENTRY,
-                ValueTransferKind.FIELD_READ,
-                ValueTransferKind.RETURN,
-                ValueTransferKind.SOURCE_CALL_RETURN,
-            )) {
-            site = next(fixture, site, kind)
-        }
-        return site
-    }
-
-    private fun resolve(fixture: NativePacketValueFixture, expression: PacketExpression): ValueSite {
-        val result = runBlocking {
-            IntellijValueFlowCompilerAdapter()
-                .resolve(
-                    project = project,
-                    current = fixture.lease,
-                    enclosing = expression.enclosing,
-                    anchor = expression.anchor,
-                    domain = RelationRequest.start(expression.enclosing, RelationMeaning.References, fixture.budget),
-                    model = fixture.model,
-                )
-        }
-        assertTrue("Native source was not resolved: $result", result is ValueSiteResolution.Found)
-        return (result as ValueSiteResolution.Found).site
-    }
-
-    private fun next(fixture: NativePacketValueFixture, source: ValueSite, kind: ValueTransferKind): ValueSite {
+        source: ValueSite,
+        expected: List<PacketExpression>,
+    ) {
         val read = step(fixture, source)
-        assertEquals(
-            "Missing $kind at ${source.range}: ${read.obligations}",
-            listOf(kind),
-            read.transfers.map { it.kind },
-        )
-        assertTrue("Unexpected obligations: ${read.obligations}", read.obligations.isEmpty())
-        return read.transfers.single().target
-    }
-
-    private fun step(fixture: NativePacketValueFixture, source: ValueSite): ValueFlowStep {
-        val result = runBlocking {
-            IntellijValueFlowCompilerAdapter()
-                .read(
-                    project = project,
-                    current = fixture.lease,
-                    request = ValueFlowRequest(source, fixture.budget, RelationSearchBoundary.RETAINED_SUBJECT),
-                    model = fixture.model,
-                )
-        }
-        assertTrue("Native flow was not observed: $result", result is ValueFlowRead.Observed)
-        return (result as ValueFlowRead.Observed).step
-    }
-
-    private fun assertExhausted(step: ValueFlowStep) {
-        assertTrue("Unexpected transfers: ${step.transfers}", step.transfers.isEmpty())
-        assertTrue("Unexpected obligations: ${step.obligations}", step.obligations.isEmpty())
-    }
-
-    private fun assertUnsupported(step: ValueFlowStep, cause: ValueFlowUnsupportedCause) {
-        assertTrue("Unsupported flow invented transfers", step.transfers.isEmpty())
-        assertEquals(listOf(cause), step.obligations.map { it.cause }.distinct())
-    }
-
-    private companion object {
-        const val CONTROLS = "src/main/kotlin/fixture/controls/DestructuringControls.kt"
+        assertTrue("Unexpected mutable entry obligations: ${read.obligations}", read.obligations.isEmpty())
+        assertEquals(expected.size, read.transfers.size)
+        assertTrue(read.transfers.all { it.kind == ValueTransferKind.LOCAL_READ })
+        assertEquals(expected.map { it.anchor }.toSet(), read.transfers.map { it.target.range }.toSet())
+        assertTrue(read.transfers.all { it.target.enclosing == source.enclosing })
+        assertTrue(read.transfers.all { it.target.valuePath.segments.isEmpty() })
     }
 }

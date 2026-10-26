@@ -31,9 +31,6 @@ enum class CanonicalCompilerSignatureFailure {
 /** Canonical, compiler-owned qualified declaration identity. */
 @JvmInline value class CanonicalCompilerQualifiedIdentity internal constructor(val value: String)
 
-/** Canonical K2 type rendering with insignificant whitespace removed. */
-@JvmInline value class CanonicalCompilerType internal constructor(val value: String)
-
 /** Proven non-negative count of type parameters in a compiler function signature. */
 @JvmInline value class CanonicalTypeParameterCount internal constructor(val value: Int)
 

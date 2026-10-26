@@ -14,9 +14,12 @@ internal fun ImpactSourceOperationDocument.CallbackReturn.admitsCallbackReturn(
         target.admitsExecutionOwner() &&
         admitsCallbackOwners(source, target) &&
         frame.admits(source.enclosing.basis) &&
-        source.callStack.values.size < MAX_VALUE_CALL_FRAMES &&
-        source.callStack.values.none { it.hasSameFrameIdentity(frame) } &&
-        (source.callStack.values + frame).hasSameFrames(target.callStack.values)
+        (if (source.callStack.values.lastOrNull()?.hasSameFrameIdentity(frame) == true)
+            source.callStack.values.hasSameFrames(target.callStack.values)
+        else
+            source.callStack.values.size < MAX_VALUE_CALL_FRAMES &&
+                source.callStack.values.none { it.hasSameFrameIdentity(frame) } &&
+                (source.callStack.values + frame).hasSameFrames(target.callStack.values))
 
 private fun ImpactSourceOperationDocument.CallbackReturn.admitsCallbackOwners(
     source: ImpactValueSiteReferenceDocument,
@@ -27,7 +30,7 @@ private fun ImpactSourceOperationDocument.CallbackReturn.admitsCallbackOwners(
     return context != null &&
         supplied != null &&
         invocation.body == context.body &&
-        invocation in context.invocations.values &&
+        context.selects(invocation) &&
         target.isIn(frame.callee) &&
         target.range == invocation.invocation &&
         invocation.invocationOwner.matches(target.enclosing) &&
@@ -49,7 +52,10 @@ private fun ImpactSourceOperationDocument.CallbackReturn.matchesSupplier(
             is ImpactExecutionOwnerDocument.ReviewedCallback -> false
             ImpactExecutionOwnerDocument.Declaration -> invocation.supplyOwner.matches(source.enclosing)
             is ImpactExecutionOwnerDocument.Callback ->
-                execution.body == invocation.supplyOwner && execution.invocations == context.invocations
+                execution.body == invocation.supplyOwner &&
+                    execution.invocations == context.invocations &&
+                    execution.invocations.values.count { it.body == execution.body } == 1 &&
+                    execution.admitsSelection()
         }
 
 private fun ImpactCapturedBodyDocument.matches(declaration: ImpactDeclarationReferenceDocument): Boolean =

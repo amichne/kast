@@ -3,10 +3,40 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueCondition
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFormalParameter
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValuePathSegment
 import io.github.amichne.kast.relation.contract.ValueSourceOperation
+
+internal fun ValueConditions.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) { g.collection(facts) { it.storageBytes(g) } }
+
+private fun ValueCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        g.node(origin) {
+                origin.execution
+                    .storageBytes(g)
+                    .saturatedAdd(g.node(origin.range) { 0L })
+                    .saturatedAdd(origin.role.storageBytes(g))
+                    .saturatedAdd(origin.valuePath.storageBytes(g))
+                    .saturatedAdd(origin.callStack.storageBytes(g))
+            }
+            .saturatedAdd(g.node(useRange) { 0L })
+            .saturatedAdd(
+                when (this) {
+                    is ValueCondition.StableReceiver ->
+                        g.node(kind) { 0L }
+                            .saturatedAdd(g.text(originalType.value))
+                            .saturatedAdd(g.text(refinedType.value))
+                    is ValueCondition.CastSuccess ->
+                        g.node(kind) { 0L }
+                            .saturatedAdd(g.text(originalType.value))
+                            .saturatedAdd(g.text(targetType.value))
+                }
+            )
+    }
 
 internal fun ValueAccessPath.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
@@ -52,6 +82,12 @@ internal fun ValueSourceOperation.storageBytes(g: QueryImpactRetainedGraph): Lon
             is ValueSourceOperation.Return -> frame.storageBytes(g)
             is ValueSourceOperation.SeedReturn -> frame.storageBytes(g)
             is ValueSourceOperation.CallbackReturn -> frame.storageBytes(g).saturatedAdd(invocation.storageBytes(g))
+            is ValueSourceOperation.CallbackArgumentEntry ->
+                supplierFrame
+                    .storageBytes(g)
+                    .saturatedAdd(invocation.storageBytes(g))
+                    .saturatedAdd(parameter.storageBytes(g))
+                    .saturatedAdd(g.node(argumentRange) { 0L })
             is ValueSourceOperation.ReadField -> g.node(field) { field.declaration.storageBytes(g) }
             is ValueSourceOperation.ConstructField ->
                 call

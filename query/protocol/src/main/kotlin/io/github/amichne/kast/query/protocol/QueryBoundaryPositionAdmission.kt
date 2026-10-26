@@ -5,12 +5,14 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactLoopResultDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelDocument
 import io.github.amichne.kast.protocol.contract.ImpactReceiverKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
+import io.github.amichne.kast.protocol.contract.protocol
 import io.github.amichne.kast.relation.contract.BoundaryContractIdentity
 import io.github.amichne.kast.relation.contract.BoundaryKind
 import io.github.amichne.kast.relation.contract.BoundaryPosition
@@ -20,6 +22,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueLoopResultPhase
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSiteRevalidationFailure
@@ -42,7 +45,7 @@ internal fun ImpactValueSiteReferenceDocument.siteRequest(
     current: List<SymbolSelector>,
     budget: RelationBudget,
 ): Refinement<ValueSiteRevalidationRequest, QueryImpactSourceFailureCode> {
-    if (valuePath.values.isNotEmpty() || callStack.values.isNotEmpty())
+    if (valuePath.values.isNotEmpty() || callStack.values.isNotEmpty() || conditions.values.isNotEmpty())
         return Refinement.Rejected(QueryImpactSourceFailureCode.UNSUPPORTED_BOUNDARY_SITE)
     val owner =
         current.firstOrNull {
@@ -70,6 +73,7 @@ private fun ImpactValueRoleDocument.nativeClaim(
 ): Refinement<ValueSiteRoleClaim, QueryImpactSourceFailureCode> =
     when (this) {
         ImpactValueRoleDocument.ExpressionResult -> Refinement.Refined(ValueSiteRoleClaim.ExpressionResult)
+        is ImpactValueRoleDocument.LoopResult -> loopClaim(current)
         ImpactValueRoleDocument.LocalBinding -> Refinement.Refined(ValueSiteRoleClaim.LocalBinding)
         ImpactValueRoleDocument.LocalRead -> Refinement.Refined(ValueSiteRoleClaim.LocalRead)
         ImpactValueRoleDocument.Return -> Refinement.Refined(ValueSiteRoleClaim.Return)
@@ -81,6 +85,24 @@ private fun ImpactValueRoleDocument.nativeClaim(
             }
         is ImpactValueRoleDocument.Argument -> argumentClaim(current)
     }
+
+private fun ImpactValueRoleDocument.LoopResult.loopClaim(
+    current: List<SymbolSelector>
+): Refinement<ValueSiteRoleClaim, QueryImpactSourceFailureCode> {
+    val protocol = result.protocol
+    val phase =
+        when (result) {
+            is ImpactLoopResultDocument.Iterator -> ValueLoopResultPhase.ITERATOR
+            is ImpactLoopResultDocument.Element -> ValueLoopResultPhase.ELEMENT
+        }
+    return protocol.iterator.callClaim(current) { anchor, iterator ->
+        protocol.hasNext.callClaim(current) { _, hasNext ->
+            protocol.next.callClaim(current) { _, next ->
+                Refinement.Refined(ValueSiteRoleClaim.LoopResult(anchor, iterator, hasNext, next, phase))
+            }
+        }
+    }
+}
 
 private fun ImpactReceiverKindDocument.nativeKind(): ValueReceiverKind =
     when (this) {

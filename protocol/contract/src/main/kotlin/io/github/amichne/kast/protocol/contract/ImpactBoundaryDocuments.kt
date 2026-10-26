@@ -3,6 +3,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -29,6 +30,8 @@ sealed interface ImpactExecutionOwnerDocument {
         val body: ImpactCapturedBodyDocument,
         @ProtocolCollectionConstraint(maximumItems = 1024)
         val invocations: BoundedProtocolList<ImpactCaptureInvocationDocument>,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val selection: ImpactCallbackSelectionDocument = ImpactCallbackSelectionDocument.Unique,
     ) : ImpactExecutionOwnerDocument
 }
 
@@ -55,6 +58,10 @@ data class ImpactCaptureInvocationDocument(
 @JsonClassDiscriminator("type")
 sealed interface ImpactValueRoleDocument {
     @Serializable @SerialName("EXPRESSION_RESULT") data object ExpressionResult : ImpactValueRoleDocument
+
+    @Serializable
+    @SerialName("LOOP_RESULT")
+    data class LoopResult(val result: ImpactLoopResultDocument) : ImpactValueRoleDocument
 
     @Serializable @SerialName("LOCAL_BINDING") data object LocalBinding : ImpactValueRoleDocument
 
@@ -91,6 +98,9 @@ data class ImpactValueSiteReferenceDocument(
     @EncodeDefault
     @ProtocolCollectionConstraint(maximumItems = 32)
     val callStack: BoundedProtocolList<ImpactCallFrameDocument> = EmptyImpactCallStack,
+    @Required val conditions: BoundedProtocolList<ImpactValueConditionDocument> = EmptyImpactConditions,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val localVersion: ImpactLocalVersionDocument = ImpactLocalVersionDocument.Unversioned,
 )
 
 @Serializable

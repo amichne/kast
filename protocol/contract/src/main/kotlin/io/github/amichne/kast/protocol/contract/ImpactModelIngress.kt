@@ -164,6 +164,7 @@ private fun ImpactValueSiteReferenceDocument.siteFailure(): Refinement<Unit, Imp
         is ImpactValueRoleDocument.Argument -> role.siteFailure(this)
         is ImpactValueRoleDocument.Receiver -> role.siteFailure(this)
         is ImpactValueRoleDocument.Formal,
+        is ImpactValueRoleDocument.LoopResult,
         ImpactValueRoleDocument.ExpressionResult,
         ImpactValueRoleDocument.LocalBinding,
         ImpactValueRoleDocument.LocalRead,

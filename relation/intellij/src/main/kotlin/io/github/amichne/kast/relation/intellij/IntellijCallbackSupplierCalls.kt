@@ -36,6 +36,28 @@ internal class IntellijCallbackSupplierCalls(
     private val context: IntellijCallbackFlowContext,
     private val summaries: CallbackParameterSummaries,
 ) {
+    /** A retained source frame already selects the supplier; do not enumerate other calls to the wrapper. */
+    fun readExact(
+        call: KtCallElement,
+        function: KtNamedFunction,
+        parameter: KtParameter,
+        formal: CallbackParameterIdentity,
+    ): Refinement<NativeCallbackSupplierCall, CallbackInvocationFlowCause> {
+        when (val permitted = context.permit()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return permitted
+        }
+        return when (val mapped = map(call, function, parameter, formal)) {
+            is Refinement.Rejected -> mapped
+            is Refinement.Refined ->
+                when (val selected = mapped.value) {
+                    NativeSupplierMapping.Different ->
+                        Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    is NativeSupplierMapping.Mapped -> Refinement.Refined(selected.value)
+                }
+        }
+    }
+
     fun read(
         function: KtNamedFunction,
         parameter: KtParameter,

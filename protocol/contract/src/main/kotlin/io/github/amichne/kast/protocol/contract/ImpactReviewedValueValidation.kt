@@ -14,6 +14,10 @@ fun ImpactReviewedValueTransferDocument.admitsEvidence(): Boolean =
         source.role == ImpactValueRoleDocument.Return &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         target.range == binding.supplierRange &&
+        preservesReturnState()
+
+private fun ImpactReviewedValueTransferDocument.preservesReturnState(): Boolean =
+    source.conditions.hasSameConditions(target.conditions) &&
         source.callStack.hasSameCallStackIdentity(target.callStack) &&
         listOf(ImpactValuePathSegmentDocument.Element) + source.valuePath.values == target.valuePath.values
 

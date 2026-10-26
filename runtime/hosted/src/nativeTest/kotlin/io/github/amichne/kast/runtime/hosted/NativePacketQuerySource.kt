@@ -41,6 +41,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
@@ -66,6 +68,15 @@ internal class NativePacketQuerySource(
     fun assertNoErrors() = read {
         val errors =
             IntellijReadObservation.None.observedAnalyze(psi()) {
+                val module = useSiteModule
+                check(module is KaSourceModule) { "Packet query has no source-module settings" }
+                val settings = module.languageVersionSettings
+                println(
+                    "PACKET_COMPILER_SETTINGS module=${module.name} " +
+                        "language=${settings.languageVersion} api=${settings.apiVersion}"
+                )
+                val features = LanguageFeature.entries.joinToString { "$it=${settings.getFeatureSupport(it)}" }
+                println("PACKET_COMPILER_FEATURES $features")
                 psi()
                     .collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
                     .filter { it.severity == KaSeverity.ERROR }
@@ -84,6 +95,22 @@ internal class NativePacketQuerySource(
             token(callable),
             invocation(owner, method, callee),
         )
+    }
+
+    suspend fun producer(owner: String, method: String, callee: String) =
+        QueryImpactProducerDocument(
+            token(declaration(owner, method)),
+            token(declaration("", callee)),
+            invocation(owner, method, callee),
+        )
+
+    fun markedRange(marker: String): ImpactSourceRangeDocument = read {
+        val text = psi().text
+        val opening = "/*<$marker>*/"
+        val closing = "/*</$marker>*/"
+        check(text.indexOf(opening) >= 0 && text.indexOf(opening) == text.lastIndexOf(opening))
+        check(text.indexOf(closing) >= 0 && text.indexOf(closing) == text.lastIndexOf(closing))
+        reviewedQueryRange(text.indexOf(opening) + opening.length, text.indexOf(closing))
     }
 
     suspend fun declaration(owner: String, member: String): SymbolSelector {
@@ -111,6 +138,14 @@ internal class NativePacketQuerySource(
 
     fun propertyRange(owner: String, name: String) = read {
         range(klass(owner).primaryConstructorParameters.single { it.name == name })
+    }
+
+    fun expressionRange(owner: String, method: String, expression: String): ImpactSourceRangeDocument = read {
+        val body = checkNotNull(function(owner, method).bodyExpression)
+        val offset = body.text.indexOf(expression)
+        check(offset >= 0 && offset == body.text.lastIndexOf(expression))
+        val start = body.textRange.startOffset + offset
+        reviewedQueryRange(start, start + expression.length)
     }
 
     fun propertyIndex(owner: String, name: String) = read {
