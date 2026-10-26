@@ -21,7 +21,7 @@ VERSION = "0.0.0"
 COMMAND = (
     "./gradlew",
     "--max-workers=2",
-    "-Dorg.gradle.jvmargs=-Xmx5g",
+    "-Dorg.gradle.jvmargs=-Xmx2g",
     f"-Pversion={VERSION}",
     f"-PcontrolVersion={VERSION}",
     f"-PhostedPluginVersion={VERSION}",

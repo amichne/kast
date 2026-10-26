@@ -372,7 +372,19 @@ jobs:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           ROLLOUT_CASE: ${{ matrix.case }}
           ROLLOUT_MODE: ${{ inputs.rollout }}
-        run: python3 .github/scripts/ci/rollout.py --case "$ROLLOUT_CASE" --mode "$ROLLOUT_MODE"
+        run: |
+          mkdir -p build/reports/ci/resources
+          (
+            while true; do
+              date -u
+              vm_stat
+              ps -axo pid,ppid,%cpu,rss,comm | awk 'NR == 1 || /java/ || /python/'
+              sleep 10
+            done
+          ) > build/reports/ci/resources/samples.log &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          python3 .github/scripts/ci/rollout.py --case "$ROLLOUT_CASE" --mode "$ROLLOUT_MODE"
 
       - name: Retain source evidence
         if: always()
