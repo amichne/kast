@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.ImpactAccountingDocument
@@ -36,7 +37,12 @@ import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.contract.QueryCheckpoint
+import io.github.amichne.kast.query.contract.QueryContinuationState
+import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryImpactProducer
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.service.QueryNanoClock
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -74,11 +80,47 @@ import io.github.amichne.kast.traversal.contract.TraversalOperations
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Production scheduler and ledger; only native observations are scripted. No native completeness claim. */
 internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
+    @Test
+    fun `native only progress admits empty pages and rejects an older checkpoint`() = runTest {
+        val case = Case(1)
+        val original = case.nativeProgressPages()
+        assertNotEquals(original.first().checkpoint(), original.last().checkpoint())
+        val facts = QueryInvocationFacts(fixture.authority, policy(retainedBytes = 10_000_000))
+        val projection = QueryOutcomeProjection(fixture.references, QueryStateStore())
+        val source = (case.request.from as QueryFromDocument.Impact).investigation
+        val requested =
+            case.request.copy(
+                from = QueryFromDocument.Impact(source.copy(seeds = bounded(source.seeds.values.take(1))))
+            )
+        fun page(execution: QueryExecutionResult.Qualified): SymbolInvocationPage =
+            SymbolInvocationPage.admit(
+                    QueryInvocationPage(
+                        projection.projectExecution(requested, fixture.authority, execution),
+                        execution,
+                    ),
+                    requested,
+                )
+                .refined()
+        for (execution in original) {
+            assertTrue((execution.result.rows as QueryRows.ValuePaths).values.isEmpty())
+            assertEquals(0, execution.coverage.knownMinimum.value)
+            assertInstanceOf(Refinement.Refined::class.java, facts.append(page(execution), Long.MAX_VALUE))
+        }
+        val retained = facts.retentionEstimate
+        val rejected = facts.append(page(original.first()), Long.MAX_VALUE) as Refinement.Rejected
+        assertEquals(QueryInvocationStop.NON_ADVANCING, rejected.failure.reason)
+        assertEquals(retained, facts.retentionEstimate)
+    }
+
+    private fun QueryExecutionResult.Qualified.checkpoint(): QueryCheckpoint =
+        assertInstanceOf(QueryContinuationState.Resumable::class.java, continuation).checkpoint
+
     @Test
     fun `strict original impact completion is independent of presentation page grant`() = runTest {
         val small = Case(1).run()
@@ -258,7 +300,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 retention = QueryRetentionModeDocument.RETAIN,
             )
 
-        private fun service(presentation: QueryPresentationExecution) =
+        private fun service(presentation: QueryPresentationExecution?, flow: ValueFlowCompilerPort = nativeFlow()) =
             QueryService(
                 SymbolDiscoveryOperations {
                     unexpected++
@@ -297,9 +339,19 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                     fixture.budget,
                 ),
                 QueryNanoClock { 0L },
-                nativeFlow(),
+                flow,
                 presentation,
             )
+
+        suspend fun nativeProgressPages(): List<QueryExecutionResult.Qualified> =
+            NativeImpactProgressCase(
+                    fixture.selector,
+                    QueryImpactProducer.admit(sites.first(), invocations.first()).refined(),
+                    allowance,
+                ) { flow ->
+                    service(null, flow)
+                }
+                .pages()
 
         private fun nativeFlow() = ValueFlowCompilerPort { input ->
             if (reads >= sites.size) {

@@ -72,6 +72,80 @@ class QueryImpactProofResumeTest {
         assertEquals(setOf(case.binding), saved.remainders.keys)
     }
 
+    @Test
+    fun `many native suspensions preserve uninterrupted paths and exact per grant receipts`() = runTest {
+        val count = 8
+        val resumedCase = NativeResumeCase(count)
+        val executions = mutableListOf<QueryExecutionResult.Qualified>()
+        var checkpoint: QueryCheckpoint? = null
+        repeat(count) {
+            val execution =
+                assertInstanceOf(
+                    QueryExecutionResult.Qualified::class.java,
+                    resumedCase.service.run(resumedCase.request(1, checkpoint)),
+                )
+            executions += execution
+            checkpoint =
+                assertInstanceOf(QueryContinuationState.Resumable::class.java, execution.continuation).checkpoint
+        }
+        val finished =
+            assertInstanceOf(
+                QueryExecutionResult.Qualified::class.java,
+                resumedCase.service.run(resumedCase.request(count, checkpoint)),
+            )
+        executions += finished
+        assertInstanceOf(QueryContinuationState.Terminal::class.java, finished.continuation)
+        val rows = assertInstanceOf(QueryRows.ValuePaths::class.java, finished.result.rows)
+        val ledger = assertInstanceOf(QueryValuePathAccounting.Investigated::class.java, rows.accounting).ledger
+        val uninterruptedCase = NativeResumeCase(count)
+        val uninterrupted =
+            assertInstanceOf(
+                QueryExecutionResult.Qualified::class.java,
+                uninterruptedCase.service.run(uninterruptedCase.request(count)),
+            )
+        assertInstanceOf(QueryContinuationState.Terminal::class.java, uninterrupted.continuation)
+        val uninterruptedRows = assertInstanceOf(QueryRows.ValuePaths::class.java, uninterrupted.result.rows)
+        val uninterruptedLedger =
+            assertInstanceOf(QueryValuePathAccounting.Investigated::class.java, uninterruptedRows.accounting).ledger
+        assertEquals(resumedCase.arguments, ledger.paths.map { it.destination })
+        assertEquals(uninterruptedRows.values, ledger.paths)
+        assertPaths(
+            resumedCase,
+            QueryRows.ValuePaths.fromInvestigation(ledger).refined(),
+            invocation(ledger.paths.first().destination),
+        )
+        assertEquivalentObservations(uninterruptedLedger, ledger)
+        assertEquals(5L * count + 2, executions.sumOf { observedWork(it) })
+        assertEquals(3L * count + 4, observedWork(uninterrupted))
+        assertNativeReceipts(resumedCase, ledger, List(count) { 1 }, List(count) { 3L })
+        assertNativeReceipts(uninterruptedCase, uninterruptedLedger, listOf(count), listOf(count.toLong() + 2))
+    }
+
+    private fun assertEquivalentObservations(uninterrupted: QueryImpactLedger, resumed: QueryImpactLedger) {
+        assertEquals(uninterrupted.observations.map { it.source }, resumed.observations.map { it.source })
+        assertEquals(uninterrupted.observations.map { it.transfers }, resumed.observations.map { it.transfers })
+        assertEquals(
+            uninterrupted.observations.map { it.obligations },
+            resumed.observations.map { it.obligations },
+        )
+        assertEquals(
+            setOf(QueryImpactRequiredObligation.NATIVE_FLOW),
+            assertInstanceOf(QueryImpactClosure.Unresolved::class.java, resumed.closure).required,
+        )
+    }
+
+    private fun assertNativeReceipts(
+        case: NativeResumeCase,
+        ledger: QueryImpactLedger,
+        grants: List<Int>,
+        work: List<Long>,
+    ) {
+        assertEquals(work, ledger.readReceipts.getValue(case.binding).map { it.examinedWorkUnits.value })
+        assertEquals(grants, case.bindingGrants.map { it.outputResults.value })
+        assertEquals((0 until case.locals.size).toList(), case.confirmations)
+        case.nonlocal.assertConsumed()
+    }
+
     private fun assertSuspended(
         case: NativeResumeCase,
         first: QueryExecutionResult.Qualified,
@@ -161,12 +235,12 @@ class QueryImpactProofResumeTest {
         assertSame(expected.executionOwner, actual.executionOwner)
     }
 
-    private class NativeResumeCase {
-        val f = QueryImpactExecutionFixture()
+    internal class NativeResumeCase(referenceCount: Int = 2) {
+        val f = QueryImpactExecutionFixture(ownerEnd = 200 + 30 * referenceCount)
         val initialArgument = f.argument(f.call("consume", 30, 40))
         val binding = f.site(50, ValueRole.LocalBinding)
-        val locals = listOf(f.site(60, ValueRole.LocalRead), f.site(70, ValueRole.LocalRead))
-        val arguments = listOf(f.argument(f.call("consume", 100, 110)), f.argument(f.call("consume", 120, 130)))
+        val locals = List(referenceCount) { f.site(60 + 30 * it, ValueRole.LocalRead) }
+        val arguments = List(referenceCount) { f.argument(f.call("consume", 70 + 30 * it, 80 + 30 * it)) }
         val expectations =
             listOf(
                 ImpactReadExpectation(
@@ -188,6 +262,9 @@ class QueryImpactProofResumeTest {
         val confirmations = mutableListOf<Int>()
         val bindingReads = mutableListOf<ValueFlowRead>()
         val bindingGrants = mutableListOf<RelationBudget>()
+        var enumeratedReferences = 0L
+            private set
+
         val service =
             f.service(
                 ValueFlowCompilerPort { request ->
@@ -228,7 +305,10 @@ class QueryImpactProofResumeTest {
         }
 
         private fun enumerate(visit: (Int) -> Boolean) {
-            for (index in locals.indices) if (!visit(index)) break
+            for (index in locals.indices) {
+                enumeratedReferences++
+                if (!visit(index)) break
+            }
         }
 
         private fun key(index: Int): LocalReferenceKey {

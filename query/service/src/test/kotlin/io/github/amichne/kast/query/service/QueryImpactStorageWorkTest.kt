@@ -3,18 +3,112 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
+import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.contract.QueryCheckpointStorageEstimate
+import io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation
+import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryImpactExecutionStop
 import io.github.amichne.kast.query.contract.QueryImpactProducer
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
+import io.github.amichne.kast.query.contract.QueryStorageAllowance
+import io.github.amichne.kast.query.contract.QueryTerminalReason
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestReporter
 
 class QueryImpactStorageWorkTest {
+    @Test
+    fun `standalone checkpoint estimate visits inventory once without caching graph charges`(reporter: TestReporter) {
+        val fixture = QueryImpactExecutionFixture()
+        val request = fixture.request()
+        val tasks = CountedTasks(initialTasks(request.plan))
+        val checkpoint =
+            PipelineCheckpoint(
+                PipelineSeed.Accounted.create(request.plan),
+                request.lease,
+                tasks,
+                emptyMap(),
+                QueryJoinSnapshot(emptyMap()),
+                emptySet(),
+                0.queryCount(),
+            )
+        assertEquals(0, tasks.visits, "Construction must not measure storage")
+        val graph = QueryImpactRetainedGraph()
+        val expected = checkpoint.storageEstimate(graph)
+        val shared = checkpoint.retainedBytes(graph)
+        assertTrue(shared < expected.required.value)
+        assertEquals(2 * tasks.size, tasks.visits, "Explicit graph measurements must each visit the inventory")
+
+        val rejected =
+            checkpoint.admitContinuation(allowance(expected.required.value - 1), QueryCheckpointStorageObservation.None)
+        assertEquals(QueryContinuationState.Terminal(QueryTerminalReason.CHECKPOINT_CAPACITY_EXCEEDED), rejected)
+        assertEquals(3 * tasks.size, tasks.visits, "Graph measurements must leave standalone initialization lazy")
+        assertEquals(expected, checkpoint.storageEstimate())
+        assertEquals(expected.required.value, checkpoint.retainedBytes)
+        val accepted =
+            checkpoint.admitContinuation(allowance(expected.required.value), QueryCheckpointStorageObservation.None)
+        assertSame(checkpoint, assertInstanceOf(QueryContinuationState.Resumable::class.java, accepted).checkpoint)
+        reporter.publishEntry("standalone-and-two-graph-task-visits", tasks.visits.toString())
+        assertEquals(3 * tasks.size, tasks.visits, "Admission retry and standalone reads must reuse the exact estimate")
+        assertEquals(shared, checkpoint.retainedBytes(graph))
+        assertEquals(4 * tasks.size, tasks.visits, "A warm standalone estimate must not replace graph accounting")
+        assertEquals(expected, checkpoint.storageEstimate(QueryImpactRetainedGraph()))
+        assertEquals(5 * tasks.size, tasks.visits)
+        reporter.publishEntry("standalone-bytes", expected.required.value.toString())
+        reporter.publishEntry("shared-bytes", shared.toString())
+        assertCopyStorage(checkpoint, tasks, expected, reporter)
+    }
+
+    private fun assertCopyStorage(
+        checkpoint: PipelineCheckpoint,
+        tasks: CountedTasks,
+        expected: QueryCheckpointStorageEstimate,
+        reporter: TestReporter,
+    ) {
+        val equal = checkpoint.copy()
+        assertEquals(checkpoint, equal)
+        assertEquals(checkpoint.hashCode(), equal.hashCode())
+        assertEquals(5 * tasks.size, tasks.visits, "Copying must not initialize its estimate")
+        assertEquals(expected.required.value, equal.retainedBytes)
+        assertEquals(6 * tasks.size, tasks.visits, "An equal copy owns its own standalone estimate")
+        assertEquals(expected.required.value, equal.retainedBytes)
+        assertEquals(6 * tasks.size, tasks.visits)
+        val changedTasks = CountedTasks(initialTasks(checkpoint.plan) + PipelineTask.ImpactFinalize)
+        val changed = checkpoint.copy(tasks = changedTasks)
+        assertEquals(0, changedTasks.visits)
+        assertEquals(
+            expected.required.value + 8L,
+            changed.retainedBytes,
+            "The additional incoming task reference is charged",
+        )
+        assertEquals(changedTasks.size, changedTasks.visits)
+        assertEquals(expected.required.value, checkpoint.retainedBytes)
+        reporter.publishEntry("original-and-equal-copy-task-visits", tasks.visits.toString())
+        reporter.publishEntry("changed-copy-task-visits", changedTasks.visits.toString())
+    }
+
+    private fun allowance(bytes: Long): QueryStorageAllowance =
+        QueryStorageAllowance.Bounded(QueryByteLimit.parse(bytes).refined())
+
+    private class CountedTasks(private val values: List<PipelineTask>) : AbstractList<PipelineTask>() {
+        var visits = 0
+            private set
+
+        override val size: Int
+            get() = values.size
+
+        override fun get(index: Int): PipelineTask {
+            visits++
+            return values[index]
+        }
+    }
+
     @Test
     fun `runner keeps every result and grant without whole checkpoint scans`() = runTest {
         val fixture = QueryImpactExecutionFixture()

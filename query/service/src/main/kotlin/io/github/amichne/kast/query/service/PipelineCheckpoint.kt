@@ -15,11 +15,13 @@ import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QueryWalkArrival
+import io.github.amichne.kast.source.contract.SourceReadPage
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
+import kotlin.LazyThreadSafetyMode.SYNCHRONIZED
 
 private const val TASK_OVERHEAD_BYTES = 512L
-private const val CHECKPOINT_STRUCTURE_BYTES = 4096L
+private const val CHECKPOINT_STRUCTURE_BYTES = 4096L // Includes fixed standalone-estimate bookkeeping.
 private const val RETAINED_EVIDENCE_MULTIPLIER = 4L
 private const val DISCOVERY_TASK_BYTES = 4096L
 private const val RELATION_CURSOR_BYTES = 4096L
@@ -44,8 +46,8 @@ internal data class PipelineCheckpoint(
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
     val impact: QueryImpactSnapshot? = null,
 ) : QueryCheckpointPartialSymbols {
-    // Equality still compares every field when progress values collide.
-    override fun hashCode(): Int = 31 * emittedCount.hashCode() + tasks.size
+    // Summaries select equality candidates; only full equality establishes a repeated state.
+    override fun hashCode(): Int = 31 * (31 * emittedCount.hashCode() + tasks.size) + (impact?.progressHash() ?: 0)
 
     override val plan: AdmittedQueryPlan
         get() = seed.plan
@@ -55,12 +57,16 @@ internal data class PipelineCheckpoint(
         byteLimit: io.github.amichne.kast.query.contract.QueryByteLimit,
     ): io.github.amichne.kast.query.contract.QueryRows.Symbols = traceProof(rowLimit, byteLimit)
 
+    private val standaloneEstimate by lazy(SYNCHRONIZED) { storageEstimate(QueryImpactRetainedGraph()) }
+
     override val retainedBytes: Long
-        get() = retainedBytes(QueryImpactRetainedGraph())
+        get() = storageEstimate().required.value
 
     override fun retainedBytes(graph: QueryImpactRetainedGraph): Long = storageEstimate(graph).required.value
 
-    fun storageEstimate(graph: QueryImpactRetainedGraph = QueryImpactRetainedGraph()): QueryCheckpointStorageEstimate =
+    fun storageEstimate(): QueryCheckpointStorageEstimate = standaloneEstimate
+
+    fun storageEstimate(graph: QueryImpactRetainedGraph): QueryCheckpointStorageEstimate =
         QueryCheckpointStorageEstimate(
             tasks =
                 pipelineTaskBytes(tasks, graph, saturatedAdd(CHECKPOINT_STRUCTURE_BYTES, seed.retainedRootBytes(graph)))
@@ -149,24 +155,17 @@ private fun PipelineTask.retainedPayloadBytes(graph: QueryImpactRetainedGraph): 
         is PipelineTask.DiscoverText -> DISCOVERY_TASK_BYTES
     }
 
-private fun PipelineTask.TraceTask.retainedTraceBytes(): Long =
-    when (this) {
-        is PipelineTask.TraceMembers -> retainedMemberBytes()
-        is PipelineTask.TraceMember -> retainedMemberBytes()
-    }
-
-private fun PipelineTask.TraceMember.retainedMemberBytes(): Long =
-    saturatedAdd(
-        saturatedMultiply(member.selection.candidate.projectedUtf8Size().value, RETAINED_EVIDENCE_MULTIPLIER),
-        DISCOVERY_TASK_BYTES,
-    )
-
-private fun PipelineTask.TraceMembers.retainedMemberBytes(): Long {
+private fun PipelineTask.TraceTask.retainedTraceBytes(): Long {
+    val evidenceBytes =
+        when (this) {
+            is PipelineTask.TraceMember -> member.selection.candidate.projectedUtf8Size().value
+            is PipelineTask.TraceMembers -> owner.projectedUtf8Size()
+        }
     val cursorBytes =
-        (page as? io.github.amichne.kast.source.contract.SourceReadPage.Continue)?.continuation?.value?.length?.toLong()
+        ((this as? PipelineTask.TraceMembers)?.page as? SourceReadPage.Continue)?.continuation?.value?.length?.toLong()
             ?: 0L
     return saturatedAdd(
-        saturatedMultiply(owner.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
+        saturatedMultiply(evidenceBytes, RETAINED_EVIDENCE_MULTIPLIER),
         saturatedAdd(saturatedMultiply(cursorBytes, SOURCE_CURSOR_CHARACTER_BYTES), DISCOVERY_TASK_BYTES),
     )
 }

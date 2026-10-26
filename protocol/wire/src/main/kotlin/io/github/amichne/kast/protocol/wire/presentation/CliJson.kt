@@ -1,8 +1,11 @@
 package io.github.amichne.kast.protocol.wire.presentation
 
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
+import java.io.OutputStream
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToStream
 
 private val cliJson = Json {
     encodeDefaults = true
@@ -27,8 +30,12 @@ private constructor(
 
     companion object {
         /** Byte measurement uses the same serializer settings as the public process document. */
-        internal fun <Value> encodedBytes(serializer: KSerializer<Value>, value: Value): Long =
-            cliJson.encodeToString(serializer, value).toByteArray(Charsets.UTF_8).size.toLong()
+        @OptIn(ExperimentalSerializationApi::class)
+        internal fun <Value> encodedBytes(serializer: KSerializer<Value>, value: Value): Long {
+            val counter = Utf8ByteCounter()
+            cliJson.encodeToStream(serializer, value, counter)
+            return counter.bytes
+        }
 
         /** Selects the generated serializer for one closed CLI document type. */
         fun <Value> generated(
@@ -51,6 +58,20 @@ private constructor(
             }
             return CanonicalJsonDocument(render(ToolOutputDetail.VERBOSE), render)
         }
+    }
+}
+
+/** Counts the serializer's emitted bytes without retaining a discarded JSON document. */
+private class Utf8ByteCounter : OutputStream() {
+    var bytes = 0L
+        private set
+
+    override fun write(value: Int) {
+        bytes++
+    }
+
+    override fun write(buffer: ByteArray, offset: Int, length: Int) {
+        bytes += length
     }
 }
 

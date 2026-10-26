@@ -25,6 +25,7 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 
 private const val IMPACT_CONTAINER_STORAGE_BYTES = 512L
 private const val IMPACT_REJECTION_STORAGE_BYTES = 4096L
+private const val PROGRESS_HASH_MULTIPLIER = 31
 
 /** Detached routes are tasks in the one query interpreter, never independent continuation tokens. */
 internal data class QueryImpactRoute(
@@ -103,6 +104,13 @@ internal data class QueryImpactSnapshot(
     val readRejections: Map<ValueSite, QueryImpactReadRejection> = emptyMap(),
     val receipts: Map<ValueSite, List<ValueFlowWorkReceipt>> = emptyMap(),
 ) {
+    // Native suspension can advance without changing the pending route or emitting a row.
+    // Inspect only inventory sizes, never the accumulated reads, receipts, or reference sets.
+    // Summation preserves Map equality across different insertion orders; collisions remain legal.
+    fun progressHash(): Int =
+        PROGRESS_HASH_MULTIPLIER * (PROGRESS_HASH_MULTIPLIER * reads.size + paths.size) +
+            remainders.values.sumOf { PROGRESS_HASH_MULTIPLIER * it.consumed.size + it.emitted.size }
+
     val retainedBytes: Long
         get() = retainedBytes(QueryImpactRetainedGraph())
 
