@@ -6,6 +6,7 @@ import argparse
 from dataclasses import asdict, dataclass
 from enum import Enum
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -19,6 +20,7 @@ COMMAND = (
     f"-Pversion={VERSION}", f"-PcontrolVersion={VERSION}", f"-PhostedPluginVersion={VERSION}",
     "sourceValidationGate", "--console=plain", "--profile",
 )
+PREFLIGHT = ("python3", ".github/scripts/ci/verify-checks.py", "--preflight-only", "--gate-graph", "skip")
 SOURCE_REQUIRED = frozenset({
     ":sourceValidationGate", ":check", ":build-logic:check", ":verifyKastArchitecture", ":verifyJsonContracts",
     ":verifyConfigurationIngress", ":verifyKnowledgeBase", ":hostObservationTest", ":componentReleaseTest",
@@ -102,6 +104,14 @@ def run(root: Path, destination: Path) -> Evidence:
     outcome = Outcome.GRAPH_REJECTED
     invocations = 0
     if code == 0 and graph.accepted:
+        environment = os.environ.copy()
+        environment["KAST_RELEASE_JDK_25"] = environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]
+        preflight = subprocess.run(PREFLIGHT, cwd=root, env=environment, text=True, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, check=False)
+        (destination / "preflight.log").write_text(preflight.stdout)
+        code = preflight.returncode
+        outcome = Outcome.PROCESS_FAILED
+    if code == 0 and graph.accepted:
         with (destination / "gradle.log").open("w") as log:
             process = subprocess.Popen(COMMAND, cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             if process.stdout is None:
@@ -130,7 +140,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         evidence = run(ROOT, args.report_directory)
-    except (OSError, subprocess.CalledProcessError, ValueError) as failure:
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError) as failure:
         raise SystemExit(f"source-validation: {failure}") from None
     print(f"source-validation: {evidence.outcome.value}", flush=True)
     raise SystemExit(evidence.exitCode)

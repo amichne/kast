@@ -52,7 +52,8 @@ class ValidationOutcomeTest(unittest.TestCase):
 
     def test_source_gate_seals_only_source_authority(self):
         needs = docs_only_results()
-        needs["scope"]["outputs"].update(source="run", documentation="skip", scope="SOURCE")
+        needs["scope"]["outputs"].update(source="run", portable="run", documentation="skip", scope="SOURCE")
+        needs["portable"]["result"] = "success"
         needs["source"]["result"] = "success"
         needs["documentation"]["result"] = "skipped"
         with patch.object(outcome, "select", return_value=Selection(SOURCE_CHECKS, Reason.CHANGED_INPUTS)):

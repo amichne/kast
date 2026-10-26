@@ -132,7 +132,7 @@ class Check(str, Enum):
 
 ALL_CHECKS = frozenset(Check)
 PRODUCT_CHECKS = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
-SOURCE_CHECKS = frozenset({Check.SOURCE})
+SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE})
 DOCUMENTATION_CHECKS = frozenset({Check.DOCUMENTATION})
 
 

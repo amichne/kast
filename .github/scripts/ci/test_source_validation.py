@@ -53,9 +53,12 @@ class SourceValidationTest(unittest.TestCase):
                 process = Mock(stdout=io.StringIO("Dependency fixture compiler invocation: :owner:fixture\n"))
                 process.wait.return_value = status
                 with (
+                    patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                     patch.object(source, "source_identity", side_effect=[identity, after]) as admitted,
-                    patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess(
-                        [], 0, graph_output(expected_obligations()))) as planned,
+                    patch.object(source.subprocess, "run", side_effect=[
+                        subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
+                        subprocess.CompletedProcess([], 0, "preflight passed"),
+                    ]) as planned,
                     patch.object(source.subprocess, "Popen", return_value=process) as executed,
                     redirect_stdout(io.StringIO()),
                 ):
@@ -64,7 +67,8 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertEqual(1, evidence.compilerInvocations)
                 self.assertEqual(expected is source.Outcome.SOURCE_VALIDATED, evidence.exitCode == 0)
                 self.assertEqual(2, admitted.call_count)
-                planned.assert_called_once()
+                self.assertEqual(2, planned.call_count)
+                self.assertEqual(source.PREFLIGHT, planned.call_args.args[0])
                 executed.assert_called_once_with(COMMAND, cwd=ROOT, text=True,
                                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 process.wait.assert_called_once_with()
@@ -81,6 +85,22 @@ class SourceValidationTest(unittest.TestCase):
         executed.assert_not_called()
         self.assertEqual(source.Outcome.GRAPH_REJECTED, evidence.outcome)
         self.assertNotEqual(0, evidence.exitCode)
+
+    def test_failed_offline_preflight_never_starts_gradle_execution(self):
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
+            patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
+            patch.object(source.subprocess, "run", side_effect=[
+                subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
+                subprocess.CompletedProcess([], 2, "offline suite failed"),
+            ]),
+            patch.object(source.subprocess, "Popen") as executed,
+        ):
+            evidence = source.run(ROOT, Path(temporary))
+        executed.assert_not_called()
+        self.assertEqual(source.Outcome.PROCESS_FAILED, evidence.outcome)
+        self.assertEqual(2, evidence.exitCode)
 
     def test_source_obligations_include_every_owner_and_specialized_check(self):
         self.assertTrue(inspect_graph(graph_output(expected_obligations())).accepted)

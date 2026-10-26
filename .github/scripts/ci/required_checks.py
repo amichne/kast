@@ -54,7 +54,7 @@ def admit_checks(needs: object, gate: Gate = Gate.COMPLETE) -> CompletedChecks |
     if any(outputs.get(check.value) != ("run" if check in selected else "skip") for check in Check):
         return Verdict.INVALID_SELECTION
     for check, job in (("source", "source"), ("product", "kotlin"), ("portable", "portable"), ("documentation", "documentation")):
-        if gate is Gate.SOURCE_FEEDBACK and check in {"product", "portable"}:
+        if gate is Gate.SOURCE_FEEDBACK and check == "product":
             continue
         decision = outputs.get(check)
         if decision not in {"run", "skip"}:

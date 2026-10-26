@@ -38,17 +38,19 @@ class RequiredChecksTest(unittest.TestCase):
         needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")
         needs["scope"]["outputs"]["scope"] = "FULL"
         needs["source"]["result"] = "success"
-        del needs["kotlin"], needs["portable"]
+        needs["portable"]["result"] = "success"
+        del needs["kotlin"]
         self.assertIsInstance(admit_checks(needs, Gate.SOURCE_FEEDBACK), CompletedSourceChecks)
         self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
-        for job in ("source", "documentation"):
+        for job in ("source", "documentation", "portable"):
             failed = deepcopy(needs)
             failed[job]["result"] = "skipped"
             self.assertEqual(Verdict.CHECK_FAILED, inspect(failed, Gate.SOURCE_FEEDBACK))
 
     def test_source_feedback_requires_source_success_without_a_candidate(self):
         needs = docs_only_results()
-        needs["scope"]["outputs"].update(source="run", documentation="skip", scope="SOURCE")
+        needs["scope"]["outputs"].update(source="run", portable="run", documentation="skip", scope="SOURCE")
+        needs["portable"]["result"] = "success"
         needs["documentation"]["result"] = "skipped"
         needs["source"] = {"result": "success"}
         self.assertEqual(Verdict.COMPLETE, inspect(needs))

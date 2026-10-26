@@ -131,6 +131,8 @@ jobs:
             kast/topology-intellij-kotlin-plugin
 
       - name: Validate complete source population
+        env:
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
         run: python3 .github/scripts/ci/source_validation.py
 
       - name: Retain source evidence
@@ -257,7 +259,7 @@ jobs:
 
   source-feedback:
     name: Source feedback
-    needs: [scope, source, documentation]
+    needs: [scope, source, documentation, portable]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

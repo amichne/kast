@@ -7,7 +7,7 @@ Pull requests use the merge base; pushes use the entire before/head range.
 | Plan | Required work | Product publication |
 | --- | --- | --- |
 | `DOCUMENTATION` | Mintlify, Markdown parser, glossary tests and generated glossary views | None |
-| `SOURCE` | Complete source gate and all semantic families | None |
+| `SOURCE` | Complete source gate, all semantic families, offline preflight and portable packaging | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
@@ -79,6 +79,7 @@ Hosted CI must validate the final pull-request head before review completes.
 ## Source obligations and qualification
 
 `source_validation.py` admits a clean source tree, examines the Gradle graph, and runs `sourceValidationGate`.
+The runner also keeps the existing offline preflight suites.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
 A changed source tree or failed process cannot produce `SOURCE_VALIDATED`.
 This local execution record grants no publication authority.
@@ -97,11 +98,13 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 | App Server | Public query generation |
 | Installation scripts | Offline lifecycle, recovery, removal, cleanup, system Python, local installation and installer fixtures |
 | Included build | Build-logic tests and quality rules |
+| Offline preflight | Version resolution, product-gate commands, candidate admission, environment admission, gate membership rules and execution evidence |
+| Portable container | Onboarding, cloud environment, MCP registration, developer publication, Git attribution, host installation and shared adapter suites |
 
 The graph rejects native compilation, installed-product composition, release runtime admission, hosted-plugin assembly, and release assembly.
 Candidate qualification keeps those tasks, actual release versions, acceptance, sealing, and exact identity admission.
-Source feedback waits for the selected source and documentation jobs.
-The final required gate also waits for selected candidate and portable jobs.
+Source feedback waits for the selected source, documentation, and portable jobs.
+The final required gate also waits for candidate qualification.
 A successful source-feedback aggregate cannot seal a qualified-candidate outcome.
 
 Qualification remains necessary for packaging, installation, native inputs, toolchains, and release policy before merge.

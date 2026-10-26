@@ -28,7 +28,7 @@ from validation_scope import (
 
 DOCS = frozenset({Check.DOCUMENTATION})
 PRODUCT = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
-SOURCE_ONLY = frozenset({Check.SOURCE})
+SOURCE_ONLY = frozenset({Check.SOURCE, Check.PORTABLE})
 PAGE = "docs/public/reference/api.mdx"
 SOURCE = "cli/src/main/kotlin/Management.kt"
 
