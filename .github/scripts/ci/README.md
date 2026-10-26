@@ -141,8 +141,11 @@ The seven symbol cases remain in the complete 237-case gate.
 `verifySelectedKotlinSemanticCoverage` uses the existing execution accountant for selected owner reports.
 Missing, skipped, duplicate, malformed, unexpected, and zero case populations fail that accountant.
 
-The CI dispatch input `rollout` supports `warm`, `changed`, and `reuse` phases.
+The CI dispatch input `rollout` supports `warm`, `changed`, `reuse`, and `cold` phases.
 All four corpus jobs use `macos-15`.
+Set `rollout_case` to one corpus name for a measurement through its own aggregate.
+The default `all` runs the complete matrix.
+Each case has a separate concurrency group.
 The runner admits only a disposable GitHub checkout.
 It reverses and reapplies each frozen patch under two local commits.
 The resulting tree must equal the workflow checkout tree.
@@ -154,6 +157,9 @@ The changed phase deletes affected compiler and test outputs before their tasks 
 It disables output-cache reuse for those tasks and preserves normal identity handling for immutable dependency archives.
 Unrelated task outputs can use the warmed cache.
 The reuse phase permits normal task-cache behavior and has separate evidence.
+The cold phase disables Gradle and pip cache transport and removes affected outputs.
+Runner-image tools remain available, so setup logs identify the actual provisioning work.
+Changed and cold phases keep Gradle cache decisions and dependency details in their logs.
 These manual phases end after rollout and do not add duplicate work to routine pull requests.
 
 Each measurement records its source identities, exact patch, selected cases, task graph, compiler count, timestamps, and process outcome.
