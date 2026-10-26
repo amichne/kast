@@ -69,5 +69,5 @@ Codex owns its App Server and control socket. Pi uses native MCP without uv setu
 - [Upgrade or recover Kast](https://kast.michne.com/reference/management/).
 - [Contribute to Kast](docs/development.md).
 
-Kast is under the [MIT License](LICENSE).
+Kast is under the [GNU General Public License v3.0 only](LICENSE).
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
