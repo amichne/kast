@@ -767,7 +767,7 @@ val selectedSemanticOwners = providers.gradleProperty("kastSemanticOwners").map 
 tasks.register<Exec>("verifySelectedKotlinSemanticCoverage") {
     group = "verification"
     description = "Requires every case of each selected semantic fixture owner with exact report accounting."
-    dependsOn(selectedSemanticOwners.map { owners -> owners.map { "$it:semanticCoverageFixtureTest" } })
+    dependsOn(selectedSemanticOwners.get().map { "$it:semanticCoverageFixtureTest" })
     workingDir(semanticCoverageDirectory.dir("tooling"))
     val selectedManifest = providers.gradleProperty("kastSemanticSelection")
         .map { file(it) }.orElse(layout.buildDirectory.file("reports/ci/source/missing-selection.tsv").map { it.asFile })

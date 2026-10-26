@@ -176,22 +176,24 @@ def forced_outputs(plan: verification_plan.Plan) -> str:
     owners = ", ".join(json.dumps(owner) for owner in plan.consumers)
     # This disposable init script forces affected compilation and tests to execute.
     # Unaffected outputs can use the task cache. Fixture archives keep normal input identity.
-    return f"""import org.gradle.api.tasks.compile.AbstractCompile
+    return f"""import org.gradle.api.tasks.Delete
+import org.gradle.api.tasks.compile.AbstractCompile
 import org.gradle.api.tasks.testing.Test
 val affected = setOf({owners})
-gradle.beforeProject {{
-    if (path in affected) {{
-        val ownedBuild = layout.buildDirectory.get().asFile.toPath()
-        tasks.configureEach {{
-            if (this is Test || this is AbstractCompile || name.startsWith("compile") && name.endsWith("Kotlin")) {{
+gradle.projectsEvaluated {{
+    val reset = rootProject.tasks.register<Delete>("removeRolloutChangedOutputs")
+    rootProject.allprojects.filter {{ it.path in affected }}.forEach {{ owner ->
+        val ownedBuild = owner.layout.buildDirectory.get().asFile.toPath()
+        owner.tasks.filter {{ it is Test || it is AbstractCompile || it.name.startsWith("compile") && it.name.endsWith("Kotlin") }}.forEach {{ selected ->
+            val paths = selected.outputs.files.files.toList()
+            paths.forEach {{ output ->
+                require(output.toPath().startsWith(ownedBuild)) {{ "Unowned rollout output: $output" }}
+            }}
+            reset.configure {{ delete(paths) }}
+            selected.apply {{
+                dependsOn(reset)
                 outputs.upToDateWhen {{ false }}
                 outputs.doNotCacheIf("Frozen rollout needs affected outputs to execute") {{ true }}
-                doFirst {{
-                    outputs.files.forEach {{ output ->
-                        require(output.toPath().startsWith(ownedBuild)) {{ "Unowned rollout output: $output" }}
-                        if (output.exists() && !output.deleteRecursively()) error("Cannot remove rollout output: $output")
-                    }}
-                }}
             }}
         }}
     }}
