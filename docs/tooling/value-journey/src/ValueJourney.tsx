@@ -218,7 +218,7 @@ export function ValueJourney(): JSX.Element {
                   </div>
                   <div className="vj-explanation">
                     {stopped && (
-                      <span className="vj-eyebrow">Missing library rule</span>
+                      <span className="vj-eyebrow">Missing connection</span>
                     )}
                     <div className="vj-step-heading">
                       <h3>
@@ -396,8 +396,8 @@ export function ValueJourney(): JSX.Element {
                         }
                       >
                         {stopped
-                          ? "Restore the reviewed rule"
-                          : "What if the library rule is missing?"}{" "}
+                          ? "Restore the connection"
+                          : "What if a connection is missing?"}{" "}
                         <span aria-hidden="true">↗</span>
                       </button>
                     )}

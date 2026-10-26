@@ -5,6 +5,8 @@ description: "Give your agent the connections between functions, values, and the
 icon: "scan-search"
 ---
 
+import DeeperReading from "/snippets/deeper-reading.mdx"
+
 import { ValueJourney } from "/snippets/value-journey.jsx"
 
 <span id="what-kast-adds" />
@@ -22,7 +24,7 @@ Press **Follow the value** to see each connection. Then choose **Return a differ
 
 <ValueJourney />
 
-[Explore the example](/explanation/value-journey) for its source and limits.
+[Try the other examples](/explanation/value-journey).
 
 Kast gives your agent source locations and evidence for these connections. A matching name or type cannot establish them.
 
@@ -36,8 +38,7 @@ Kast gives your agent source locations and evidence for these connections. A mat
 
 > Use Kast to inspect the diagnostics in the code we changed.
 
-Kast reports unsupported or unfinished work. Your agent can see which parts of an answer still need investigation.
-The results describe source relationships. Your build and tests establish runtime behavior.
+When Kast cannot finish, it says so. Your agent can see what still needs attention.
 
 <span id="is-kast-for-you" />
 
@@ -56,4 +57,4 @@ Use an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA `262.*` wit
   </Card>
 </Columns>
 
-[How Kast works](/explanation) · [Technical reference](/reference)
+<DeeperReading />

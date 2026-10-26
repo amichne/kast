@@ -29,43 +29,39 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Kast",
         "groups": [
           {
-            "group": "Start here",
+            "group": "Kast",
             "pages": [
-              "index",
-              "explanation/value-journey",
-              "start",
-              "agent-harnesses",
-              "tutorials/first-query"
-            ]
-          },
-          {
-            "group": "Task guides",
-            "pages": [
-              "how-to",
-              "search",
-              "reference/search",
-              "how-to/inspect-diagnostics",
-              "how-to/read-retained-evidence",
-              "reference/query-pipelines",
-              "reference/change",
-              "how-to/complete-engineering-task"
-            ]
-          },
-          {
-            "group": "Troubleshoot and maintain",
-            "pages": [
-              "troubleshooting",
-              "reference/troubleshooting",
-              "reference/management"
-            ]
-          },
-          {
-            "group": "More exercises",
-            "pages": [
-              "tutorials"
+              {
+                "group": "Discover Kast",
+                "icon": "sparkles",
+                "expanded": true,
+                "pages": [
+                  "index",
+                  "explanation/value-journey",
+                  "search"
+                ]
+              },
+              {
+                "group": "Try it on your project",
+                "icon": "rocket",
+                "expanded": false,
+                "pages": [
+                  "start",
+                  "agent-harnesses",
+                  "tutorials/first-query"
+                ]
+              },
+              {
+                "group": "Get unstuck",
+                "icon": "life-buoy",
+                "expanded": false,
+                "pages": [
+                  "troubleshooting"
+                ]
+              }
             ]
           }
         ]
@@ -92,10 +88,13 @@
               "reference/program-tracing",
               "reference/callbacks",
               "reference/lifecycles",
-              "reference/internals/background-startup"
+              "reference/internals/background-startup",
+              "explanation/value-journey-evidence"
             ]
           }
-        ]
+        ],
+        "hidden": true,
+        "searchable": true
       },
       {
         "tab": "Reference",
@@ -105,6 +104,21 @@
             "pages": [
               "reference",
               "glossary"
+            ]
+          },
+          {
+            "group": "Task details",
+            "pages": [
+              "how-to",
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "reference/change",
+              "how-to/complete-engineering-task",
+              "reference/troubleshooting",
+              "reference/management",
+              "tutorials"
             ]
           },
           {
@@ -183,7 +197,9 @@
               "reference/source-map"
             ]
           }
-        ]
+        ],
+        "hidden": true,
+        "searchable": true
       }
     ]
   },
@@ -236,15 +252,19 @@
         ]
       },
       {
-        "header": "Reference",
+        "header": "Go deeper",
         "items": [
+          {
+            "label": "How Kast works",
+            "href": "/explanation"
+          },
+          {
+            "label": "Can I trust the answer?",
+            "href": "/reference/evidence-boundaries"
+          },
           {
             "label": "Technical reference",
             "href": "/reference"
-          },
-          {
-            "label": "GitHub",
-            "href": "https://github.com/amichne/kast"
           },
           {
             "label": "Security",

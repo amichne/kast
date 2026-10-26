@@ -5,6 +5,8 @@ description: "Ask your agent to trace values, find callers, inspect problems, an
 icon: "search"
 ---
 
+import DeeperReading from "/snippets/deeper-reading.mdx"
+
 Use these prompts with your [connected agent](/agent-harnesses). Replace the example names with code from your project.
 
 ## Where does this value go?
@@ -31,7 +33,7 @@ An implementation list describes source code. It does not choose the implementat
 
 > Use Kast to inspect the diagnostics in this directory before we change it.
 
-[Inspect diagnostics](/how-to/inspect-diagnostics) explains path selection and results.
+Kast returns the problems that IDEA reports for the selected code.
 
 ## Can we change this body?
 
@@ -41,11 +43,13 @@ Kast can replace a supported function body or add a declaration to an existing f
 For a rename or a multi-file refactor, your agent needs its other edit tools.
 Review the diff and run your project's tests after a change.
 
-[Change reference](/reference/change) defines supported edits and recovery.
-
 ## What if Kast cannot finish?
 
 Keep the reason from the result. Ask your agent to narrow the question or resolve the reported problem.
 An unfinished search does not prove that no matches exist.
 
-[Read a result beyond its preview](/how-to/read-retained-evidence) · [Troubleshoot Kast](/troubleshooting)
+[Troubleshoot Kast](/troubleshooting) to return to your task.
+
+For exact steps, see [diagnostics](/how-to/inspect-diagnostics), [source changes](/reference/change), and [large results](/how-to/read-retained-evidence).
+
+<DeeperReading />

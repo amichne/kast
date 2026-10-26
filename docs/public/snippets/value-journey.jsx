@@ -578,7 +578,7 @@ var KastValueJourney = (() => {
           {
             ...base,
             id: "gap",
-            label: "Remove a library rule",
+            label: "Stop at a missing connection",
             description: "The code stays the same. This illustration removes the rule for map.",
             paths: [
               {
@@ -821,7 +821,7 @@ var KastValueJourney = (() => {
                     <span className="vj-value-label">tracked value</span>
                   </div>
                   <div className="vj-explanation">
-                    {stopped && <span className="vj-eyebrow">Missing library rule</span>}
+                    {stopped && <span className="vj-eyebrow">Missing connection</span>}
                     <div className="vj-step-heading">
                       <h3>
                         {stopped ? "The explanation stops here." : step.title}
@@ -956,7 +956,7 @@ var KastValueJourney = (() => {
         className="vj-compare"
         onClick={() => chooseExample(stopped ? "e0" : "gap", true)}
       >
-                        {stopped ? "Restore the reviewed rule" : "What if the library rule is missing?"}{" "}
+                        {stopped ? "Restore the connection" : "What if a connection is missing?"}{" "}
                         <span aria-hidden="true">↗</span>
                       </button>}
                   </div>

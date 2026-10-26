@@ -1,12 +1,15 @@
 # Docs reader tracks
 
-Kast has one Mintlify site. It has three tracks: Guides, Architecture, and Reference. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
+Kast has one Mintlify site. Its main path shows what Kast does, how to try it, and how to resolve problems.
+`docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
 
 The [Diátaxis framework](https://diataxis.fr/) groups pages by what the reader needs. Its four groups are tutorials, how-to guides, reference, and explanation.
 
 This policy applies to the authored public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
 
-Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts. These tracks keep the four Diátaxis page purposes below.
+Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts.
+Architecture and Reference stay outside the main menus, with search access and links at the bottom of core pages.
+These content types keep the four Diátaxis page purposes below.
 
 ## Choose the page's purpose
 

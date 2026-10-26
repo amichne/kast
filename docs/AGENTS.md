@@ -4,8 +4,8 @@ title: "Kast docs"
 description: "This directory owns the Mintlify site, contributor guides, and glossary rules. Reports keep the source revision and scope of each result."
 resource: "repo://docs"
 tags: [kast, navigation]
-timestamp: "2026-10-26T13:22:41Z"
-source_revision: 371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a
+timestamp: "2026-10-26T13:43:05Z"
+source_revision: 3ff8661a429fa510692345f08db80c9554fadee5
 code_sources:
   - path: docs/development.md
   - path: docs/documentation-structure.md
@@ -13,6 +13,8 @@ code_sources:
   - path: docs/hosted-read-configuration.md
   - path: docs/installation-recovery.md
   - path: docs/public/docs.json
+  - path: docs/public/sidebar-toggle.js
+  - path: docs/public/snippets/deeper-reading.mdx
   - path: docs/public/reference/source-map.mdx
   - path: docs/tool-rpc.md
   - path: docs/topology-impact.md
@@ -61,6 +63,9 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - Public diagrams use `docs/public/images/architecture/*.mmd` as source. Run `npm run render --prefix docs/tooling/diagrams`. Then run `npm run check --prefix docs/tooling/diagrams`.
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
 - The value explorer and README preview share `docs/tooling/value-journey` as their source. Run `npm run build --prefix docs/tooling/value-journey`. Commit both generated files.
+- Keep core menus focused on reader goals. Keep Architecture and Reference hidden from menus but searchable.
+- Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.
+- After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.
 - Run `./gradlew verifyDocumentationGlossary` to examine terms and generated files.
 - Before an edit to a generated callable contract, read the nested public reference guide.

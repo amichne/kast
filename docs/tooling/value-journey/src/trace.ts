@@ -360,7 +360,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         {
           ...base,
           id: "gap",
-          label: "Remove a library rule",
+          label: "Stop at a missing connection",
           description:
             "The code stays the same. This illustration removes the rule for map.",
           paths: [

@@ -551,3 +551,40 @@
 }
 .kast-diagram .kd-dark-link, .dark .kast-diagram .kd-light-link { display: none; }
 .dark .kast-diagram .kd-dark-link { display: inline; }
+
+/* Maple's desktop sidebar can hide without changing the native mobile menu. */
+#kast-sidebar-toggle { display: none; }
+@media (min-width: 1024px) {
+  #kast-sidebar-toggle {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    z-index: 40;
+    top: calc(4.5rem + var(--banner-height, 0px));
+    left: 18rem;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #dfe3dc;
+    border-radius: 8px;
+    background: #fbfbf9;
+    color: #52594e;
+    cursor: pointer;
+  }
+  .dark #kast-sidebar-toggle {
+    border-color: #515b4b;
+    background: #171816;
+    color: #b3b9ac;
+  }
+  #kast-sidebar-toggle:hover { color: #3154c7; }
+  .dark #kast-sidebar-toggle:hover { color: #8fa7ff; }
+  #kast-sidebar-toggle:focus-visible {
+    outline: 2px solid #3154c7;
+    outline-offset: 3px;
+  }
+  .dark #kast-sidebar-toggle:focus-visible { outline-color: #8fa7ff; }
+  .kast-sidebar-collapsed #sidebar { display: none; }
+  .kast-sidebar-collapsed #content-container { margin-left: 0; }
+  .kast-sidebar-collapsed #navbar-transition-maple { left: 0; }
+  .kast-sidebar-collapsed #kast-sidebar-toggle { left: 1rem; }
+  .kast-sidebar-collapsed #kast-sidebar-toggle svg { transform: scaleX(-1); }
+}

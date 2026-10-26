@@ -5,6 +5,8 @@ description: "Watch a value move through a helper, an object, and a list. Change
 icon: "route"
 ---
 
+import DeeperReading from "/snippets/deeper-reading.mdx"
+
 import { ValueJourney } from "/snippets/value-journey.jsx"
 
 Press **Follow the value**. The highlighted source and route move together.
@@ -16,20 +18,18 @@ Then choose another example to see what changes.
 
 - **Return a different value:** the list contains a separate value. The original route does not reach it.
 - **Use the value twice:** choose either use of the same producer.
-- **Remove a library rule:** the route stops where the example lacks evidence.
+- **Stop at a missing connection:** the route stops where the example lacks evidence.
 
 A search for `Pet` finds text in all these examples. The connections explain why the answers differ.
 
-## What the illustration means
+## Ask the same question on your code
 
-The example traces one `Pet`. A `PetListing` can carry it in `pet`, and a list can carry that listing in an element.
-The listing and list keep their own identities.
+> Use Kast to trace this function's result. Show where it goes and where the route stops.
 
-The compiler identifies the function and callback. A reviewed rule for `map` connects a callback result to a possible list element.
-Select **Evidence** to inspect that distinction and each source location.
+[Install Kast](/start) to try it on your project. Then choose an [example question](/search).
 
-This illustration uses [fixed Kotlin fixtures](https://github.com/amichne/kast/tree/main/relation/intellij/testData/r1-value-flow) and authored expected routes.
-The displayed code uses pet-store names. The original fixtures stay unchanged.
-It does not query Kast or record execution. Its final step does not prove a complete investigation.
+<span id="what-the-illustration-means" />
 
-[Ask about your own code](/search) · [Program tracing reference](/reference/program-tracing)
+This is an illustration, not a live Kast query. [Read its source and limits](/explanation/value-journey-evidence).
+
+<DeeperReading />

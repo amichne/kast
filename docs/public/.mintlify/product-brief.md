@@ -25,8 +25,9 @@ Label each example so readers know whether Kast ran.
 
 ## Navigation and ownership
 
-Keep three tabs: Guides, Architecture, and Reference.
-Keep the main menus to two levels. Keep detailed schemas collapsed.
+Lead with three collapsible groups: Discover Kast, Try it on your project, and Get unstuck.
+Keep implementation pages out of the main menus. Link to mechanisms and trust evidence at the bottom of core pages.
+Keep deeper pages in search. Keep detailed schemas collapsed.
 Keep useful page paths. Give each fact one source owner.
 Edit generated contracts through their generator.
 
