@@ -226,5 +226,10 @@ registerRelationNativeFixtures(
         "*NativeDestructuringRevalidationTest",
         "*NativeReceiverImplementationDispatchTest",
         "*NativeCoreValueCompositionTest",
+        "*NativeReceiverBranchParityTest",
+        "*NativeInheritedReceiverTest",
+        "*NativeTypeOperationFlowTest",
+        "*NativeContractPayloadTest",
+        "*NativeDestructuringFormsTest",
     ),
 )

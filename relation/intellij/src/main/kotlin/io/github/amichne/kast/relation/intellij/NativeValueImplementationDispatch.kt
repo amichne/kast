@@ -27,7 +27,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import java.nio.file.Path
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
 internal sealed interface NativeValueArgumentDispatch {
@@ -77,9 +76,16 @@ internal class NativeValueImplementationDispatch(
                 is IntellijRelationSubjectLookup.Rejected -> return NativeValueArgumentDispatch.Direct
             }
         val function = subject.declaration as? KtNamedFunction ?: return NativeValueArgumentDispatch.Direct
-        val final =
-            projection.observation.observedAnalyze(function) { function.symbol.modality == KaSymbolModality.FINAL }
-        if (final) return NativeValueArgumentDispatch.Direct
+        if (
+            nativeValueBodySelection(
+                function = function,
+                source = request.source,
+                callable = callable,
+                scope = scope,
+                projection = projection,
+            ) == NativeValueBodySelection.DIRECT
+        )
+            return NativeValueArgumentDispatch.Direct
         val question =
             RelationRequest.start(
                 subject = callable,

@@ -13,7 +13,6 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
@@ -31,8 +30,16 @@ internal fun nativeValueSourceReceiver(
             is IntellijRelationSubjectLookup.Rejected -> null
         } ?: return receiverRejected()
     if (function.bodyExpression == null) return Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
-    val final = projection.observation.observedAnalyze(function) { function.symbol.modality == KaSymbolModality.FINAL }
-    if (!final) return receiverRejected()
+    if (
+        nativeValueBodySelection(
+            function = function,
+            source = source,
+            callable = role.call.callable,
+            scope = scope,
+            projection = projection,
+        ) != NativeValueBodySelection.DIRECT
+    )
+        return receiverRejected()
     return when (val position = nativeValueReceiverFormal(source, scope, projection)) {
         is Refinement.Refined -> nativeSourceEntry(source, role.call, position.value)
         is Refinement.Rejected -> position

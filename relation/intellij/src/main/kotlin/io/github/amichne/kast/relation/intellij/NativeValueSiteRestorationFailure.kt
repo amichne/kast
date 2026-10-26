@@ -47,9 +47,9 @@ private fun KtExpression.matchesRoleShape(role: ValueSiteRoleClaim): Boolean =
         is ValueSiteRoleClaim.Argument -> (parent as? KtValueArgument)?.getArgumentExpression() === this
         is ValueSiteRoleClaim.Receiver ->
             (parent as? KtQualifiedExpression)?.receiverExpression === this ||
-                (this is KtDestructuringDeclarationEntry && isNativeSingleLocalComponent())
+                (this is KtDestructuringDeclarationEntry && isNativeSingleComponent())
         ValueSiteRoleClaim.ExpressionResult ->
-            this !is KtNamedDeclaration || (this is KtDestructuringDeclarationEntry && isNativeLocalComponent())
+            this !is KtNamedDeclaration || (this is KtDestructuringDeclarationEntry && isNativeComponent())
         ValueSiteRoleClaim.LocalRead,
         ValueSiteRoleClaim.Return -> this !is KtNamedDeclaration
     }

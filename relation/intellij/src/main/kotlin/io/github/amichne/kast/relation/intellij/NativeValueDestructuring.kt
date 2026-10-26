@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
 
-/** Local positional components share one RHS; independently sequenced authored effects remain outside this slice. */
+/** Component outputs preserve their owner. Independently sequenced authored effects remain outside this slice. */
 internal class NativeValueDestructuring(
     private val source: ValueSite,
     private val scope: CompiledRelationScope,
@@ -22,7 +22,8 @@ internal class NativeValueDestructuring(
         consume: (ValueTransfer) -> Unit,
         unsupported: (ValueFlowUnsupportedCause) -> Unit,
     ) {
-        if (declaration.initializer !== expression) {
+        val context = declaration.nativeDestructuringContext()
+        if (context !is NativeDestructuringContext.Local || context.initializer !== expression) {
             unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
             return
         }
@@ -77,7 +78,7 @@ internal class NativeValueDestructuring(
         unsupported: (ValueFlowUnsupportedCause) -> Unit,
     ) {
         val declaration = entry.parent as? KtDestructuringDeclaration
-        if (declaration == null || !entry.isNativeLocalComponent()) {
+        if (declaration == null || !entry.isNativeComponent()) {
             unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
             return
         }
@@ -141,7 +142,7 @@ internal fun nativeDestructuringTargets(
     projection: IntellijK2RelationProjection,
     permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<List<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>, ValueFlowUnsupportedCause> {
-    if (!declaration.isNativeLocalDestructuring())
+    if (declaration.nativeDestructuringContext() == NativeDestructuringContext.Unsupported)
         return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
     if (declaration.isVar) return Refinement.Rejected(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW)
     val components = mutableListOf<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>()

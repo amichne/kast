@@ -2,10 +2,11 @@
 
 package io.github.amichne.kast.relation.intellij
 
-import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueRole
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitReceiverValue
@@ -17,7 +18,6 @@ import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtThisExpression
-import org.jetbrains.kotlin.psi.KtWhenEntry
 
 internal sealed interface NativeReceiverFieldProof {
     data object Matched : NativeReceiverFieldProof
@@ -27,29 +27,40 @@ internal sealed interface NativeReceiverFieldProof {
     data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeReceiverFieldProof
 }
 
-/** Plain receiver fields require exact compiler identity without conditional refinement. */
+/** Receiver fields preserve compiler identity and explicit branch compatibility. */
 internal fun KaSession.receiverFieldGuard(
     function: KtNamedFunction,
-    position: ValueFormalPosition.Receiver,
     expression: KtNameReferenceExpression,
     receiver: KaReceiverValue?,
+    request: ValueFlowRequest,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
 ): NativeReceiverFieldProof {
+    val source = request.source
+    val workAllowance = request.budget.resources.workAllowance
+    val position =
+        (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver ?: return unsupportedReceiver()
     val expected =
         when (position.kind) {
             ValueReceiverKind.EXTENSION -> function.symbol.receiverParameter
             ValueReceiverKind.DISPATCH -> function.symbol.containingDeclaration
         } ?: return unsupportedReceiver()
-    when (valueReceiverMatch(receiver, expected)) {
-        NativeReceiverMatch.OTHER -> return NativeReceiverFieldProof.Unrelated
-        NativeReceiverMatch.UNAVAILABLE -> return unsupportedReceiver()
-        NativeReceiverMatch.EXACT -> Unit
+    when (branchValueReceiverMatch(receiver, expected, workAllowance)) {
+        NativeBranchIdentity.OTHER -> return NativeReceiverFieldProof.Unrelated
+        NativeBranchIdentity.UNAVAILABLE -> return unsupportedReceiver()
+        NativeBranchIdentity.EXACT -> Unit
+        NativeBranchIdentity.WORK_LIMIT_REACHED ->
+            return NativeReceiverFieldProof.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
     }
-    if (
-        receiver is KaSmartCastedReceiverValue ||
-            PsiTreeUtil.getParentOfType(expression, KtWhenEntry::class.java, false) != null
-    )
-        return unsupportedReceiver()
-    return NativeReceiverFieldProof.Matched
+    return when (branchAdmission(source, expression, expected, scope, projection, workAllowance)) {
+        NativeValueBranchAdmission.ADMITTED -> NativeReceiverFieldProof.Matched
+        NativeValueBranchAdmission.NOT_APPLICABLE ->
+            if (receiver is KaSmartCastedReceiverValue) unsupportedReceiver() else NativeReceiverFieldProof.Matched
+        NativeValueBranchAdmission.EXCLUDED -> NativeReceiverFieldProof.Unrelated
+        NativeValueBranchAdmission.UNPROVEN -> unsupportedReceiver()
+        NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
+            NativeReceiverFieldProof.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+    }
 }
 
 internal enum class NativeReceiverMatch {

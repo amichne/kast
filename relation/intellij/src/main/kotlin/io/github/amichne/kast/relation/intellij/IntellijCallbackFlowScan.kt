@@ -177,6 +177,11 @@ internal class IntellijCallbackFlowScan(
         frame: CallbackScanFrame,
         worklist: CallbackFormalWorklist<CallbackScanFrame>,
     ) {
+        if (
+            resolved === frame.prepared.parameter &&
+                nativeContractDescriptionReference(expression, frame.prepared.function, context.observation)
+        )
+            return
         val route =
             when {
                 resolved === frame.prepared.parameter -> routes.root(expression, frame)

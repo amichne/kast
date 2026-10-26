@@ -11,6 +11,9 @@ sealed interface LocalReferenceResolution {
     data class Unresolved(val obligation: ValueFlowObligation) : LocalReferenceResolution
 
     data object OtherBinding : LocalReferenceResolution
+
+    /** The exact binding remains established, but its branch cannot carry the tracked value. */
+    data object ExcludedBranch : LocalReferenceResolution
 }
 
 /**
@@ -67,7 +70,8 @@ class LocalBindingReferenceScan<C>(
         if (!permitted()) return false
         spend()
         when (val result = confirm(candidate)) {
-            LocalReferenceResolution.OtherBinding -> Unit
+            LocalReferenceResolution.OtherBinding,
+            LocalReferenceResolution.ExcludedBranch -> Unit
             is LocalReferenceResolution.Unsupported -> obligation(result.cause)
             is LocalReferenceResolution.Unresolved ->
                 if (result.obligation !in obligations) obligations += result.obligation

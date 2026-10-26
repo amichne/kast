@@ -13,28 +13,10 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueTransferEvidence
-import io.github.amichne.kast.relation.contract.ValueTransferKind
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import org.jetbrains.kotlin.psi.KtBlockExpression
-import org.jetbrains.kotlin.psi.KtContainerNode
-import org.jetbrains.kotlin.psi.KtContainerNodeForControlStructureBody
-import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
-import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
-import org.jetbrains.kotlin.psi.KtIfExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtParenthesizedExpression
-import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtQualifiedExpression
-import org.jetbrains.kotlin.psi.KtReturnExpression
-import org.jetbrains.kotlin.psi.KtThrowExpression
-import org.jetbrains.kotlin.psi.KtValueArgument
-import org.jetbrains.kotlin.psi.KtWhenEntry
-import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /** All live elements and K2 values remain inside the caller's one native read action. */
 internal class IntellijValueFlowNative(
@@ -117,7 +99,7 @@ internal class IntellijValueFlowNative(
                             retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
                             return Refinement.Refined(Unit)
                         }
-                transferExpression(expression)
+                readExpression(expression)
             }
         }
         return Refinement.Refined(Unit)
@@ -165,7 +147,7 @@ internal class IntellijValueFlowNative(
                     return
                 }
         val exhausted =
-            NativeValueReceiverReads(request.source, scope, projection)
+            NativeValueReceiverReads(request, scope, projection)
                 .forEachRead(
                     function = function,
                     admitTraversal = { sourceScopeAllowance() == IntellijRelationProviderEnumerationAdmission.READY },
@@ -199,164 +181,17 @@ internal class IntellijValueFlowNative(
         return Refinement.Rejected(cause)
     }
 
-    private fun transferExpression(expression: KtExpression) {
-        when (permitted()) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return
-        }
-        if (expression is KtDestructuringDeclarationEntry) {
-            NativeValueDestructuring(request.source, scope, projection)
-                .bind(
-                    entry = expression,
-                    permit = ::permitted,
-                    consume = { emit(expression, ValueRole.LocalBinding, ValueTransferKind.LOCAL_BINDING) },
-                    unsupported = { retained.unresolvedAt(it, expression) },
-                )
-            return
-        }
-        when (val parent = expression.parent) {
-            is KtParenthesizedExpression -> transferExpression(parent)
-            is KtProperty -> propertyDestination(expression, parent)
-            is KtDestructuringDeclaration -> destructuringDestination(expression, parent)
-            is KtValueArgument -> argument(expression, parent)
-            is KtQualifiedExpression -> receiver(expression, parent)
-            is KtReturnExpression -> returnDestination(expression, parent)
-            is KtThrowExpression -> {
-                observation.count(IntellijReadCounter.VALUE_FLOW_ABRUPT_REJECTIONS)
-                retained.unresolvedAt(ValueFlowUnsupportedCause.ABRUPT_COMPLETION, parent)
-            }
-            is KtNamedFunction -> functionDestination(expression, parent)
-            is KtContainerNodeForControlStructureBody -> ifDestination(expression, parent)
-            is KtContainerNode ->
-                if ((parent.parent as? KtIfExpression)?.condition !== expression)
-                    retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
-            is KtWhenEntry -> {
-                val branch = parent.parent as? KtWhenExpression
-                if (branch != null && parent.expression === expression) branchResult(expression, branch)
-                else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
-            }
-            is KtBlockExpression -> blockDestination(expression, parent)
-            else -> retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, parent)
-        }
-    }
-
-    private fun destructuringDestination(expression: KtExpression, declaration: KtDestructuringDeclaration) =
-        NativeValueDestructuring(request.source, scope, projection)
-            .read(
-                expression = expression,
-                declaration = declaration,
-                permit = ::permitted,
-                consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
-                unsupported = { retained.unresolvedAt(it, declaration) },
-            )
-
-    private fun returnDestination(expression: KtExpression, returned: KtReturnExpression) {
-        if (returnCrossesFinally(returned, owner)) {
-            observation.count(IntellijReadCounter.VALUE_FLOW_FINALLY_REJECTIONS)
-            retained.unresolvedAt(ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED, returned)
-        } else if (owner is KtFunctionLiteral)
-            retained.unresolvedAt(ValueFlowUnsupportedCause.NESTED_EXECUTION, returned)
-        else emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
-    }
-
-    private fun blockDestination(expression: KtExpression, block: KtBlockExpression) {
-        when (val position = tryBranchResultPosition(expression)) {
-            is TryBranchResultPosition.Result -> tryBranchResult(expression, position)
-            TryBranchResultPosition.Discarded -> Unit
-            TryBranchResultPosition.Unavailable ->
-                if (owner is KtFunctionLiteral && block === owner.bodyExpression) {
-                    if (block.statements.lastOrNull() === expression)
-                        request
-                            .callbackReturnSemantics(expression, owner, observation)
-                            .onCallbackReturn(
-                                { emit(expression, ValueRole.Return, ValueTransferKind.RETURN) },
-                                ::unresolved,
-                            )
-                } else if (block.parent !is KtNamedFunction)
-                    retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
-        }
-    }
-
-    private fun propertyDestination(expression: KtExpression, property: KtProperty) {
-        if (property.initializer !== expression) {
-            retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
-            return
-        }
-        if (property.isLocal) emit(property, ValueRole.LocalBinding, ValueTransferKind.LOCAL_BINDING)
-        else emit(property, ValueRole.PropertyAssignment, ValueTransferKind.PROPERTY_ASSIGNMENT)
-    }
-
-    private fun functionDestination(expression: KtExpression, function: KtNamedFunction) {
-        if (function.bodyExpression === expression) emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
-        else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
-    }
-
-    private fun ifDestination(expression: KtExpression, container: KtContainerNodeForControlStructureBody) {
-        val branch = container.parent as? KtIfExpression
-        if (branch != null && branch.condition !== expression) branchResult(expression, branch)
-        else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
-    }
-
-    private fun branchResult(expression: KtExpression, branch: KtExpression) {
-        when (
-            val result =
-                nativeBranchCarriesValue(expression, branch, observation, request.budget.resources.workAllowance)
-        ) {
-            is Refinement.Refined -> emit(branch, ValueRole.ExpressionResult, ValueTransferKind.BRANCH_ALTERNATIVE)
-            is Refinement.Rejected -> retained.unresolvedAt(result.failure, branch)
-        }
-    }
-
-    private fun tryBranchResult(expression: KtExpression, position: TryBranchResultPosition.Result) {
-        when (
-            val evidence =
-                NativeTryBranchResult.admit(expression, position, observation, request.budget.resources.workAllowance)
-        ) {
-            is Refinement.Refined -> {
-                val before = edges.size
-                emit(
-                    position.enclosing,
-                    ValueRole.ExpressionResult,
-                    ValueTransferKind.BRANCH_ALTERNATIVE,
-                    evidence.value,
-                )
-                if (edges.size > before) observation.count(IntellijReadCounter.VALUE_FLOW_BRANCH_RESULTS_ADMITTED)
-            }
-            is Refinement.Rejected -> retained.unresolvedAt(evidence.failure, expression)
-        }
-    }
-
-    private fun argument(expression: KtExpression, argument: KtValueArgument) {
-        when (
-            val role =
-                nativeValueArgument(
-                    expression = expression,
-                    argument = argument,
-                    scope = scope,
-                    projection = projection,
-                    executionOwner = request.source.executionOwner,
-                )
-        ) {
-            is Refinement.Refined -> emit(expression, role.value, ValueTransferKind.ARGUMENT)
-            is Refinement.Rejected -> retained.unresolvedAt(role.failure, argument)
-        }
-    }
-
-    private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) =
-        NativeValueQualifiedReceiver(
-                source = request.source,
+    private fun readExpression(expression: KtExpression) =
+        NativeValueExpressionFlow(
+                request = request,
+                owner = owner,
                 scope = scope,
                 projection = projection,
+                observation = observation,
                 retained = retained,
+                permit = ::permitted,
             )
-            .read(expression, qualified)
-
-    private fun emit(
-        element: PsiElement,
-        role: ValueRole,
-        kind: ValueTransferKind,
-        evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
-    ) = retained.emit(element = element, role = role, kind = kind, evidence = evidence)
+            .readExpression(expression)
 
     private fun unresolved(cause: ValueFlowUnsupportedCause) = retained.unresolved(cause)
 }

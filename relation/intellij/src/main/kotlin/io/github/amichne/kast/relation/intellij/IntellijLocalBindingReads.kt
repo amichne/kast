@@ -27,6 +27,7 @@ import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
+import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -48,6 +49,7 @@ internal class IntellijLocalBindingReads(
         when (element) {
             is KtNamedDeclaration ->
                 readReferences(
+                    binding = element,
                     enumerate = { visit ->
                         observation.forEachReference(element, LocalSearchScope(owner), process = visit)
                     },
@@ -57,6 +59,7 @@ internal class IntellijLocalBindingReads(
         }
 
     private fun readReferences(
+        binding: KtNamedDeclaration,
         enumerate: ((PsiReference) -> Boolean) -> Unit,
         confirm: (KtReference) -> LocalBindingReferenceConfirmation,
     ): ValueFlowRead =
@@ -84,7 +87,8 @@ internal class IntellijLocalBindingReads(
                             LocalBindingReferenceConfirmation.UNRESOLVED ->
                                 LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
                             LocalBindingReferenceConfirmation.OTHER_BINDING -> LocalReferenceResolution.OtherBinding
-                            LocalBindingReferenceConfirmation.EXACT_BINDING -> localReadTarget(native.element)
+                            LocalBindingReferenceConfirmation.EXACT_BINDING ->
+                                admittedReadTarget(native.element, binding)
                         }
                     }
                 },
@@ -108,6 +112,30 @@ internal class IntellijLocalBindingReads(
                 step?.transfers?.forEach { observation.count(IntellijReadCounter.VALUE_FLOW_TRANSFERS) }
                 step?.obligations?.forEach { observation.count(IntellijReadCounter.VALUE_FLOW_OBLIGATIONS) }
             }
+
+    private fun admittedReadTarget(element: PsiElement, binding: KtNamedDeclaration): LocalReferenceResolution {
+        val expression =
+            element as? KtExpression
+                ?: return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        return when (
+            nativeValueBranchAdmission(
+                source = request.source,
+                expression = expression,
+                binding = binding,
+                scope = scope,
+                projection = projection,
+                workAllowance = request.budget.resources.workAllowance,
+            )
+        ) {
+            NativeValueBranchAdmission.ADMITTED,
+            NativeValueBranchAdmission.NOT_APPLICABLE -> localReadTarget(element)
+            NativeValueBranchAdmission.EXCLUDED -> LocalReferenceResolution.ExcludedBranch
+            NativeValueBranchAdmission.UNPROVEN ->
+                LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
+                LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+        }
+    }
 
     private fun localReadTarget(element: PsiElement): LocalReferenceResolution {
         val execution =
@@ -231,7 +259,7 @@ internal fun PsiElement.nativeLocalBindingMutability():
                 val declaration =
                     parent as? KtDestructuringDeclaration
                         ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                if (name == "_" || !declaration.isNativeLocalDestructuring())
+                if (name == "_" || declaration.nativeDestructuringContext() == NativeDestructuringContext.Unsupported)
                     return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
                 declaration.isVar
             }

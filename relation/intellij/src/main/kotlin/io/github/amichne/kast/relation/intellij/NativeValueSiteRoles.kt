@@ -67,7 +67,7 @@ private fun componentResultRole(
     executionOwner: ValueExecutionOwner,
     permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (!entry.isNativeLocalComponent()) return roleRejected()
+    if (!entry.isNativeComponent()) return roleRejected()
     val declaration = entry.parent as? KtDestructuringDeclaration ?: return roleRejected()
     val targets =
         when (
@@ -202,7 +202,7 @@ private fun receiverRole(
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     executionOwner: ValueExecutionOwner,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (element is KtDestructuringDeclarationEntry && element.isNativeSingleLocalComponent())
+    if (element is KtDestructuringDeclarationEntry && element.isNativeSingleComponent())
         return when (val target = nativeComponentTarget(element, prepared.projection)) {
             is Refinement.Rejected -> target
             is Refinement.Refined ->
