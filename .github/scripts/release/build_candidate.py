@@ -72,6 +72,7 @@ class ObservationEvidence:
 
 
 class Failure(str, Enum):
+    SOURCE_NOT_QUALIFIED = "SOURCE_NOT_QUALIFIED"
     INVALID_IDENTITY = "INVALID_IDENTITY"
     INVALID_RECORD = "INVALID_RECORD"
     INCOMPLETE_OBSERVATION = "INCOMPLETE_OBSERVATION"
@@ -419,6 +420,10 @@ def promote(repository: str, revision: str, main_run_id: int, bundle: Path, reco
         if record.exists() or record.is_symlink():
             raise Rejected(Failure.DESTINATION_NOT_EMPTY)
         return outcome
+    if isinstance(outcome, validation.SourceValidated):
+        raise Rejected(Failure.SOURCE_NOT_QUALIFIED)
+    if not isinstance(outcome, validation.ProductValidated):
+        raise Rejected(Failure.INVALID_RECORD)
     candidate = download(repository, run, revision, bundle)
     producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}", ObservationStage.WORKFLOW_RUN)
     admitted = refine(candidate, producer, repository, expected_tree)

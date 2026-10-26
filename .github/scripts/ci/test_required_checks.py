@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from copy import deepcopy
 from unittest.mock import patch
 
-from required_checks import Verdict, inspect, main
+from required_checks import CompletedSourceChecks, Gate, Verdict, admit_checks, inspect, main
 
 
 def docs_only_results():
@@ -17,6 +17,7 @@ def docs_only_results():
         "scope": {
             "result": "success",
             "outputs": {
+                "source": "skip",
                 "product": "skip",
                 "portable": "skip",
                 "documentation": "run",
@@ -24,6 +25,7 @@ def docs_only_results():
                 "scope": "DOCUMENTATION",
             },
         },
+        "source": {"result": "skipped"},
         "kotlin": {"result": "skipped"},
         "portable": {"result": "skipped"},
         "documentation": {"result": "success"},
@@ -31,6 +33,31 @@ def docs_only_results():
 
 
 class RequiredChecksTest(unittest.TestCase):
+    def test_source_feedback_cannot_complete_candidate_qualification(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")
+        needs["scope"]["outputs"]["scope"] = "FULL"
+        needs["source"]["result"] = "success"
+        needs["portable"]["result"] = "success"
+        del needs["kotlin"]
+        self.assertIsInstance(admit_checks(needs, Gate.SOURCE_FEEDBACK), CompletedSourceChecks)
+        self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
+        for job in ("source", "documentation", "portable"):
+            failed = deepcopy(needs)
+            failed[job]["result"] = "skipped"
+            self.assertEqual(Verdict.CHECK_FAILED, inspect(failed, Gate.SOURCE_FEEDBACK))
+
+    def test_source_feedback_requires_source_success_without_a_candidate(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", portable="run", documentation="skip", scope="SOURCE")
+        needs["portable"]["result"] = "success"
+        needs["documentation"]["result"] = "skipped"
+        needs["source"] = {"result": "success"}
+        self.assertEqual(Verdict.COMPLETE, inspect(needs))
+        for result in ("skipped", "failure", "cancelled"):
+            needs["source"]["result"] = result
+            self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
+
     def test_only_explicitly_excluded_jobs_may_skip(self):
         self.assertEqual(Verdict.COMPLETE, inspect(docs_only_results()))
         for result in ("skipped", "failure", "cancelled", ""):
@@ -41,11 +68,11 @@ class RequiredChecksTest(unittest.TestCase):
 
     def test_full_plan_requires_all_jobs_to_succeed(self):
         needs = docs_only_results()
-        needs["scope"]["outputs"] = dict.fromkeys(("product", "portable", "documentation", "gate_graph"), "run")
+        needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")
         needs["scope"]["outputs"]["scope"] = "FULL"
         needs["kotlin"]["result"] = "skipped"
         self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
-        needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
+        needs["source"]["result"] = needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
         self.assertEqual(Verdict.COMPLETE, inspect(needs))
 
     def test_selector_failure_is_not_hidden_by_skipped_dependents(self):
@@ -83,8 +110,8 @@ class RequiredChecksTest(unittest.TestCase):
 
     def test_product_plan_retains_the_original_product_proofs(self):
         needs = docs_only_results()
-        needs["scope"]["outputs"].update(product="run", portable="run", documentation="skip", scope="PRODUCT")
-        needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
+        needs["scope"]["outputs"].update(source="run", product="run", portable="run", documentation="skip", scope="PRODUCT")
+        needs["source"]["result"] = needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
         needs["documentation"]["result"] = "skipped"
         self.assertEqual(Verdict.COMPLETE, inspect(needs))
 
@@ -113,6 +140,7 @@ class RequiredChecksTest(unittest.TestCase):
             with (
                 self.subTest(payload=payload),
                 patch.dict(os.environ, {"CI_NEEDS": payload}),
+                patch("sys.argv", ["required_checks.py"]),
                 redirect_stdout(io.StringIO()),
                 self.assertRaises(SystemExit) as failure,
             ):

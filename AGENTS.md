@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-22T03:38:55Z"
-source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
+timestamp: "2026-10-26T12:15:41Z"
+source_revision: ee55c3d411f8217f1dbeaaa4242168b5406b90a2
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -66,6 +66,8 @@ This guide owns repository rules and routes source investigation.
 - Build and tests: `./gradlew build`.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
 - Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. The full pre-push gate remains necessary.
+- Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
+- Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - Public native command: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
