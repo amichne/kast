@@ -2,6 +2,7 @@
 """Exact diffs select checks monotonically; uncertainty cannot omit verification."""
 
 import io
+import json
 import re
 import subprocess
 import sys
@@ -13,6 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import unquote
 
+import verification_plan
 from validation_scope import (
     ALL_CHECKS,
     DOCUMENTATION_PATHS,
@@ -82,7 +84,6 @@ class ValidationScopeTest(unittest.TestCase):
 
     def test_openwiki_inputs_retain_knowledge_base_validation(self):
         for path in (
-            "docs/public/docs.json",
             "docs/public/reference/change.mdx",
             "docs/public/reference/responses.mdx",
             "docs/public/reference/symbols.mdx",
@@ -90,6 +91,11 @@ class ValidationScopeTest(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 self.assertEqual(ALL_CHECKS, classify_paths((path,)))
+
+    def test_documentation_consumers_cover_navigation_and_generated_examples(self):
+        for path in ("docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
+                     "docs/public/snippets/value-journey.jsx", "docs/tooling/value-journey/src/trace.ts"):
+            self.assertEqual(DOCS, classify_paths((path,)))
 
     def test_product_linked_docs_keep_product_and_portable_checks(self):
         for path in (
@@ -246,6 +252,34 @@ class ExactDiffTest(unittest.TestCase):
         self.git("add", "-A")
         self.git("commit", "-qm", message)
         return self.git("rev-parse", "HEAD")
+
+    def test_collected_roots_bind_real_diff_plans_and_reject_stale_graphs(self):
+        repository = Path(__file__).resolve().parents[3]
+        graph = json.loads((repository / verification_plan.GRAPH).read_text())
+        for path in [item["path"] for item in graph["inputs"]] + [verification_plan.GRAPH, verification_plan.MANIFEST]:
+            self.write(path, (repository / path).read_text())
+        fixture = "workspace/contract/src/testFixtures/kotlin/WorkspaceFixture.kt"
+        adapter = "relation/intellij/src/nativeTest/kotlin/ReceiverTest.kt"
+        self.write(fixture, "class WorkspaceFixture\n")
+        self.write(adapter, "class ReceiverTest\n")
+        base = self.commit("collected roots")
+        self.git("rm", fixture)
+        self.write(adapter, "class RevisedReceiverTest\n")
+        head = self.commit("fixture deletion and adapter case")
+        result = select("pull_request", base, head, self.root, affected=True)
+        self.assertEqual(PRODUCT, result.checks)
+        self.assertIsInstance(result.plan, verification_plan.Plan)
+        self.assertEqual(tuple(sorted((fixture, adapter))), result.plan.changedPaths)
+        self.assertIn(":app-server", result.plan.consumers)
+        self.assertIn(":relation:intellij", result.plan.owners)
+        self.assertEqual(self.git("rev-parse", "HEAD^{tree}"), result.plan.sourceTree)
+        self.assertEqual(base, result.plan.comparisonBasis)
+        self.write("build.gradle.kts", "// changed graph declaration\n")
+        stale = self.commit("stale graph")
+        result = select("pull_request", head, stale, self.root, affected=True)
+        self.assertEqual(ALL_CHECKS, result.checks)
+        self.assertEqual(Reason.PLAN_REJECTED, result.reason)
+        self.assertIsNone(result.plan)
 
     def test_docs_only_push_uses_the_whole_range(self):
         self.write(PAGE, "# Revised API\n")

@@ -1,0 +1,1484 @@
+{
+    "inputs": [
+        {
+            "path": "app-server/build.gradle.kts",
+            "sha256": "728f2e60eafc16b0786dc0b04bd0d2f4740beeb7ffda1cf30c50535ef8646892"
+        },
+        {
+            "path": "build-logic/build.gradle.kts",
+            "sha256": "5ff1f57c2e6616c8190492de1056bb4d61bf10dce9f69bda68e7597ea47ad4af"
+        },
+        {
+            "path": "build-logic/settings.gradle.kts",
+            "sha256": "d27b80ad3c163fc0986650b38fc1af3b3b1fb617e6e258023f85eea57a21033a"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt",
+            "sha256": "04e5d8a57649a26f0f2714cab997232581c21d1e908be70ebbfd290376fcb257"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
+            "sha256": "717897a3aa97869a486c4cffbeb6e00e595b520c54a1a74a6033e164677bf7b7"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/KotlinFileLengthBaseline.kt",
+            "sha256": "da6a1c3dcb602330b66b90c130ffa2cccd6c2d05bb45e3c80e1e7d6193a96cfd"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/KotlinFileLengthTask.kt",
+            "sha256": "ef647b06c8051d3ace3e5053a83cab7f16b7b8f10bfe32a3c185cbe19fbda5f4"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt",
+            "sha256": "21f1c9cbc08a60d09efc1270311d9f5cc28cd1e1539d544ee5dcf65d53000951"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractBaseline.kt",
+            "sha256": "687632340a9053609dac4e13c9ca0c59319920925b537fe904f4368a30387f09"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractGuard.kt",
+            "sha256": "6711bde08d63310c202721a2b3ba5b76bdef02a5f8e086d4fd2e8b5fd5834b5b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractModel.kt",
+            "sha256": "23777e0997191bcf26a14363a017670c2feb1fe4c16d39535038cf67949a86e9"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractsMain.kt",
+            "sha256": "4053023334c480df475bf1c7f1be4ab22634afa0a05f3aecf353c8d0a4498e0c"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt",
+            "sha256": "c35a1af79639466be27cf52126927ac8551e057e023977bba541662c2c62b109"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsModel.kt",
+            "sha256": "56a267f80c152f9a900be212442f9a40381b32581e06953a536daa62b55b6583"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt",
+            "sha256": "fa8ea4073c5bd62ca7fb172c45c18a6c94c5cce9444b43b9579ca06cfaa0e4a9"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt",
+            "sha256": "312a2c8df4f956c244a866d38d1dca894807c109f62948aaee4bc00ce1ad6b47"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinJsonContractScanner.kt",
+            "sha256": "ebebfe7f1febf3435fc15ee6ac25430a748874a941767c4027e6c4fb58ff7e34"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/conventions/kotlin-serialization.gradle.kts",
+            "sha256": "4ee0277cd995b2bf18f53294844b7f2004e91dac4b749c81678121df04e5b242"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.architecture.gradle.kts",
+            "sha256": "a947f988ad61a212e06e792bba24e843adbdf926813d5295e36cc5198f386025"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts",
+            "sha256": "672c977abeefada462f3890dd8254edbff73666884923f24ec2ffc1efed6e16c"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts",
+            "sha256": "d398fd3cbdd8a0fd91358b0015e569f92e42267f4ec72ca615fa016b830241aa"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
+            "sha256": "bb2dc381fce95b9896ed7410f9ad183fbc1b72338f8ad90e82af2c663ab9a16b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.runtime-app.gradle.kts",
+            "sha256": "9cf78f5103694034f926e29ad493d3fe67f8745f4ba525c594457f29884796ac"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.runtime-serialization-app.gradle.kts",
+            "sha256": "8e434ac3943ca18c63839226091f4e400e93cabfd27916c9a839c62d7681bc51"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.testing-fixtures.gradle.kts",
+            "sha256": "bb4cab695c4b53171ca958c178b1681c7cb28644ded05ff44837a172f35a1089"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/adapter/filesystem-write.gradle.kts",
+            "sha256": "24fa57a5a4721e5413800577d18af60e93141fa6b1accabc96c420c4cf2bf7aa"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/adapter/intellij-read.gradle.kts",
+            "sha256": "4c54706a82ac4de365df024c001e97db6e5617629d9b11ffd362147e94e70b59"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/adapter/intellij-write.gradle.kts",
+            "sha256": "9b6e20666bca8ac627e7d3aabecec36acf98506dae73c8c93bf877bfdb48fe2d"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/adapter/sqlite.gradle.kts",
+            "sha256": "03b84f30ae2677ba6d20eb7808f8be0dbba6f9a473600d9d480b61cdf6d4290a"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/adapter/workspace.gradle.kts",
+            "sha256": "2ad556975066fdf0d5bb4ea4d477cd6bf8d846d9938d65f1b55b6d9fe657a59c"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/app-server.gradle.kts",
+            "sha256": "3344ac525c7cabf4df160eeb2e6808fcc816566dc298f558475f6c1895a41766"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/cli.gradle.kts",
+            "sha256": "25f6434c2c094bde06364e1d02e3435ad2998d06e58029656bdddb9df72ccf6b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/composition.gradle.kts",
+            "sha256": "02aed4c48cbf76a45f6233f128ca39dfc8605d154486c66484a6db07408904e6"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/contract.gradle.kts",
+            "sha256": "dec3aee5cf95172c181f5508d88547a0f12641a5100f6a8a84ea5decaa02b105"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/indexer-host.gradle.kts",
+            "sha256": "c139b7e0047aa53c8410b7a45567041faf6073a95d3bec8469fc7e84c58dd249"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/kernel.gradle.kts",
+            "sha256": "cd1c4308dd422de10db141d4fcb0cc6eced31f21ae31ecdfc1d5618e2adb8775"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/service.gradle.kts",
+            "sha256": "3baa418b1aade2e5bf641276a5ce857bc5b71881867bdb138f425b4b6be931f6"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/spi.gradle.kts",
+            "sha256": "c35ddeb608e254a25bd4bce55116a8fe1dd76da5cd3b8ba7d8389f681dbf3656"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/core/transport.gradle.kts",
+            "sha256": "bf73ffad2cf4c29e5142ca5f722d4308b96050bd01b513ba0a36b60ba08c4432"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/ide-host.gradle.kts",
+            "sha256": "664f8927ee5f0fdb59b75b75b738c1945fcbfc1a5ed1844356ed1f88d8d53f89"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast/role/ide-read-only.gradle.kts",
+            "sha256": "36b7943aec91316d0fe0ca2c1d826c229d756587b37d1e1e49db4663a93b9bca"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureAdmission.kt",
+            "sha256": "0b129ee6ebdc1a3a71869834ba60ad3f681a935e23d73e11503d72f18ccd226b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
+            "sha256": "6574d463eaaff0bd5088c874ead0f1548853595326a75a097f598e31b6eec51e"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureVerification.kt",
+            "sha256": "13dbe8e8bdccfe440bf2c31e3e2aca42c15aa18df029d229ed428c0fbfbb3aa9"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/JvmEffectScanner.kt",
+            "sha256": "30c3501043b3391c018553ad5cc61b77e477b6ebcc8ae883f1a2d7a9ff2e8b7f"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/ModuleImpact.kt",
+            "sha256": "48dc3baa8cfa4291069eaa43647099d87ef27e3dfab6a58e0cc284a172ed740d"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt",
+            "sha256": "bdcb263f90300d0568505d69bc8f8a0028f3fbc80d60bc463ed8b681925fe5f9"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/gradle/GenerateVerificationGraphTask.kt",
+            "sha256": "cfb49d836c2442321e7c00094176d0bd15690ae25fbb44f87dc665b127188301"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/gradle/HostedReadClassInputs.kt",
+            "sha256": "1575cfaf9906f6366bfbde5de4464627a198bfd2f90d7cb19737d65cddadacdf"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactDocument.kt",
+            "sha256": "0b56086fc6df51c9690ecc291dd855e205638ded58524f0117f08723fbfe731f"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt",
+            "sha256": "c4dfbd07c94aeae7895cb157a4fc412552dfdbcb81bbfa9c2eba95fa1ac69ff6"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt",
+            "sha256": "94c29198122d8917e230bbafab02e8ea12407a43a0965bd8eca2501616063865"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/policy/HostedReadForbiddenAuthority.kt",
+            "sha256": "04ca3034bb52f343fb5d20a6fbb04818b49a44c72085fe17499148086d09702c"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt",
+            "sha256": "f67d8e76b4a9056f200ebdc82899a9eb5cf4418dbaf67c39581e34713eb56cbb"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",
+            "sha256": "22179c8f4890c23286b79a34f359100dc27f2722d92156f86cb3260ff321d8bc"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+            "sha256": "2d3ce43975929b037731df167df69680e66fcfa4d6dca40d48787254eca55fc6"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
+            "sha256": "a6a3f76f2022452c2862e18ce852e0463599880a2987cfec70c8796fe219ba29"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/projection/ArchitectureProjection.kt",
+            "sha256": "0b8caf4969b425e335b6a08023aea6d455db2d7ed1b018e2f521f462bfd321a1"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyFailure.kt",
+            "sha256": "a37ea16867e7bf4cb3d6ebec9af8f73b9c0e9622f276bedeab0bc48307ea2439"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt",
+            "sha256": "68d4afe226735bb195b751d3b4729793cb4c5690cae32aef78230d107987aca6"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
+            "sha256": "b63cc9b9145f7c1d9cd8d37d34439c2e77d6c49da2bad875e1cf90358f690aff"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt",
+            "sha256": "df0032418bc256a75f3db364fb6566784ffba0df3ca45c127dbedf2bfd148896"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeModel.kt",
+            "sha256": "36c1308a5e9c00fc87abd7122820df20691ab625dfbda8aa9d16216739f9e16b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeProjection.kt",
+            "sha256": "0efc1c24555df124d926fe1eb4f55e50208b6e6c94e47d5edc746e8958272f42"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeSourceBinding.kt",
+            "sha256": "ae6dc3d7c3e8b51405f2d90bc65030b858bf34906d20eb462fc13f5fdfd74023"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt",
+            "sha256": "35ce18375456005fed6ccf7269f6811d3cc20f3a8b7a29765e578b7a4b240480"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/DefaultTestTagSelection.kt",
+            "sha256": "2d2408af2bd28617c6370f69d903fb061376c38bb417f1204d927f8ca17c86c3"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/ExtractIdeaDistributionTask.kt",
+            "sha256": "f485755618555c9a73cbdc765011ebfe37d8e76a7ba5366e6284571b148f9f28"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/SyncRuntimeLibsTask.kt",
+            "sha256": "baec3e4f0a06158b3f9b3934006171229f2447190f655e0911a1ae86c54a0e7d"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/VerificationReportTask.kt",
+            "sha256": "ddc2811efc94e7280dc24c535d1ec3be6c5e24851da3b299a017c21acf42bd34"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/VerifyClasspathLayoutTask.kt",
+            "sha256": "26dfc6c7346483fc39b6e0cf7742670bd8c7b175617aa0942150909fa42ef3b2"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/WriteWrapperScriptTask.kt",
+            "sha256": "6aff5ebd441b78dd28eabecf9a3b50b5e8fbe236dee5d9efd7410faa3a26fe9a"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
+            "sha256": "3358969b7fed3f71e64ad11f1b7003eb8baafd2f4f6ed31057cf1af637f23e65"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
+            "sha256": "492e2761ce831abc898b2fd87657c209109adff1b489ebec2fb27d004e64a9d4"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt",
+            "sha256": "1e632524f9062db4e621c4ec81f50766e746f43fee1fb86945d58f7e5c9146c7"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/WriteJavaProcessOutputTask.kt",
+            "sha256": "43f827bfd914d1c0392d688f9c6cb392ff5b41b24797399e219e82012b1f45ef"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/WriteProcessOutputTask.kt",
+            "sha256": "7d9b8aac0ee923c0e51be5d625cd445b00ae2dba2825d8f634a1a11f2eb90b1b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/WriteProtocolSchemaVersionsTask.kt",
+            "sha256": "6ef8754b625c4993864cc81d60486ff0a28bc4ce2e395fdbc9ebea0f1b853c3b"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/control/WriteSourceIndexSchemaVersionTask.kt",
+            "sha256": "641def515127f2d4d9b1ea446a195ec86253673517bf2449717f6c733ab4700a"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/idea/SelectedIdeaProductInfo.kt",
+            "sha256": "69340353d73bcfdcef2d6ec843bdc132191c424934dd9a9ff0a59a6928d6c3d5"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/nativefixtures/CompileDependencyFixture.kt",
+            "sha256": "965f2948ca8ce6105bc6836830add1578a9ad22625f4c17f9f81c68a414eefe9"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/nativefixtures/DependencyFixtureArguments.kt",
+            "sha256": "84d0666f9ead0acb203ac7f9b12d4b83e608af08e644466a71e362015702a8c5"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/nativefixtures/NativeFixtureJvmArguments.kt",
+            "sha256": "422457beafbe5cecee065cf1e2c9379a89adc7f8db7bb35b552a9d38a644169d"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/nativefixtures/SharedNativeFixtureIdea.kt",
+            "sha256": "29f05b15e683b7d8ce7aac04c3f93cfbefbc2f7c7fa6ed3c18682f78debf5259"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+            "sha256": "c832022b94b254478f4489d93b9c9622d191a64aafc3c43d4bfcf83d28fe10c4"
+        },
+        {
+            "path": "build.gradle.kts",
+            "sha256": "e42d3e7603e87c6bb93208e5142808bb3c0929ef073c567527e038cdea314393"
+        },
+        {
+            "path": "change/apply/build.gradle.kts",
+            "sha256": "99a1d83994b289c44db7abbaf396f9ed5c630f50c3d309aee36f740e49e5781e"
+        },
+        {
+            "path": "change/contract/build.gradle.kts",
+            "sha256": "b6caaf6992737b4da9556ad472006d8636c9bb237c070d2962069331d0437a7b"
+        },
+        {
+            "path": "change/intellij/build.gradle.kts",
+            "sha256": "32405ab69962d92dbe9a9c5e4ee053a8fbc8cf4bf326fd56ae63be10404f2ea9"
+        },
+        {
+            "path": "change/plan/build.gradle.kts",
+            "sha256": "f411c442f3a6bc5df1a5733fb11a78b77c5d44736d036405a6f9b6b625b6e724"
+        },
+        {
+            "path": "change/protocol/build.gradle.kts",
+            "sha256": "5452f83c2bc253d6883d2c4c1d1c9afd05b37310d39b5c66a96b309393bec35f"
+        },
+        {
+            "path": "change/recovery/build.gradle.kts",
+            "sha256": "efde14d5a2f3c0200db90a8e445c90e592d75843272bc1f5f6a0fc63fa3b4b03"
+        },
+        {
+            "path": "change/verify/build.gradle.kts",
+            "sha256": "c8eec355105886a58300ca71df4f041ebd3a3c115440e7ce46c75744d52fc2e0"
+        },
+        {
+            "path": "cli/build.gradle.kts",
+            "sha256": "ee38548cc514ac551052343c504cd93e75163d1c0952e1e88c90000c714f28c5"
+        },
+        {
+            "path": "diagnostic/contract/build.gradle.kts",
+            "sha256": "46d8496d20e9979e4a1a4900863512d043cc0bf02f4c95f1d4e82e4818f1d690"
+        },
+        {
+            "path": "diagnostic/intellij/build.gradle.kts",
+            "sha256": "0633f76953579ef18b862965e02113d1831a590985a23268b25c6a2afd567e09"
+        },
+        {
+            "path": "diagnostic/service/build.gradle.kts",
+            "sha256": "632a41ab1dd1d689756e51e2bf5c3f2912cc33ec955bc174df5a912205379159"
+        },
+        {
+            "path": "distribution/cli/build.gradle.kts",
+            "sha256": "6e060da332c5b4f1bdaaa7b529b99b9b261c542ee524c1eaebf44bd3f7830d07"
+        },
+        {
+            "path": "distribution/contract/build.gradle.kts",
+            "sha256": "481ace82f70a04fda6dbc7ab992405e09c2608fab1c339bbf13354deccca94f8"
+        },
+        {
+            "path": "distribution/managed/build.gradle.kts",
+            "sha256": "cc24d6ec406df940cd854f6d0480f26799f197e1c6d8c159fb1288d0ac50f100"
+        },
+        {
+            "path": "evidence/contract/build.gradle.kts",
+            "sha256": "b047021e11960e805528bfcea56b721cb6e7291613400ffc897d527c738b39fe"
+        },
+        {
+            "path": "evidence/sqlite/build.gradle.kts",
+            "sha256": "fe51350d425819ac1e28b7367730fc73579b7440b3702d145f58e58e2eefad3f"
+        },
+        {
+            "path": "evidence/topology-sqlite/build.gradle.kts",
+            "sha256": "5fc3a305fbcfbb99ed8c45e9c9062410c9414fe7207dfeacd921f45a5931de92"
+        },
+        {
+            "path": "gradle.properties",
+            "sha256": "0e522ceeb9c061c79572534ff797f71144dd14c46bf0545ee02a90e9b0c4e322"
+        },
+        {
+            "path": "gradle/libs.versions.toml",
+            "sha256": "0cbeca3a30b60041a660a9b06c327095b8e6ea820a1387439b105f531adabc80"
+        },
+        {
+            "path": "kernel/build.gradle.kts",
+            "sha256": "cf96e9981eb1a13628136728bf65c877a637a1259f1d018cc0c6a8ef4adf226a"
+        },
+        {
+            "path": "mise.toml",
+            "sha256": "5ee3f428caabc44a4b6a8c1cfd24b0df25fd4a9c6b8f583cd3aaf07b1e5037ff"
+        },
+        {
+            "path": "protocol/contract/build.gradle.kts",
+            "sha256": "39e852f47392255d9f4e4cb121530eb39194f2a5f2dc07399d0b36eb3ed58510"
+        },
+        {
+            "path": "protocol/registry/build.gradle.kts",
+            "sha256": "20403e2756b87891145eb98f9ee860aa092d3ad9d37887326c0dfb2cc901ead2"
+        },
+        {
+            "path": "protocol/wire/build.gradle.kts",
+            "sha256": "bb80d0740158afb8fe275ddf9f0f48c15af917b963f17263aa79d9baeea5f912"
+        },
+        {
+            "path": "query/contract/build.gradle.kts",
+            "sha256": "bd25b8ae519812e80983f8470ba4e334e2aa0a0b0c8f9b02bc05c4777736dae4"
+        },
+        {
+            "path": "query/protocol/build.gradle.kts",
+            "sha256": "956c6fdd66e47bb20c23448a2b9cc033c29d61dc507b1cbeca76f1d300cdb0d0"
+        },
+        {
+            "path": "query/service/build.gradle.kts",
+            "sha256": "3620fe6959a2e352fb92271c966df277929bbd0a1f6824ee42dced614db79a6c"
+        },
+        {
+            "path": "relation/contract/build.gradle.kts",
+            "sha256": "84035c2022b363c10a2e12290a7c5d988cfdd219e37f21e00ffe58bebaa8bf4f"
+        },
+        {
+            "path": "relation/intellij/build.gradle.kts",
+            "sha256": "7d6e82add999a38b5a8cb58e999976ef93878d9e94801757acb1fc7f164bf186"
+        },
+        {
+            "path": "relation/service/build.gradle.kts",
+            "sha256": "d00a7bba1589521b3228d5ab177483c41a876dcea1aa9df6ccd22153893befd4"
+        },
+        {
+            "path": "runtime/hosted/build.gradle.kts",
+            "sha256": "9ad82f2a2d1531c7ebb229808d7e9f17d32cafe34b5008ba6bea8ef6c37340c0"
+        },
+        {
+            "path": "settings.gradle.kts",
+            "sha256": "66bb4ba1e1c7730a0106924aa55cf08732f4e6a498ca7f490239cddae7125474"
+        },
+        {
+            "path": "source/contract/build.gradle.kts",
+            "sha256": "d9b11a1c1fec4c1fa783631a7f1b7680bed82098b93d82c26e54b6c9af4b566d"
+        },
+        {
+            "path": "source/intellij/build.gradle.kts",
+            "sha256": "41d68f0df8414ca5d6d1d0e62a48f3050289b227a401c4561a60bc7ee2dc0268"
+        },
+        {
+            "path": "source/service/build.gradle.kts",
+            "sha256": "cc396283cd58f5ea5fca177fbecbafc2e237180b539df810f23e6eb00b3e6da0"
+        },
+        {
+            "path": "symbol/contract/build.gradle.kts",
+            "sha256": "46a46f75cb20b7f9caabf06bf6e2b0b45637bd4ceebb6c510678a5ed5421e564"
+        },
+        {
+            "path": "symbol/intellij/build.gradle.kts",
+            "sha256": "f7e4b852c13a7542986b7ee843e497733e6474ba0d651f84c53bbef5fe5152c4"
+        },
+        {
+            "path": "symbol/service/build.gradle.kts",
+            "sha256": "f920d6ccb5e220ef7ec1a165fddabf8b4101091f12772f437b1ab9280dfec15e"
+        },
+        {
+            "path": "topology/build/build.gradle.kts",
+            "sha256": "5cc3894dda2bde0bf3280383d9c4985dc9cdf5a6d3cd5230e5325d88d65d4097"
+        },
+        {
+            "path": "topology/contract/build.gradle.kts",
+            "sha256": "f5878b6f36a737ffb36b30b856cfc4569120e36884d461c7ea3ded99528a9511"
+        },
+        {
+            "path": "topology/intellij/build.gradle.kts",
+            "sha256": "ce08563dd978e59b927828438308acfc01ce08b26b781d398c60662b75c51369"
+        },
+        {
+            "path": "topology/service/build.gradle.kts",
+            "sha256": "cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+        },
+        {
+            "path": "traversal/contract/build.gradle.kts",
+            "sha256": "dded07245c9aad383d958bc41bee45c3008a17461e4a71e961c06e5e48041b14"
+        },
+        {
+            "path": "traversal/service/build.gradle.kts",
+            "sha256": "d0a4f63e7b97265905965cf51278961d8f929f906f07433e6201fc59921f2959"
+        },
+        {
+            "path": "workspace/contract/build.gradle.kts",
+            "sha256": "b8d4a543497c3baefbc46d04bf2565019a9cdf72f67c7ad8b79ed22a8b0facdf"
+        },
+        {
+            "path": "workspace/intellij-read/build.gradle.kts",
+            "sha256": "5332e7a62d4bd0955c4a2bcdddccf4ded67e70c39c5594167a340b2facb24d1e"
+        }
+    ],
+    "consumers": [
+        {
+            "owner": ":app-server",
+            "affected": [
+                ":app-server",
+                ":cli"
+            ],
+            "sourceRoots": [
+                "app-server/src/main/java",
+                "app-server/src/main/kotlin",
+                "app-server/src/main/resources",
+                "app-server/src/test/java",
+                "app-server/src/test/kotlin",
+                "app-server/src/test/resources",
+                "app-server/src/testFixtures/java",
+                "app-server/src/testFixtures/kotlin",
+                "app-server/src/testFixtures/resources"
+            ]
+        },
+        {
+            "owner": ":change:apply",
+            "affected": [
+                ":change:apply",
+                ":change:intellij",
+                ":change:plan",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "change/apply/src/main/java",
+                "change/apply/src/main/kotlin",
+                "change/apply/src/main/resources",
+                "change/apply/src/test/java",
+                "change/apply/src/test/kotlin",
+                "change/apply/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":change:contract",
+            "affected": [
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "change/contract/src/main/java",
+                "change/contract/src/main/kotlin",
+                "change/contract/src/main/resources",
+                "change/contract/src/test/java",
+                "change/contract/src/test/kotlin",
+                "change/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":change:intellij",
+            "affected": [
+                ":change:intellij",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "change/intellij/src/main/java",
+                "change/intellij/src/main/kotlin",
+                "change/intellij/src/main/resources",
+                "change/intellij/src/test/java",
+                "change/intellij/src/test/kotlin",
+                "change/intellij/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":change:plan",
+            "affected": [
+                ":change:apply",
+                ":change:intellij",
+                ":change:plan",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "change/plan/src/main/java",
+                "change/plan/src/main/kotlin",
+                "change/plan/src/main/resources",
+                "change/plan/src/test/java",
+                "change/plan/src/test/kotlin",
+                "change/plan/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":change:protocol",
+            "affected": [
+                ":change:protocol",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "change/protocol/src/main/java",
+                "change/protocol/src/main/kotlin",
+                "change/protocol/src/main/resources",
+                "change/protocol/src/test/java",
+                "change/protocol/src/test/kotlin",
+                "change/protocol/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":change:recovery",
+            "affected": [
+                ":change:apply",
+                ":change:intellij",
+                ":change:plan",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "change/recovery/src/main/java",
+                "change/recovery/src/main/kotlin",
+                "change/recovery/src/main/resources",
+                "change/recovery/src/test/java",
+                "change/recovery/src/test/kotlin",
+                "change/recovery/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":change:verify",
+            "affected": [
+                ":change:apply",
+                ":change:intellij",
+                ":change:plan",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "change/verify/src/main/java",
+                "change/verify/src/main/kotlin",
+                "change/verify/src/main/resources",
+                "change/verify/src/test/java",
+                "change/verify/src/test/kotlin",
+                "change/verify/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":cli",
+            "affected": [
+                ":cli"
+            ],
+            "sourceRoots": [
+                "cli/src/main/java",
+                "cli/src/main/kotlin",
+                "cli/src/main/resources",
+                "cli/src/test/java",
+                "cli/src/test/kotlin",
+                "cli/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":diagnostic:contract",
+            "affected": [
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":diagnostic:contract",
+                ":diagnostic:intellij",
+                ":diagnostic:service",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "diagnostic/contract/src/main/java",
+                "diagnostic/contract/src/main/kotlin",
+                "diagnostic/contract/src/main/resources",
+                "diagnostic/contract/src/test/java",
+                "diagnostic/contract/src/test/kotlin",
+                "diagnostic/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":diagnostic:intellij",
+            "affected": [
+                ":diagnostic:intellij",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "diagnostic/intellij/src/main/java",
+                "diagnostic/intellij/src/main/kotlin",
+                "diagnostic/intellij/src/main/resources",
+                "diagnostic/intellij/src/test/java",
+                "diagnostic/intellij/src/test/kotlin",
+                "diagnostic/intellij/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":diagnostic:service",
+            "affected": [
+                ":diagnostic:service",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "diagnostic/service/src/main/java",
+                "diagnostic/service/src/main/kotlin",
+                "diagnostic/service/src/main/resources",
+                "diagnostic/service/src/test/java",
+                "diagnostic/service/src/test/kotlin",
+                "diagnostic/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":distribution:cli",
+            "affected": [
+                ":distribution:cli"
+            ],
+            "sourceRoots": [
+                "distribution/cli/src/main/java",
+                "distribution/cli/src/main/kotlin",
+                "distribution/cli/src/main/resources",
+                "distribution/cli/src/test/java",
+                "distribution/cli/src/test/kotlin",
+                "distribution/cli/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":distribution:contract",
+            "affected": [
+                ":app-server",
+                ":cli",
+                ":distribution:cli",
+                ":distribution:contract",
+                ":distribution:managed"
+            ],
+            "sourceRoots": [
+                "distribution/contract/src/main/java",
+                "distribution/contract/src/main/kotlin",
+                "distribution/contract/src/main/resources",
+                "distribution/contract/src/test/java",
+                "distribution/contract/src/test/kotlin",
+                "distribution/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":distribution:managed",
+            "affected": [
+                ":app-server",
+                ":cli",
+                ":distribution:cli",
+                ":distribution:managed"
+            ],
+            "sourceRoots": [
+                "distribution/managed/src/main/java",
+                "distribution/managed/src/main/kotlin",
+                "distribution/managed/src/main/resources",
+                "distribution/managed/src/test/java",
+                "distribution/managed/src/test/kotlin",
+                "distribution/managed/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":evidence:contract",
+            "affected": [
+                ":change:apply",
+                ":change:intellij",
+                ":change:plan",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:contract",
+                ":evidence:sqlite",
+                ":evidence:topology-sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":topology:service",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "evidence/contract/src/main/java",
+                "evidence/contract/src/main/kotlin",
+                "evidence/contract/src/main/resources",
+                "evidence/contract/src/test/java",
+                "evidence/contract/src/test/kotlin",
+                "evidence/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":evidence:sqlite",
+            "affected": [
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "evidence/sqlite/src/main/java",
+                "evidence/sqlite/src/main/kotlin",
+                "evidence/sqlite/src/main/resources",
+                "evidence/sqlite/src/test/java",
+                "evidence/sqlite/src/test/kotlin",
+                "evidence/sqlite/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":evidence:topology-sqlite",
+            "affected": [
+                ":evidence:topology-sqlite",
+                ":topology:service"
+            ],
+            "sourceRoots": [
+                "evidence/topology-sqlite/src/main/java",
+                "evidence/topology-sqlite/src/main/kotlin",
+                "evidence/topology-sqlite/src/main/resources",
+                "evidence/topology-sqlite/src/test/java",
+                "evidence/topology-sqlite/src/test/kotlin",
+                "evidence/topology-sqlite/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":kernel",
+            "affected": [
+                ":app-server",
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":diagnostic:contract",
+                ":diagnostic:intellij",
+                ":diagnostic:service",
+                ":distribution:cli",
+                ":distribution:contract",
+                ":distribution:managed",
+                ":evidence:contract",
+                ":evidence:sqlite",
+                ":evidence:topology-sqlite",
+                ":kernel",
+                ":protocol:contract",
+                ":protocol:registry",
+                ":protocol:wire",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":relation:contract",
+                ":relation:intellij",
+                ":relation:service",
+                ":runtime:hosted",
+                ":source:contract",
+                ":source:intellij",
+                ":source:service",
+                ":symbol:contract",
+                ":symbol:intellij",
+                ":symbol:service",
+                ":topology:build",
+                ":topology:contract",
+                ":topology:intellij",
+                ":topology:service",
+                ":traversal:contract",
+                ":traversal:service",
+                ":workspace:contract",
+                ":workspace:intellij-read"
+            ],
+            "sourceRoots": [
+                "kernel/src/main/java",
+                "kernel/src/main/kotlin",
+                "kernel/src/main/resources",
+                "kernel/src/test/java",
+                "kernel/src/test/kotlin",
+                "kernel/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":protocol:contract",
+            "affected": [
+                ":app-server",
+                ":change:intellij",
+                ":change:protocol",
+                ":cli",
+                ":diagnostic:intellij",
+                ":protocol:contract",
+                ":protocol:registry",
+                ":protocol:wire",
+                ":query:protocol",
+                ":relation:intellij",
+                ":runtime:hosted",
+                ":source:intellij",
+                ":symbol:intellij",
+                ":topology:intellij",
+                ":workspace:intellij-read"
+            ],
+            "sourceRoots": [
+                "protocol/contract/src/main/java",
+                "protocol/contract/src/main/kotlin",
+                "protocol/contract/src/main/resources",
+                "protocol/contract/src/test/java",
+                "protocol/contract/src/test/kotlin",
+                "protocol/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":protocol:registry",
+            "affected": [
+                ":app-server",
+                ":cli",
+                ":protocol:registry",
+                ":protocol:wire",
+                ":query:protocol",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "protocol/registry/src/main/java",
+                "protocol/registry/src/main/kotlin",
+                "protocol/registry/src/main/resources",
+                "protocol/registry/src/test/java",
+                "protocol/registry/src/test/kotlin",
+                "protocol/registry/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":protocol:wire",
+            "affected": [
+                ":app-server",
+                ":cli",
+                ":protocol:wire",
+                ":query:protocol",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "protocol/wire/src/main/java",
+                "protocol/wire/src/main/kotlin",
+                "protocol/wire/src/main/resources",
+                "protocol/wire/src/test/java",
+                "protocol/wire/src/test/kotlin",
+                "protocol/wire/src/test/resources",
+                "protocol/wire/src/testFixtures/java",
+                "protocol/wire/src/testFixtures/kotlin",
+                "protocol/wire/src/testFixtures/resources"
+            ]
+        },
+        {
+            "owner": ":query:contract",
+            "affected": [
+                ":cli",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "query/contract/src/main/java",
+                "query/contract/src/main/kotlin",
+                "query/contract/src/main/resources",
+                "query/contract/src/test/java",
+                "query/contract/src/test/kotlin",
+                "query/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":query:protocol",
+            "affected": [
+                ":cli",
+                ":query:protocol",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "query/protocol/src/main/java",
+                "query/protocol/src/main/kotlin",
+                "query/protocol/src/main/resources",
+                "query/protocol/src/test/java",
+                "query/protocol/src/test/kotlin",
+                "query/protocol/src/test/resources",
+                "query/protocol/src/testFixtures/java",
+                "query/protocol/src/testFixtures/kotlin",
+                "query/protocol/src/testFixtures/resources"
+            ]
+        },
+        {
+            "owner": ":query:service",
+            "affected": [
+                ":cli",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "query/service/src/main/java",
+                "query/service/src/main/kotlin",
+                "query/service/src/main/resources",
+                "query/service/src/test/java",
+                "query/service/src/test/kotlin",
+                "query/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":relation:contract",
+            "affected": [
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":evidence:topology-sqlite",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":relation:contract",
+                ":relation:intellij",
+                ":relation:service",
+                ":runtime:hosted",
+                ":topology:build",
+                ":topology:service",
+                ":traversal:contract",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "relation/contract/src/main/java",
+                "relation/contract/src/main/kotlin",
+                "relation/contract/src/main/resources",
+                "relation/contract/src/test/java",
+                "relation/contract/src/test/kotlin",
+                "relation/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":relation:intellij",
+            "affected": [
+                ":relation:intellij",
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "relation/intellij/src/main/java",
+                "relation/intellij/src/main/kotlin",
+                "relation/intellij/src/main/resources",
+                "relation/intellij/src/nativeTest/java",
+                "relation/intellij/src/nativeTest/kotlin",
+                "relation/intellij/src/nativeTest/resources",
+                "relation/intellij/src/test/java",
+                "relation/intellij/src/test/kotlin",
+                "relation/intellij/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":relation:service",
+            "affected": [
+                ":cli",
+                ":query:protocol",
+                ":query:service",
+                ":relation:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "relation/service/src/main/java",
+                "relation/service/src/main/kotlin",
+                "relation/service/src/main/resources",
+                "relation/service/src/test/java",
+                "relation/service/src/test/kotlin",
+                "relation/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":runtime:hosted",
+            "affected": [
+                ":runtime:hosted"
+            ],
+            "sourceRoots": [
+                "runtime/hosted/src/main/java",
+                "runtime/hosted/src/main/kotlin",
+                "runtime/hosted/src/main/resources",
+                "runtime/hosted/src/nativeTest/java",
+                "runtime/hosted/src/nativeTest/kotlin",
+                "runtime/hosted/src/nativeTest/resources",
+                "runtime/hosted/src/test/java",
+                "runtime/hosted/src/test/kotlin",
+                "runtime/hosted/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":source:contract",
+            "affected": [
+                ":cli",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":source:contract",
+                ":source:intellij",
+                ":source:service"
+            ],
+            "sourceRoots": [
+                "source/contract/src/main/java",
+                "source/contract/src/main/kotlin",
+                "source/contract/src/main/resources",
+                "source/contract/src/test/java",
+                "source/contract/src/test/kotlin",
+                "source/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":source:intellij",
+            "affected": [
+                ":runtime:hosted",
+                ":source:intellij"
+            ],
+            "sourceRoots": [
+                "source/intellij/src/main/java",
+                "source/intellij/src/main/kotlin",
+                "source/intellij/src/main/resources",
+                "source/intellij/src/test/java",
+                "source/intellij/src/test/kotlin",
+                "source/intellij/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":source:service",
+            "affected": [
+                ":runtime:hosted",
+                ":source:service"
+            ],
+            "sourceRoots": [
+                "source/service/src/main/java",
+                "source/service/src/main/kotlin",
+                "source/service/src/main/resources",
+                "source/service/src/test/java",
+                "source/service/src/test/kotlin",
+                "source/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":symbol:contract",
+            "affected": [
+                ":app-server",
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":diagnostic:intellij",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":evidence:topology-sqlite",
+                ":protocol:contract",
+                ":protocol:registry",
+                ":protocol:wire",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":relation:contract",
+                ":relation:intellij",
+                ":relation:service",
+                ":runtime:hosted",
+                ":source:contract",
+                ":source:intellij",
+                ":source:service",
+                ":symbol:contract",
+                ":symbol:intellij",
+                ":symbol:service",
+                ":topology:build",
+                ":topology:contract",
+                ":topology:intellij",
+                ":topology:service",
+                ":traversal:contract",
+                ":traversal:service",
+                ":workspace:intellij-read"
+            ],
+            "sourceRoots": [
+                "symbol/contract/src/main/java",
+                "symbol/contract/src/main/kotlin",
+                "symbol/contract/src/main/resources",
+                "symbol/contract/src/test/java",
+                "symbol/contract/src/test/kotlin",
+                "symbol/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":symbol:intellij",
+            "affected": [
+                ":runtime:hosted",
+                ":symbol:intellij"
+            ],
+            "sourceRoots": [
+                "symbol/intellij/src/main/java",
+                "symbol/intellij/src/main/kotlin",
+                "symbol/intellij/src/main/resources",
+                "symbol/intellij/src/nativeTest/java",
+                "symbol/intellij/src/nativeTest/kotlin",
+                "symbol/intellij/src/nativeTest/resources",
+                "symbol/intellij/src/test/java",
+                "symbol/intellij/src/test/kotlin",
+                "symbol/intellij/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":symbol:service",
+            "affected": [
+                ":runtime:hosted",
+                ":symbol:service"
+            ],
+            "sourceRoots": [
+                "symbol/service/src/main/java",
+                "symbol/service/src/main/kotlin",
+                "symbol/service/src/main/resources",
+                "symbol/service/src/test/java",
+                "symbol/service/src/test/kotlin",
+                "symbol/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":topology:build",
+            "affected": [
+                ":runtime:hosted",
+                ":topology:build"
+            ],
+            "sourceRoots": [
+                "topology/build/src/main/java",
+                "topology/build/src/main/kotlin",
+                "topology/build/src/main/resources",
+                "topology/build/src/test/java",
+                "topology/build/src/test/kotlin",
+                "topology/build/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":topology:contract",
+            "affected": [
+                ":evidence:topology-sqlite",
+                ":runtime:hosted",
+                ":topology:build",
+                ":topology:contract",
+                ":topology:intellij",
+                ":topology:service"
+            ],
+            "sourceRoots": [
+                "topology/contract/src/main/java",
+                "topology/contract/src/main/kotlin",
+                "topology/contract/src/main/resources",
+                "topology/contract/src/test/java",
+                "topology/contract/src/test/kotlin",
+                "topology/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":topology:intellij",
+            "affected": [
+                ":runtime:hosted",
+                ":topology:intellij"
+            ],
+            "sourceRoots": [
+                "topology/intellij/src/main/java",
+                "topology/intellij/src/main/kotlin",
+                "topology/intellij/src/main/resources",
+                "topology/intellij/src/test/java",
+                "topology/intellij/src/test/kotlin",
+                "topology/intellij/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":topology:service",
+            "affected": [
+                ":topology:service"
+            ],
+            "sourceRoots": [
+                "topology/service/src/main/java",
+                "topology/service/src/main/kotlin",
+                "topology/service/src/main/resources",
+                "topology/service/src/test/java",
+                "topology/service/src/test/kotlin",
+                "topology/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":traversal:contract",
+            "affected": [
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":distribution:cli",
+                ":evidence:sqlite",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:contract",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "traversal/contract/src/main/java",
+                "traversal/contract/src/main/kotlin",
+                "traversal/contract/src/main/resources",
+                "traversal/contract/src/test/java",
+                "traversal/contract/src/test/kotlin",
+                "traversal/contract/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":traversal:service",
+            "affected": [
+                ":cli",
+                ":query:protocol",
+                ":query:service",
+                ":runtime:hosted",
+                ":traversal:service"
+            ],
+            "sourceRoots": [
+                "traversal/service/src/main/java",
+                "traversal/service/src/main/kotlin",
+                "traversal/service/src/main/resources",
+                "traversal/service/src/test/java",
+                "traversal/service/src/test/kotlin",
+                "traversal/service/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":workspace:contract",
+            "affected": [
+                ":app-server",
+                ":change:apply",
+                ":change:contract",
+                ":change:intellij",
+                ":change:plan",
+                ":change:protocol",
+                ":change:recovery",
+                ":change:verify",
+                ":cli",
+                ":diagnostic:contract",
+                ":diagnostic:intellij",
+                ":diagnostic:service",
+                ":distribution:cli",
+                ":evidence:contract",
+                ":evidence:sqlite",
+                ":evidence:topology-sqlite",
+                ":protocol:contract",
+                ":protocol:registry",
+                ":protocol:wire",
+                ":query:contract",
+                ":query:protocol",
+                ":query:service",
+                ":relation:contract",
+                ":relation:intellij",
+                ":relation:service",
+                ":runtime:hosted",
+                ":source:contract",
+                ":source:intellij",
+                ":source:service",
+                ":symbol:contract",
+                ":symbol:intellij",
+                ":symbol:service",
+                ":topology:build",
+                ":topology:contract",
+                ":topology:intellij",
+                ":topology:service",
+                ":traversal:contract",
+                ":traversal:service",
+                ":workspace:contract",
+                ":workspace:intellij-read"
+            ],
+            "sourceRoots": [
+                "workspace/contract/src/main/java",
+                "workspace/contract/src/main/kotlin",
+                "workspace/contract/src/main/resources",
+                "workspace/contract/src/test/java",
+                "workspace/contract/src/test/kotlin",
+                "workspace/contract/src/test/resources",
+                "workspace/contract/src/testFixtures/java",
+                "workspace/contract/src/testFixtures/kotlin",
+                "workspace/contract/src/testFixtures/resources"
+            ]
+        },
+        {
+            "owner": ":workspace:intellij-read",
+            "affected": [
+                ":change:intellij",
+                ":diagnostic:intellij",
+                ":relation:intellij",
+                ":runtime:hosted",
+                ":source:intellij",
+                ":symbol:intellij",
+                ":topology:intellij",
+                ":workspace:intellij-read"
+            ],
+            "sourceRoots": [
+                "workspace/intellij-read/src/main/java",
+                "workspace/intellij-read/src/main/kotlin",
+                "workspace/intellij-read/src/main/resources",
+                "workspace/intellij-read/src/test/java",
+                "workspace/intellij-read/src/test/kotlin",
+                "workspace/intellij-read/src/test/resources",
+                "workspace/intellij-read/src/testFixtures/java",
+                "workspace/intellij-read/src/testFixtures/kotlin",
+                "workspace/intellij-read/src/testFixtures/resources"
+            ]
+        }
+    ],
+    "schemaVersion": 1,
+    "evidence": "DECLARED_PRODUCTION_TEST_FIXTURE_CONSUMERS"
+}

@@ -17,6 +17,7 @@ code_sources:
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/ModuleImpact.kt
   - path: build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt
+  - path: build-logic/src/main/kotlin/support/architecture/gradle/GenerateVerificationGraphTask.kt
   - path: build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts
   - path: build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -38,6 +39,7 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 - [Architecture convention](src/main/kotlin/kast.architecture.gradle.kts) - module architecture and installed guide wiring.
 - [ModuleImpact.kt](src/main/kotlin/support/architecture/ModuleImpact.kt) - selection and shortest dependency paths over the declared production graph.
 - [TopologyImpactTask.kt](src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt) - opt-in report without source compilation or compiler authority.
+- [GenerateVerificationGraphTask.kt](src/main/kotlin/support/architecture/gradle/GenerateVerificationGraphTask.kt) - all-configuration consumers, declared source roots, and authored input digests for CI.
 - [KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - the admitted module topology.
 - [Kotlin quality convention](src/main/kotlin/kast.kotlin-quality.gradle.kts) - format, `Detekt`, and file-length gates.
 - [CompileDependencyFixture.kt](src/main/kotlin/support/tasks/nativefixtures/CompileDependencyFixture.kt) - declared compiler inputs and atomic dependency archives for native fixtures.
@@ -63,6 +65,8 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 - Run `./gradlew verifyJsonContracts` from the repository root for the JSON syntax gate.
 - Run `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue` for one module's quality guards and unit tests. Keep product assembly in the full gate.
 - Run `./gradlew topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.
+- Run `./gradlew generateVerificationGraph` for production, test, and fixture consumers. Keep the report in `config/ci/verification-graph.json` after review.
+- `verifyVerificationGraph` rejects a snapshot that differs from the current Gradle declarations.
 - Set `kastTopologyEnabled=false` to disable that report. Read [the command guide](../docs/topology-impact.md) for evidence limits.
 - `generateInstalledKnowledgeBundle` projects tracked `AGENTS.md` files into the installed knowledge bundle.
 - `verifyKnowledgeBase` examines OpenWiki. It does not examine the scoped guide format.

@@ -7,6 +7,13 @@ from verify_documentation import commands
 
 
 class DocumentationProofTest(unittest.TestCase):
+    def test_navigation_and_snippet_inputs_keep_their_real_consumers(self):
+        plan = commands(("AGENTS.md",))
+        self.assertIn(("npm", "run", "build", "--prefix", "docs/tooling/value-journey"), plan)
+        self.assertIn(("git", "diff", "--exit-code", "--", "docs/public/snippets/value-journey.jsx"), plan)
+        self.assertIn(("uv", "run", "--locked", "--project", "docs/tooling", "python", ".github/scripts/code_kb.py",
+                       "check-documentation-inputs", "--repo", ".", "--docs", "openwiki", "--strict", "--format", "json"), plan)
+
     def test_glossary_proof_retains_all_consumed_prose_and_projection_checks(self):
         self.assertEqual(
             (

@@ -586,6 +586,17 @@ val sourceValidationGate = tasks.register("sourceValidationGate") {
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
+val verifyVerificationGraph = tasks.register<Exec>("verifyVerificationGraph") {
+    group = "verification"
+    description = "Rejects a stale snapshot of production, test, fixture, and generated-contract consumers."
+    dependsOn("generateVerificationGraph")
+    inputs.files("config/ci/verification-graph.json", ".github/scripts/ci/verification_plan.py")
+    inputs.file(layout.buildDirectory.file("reports/ci/verification-graph.json"))
+    commandLine("python3", ".github/scripts/ci/verification_plan.py", "--check-generated",
+        layout.buildDirectory.file("reports/ci/verification-graph.json").get().asFile)
+}
+tasks.named("check") { dependsOn(verifyVerificationGraph) }
+
 subprojects.forEach { owner ->
     owner.plugins.withId("kast.kotlin-quality") {
         sourceValidationGate.configure {
@@ -744,3 +755,27 @@ val semanticTraceGate = tasks.register<Exec>("verifyKotlinSemanticCoverage") {
         "--junit", layout.projectDirectory.dir("symbol/intellij/build/test-results/semanticCoverageFixtureTest"))
 }
 tasks.named("check") { dependsOn(semanticInputGate, semanticInventoryGate, semanticTraceGate) }
+
+val selectedSemanticOwners = providers.gradleProperty("kastSemanticOwners").map { raw ->
+    val owners = raw.split(',')
+    require(owners.isNotEmpty() && owners.distinct().size == owners.size && owners.all {
+        it in setOf(":relation:intellij", ":runtime:hosted", ":symbol:intellij")
+    }) { "kastSemanticOwners must name distinct semantic fixture owners" }
+    owners
+}.orElse(emptyList())
+
+tasks.register<Exec>("verifySelectedKotlinSemanticCoverage") {
+    group = "verification"
+    description = "Requires every case of each selected semantic fixture owner with exact report accounting."
+    dependsOn(selectedSemanticOwners.map { owners -> owners.map { "$it:semanticCoverageFixtureTest" } })
+    workingDir(semanticCoverageDirectory.dir("tooling"))
+    val selectedManifest = providers.gradleProperty("kastSemanticSelection")
+        .map { file(it) }.orElse(layout.buildDirectory.file("reports/ci/source/missing-selection.tsv").map { it.asFile })
+    inputs.file(selectedManifest)
+    val reports = selectedSemanticOwners.map { owners -> owners.map { owner ->
+        layout.projectDirectory.dir(owner.removePrefix(":").replace(':', '/') + "/build/test-results/semanticCoverageFixtureTest")
+    } }
+    inputs.files(reports)
+    commandLine(listOf("uv", "run", "--locked", "--script", "inventory.py", "execution", "--required-cases", selectedManifest.get()) +
+        reports.get().flatMap { listOf("--junit", it.asFile) })
+}
