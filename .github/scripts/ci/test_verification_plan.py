@@ -51,6 +51,21 @@ class VerificationPlanTest(unittest.TestCase):
                 self.assertNotIn(":distribution:cli:nativeCompile", plan.tasks)
                 self.assertNotIn(":topology:build:check", plan.tasks)
 
+    def test_kotlin_inputs_keep_source_guards_without_unrelated_prose_tooling(self):
+        plan = self.plan("query/contract/src/main/kotlin/QueryRows.kt")
+        self.assertIsInstance(plan, selection.Plan)
+        self.assertLessEqual(
+            {":verifyKastArchitecture", ":verifyJsonContracts", ":verifyConfigurationIngress",
+             ":verifyKnowledgeBase", ":verifyVerificationGraph"},
+            set(plan.tasks),
+        )
+        self.assertTrue(
+            {":verifyDocumentationGlossary", ":verifyDocumentationMarkdown", ":documentationToolingTest"}
+            .isdisjoint(plan.tasks)
+        )
+        for path in ("docs/tooling/markdown/parse.ts", "docs/glossary.json", "README.md"):
+            self.assertEqual(selection.Failure.UNKNOWN_OWNER, self.plan(path))
+
     def test_shared_fixture_keeps_direct_and_exported_fixture_consumers(self):
         plan = self.plan("workspace/contract/src/testFixtures/kotlin/WorkspaceFixture.kt")
         self.assertIsInstance(plan, selection.Plan)
