@@ -177,11 +177,13 @@ def record_gate(
     event: str,
     needs: object,
     root: Path = ROOT,
+    *,
+    affected: bool = False,
 ) -> ValidationRecord | Failure:
     completed = admit_checks(needs)
     if not isinstance(completed, CompletedChecks):
         return Failure.GATE_NOT_COMPLETE
-    selection = select(event, base, revision, root)
+    selection = select(event, base, revision, root, affected=True) if affected else select(event, base, revision, root)
     if selection.reason is Reason.CHECKOUT_MISMATCH or completed.scope is not selection.scope:
         return Failure.SELECTION_MISMATCH
     result = SCOPE_OUTCOMES[selection.scope]
@@ -210,6 +212,7 @@ def read(path: Path) -> ValidationRecord | Failure:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", type=Path, required=True)
+    parser.add_argument("--affected", action="store_true")
     args = parser.parse_args()
     try:
         checkout = subprocess.check_output(
@@ -228,6 +231,7 @@ def main() -> None:
             int(os.environ["GITHUB_RUN_ATTEMPT"]),
             os.environ["GITHUB_EVENT_NAME"],
             json.loads(os.environ["CI_NEEDS"]),
+            affected=args.affected,
         )
         if isinstance(record, Failure):
             raise SystemExit(f"validation-outcome: {record.value}")

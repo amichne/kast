@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -15,7 +16,7 @@ from unittest.mock import Mock, patch
 import source_validation as source
 import verification_plan
 from source_validation import COMMAND, inspect_graph
-from validation_scope import PRODUCT_MODULES
+from validation_scope import ALL_CHECKS, PRODUCT_MODULES, Reason, Selection
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -43,6 +44,25 @@ def graph_output(tasks):
 
 
 class SourceValidationTest(unittest.TestCase):
+    def test_affected_entry_point_keeps_the_full_fallback_for_every_workflow_event(self):
+        for event in ("pull_request", "push", "merge_group", "workflow_dispatch"):
+            with (
+                self.subTest(event=event),
+                patch.object(sys, "argv", ["source_validation.py", "--affected", "--event", event,
+                                           "--base", "b" * 40]),
+                patch.dict(os.environ, {"CI_VERIFICATION_PLAN": ""}),
+                patch.object(source, "source_identity", return_value=("a" * 40, "c" * 40)),
+                patch.object(source, "select", return_value=Selection(ALL_CHECKS, Reason.FULL_EVENT)) as select,
+                patch.object(source, "run", return_value=Mock(outcome=source.Outcome.SOURCE_VALIDATED,
+                                                              exitCode=0)) as run,
+                redirect_stdout(io.StringIO()),
+                self.assertRaises(SystemExit) as result,
+            ):
+                source.main()
+            self.assertEqual(0, result.exception.code)
+            select.assert_called_once_with(event, "b" * 40, "a" * 40, affected=True)
+            run.assert_called_once_with(ROOT, ROOT / "build/reports/ci/source", None)
+
     def test_selected_command_keeps_complete_owner_population_and_manifest_fields(self):
         plan = verification_plan.plan(
             ROOT, frozenset(":" + path.replace("/", ":") for path in PRODUCT_MODULES),

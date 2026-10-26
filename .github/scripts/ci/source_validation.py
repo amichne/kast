@@ -283,7 +283,11 @@ def main() -> None:
     parser.add_argument("--report-directory", type=Path, default=ROOT / "build/reports/ci/source")
     parser.add_argument("--affected", action="store_true")
     parser.add_argument("--base", default="")
-    parser.add_argument("--event", choices=("pull_request", "push"), default="pull_request")
+    parser.add_argument(
+        "--event",
+        choices=("pull_request", "push", "merge_group", "workflow_dispatch"),
+        default="pull_request",
+    )
     args = parser.parse_args()
     try:
         plan = None

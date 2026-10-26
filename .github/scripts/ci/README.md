@@ -7,7 +7,7 @@ Pull requests use the merge base. Pushes use the entire before/head range.
 | Plan | Required work | Product publication |
 | --- | --- | --- |
 | `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, and example consumers | None |
-| `SOURCE` | Complete source gate, all semantic families, offline preflight and portable packaging | None |
+| `SOURCE` | Affected owners and consumers, their semantic families, shared guards, offline preflight and portable packaging | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
@@ -119,7 +119,9 @@ The six-minute criterion remains open until the frozen hosted corpus passes.
 
 ## Affected obligations and rollout
 
-The default source job still runs the complete source gate during rollout.
+The source job uses affected obligations after the frozen corpus comparison passes.
+The scope selector, source runner, and outcome recorder use the same affected-selection mode.
+Main pushes still need candidate qualification before developer promotion.
 `source_validation.py --affected --base <full-sha>` admits an exact plan from the current Git diff.
 The plan binds the source tree, comparison basis, graph digest, manifest digest, tasks, classes, and case identities.
 A supplied `CI_VERIFICATION_PLAN` must equal the recomputed plan.
@@ -161,6 +163,9 @@ The cold phase disables Gradle and pip cache transport and removes affected outp
 Runner-image tools remain available, so setup logs identify the actual provisioning work.
 Changed and cold phases keep Gradle cache decisions and dependency details in their logs.
 These manual phases end after rollout and do not add duplicate work to routine pull requests.
+If selection misses an obligation, remove `--affected` from the scope, source, and outcome commands together.
+Remove `CI_VERIFICATION_PLAN` from the source step at the same time.
+That rollback restores the complete source path and keeps the independent fixture optimization.
 
 Each measurement records its source identities, exact patch, selected cases, task graph, compiler count, timestamps, and process outcome.
 Workflow and job timestamps supply setup, artifact, aggregate, queue, and total runner durations.

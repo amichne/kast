@@ -84,6 +84,25 @@ class ValidationOutcomeTest(unittest.TestCase):
             outcome.DocumentationValidated(record()), outcome.admit(record(), producer(), REPOSITORY, SOURCE, TREE)
         )
 
+    def test_affected_gate_repeats_its_selector_and_rejects_a_different_plan(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", portable="run", documentation="skip", scope="SOURCE")
+        needs["portable"]["result"] = needs["source"]["result"] = "success"
+        needs["documentation"]["result"] = "skipped"
+
+        def choose(event, base, revision, root, *, affected=False):
+            return Selection(SOURCE_CHECKS if affected else ALL_CHECKS, Reason.CHANGED_INPUTS)
+
+        with patch.object(outcome, "select", side_effect=choose) as select:
+            saved = outcome.record_gate(REPOSITORY, SOURCE, TREE, BASE, 456, 123, 1, "pull_request",
+                                        needs, affected=True)
+            select.assert_called_once_with("pull_request", BASE, SOURCE, outcome.ROOT, affected=True)
+            self.assertEqual(replace(record(), scope=Scope.SOURCE, outcome=outcome.Outcome.SOURCE_VALIDATED,
+                                     event="pull_request"), saved)
+            self.assertEqual(outcome.Failure.SELECTION_MISMATCH,
+                             outcome.record_gate(REPOSITORY, SOURCE, TREE, BASE, 456, 123, 1,
+                                                 "pull_request", needs))
+
     def test_product_and_full_outcomes_retain_publication_obligation(self):
         for scope in (Scope.PRODUCT, Scope.FULL):
             value = replace(record(), scope=scope, outcome=outcome.Outcome.PRODUCT_VALIDATED)

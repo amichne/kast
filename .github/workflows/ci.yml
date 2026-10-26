@@ -42,6 +42,7 @@ jobs:
       documentation: ${{ steps.scope.outputs.documentation }}
       gate_graph: ${{ steps.scope.outputs.gate_graph }}
       scope: ${{ steps.scope.outputs.scope }}
+      plan: ${{ steps.scope.outputs.plan }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,6 +62,7 @@ jobs:
           CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python3 .github/scripts/ci/validation_scope.py \
+            --affected \
             --event "$GITHUB_EVENT_NAME" --base "$BASE_SHA" \
             --head "$CHECKOUT_SHA" --github-output "$GITHUB_OUTPUT" | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -136,10 +138,12 @@ jobs:
             native-build-tools
             kast/topology-intellij-kotlin-plugin
 
-      - name: Validate complete source population
+      - name: Validate affected source obligations
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-        run: python3 .github/scripts/ci/source_validation.py
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_VERIFICATION_PLAN: ${{ needs.scope.outputs.plan }}
+        run: python3 .github/scripts/ci/source_validation.py --affected --base "$BASE_SHA" --event "$GITHUB_EVENT_NAME"
 
       - name: Retain source evidence
         if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
@@ -302,7 +306,7 @@ jobs:
           CI_NEEDS: ${{ toJSON(needs) }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: python3 .github/scripts/ci/validation_outcome.py --record build/validation/validation.json
+        run: python3 .github/scripts/ci/validation_outcome.py --affected --record build/validation/validation.json
 
       - name: Retain exact validation outcome
         uses: actions/upload-artifact@v7.0.2
