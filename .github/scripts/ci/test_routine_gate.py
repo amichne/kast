@@ -1,8 +1,21 @@
 import unittest
-from routine_gate import inspect, REQUIRED
+from routine_gate import inspect, inspect_native_inputs, REQUIRED
 
 
 class RoutineGateTest(unittest.TestCase):
+    def test_native_input_inventory_matches_exact_compilation_owners(self):
+        owners = {
+            "change:apply", "change:contract", "change:recovery", "change:verify", "diagnostic:contract",
+            "distribution:cli", "distribution:contract", "distribution:managed", "evidence:contract", "evidence:sqlite",
+            "kernel", "relation:contract", "symbol:contract", "traversal:contract", "workspace:contract",
+        }
+        tasks = {f":{owner}:compileKotlin" for owner in owners}
+        self.assertEqual([], inspect_native_inputs(self.output(tasks)))
+        self.assertTrue(inspect_native_inputs(self.output(tasks | {":query:contract:compileKotlin"})))
+        for task in tasks:
+            self.assertTrue(inspect_native_inputs(self.output(tasks - {task})))
+        self.assertTrue(inspect_native_inputs("BUILD SUCCESSFUL"))
+
     def output(self, tasks):
         return "\n".join(f"{task} SKIPPED" for task in sorted(tasks))
 

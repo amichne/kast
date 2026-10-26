@@ -566,6 +566,35 @@ subprojects.forEach { owner ->
     }
 }
 
+val sourceValidationGate = tasks.register("sourceValidationGate") {
+    group = "verification"
+    description = "Examines source, semantic fixtures, and contracts without release assembly or native compilation."
+    dependsOn(
+        "check",
+        productGateVersionTest,
+        installerFixtureTest,
+        installationLifecycleTest,
+        priorInstallationCleanupTest,
+        installationRecoveryTest,
+        installationSystemPythonTest,
+        localInstallationTest,
+        installerRemovalTest,
+        testCheckoutInstaller,
+        installerEntrypointTest,
+        "verifyKastArchitecture",
+    )
+    dependsOn(gradle.includedBuild("build-logic").task(":check"))
+}
+
+subprojects.forEach { owner ->
+    owner.plugins.withId("kast.kotlin-quality") {
+        sourceValidationGate.configure {
+            // check preserves type-resolved analysis and each owner's extra source obligations.
+            dependsOn(owner.tasks.named("scopedCheck"), owner.tasks.named("check"))
+        }
+    }
+}
+
 val configurationIngressTest = tasks.register<Exec>("configurationIngressTest") {
     group = "verification"
     inputs.files("packaging/configuration_ingress.py", "packaging/test-configuration-ingress.py")
