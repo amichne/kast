@@ -4,9 +4,10 @@ title: "Kast build-logic"
 description: "Defines Gradle conventions, effect ownership, architecture gates, generated contracts, and installed knowledge projections."
 resource: "repo://build-logic"
 tags: [kast, navigation]
-timestamp: "2026-10-22T03:38:55Z"
-source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
+timestamp: "2026-10-26T11:36:07Z"
+source_revision: 371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a
 code_sources:
+  - path: build-logic/src/main/kotlin/support/tasks/nativefixtures/CompileDependencyFixture.kt
   - path: build-logic/build.gradle.kts
   - path: build-logic/src/main/kotlin/support/tasks/VerificationReportTask.kt
   - path: build-logic/src/test/kotlin/VerificationReportTaskTest.kt
@@ -39,6 +40,7 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 - [TopologyImpactTask.kt](src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt) - opt-in report without source compilation or compiler authority.
 - [KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - the admitted module topology.
 - [Kotlin quality convention](src/main/kotlin/kast.kotlin-quality.gradle.kts) - format, `Detekt`, and file-length gates.
+- [CompileDependencyFixture.kt](src/main/kotlin/support/tasks/nativefixtures/CompileDependencyFixture.kt) - declared compiler inputs and atomic dependency archives for native fixtures.
 - [VerificationReportTask.kt](src/main/kotlin/support/tasks/VerificationReportTask.kt) - explicit process inputs, local task history, and diagnostic reports.
 - [Public query convention](src/main/kotlin/kast.public-query-contract.gradle.kts) - public schema generation parity and its regression gate.
 - [VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed requests for the isolated JSON syntax scanner.
