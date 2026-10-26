@@ -7,6 +7,7 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
@@ -44,8 +45,11 @@ private fun KtExpression.matchesRoleShape(role: ValueSiteRoleClaim): Boolean =
         ValueSiteRoleClaim.LocalBinding -> this is KtProperty || nativeLocalBindingMutability() is Refinement.Refined
         ValueSiteRoleClaim.PropertyAssignment -> this is KtProperty
         is ValueSiteRoleClaim.Argument -> (parent as? KtValueArgument)?.getArgumentExpression() === this
-        is ValueSiteRoleClaim.Receiver -> (parent as? KtQualifiedExpression)?.receiverExpression === this
-        ValueSiteRoleClaim.ExpressionResult,
+        is ValueSiteRoleClaim.Receiver ->
+            (parent as? KtQualifiedExpression)?.receiverExpression === this ||
+                (this is KtDestructuringDeclarationEntry && isNativeSingleLocalComponent())
+        ValueSiteRoleClaim.ExpressionResult ->
+            this !is KtNamedDeclaration || (this is KtDestructuringDeclarationEntry && isNativeLocalComponent())
         ValueSiteRoleClaim.LocalRead,
         ValueSiteRoleClaim.Return -> this !is KtNamedDeclaration
     }

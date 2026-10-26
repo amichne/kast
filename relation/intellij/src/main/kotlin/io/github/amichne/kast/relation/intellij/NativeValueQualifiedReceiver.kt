@@ -1,0 +1,82 @@
+package io.github.amichne.kast.relation.intellij
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
+
+/** Qualified reads retain ordinary receiver flow unless the compiler proves a stored-field accessor. */
+internal class NativeValueQualifiedReceiver(
+    private val source: ValueSite,
+    private val scope: CompiledRelationScope,
+    private val projection: IntellijK2RelationProjection,
+    private val retained: NativeValueFlowTransfers,
+) {
+    fun read(expression: KtExpression, qualified: KtQualifiedExpression) {
+        val call = qualified.selectorExpression as? KtCallElement
+        if (call == null) {
+            when (
+                val result =
+                    nativeValueFieldRead(
+                        source = source,
+                        expression = qualified,
+                        scope = scope,
+                        projection = projection,
+                    )
+            ) {
+                is Refinement.Refined -> field(result.value)
+                is Refinement.Rejected -> retained.unresolvedAt(result.failure, qualified)
+            }
+            return
+        }
+        callReceiver(expression, qualified, call)
+    }
+
+    private fun callReceiver(expression: KtExpression, qualified: KtQualifiedExpression, call: KtCallElement) {
+        when (
+            val generated =
+                nativeGeneratedComponentRead(
+                    source = source,
+                    expression = expression,
+                    call = call,
+                    scope = scope,
+                    projection = projection,
+                )
+        ) {
+            is Refinement.Rejected -> {
+                retained.unresolvedAt(generated.failure, qualified)
+                return
+            }
+            is Refinement.Refined ->
+                when (val result = generated.value) {
+                    NativeGeneratedComponentRead.NotGenerated -> Unit
+                    is NativeGeneratedComponentRead.Field -> {
+                        field(result.read)
+                        return
+                    }
+                }
+        }
+        when (
+            val role =
+                nativeValueReceiver(
+                    expression = expression,
+                    qualified = qualified,
+                    scope = scope,
+                    projection = projection,
+                    executionOwner = source.executionOwner,
+                )
+        ) {
+            is Refinement.Refined -> retained.emit(expression, role.value, ValueTransferKind.RECEIVER)
+            is Refinement.Rejected -> retained.unresolvedAt(role.failure, qualified)
+        }
+    }
+
+    private fun field(read: NativeValueFieldRead) =
+        when (read) {
+            is NativeValueFieldRead.Transfer ->
+                retained.emitTarget(read.value.target, read.value.kind, read.value.evidence)
+            NativeValueFieldRead.DifferentField -> Unit
+        }
+}

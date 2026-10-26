@@ -78,6 +78,92 @@ class ValueImplementationCallOracleTest {
     }
 
     @Test
+    fun `implementation receiver entry and return preserve the receiver slot field path and static invocation`() {
+        val case = implementationCase()
+        val frame = case.frame(case.first)
+        val path = flowPath(ValuePathSegment.Field(flowField("FirstMapper.payload", 600, 620)))
+        for (kind in ValueReceiverKind.entries) {
+            val position = ValueFormalPosition.Receiver(kind)
+            val source =
+                ValueSite.fromCompiler(
+                        case.call.enclosing,
+                        flowRange(20, 25),
+                        ValueRole.Receiver(case.call, kind),
+                        valuePath = path,
+                    )
+                    .flowRefined()
+            val formal =
+                ValueSite.fromCompiler(
+                        case.first.source,
+                        case.first.source.range,
+                        ValueRole.Formal(position),
+                        valuePath = path,
+                        callStack = ValueCallStack.Empty.enter(frame).flowRefined(),
+                    )
+                    .flowRefined()
+            val entry =
+                ValueTransfer.fromCompiler(
+                        source,
+                        formal,
+                        ValueTransferKind.SOURCE_CALL_ENTRY,
+                        ValueSourceTransfer.fromCompiler(ValueSourceOperation.Enter(frame, position)),
+                    )
+                    .flowRefined()
+            assertEquals(ValueRole.Formal(ValueFormalPosition.Receiver(kind)), entry.target.role)
+            assertSame(path, entry.target.valuePath)
+            assertEquals(listOf(frame), entry.target.callStack.frames)
+            assertSame(case.call, entry.target.callStack.frames.single().invocation)
+            val returned =
+                ValueSite.fromCompiler(
+                        case.first.source,
+                        flowRange(360, 370),
+                        ValueRole.Return,
+                        valuePath = path,
+                        callStack = entry.target.callStack,
+                    )
+                    .flowRefined()
+            val exit = implementationReturn(source = returned, frame = frame, path = path).flowRefined()
+            assertEquals(case.call.range, exit.target.range)
+            assertSame(path, exit.target.valuePath)
+            assertEquals(ValueCallStack.Empty, exit.target.callStack)
+        }
+    }
+
+    @Test
+    fun `implementation entry cannot exchange extension and dispatch receiver slots`() {
+        val case = implementationCase()
+        val frame = case.frame(case.first)
+        for (kind in ValueReceiverKind.entries) {
+            val other = ValueReceiverKind.entries.single { it != kind }
+            val source =
+                ValueSite.fromCompiler(
+                        case.call.enclosing,
+                        flowRange(20, 25),
+                        ValueRole.Receiver(case.call, kind),
+                    )
+                    .flowRefined()
+            val position = ValueFormalPosition.Receiver(other)
+            val formal =
+                ValueSite.fromCompiler(
+                        case.first.source,
+                        case.first.source.range,
+                        ValueRole.Formal(position),
+                        callStack = ValueCallStack.Empty.enter(frame).flowRefined(),
+                    )
+                    .flowRefined()
+            assertEquals(
+                Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH),
+                ValueTransfer.fromCompiler(
+                    source,
+                    formal,
+                    ValueTransferKind.SOURCE_CALL_ENTRY,
+                    ValueSourceTransfer.fromCompiler(ValueSourceOperation.Enter(frame, position)),
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `implementation proof cannot redirect another static callable`() {
         val case = implementationCase()
         val wrong = flowEndpoint("OtherMapper.map", 700, 800, parameters = listOf("String"))
@@ -348,10 +434,11 @@ private fun implementationRoot(kind: WorkspaceSourceRootKind): ModelOwnedSourceR
 private fun implementationReturn(
     source: ValueSite,
     frame: ValueCallFrame,
+    path: ValueAccessPath = ValueAccessPath.Whole,
 ): Refinement<ValueTransfer, ValueTransferFailure> =
     ValueTransfer.fromCompiler(
         source,
-        frame.invocation.resultSite(),
+        frame.invocation.resultSite().withState(valuePath = path).flowRefined(),
         ValueTransferKind.SOURCE_CALL_RETURN,
         evidence = ValueSourceTransfer.fromCompiler(ValueSourceOperation.Return(frame)),
     )

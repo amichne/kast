@@ -22,10 +22,9 @@ import io.github.amichne.kast.relation.contract.ValueSourceOperation
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
-import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** Native callers come from actual references to the declaration or its compiler-proven overridden declarations. */
 internal class NativeValueSourceReturns(
@@ -134,13 +133,13 @@ internal class NativeValueSourceReturns(
                 is IntellijRelationSubjectLookup.Rejected -> return returnRejected()
             }
         val expression = host.exactValueElement(expected.range) ?: return returnRejected()
-        val call =
-            when (expression) {
-                is KtCallElement -> expression
-                is KtQualifiedExpression -> expression.selectorExpression as? KtCallElement
-                else -> null
-            } ?: return returnRejected()
-        return frames.invocation(call, host, expected.enclosing, expected.executionOwner)
+        val call = expression.nativeValueCallSyntax() ?: return returnRejected()
+        return frames.invocation(
+            call = call,
+            host = host,
+            enclosing = expected.enclosing,
+            expectedOwner = expected.executionOwner,
+        )
     }
 
     private fun matchedTransfer(
@@ -285,12 +284,10 @@ internal class NativeValueSourceReturns(
         }
 
     private fun seedInvocation(reference: PsiReference): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
-        val call =
-            PsiTreeUtil.getParentOfType(reference.element, KtCallExpression::class.java, false)
-                ?: return returnRejected()
-        if (call.calleeExpression?.textRange?.contains(reference.element.textRange) != true) return returnRejected()
+        val call = nativeCallerSyntax(reference) ?: return returnRejected()
+        val lexicalAnchor = if (call is NativeValueCallSyntax.Component) call.entry.parent else call.anchor
         val lexical =
-            when (val value = call.nearestDeclaration()) {
+            when (val value = lexicalAnchor.nearestDeclaration()) {
                 is ContainingDeclaration.Deferred -> value.enclosingDeclaration()
                 else -> value
             }
@@ -343,6 +340,14 @@ internal class NativeValueSourceReturns(
             operation = operation,
         )
     }
+}
+
+private fun nativeCallerSyntax(reference: PsiReference): NativeValueCallSyntax? {
+    val entry = PsiTreeUtil.getParentOfType(reference.element, KtDestructuringDeclarationEntry::class.java, false)
+    if (entry != null) return entry.nativeValueCallSyntax()
+    val call = PsiTreeUtil.getParentOfType(reference.element, KtCallExpression::class.java, false) ?: return null
+    if (call.calleeExpression?.textRange?.contains(reference.element.textRange) != true) return null
+    return NativeValueCallSyntax.Explicit(call)
 }
 
 private fun outcome(

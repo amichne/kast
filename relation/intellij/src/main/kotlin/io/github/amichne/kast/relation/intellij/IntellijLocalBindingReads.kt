@@ -25,6 +25,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -224,6 +226,14 @@ internal fun PsiElement.nativeLocalBindingMutability():
                         else ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY
                     )
                 isVar
+            }
+            is KtDestructuringDeclarationEntry -> {
+                val declaration =
+                    parent as? KtDestructuringDeclaration
+                        ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                if (name == "_" || !declaration.isNativeLocalDestructuring())
+                    return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                declaration.isVar
             }
             else -> return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }

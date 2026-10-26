@@ -183,7 +183,7 @@ internal class NativeReviewedCallbackReturnTest : ReviewedCallbackNativeTestBase
             val result =
                 NativeValueCallerFrames(source, scope, projection)
                     .initialInvocation(
-                        call = call,
+                        call = NativeValueCallSyntax.Explicit(call),
                         host = host,
                         enclosing = enclosing,
                         allowance = IntellijRelationAllowance(System.nanoTime()) { System.nanoTime() },

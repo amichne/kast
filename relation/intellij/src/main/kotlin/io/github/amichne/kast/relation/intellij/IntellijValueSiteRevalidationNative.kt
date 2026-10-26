@@ -5,14 +5,13 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.WorkAllowance
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RevalidatedValueSite
-import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -26,20 +25,6 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
-import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
-import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
-import org.jetbrains.kotlin.analysis.api.types.KaErrorType
-import org.jetbrains.kotlin.idea.references.KtReference
-import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
-import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtQualifiedExpression
-import org.jetbrains.kotlin.psi.KtReturnExpression
-import org.jetbrains.kotlin.psi.KtThisExpression
-import org.jetbrains.kotlin.psi.KtValueArgument
 
 /** Revalidates one exact claimed role without exploring a flow or attaching model vocabulary. */
 internal class IntellijValueSiteRevalidationNative(
@@ -68,12 +53,22 @@ internal class IntellijValueSiteRevalidationNative(
             if (!request.budget.resources.permitsWork(work))
                 return@nativeBoundary ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.WORK_LIMIT_REACHED)
             val started = System.nanoTime()
-            when (val role = positionRole(project = project, request = request, model = model, reservedWork = work)) {
+            when (
+                val role =
+                    positionRole(
+                        project = project,
+                        request = request,
+                        model = model,
+                        reservedWork = work,
+                        started = started,
+                    )
+            ) {
                 is Refinement.Refined -> boundedPosition(request, role.value, work, started)
                 is Refinement.Rejected ->
                     when (val failure = role.failure) {
                         is NativeSiteFailure.Native -> ValueModelSiteRead.Rejected(failure.cause)
                         is NativeSiteFailure.Unsupported -> ValueModelSiteRead.Unsupported(failure.cause)
+                        is NativeSiteFailure.Limited -> ValueModelSiteRead.Limited(failure.cause)
                     }
             }
         }
@@ -83,6 +78,7 @@ internal class IntellijValueSiteRevalidationNative(
         request: ValueSiteRevalidationRequest,
         model: WorkspaceSearchScopeModelCompilation,
         reservedWork: Long,
+        started: Long,
     ): Refinement<NativeValuePosition, NativeSiteFailure> {
         // The exact owner is still restored under its retained selector scope. Workspace permits an actual
         // callee in another file; this validation never adopts or enumerates the investigation's D.
@@ -105,6 +101,7 @@ internal class IntellijValueSiteRevalidationNative(
                     request = request,
                     prepared = prepared,
                     reservedWork = reservedWork,
+                    started = started,
                 )
             is Refinement.Rejected ->
                 when (restored.failure) {
@@ -123,6 +120,7 @@ internal class IntellijValueSiteRevalidationNative(
         request: ValueSiteRevalidationRequest,
         prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
         reservedWork: Long,
+        started: Long,
     ): Refinement<NativeValuePosition, NativeSiteFailure> {
         val enclosing = RelationEndpoint.subject(request.enclosing)
         val execution =
@@ -145,20 +143,14 @@ internal class IntellijValueSiteRevalidationNative(
                             Refinement.Rejected(NativeSiteFailure.Unsupported(failure.cause))
                     }
             }
-        return when (
-            val result =
-                nativeRole(
-                    element = element,
-                    claim = request.role,
-                    prepared = prepared,
-                    observation = observation,
-                    executionOwner = execution.owner,
-                )
-        ) {
-            is Refinement.Refined ->
-                Refinement.Refined(NativeValuePosition(result.value, execution.owner, execution.examinedWork))
-            is Refinement.Rejected -> Refinement.Rejected(NativeSiteFailure.Unsupported(result.failure))
-        }
+        return nativeAdmittedPosition(
+            element = element,
+            claim = request.role,
+            prepared = prepared,
+            execution = execution,
+            work =
+                NativeComponentSiteWork(request.budget.resources, reservedWork + execution.examinedWork.value, started),
+        )
     }
 
     private fun boundedPosition(
@@ -190,152 +182,83 @@ internal class IntellijValueSiteRevalidationNative(
             return ValueModelSiteRead.Limited(ValueSiteRevalidationLimit.BYTE_LIMIT_REACHED)
         return when (val result = RevalidatedValueSite.fromCompiler(request, site)) {
             is Refinement.Refined ->
-                ValueModelSiteRead.Revalidated(result.value, siteWorkCount(work + position.captureWork.value))
+                ValueModelSiteRead.Revalidated(result.value, siteWorkCount(work + position.additionalWork.value))
             is Refinement.Rejected -> ValueModelSiteRead.ContractRejected(result.failure)
         }
     }
 }
 
-private data class NativeValuePosition(
-    val role: ValueRole,
-    val executionOwner: ValueExecutionOwner,
-    val captureWork: RelationWorkCount,
-)
-
-private fun nativeRole(
+private fun nativeAdmittedPosition(
     element: PsiElement,
     claim: ValueSiteRoleClaim,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    observation: IntellijReadObservation,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    when (claim) {
-        ValueSiteRoleClaim.ExpressionResult -> expressionRole(element, observation)
-        ValueSiteRoleClaim.LocalBinding -> localBindingRole(element, observation)
-        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, observation)
-        ValueSiteRoleClaim.LocalRead -> localReadRole(element, prepared.owner, observation)
-        ValueSiteRoleClaim.Return ->
-            returnRole(
+    execution: NativeInitialValueRead,
+    work: NativeComponentSiteWork,
+): Refinement<NativeValuePosition, NativeSiteFailure> =
+    when (
+        val result =
+            nativeValueSiteRole(
                 element = element,
-                observation = observation,
-                workAllowance = prepared.scope.request.budget.resources.workAllowance,
-                executionOwner = executionOwner,
-            )
-        is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
-        is ValueSiteRoleClaim.Receiver -> receiverRole(element, prepared, executionOwner)
-    }
-
-private fun expressionRole(
-    element: PsiElement,
-    observation: IntellijReadObservation,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element is KtExpression && element !is KtNamedDeclaration && element.hasNativeType(observation))
-        Refinement.Refined(ValueRole.ExpressionResult)
-    else roleRejected()
-
-private fun localBindingRole(
-    element: PsiElement,
-    observation: IntellijReadObservation,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element.nativeLocalBindingMutability() is Refinement.Refined && element.hasNativeLocalDeclaration(observation))
-        Refinement.Refined(ValueRole.LocalBinding)
-    else roleRejected()
-
-private fun propertyRole(
-    element: PsiElement,
-    observation: IntellijReadObservation,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val property = element as? KtProperty ?: return roleRejected()
-    return if (!property.isLocal && property.initializer != null && property.hasNativeDeclaration(observation))
-        Refinement.Refined(ValueRole.PropertyAssignment)
-    else roleRejected()
-}
-
-private fun localReadRole(
-    element: PsiElement,
-    owner: PsiElement,
-    observation: IntellijReadObservation,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (element is KtThisExpression) {
-        val function = owner as? KtNamedFunction ?: return roleRejected()
-        if (valueNativeOwnership(element, function) != NativeValueOwnership.ADMITTED) return roleRejected()
-        return when (val receiver = nativeThisReceiverKind(function, element, observation)) {
-            is Refinement.Refined -> Refinement.Refined(ValueRole.LocalRead)
-            is Refinement.Rejected -> receiver
-        }
-    }
-    return if (element is KtExpression && element.hasNativeLocalReference(observation))
-        Refinement.Refined(ValueRole.LocalRead)
-    else roleRejected()
-}
-
-private fun returnRole(
-    element: PsiElement,
-    observation: IntellijReadObservation,
-    workAllowance: WorkAllowance,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (element.parent is KtReturnExpression && executionOwner.context is ValueExecutionContext.Callback)
-        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-    if (element !is KtExpression || !element.hasNativeType(observation)) return roleRejected()
-    val block = element.parent as? org.jetbrains.kotlin.psi.KtBlockExpression
-    val callback = block?.parent as? org.jetbrains.kotlin.psi.KtFunctionLiteral
-    if (callback == null || block.statements.lastOrNull() !== element)
-        return if (element.isReturnedExpression()) Refinement.Refined(ValueRole.Return) else roleRejected()
-    return when (
-        val semantics =
-            nativeCallbackReturnSemantics(
-                expression = element,
-                function = callback,
-                observation = observation,
-                workAllowance = workAllowance,
+                claim = claim,
+                prepared = prepared,
+                executionOwner = execution.owner,
+                componentPermit = work::permit,
             )
     ) {
         is Refinement.Refined ->
-            when (semantics.value) {
-                NativeCallbackReturnSemantics.VALUE -> Refinement.Refined(ValueRole.Return)
-                NativeCallbackReturnSemantics.UNIT_COERCION -> roleRejected()
-            }
-        is Refinement.Rejected -> semantics
+            Refinement.Refined(
+                NativeValuePosition(
+                    result.value,
+                    execution.owner,
+                    siteWorkCount(execution.examinedWork.value + work.examined),
+                )
+            )
+        is Refinement.Rejected ->
+            Refinement.Rejected(
+                when (result.failure) {
+                    ValueFlowUnsupportedCause.WORK_LIMIT_REACHED ->
+                        NativeSiteFailure.Limited(ValueSiteRevalidationLimit.WORK_LIMIT_REACHED)
+                    ValueFlowUnsupportedCause.TIME_LIMIT_REACHED ->
+                        NativeSiteFailure.Limited(ValueSiteRevalidationLimit.TIME_LIMIT_REACHED)
+                    else -> NativeSiteFailure.Unsupported(result.failure)
+                }
+            )
     }
+
+private class NativeComponentSiteWork(
+    private val resources: ResourceBudget,
+    private val reservedWork: Long,
+    started: Long,
+) {
+    private val allowance = IntellijRelationAllowance(started) { System.nanoTime() }
+    val examined: Long
+        get() = allowance.examined
+
+    fun permit(): Refinement<Unit, ValueFlowUnsupportedCause> =
+        when {
+            !resources.hasWorkCapacity(reservedWork + examined) ->
+                Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+            allowance.elapsedLimitReached(resources) ->
+                Refinement.Rejected(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
+            else -> {
+                allowance.examine()
+                Refinement.Refined(Unit)
+            }
+        }
 }
 
-private fun argumentRole(
-    element: PsiElement,
-    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val expression = element as? KtExpression ?: return roleRejected()
-    val argument = element.parent as? KtValueArgument ?: return roleRejected()
-    return nativeValueArgument(
-        expression = expression,
-        argument = argument,
-        scope = prepared.scope,
-        projection = prepared.projection,
-        executionOwner = executionOwner,
-    )
-}
-
-private fun receiverRole(
-    element: PsiElement,
-    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val expression = element as? KtExpression ?: return roleRejected()
-    val qualified = element.parent as? KtQualifiedExpression ?: return roleRejected()
-    return nativeValueReceiver(
-        expression = expression,
-        qualified = qualified,
-        scope = prepared.scope,
-        projection = prepared.projection,
-        executionOwner = executionOwner,
-    )
-}
+private data class NativeValuePosition(
+    val role: ValueRole,
+    val executionOwner: ValueExecutionOwner,
+    val additionalWork: RelationWorkCount,
+)
 
 private sealed interface NativeSiteFailure {
     data class Native(val cause: ValueFlowRejection) : NativeSiteFailure
 
     data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeSiteFailure
+
+    data class Limited(val cause: ValueSiteRevalidationLimit) : NativeSiteFailure
 }
 
 private fun nativeSiteRejected(cause: ValueFlowRejection): Refinement.Rejected<NativeSiteFailure> =
@@ -343,49 +266,6 @@ private fun nativeSiteRejected(cause: ValueFlowRejection): Refinement.Rejected<N
 
 private const val ARGUMENT_SITE_WORK = 3L
 private const val EXPRESSION_SITE_WORK = 2L
-
-private fun KtExpression.hasNativeType(observation: IntellijReadObservation): Boolean =
-    observation.observedAnalyze(this) {
-        val type = expressionType
-        type != null && type !is KaErrorType
-    }
-
-private fun KtProperty.hasNativeDeclaration(observation: IntellijReadObservation): Boolean =
-    observation.observedAnalyze(this) { symbol.psi === this@hasNativeDeclaration }
-
-private fun PsiElement.hasNativeLocalDeclaration(observation: IntellijReadObservation): Boolean =
-    when (this) {
-        is KtProperty -> hasNativeDeclaration(observation)
-        is KtDestructuringDeclarationEntry -> {
-            val entry = this
-            observation.observedAnalyze(entry) {
-                val resolved = entry.symbol
-                resolved is KaLocalVariableSymbol &&
-                    resolved.origin == KaSymbolOrigin.SOURCE &&
-                    resolved.psi?.originalElement === entry.originalElement
-            }
-        }
-        else -> false
-    }
-
-private fun KtExpression.hasNativeLocalReference(observation: IntellijReadObservation): Boolean {
-    val reference = references.filterIsInstance<KtReference>().singleOrNull() ?: return false
-    return when (val resolved = resolveLocalValueReference(reference, observation)) {
-        is NativeLocalValueReferenceResolution.Resolved ->
-            resolved.declaration.nativeLocalBindingMutability() is Refinement.Refined
-        NativeLocalValueReferenceResolution.Unresolved -> false
-    }
-}
-
-private fun KtExpression.isReturnedExpression(): Boolean =
-    when (val container = parent) {
-        is KtReturnExpression -> container.returnedExpression === this
-        is KtNamedFunction -> container.bodyExpression === this
-        else -> false
-    }
-
-private fun roleRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
-    Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
 
 private fun siteWorkCount(count: Long): RelationWorkCount =
     when (val result = RelationWorkCount.parse(count)) {

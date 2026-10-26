@@ -15,10 +15,13 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.file.Path
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
@@ -56,6 +59,92 @@ class ValueSiteRestorationTest {
             val result = owner.restoreValueSiteElement(range(expected), ValueSiteRoleClaim.LocalBinding, observation)
             assertSame(expected, result.value())
             observation.assertOutcome(IntellijReadCounter.VALUE_SITE_SHAPES_RESTORED)
+        }
+
+    @Test
+    fun `destructuring restoration retains each exact local entry`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            val owner =
+                factory
+                    .createFile("fun outer() { val (first, second) = pair() }")
+                    .declarations
+                    .filterIsInstance<KtNamedFunction>()
+                    .single()
+            val entries = PsiTreeUtil.collectElementsOfType(owner, KtDestructuringDeclarationEntry::class.java).toList()
+            assertEquals(2, entries.size)
+            entries.forEach { entry ->
+                for (claim in listOf(ValueSiteRoleClaim.LocalBinding, ValueSiteRoleClaim.ExpressionResult)) {
+                    val observation = Observation()
+                    val result = owner.restoreValueSiteElement(range(entry), claim, observation)
+                    assertSame(entry, result.value())
+                    observation.assertOutcome(IntellijReadCounter.VALUE_SITE_SHAPES_RESTORED)
+                }
+            }
+        }
+
+    @Test
+    fun `full form and square bracket entries retain unsupported shape`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            for (declaration in listOf("(val first, var second) = pair()", "val [first, second] = pair()")) {
+                val owner =
+                    factory
+                        .createFile("fun outer() { $declaration }")
+                        .declarations
+                        .filterIsInstance<KtNamedFunction>()
+                        .single()
+                val entries = PsiTreeUtil.collectElementsOfType(owner, KtDestructuringDeclarationEntry::class.java)
+                assertEquals(2, entries.size)
+                entries.forEach { entry ->
+                    val container = entry.parent as KtDestructuringDeclaration
+                    assertTrue(container.isFullForm || container.hasSquareBrackets())
+                    for (claim in listOf(ValueSiteRoleClaim.LocalBinding, ValueSiteRoleClaim.ExpressionResult)) {
+                        assertEquals(
+                            Refinement.Rejected(NativeValueSiteRestorationFailure.ROLE_SHAPE_UNSUPPORTED),
+                            owner.restoreValueSiteElement(range(entry), claim, Observation()),
+                        )
+                    }
+                }
+            }
+        }
+
+    @Test
+    fun `underscore cannot become a local binding`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            val owner =
+                factory
+                    .createFile("fun outer() { val (_, second) = pair() }")
+                    .declarations
+                    .filterIsInstance<KtNamedFunction>()
+                    .single()
+            val entry =
+                PsiTreeUtil.collectElementsOfType(owner, KtDestructuringDeclarationEntry::class.java).single {
+                    it.name == "_"
+                }
+            assertEquals(
+                Refinement.Rejected(NativeValueSiteRestorationFailure.ROLE_SHAPE_UNSUPPORTED),
+                owner.restoreValueSiteElement(range(entry), ValueSiteRoleClaim.LocalBinding, Observation()),
+            )
+        }
+
+    @Test
+    fun `loop and lambda destructuring retain unsupported ownership`(@TempDir home: Path) =
+        KotlinCallOwnershipTest().withParser(home) { factory ->
+            val owner =
+                factory
+                    .createFile(
+                        "fun outer() { for ((first) in pairs) consume(first); pairs.map { (second) -> second } }"
+                    )
+                    .declarations
+                    .filterIsInstance<KtNamedFunction>()
+                    .single()
+            val entries = PsiTreeUtil.collectElementsOfType(owner, KtDestructuringDeclarationEntry::class.java)
+            assertEquals(2, entries.size)
+            entries.forEach { entry ->
+                assertEquals(
+                    Refinement.Rejected(NativeValueSiteRestorationFailure.ROLE_SHAPE_UNSUPPORTED),
+                    owner.restoreValueSiteElement(range(entry), ValueSiteRoleClaim.LocalBinding, Observation()),
+                )
+            }
         }
 
     @Test

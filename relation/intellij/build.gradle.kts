@@ -221,5 +221,10 @@ registerRelationNativeFixtures(
         "*NativeNestedCallbackCompositionTest",
         "*NativeCallbackSupplierCompositionTest",
         "*NativeRunnerControlledTypeProofTest",
+        "*NativeDestructuringCompilerTest",
+        "*NativeDestructuringFlowTest",
+        "*NativeDestructuringRevalidationTest",
+        "*NativeReceiverImplementationDispatchTest",
+        "*NativeCoreValueCompositionTest",
     ),
 )
