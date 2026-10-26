@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import subprocess
+import json
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,33 @@ VALIDATOR = Path(__file__).with_name("code_kb.py")
 
 
 class KnowledgeBaseValidatorTest(unittest.TestCase):
+    def test_documentation_consumer_rejects_missing_paths_without_declaration_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            knowledge = repository / "knowledge"
+            knowledge.mkdir()
+            (knowledge / "index.md").write_text("# Index\n")
+            source = repository / "example.kt"
+            source.write_text("class Actual\n")
+            (knowledge / "concept.md").write_text(
+                "---\ntype: Concept\ncode_sources:\n  - path: example.kt\n    symbols: [NotExamined]\n"
+                "---\n# Concept\n[Example](../example.kt)\n"
+            )
+            command = [sys.executable, str(VALIDATOR), "check-documentation-inputs", "--repo", str(repository),
+                       "--docs", "knowledge", "--strict", "--format", "json"]
+            passed = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(0, passed.returncode, passed.stdout + passed.stderr)
+            report = json.loads(passed.stdout)
+            self.assertEqual("DOCUMENTATION_INPUTS", report["evidence"])
+            self.assertEqual([], report["issues"])
+            source.unlink()
+            failed = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+            self.assertEqual(
+                {"code_sources path does not exist: example.kt", "link target does not exist: ../example.kt"},
+                {issue["message"] for issue in json.loads(failed.stdout)["issues"]},
+            )
+
     def test_openwiki_metadata_preserves_symbol_checks_and_source_impact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository = Path(temporary)

@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """Independent source obligations reject absent proofs and incidental assembly."""
-import os
+import csv
 import io
 import json
+import os
+import re
 import subprocess
 import tempfile
+import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-import re
-import unittest
 from unittest.mock import Mock, patch
 
 import source_validation as source
+import verification_plan
 from source_validation import COMMAND, inspect_graph
+from validation_scope import PRODUCT_MODULES
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -20,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[3]
 def expected_obligations():
     owners = re.findall(r'^\s*"(:[a-z-]+(?::[a-z-]+)?)",?$', (ROOT / "settings.gradle.kts").read_text(), re.MULTILINE)
     return {f"{owner}:{task}" for owner in owners for task in ("check", "scopedCheck", "test")} | {
-        ":sourceValidationGate", ":check", ":build-logic:check", ":verifyJsonContracts", ":verifyKastArchitecture",
+        ":sourceValidationGate", ":check", ":build-logic:check", ":verifyJsonContracts", ":verifyKastArchitecture", ":verifyVerificationGraph",
         ":verifyConfigurationIngress", ":verifyKnowledgeBase", ":hostObservationTest", ":componentReleaseTest",
         ":verifyDocumentationGlossary", ":documentationToolingTest", ":verifyDocumentationMarkdown",
         ":verifyKotlinSemanticCoverage", ":verifyKotlinSemanticInputs", ":verifyKotlinSemanticInventory",
@@ -40,6 +43,31 @@ def graph_output(tasks):
 
 
 class SourceValidationTest(unittest.TestCase):
+    def test_selected_command_keeps_complete_owner_population_and_manifest_fields(self):
+        plan = verification_plan.plan(
+            ROOT, frozenset(":" + path.replace("/", ":") for path in PRODUCT_MODULES),
+            ("query/contract/src/main/kotlin/QueryRows.kt",),
+            "a" * 40, "b" * 40, "c" * 40, "d" * 40, "pull_request",
+        )
+        self.assertIsInstance(plan, verification_plan.Plan)
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary)
+            command = source.selected_command(ROOT, destination, plan)
+            with (destination / "selected-cases.tsv").open() as selected:
+                actual = list(csv.DictReader(selected, delimiter="\t"))
+        with (ROOT / verification_plan.MANIFEST).open() as manifest:
+            expected = [row for row in csv.DictReader(manifest, delimiter="\t")
+                        if row["verification_owner"] == ":runtime:hosted"]
+        self.assertEqual(expected, actual)
+        self.assertEqual(82, len(actual))
+        self.assertIn("-PkastSemanticOwners=:runtime:hosted", command)
+        self.assertIn(":verifySelectedKotlinSemanticCoverage", command)
+        self.assertNotIn("sourceValidationGate", command)
+        required = source.obligations(plan)
+        self.assertIn(":cli:queryDeliveryContractTest", required)
+        self.assertNotIn(":symbol:intellij:semanticCoverageFixtureTest", required)
+        self.assertNotIn(":relation:intellij:semanticCoverageFixtureTest", required)
+
     def test_process_failure_and_source_change_never_emit_success(self):
         identity = ("a" * 40, "b" * 40)
         for status, after, expected in (

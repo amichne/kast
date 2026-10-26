@@ -68,6 +68,8 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.
 - Run `./gradlew verifyDocumentationGlossary` to examine terms and generated files.
+- Run `python3 .github/scripts/ci/verify_documentation.py` for parser, glossary, example, and knowledge-link obligations without Gradle.
+- `code_kb.py check-documentation-inputs` examines source paths and links. Full `check` also examines Kotlin declarations.
 - Before an edit to a generated callable contract, read the nested public reference guide.
 
 ## Navigation Hints

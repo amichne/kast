@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import ast
+from dataclasses import asdict, dataclass
+from enum import Enum
 import json
 import os
 import re
@@ -362,40 +364,60 @@ def write_output(payload: dict[str, Any], output_format: str) -> None:
             print(f"- {page['path']}: {sources}")
 
 
+class KnowledgeEvidence(str, Enum):
+    EXACT_DECLARATIONS = "EXACT_DECLARATIONS"
+    DOCUMENTATION_INPUTS = "DOCUMENTATION_INPUTS"
+
+
+@dataclass(frozen=True)
+class KnowledgeIssue:
+    path: str
+    message: str
+
+
+@dataclass(frozen=True)
+class KnowledgeCheckReport:
+    command: str
+    evidence: KnowledgeEvidence
+    repo: str
+    docs: str
+    pages: int
+    concepts: int
+    reservedFiles: int
+    issueCount: int
+    issues: list[KnowledgeIssue]
+
+
 def command_check(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     docs = (repo / args.docs).resolve()
-    pages = collect_pages(repo, docs, check_symbols=True)
-    bundle_issues: list[dict[str, str]] = []
+    evidence = KnowledgeEvidence.EXACT_DECLARATIONS if args.command == "check" else KnowledgeEvidence.DOCUMENTATION_INPUTS
+    pages = collect_pages(repo, docs, check_symbols=evidence is KnowledgeEvidence.EXACT_DECLARATIONS)
+    bundle_issues: list[KnowledgeIssue] = []
     if args.strict:
         if not docs.is_dir():
             bundle_issues.append(
-                {"path": repo_relative(docs, repo), "message": "bundle root does not exist"},
+                KnowledgeIssue(repo_relative(docs, repo), "bundle root does not exist"),
             )
         elif not docs.joinpath("index.md").is_file():
             bundle_issues.append(
-                {"path": repo_relative(docs, repo), "message": "root index.md is required"},
+                KnowledgeIssue(repo_relative(docs, repo), "root index.md is required"),
             )
         if not any(page["kind"] == "concept" for page in pages):
             bundle_issues.append(
-                {"path": repo_relative(docs, repo), "message": "at least one concept is required"},
+                KnowledgeIssue(repo_relative(docs, repo), "at least one concept is required"),
             )
     issues = bundle_issues + [
-        {"path": page["path"], "message": issue}
+        KnowledgeIssue(page["path"], issue)
         for page in pages
         for issue in page["issues"]
     ]
-    payload = {
-        "command": "check",
-        "repo": str(repo),
-        "docs": repo_relative(docs, repo),
-        "pages": len(pages),
-        "concepts": sum(1 for page in pages if page["kind"] == "concept"),
-        "reservedFiles": sum(1 for page in pages if page["kind"] != "concept"),
-        "issueCount": len(issues),
-        "issues": issues,
-    }
-    write_output(payload, args.format)
+    report = KnowledgeCheckReport(
+        "check", evidence, str(repo), repo_relative(docs, repo), len(pages),
+        sum(1 for page in pages if page["kind"] == "concept"),
+        sum(1 for page in pages if page["kind"] != "concept"), len(issues), issues,
+    )
+    write_output(asdict(report), args.format)
     return 1 if args.strict and issues else 0
 
 
@@ -428,6 +450,13 @@ def parser() -> argparse.ArgumentParser:
     check.add_argument("--format", choices=["human", "json"], default="human")
     check.add_argument("--strict", action="store_true")
     check.set_defaults(func=command_check)
+
+    documentation = subcommands.add_parser("check-documentation-inputs", help="Examine source paths and links without declaration claims.")
+    documentation.add_argument("--repo", type=Path, default=Path("."))
+    documentation.add_argument("--docs", default="openwiki")
+    documentation.add_argument("--format", choices=["human", "json"], default="human")
+    documentation.add_argument("--strict", action="store_true")
+    documentation.set_defaults(func=command_check)
 
     impact = subcommands.add_parser("impact", help="Find OKF concepts affected by changed files.")
     impact.add_argument("--repo", type=Path, default=Path("."))
