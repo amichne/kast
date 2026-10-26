@@ -50,17 +50,52 @@ class VerificationPlanTest(unittest.TestCase):
                 self.assertNotIn(":distribution:cli:nativeCompile", plan.tasks)
                 self.assertNotIn(":topology:build:check", plan.tasks)
 
-    def test_query_delivery_keeps_app_server_generation_consumers(self):
-        plan = self.plan("cli/src/main/js/query-delivery.mjs")
-        self.assertIsInstance(plan, selection.Plan)
-        self.assertEqual(
-            {":app-server", ":cli", ":query:protocol", ":runtime:hosted"},
-            set(plan.consumers),
-        )
-        self.assertIn(":app-server:check", plan.tasks)
-        self.assertIn(":app-server:scopedCheck", plan.tasks)
-        self.assertEqual(106, len(plan.caseIds))
-        self.assertNotIn(":workspace:intellij-read:check", plan.tasks)
+    def test_query_delivery_javascript_keeps_app_server_generation_consumers(self):
+        for path in (
+            "cli/src/main/js/query-delivery.mjs",
+            "cli/src/main/js/query-delivery-contract.mjs",
+            "cli/src/main/js/query-presentation.mjs",
+            "cli/src/main/js/query-session.mjs",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertIsInstance(plan, selection.Plan)
+                self.assertEqual(
+                    {":app-server", ":cli", ":query:protocol", ":runtime:hosted"},
+                    set(plan.consumers),
+                )
+                self.assertIn(":app-server:check", plan.tasks)
+                self.assertIn(":app-server:scopedCheck", plan.tasks)
+                self.assertEqual(106, len(plan.caseIds))
+                self.assertNotIn(":workspace:intellij-read:check", plan.tasks)
+
+    def test_public_query_guard_cli_sources_keep_app_server_generation_consumers(self):
+        for path in (
+            "cli/src/main/resources/query-delivery.schema.json",
+            "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertIsInstance(plan, selection.Plan)
+                self.assertEqual({":app-server", ":cli"}, set(plan.consumers))
+                self.assertIn(":app-server:check", plan.tasks)
+                self.assertIn(":app-server:scopedCheck", plan.tasks)
+                self.assertEqual((), plan.caseIds)
+                self.assertNotIn(":verifySelectedKotlinSemanticCoverage", plan.tasks)
+
+    def test_query_delivery_guard_tools_keep_full_validation_fallback(self):
+        for path in (
+            "packaging/query_delivery_contract.py",
+            "packaging/generate-public-query.py",
+            "packaging/test-public-query-generation.py",
+            "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
+            "agent-tools/onboarding.template.md",
+            "agent-tools/references/query-schema.json",
+            "copilot/extension.mjs",
+            "pi/extension.ts",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(selection.Failure.UNKNOWN_OWNER, self.plan(path))
 
     def test_hosted_failure_fixture_keeps_intellij_encoder_consumer(self):
         plan = self.plan("cli/src/test/resources/hosted-read-failure-encodings.json")
@@ -74,7 +109,13 @@ class VerificationPlanTest(unittest.TestCase):
     def test_file_consumers_do_not_expand_neighboring_inputs(self):
         for path in (
             "cli/src/main/js/query-delivery.mjs.backup",
+            "cli/src/main/js/query-delivery-contract.mjs.backup",
+            "cli/src/main/js/query-presentation.mjs.backup",
+            "cli/src/main/js/query-session.mjs.backup",
             "cli/src/main/js/unrelated.mjs",
+            "cli/src/main/resources/query-delivery.schema.json.backup",
+            "cli/src/main/resources/unrelated.json",
+            "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt.backup",
             "cli/src/test/resources/hosted-read-failure-encodings.json.backup",
             "cli/src/test/resources/unrelated.json",
         ):
