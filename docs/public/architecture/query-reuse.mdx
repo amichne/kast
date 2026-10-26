@@ -6,9 +6,14 @@ icon: "repeat"
 keywords: ["query", "reuse", "TRACE", "IMPACT", "discovery"]
 ---
 
-Kast reduces repeated work at the owner that can prove reuse legal. Each mechanism keeps the original scope, identity, and evidence.
+import { ExactNameDiscoveryDiagram } from "/snippets/diagrams/exact-name-discovery.jsx"
+import { TraceReuseDiagram } from "/snippets/diagrams/trace-reuse.jsx"
+import { ReferenceReuseDiagram } from "/snippets/diagrams/reference-reuse.jsx"
+import { ImpactReuseDiagram } from "/snippets/diagrams/impact-reuse.jsx"
 
-The mechanisms answer different questions. A prepared file inventory does not prove a relationship, and a reused relationship read cannot erase an independent path.
+Kast shares work when the source owner can prove that reuse is sound. It keeps the original scope, identity, and evidence.
+
+Each form of reuse has its own rules. A file inventory does not prove a relationship. A shared read cannot erase a separate path.
 
 | Mechanism | Reused or avoided work | Proof that stays necessary |
 | --- | --- | --- |
@@ -19,55 +24,20 @@ The mechanisms answer different questions. A prepared file inventory does not pr
 
 ## Reject irrelevant files before expensive work
 
-An exact declaration name can permit a native word-index search. Only a completed read creates immutable evidence for candidate-file exclusion.
+For an exact name, Kast can use the native word index. The read must finish before its candidate set can exclude files.
 
-Kast then walks the bounded VFS inventory. It skips expensive source work for ordinary files outside that candidate set.
+Kast then scans the bounded VFS inventory. It skips source work for ordinary files outside the candidate set.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
-flowchart TD
-  I["Native word-index read"] --> C{"Completed?"}
-  C -->|No| R["Typed stop<br/>no exclusion evidence"]
-  C -->|Yes| P["Immutable candidate paths"]
-  P --> V["Bounded VFS inventory"]
-  V --> E{"Candidate or<br/>protected file?"}
-  E -->|Yes| X["Source admission<br/>PSI and declaration AST"]
-  E -->|No| S["Skip declaration work"]
-  X --> K(["Compiler confirms<br/>exact identity"])
-  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
-  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
-  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
-  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
-  class P proof
-  class R stop
-  class K result
-```
+<ExactNameDiscoveryDiagram />
 
-The set proves where exclusion is safe. The VFS inventory still examines excluded children. The compiler must prove that a candidate contains the requested declaration.
-
-<Accordion title="Recorded work reduction and its limits">
-  A matched native fixture compared exhaustive discovery with candidate-file exclusion under the same 999,999-unit allowance.
-
-  | Measurement | Exhaustive discovery | Candidate-file exclusion |
-  | --- | ---: | ---: |
-  | Discovery work units | 999,999, exhausted | 26,874, complete |
-  | Declaration scans | 232 | 5 |
-  | AST nodes visited | 497,173 | 12,813 |
-  | VFS children examined | 2,364 | 2,364 |
-
-  The [recorded experiment](https://github.com/amichne/kast/blob/7e43fc5bbbdfcc43398a775e0d1b9397bb49442d/docs/reviews/exact-name-discovery-work.md) fixes the source digest, input, oracle, and fixture environment.
-
-  These historical counts show less declaration work with unchanged VFS visits. They do not establish a completed-query speedup or a workspace `TRACE` benchmark.
-
-  The separate installed replay used 27,086 discovery units. It used a different environment and does not belong in the matched comparison.
-</Accordion>
+The set proves which files Kast can skip. The VFS inventory still examines excluded children. For each candidate, the compiler must prove that the requested declaration exists.
 
 <Accordion title="Exceptions and rejection rules">
-  Invalid files and files too large for code intelligence keep the original admission path. They cannot silently disappear from coverage.
+  Invalid files keep the original admission path. Files too large for code intelligence keep it too. These files cannot vanish from coverage.
 
-  Names without a sound indexed-word route use exhaustive discovery. Examples include spaced backtick names and implicit `Companion` discovery.
+  If the index cannot supply a sound route for a name, Kast uses exhaustive discovery. Examples include spaced backtick names and implicit `Companion` discovery.
 
-  A stopped or failed index read creates no exclusion object. Its collected prefix cannot stand in for a complete candidate set.
+  A stopped or failed index read creates no exclusion object. Its prefix is not a complete candidate set.
 
   File, work, and retained-byte limits still apply. The index does not grant unlimited discovery.
 </Accordion>
@@ -76,96 +46,52 @@ The set proves where exclusion is safe. The VFS inventory still examines exclude
 
 `TRACE` has a fixed topology. It visits the seed, implementations or overrides, uses, and one further caller layer.
 
-For a type seed, direct callable members also enter as seeds. This membership does not create a call from the type to its member.
+A type seed also supplies its direct callable members as seeds. That membership does not prove a call from the type to its member.
 
-Several routes can reach the same callable. Kast groups matching callable arrivals before one downstream `CALLERS` read.
+Several routes can reach the same callable. Kast groups matching callable arrivals. It then makes one downstream `CALLERS` read.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
-flowchart TD
-  S["Seed"] --> I["Implementations or overrides"]
-  S --> A["Direct-use arrivals"]
-  I --> B["Implementation-use arrivals"]
-  A --> G["Group matching exact<br/>callable capabilities"]
-  B --> G
-  G --> C["One further CALLERS<br/>read per group"]
-  C --> O(["Final declarations<br/>all arrival evidence"])
-  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
-  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
-  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
-  class G proof
-  class O result
-```
+<TraceReuseDiagram />
 
-The group keeps independent reference, caller, and implementation-use evidence. It shares expansion because the exact capability matches, while each arrival keeps its evidence.
+The group keeps evidence for each reference, caller, and implementation use. Exact capabilities must match before Kast shares expansion. Each arrival keeps its evidence.
 
-This path stops after its fixed caller layer. Use `WALK` for a different traversal extent.
+This path stops after its fixed caller layer. Use `WALK` to choose another depth.
 
 ## One prepared inventory can serve distinct relations
 
 `REFERENCES` and `CALLERS` can need the same native reference inventory. Their semantic questions still differ.
 
-The invocation owns one recent inventory slot. Its key includes current authority, subject, scope, and evidence purpose.
+One invocation owns the inventory slot. Its key includes current authority, subject, scope, and evidence purpose.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
-flowchart TD
-  P["Prepared detached inventory"] --> K{"Same authority, subject,<br/>scope, and purpose?"}
-  K -->|No| M["Prepare a new inventory"]
-  K -->|Yes| C["Admit receiving capacity"]
-  C -->|Rejected| U["Unavailable"]
-  C -->|Admitted| R(["Confirm the<br/>receiving relation"])
-  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
-  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
-  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
-  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
-  class P proof
-  class U stop
-  class R result
-```
+<ReferenceReuseDiagram />
 
-A matching key permits capacity admission. It does not supply a completed semantic answer. The receiving relation still confirms its own meaning.
+With a matching key, Kast can examine capacity. The key does not prove an answer. The receiving relation must still prove its own meaning.
 
 <AccordionGroup>
   <Accordion title="What enters the slot">
-    Only an eligible provider inventory at cursor zero can enter. Its detached locators must fit the retained-byte allowance.
+    The provider inventory must be eligible and start at cursor zero. Its detached locators must fit the retained-byte allowance.
 
-    The slot can hold the next eligible inventory instead. It is neither a project-wide result cache nor a continuation store.
+    The next eligible inventory can replace the slot. The slot does not store project-wide results or continuations.
   </Accordion>
   <Accordion title="What a matching read still does">
-    The receiving collector admits the retained inventory against its capacity. The relation still proves its own meaning from the locators.
+    The receiving collector must have space for the retained inventory. The relation still proves its own meaning from the locators.
 
-    A different key produces a miss. A matching inventory without enough receiving capacity reports unavailable.
+    A different key produces a miss. Without enough space, a matching inventory reports unavailable.
   </Accordion>
 </AccordionGroup>
 
 ## IMPACT shares reads and keeps every route
 
-Two routes can reach the same exact value site. Kast can reuse a settled one-hop read at that site, including its finite rejection evidence.
+Two routes can reach the same exact value site. Kast can reuse a settled one-hop read at that site. This includes finite rejection evidence.
 
-Each route still keeps its own producer and ordered history. The interpreter expands the reused transfers separately for those routes.
+Each route still keeps its own producer and ordered history. The interpreter expands the reused transfers for each route.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 20, "padding": 12, "curve": "basis"}}}%%
-flowchart TD
-  A["Route A arrives"] --> R["Shared settled read<br/>one exact value site"]
-  B["Route B arrives"] --> R
-  R --> H["Expand route A<br/>keep history A"]
-  R --> J["Expand route B<br/>keep history B"]
-  H --> L(["Investigation ledger<br/>every route and obligation"])
-  J --> L
-  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
-  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
-  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
-  class R proof
-  class L result
-```
+<ImpactReuseDiagram />
 
-The shared read can include finite rejection evidence. A rejection never becomes an empty successful transfer set.
+The shared read can include finite rejection evidence. A rejection never becomes a successful result with no transfers.
 
-If part of a read remains unfinished, Kast continues that read under the existing grant. A saved prefix alone does not establish a settled read.
+If a read is unfinished, Kast continues it under the existing grant. A saved prefix does not prove that the read settled.
 
-The original ledger keeps branches, terminals, models, and unresolved obligations. Completion needs that whole ledger, even when a preview shows one path.
+The original ledger keeps branches, terminals, models, and unresolved obligations. Completion needs the whole ledger. A preview can show just one path.
 
 <Info>
   Fewer native reads do not mean fewer semantic paths. A merge of reads cannot replace proof for each route.

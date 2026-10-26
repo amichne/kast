@@ -5,36 +5,36 @@ description: "Follow a Kotlin question through compiler authority, query executi
 icon: "workflow"
 ---
 
-Kast turns a question about Kotlin source into scoped compiler evidence. The agent chooses the question and interprets the answer.
+Kast asks the compiler about your Kotlin source. Each answer states its scope and limits. Your agent uses those facts for its next step.
 
-Start with the query lifecycle for the whole path. Use the other pages to examine one owner or proof rule.
+Start with the value example. Use the other pages to see how Kast gets an answer.
 
 <Columns cols={2}>
   <Card title="Follow one value" icon="route" href="/explanation/value-journey">
-    Step through source and see why a value can move—or why missing proof stops it.
+    Trace a value through source, then change the example to see a different route.
   </Card>
   <Card title="How a query runs" icon="workflow" href="/explanation/query-lifecycle">
-    Follow admission, semantic work, completion, and output delivery.
+    See how a question reaches IDEA and how the answer reaches your agent.
   </Card>
   <Card title="Who proves a fact" icon="shield-check" href="/reference/internals/architecture">
-    Separate index candidates, compiler identity, and scoped completion.
+    See which facts come from the index and which need the compiler.
   </Card>
   <Card title="How query work is reused" icon="repeat" href="/architecture/query-reuse">
-    Compare file exclusion, TRACE grouping, reference inventories, and IMPACT reads.
+    See when Kast can skip files or share work between routes.
   </Card>
   <Card title="When evidence expires" icon="history" href="/reference/staleness">
-    Distinguish fresh declaration identity, retained answers, and reusable semantic facts.
+    See which results you can reuse after the source changes.
   </Card>
   <Card title="Where state lives" icon="network" href="/architecture/topology">
-    Find the adapters, IDEA Host, and owners of temporary and stored state.
+    Find the parts that connect your agent to IDEA and store its results.
   </Card>
   <Card title="How source changes work" icon="file-pen-line" href="/architecture/change-lifecycle">
-    Follow an exact target through a plan, source effect, receipt, and recovery.
+    See how Kast plans an edit and records its result.
   </Card>
 </Columns>
 
 <Info>
-  A complete answer meets the compiler-static proof rules for its declared scope. It does not prove runtime execution.
+  A complete answer meets the compiler-static proof rules for its stated scope. It does not prove that the code ran.
 </Info>
 
-For hands-on use, start with [the first-query exercise](/tutorials/first-query). [Reference](/reference) defines the exact fields and result kinds.
+Try [your first query](/tutorials/first-query) on a small file. Use [Reference](/reference) for exact fields and result kinds.

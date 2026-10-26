@@ -11,6 +11,8 @@ keywords:
 mode: "wide"
 ---
 
+import { AuthorityDiagram } from "/snippets/diagrams/authority.jsx"
+
 <span id="bounded-execution-keeps-progress" />
 
 Kast gets facts about source from the IDEA project for one exact repository. Adapters carry them to the agent. They keep the source state and proof limits with the facts.
@@ -30,15 +32,7 @@ Each domain owns exact checks for declarations and relationships. The query prot
 | Completion proof | The declared question meets its model's rules. | Runtime execution. |
 | Retained output | The original answer and its qualifications. | Current authority after source state changes. |
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  A["Agent chooses the question"] --> T["Transport carries the request"]
-  T --> H["IDEA admits the exact workspace"]
-  H --> D["Domains establish compiler facts"]
-  D --> Q["Query preserves completion and limits"]
-  Q --> O["Agent receives scoped evidence"]
-```
+<AuthorityDiagram />
 
 1. The agent chooses the question; the transport carries it.
 2. IDEA admits the exact workspace and current read state.

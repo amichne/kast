@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 473.37800000000004 737.621" width="473.37800000000004" height="737.621" style="--bg:#171816;--fg:#F0F1EB;--accent:#8FA7FF;--muted:#B3B9AC;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370.34400000000005 924.8199999999998" width="370.34400000000005" height="924.8199999999998" style="--bg:#171816;--fg:#F0F1EB;--line:#697265;--accent:#8FA7FF;--muted:#B3B9AC;--surface:#22251F;--border:#515B4B;background:var(--bg)">
 <style>
 
-  text { font-family: 'system-ui, sans-serif', system-ui, sans-serif; }
+  text { font-family: 'SUSE', system-ui, sans-serif; }
   svg {
     /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
     --_text:          var(--fg);
@@ -19,68 +19,71 @@
   }
 </style>
 <defs>
-  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+  <marker id="query-lifecycle-arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
     <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
-  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+  <marker id="query-lifecycle-arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
     <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
 </defs>
-<polyline class="edge" data-from="Q" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="279.6831666666667,56.900000000000006 279.6831666666667,88.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="241.81650000000002,125.80000000000001 241.81650000000002,145.8 211.21416666666667,145.8 211.21416666666667,157.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="F" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Rejected" points="317.54983333333337,125.80000000000001 317.54983333333337,145.8 373.76300000000003,145.8 373.76300000000003,462.0210000000001 377.10716666666667,462.0210000000001 377.10716666666667,474.0210000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="R" data-to="C" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="211.21416666666667,194.70000000000002 211.21416666666667,226.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="C" data-to="P" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Established" points="184.044,362.55083333333334 184.044,478.621 155.089,478.621 155.089,542.921" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="C" data-to="F" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Unproven" points="238.38433333333336,362.55083333333334 238.38433333333336,409.721 299.79408333333333,409.721 299.79408333333333,462.0210000000001 332.2488333333333,462.0210000000001 332.2488333333333,474.0210000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="P" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="155.089,579.821 155.089,599.821 229.73733333333334,599.821 229.73733333333334,611.821" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="F" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="When available" points="354.678,510.92100000000005 354.678,599.821 280.0296666666667,599.821 280.0296666666667,611.821" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="S" data-to="D" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="254.8835,648.721 254.8835,680.721" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<g class="edge-label" data-from="A" data-to="F" data-label="Rejected">
-  <rect x="343.76300000000003" y="416.721" width="59.230000000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="373.37800000000004" y="431.871" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Rejected</text>
+<polyline class="edge" data-from="Q" data-to="W" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="182.57850000000002,77.80000000000001 182.57850000000002,113.80000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="W" data-to="L" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="182.57850000000002,167.60000000000002 182.57850000000002,203.60000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="L" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="182.57850000000002,257.40000000000003 182.57850000000002,293.40000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="S" data-to="P" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="182.57850000000002,347.20000000000005 182.57850000000002,383.20000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="P" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Yes" points="150.59183333333334,543.1333333333334 150.59183333333334,616.02 94.9925,616.02 94.9925,675.8699999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="P" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="No" points="214.5651666666667,543.1333333333334 214.5651666666667,599.12 270.16450000000003,599.12 270.16450000000003,675.8699999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="A" data-to="D" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="94.9925,712.7699999999999 94.9925,743.4449999999999 182.57850000000002,743.4449999999999 182.57850000000002,757.2199999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="R" data-to="D" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="270.16450000000003,729.6699999999998 270.16450000000003,743.4449999999999 182.57850000000002,743.4449999999999 182.57850000000002,757.2199999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<polyline class="edge" data-from="D" data-to="O" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="182.57850000000002,811.0199999999999 182.57850000000002,847.0199999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#query-lifecycle-arrowhead)" />
+<g class="edge-label" data-from="P" data-to="A" data-label="Yes">
+  <rect x="76.4925" y="623.02" width="36.658" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="94.82150000000001" y="638.17" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Yes</text>
 </g>
-<g class="edge-label" data-from="C" data-to="P" data-label="Established">
-  <rect x="118.089" y="485.621" width="73.486" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="154.832" y="500.77099999999996" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Established</text>
+<g class="edge-label" data-from="P" data-to="R" data-label="No">
+  <rect x="254.6645" y="606.12" width="30.718000000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="270.0235" y="621.27" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">No</text>
 </g>
-<g class="edge-label" data-from="C" data-to="F" data-label="Unproven">
-  <rect x="266.79408333333333" y="416.721" width="65.17" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="299.3790833333333" y="431.871" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Unproven</text>
+<g class="node" data-id="Q" data-label="Admitted question
+source, scope, and grant" data-shape="rectangle">
+  <rect x="88.61500000000004" y="24" width="187.92699999999996" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="182.57850000000002" y="50.900000000000006" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="182.57850000000002" dy="-3.9000000000000012">Admitted question</tspan><tspan x="182.57850000000002" dy="16.900000000000002">source, scope, and grant</tspan></text>
 </g>
-<g class="edge-label" data-from="F" data-to="S" data-label="When available">
-  <rect x="310.178" y="554.5210000000001" width="88.93" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="354.64300000000003" y="569.671" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">When available</text>
+<g class="node" data-id="W" data-label="Prepare exact workspace
+join its current operation" data-shape="rectangle">
+  <rect x="84.53950000000002" y="113.80000000000001" width="196.078" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="182.57850000000002" y="140.70000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="182.57850000000002" dy="-3.9000000000000012">Prepare exact workspace</tspan><tspan x="182.57850000000002" dy="16.900000000000002">join its current operation</tspan></text>
 </g>
-<g class="node" data-id="Q" data-label="Fixed question and scope" data-shape="rectangle">
-  <rect x="183.4966666666667" y="20" width="192.373" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="279.6831666666667" y="38.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Fixed question and scope</text>
+<g class="node" data-id="L" data-label="Acquire semantic lane
+bind current read authority" data-shape="rectangle">
+  <rect x="83.42800000000004" y="203.60000000000002" width="198.30099999999996" height="53.800000000000004" rx="0" ry="0" fill="#232F50" stroke="#8FA7FF" stroke-width="0.75" />
+  <text x="182.57850000000002" y="230.50000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#F0F1EB"><tspan x="182.57850000000002" dy="-3.9000000000000012">Acquire semantic lane</tspan><tspan x="182.57850000000002" dy="16.900000000000002">bind current read authority</tspan></text>
 </g>
-<g class="node" data-id="A" data-label="Admit workspace and read state" data-shape="rectangle">
-  <rect x="166.0831666666667" y="88.9" width="227.19999999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="279.6831666666667" y="107.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Admit workspace and read state</text>
+<g class="node" data-id="S" data-label="Resolve exact source
+advance semantic tasks" data-shape="rectangle">
+  <rect x="91.20850000000003" y="293.40000000000003" width="182.73999999999998" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="182.57850000000002" y="320.3" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="182.57850000000002" dy="-3.9000000000000012">Resolve exact source</tspan><tspan x="182.57850000000002" dy="16.900000000000002">advance semantic tasks</tspan></text>
 </g>
-<g class="node" data-id="R" data-label="RUN resolves symbols and relations" data-shape="rectangle">
-  <rect x="84.27616666666671" y="157.8" width="253.87599999999995" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="211.2141666666667" y="176.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">RUN resolves symbols and relations</text>
+<g class="node" data-id="P" data-label="Completion proof met?" data-shape="diamond">
+  <polygon points="182.57850000000002,383.20000000000005 278.5385,479.1600000000001 182.57850000000002,575.1200000000001 86.61850000000001,479.1600000000001" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="182.57850000000002" y="479.1600000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Completion proof met?</text>
 </g>
-<g class="node" data-id="F" data-label="Typed rejection" data-shape="rectangle">
-  <rect x="287.3905" y="474.0210000000001" width="134.575" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="354.678" y="492.47100000000006" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Typed rejection</text>
+<g class="node" data-id="A" data-label="Complete answer" data-shape="stadium">
+  <rect x="24" y="675.8699999999999" width="141.985" height="36.900000000000006" rx="18.450000000000003" ry="18.450000000000003" fill="#19382E" stroke="#8CD2B6" stroke-width="0.75" />
+  <text x="94.9925" y="694.3199999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#F0F1EB" dy="4.55">Complete answer</text>
 </g>
-<g class="node" data-id="C" data-label="Completion proof" data-shape="diamond">
-  <polygon points="211.21416666666667,226.70000000000002 292.7246666666667,308.2105 211.21416666666667,389.721 129.70366666666666,308.2105" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="211.21416666666667" y="308.2105" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Completion proof</text>
+<g class="node" data-id="R" data-label="Typed rejection
+available evidence" data-shape="rectangle">
+  <rect x="193.985" y="675.8699999999999" width="152.359" height="53.800000000000004" rx="0" ry="0" fill="#422823" stroke="#F0A99C" stroke-width="0.75" />
+  <text x="270.16450000000003" y="702.7699999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#F0F1EB"><tspan x="270.16450000000003" dy="-3.9000000000000012">Typed rejection</tspan><tspan x="270.16450000000003" dy="16.900000000000002">available evidence</tspan></text>
 </g>
-<g class="node" data-id="P" data-label="Complete answer and bounded preview" data-shape="rectangle">
-  <rect x="20" y="542.921" width="270.178" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="155.089" y="561.3710000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Complete answer and bounded preview</text>
+<g class="node" data-id="D" data-label="Fit and publish
+produced output" data-shape="rectangle">
+  <rect x="113.80900000000003" y="757.2199999999999" width="137.539" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="182.57850000000002" y="784.1199999999999" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="182.57850000000002" dy="-3.9000000000000012">Fit and publish</tspan><tspan x="182.57850000000002" dy="16.900000000000002">produced output</tspan></text>
 </g>
-<g class="node" data-id="S" data-label="Retained evidence" data-shape="rectangle">
-  <rect x="179.445" y="611.821" width="150.877" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="254.8835" y="630.2710000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Retained evidence</text>
-</g>
-<g class="node" data-id="D" data-label="READ_RESULT presents stored rows" data-shape="rectangle">
-  <rect x="121.64700000000002" y="680.721" width="266.47299999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="254.8835" y="699.171" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">READ_RESULT presents stored rows</text>
+<g class="node" data-id="O" data-label="READ_RESULT or output RESUME
+no semantic replay" data-shape="rectangle">
+  <rect x="57.86350000000007" y="847.0199999999999" width="249.4299999999999" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="182.57850000000002" y="873.9199999999998" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="182.57850000000002" dy="-3.9000000000000012">READ_RESULT or output RESUME</tspan><tspan x="182.57850000000002" dy="16.900000000000002">no semantic replay</tspan></text>
 </g>
 </svg>

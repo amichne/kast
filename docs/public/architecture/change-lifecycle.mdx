@@ -4,22 +4,13 @@ description: "Follow an exact change from planning and preimage admission to ver
 icon: "file-pen-line"
 ---
 
+import { ChangeLifecycleDiagram } from "/snippets/diagrams/change-lifecycle.jsx"
+
 A source change needs an exact target. It also needs authority for the source state in the plan. A successful read alone does not authorize a write.
 
 ## From intent to source effect
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  I["Authorized intent and exact target"] --> P["Plan supported change"]
-  P --> A{"Admit stored plan and current preimage"}
-  A -->|Rejected| N["Reject before source effect"]
-  A -->|Admitted| W["Apply with recovery record"]
-  W --> V["Examine resulting source"]
-  V --> R["Verification outcome and receipt"]
-  W -->|Uncertain effect| U["Preserve evidence and recover"]
-  V -->|Recovery required| U
-```
+<ChangeLifecycleDiagram />
 
 1. Planning binds a supported intent to an exact target and preimage: the source state before the write.
 2. Applying a plan starts with its stored identity. Kast checks the source again before it admits the write.

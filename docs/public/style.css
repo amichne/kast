@@ -1,8 +1,3 @@
-/* Keep native Mermaid diagrams centered without changing their zoom container. */
-.mermaid > svg {
-  margin-inline: auto;
-}
-
 /* Source-first value-journey explainer. All rules stay inside the component. */
 .value-journey {
   --vj-paper: #ffffff;
@@ -61,7 +56,7 @@
   outline: 2px solid var(--vj-accent);
   outline-offset: 3px;
 }
-.value-journey button[aria-disabled="true"] {
+.value-journey button:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -465,4 +460,131 @@
   .value-journey .vj-file > span:last-child {
     font-size: 9px;
   }
+}
+
+/* The route uses the same admitted steps as the source cursor. */
+.value-journey .vj-route {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 20px;
+}
+.value-journey .vj-route button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 130px;
+  padding: 12px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.value-journey .vj-route button[data-reached="true"] {
+  color: var(--vj-compiler);
+  border-color: var(--vj-compiler);
+}
+.value-journey .vj-route button[aria-current="step"] {
+  background: var(--vj-mark);
+  outline: 2px solid var(--vj-accent);
+  outline-offset: 2px;
+}
+
+.value-journey .vj-route button:not(:last-child)::after {
+  content: "→";
+  margin-left: auto;
+  color: var(--vj-muted);
+}
+
+/* Diagram layout. The renderer owns colors in diagram-theme.css. */
+.kast-diagram {
+  margin: 2rem 0;
+  border: 1px solid var(--diagram-border);
+  border-radius: 12px;
+  background: var(--diagram-paper);
+  color: var(--diagram-ink);
+  overflow: hidden;
+}
+.kast-diagram .kd-canvas {
+  overflow: auto;
+  padding: 12px;
+}
+.kast-diagram .kd-canvas svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.kast-diagram .kd-expanded svg {
+  max-width: none;
+  min-width: 150%;
+}
+.kast-diagram figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--diagram-border);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.kast-diagram .kd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.kast-diagram a, .kast-diagram button {
+  color: var(--diagram-accent);
+  cursor: pointer;
+}
+.kast-diagram button {
+  border: 1px solid var(--diagram-border);
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--diagram-surface);
+}
+.kast-diagram :is(a, button, .kd-canvas):focus-visible {
+  outline: 2px solid var(--diagram-accent);
+  outline-offset: -2px;
+}
+.kast-diagram .kd-dark-link, .dark .kast-diagram .kd-light-link { display: none; }
+.dark .kast-diagram .kd-dark-link { display: inline; }
+
+/* Maple's desktop sidebar can hide without changing the native mobile menu. */
+#kast-sidebar-toggle { display: none; }
+@media (min-width: 1024px) {
+  #kast-sidebar-toggle {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    z-index: 40;
+    top: calc(4.5rem + var(--banner-height, 0px));
+    left: 18rem;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #dfe3dc;
+    border-radius: 8px;
+    background: #fbfbf9;
+    color: #52594e;
+    cursor: pointer;
+  }
+  .dark #kast-sidebar-toggle {
+    border-color: #515b4b;
+    background: #171816;
+    color: #b3b9ac;
+  }
+  #kast-sidebar-toggle:hover { color: #3154c7; }
+  .dark #kast-sidebar-toggle:hover { color: #8fa7ff; }
+  #kast-sidebar-toggle:focus-visible {
+    outline: 2px solid #3154c7;
+    outline-offset: 3px;
+  }
+  .dark #kast-sidebar-toggle:focus-visible { outline-color: #8fa7ff; }
+  .kast-sidebar-collapsed #sidebar { display: none; }
+  .kast-sidebar-collapsed #content-container { margin-left: 0; }
+  .kast-sidebar-collapsed #navbar-transition-maple { left: 0; }
+  .kast-sidebar-collapsed #kast-sidebar-toggle { left: 1rem; }
+  .kast-sidebar-collapsed #kast-sidebar-toggle svg { transform: scaleX(-1); }
 }

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343.668 354.30000000000007" width="343.668" height="354.30000000000007" style="--bg:#FBFBF9;--fg:#20231F;--line:#9CA59A;--accent:#3154C7;--muted:#52594E;--surface:#F2F3EE;--border:#B9C1B4;background:var(--bg)">
+<style>
+
+  text { font-family: 'SUSE', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="impact-reuse-arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="impact-reuse-arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="A" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="90.917,60.900000000000006 90.917,78.9 171.834,78.9 171.834,96.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#impact-reuse-arrowhead)" />
+<polyline class="edge" data-from="B" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="252.751,60.900000000000006 252.751,78.9 171.834,78.9 171.834,96.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#impact-reuse-arrowhead)" />
+<polyline class="edge" data-from="R" data-to="H" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="171.834,150.70000000000002 171.834,168.70000000000002 91.658,168.70000000000002 91.658,186.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#impact-reuse-arrowhead)" />
+<polyline class="edge" data-from="R" data-to="J" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="171.834,150.70000000000002 171.834,168.70000000000002 252.01,168.70000000000002 252.01,186.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#impact-reuse-arrowhead)" />
+<polyline class="edge" data-from="H" data-to="L" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="91.658,240.50000000000003 91.658,258.5 171.834,258.5 171.834,276.5" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#impact-reuse-arrowhead)" />
+<polyline class="edge" data-from="J" data-to="L" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="252.01,240.50000000000003 252.01,258.5 171.834,258.5 171.834,276.5" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#impact-reuse-arrowhead)" />
+<g class="node" data-id="A" data-label="Route A arrives" data-shape="rectangle">
+  <rect x="24" y="24" width="133.834" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="90.917" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Route A arrives</text>
+</g>
+<g class="node" data-id="R" data-label="Shared settled read
+one exact value site" data-shape="rectangle">
+  <rect x="93.06099999999999" y="96.9" width="157.54600000000002" height="53.800000000000004" rx="0" ry="0" fill="#EAF0FF" stroke="#3154C7" stroke-width="0.75" />
+  <text x="171.834" y="123.80000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="171.834" dy="-3.9000000000000012">Shared settled read</tspan><tspan x="171.834" dy="16.900000000000002">one exact value site</tspan></text>
+</g>
+<g class="node" data-id="B" data-label="Route B arrives" data-shape="rectangle">
+  <rect x="185.834" y="24" width="133.834" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="252.751" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Route B arrives</text>
+</g>
+<g class="node" data-id="H" data-label="Expand route A
+keep history A" data-shape="rectangle">
+  <rect x="25.482" y="186.70000000000002" width="132.352" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="91.658" y="213.60000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="91.658" dy="-3.9000000000000012">Expand route A</tspan><tspan x="91.658" dy="16.900000000000002">keep history A</tspan></text>
+</g>
+<g class="node" data-id="J" data-label="Expand route B
+keep history B" data-shape="rectangle">
+  <rect x="185.834" y="186.70000000000002" width="132.352" height="53.800000000000004" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="252.01" y="213.60000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="252.01" dy="-3.9000000000000012">Expand route B</tspan><tspan x="252.01" dy="16.900000000000002">keep history B</tspan></text>
+</g>
+<g class="node" data-id="L" data-label="Investigation ledger
+every route and obligation" data-shape="stadium">
+  <rect x="74.9065" y="276.5" width="193.855" height="53.800000000000004" rx="26.900000000000002" ry="26.900000000000002" fill="#E5F5EE" stroke="#278160" stroke-width="0.75" />
+  <text x="171.834" y="303.4" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="171.834" dy="-3.9000000000000012">Investigation ledger</tspan><tspan x="171.834" dy="16.900000000000002">every route and obligation</tspan></text>
+</g>
+</svg>

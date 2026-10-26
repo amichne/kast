@@ -5,7 +5,9 @@ description: "Distinguish tool registration, client sessions, workspace preparat
 icon: "workflow"
 ---
 
-A connection, project preparation, semantic request, and daemon each have their own owner. Success in one lifecycle proves only the facts of that lifecycle.
+import { RequestLifecycleDiagram } from "/snippets/diagrams/request-lifecycle.jsx"
+
+Connections, project setup, requests, and daemons have separate owners. Each lifecycle proves its own facts.
 
 ## Owners and lifetimes
 
@@ -17,44 +19,32 @@ A connection, project preparation, semantic request, and daemon each have their 
 | Semantic request | Input and current state pass admission | A complete, qualified, rejected, or uncertain result | Evidence for one operation. |
 | Coordinator daemon | Compatible service startup | Stop, replacement, or service exit | One service owns work shared by connected clients and workspaces. |
 
-A ready project does not prove a declaration identity. A live socket does not prove that contracts match. A complete transport exchange does not prove semantic completion.
+A ready project does not prove a declaration identity. A live socket does not prove that contracts match. A transport can return a reply before semantic completion is proved.
 
 ## Request lifecycle
 
-The direct Tool RPC path supplies a concrete example. Its caller starts in the intended repository directory.
+Tool RPC shows one path. Its caller starts in the repository directory.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  I["Decode and admit tool arguments"] --> R["Discover exact Gradle root"]
-  R --> P["Prepare selected IDEA project"]
-  P --> H["Admit Host contract and current read state"]
-  H --> Q["Evaluate canonical operation"]
-  Q --> C{"Completion proof"}
-  C -->|Established| O["Operation document and bounded output"]
-  C -->|Unproven| E["Typed rejection and available evidence"]
-  O --> T["Admit result schema and encode transport reply"]
-  E --> T
-```
+<RequestLifecycleDiagram />
 
 1. Tool RPC admits the input and finds the exact Gradle root.
-2. Kast prepares the selected IDEA project and checks the Host contract and current read state.
-3. The canonical operation runs and checks its completion proof.
-4. Both a proved result and a typed rejection pass result-schema checks before the reply.
+2. Kast prepares the selected IDEA project. It then examines the Host contract and current read state.
+3. The canonical operation runs. Kast then examines its completion proof.
+4. Kast examines the result schema before the reply. This rule covers proved results and typed rejections.
 
 `PublicToolContract` admits public arguments. `HostedCanonicalQuery` connects the selected IDEA project to `CanonicalQueryProtocol`.
 
 The protocol owns semantic page continuation. It keeps that work under one admitted grant. Public `RESUME` and `READ_RESULT` only show produced evidence.
 
-Scope, source state, question, and output remain fixed during the run. A failure cannot silently restart discovery under a different question.
+The run keeps its scope, source state, question, and output fixed. A failure cannot restart discovery with a different question.
 
 ### Hosted workspace settlement
 
 The hosted App Server gives each workspace one semantic permit and a bounded queue. Each workspace has its own lane.
 
-Queue wait counts toward the interaction allowance. If the queue is full or its wait expires, Kast rejects the affected call before it starts.
+Queue wait counts toward the interaction allowance. If the queue is full or its wait expires, Kast rejects the call before it starts.
 
-If a call is cancelled before it runs, Kast records that phase. After it starts, an uncertain write needs recovery. The lane admits no further source effect until the write is settled.
+If a call is cancelled before it runs, Kast records that phase. After it starts, an uncertain write needs recovery. The lane blocks new source effects until the write is settled.
 
 An uncertain read does not impose that write fence. Bounded state checks can report the fence while it stays held.
 
@@ -62,13 +52,13 @@ These lane rules describe the hosted App Server. They do not mean that all Kast 
 
 ## Connection lifecycle
 
-MCP negotiates a stdio session and advertises tools through `tools/list`. Tool RPC advertises the installed catalog before a one-shot call.
+MCP starts a stdio session and lists tools through `tools/list`. Tool RPC supplies the installed catalog before a one-shot call.
 
-The optional Tool RPC `querySession` capability permits a bounded query session in one process. If an older catalog lacks that capability, use one-shot calls.
+The optional Tool RPC `querySession` capability permits a bounded query session in one process.
 
-Before it dispatches a dynamic tool, hosted App Server admits the client's protocol, thread ownership, and workspace binding. A fresh thread gets the provider catalog.
+Before a dynamic tool call, hosted App Server admits the client protocol. It also admits thread ownership and workspace binding. A fresh thread gets the provider catalog.
 
-Disconnect removes the recorded client integration. A client restart unloads its existing adapter. Disconnect does not itself retire the shared daemon or IDEA project.
+Disconnect removes the saved client connection. A client restart unloads its existing adapter. Disconnect does not itself retire the shared daemon or IDEA project.
 
 Upgrades can change schemas and loaded components. New sessions need the new catalog. Before a semantic call, IDEA has to load the installed Host.
 
@@ -76,36 +66,36 @@ Upgrades can change schemas and loaded components. New sessions need the new cat
 
 ## How a project gets ready
 
-`WorkspacePreparations` owns one setup sequence per canonical root. Multiple demands can share setup that is pending or complete.
+`WorkspacePreparations` owns one setup sequence per canonical root. Requests can share pending or complete setup.
 
 The sequence opens the project once. It then reads status for the issued operation. Status reads do not repeat the open effect.
 
 <AccordionGroup>
   <Accordion title="Preparation and transport deadlines">
-Preparation has a 17-minute budget. Opening, import, indexing, and final admission share that budget. Each lifecycle frame has a separate 5-second transport limit. A frame timeout reports `EXCHANGE_DEADLINE_EXCEEDED` with its command, stage, cause, and timing. `HOST_UNAVAILABLE` alone does not prove that IDEA exited. Semantic execution has its own limits after preparation.
+Preparation has a 17-minute budget. The project open, import, indexing, and final admission share that budget. Each lifecycle frame has a separate 5-second transport limit. A frame timeout reports `EXCHANGE_DEADLINE_EXCEEDED` with its command, stage, cause, and timing. `HOST_UNAVAILABLE` alone does not prove that IDEA exited. Semantic execution has its own limits after preparation.
   </Accordion>
   <Accordion title="Recovery after a settled import">
-After an import settles, a current model observation can still require a reload. The settled refresh then reports `MODEL_RELOAD_REQUIRED`. Preparation can issue one owned recovery reload within its remaining budget. A later input change remains pending until an import covers it. Inspection distinguishes pending input revisions from rejection of the current imported model; retained model evidence describes a previous observation.
+After an import settles, the current model can still need a reload. The settled refresh then reports `MODEL_RELOAD_REQUIRED`. Preparation can reload once for recovery if its budget permits. A later input change remains pending until an import covers it. Inspection distinguishes pending input changes from rejection of the imported model. Retained model evidence describes the state from an earlier read.
   </Accordion>
 </AccordionGroup>
 
-A past blocker or rejection does not define readiness forever. A later authorized demand can check the current Host. It can then create a new preparation.
+A past blocker or rejection does not define readiness forever. A later authorized request can examine the current Host and start new setup.
 
-Setup lookup history has a fixed capacity. Retirement keeps final results that are still held. Once an ID is reclaimed, a later lookup returns `UNKNOWN_OPERATION`.
+Setup history has a fixed capacity. Final results stay while a caller holds them. After Kast reclaims an ID, a lookup returns `UNKNOWN_OPERATION`.
 
-Trust, unsaved documents, plugins that do not match, failed import, and indexing can block readiness. [Background preparation](/reference/internals/background-startup) describes the user-facing effects.
+Trust, unsaved files, and plugins that do not match can block readiness. Failed import and indexing can block it too. [Background preparation](/reference/internals/background-startup) describes the user-facing effects.
 
 <span id="daemon-startup-and-retirement" />
 
 ## Starting and stopping a daemon
 
-When a service starts, it checks the installed executable, selected runtime, settings, and service identity. A shared installation lock runs startup and stop one at a time.
+At startup, the service examines its installed executable and selected runtime. It also examines its settings and identity. A shared installation lock runs startup and stop one at a time.
 
-Readiness records and a socket exchange identify the service generation. An old record or a socket in use does not prove an admitted current service.
+Readiness records and a socket exchange identify the service generation. An old record does not prove a valid current service. Neither does a socket in use.
 
 Lifecycle fences block automatic startup during stop, reset, or payload replacement. If the fence state is unknown, startup rejects.
 
-`kast stop` fences new calls and automatic restart before retirement. Installation recovery replaces payloads only after its shutdown rules succeed.
+`kast stop` fences new calls and automatic restart before retirement. Recovery replaces payloads only after its shutdown rules succeed.
 
 A daemon restart does not replay writes. A Host restart ends its live authority. Retained output then needs a new investigation.
 

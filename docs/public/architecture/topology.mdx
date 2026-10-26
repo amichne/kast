@@ -4,19 +4,13 @@ description: "Locate the agent adapters, IDEA Host, and stored evidence."
 icon: "network"
 ---
 
+import { TopologyDiagram } from "/snippets/diagrams/topology.jsx"
+
 The agent connection carries requests. The IDEA project supplies semantic authority. An installed connection alone does not prove that the project is ready.
 
 ## Follow one request
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  A["Agent in selected worktree"] --> T["MCP or Tool RPC adapter"]
-  T --> H["IDEA Host for exact root"]
-  H --> Q["Canonical query and domain services"]
-  Q --> P["Compiler and project indexes"]
-  Q --> R["Retained query state"]
-```
+<TopologyDiagram />
 
 1. The adapter carries the request from the selected repository or worktree.
 2. The IDEA Host admits that exact root and its current read state.

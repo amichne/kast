@@ -1,60 +1,31 @@
 ---
-title: "Compatibility"
-description: "Compare platform requirements, release contracts, and the installed tool catalog."
+title: "Platform and compatibility"
+description: "Use the supported IDEA installation and the tool contract from your Kast session."
 icon: "shield-check"
 ---
 
-Kast reads the Kotlin Gradle repository on disk. Use an Apple silicon Mac. The selected IDEA uses build `262.*`, bundled Kotlin, and Java 25 JBR.
-
-Kast rejects other IDEA release lines. A JDK set for your project does not replace the selected IDEA runtime.
+Use an Apple silicon Mac and a Kotlin Gradle project.
+Kast needs IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Your project's JDK does not replace the IDEA runtime.
 
 <span id="installed-contract-authority" />
 
-## What governs your release
+## Tool contracts
 
-| Client | Read the installed contract |
-| --- | --- |
-| MCP | `tools/list` |
-| Tool RPC | `catalog` |
-| Codex plugin | MCP `tools/list` |
+MCP clients get the tool contract from `tools/list`. Tool RPC clients use `catalog`.
+Use the schema from your session and copy issued references unchanged.
 
-Kast checks the runtime protocol, operation registry, wire schema, supported features, and IDEA/Kotlin support. Equal version numbers alone do not prove that the components work together.
-
-An installed client, a ready service, the loaded Host, and an admitted exact workspace each prove distinct facts. [Lifecycles](/reference/lifecycles) describes those owners.
+Before it admits work, Kast examines the runtime protocol, operation registry, and wire schema. It also examines supported features and IDEA/Kotlin support.
 
 <a id="current-release-pair" />
+<span id="recorded-release-pair" />
 
-## Recorded release pair
+## Install the latest release
 
-This pair records October 5, 2026 evidence. It does not name the latest published release.
+The [installer](/start) selects the latest stable release for Control and Host.
+Control provides the command and agent adapters. Host provides the IDEA plugin.
 
-| Component | Release | Source | Installed part |
-| --- | --- | --- | --- |
-| Control | [0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) | [`c2582dbf0`](https://github.com/amichne/kast/commit/c2582dbf0c3bbee83acc7db4f426d5836ece0710) | Command and adapters |
-| Host | [0.4.0](https://github.com/amichne/kast/releases/tag/host-v0.4.0) | [`d1305fe51`](https://github.com/amichne/kast/commit/d1305fe51e35855e65a1024ce88d094a90e8a341) | IDEA plugin for `262` |
+After an update, restart IDEA and your agent. Ask a fresh question in your repository or worktree.
 
-The installer selects stable Control and Host releases on their own. You can select this historical pair with explicit options in a downloaded installer.
-
-```shell
-bash install.sh --version 0.3.1 --host-version 0.4.0
-```
-
-`--version` selects Control, and `--host-version` selects Host. Older pairs can use distinct wire contracts. To keep them compatible, you can need to change both components.
-
-Host-only mode interprets `--version` as the Host version.
-
-```shell
-bash install.sh --host-only --version 0.4.0
-```
-
-Control-only mode needs a compatible live Host. Host-only mode keeps Control. Its contract still needs to match the loaded Host.
-
-## Recorded examples and client limits
-
-Past offsets, counts, and handles belong to the captured revision. For current inputs, use your installed catalog and fresh issued references.
-
-After an upgrade, load the new components in IDEA and each client. Retained output cannot use a retired owner's live authority.
-
-The [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) names its tested protocol. It also records the earlier desktop limits. Current Codex setup uses the bundled plugin over MCP.
-
-`kast connect codex app-server` rejects before it changes registrations. Codex owns its App Server and control socket. Use [integration options](/reference/integrations) for the current setup contract.
+Codex uses the bundled Kast plugin over MCP. Codex owns its App Server and control socket.
+Use [integration options](/reference/integrations) for custom connections.

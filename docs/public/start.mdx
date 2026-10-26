@@ -1,10 +1,10 @@
 ---
 title: "Install Kast"
-description: "Install Kast with one command and ask your first Kotlin question in Codex."
+description: "Connect Kast to Codex and ask your first Kotlin question."
 icon: "download"
 ---
 
-Use this guide to install Kast and ask your first question in Codex. The installer offers the Codex plugin by default.
+import DeeperReading from "/snippets/deeper-reading.mdx"
 
 ## Before you install
 
@@ -13,64 +13,44 @@ You need:
 - An Apple silicon Mac.
 - A Kotlin Gradle project.
 - IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-- Codex CLI installed and available as `codex` in your terminal.
-- Python 3.9 or later, available as `python3`, for the installer and Codex session hook.
+- Codex CLI and Python 3.9 or later on `PATH`.
 
-Before you run the installer, check both commands:
-
-```shell
-codex --version
-python3 --version
-```
-
-If either command is not available, install it first. [Integration requirements](/reference/integrations) describe the supported agent startup tools.
-
-<span id="1-install-kast" />
-
-1. [Install Kast.](#1-install-kast)
-2. [Load the IDEA plugin.](#2-restart-intellij-idea)
-3. [Connect your agent.](#3-connect-your-agent)
+Run `codex --version` and `python3 --version` to examine those commands.
+For Copilot or Pi, use the [agent guide](/agent-harnesses) after installation.
 
 <Steps>
   <Step title="Install Kast">
-    Run this command in a terminal:
+    <span id="1-install-kast" />
+
+    Run this command:
 
     ```shell wrap
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer adds Kast and its IntelliJ plugin. Accept the default Codex plugin installation when the installer asks.
+    Accept the default Codex plugin installation.
   </Step>
-  <Step title="Load the IDEA plugin">
+  <Step title="Restart IDEA and Codex">
     <span id="2-restart-intellij-idea" />
-
-    Restart IDEA to load the plugin. Then check the installation:
-
-    ```shell
-    kast status
-    ```
-
-    If your terminal cannot find `kast`, use the command path that the installer prints.
-
     <span id="3-connect-your-agent" />
+
+    Restart IDEA to load its Kast plugin. Restart Codex and select your Kotlin repository or worktree.
+    Review and trust the Kast session context hook in Codex.
   </Step>
-  <Step title="Connect your agent">
+  <Step title="Ask your first question">
     <span id="3-ask-your-agent" />
+    <span id="4-establish-readiness" />
 
-    The installer offers the Codex plugin by default. Continue with [Connect your agent](/agent-harnesses) to load it and select the exact worktree.
+    > Use Kast to find a Kotlin function in this workspace. Show its signature and source location.
 
-    Use the same page for Copilot or Pi. [Installation reference](/reference/installation) covers release channels and installer options.
+    Kast prepares the project in IDEA. If trust or project import needs your attention, the result names the problem.
+    Open the returned source location and compare the function with the answer.
   </Step>
 </Steps>
 
-<span id="4-establish-readiness" />
-
-## 4. Prove readiness
-
-Complete [the first-query exercise](/tutorials/first-query) in the selected project. Compare the returned declaration and caller with the exercise source.
-
-<Warning>
-  `kast status` reports installation state. A tool catalog proves availability. A fresh semantic query proves that the selected project admits the requested read.
-</Warning>
-
+Use [the first-query exercise](/tutorials/first-query) for a small example with a known caller.
 If setup stops, use [Troubleshoot Kast](/troubleshooting).
+
+[Installation options](/reference/installation) · [Connect another agent](/agent-harnesses)
+
+<DeeperReading />

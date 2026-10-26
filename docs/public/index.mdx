@@ -1,60 +1,60 @@
 ---
-title: "Give your agent a better view of Kotlin"
-sidebarTitle: "Start here"
-description: "Find exact Kotlin declarations, trace their connections, and choose the documentation that fits your task."
+title: "See where your Kotlin changes lead"
+sidebarTitle: "Why Kast?"
+description: "Give your agent the connections between functions, values, and the code that depends on them."
 icon: "scan-search"
 ---
 
+import DeeperReading from "/snippets/deeper-reading.mdx"
+
+import { ValueJourney } from "/snippets/value-journey.jsx"
+
 <span id="what-kast-adds" />
+
+Kast connects your coding agent to IntelliJ IDEA. Your agent can trace a value through functions, fields, and callbacks to the code that uses it.
+
+## Can my agent already do that?
+
+Your agent can search names and read files. Now ask a harder question:
+
+**If I change this value, where does it go?**
+
+In this example, a helper creates a `Pet`. A `PetListing` holds that pet. A callback puts the listing into a list.
+Press **Follow the value** to see each connection. Then choose **Return a different value**. The code still mentions the same types, but the route changes.
+
+<ValueJourney />
+
+[Try the other examples](/explanation/value-journey).
+
+Kast gives your agent source locations and evidence for these connections. A matching name or type cannot establish them.
 
 <span id="use-the-agent-you-already-use" />
 
+## Ask a better question before the edit
+
+> Use Kast to trace this function's result. Show where it goes and where the evidence stops.
+
+> Use Kast to find the callers of this function before we change it.
+
+> Use Kast to inspect the diagnostics in the code we changed.
+
+When Kast cannot finish, it says so. Your agent can see what still needs attention.
+
 <span id="is-kast-for-you" />
 
-Kast connects your coding agent to IntelliJ IDEA. Your agent uses compiler evidence to find Kotlin declarations and the links between them.
+## Try it on your project
 
-Text search finds matching words. Kast tells overloads apart. It reports links in source and states the limits of each answer.
-
-<Card title="Get your first result" icon="arrow-right" href="/start">
-  Install Kast, connect Codex, and find a function and its caller in source you control.
-</Card>
+Use an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
 <span id="choose-your-reader-track" />
 
-## Find the right documentation
-
-<Columns cols={3}>
-  <Card title="Guides" icon="list-checks" href="/how-to">
-    Complete a task and recover when it stops.
+<Columns cols={2}>
+  <Card title="Install Kast" icon="arrow-right" href="/start">
+    Connect Codex, Copilot, or Pi and ask your first question.
   </Card>
-
-  <Card title="Architecture" icon="workflow" href="/explanation">
-    Follow an answer to its source and understand when it remains valid.
-  </Card>
-
-  <Card title="Reference" icon="braces" href="/reference">
-    Look up exact inputs, results, limits, and client contracts.
+  <Card title="Find your next question" icon="search" href="/search">
+    Trace a feature, inspect problems, or prepare a change.
   </Card>
 </Columns>
 
-## What your agent can do
-
-- Find a declaration by name, source location, or matching word.
-- Read source and distinguish declarations with the same name.
-- Find references, callers, implementations, and overrides.
-- Inspect IDEA diagnostics for a file or directory.
-- Add a declaration or replace a supported function body.
-
-[Example questions](/search) show these tasks in an agent conversation. Codex, Copilot, and Pi use distinct adapters to reach the same semantic owners.
-
-## Before your first query
-
-Use an Apple silicon Mac and a Kotlin Gradle repository. Kast needs IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-
-[Install Kast](/start), then [connect your agent](/agent-harnesses). The plugin's MCP session starts IDEA setup for projects with `settings.gradle.kts`. If trust, import, or indexing blocks a query, Kast reports the cause.
-
-A complete answer applies to its declared source scope and compiler-static model. It does not prove that code ran or that the project builds.
-
-[What an answer proves](/reference/evidence-boundaries) explains these limits. Your project's build and tests prove behavior after a change.
-
-[Glossary](/glossary) defines the terms used in Kast answers.
+<DeeperReading />

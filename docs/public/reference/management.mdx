@@ -46,14 +46,11 @@ Upgrade stops owned services and interrupts sessions. After success, restart IDE
   [Compatibility](/reference/compatibility) checks protocol, registry, schema, supported features, and IDEA admission. Equal version numbers alone do not prove that components work together.
 </Accordion>
 
-<Accordion title="Load a Host update or migrate an older installation">
+<Accordion title="Load a Host update">
   For Host-only installation, use the public installer with `--host-only --version <host-version>`. Restart IDEA to load the plugin.
 
   Hosted changes use a private local endpoint and native workspace admission. Installation does not create approval keys.
 
-  An older Host needs a matching Control contract. Upgrade both components. Restart IDEA before a fresh agent session.
-
-  Read [the keyless migration](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md#keyless-hosted-change-migration) for the compatibility gate.
 </Accordion>
 
 <a id="stop-and-reinstall" />
@@ -114,7 +111,7 @@ Reset fences startup and moves the installation aside. It then retires processes
 
 Shared IDEA and Gradle processes remain under your control. The outer lock files stay in place.
 
-Reset removes legacy `$HOME/.kast` state, historical `$HOME/.local/share/.kast-*` artifacts, and the public command.
+Reset removes `$HOME/.kast` state, `$HOME/.local/share/.kast-*` artifacts, and the public command.
 
 It unlinks symlinks without reading their targets. It rejects filesystem roots, HOME, and ancestors of HOME as targets to delete.
 

@@ -1,54 +1,55 @@
 ---
-title: "Choose a question for your agent"
+title: "What do you want to understand?"
 sidebarTitle: "Example questions"
-description: "Find code, trace its connections, inspect problems, and make targeted changes through your agent."
+description: "Ask your agent to trace values, find callers, inspect problems, and prepare changes."
 icon: "search"
 ---
 
-Use these prompts with your [connected agent](/agent-harnesses). Each prompt identifies a task and the evidence that the answer must keep.
+import DeeperReading from "/snippets/deeper-reading.mdx"
 
-## Find the exact code
+Use these prompts with your [connected agent](/agent-harnesses). Replace the example names with code from your project.
 
-Find a function, class, or property and read its source. If several declarations share a name, Kast gives their signatures and locations.
+## Where does this value go?
 
-> Use Kast to find submitOrder in this repository. Show the matches and their source locations.
+> Use Kast to trace the result of submitOrder. Show the source connections through helpers, fields, and callbacks. Report where the evidence stops.
 
-## Understand what connects to it
+A value can move through several functions without its original name. Kast can preserve those connections and distinguish a separate value with the same type.
 
-Find callers, references, implementations, or overrides. Use those connections to investigate a feature or review the code around a proposed change.
+[Explore a value journey](/explanation/value-journey).
 
-> Use Kast to find the callers of the submitOrder function I selected. Show where each call occurs.
+## What depends on this function?
 
-> Use Kast to find implementations of CacheManager in this project.
+> Use Kast to find submitOrder. If several functions match, show their signatures so I can choose one. Then find its callers.
 
-## Find reported problems
+Use the returned locations to review the code that calls your selected function.
 
-Ask for the problems that IntelliJ reports in the selected code.
+## Which implementation matters?
 
-> Use Kast to inspect the IDEA diagnostics for the function I selected.
+> Use Kast to find implementations of CacheManager in this project. Show their source locations.
 
-## Make a targeted change
+An implementation list describes source code. It does not choose the implementation that a live application uses.
 
-Kast can add a declaration to an existing Kotlin file or replace a supported function body. It reports the edit outcome.
+## What problems does IDEA report?
+
+> Use Kast to inspect the diagnostics in this directory before we change it.
+
+Kast returns the problems that IDEA reports for the selected code.
+
+## Can we change this body?
 
 > Use Kast to replace the selected retryLimit function's body with `{ return 3 }`. Keep its signature unchanged.
 
-These edits cover specific targets. Kast does not rename symbols, create files, or do multi-file refactors through its change tools.
+Kast can replace a supported function body or add a declaration to an existing file.
+For a rename or a multi-file refactor, your agent needs its other edit tools.
+Review the diff and run your project's tests after a change.
 
-After an edit, review the diff. Run your project's build and tests.
+## What if Kast cannot finish?
 
-The [change guide](/reference/change) describes supported targets and the receipt needed before another write.
+Keep the reason from the result. Ask your agent to narrow the question or resolve the reported problem.
+An unfinished search does not prove that no matches exist.
 
-## Know when an answer needs more work
+[Troubleshoot Kast](/troubleshooting) to return to your task.
 
-Kast reports when it cannot finish a search or prove a relationship. A limited answer does not prove that no matches exist.
+For exact steps, see [diagnostics](/how-to/inspect-diagnostics), [source changes](/reference/change), and [large results](/how-to/read-retained-evidence).
 
-Your agent can use the reported reason to narrow the question or resolve a setup problem.
-
-Use [Find and trace code](/reference/search) for scoped discovery. Use [Inspect diagnostics](/how-to/inspect-diagnostics) for reported problems.
-
-Use [Read retained evidence](/how-to/read-retained-evidence) when the response supplies more evidence than one preview.
-
-<Card title="Connect your agent" icon="plug" href="/agent-harnesses">
-  Choose Codex, Copilot, or Pi and ask your first question.
-</Card>
+<DeeperReading />

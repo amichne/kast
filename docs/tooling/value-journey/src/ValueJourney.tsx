@@ -50,14 +50,13 @@ export function ValueJourney(): JSX.Element {
   if (walkthrough.kind === "loading")
     return (
       <div className="value-journey vj-loading not-prose">
-        Loading the frozen example…
+        The example loads here…
       </div>
     );
   if (walkthrough.kind === "rejected")
     return (
       <div className="value-journey vj-loading not-prose" role="alert">
-        The example could not be loaded ({walkthrough.code}). No value path is
-        shown.
+        The example is unavailable ({walkthrough.code}).
       </div>
     );
 
@@ -128,7 +127,7 @@ export function ValueJourney(): JSX.Element {
     >
       <div className="vj-heading">
         <h2>Follow one value.</h2>
-        <span className="vj-mode">Authored example · static</span>
+        <span className="vj-mode">Interactive illustration</span>
       </div>
 
       <div className="vj-options">
@@ -153,23 +152,45 @@ export function ValueJourney(): JSX.Element {
         <div className="vj-detail" role="group" aria-label="Explanation detail">
           {(["story", "normal", "proof"] as const).map((level) => (
             <button
-              key={level}
+              key={
+                { story: "Overview", normal: "Every step", proof: "Evidence" }[
+                  level
+                ]
+              }
               type="button"
               aria-pressed={detail === level}
               onClick={() => setDetail(level)}
             >
-              {level}
+              {
+                { story: "Overview", normal: "Every step", proof: "Evidence" }[
+                  level
+                ]
+              }
             </button>
           ))}
         </div>
       </div>
 
       <p className="vj-question">{example.description}</p>
+      <nav className="vj-route" aria-label="Value route">
+        {cursor.visible("story").map((candidate) => (
+          <button
+            key={candidate.id}
+            type="button"
+            aria-current={candidate === step ? "step" : undefined}
+            data-reached={path.steps.indexOf(candidate) <= cursor.index}
+            onClick={() => navigate(cursor.seek(candidate))}
+          >
+            <span aria-hidden="true">●</span>
+            <span>{candidate.title}</span>
+          </button>
+        ))}
+      </nav>
       <div className="vj-file">
         <span>
           <span aria-hidden="true">Kt</span> {example.variant}.kt
         </span>
-        <span>Pierre / Shiki · read-only</span>
+        <span>Kotlin example</span>
       </div>
 
       <section
@@ -197,14 +218,14 @@ export function ValueJourney(): JSX.Element {
                   </div>
                   <div className="vj-explanation">
                     {stopped && (
-                      <span className="vj-eyebrow">Simulated proof gap</span>
+                      <span className="vj-eyebrow">Missing connection</span>
                     )}
                     <div className="vj-step-heading">
                       <h3>
                         {stopped ? "The explanation stops here." : step.title}
                       </h3>
                       <span className={`vj-authority vj-${step.authority}`}>
-                        {authority} · expected
+                        {authority} · illustration
                       </span>
                     </div>
                     <p>{step.explanation}</p>
@@ -243,59 +264,60 @@ export function ValueJourney(): JSX.Element {
                       </>
                     )}
 
-                    {step.context.kind === "callback" && (
-                      <div className="vj-callback">
-                        <div>
-                          <span className="vj-eyebrow">Callback frame</span>
-                          <code>map.transform</code>
+                    {step.context.kind === "callback" &&
+                      (proof || detail === "proof") && (
+                        <div className="vj-callback">
+                          <div>
+                            <span className="vj-eyebrow">Callback frame</span>
+                            <code>map.transform</code>
+                          </div>
+                          {(proof || detail === "proof") && (
+                            <dl>
+                              <dt>Supplier</dt>
+                              <dd>convert</dd>
+                              <dt>Anonymous owner</dt>
+                              <dd>lambda on line 9</dd>
+                              <dt>Result carries</dt>
+                              <dd>
+                                <code>
+                                  {example.variant === "E3"
+                                    ? "Pet"
+                                    : "PetListing.pet"}
+                                </code>
+                              </dd>
+                            </dl>
+                          )}
+                          <div className="vj-proof-split">
+                            <span>◆ Bind lambda to transform</span>
+                            <span>Compiler · expected</span>
+                          </div>
+                          <div
+                            className={
+                              stopped
+                                ? "vj-proof-split vj-missing"
+                                : "vj-proof-split"
+                            }
+                          >
+                            <span>◇ Callback result → output element</span>
+                            <span>
+                              {stopped
+                                ? "Missing proof"
+                                : step.authority === "reviewed-library"
+                                  ? "Reviewed rule · expected"
+                                  : "Next expected transfer"}
+                            </span>
+                          </div>
                         </div>
-                        {(proof || detail === "proof") && (
-                          <dl>
-                            <dt>Supplier</dt>
-                            <dd>convert</dd>
-                            <dt>Anonymous owner</dt>
-                            <dd>lambda on line 9</dd>
-                            <dt>Result carries</dt>
-                            <dd>
-                              <code>
-                                {example.variant === "E3"
-                                  ? "ClientValue"
-                                  : "ClientEnvelope.payload"}
-                              </code>
-                            </dd>
-                          </dl>
-                        )}
-                        <div className="vj-proof-split">
-                          <span>◆ Bind lambda to transform</span>
-                          <span>Compiler · expected</span>
-                        </div>
-                        <div
-                          className={
-                            stopped
-                              ? "vj-proof-split vj-missing"
-                              : "vj-proof-split"
-                          }
-                        >
-                          <span>◇ Callback result → output element</span>
-                          <span>
-                            {stopped
-                              ? "Missing proof"
-                              : step.authority === "reviewed-library"
-                                ? "Reviewed rule · expected"
-                                : "Next expected transfer"}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                      )}
 
                     {cursor.atEnd && (
                       <div className="vj-ending">
                         <strong>
                           {path.ending.kind === "unresolved"
-                            ? "Missing: callback result → output element"
+                            ? "The library connection needs evidence"
                             : path.ending.kind === "excluded"
-                              ? "A different value, not a continuation"
-                              : "End of the expected route"}
+                              ? "The list gets a different value"
+                              : "This route ends here"}
                         </strong>
                         <p>{path.ending.explanation}</p>
                       </div>
@@ -303,9 +325,7 @@ export function ValueJourney(): JSX.Element {
 
                     {example.paths.length > 1 && cursor.index <= 1 && (
                       <div className="vj-fork">
-                        <span className="vj-eyebrow">
-                          Two possible continuations
-                        </span>
+                        <span className="vj-eyebrow">Choose a route</span>
                         {example.paths.map((alternative) => (
                           <button
                             type="button"
@@ -317,10 +337,7 @@ export function ValueJourney(): JSX.Element {
                             {alternative.label}
                           </button>
                         ))}
-                        <p>
-                          These are static alternatives, not branches observed
-                          at runtime.
-                        </p>
+                        <p>These routes describe possible uses in source.</p>
                       </div>
                     )}
 
@@ -331,7 +348,7 @@ export function ValueJourney(): JSX.Element {
                         aria-expanded={proof}
                         onClick={() => setProof(!proof)}
                       >
-                        {proof ? "−" : "+"} Proof details
+                        {proof ? "−" : "+"} Show the evidence
                       </button>
                     )}
                     {(proof || detail === "proof") && (
@@ -355,10 +372,14 @@ export function ValueJourney(): JSX.Element {
                         <dt>Compiler identity</dt>
                         <dd>Not captured</dd>
                         <dt>Coverage ledger</dt>
-                        <dd>Not captured; no completeness claim</dd>
-                        <dt>Source SHA-256</dt>
+                        <dd>Not captured</dd>
+                        <dt>Displayed source SHA-256</dt>
                         <dd>
                           <code>{example.sha256}</code>
+                        </dd>
+                        <dt>Original fixture SHA-256</dt>
+                        <dd>
+                          <code>{example.fixtureSha256}</code>
                         </dd>
                       </dl>
                     )}
@@ -375,8 +396,8 @@ export function ValueJourney(): JSX.Element {
                         }
                       >
                         {stopped
-                          ? "Restore the reviewed rule"
-                          : "What if this proof were missing?"}{" "}
+                          ? "Restore the connection"
+                          : "What if a connection is missing?"}{" "}
                         <span aria-hidden="true">↗</span>
                       </button>
                     )}
@@ -414,7 +435,7 @@ export function ValueJourney(): JSX.Element {
         <div className="vj-buttons">
           <button
             type="button"
-            aria-disabled={cursor.index === 0}
+            disabled={cursor.index === 0}
             onClick={() => navigate(cursor.move("previous", detail))}
           >
             <span aria-hidden="true">←</span> Previous
@@ -422,7 +443,7 @@ export function ValueJourney(): JSX.Element {
           <button
             type="button"
             className="vj-next"
-            aria-disabled={cursor.atEnd}
+            disabled={cursor.atEnd}
             onClick={() => navigate(cursor.move("next", detail))}
           >
             {cursor.index === 0 ? "Follow the value" : "Next step"}{" "}
@@ -433,8 +454,8 @@ export function ValueJourney(): JSX.Element {
       <div className="vj-limits">
         <span aria-hidden="true">ⓘ</span>
         <p>
-          Static relationships, not runtime execution or complete investigation
-          coverage.
+          Illustration from fixed source. This page does not run Kast or your
+          code.
         </p>
       </div>
     </div>

@@ -1,0 +1,18 @@
+---
+title: "How the value example works"
+description: "Read the source, expected routes, and limits of the interactive illustration."
+icon: "file-check"
+---
+
+The [interactive example](/explanation/value-journey) traces one `Pet`.
+A `PetListing` can carry it in `pet`, and a list can carry that listing in an element.
+The listing and list keep their own identities.
+
+The compiler identifies the function and callback. A reviewed rule for `map` connects a callback result to a possible list element.
+Select **Evidence** in the example to inspect that distinction and each source location.
+
+The illustration uses [fixed Kotlin fixtures](https://github.com/amichne/kast/tree/main/relation/intellij/testData/r1-value-flow) and authored expected routes.
+The displayed code uses pet-store names. The original fixtures stay unchanged.
+It does not query Kast or record execution. Its final step does not prove a complete investigation.
+
+[What an answer proves](/reference/evidence-boundaries) explains the limits of a real Kast result.

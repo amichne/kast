@@ -26,7 +26,7 @@ var KastValueJourney = (() => {
   });
 
   // <define:KAST_SYNTAX>
-  var define_KAST_SYNTAX_default = { E0: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 98, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 99, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 102, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 107, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 113, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 116, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 124, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 125, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 129, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 130, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 135, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 136, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 150, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 151, light: "#D32A61", dark: "#FF678D" }, { text: " payload: ", start: 154, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 164, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 175, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 178, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 186, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 187, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 190, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 191, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 201, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 214, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 229, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 230, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 231, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 232, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 243, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 247, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 248, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 253, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 261, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 262, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 265, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 266, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 275, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientEnvelope", start: 276, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 292, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 296, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 310, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 311, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 312, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 313, light: "#693ACF", dark: "#9D6AFB" }, { text: "(payload ", start: 327, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 336, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 337, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 338, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 351, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 355, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 363, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 364, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 367, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 368, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 375, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 383, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 387, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 388, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 397, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 401, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 405, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 406, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 420, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 422, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 423, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 430, light: "#693ACF", dark: "#9D6AFB" }, { text: " { it.", start: 433, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientEnvelope", start: 439, light: "#693ACF", dark: "#9D6AFB" }, { text: "() }", start: 455, light: "#0A0A0A", dark: "#FAFAFA" }], []], E3: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 98, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 99, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 102, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 107, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 113, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 116, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 124, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 125, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 129, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 130, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 135, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 136, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 150, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 151, light: "#D32A61", dark: "#FF678D" }, { text: " payload: ", start: 154, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 164, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 175, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 178, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 186, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 187, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 190, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 191, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 201, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 214, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 229, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 230, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 231, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 232, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 243, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 247, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 248, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 253, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 261, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 262, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 265, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 266, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 275, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientEnvelope", start: 276, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 292, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 296, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 310, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 311, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 312, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 313, light: "#693ACF", dark: "#9D6AFB" }, { text: "(payload ", start: 327, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 336, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 337, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 338, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 351, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 355, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 363, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 364, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 367, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 368, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 375, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 383, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 387, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 388, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 397, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 401, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 405, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 406, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 417, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 419, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 420, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 427, light: "#693ACF", dark: "#9D6AFB" }, { text: " { it.", start: 430, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 436, light: "#693ACF", dark: "#9D6AFB" }, { text: "() }", start: 449, light: "#0A0A0A", dark: "#FAFAFA" }], []], E4: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 98, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 99, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 102, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 107, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 113, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 116, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 124, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 125, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 129, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 130, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 135, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 136, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 150, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 151, light: "#D32A61", dark: "#FF678D" }, { text: " payload: ", start: 154, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 164, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 175, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 178, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 186, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 187, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 190, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 191, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 201, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 214, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 229, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 230, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 231, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 232, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 243, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 247, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 248, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 253, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 261, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 262, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 265, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 266, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 275, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientEnvelope", start: 276, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 292, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 296, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 310, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 311, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 312, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 313, light: "#693ACF", dark: "#9D6AFB" }, { text: "(payload ", start: 327, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 336, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 337, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toClientValue", start: 338, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 351, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 355, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 363, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 364, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 367, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 368, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 375, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 383, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 387, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WireValue", start: 388, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 397, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 401, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 405, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 406, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 420, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 422, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 423, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 430, light: "#693ACF", dark: "#9D6AFB" }, { text: " { ", start: 433, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientEnvelope", start: 436, light: "#693ACF", dark: "#9D6AFB" }, { text: "(", start: 450, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "ClientValue", start: 451, light: "#693ACF", dark: "#9D6AFB" }, { text: "(", start: 462, light: "#0A0A0A", dark: "#FAFAFA" }, { text: '"constant"', start: 463, light: "#147d35", dark: "#5ECC71" }, { text: ")) }", start: 473, light: "#0A0A0A", dark: "#FAFAFA" }], []] };
+  var define_KAST_SYNTAX_default = { E0: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 90, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 91, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 94, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 99, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 105, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 108, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 116, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 117, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 121, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 122, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 127, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 128, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 138, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 139, light: "#D32A61", dark: "#FF678D" }, { text: " pet: ", start: 142, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 148, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 154, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 162, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 163, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 167, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 176, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 177, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 182, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 186, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 189, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 190, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 191, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 192, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 199, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 205, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 213, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 214, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 217, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 227, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 228, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 240, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 244, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 254, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 255, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 256, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 257, light: "#693ACF", dark: "#9D6AFB" }, { text: "(pet ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 272, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 273, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 274, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 279, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 283, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 291, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 292, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 295, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 296, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 311, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 315, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 316, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 325, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 329, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 333, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 334, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 344, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 346, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 347, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 354, light: "#693ACF", dark: "#9D6AFB" }, { text: " { it.", start: 357, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 363, light: "#693ACF", dark: "#9D6AFB" }, { text: "() }", start: 375, light: "#0A0A0A", dark: "#FAFAFA" }], []], E3: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 90, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 91, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 94, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 99, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 105, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 108, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 116, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 117, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 121, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 122, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 127, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 128, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 138, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 139, light: "#D32A61", dark: "#FF678D" }, { text: " pet: ", start: 142, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 148, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 154, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 162, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 163, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 167, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 176, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 177, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 182, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 186, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 189, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 190, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 191, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 192, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 199, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 205, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 213, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 214, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 217, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 227, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 228, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 240, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 244, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 254, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 255, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 256, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 257, light: "#693ACF", dark: "#9D6AFB" }, { text: "(pet ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 272, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 273, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 274, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 279, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 283, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 291, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 292, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 295, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 296, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 311, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 315, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 316, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 325, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 329, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 333, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 334, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 337, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 339, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 340, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 347, light: "#693ACF", dark: "#9D6AFB" }, { text: " { it.", start: 350, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 356, light: "#693ACF", dark: "#9D6AFB" }, { text: "() }", start: 361, light: "#0A0A0A", dark: "#FAFAFA" }], []], E4: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 90, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 91, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 94, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 99, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 105, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 108, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 116, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 117, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 121, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 122, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 127, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 128, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 138, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 139, light: "#D32A61", dark: "#FF678D" }, { text: " pet: ", start: 142, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 148, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 154, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 162, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 163, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 167, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 176, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 177, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 182, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 186, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 189, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 190, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 191, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 192, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 199, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 205, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 213, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 214, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 217, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 227, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 228, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 240, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 244, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 254, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 255, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 256, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 257, light: "#693ACF", dark: "#9D6AFB" }, { text: "(pet ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 272, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 273, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 274, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 279, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 283, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 291, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 292, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 295, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 296, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 311, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 315, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 316, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 325, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 329, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 333, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 334, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 344, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 346, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 347, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 354, light: "#693ACF", dark: "#9D6AFB" }, { text: " { ", start: 357, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 360, light: "#693ACF", dark: "#9D6AFB" }, { text: "(", start: 370, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 371, light: "#693ACF", dark: "#9D6AFB" }, { text: "(", start: 374, light: "#0A0A0A", dark: "#FAFAFA" }, { text: '"constant"', start: 375, light: "#147d35", dark: "#5ECC71" }, { text: ")) }", start: 385, light: "#0A0A0A", dark: "#FAFAFA" }], []] };
 
   // ../../../relation/intellij/testData/r1-value-flow/E0.kt?raw
   var E0_default = "package kast.repro\n\ninternal data class WireValue(val id: String?)\ninternal data class ClientValue(val id: String?)\ninternal data class ClientEnvelope(val payload: ClientValue)\n\ninternal fun WireValue.toClientValue(): ClientValue = ClientValue(id = id)\ninternal fun WireValue.toClientEnvelope(): ClientEnvelope = ClientEnvelope(payload = toClientValue())\ninternal fun convert(items: List<WireValue>): List<ClientEnvelope> = items.map { it.toClientEnvelope() }\n";
@@ -296,6 +296,31 @@ var KastValueJourney = (() => {
     ]
   };
 
+  // src/pet-store.ts
+  function petStoreNames(text) {
+    return text.replace(
+      /\b(WireValue|ClientValue|ClientEnvelope|toClientValue|toClientEnvelope|payload)\b/g,
+      (name) => {
+        switch (name) {
+          case "WireValue":
+            return "PetRecord";
+          case "ClientValue":
+            return "Pet";
+          case "ClientEnvelope":
+            return "PetListing";
+          case "toClientValue":
+            return "toPet";
+          case "toClientEnvelope":
+            return "toPetListing";
+          case "payload":
+            return "pet";
+          default:
+            return name;
+        }
+      }
+    );
+  }
+
   // src/trace.ts
   var SourceAnchor = class _SourceAnchor {
     constructor(source, start, end) {
@@ -339,24 +364,30 @@ var KastValueJourney = (() => {
       if (oracle_default.variants.find((variant) => variant.id === snapshot.variant)?.sha256 !== digests[index])
         return { kind: "rejected", code: "SOURCE_CHANGED" };
     }
-    const build = (variant, source, sha256) => {
-      const seed = SourceAnchor.admit(source, 232, "ClientValue(id = id)");
-      const call = SourceAnchor.admit(source, 338, "toClientValue()");
-      const envelope = SourceAnchor.admit(
-        source,
-        313,
-        "ClientEnvelope(payload = toClientValue())"
-      );
+    const build = (variant, fixtureSource, sha256, fixtureSha256) => {
+      const source = petStoreNames(fixtureSource);
+      const anchor = (start, text) => {
+        const original = SourceAnchor.admit(fixtureSource, start, text);
+        if (original.kind === "rejected") return original;
+        return SourceAnchor.admit(
+          source,
+          petStoreNames(fixtureSource.slice(0, start)).length,
+          petStoreNames(text)
+        );
+      };
+      const seed = anchor(232, "ClientValue(id = id)");
+      const call = anchor(338, "toClientValue()");
+      const listing = anchor(313, "ClientEnvelope(payload = toClientValue())");
       if (seed.kind === "rejected") return seed;
       if (call.kind === "rejected") return call;
-      if (envelope.kind === "rejected") return envelope;
+      if (listing.kind === "rejected") return listing;
       const local = { kind: "local" };
       const head = {
         id: "seed.ClientValue.result",
         anchor: seed.value,
-        title: "A value begins here",
-        explanation: "Follow only the ClientValue produced by this constructor. Not the WireValue, its id, or the enclosing object.",
-        value: "ClientValue",
+        title: "Start with this value",
+        explanation: "This constructor creates the Pet that we will trace.",
+        value: "Pet",
         authority: "compiler",
         operation: "PRODUCER",
         importance: "landmark",
@@ -365,8 +396,8 @@ var KastValueJourney = (() => {
       const returned = {
         ...head,
         id: "toClientValue.RETURN",
-        title: "Returned by toClientValue",
-        explanation: "The expression body returns the same ClientValue. Its identity is preserved across this return.",
+        title: "Returned by toPet",
+        explanation: "The helper returns this Pet to its caller.",
         operation: "SEED_RETURN",
         importance: "detail"
       };
@@ -376,12 +407,12 @@ var KastValueJourney = (() => {
           id: "toClientValue.call.result",
           anchor: call.value,
           title: "Returned to this exact call",
-          explanation: "The produced value becomes the result of this toClientValue() call, not every call with the same name.",
+          explanation: "This call receives the value from the helper.",
           operation: "RETURN",
           importance: "normal",
           context: {
             kind: "call",
-            title: "WireValue.toClientValue",
+            title: "PetRecord.toPet",
             anchor: seed.value
           }
         },
@@ -389,28 +420,28 @@ var KastValueJourney = (() => {
           ...head,
           id: "ClientEnvelope.payload.argument",
           anchor: call.value,
-          title: "Passed as payload",
-          explanation: "This call result is bound to the payload parameter of the selected ClientEnvelope constructor.",
+          title: "Passed as pet",
+          explanation: "The constructor receives the value as its pet argument.",
           operation: "ARGUMENT",
           importance: "detail"
         },
         {
           ...head,
           id: "ClientEnvelope.result.payload",
-          anchor: envelope.value,
-          title: "Stored in the payload field",
-          explanation: "The envelope carries the original ClientValue in .payload. The envelope itself is not the tracked value.",
-          value: "ClientEnvelope.payload",
+          anchor: listing.value,
+          title: "Stored in the pet field",
+          explanation: "The object carries our value in its pet field.",
+          value: "PetListing.pet",
           operation: "CONSTRUCT_FIELD",
           importance: "landmark"
         },
         {
           ...head,
           id: "toClientEnvelope.RETURN.payload",
-          anchor: envelope.value,
-          title: "Returned inside an envelope",
-          explanation: "toClientEnvelope returns an envelope whose payload carries the same ClientValue.",
-          value: "ClientEnvelope.payload",
+          anchor: listing.value,
+          title: "Returned inside a listing",
+          explanation: "toPetListing returns a listing whose pet carries the same Pet.",
+          value: "PetListing.pet",
           operation: "SEED_RETURN",
           importance: "detail"
         }
@@ -419,14 +450,14 @@ var KastValueJourney = (() => {
         kind: "authored-oracle",
         path: "relation/intellij/testData/r1-value-flow/oracle.json"
       };
-      const base = { source, variant, sha256, basis };
+      const base = { source, variant, sha256, fixtureSha256, basis };
       const wrapperPath = {
         id: "wrapper",
-        label: "Envelope payload",
+        label: "Listing pet",
         steps: [head, returned, ...wrapper],
         ending: {
           kind: "expected-end",
-          explanation: "The authored route ends at the returned payload. This is not an investigation-completeness claim."
+          explanation: "This example ends at the returned pet."
         }
       };
       if (variant === "E4")
@@ -436,53 +467,51 @@ var KastValueJourney = (() => {
             {
               ...base,
               id: "constant",
-              label: "E4 \xB7 Independent constant",
-              description: "Why does the original value not reach this map result?",
+              label: "Return a different value",
+              description: "A different value has the same type. Does the original still reach the list?",
               paths: [
                 {
                   ...wrapperPath,
                   ending: {
                     kind: "excluded",
-                    explanation: 'convert constructs a separate ClientValue("constant"). The oracle forbids an edge from the original seed to that value or the convert result.'
+                    explanation: 'convert constructs a separate Pet("constant"). The original value does not reach this list.'
                   }
                 }
               ]
             }
           ]
         };
-      const callback = SourceAnchor.admit(
-        source,
+      const callback = anchor(
         variant === "E0" ? 436 : 433,
         variant === "E0" ? "it.toClientEnvelope()" : "it.toClientValue()"
       );
-      const map = SourceAnchor.admit(
-        source,
+      const map = anchor(
         variant === "E0" ? 424 : 421,
         variant === "E0" ? "items.map { it.toClientEnvelope() }" : "items.map { it.toClientValue() }"
       );
       if (callback.kind === "rejected") return callback;
       if (map.kind === "rejected") return map;
-      const payload = variant === "E0" ? "ClientEnvelope.payload" : "ClientValue";
+      const pet = variant === "E0" ? "PetListing.pet" : "Pet";
       const callbackStep = {
         ...head,
         id: variant === "E0" ? "toClientEnvelope.call.result.payload" : "callback.toClientValue.call.result",
         anchor: callback.value,
         title: "Returned to the callback",
-        explanation: `The exact call result carries ${payload}. The callback body and the named function that supplies it are distinct owners.`,
-        value: payload,
+        explanation: `The helper returns ${pet} inside the map callback.`,
+        value: pet,
         operation: "RETURN",
         importance: "normal",
         context: {
           kind: "call",
-          title: variant === "E0" ? "WireValue.toClientEnvelope" : "WireValue.toClientValue",
-          anchor: variant === "E0" ? envelope.value : seed.value
+          title: variant === "E0" ? "PetRecord.toPetListing" : "PetRecord.toPet",
+          anchor: variant === "E0" ? listing.value : seed.value
         }
       };
       const callbackReturn = {
         ...callbackStep,
         id: variant === "E0" ? "callback.RETURN.payload" : "callback.RETURN",
-        title: "Bound to map\u2019s transform",
-        explanation: "The lambda result carries the tracked value. Compiler binding identifies the transform formal; it does not establish output-element propagation.",
+        title: "The callback returns it",
+        explanation: "The callback returns our value inside its result. The next step needs the rule for map.",
         operation: "CALLBACK_RETURN",
         importance: "landmark",
         context: { kind: "callback" }
@@ -491,9 +520,9 @@ var KastValueJourney = (() => {
         ...callbackReturn,
         id: variant === "E0" ? "convert.map.result.Element.payload" : "convert.map.result.Element",
         anchor: map.value,
-        title: "Callback result \u2192 possible output element",
-        explanation: "The reviewed stdlib map rule relates a transform result to a possible output element. Compiler binding alone cannot establish this transfer.",
-        value: `List.Element<${payload}>`,
+        title: "Into a list element",
+        explanation: "The reviewed rule for map connects the callback result to a possible list element.",
+        value: `List.Element<${pet}>`,
         authority: "reviewed-library",
         operation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT"
       };
@@ -501,14 +530,14 @@ var KastValueJourney = (() => {
         ...element,
         id: variant === "E0" ? "convert.RETURN.Element.payload" : "convert.RETURN.Element",
         title: "Returned from convert",
-        explanation: "The returned list may contain an element carrying the original value. Neither the whole list nor the whole envelope becomes that value.",
+        explanation: "A returned list element can carry our original value.",
         authority: "compiler",
         operation: "SEED_RETURN",
         context: local
       };
       const journey = {
         id: "map",
-        label: variant === "E0" ? "Envelope \u2192 map element" : "Direct \u2192 map element",
+        label: variant === "E0" ? "Listing \u2192 map element" : "Direct \u2192 map element",
         steps: [
           head,
           returned,
@@ -520,7 +549,7 @@ var KastValueJourney = (() => {
         ],
         ending: {
           kind: "expected-end",
-          explanation: "End of the authored expected route. A connected path does not establish complete investigation coverage."
+          explanation: "The route reaches the returned list. The example ends here."
         }
       };
       if (variant === "E3")
@@ -530,8 +559,8 @@ var KastValueJourney = (() => {
             {
               ...base,
               id: "fork",
-              label: "E3 \xB7 Two continuations",
-              description: "One producer, two uses. Choose a continuation without losing the common prefix.",
+              label: "Use the value twice",
+              description: "One producer has two uses. Choose a route to see where each leads.",
               paths: [journey, wrapperPath]
             }
           ]
@@ -542,15 +571,15 @@ var KastValueJourney = (() => {
           {
             ...base,
             id: "e0",
-            label: "E0 \xB7 Value journey",
-            description: "Where can this produced ClientValue go?",
+            label: "Follow the value",
+            description: "Where does this value go after the helper returns it?",
             paths: [journey]
           },
           {
             ...base,
             id: "gap",
-            label: "E0 \xB7 Missing proof",
-            description: "Same source. One deliberately withheld library rule.",
+            label: "Stop at a missing connection",
+            description: "The code stays the same. This illustration removes the rule for map.",
             paths: [
               {
                 ...journey,
@@ -558,7 +587,7 @@ var KastValueJourney = (() => {
                 ending: {
                   kind: "unresolved",
                   obligation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
-                  explanation: "The callback result is known, but its relationship to a map output element is not admitted in this simulated gap. No downstream step is shown."
+                  explanation: "The callback returns the value. Without the rule for map, this example cannot connect it to a list element."
                 }
               }
             ]
@@ -566,9 +595,9 @@ var KastValueJourney = (() => {
         ]
       };
     };
-    const positive = build("E0", E0_default, digests[0]);
-    const fork = build("E3", E3_default, digests[1]);
-    const constant = build("E4", E4_default, digests[2]);
+    const positive = build("E0", E0_default, await digest(petStoreNames(E0_default)), digests[0]);
+    const fork = build("E3", E3_default, await digest(petStoreNames(E3_default)), digests[1]);
+    const constant = build("E4", E4_default, await digest(petStoreNames(E4_default)), digests[2]);
     if (positive.kind === "rejected") return positive;
     if (fork.kind === "rejected") return fork;
     if (constant.kind === "rejected") return constant;
@@ -662,12 +691,11 @@ var KastValueJourney = (() => {
     }, []);
     if (walkthrough.kind === "loading")
       return <div className="value-journey vj-loading not-prose">
-        Loading the frozen example…
+        The example loads here…
       </div>;
     if (walkthrough.kind === "rejected")
       return <div className="value-journey vj-loading not-prose" role="alert">
-        The example could not be loaded ({walkthrough.code}). No value path is
-        shown.
+        The example is unavailable ({walkthrough.code}).
       </div>;
     const { cursor, examples } = walkthrough;
     const { example, path, step } = cursor;
@@ -721,7 +749,7 @@ var KastValueJourney = (() => {
     >
       <div className="vj-heading">
         <h2>Follow one value.</h2>
-        <span className="vj-mode">Authored example · static</span>
+        <span className="vj-mode">Interactive illustration</span>
       </div>
 
       <div className="vj-options">
@@ -743,22 +771,34 @@ var KastValueJourney = (() => {
         </label>
         <div className="vj-detail" role="group" aria-label="Explanation detail">
           {["story", "normal", "proof"].map((level) => <button
-      key={level}
+      key={{ story: "Overview", normal: "Every step", proof: "Evidence" }[level]}
       type="button"
       aria-pressed={detail === level}
       onClick={() => setDetail(level)}
     >
-              {level}
+              {{ story: "Overview", normal: "Every step", proof: "Evidence" }[level]}
             </button>)}
         </div>
       </div>
 
       <p className="vj-question">{example.description}</p>
+      <nav className="vj-route" aria-label="Value route">
+        {cursor.visible("story").map((candidate) => <button
+      key={candidate.id}
+      type="button"
+      aria-current={candidate === step ? "step" : void 0}
+      data-reached={path.steps.indexOf(candidate) <= cursor.index}
+      onClick={() => navigate(cursor.seek(candidate))}
+    >
+            <span aria-hidden="true">●</span>
+            <span>{candidate.title}</span>
+          </button>)}
+      </nav>
       <div className="vj-file">
         <span>
           <span aria-hidden="true">Kt</span> {example.variant}.kt
         </span>
-        <span>Pierre / Shiki · read-only</span>
+        <span>Kotlin example</span>
       </div>
 
       <section
@@ -781,13 +821,13 @@ var KastValueJourney = (() => {
                     <span className="vj-value-label">tracked value</span>
                   </div>
                   <div className="vj-explanation">
-                    {stopped && <span className="vj-eyebrow">Simulated proof gap</span>}
+                    {stopped && <span className="vj-eyebrow">Missing connection</span>}
                     <div className="vj-step-heading">
                       <h3>
                         {stopped ? "The explanation stops here." : step.title}
                       </h3>
                       <span className={`vj-authority vj-${step.authority}`}>
-                        {authority} · expected
+                        {authority} · illustration
                       </span>
                     </div>
                     <p>{step.explanation}</p>
@@ -820,48 +860,46 @@ var KastValueJourney = (() => {
                           </div>}
                       </>}
 
-                    {step.context.kind === "callback" && <div className="vj-callback">
-                        <div>
-                          <span className="vj-eyebrow">Callback frame</span>
-                          <code>map.transform</code>
-                        </div>
-                        {(proof || detail === "proof") && <dl>
-                            <dt>Supplier</dt>
-                            <dd>convert</dd>
-                            <dt>Anonymous owner</dt>
-                            <dd>lambda on line 9</dd>
-                            <dt>Result carries</dt>
-                            <dd>
-                              <code>
-                                {example.variant === "E3" ? "ClientValue" : "ClientEnvelope.payload"}
-                              </code>
-                            </dd>
-                          </dl>}
-                        <div className="vj-proof-split">
-                          <span>◆ Bind lambda to transform</span>
-                          <span>Compiler · expected</span>
-                        </div>
-                        <div
+                    {step.context.kind === "callback" && (proof || detail === "proof") && <div className="vj-callback">
+                          <div>
+                            <span className="vj-eyebrow">Callback frame</span>
+                            <code>map.transform</code>
+                          </div>
+                          {(proof || detail === "proof") && <dl>
+                              <dt>Supplier</dt>
+                              <dd>convert</dd>
+                              <dt>Anonymous owner</dt>
+                              <dd>lambda on line 9</dd>
+                              <dt>Result carries</dt>
+                              <dd>
+                                <code>
+                                  {example.variant === "E3" ? "Pet" : "PetListing.pet"}
+                                </code>
+                              </dd>
+                            </dl>}
+                          <div className="vj-proof-split">
+                            <span>◆ Bind lambda to transform</span>
+                            <span>Compiler · expected</span>
+                          </div>
+                          <div
         className={stopped ? "vj-proof-split vj-missing" : "vj-proof-split"}
       >
-                          <span>◇ Callback result → output element</span>
-                          <span>
-                            {stopped ? "Missing proof" : step.authority === "reviewed-library" ? "Reviewed rule \xB7 expected" : "Next expected transfer"}
-                          </span>
-                        </div>
-                      </div>}
+                            <span>◇ Callback result → output element</span>
+                            <span>
+                              {stopped ? "Missing proof" : step.authority === "reviewed-library" ? "Reviewed rule \xB7 expected" : "Next expected transfer"}
+                            </span>
+                          </div>
+                        </div>}
 
                     {cursor.atEnd && <div className="vj-ending">
                         <strong>
-                          {path.ending.kind === "unresolved" ? "Missing: callback result \u2192 output element" : path.ending.kind === "excluded" ? "A different value, not a continuation" : "End of the expected route"}
+                          {path.ending.kind === "unresolved" ? "The library connection needs evidence" : path.ending.kind === "excluded" ? "The list gets a different value" : "This route ends here"}
                         </strong>
                         <p>{path.ending.explanation}</p>
                       </div>}
 
                     {example.paths.length > 1 && cursor.index <= 1 && <div className="vj-fork">
-                        <span className="vj-eyebrow">
-                          Two possible continuations
-                        </span>
+                        <span className="vj-eyebrow">Choose a route</span>
                         {example.paths.map((alternative) => <button
         type="button"
         key={alternative.id}
@@ -871,10 +909,7 @@ var KastValueJourney = (() => {
                             <span aria-hidden="true">↳</span>{" "}
                             {alternative.label}
                           </button>)}
-                        <p>
-                          These are static alternatives, not branches observed
-                          at runtime.
-                        </p>
+                        <p>These routes describe possible uses in source.</p>
                       </div>}
 
                     {detail !== "proof" && <button
@@ -883,7 +918,7 @@ var KastValueJourney = (() => {
         aria-expanded={proof}
         onClick={() => setProof(!proof)}
       >
-                        {proof ? "\u2212" : "+"} Proof details
+                        {proof ? "\u2212" : "+"} Show the evidence
                       </button>}
                     {(proof || detail === "proof") && <dl className="vj-proof-details">
                         <dt>Operation</dt>
@@ -905,10 +940,14 @@ var KastValueJourney = (() => {
                         <dt>Compiler identity</dt>
                         <dd>Not captured</dd>
                         <dt>Coverage ledger</dt>
-                        <dd>Not captured; no completeness claim</dd>
-                        <dt>Source SHA-256</dt>
+                        <dd>Not captured</dd>
+                        <dt>Displayed source SHA-256</dt>
                         <dd>
                           <code>{example.sha256}</code>
+                        </dd>
+                        <dt>Original fixture SHA-256</dt>
+                        <dd>
+                          <code>{example.fixtureSha256}</code>
                         </dd>
                       </dl>}
 
@@ -917,7 +956,7 @@ var KastValueJourney = (() => {
         className="vj-compare"
         onClick={() => chooseExample(stopped ? "e0" : "gap", true)}
       >
-                        {stopped ? "Restore the reviewed rule" : "What if this proof were missing?"}{" "}
+                        {stopped ? "Restore the connection" : "What if a connection is missing?"}{" "}
                         <span aria-hidden="true">↗</span>
                       </button>}
                   </div>
@@ -948,7 +987,7 @@ var KastValueJourney = (() => {
         <div className="vj-buttons">
           <button
       type="button"
-      aria-disabled={cursor.index === 0}
+      disabled={cursor.index === 0}
       onClick={() => navigate(cursor.move("previous", detail))}
     >
             <span aria-hidden="true">←</span> Previous
@@ -956,7 +995,7 @@ var KastValueJourney = (() => {
           <button
       type="button"
       className="vj-next"
-      aria-disabled={cursor.atEnd}
+      disabled={cursor.atEnd}
       onClick={() => navigate(cursor.move("next", detail))}
     >
             {cursor.index === 0 ? "Follow the value" : "Next step"}{" "}
@@ -967,8 +1006,8 @@ var KastValueJourney = (() => {
       <div className="vj-limits">
         <span aria-hidden="true">ⓘ</span>
         <p>
-          Static relationships, not runtime execution or complete investigation
-          coverage.
+          Illustration from fixed source. This page does not run Kast or your
+          code.
         </p>
       </div>
     </div>;

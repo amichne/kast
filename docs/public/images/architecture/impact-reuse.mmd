@@ -1,0 +1,9 @@
+flowchart TD
+  A["Route A arrives"] --> R["Shared settled read<br/>one exact value site"]
+  B["Route B arrives"] --> R
+  R --> H["Expand route A<br/>keep history A"]
+  R --> J["Expand route B<br/>keep history B"]
+  H --> L(["Investigation ledger<br/>every route and obligation"])
+  J --> L
+  class R proof
+  class L result

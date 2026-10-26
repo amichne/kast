@@ -4,19 +4,23 @@ description: "Trace calls, callback values, and producer values through compiler
 icon: "route"
 ---
 
-Kast traces relationships between declarations. It also traces transfers inside function bodies. Each path keeps its source sites, compiler identities, and proof still needed.
+import { CallbackRouteDiagram } from "/snippets/diagrams/callback-route.jsx"
 
-The body-level trace shows how a value moves through that body. Callback evidence connects that body to its supplier and call owner.
+Kast can answer two questions: who calls this code, and where does this value go?
+Each answer keeps source sites and exact compiler identities. The path also states which proof is still missing.
+
+A trace can cross functions or show steps inside one body.
+For a callback, the evidence connects the body to the code that supplies and invokes it.
 
 ## Three tracing contracts
 
 | Question | Contract | Evidence |
 | --- | --- | --- |
-| Which declarations connect to this symbol? | `EXPAND_RELATION`, `WALK`, or `TRACE` | References, calls, implementations, overrides, and traversal depth. |
-| How does this callback reach a call? | Callback observations within relationship reads | Supply, formal binding, aliases, forwarding, call sites, and callable ownership. |
-| Where does this producer value travel? | `IMPACT` with `KOTLIN_FORWARD_V1` | Value paths, representation models, destination sites, terminals, and obligations. |
+| Which declarations connect to this symbol? | `EXPAND_RELATION`, `WALK`, or `TRACE` | References, calls, implementations, and overrides. The depth states how far the query goes. |
+| How does this callback reach a call? | Callback observations in relationship reads | Who supplies it, which formal accepts it, and which body calls it. Aliases and forwarding connect those sites. |
+| Where does this producer value travel? | `IMPACT` with `KOTLIN_FORWARD_V1` | Value paths, representation models, and destination sites. Terminals show where paths stop. Obligations state the proof still needed. |
 
-These contracts share exact identities and source state. Their edges state different facts. A reference count cannot stand for a call count.
+These contracts share exact identities and source state. Each kind of edge states a different fact. A reference count cannot stand for a call count.
 
 ## Inside a function body
 
@@ -37,19 +41,11 @@ fun checkout() {
 }
 ```
 
-The compiler maps the supplied lambda to `submit.block`. Immutable value evidence keeps the alias through `action`.
+The compiler maps the supplied lambda to `submit.block`. The alias through `action` keeps that value. Its binding cannot change.
 
-Forwarding evidence connects that formal to `forward.next`. The call of `next()` keeps its actual owner, and the anonymous body keeps `charge()`.
+Forwarding evidence connects that formal to `forward.next`. The call of `next()` keeps its actual owner. The anonymous body keeps `charge()`.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
-flowchart TD
-  L["Lambda containing charge()"] --> S["Supply to submit.block"]
-  S --> A["Immutable alias: action"]
-  A --> F["Forward to forward.next"]
-  F --> I["Invocation site: next()"]
-  I --> B["Anonymous body and charge() occurrence"]
-```
+<CallbackRouteDiagram />
 
 1. The lambda body contains the call to charge.
 2. The caller supplies that lambda to submit.block.
@@ -58,24 +54,30 @@ flowchart TD
 5. The call to next invokes that value.
 6. The evidence keeps the anonymous body and its charge call.
 
-An admitted graph keeps proof for each hop. If a transfer is not supported or the scan is incomplete, Kast cannot claim a complete graph.
+An admitted graph keeps proof for each hop. Unsupported transfers prevent a complete graph. So does an incomplete scan.
 
-`checkout` supplies the lambda. Supply alone does not make `checkout` a direct named caller of every call inside that lambda.
+`checkout` supplies the lambda. That fact alone does not make it a direct named caller of the calls inside the lambda.
 
 ## Ownership and execution
 
-Kast keeps five roles distinct: the named lexical container, anonymous body, supplying callable, receiving formal, and actual call owner.
+Kast keeps five roles distinct:
 
-An unused default keeps its formal and expression without an invented call. A nested body needs evidence for its own invocation route.
+- The named lexical container holds the code.
+- The anonymous body contains its calls.
+- The supplier passes the callback.
+- The formal accepts it.
+- The actual call owner invokes it.
 
-Kast composes anonymous owners through exact supplier bindings, source summaries, direct calls, and admitted library contracts. Each owner keeps its own proof. Lexical containment alone does not complete a route.
+An unused default keeps its formal and expression. Kast does not invent a call. A nested body needs proof for its own invocation route.
+
+Kast connects anonymous owners through exact supplier bindings and source summaries. It also uses direct calls and admitted library contracts. Each owner keeps its own proof. Lexical containment alone does not complete a route.
 
 Reviewed calls-in-place contracts keep their declared call kind. Missing effects or effects that conflict cannot become `UNKNOWN`. That value cannot stand in for missing proof.
 
 The `inline` modifier alone does not prove a callback route. Standard-library `with`, `apply`, and `let` declare `callsInPlace` effects.
-Collection `map` and `forEach` do not declare those effects. Their inline modifier is not a substitute; missing dependency effects remain explicit proof gaps.
+Collection `map` and `forEach` do not declare those effects. Their inline modifier supplies no such proof. Missing dependency effects remain explicit proof gaps.
 
-The reviewed `kotlin.lazy` model records deferred initializer supply. It does not prove that the property was read or that the initializer ran.
+The reviewed `kotlin.lazy` model records the initializer supplied for later use. It does not prove that the property was read or that the initializer ran.
 
 [Callback evidence](/reference/callbacks) describes these mechanisms. [Callback observation fields](/reference/callback-observations) defines their encoded variants.
 
@@ -83,55 +85,61 @@ The reviewed `kotlin.lazy` model records deferred initializer supply. It does no
 
 `IMPACT` starts from exact producer calls. Native reads prove source identity and supported Kotlin transfers.
 
-Plain request and response paths follow constructor results, proven immutable field storage and reads, arguments, receivers, and returns to the matching call. Supported nested calls and named locals preserve that route. Different fields and separate calls to the same mapper keep separate provenance.
+Plain request and response paths trace constructor results, arguments, and receivers. They also trace proven immutable field storage and reads. Returns connect to the matching call. Supported nested calls and named locals keep that route. Different fields keep separate provenance. So do separate calls to the same mapper.
 
-Interface calls can enter eligible source implementations within the declared domain. Each alternative retains its implementation proof and source ownership. A complete static target set does not select the target used at runtime.
+Interface calls can enter eligible source implementations within the declared domain. Each alternative keeps proof of its implementation and source owner. A complete static target set does not show which target ran.
 
-An opaque call does not connect a request argument to its response without source proof or a reviewed boundary model.
+An opaque call needs proof to connect a request argument to its response. Source evidence or a reviewed model must supply that proof.
 
-Supplied reviewed models define how values change form and how modeled callables behave. Each path records where a model was used beside the native evidence.
+Supplied reviewed models define how values change form. They also define how modeled callables behave. Each path records where it used a model. It keeps the native evidence too.
 
-Under normal completion, the final value of a try or catch body can supply the try expression. Each catch alternative keeps its own producer identity.
+When a try or catch body completes normally, its final value can supply the try expression. Each catch alternative keeps its own producer identity.
 
-Throws do not supply a normal result. Transfers across `finally` keep `FINALLY_UNSUPPORTED` because its effect remains outside the supported proof.
+Throws do not supply a normal result. Transfers across `finally` keep `FINALLY_UNSUPPORTED`. Kast does not prove that effect.
 
-These transfers do not prove payload flow through containers, subtype or non-null branch conditions, or collection-element selection. They supply no automatic models for logging, headers, or errors. Field transfers require compiler-proven storage. Other property access keeps its proof obligations. Unsupported evidence still prevents strict completion.
+These transfers do not prove payload flow through containers. They do not prove subtype or non-null branch conditions. They also do not select collection elements. They supply no automatic models for logs, headers, or errors.
 
-The retained witness lists producers, models, native reads, read rejections, and findings. It also keeps the record for each requested site. A site identity alone cannot prove a producer relationship.
+Field transfers need storage proof from the compiler. Other property access keeps its proof obligations. Unsupported evidence still prevents strict completion.
+
+The retained witness lists producers, models, and native reads. It lists read rejections and findings. It keeps the record for each requested site. A site identity alone cannot prove a producer relationship.
 
 [Query forms](/reference/api#investigate-value-impact) defines inputs and witness sections.
 
 ## Values through invoked callbacks
 
-Supported immutable captures keep their exact binding and anonymous owner. A captured argument remains distinct from a captured receiver or the wrapper's receiver. Invocation-dependent transfers require an admitted callback route, not lexical containment.
+Supported immutable captures keep their exact binding. They also keep their anonymous owner. A captured argument remains distinct from a captured receiver. It also differs from the wrapper's receiver. A transfer that depends on invocation needs an admitted callback route. Lexical containment does not prove that route.
 
-Callback results can enter the exact formal invocation and return through its matching wrapper call. Each `CALLBACK_RETURN` keeps the supplier occurrence, invocation owner, and source-call frame. Separate wrapper calls keep separate result identities. A wrapper that discards the result does not transfer it into its constant return.
+A callback result can enter the exact formal invocation. It can then return through the matching wrapper call. Each `CALLBACK_RETURN` keeps the supplier occurrence and invocation owner. It also keeps the source-call frame. Separate wrapper calls keep separate result identities.
 
-Unit coercion discards the expression's value instead of returning it. Results of type `Unit?` remain values, not Unit coercion.
+A wrapper can discard the result and return a constant. That constant has no transfer from the discarded result.
 
-Immutable constructor fields and normal try branches preserve this result provenance. A successful `Attempt.Value.value` path does not supply the exceptional `Attempt.Failure` branch. This proves neither runtime execution nor a dependency from a decoder's argument to its result.
+Unit coercion discards the expression's value. It does not return that value. Results of type `Unit?` remain values, not Unit coercion.
 
-Value flow requires source-backed supply and invocation connected to the named root, with one invocation context per anonymous body. Formal invocations require named owners. An invocation inside an anonymous owner remains unsupported, even when another invocation has a named owner. This limit does not exclude anonymous callback suppliers.
+Immutable constructor fields and normal try branches keep this result provenance. A successful `Attempt.Value.value` path supplies no value to the exceptional `Attempt.Failure` branch. This does not prove that the code ran. It also does not connect a decoder's argument to its result.
 
-Mutable captures, captures between distinct anonymous owners, unsupported routes, and unresolved owners keep explicit obligations. A callback that is returned but not called gains no invocation-dependent value or result path. Parameter declarations cannot seed public `IMPACT` queries.
+Value flow needs source proof for supply and invocation. Both must connect to the named root. Each anonymous body needs one invocation context. Formal invocations need named owners.
+
+An invocation inside an anonymous owner remains unsupported. A named owner for another invocation does not remove that limit. The limit does not exclude anonymous callback suppliers.
+
+Mutable captures keep explicit obligations. So do captures between distinct anonymous owners, unsupported routes, and unresolved owners. A returned callback can remain uncalled. That callback gains no value or result path that depends on invocation. Parameter declarations cannot seed public `IMPACT` queries.
 
 ## Completion and limits
 
 Every public `RUN` uses `COMPILER_RESOLVED_STATIC_V1` with `COMPLETE_ONLY`. To complete, a run must finish its work and meet its proof rules.
 
-`TRACE` from source symbols separates source completeness from callback execution. Proven nested routes compose without a nesting gap. Unproved owner routes and missing library effects remain explicit evidence gaps under `SOURCE_RELATIONSHIPS`. Kast does not infer an invocation from lexical containment or supply.
+`TRACE` from source symbols treats source completeness and callback execution as separate facts. Proven nested routes compose without a nesting gap. Unproved owner routes remain explicit gaps under `SOURCE_RELATIONSHIPS`. Missing library effects remain gaps too. Lexical containment or supply does not prove an invocation.
 
-Explicit `CALLERS` expansion still needs a complete callback invocation graph. A source `TRACE` can therefore complete while `CALLERS` rejects a missing dependency effect.
-This distinction is deliberate: source relationships and proved invocation routes answer different questions.
+Explicit `CALLERS` expansion still needs a complete graph of callback invocations. A source `TRACE` can therefore complete while `CALLERS` rejects a missing dependency effect.
+Source relationships and proved invocation routes answer different questions.
 
-Unresolved source identity, missing result membership, and exhausted grants reject both interpretations. A rejection keeps proved evidence when retention admits it. [Results](/reference/responses#run-completion) defines the rule for composed queries.
+Both interpretations reject unresolved source identity or missing result membership. They also reject exhausted grants. A rejection keeps proved evidence when retention admits it. [Results](/reference/responses#run-completion) defines the rule for composed queries.
 
-The model proves source relationships resolved by the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
+The model proves source relationships through the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
 
 ## Runner-controlled execution
 
-Public `RUN` defaults to `RUNNER_CONTROLLED`. This mode omits implicit semantic time, work, internal byte, and internal result quotas.
-An explicit `maxElapsedMs` sets a timeout that includes model capture. Omission adds no semantic deadline.
+Public `RUN` defaults to `RUNNER_CONTROLLED`. This mode adds no implicit semantic deadline or work quota. It also adds no internal byte or result quota.
+An explicit `maxElapsedMs` sets a timeout. The timeout includes model capture. Omission adds no semantic deadline.
 Caller cancellation or a disconnected caller stops the operation.
 
 ```json
@@ -172,19 +180,20 @@ Caller cancellation or a disconnected caller stops the operation.
 In this mode, `maxResults` and `maxReturnedBytes` control output pages.
 Explicit `maxWorkUnits` conflicts with the mode and rejects the request.
 Preparation and transport frames keep their existing limits.
-A runner can enforce its own timeout, so its deadline controls determine the maximum caller lifetime.
+A runner can set its own timeout. That deadline limits the caller lifetime.
 
-The example separates discovery scope from expansion scope. Discovery uses `scope.sourceSetNames` and `relativeDirectoryPath`; expansion uses `expansionScope.sourceSets` and optional `directory`.
+The example separates discovery scope from expansion scope. Discovery uses `scope.sourceSetNames` and `relativeDirectoryPath`. Expansion uses `expansionScope.sourceSets` and optional `directory`.
 The seed's directory does not restrict later destinations. `WORKSPACE` expansion can include test sources, even when discovery selects `main`.
-For production-only relationships, use `SOURCE_DOMAIN` with exact imported source-set names, `sourcePolicy: "PRODUCTION_ONLY"`, and an explicit generated-source policy, as shown.
-These constraints apply before native enumeration, unlike a later row filter.
+For production-only relationships, use `SOURCE_DOMAIN` with exact imported source-set names.
+Set `sourcePolicy: "PRODUCTION_ONLY"`. Choose an explicit generated-source policy, as shown.
+These constraints apply before native reads collect results. A later row filter cannot replace them.
 
 Completion still needs exhaustive compiler proof.
 Source changes, unsupported effects, and invalid continuations still reject the operation.
 `RESUME` presents produced output only.
-After source changes, a fresh `RUN` can reacquire earlier exact references through current identity checks.
+After source changes, a fresh `RUN` can get fresh authority for earlier exact references. The compiler must prove their current identity.
 This does not refresh `READ_SOURCE` snapshots or immutable retained results.
-Runner-controlled quota bypass does not remove finite output pages or extend external handles' retention TTL.
+This mode still limits each output page. It does not extend the retention TTL of external handles.
 
 ## Source evidence
 

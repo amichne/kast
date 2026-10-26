@@ -1,12 +1,15 @@
 # Docs reader tracks
 
-Kast has one Mintlify site. It has three tracks: Guides, Architecture, and Reference. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
+Kast has one Mintlify site. Its main path shows what Kast does, how to try it, and how to resolve problems.
+`docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
 
 The [Diátaxis framework](https://diataxis.fr/) groups pages by what the reader needs. Its four groups are tutorials, how-to guides, reference, and explanation.
 
 This policy applies to the authored public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
 
-Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts. These tracks keep the four Diátaxis page purposes below.
+Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts.
+Architecture and Reference stay outside the main menus, with search access and links at the bottom of core pages.
+These content types keep the four Diátaxis page purposes below.
 
 ## Choose the page's purpose
 
@@ -179,3 +182,13 @@ An author review simulates a reader review. A prose score and docs build do not 
 The live site reads `docs/public` from `main`. Get separate approval to publish. After it is live, check the rendered tracks and redirects.
 
 If the deploy fails, restore the prior docs revision. Review local changes before they go live.
+
+## Public diagram source
+
+Use beautiful-mermaid for public diagrams.
+Keep the authored `.mmd` files in `docs/public/images/architecture`.
+The [diagram tool](tooling/diagrams/README.md) owns the renderer, page manifest, and output checks.
+
+Pages import generated JSX snippets. The inline SVG files inherit the site font and theme colors.
+Keep the source and generated SVG files at their established URLs.
+After a source edit, render the files and examine the page in light and dark themes.

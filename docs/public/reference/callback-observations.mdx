@@ -4,7 +4,7 @@ description: "Look up named-edge policies, binding variants, scan states, and ca
 icon: "route"
 ---
 
-Callback observations keep the source occurrence, named lexical container, anonymous body, and named-edge policy. These are static facts. They do not prove that code ran.
+Each callback observation keeps its source occurrence and owners. It names the lexical container, anonymous body, and named-edge policy. These facts do not prove that code ran.
 
 ## Named-edge policy
 
@@ -15,7 +15,7 @@ Callback observations keep the source occurrence, named lexical container, anony
 | `ADMITTED_INLINE` | Inline policy admits a named edge. It keeps the anonymous owner. |
 | `UNAVAILABLE` | Ownership remains incomplete. |
 
-An admitted named edge keeps its anonymous owner evidence. An excluded edge keeps the reason and exact excluded occurrence.
+A named edge keeps proof of its anonymous owner. An excluded edge keeps its reason and exact source occurrence.
 
 ## Binding forms
 
@@ -30,7 +30,7 @@ An admitted named edge keeps its anonymous owner evidence. An excluded edge keep
 
 `BOUND` records how the compiler maps an argument to a parameter. `DEFAULT` keeps the defining formal and default expression. It does not invent an argument.
 
-`DIRECT` keeps the actual call owner without a receiving formal. `DEFERRED_DEPENDENCY` proves initializer supply without a call site or count.
+`DIRECT` keeps the call owner. It has no receiving formal. `DEFERRED_DEPENDENCY` proves initializer supply without a call site or count.
 
 <span id="invocation-scan" />
 
@@ -46,7 +46,7 @@ The scan states how far it searched the formal for call sites. A full scan can s
 
 Each parameter call keeps `forwardings`, even if the array is empty. Each hop names the source formal, supplied expression, and destination binding.
 
-`owner_bindings` keeps the supply and mapping of a nested anonymous owner. Its `execution` field carries a recursive flow proof or an explicit unproved state. A complete owner route can discharge `NESTED_CALLBACK_EXECUTION`. Unknown effects, escapes, and exhausted grants remain explicit.
+`owner_bindings` keeps the supply and mapping of a nested anonymous owner. Its `execution` field keeps recursive flow proof. Without that proof, it states that the flow is unproved. A complete owner route can discharge `NESTED_CALLBACK_EXECUTION`. Unknown effects, escapes, and exhausted grants remain explicit.
 
 `callable_observations` records symbolic formal calls. It also records compiler targets without source.
 
@@ -58,15 +58,15 @@ Each callback observation has a `navigation` field. Relation and `WALK` results 
 | --- | --- |
 | `PROVEN` | `steps` contains the reachable, supported route from the named lexical owner. |
 | `UNPROVEN` | `prefix` keeps established steps. `cause` and the original flow keep the unresolved proof. |
-| `NOT_COMPUTED` | A legacy document has no navigation evidence. This state proves no route. |
+| `NOT_COMPUTED` | The document has no navigation evidence. This state proves no route. |
 
-Each step keeps its source, target, depth, and evidence. Evidence distinguishes callback supply, formal forwarding, callback invocation, direct callback invocation, and ordinary function invocation.
+Each step keeps its source, target, depth, and evidence. The evidence names the step kind: callback supply, formal forwarding, or a call. Calls keep distinct kinds for callback invocation, direct callback invocation, and ordinary function invocation.
 
 A formal node includes its supplier binding. Two calls to the same wrapper do not share a node merely because they select the same formal.
 
-Navigation uses breadth-first order. Depth counts each transition, starting at one; supply and invocation are separate transitions. Supply alone never reaches an anonymous body.
+Navigation uses breadth-first order. Depth starts at one and counts each transition. Supply and invocation are separate transitions. Supply alone never reaches an anonymous body.
 
-The observation carries its full supported route independently of `WALK.maximumDepth`. That option limits named relationship expansion, not the evidence inside an observation. A retained page keeps the same route without new semantic reads.
+The observation keeps its full supported route. `WALK.maximumDepth` does not trim that route. That option limits named relationship expansion, not the evidence inside an observation. A retained page keeps the same route without new semantic reads.
 
 A returned callback has no invocation route unless proof shows that it is called. A non-inline callback route does not turn its lexical container into a direct named caller.
 
@@ -74,7 +74,7 @@ A returned callback has no invocation route unless proof shows that it is called
 
 Calls-in-place evidence keeps `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, or explicitly declared `UNKNOWN`.
 
-The effect belongs to the formal selected by the compiler and the reviewed binary identity. If effects are missing, repeated, or not supported, the result returns `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
+The compiler selects the formal. The effect belongs to that formal and the reviewed binary identity. If effects are missing, repeated, or not supported, the result returns `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
 
 These kinds describe the declared contract. They do not count calls at runtime. They do not invent sites within dependency bodies.
 
