@@ -67,6 +67,9 @@ This guide owns repository rules and routes source investigation.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
 - Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. The full pre-push gate remains necessary.
 - Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
+- Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
+- Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
+- The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.

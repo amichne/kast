@@ -6,6 +6,7 @@ import org.gradle.api.tasks.Sync
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
+import support.architecture.gradle.GenerateVerificationGraphTask
 import support.architecture.gradle.TopologyImpactTask
 import support.architecture.gradle.VerifyKastArchitectureTask
 import support.knowledge.GenerateInstalledKnowledgeTask
@@ -16,6 +17,22 @@ plugins {
 
 val declaredProjectPaths = objects.listProperty<String>().convention(emptyList())
 val declaredProjectDependencies = objects.listProperty<String>().convention(emptyList())
+val declaredVerificationDependencies = objects.listProperty<String>().convention(emptyList())
+val declaredVerificationSourceRoots = objects.listProperty<String>().convention(emptyList())
+
+val generateVerificationGraph = tasks.register<GenerateVerificationGraphTask>("generateVerificationGraph") {
+    group = "verification"
+    description = "Records consumers through production, test, fixture, and generated-contract project dependencies."
+    observedProjectPaths.set(declaredProjectPaths)
+    observedProjectDependencies.set(declaredVerificationDependencies)
+    observedSourceRoots.set(declaredVerificationSourceRoots)
+    rootDirectory.set(layout.projectDirectory)
+    reportFile.set(layout.buildDirectory.file("reports/ci/verification-graph.json"))
+    graphInputs.from(buildFile, "settings.gradle.kts", "settings.gradle", "gradle.properties", "mise.toml", "gradle/libs.versions.toml")
+    graphInputs.from(fileTree("build-logic") {
+        include("*.gradle.kts", "src/main/**")
+    })
+}
 
 val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyKastArchitecture") {
     group = "verification"
@@ -166,6 +183,23 @@ subprojects {
     }
 
     afterEvaluate {
+        generateVerificationGraph.configure { graphInputs.from(this@subprojects.buildFile) }
+        val verificationDependencies = configurations.flatMap { configuration ->
+            configuration.dependencies.withType(ProjectDependency::class.java)
+                .filter { dependency -> dependency.path != path }
+                .map { dependency -> "$path${ArchitectureObservationParser.EDGE_SEPARATOR}${dependency.path}" }
+        }.distinct().sorted()
+        declaredVerificationDependencies.addAll(verificationDependencies)
+        declaredVerificationSourceRoots.addAll(
+            extensions.findByType(SourceSetContainer::class.java)?.flatMap { sourceSet ->
+                sourceSet.allSource.srcDirs.filter { directory ->
+                    directory.toPath().startsWith(rootProject.projectDir.toPath()) &&
+                        !directory.toPath().startsWith(layout.buildDirectory.get().asFile.toPath())
+                }.map { directory ->
+                    "$path|${rootProject.projectDir.toPath().relativize(directory.toPath()).joinToString("/")}"
+                }
+            }.orEmpty().distinct().sorted(),
+        )
         val dependencies = configurations
             .filter { configuration -> configuration.name.isProductionDependencyConfiguration() }
             .flatMap { configuration ->

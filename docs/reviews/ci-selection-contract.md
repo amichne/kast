@@ -8,7 +8,7 @@ The graph must include production, test, fixture, generated-contract, and shared
 | Changed input | Independently expected obligations |
 | --- | --- |
 | Documentation page, navigation, style, or snippet | Mintlify, parser, glossary, knowledge links, and the actual example generator and tests |
-| `query/service` production | Module checks for `query/service`, `query/protocol`, `runtime/hosted`, and `cli`; shared guards and affected semantic families |
+| `query/service` production | Module checks for `query/service`, `query/protocol`, `runtime/hosted`, and `cli`, shared guards and affected semantic families |
 | `query/contract` production | The leaf-service obligations plus `query/contract` |
 | `workspace/contract` test fixtures | Every fixture consumer, including `query/protocol`, `runtime/hosted`, `app-server`, and transitive `cli` consumers |
 | `relation/intellij` adapter or authored semantic input | Relation and hosted module checks, real K2 families, their compiler witnesses and rejection controls, plus downstream protocol contracts |

@@ -3,6 +3,12 @@ name: CI
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      rollout:
+        description: Frozen CI corpus phase
+        type: choice
+        default: none
+        options: [none, warm, changed, reuse]
   merge_group:
   push:
     branches:
@@ -39,13 +45,7 @@ jobs:
 
       - name: Test CI decisions
         run: |
-          python3 .github/scripts/ci/test_validation_scope.py
-          python3 .github/scripts/ci/test_source_validation.py
-          python3 .github/scripts/ci/test_routine_gate.py
-          python3 .github/scripts/ci/test_required_checks.py
-          python3 .github/scripts/ci/test_validation_outcome.py
-          python3 .github/scripts/ci/test_verify_documentation.py
-          python3 .github/scripts/ci/test_verify_checks.py
+          python3 -m unittest discover -s .github/scripts/ci -p 'test_*.py'
           python3 .github/scripts/release/test_build_candidate.py
 
       - name: Select checks
@@ -61,7 +61,7 @@ jobs:
 
   documentation:
     needs: scope
-    if: needs.scope.outputs.documentation == 'run'
+    if: needs.scope.outputs.documentation == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     uses: ./.github/workflows/docs.yml
 
   portable:
@@ -81,7 +81,7 @@ jobs:
 
   source:
     needs: scope
-    if: needs.scope.outputs.source == 'run'
+    if: needs.scope.outputs.source == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     name: Source validation
     runs-on: macos-15
     timeout-minutes: 60
@@ -136,7 +136,7 @@ jobs:
         run: python3 .github/scripts/ci/source_validation.py
 
       - name: Retain source evidence
-        if: always()
+        if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
         uses: actions/upload-artifact@v7.0.2
         with:
           name: ci-source-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
@@ -148,7 +148,7 @@ jobs:
 
   kotlin:
     needs: scope
-    if: needs.scope.outputs.product == 'run'
+    if: needs.scope.outputs.product == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     name: Kotlin product
     runs-on: macos-15
     timeout-minutes: 60
@@ -247,7 +247,7 @@ jobs:
           retention-days: 30
 
       - name: Retain verification reports
-        if: always()
+        if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
         uses: actions/upload-artifact@v7.0.2
         with:
           name: ci-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
@@ -260,7 +260,7 @@ jobs:
   source-feedback:
     name: Source feedback
     needs: [scope, source, documentation, portable]
-    if: always()
+    if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -277,7 +277,7 @@ jobs:
   required:
     name: CI required checks
     needs: [scope, source, documentation, portable, kotlin]
-    if: always()
+    if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -305,3 +305,87 @@ jobs:
           path: build/validation/validation.json
           if-no-files-found: error
           retention-days: 30
+
+  rollout:
+    needs: scope
+    if: github.event_name == 'workflow_dispatch' && inputs.rollout != 'none'
+    name: Frozen rollout (${{ matrix.case }}, ${{ inputs.rollout }})
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [documentation, leaf-service, semantic-adapter, shared-contract]
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up GraalVM Java 25
+        id: jdk25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: graalvm
+          java-version: 25.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+          cache: pip
+          cache-dependency-path: experiments/host-observation/requirements-test.txt
+
+      - name: Install host protocol and semantic test tools
+        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+
+      - name: Set up documentation parser runtime
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.21.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Only the explicit rollout warm-up writes this branch-scoped cache.
+          # Routine PR policy remains read-only.
+          cache-read-only: ${{ inputs.rollout != 'warm' }}
+          cache-cleanup: on-success
+          # caches includes caches/build-cache-1, Gradle's local task-output cache.
+          # Cacheable IDEA extraction tasks restore their outputs from that cache. Cache the non-cacheable topology Sync separately.
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            native-build-tools
+            kast/topology-intellij-kotlin-plugin
+
+      - name: Replay frozen change
+        env:
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          ROLLOUT_CASE: ${{ matrix.case }}
+          ROLLOUT_MODE: ${{ inputs.rollout }}
+        run: python3 .github/scripts/ci/rollout.py --case "$ROLLOUT_CASE" --mode "$ROLLOUT_MODE"
+
+      - name: Retain source evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-rollout-${{ matrix.case }}-${{ inputs.rollout }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            build/reports/
+            **/build/test-results/
+          if-no-files-found: error
+          retention-days: 14
+
+  rollout-feedback:
+    name: Frozen rollout feedback
+    needs: [scope, rollout, portable]
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.rollout != 'none'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every corpus result and portable checks
+        env:
+          ROLLOUT_SUCCESS: ${{ needs.scope.result == 'success' && needs.rollout.result == 'success' && needs.portable.result == 'success' }}
+        run: test "$ROLLOUT_SUCCESS" = true

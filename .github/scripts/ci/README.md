@@ -2,20 +2,22 @@
 
 `validation_scope.py` admits four check plans from the exact Git diff.
 The selector checks the checkout revision before it reads the diff.
-Pull requests use the merge base; pushes use the entire before/head range.
+Pull requests use the merge base. Pushes use the entire before/head range.
 
 | Plan | Required work | Product publication |
 | --- | --- | --- |
-| `DOCUMENTATION` | Mintlify, Markdown parser, glossary tests and generated glossary views | None |
+| `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, and example consumers | None |
 | `SOURCE` | Complete source gate, all semantic families, offline preflight and portable packaging | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
-Only the authored pages in `DOCUMENTATION_PATHS` can use the documentation plan.
+The documentation plan admits the reviewed pages, navigation, styles, and value-journey example inputs.
 Before adding a path, inspect its consumers in Gradle, packaging, generators and tests.
 Installer examples in README, start, installation and compatibility keep full validation.
-OpenWiki source inputs and linked pages also keep full validation for edits, deletions and anchor changes.
-This includes site navigation, which an OpenWiki concept cites.
+Most OpenWiki source inputs keep full validation.
+Reviewed documentation inputs instead run `check-documentation-inputs` for source paths and links.
+That mode emits `DOCUMENTATION_INPUTS` evidence and makes no Kotlin declaration claim.
+Full source validation keeps `verifyKnowledgeBase` and its declaration evidence.
 A source-inventory test checks the current literal source paths and inline links.
 New references to listed pages and unsupported reference forms require review before CI can pass.
 Generated schemas, scripts, build configuration, new paths and mixed documentation/product changes also select full validation.
@@ -72,7 +74,7 @@ python3 .github/scripts/ci/verify_documentation.py
 actionlint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows/developer-release.yml
 ```
 
-The five decision modules have a strict Pyright configuration.
+The decision and rollout modules have a strict Pyright configuration.
 The candidate tests keep product provenance checks and exercise explicit no-publication and rejection paths.
 Hosted CI must validate the final pull-request head before review completes.
 
@@ -114,3 +116,47 @@ Repository branch-protection settings remain unchanged.
 Source and candidate jobs overlap on release-sensitive changes during this split.
 That overlap is measured runner work, not a performance reduction.
 The six-minute criterion remains open until the frozen hosted corpus passes.
+
+## Affected obligations and rollout
+
+The default source job still runs the complete source gate during rollout.
+`source_validation.py --affected --base <full-sha>` admits an exact plan from the current Git diff.
+The plan binds the source tree, comparison basis, graph digest, manifest digest, tasks, classes, and case identities.
+A supplied `CI_VERIFICATION_PLAN` must equal the recomputed plan.
+Unknown paths, stale graph inputs, and missing history keep broader validation or reject the supplied plan.
+
+`generateVerificationGraph` collects project dependencies from all configurations and declared source roots.
+The existing `ModuleImpact` owner calculates the consumer closure.
+The production-only `topologyImpact` contract stays separate.
+`verifyVerificationGraph` compares the generated report with `config/ci/verification-graph.json`.
+Source admission examines every recorded input digest before it trusts the graph.
+Explicit shared-resource consumers cover query-delivery JavaScript and the host-observation suite.
+Hosted protocol consumers include query protocol and CLI checks.
+
+The existing semantic manifest adds `verification_owner` to each case.
+Selection keeps each affected owner's complete fixture population, including compiler witnesses and rejection controls.
+The independent matrix expects 82 hosted cases for query service and query contract changes.
+It expects 230 relation and hosted cases for a relation adapter change.
+The seven symbol cases remain in the complete 237-case gate.
+`verifySelectedKotlinSemanticCoverage` uses the existing execution accountant for selected owner reports.
+Missing, skipped, duplicate, malformed, unexpected, and zero case populations fail that accountant.
+
+The CI dispatch input `rollout` supports `warm`, `changed`, and `reuse` phases.
+All four corpus jobs use `macos-15`.
+The runner admits only a disposable GitHub checkout.
+It reverses and reapplies each frozen patch under two local commits.
+The resulting tree must equal the workflow checkout tree.
+Full qualification of that exact tree supplies the complete comparison population.
+
+The warm phase runs complete source validation and writes branch-scoped Gradle caches through `setup-gradle`.
+Routine pull requests keep their existing read-only cache policy.
+The changed phase deletes affected compiler and test outputs before their tasks run.
+It disables output-cache reuse for those tasks and preserves normal identity handling for immutable dependency archives.
+Unrelated task outputs can use the warmed cache.
+The reuse phase permits normal task-cache behavior and has separate evidence.
+These manual phases end after rollout and do not add duplicate work to routine pull requests.
+
+Each measurement records its source identities, exact patch, selected cases, task graph, compiler count, timestamps, and process outcome.
+Workflow and job timestamps supply setup, artifact, aggregate, queue, and total runner durations.
+The process timer alone cannot establish the six-minute feedback criterion.
+The criterion remains open until all four changed-output runs pass within 360 seconds through their required aggregate.

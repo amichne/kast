@@ -57,6 +57,8 @@ Contains the Mintlify site, contributor procedures, glossary policy, and revisio
 - From `docs/public`, run `mint validate` and `mint broken-links`.
 - Use the pinned Vale command and checked-in rules from the root guide.
 - Run `./gradlew verifyDocumentationGlossary` for current terminology and generated projection parity.
+- Run `python3 .github/scripts/ci/verify_documentation.py` for parser, glossary, example, and knowledge-link obligations without Gradle.
+- `code_kb.py check-documentation-inputs` examines source paths and links. Full `check` also examines Kotlin declarations.
 - Read the nested public reference guide before changing generated callable contracts.
 
 ## Navigation Hints
