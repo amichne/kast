@@ -101,8 +101,13 @@ def corpus(raw: bytes) -> tuple[Case, ...]:
     return tuple(result)
 
 
-def git(root: Path, *arguments: str, stdin: bytes | None = None) -> bytes:
-    return subprocess.check_output(["git", *arguments], cwd=root, input=stdin)
+def git(
+    root: Path,
+    *arguments: str,
+    stdin: bytes | None = None,
+    environment: dict[str, str] | None = None,
+) -> bytes:
+    return subprocess.check_output(["git", *arguments], cwd=root, input=stdin, env=environment)
 
 
 def prepare(root: Path, case: Case) -> Replay:
@@ -113,6 +118,8 @@ def prepare(root: Path, case: Case) -> Replay:
     ):
         raise ValueError("DISPOSABLE_CI_CHECKOUT_REQUIRED")
     _, qualified_tree = source_validation.source_identity(root)
+    commit_date = git(root, "show", "-s", "--format=%cI", "HEAD").decode().strip()
+    environment = os.environ | {"GIT_AUTHOR_DATE": commit_date, "GIT_COMMITTER_DATE": commit_date}
     patch = git(root, "diff", "--binary", case.before, case.after, "--", *case.paths)
     if hashlib.sha256(patch).hexdigest() != case.sha256:
         raise ValueError("CORPUS_PATCH_CHANGED")
@@ -133,10 +140,10 @@ def prepare(root: Path, case: Case) -> Replay:
         "-c",
         "core.hooksPath=/dev/null",
     )
-    git(root, *identity, "commit", "-qm", f"Rollout before {case.name}")
+    git(root, *identity, "commit", "-qm", f"Rollout before {case.name}", environment=environment)
     before = git(root, "rev-parse", "HEAD").decode().strip()
     git(root, "apply", "--index", "-", stdin=patch)
-    git(root, *identity, "commit", "-qm", f"Rollout after {case.name}")
+    git(root, *identity, "commit", "-qm", f"Rollout after {case.name}", environment=environment)
     revision, tree = source_validation.source_identity(root)
     if tree != qualified_tree:
         raise ValueError("REPLAY_TREE_CHANGED")
