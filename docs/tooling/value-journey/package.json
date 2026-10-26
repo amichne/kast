@@ -1,0 +1,24 @@
+{
+  "name": "kast-value-journey",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run check && node build.mts",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run && prettier --check src build.mts package.json tsconfig.json README.md",
+    "format": "prettier --write ."
+  },
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "devDependencies": {
+    "@pierre/theme": "2.0.0",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "esbuild": "0.28.2",
+    "prettier": "^3.6.2",
+    "shiki": "4.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "5.0.5"
+  }
+}

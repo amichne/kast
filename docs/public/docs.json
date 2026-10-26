@@ -76,6 +76,7 @@
             "group": "Understand Kast",
             "pages": [
               "explanation",
+              "explanation/value-journey",
               "reference/internals/architecture",
               "explanation/query-lifecycle",
               "architecture/query-reuse",

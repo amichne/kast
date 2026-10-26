@@ -2,3 +2,467 @@
 .mermaid > svg {
   margin-inline: auto;
 }
+
+/* Source-first value-journey explainer. All rules stay inside the component. */
+.value-journey {
+  --vj-paper: #ffffff;
+  --vj-ink: #0a0a0a;
+  --vj-muted: #636363;
+  --vj-line: #e5e5e5;
+  --vj-soft: #f5f5f5;
+  --vj-accent: #315bb0;
+  --vj-compiler: #176754;
+  --vj-reviewed: #895213;
+  --vj-mark: #dfebff;
+  --vj-warn: #fff3df;
+  color-scheme: light;
+  color: var(--vj-ink);
+  background: var(--vj-paper);
+  border: 1px solid var(--vj-line);
+  border-radius: 12px;
+  margin-block: 28px;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.6;
+  container-type: inline-size;
+}
+.dark .value-journey {
+  --vj-paper: #0a0a0a;
+  --vj-ink: #fafafa;
+  --vj-muted: #a3a3a3;
+  --vj-line: #292929;
+  --vj-soft: #171717;
+  --vj-accent: #a6c9ff;
+  --vj-compiler: #8cd2b6;
+  --vj-reviewed: #edbc79;
+  --vj-mark: #19283c;
+  --vj-warn: #3b3020;
+  color-scheme: dark;
+}
+.value-journey * {
+  box-sizing: border-box;
+}
+.value-journey button,
+.value-journey select {
+  font: inherit;
+  cursor: pointer;
+}
+.value-journey button {
+  border: 1px solid var(--vj-line);
+  border-radius: 6px;
+  padding: 7px 12px;
+  background: var(--vj-paper);
+  color: var(--vj-ink);
+}
+.value-journey button:hover {
+  background: var(--vj-soft);
+}
+.value-journey :is(button, select):focus-visible {
+  outline: 2px solid var(--vj-accent);
+  outline-offset: 3px;
+}
+.value-journey button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+.value-journey :is(h2, h3, p, pre, dl, dd) {
+  margin: 0;
+}
+.value-journey code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.88em;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+.value-journey code::before,
+.value-journey code::after {
+  content: none;
+}
+.value-journey .vj-eyebrow {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--vj-muted);
+  font-weight: 600;
+}
+.value-journey .vj-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px 10px;
+}
+.value-journey .vj-heading h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  font-weight: 550;
+}
+.value-journey .vj-mode {
+  color: var(--vj-muted);
+  font-size: 10px;
+  text-align: right;
+}
+.value-journey .vj-options {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px 10px;
+  flex-wrap: wrap;
+}
+.value-journey .vj-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--vj-muted);
+}
+.value-journey select {
+  color: var(--vj-ink);
+  border: 1px solid var(--vj-line);
+  border-radius: 6px;
+  background: var(--vj-paper);
+  padding: 6px 8px;
+  max-width: 100%;
+  font-size: 12px;
+}
+.value-journey .vj-detail {
+  display: flex;
+  border: 1px solid var(--vj-line);
+  border-radius: 6px;
+  padding: 2px;
+}
+.value-journey .vj-detail button {
+  border: 0;
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 11px;
+  text-transform: capitalize;
+  color: var(--vj-muted);
+}
+.value-journey .vj-detail button[aria-pressed="true"] {
+  background: var(--vj-soft);
+  color: var(--vj-ink);
+}
+.value-journey .vj-question {
+  padding: 8px 16px;
+  border-top: 1px solid var(--vj-line);
+  font-size: 12px;
+}
+.value-journey .vj-file {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: var(--vj-soft);
+  border-block: 1px solid var(--vj-line);
+  font-size: 10px;
+  color: var(--vj-muted);
+}
+.value-journey .vj-file > span:first-child {
+  font-weight: 600;
+  color: var(--vj-ink);
+}
+.value-journey .vj-file span[aria-hidden] {
+  margin-right: 6px;
+  color: var(--vj-accent);
+  font-family: ui-monospace, Menlo, monospace;
+}
+.value-journey .vj-source {
+  padding-block: 10px;
+}
+.value-journey .vj-line {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  padding-right: 16px;
+}
+.value-journey .vj-line-number {
+  color: var(--vj-muted);
+  opacity: 0.7;
+  text-align: right;
+  padding-right: 12px;
+  font:
+    10px/22px ui-monospace,
+    Menlo,
+    monospace;
+  user-select: none;
+}
+.value-journey .vj-line > code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 22px;
+}
+.value-journey .vj-line-active {
+  background: var(--vj-soft);
+}
+.value-journey mark {
+  background: var(--vj-mark);
+  color: var(--vj-ink);
+  border-radius: 2px;
+  text-decoration: underline;
+  text-decoration-color: var(--vj-accent);
+  text-underline-offset: 4px;
+}
+.value-journey .vj-inline {
+  margin: 6px 16px 10px 38px;
+}
+.value-journey .vj-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font:
+    11px/1.7 ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--vj-compiler);
+  padding: 4px 0 6px;
+  overflow-wrap: anywhere;
+}
+.value-journey .vj-value-label {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--vj-muted);
+}
+.value-journey .vj-explanation {
+  border: 1px solid var(--vj-line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--vj-paper);
+}
+.value-journey .vj-step-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.value-journey .vj-authority {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.value-journey .vj-compiler {
+  color: var(--vj-compiler);
+}
+.value-journey .vj-reviewed-library {
+  color: var(--vj-reviewed);
+}
+.value-journey .vj-explanation h3 {
+  font-size: 17px;
+  font-weight: 550;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+.value-journey .vj-explanation p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--vj-muted);
+}
+.value-journey .vj-disclosure {
+  padding: 5px 0;
+  border: 0;
+  color: var(--vj-accent);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.value-journey .vj-disclosure:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+.value-journey .vj-portal,
+.value-journey .vj-callback {
+  margin-block: 8px;
+  padding: 10px;
+  background: var(--vj-soft);
+  border: 1px solid var(--vj-line);
+  border-radius: 6px;
+}
+.value-journey .vj-portal pre {
+  padding-block: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.value-journey .vj-callback > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.value-journey dl {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 4px 12px;
+  padding-block: 10px;
+  font-size: 11px;
+}
+.value-journey dt {
+  color: var(--vj-muted);
+}
+.value-journey dd {
+  overflow-wrap: anywhere;
+}
+.value-journey .vj-proof-details dt:last-of-type,
+.value-journey .vj-proof-details dd:last-child {
+  grid-column: 1 / -1;
+}
+.value-journey .vj-proof-split {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vj-line);
+  margin-top: 6px;
+  font-size: 10px;
+}
+.value-journey .vj-proof-split > span:last-child {
+  color: var(--vj-muted);
+}
+.value-journey .vj-proof-split.vj-missing {
+  color: var(--vj-reviewed);
+}
+.value-journey .vj-proof-split.vj-missing > span:last-child {
+  color: var(--vj-reviewed);
+  font-weight: 600;
+}
+.value-journey .vj-gap .vj-explanation {
+  border-color: var(--vj-reviewed);
+  background: var(--vj-warn);
+}
+.value-journey .vj-gap .vj-value {
+  color: var(--vj-reviewed);
+}
+.value-journey .vj-ending {
+  padding-block: 8px 2px;
+  margin-top: 8px;
+  border-top: 1px solid var(--vj-line);
+}
+.value-journey .vj-ending strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.value-journey .vj-ending p {
+  margin-top: 4px;
+}
+.value-journey .vj-compare {
+  display: block;
+  color: var(--vj-accent);
+  font-size: 11px;
+  margin-top: 8px;
+}
+.value-journey .vj-fork {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-block: 1px solid var(--vj-line);
+  margin-top: 8px;
+  padding-block: 10px;
+}
+.value-journey .vj-fork > .vj-eyebrow,
+.value-journey .vj-fork > p {
+  flex-basis: 100%;
+}
+.value-journey .vj-fork button {
+  font-size: 11px;
+}
+.value-journey .vj-fork button[aria-pressed="true"] {
+  border-color: var(--vj-accent);
+  color: var(--vj-accent);
+}
+.value-journey .vj-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--vj-line);
+  padding: 10px 16px;
+}
+.value-journey .vj-position {
+  font:
+    11px/1.4 ui-monospace,
+    Menlo,
+    monospace;
+  white-space: nowrap;
+}
+.value-journey .vj-buttons {
+  display: flex;
+  gap: 8px;
+}
+.value-journey .vj-buttons button {
+  font-size: 11px;
+}
+.value-journey .vj-buttons .vj-next {
+  background: var(--vj-accent);
+  color: var(--vj-paper);
+  border-color: var(--vj-accent);
+}
+.value-journey .vj-progress {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.value-journey .vj-progress button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 3px;
+  color: var(--vj-muted);
+  border-color: transparent;
+  font:
+    10px/1.5 ui-monospace,
+    Menlo,
+    monospace;
+}
+.value-journey .vj-progress button[aria-current="step"] {
+  color: var(--vj-accent);
+  border-color: var(--vj-line);
+  background: var(--vj-soft);
+}
+.value-journey .vj-limits {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--vj-soft);
+  border-top: 1px solid var(--vj-line);
+  color: var(--vj-muted);
+}
+.value-journey .vj-limits p {
+  font-size: 10px;
+  line-height: 1.7;
+}
+.value-journey.vj-loading {
+  min-height: 180px;
+  padding: 24px;
+}
+@container (max-width: 470px) {
+  .value-journey .vj-line {
+    grid-template-columns: 28px minmax(0, 1fr);
+    padding-right: 10px;
+  }
+  .value-journey .vj-line > code {
+    font-size: 10px;
+    line-height: 21px;
+  }
+  .value-journey .vj-inline {
+    margin-inline: 16px;
+  }
+  .value-journey .vj-buttons {
+    width: 100%;
+  }
+  .value-journey .vj-buttons button {
+    flex: 1;
+  }
+  .value-journey .vj-file > span:last-child {
+    font-size: 9px;
+  }
+}
