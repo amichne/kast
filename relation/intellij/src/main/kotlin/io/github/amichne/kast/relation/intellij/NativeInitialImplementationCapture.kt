@@ -6,10 +6,10 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.CompleteCallbackFlowGraph
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueCallbackInputFailure
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
-import io.github.amichne.kast.relation.contract.ValueImplementationCoverage
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -24,7 +24,7 @@ internal class NativeInitialImplementationCapture(
     private val context: IntellijCallbackFlowContext,
     private val allowance: IntellijRelationAllowance,
     private val projection: IntellijK2RelationProjection,
-    private val recordFailure: (io.github.amichne.kast.relation.contract.ValueCallbackInputFailure) -> Unit,
+    private val recordFailure: (ValueCallbackInputFailure) -> Unit,
 ) {
     fun read(
         literal: KtFunction,
@@ -33,10 +33,7 @@ internal class NativeInitialImplementationCapture(
     ): Refinement<NativeValueExecution, ValueFlowUnsupportedCause> {
         when (val permission = context.permit()) {
             is Refinement.Refined -> Unit
-            is Refinement.Rejected ->
-                return failed(
-                    io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(permission.failure)
-                )
+            is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Callback(permission.failure))
         }
         val supply =
             classifyCallbackFunctionSupply(literal) as? IntellijCallbackLambdaSupply.Argument ?: return unavailable()
@@ -51,10 +48,7 @@ internal class NativeInitialImplementationCapture(
         val target =
             when (val selected = context.target(declared)) {
                 is Refinement.Refined -> selected.value
-                is Refinement.Rejected ->
-                    return failed(
-                        io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(selected.failure)
-                    )
+                is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Callback(selected.failure))
             }
         val caller =
             when (val read = caller(call, host, enclosing)) {
@@ -149,10 +143,7 @@ internal class NativeInitialImplementationCapture(
         for (fact in dispatch.batch.facts) {
             when (val permission = context.permit()) {
                 is Refinement.Refined -> Unit
-                is Refinement.Rejected ->
-                    return failed(
-                        io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(permission.failure)
-                    )
+                is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Callback(permission.failure))
             }
             when (val alternative = alternative(source, invocation, call, literal, dispatch, fact)) {
                 is Refinement.Refined -> alternatives += alternative.value
@@ -162,10 +153,7 @@ internal class NativeInitialImplementationCapture(
         val graph =
             when (val combined = CompleteCallbackFlowGraph.combine(alternatives)) {
                 is Refinement.Refined -> combined.value
-                is Refinement.Rejected ->
-                    return failed(
-                        io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Graph(combined.failure)
-                    )
+                is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Graph(combined.failure))
             }
         val body = context.anonymous(literal) ?: return unavailable()
         return when (val owner = ValueExecutionOwner.callback(enclosing, body, graph)) {
@@ -191,18 +179,18 @@ internal class NativeInitialImplementationCapture(
             NativeValueArgumentDispatch.Direct -> return unavailable()
             is NativeValueArgumentDispatch.Unsupported -> return Refinement.Rejected(dispatch.cause)
             is NativeValueArgumentDispatch.Rejected ->
-                return failed(
-                    io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.ImplementationRejected(
-                        dispatch.cause
-                    )
-                )
+                return failed(ValueCallbackInputFailure.ImplementationRejected(dispatch.cause))
             is NativeValueArgumentDispatch.Implementations ->
-                if (dispatch.evidence.coverage !is ValueImplementationCoverage.Exhausted)
-                    return failed(
-                        io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.ImplementationIncomplete(
-                            dispatch.evidence
-                        )
-                    )
+                when (
+                    val admitted = ValueCallbackInputFailure.ImplementationIncomplete.fromCompiler(dispatch.evidence)
+                ) {
+                    is Refinement.Refined -> return failed(admitted.value)
+                    is Refinement.Rejected ->
+                        when (admitted.failure) {
+                            ValueCallbackInputFailure.ImplementationIncomplete.AdmissionFailure.EXHAUSTED_DISPATCH ->
+                                Unit
+                        }
+                }
         }
         return Refinement.Refined(dispatch.evidence)
     }
@@ -274,18 +262,12 @@ internal class NativeInitialImplementationCapture(
                         )
             ) {
                 is Refinement.Refined -> read.value
-                is Refinement.Rejected ->
-                    return failed(
-                        io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(read.failure)
-                    )
+                is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Callback(read.failure))
             }
         val suppliers =
             when (val read = IntellijCallbackSupplierValues(context, summaries).read(selected, formal)) {
                 is Refinement.Refined -> read.value
-                is Refinement.Rejected ->
-                    return failed(
-                        io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(read.failure)
-                    )
+                is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Callback(read.failure))
             }
         if (suppliers.size != 1) return unavailable()
         val flow =
@@ -304,22 +286,18 @@ internal class NativeInitialImplementationCapture(
     ): Refinement<CompleteCallbackFlowGraph, ValueFlowUnsupportedCause> {
         when (flow) {
             is CallbackInvocationFlowRead.Observed -> Unit
-            is CallbackInvocationFlowRead.Unavailable ->
-                return failed(io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(flow.cause))
+            is CallbackInvocationFlowRead.Unavailable -> return failed(ValueCallbackInputFailure.Callback(flow.cause))
             is CallbackInvocationFlowRead.ContractRejected ->
-                return failed(io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Contract(flow.cause))
+                return failed(ValueCallbackInputFailure.Contract(flow.cause))
             is CallbackInvocationFlowRead.Immutable -> return unavailable()
         }
         when (val graph = CompleteCallbackFlowGraph.admit(flow.flow)) {
             is Refinement.Refined -> return graph
-            is Refinement.Rejected ->
-                return failed(io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Graph(graph.failure))
+            is Refinement.Rejected -> return failed(ValueCallbackInputFailure.Graph(graph.failure))
         }
     }
 
-    private fun failed(
-        failure: io.github.amichne.kast.relation.contract.ValueCallbackInputFailure
-    ): Refinement.Rejected<ValueFlowUnsupportedCause> {
+    private fun failed(failure: ValueCallbackInputFailure): Refinement.Rejected<ValueFlowUnsupportedCause> {
         recordFailure(failure)
         return Refinement.Rejected(failure.nativeCallbackInputCause())
     }

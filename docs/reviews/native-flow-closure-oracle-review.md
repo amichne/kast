@@ -388,7 +388,7 @@ These changes strengthen the frozen identities and do not waive enterprise repla
 
 The schema correction preserves canonical owners and the existing byte limits.
 `CanonicalSchemaReferences` now names the actual `ImpactCallbackInputFailureDocument` and `ImpactFlowDomainDocument` serializer descriptors.
-`InstalledServerProjectionDocuments` supplies both definitions from those same serializers through the existing local-reference mechanism.
+`InstalledServerProjectionDocuments` supplies both definitions from those same `KSerializer` instances through the existing local-reference mechanism.
 No field, constraint, failure variant, or evidence qualifier was removed.
 
 `ImplementationDispatchSchemaReuseTest` adds both definitions to its independent shape comparisons.
@@ -413,7 +413,7 @@ The finite failure oracle now explicitly includes `CLASSIFICATION_MISMATCH` and 
 The compact-finding key oracle now includes the authored `classification` field.
 The public catalog assertions now expect contract 18, matching the authored schema and `PUBLIC_TOOL_CONTRACT_VERSION`.
 Other schema/version owners remain independent.
-The Pi exporter reads the canonical serializers and installed semantic-schema owner. It does not hand-edit the three generated shapes.
+The Pi exporter reads the canonical `KSerializer` instances and installed semantic-schema owner. It does not hand-edit the three generated shapes.
 Their final parity assertion remains necessary.
 
 Source review found no oracle downgrade or loss of schema authority in this correction.
@@ -438,3 +438,12 @@ The installed projection passes its unchanged 4096-byte headroom assertion.
 The catalog/serializer cohort passes 16/16. The final RPC/parity cohort passes 26/26.
 The host-observation cohort passes 332/332. These cohorts have zero failures, errors, and skips.
 The Node adapter process keeps its two existing platform skips. Its current count remains separate from the JUnit wrapper.
+
+## Diagnostic-constructor review
+
+`ValueCallbackInputFailure.ImplementationIncomplete` now has a private constructor and a finite admission result.
+Its factory accepts incomplete coverage and rejects exhausted coverage with `EXHAUSTED_DISPATCH`.
+The native caller consumes that one decision. It does not repeat the coverage examination.
+The existing matched basis and original inventory remain intact. Private copy visibility prevents an unchecked replacement.
+The six `ValueImplementationObligationOracleTest` assertions pass, including both coverage states and a foreign basis.
+This refinement preserves the existing production decision. It supplies no new incident reproduction claim.

@@ -1,12 +1,29 @@
 package io.github.amichne.kast.relation.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 /** Keep the failed compiler boundary and its finite reason separate from the broad flow limitation. */
 sealed interface ValueCallbackInputFailure {
     data class ImplementationRejected(val cause: RelationCompilerRejection) : ValueCallbackInputFailure
 
-    data class ImplementationIncomplete(val dispatch: ValueImplementationDispatch) : ValueCallbackInputFailure
+    @ConsistentCopyVisibility
+    data class ImplementationIncomplete private constructor(val dispatch: ValueImplementationDispatch) :
+        ValueCallbackInputFailure {
+        enum class AdmissionFailure {
+            EXHAUSTED_DISPATCH
+        }
+
+        companion object {
+            fun fromCompiler(
+                dispatch: ValueImplementationDispatch
+            ): Refinement<ImplementationIncomplete, AdmissionFailure> =
+                when (dispatch.coverage) {
+                    is ValueImplementationCoverage.Incomplete -> Refinement.Refined(ImplementationIncomplete(dispatch))
+                    is ValueImplementationCoverage.Exhausted -> Refinement.Rejected(AdmissionFailure.EXHAUSTED_DISPATCH)
+                }
+        }
+    }
 
     data class Callback(val cause: CallbackInvocationFlowCause) : ValueCallbackInputFailure
 

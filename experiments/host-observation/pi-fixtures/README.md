@@ -257,9 +257,9 @@ expiry, cancellation settlement, or model usability evidence.
 
 ## Native flow closure export on 2026-10-27
 
-The existing `PiQuestionSchema.java` exporter regenerates all three schemas from the changed canonical serializers.
+The existing `PiQuestionSchema.java` exporter regenerates all three schemas from the changed canonical `KSerializer` instances.
 The result keeps string-content evidence, conversion identity, constant-null construction, path classification, and typed acquisition failures.
-The installed schema reuses the exact callback-failure and flow-domain serializers through local references.
+The installed schema reuses the exact callback-failure and flow-domain `KSerializer` instances through local references.
 This export does no semantic query and supplies no installed-host or enterprise proof.
 
 | Artifact | SHA-256 |

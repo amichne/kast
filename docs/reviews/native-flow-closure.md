@@ -129,6 +129,7 @@ These gaps block incident closure. They do not authorize speculative repairs or 
 - I3: `NativeInitialImplementationCapture` uses the existing implementation inventory and selected frames. The `Pass`/`Drop` control forbids cross-implementation field provenance.
 - I4–I6: Callback input/result owners keep actual/formal positions, supplier proof, occurrences, and body evidence. Subject endpoints keep their admitted owner binding.
 - I7–I8: Matched returns keep their proven implementation dispatch after compiler/caller readmission. Direct dispatch keeps its existing guard.
+- Diagnostic construction: The incomplete-implementation variant has a private constructor. Its finite admission rejects an exhausted inventory and keeps incomplete coverage and basis.
 - Diagnostic preservation: Producer rejection keeps `INITIAL_EXECUTION`, the original finite cause, and bounded enclosing/site evidence. `OWNER_MISMATCH` no longer substitutes for every failed acquisition.
 - String content: `NativeStringContent`, `ValueStringContent`, and typed non-null conditions consume the established embedded result. Descendants do not bypass a call or getter.
 - Null construction: `ValueStringConstruction` keeps the exact null-only construction without an upstream content edge or another result count. Storage and byte accounting include its evidence.
@@ -150,7 +151,7 @@ File extraction and typed projections add no semantic operation.
 
 The authored public schema changes contract `17` to `18` once.
 `packaging/generate-public-query.py` regenerates its 69 public artifacts from that owner.
-The existing Pi exporter regenerates the question, qualification, and result schema fixtures from their canonical serializers.
+The existing Pi exporter regenerates the question, qualification, and result schema fixtures from their canonical `KSerializer` instances.
 The canonical query-response schema changes `kast.query.run.v8` to `kast.query.run.v9` with its endpoint schemas and consumers.
 No shared universal version or persistent migration exists.
 
