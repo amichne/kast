@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailTarget
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -31,6 +32,31 @@ private constructor(
     val originalPathRowIds: List<QueryResultRowReference> = emptyList(),
 ) {
     companion object {
+        fun detailPresentation(
+            restored: QueryResultRestoration.Restored,
+            request: QueryRunRequest.ReadResult,
+        ): Refinement<QueryRunRequest.ReadResult, QueryExecutionRejectionDocument> {
+            if (request.detail?.target != QueryEntryDetailTarget.EVIDENCE)
+                return Refinement.Refined(request.detailPresentation(QueryResultCursor.Start))
+            val count =
+                when (val output = request.output) {
+                    is QueryOutputDocument.ImpactWitness -> {
+                        val retained =
+                            restored.result as? QueryRetainedResult.ValuePaths
+                                ?: return Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE)
+                        val accounting =
+                            retained.rows.accounting as? QueryValuePathAccounting.Investigated
+                                ?: return Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE)
+                        QueryImpactWitnessView.count(accounting.ledger, output.section.witnessSection())
+                            .refinedForQueryOrNull()
+                            ?.value ?: return contractRejected()
+                    }
+                    else -> restored.result.rowCount
+                }
+            val cursor = QueryResultCursor.parse(count).refinedForQueryOrNull() ?: return contractRejected()
+            return Refinement.Refined(request.detailPresentation(cursor))
+        }
+
         fun create(
             restored: QueryResultRestoration.Restored,
             request: QueryRunRequest.ReadResult,
