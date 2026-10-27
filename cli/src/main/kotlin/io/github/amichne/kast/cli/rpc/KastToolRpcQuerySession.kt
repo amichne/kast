@@ -15,8 +15,13 @@ import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentRecoveryReadResult
+import io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentRecoveryResume
+import io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentRecoveryUnavailable
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument
+import io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderType
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -25,6 +30,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 
 internal const val MAXIMUM_QUERY_SESSION_REQUESTS = 64
@@ -170,10 +177,36 @@ private fun ToolRpcReply.nextQuerySessionState(): QuerySessionState =
         is ToolRpcReply.Catalog -> QuerySessionState.Closed
         is ToolRpcReply.Complete -> document.querySessionAuthority()
         is ToolRpcReply.Qualified -> document.querySessionAuthority()
-        is ToolRpcReply.RejectedDocument -> document.rejectedQuerySessionAuthority()
+        is ToolRpcReply.RejectedDocument -> document.querySessionAuthority(rejected = true)
     }
 
-private fun JsonObject.querySessionAuthority(): QuerySessionState =
+private fun JsonObject.querySessionAuthority(rejected: Boolean = false): QuerySessionState =
+    when {
+        (get("type") as? JsonPrimitive)?.contentOrNull == QueryPresentationHeaderType.QUERY_PRESENTATION_HEADER.name ->
+            headerQuerySessionAuthority()
+        rejected -> rejectedQuerySessionAuthority()
+        else -> resultQuerySessionAuthority()
+    }
+
+private fun JsonObject.headerQuerySessionAuthority(): QuerySessionState =
+    try {
+        val header = authorityJson.decodeFromJsonElement<QueryPresentationHeaderDocument>(this)
+        when (val recovery = header.semantic.recovery) {
+            is QuerySemanticHeaderDocumentRecoveryReadResult ->
+                QuerySessionState.Output(QueryResultRetention.Retained(recovery.result), null)
+            is QuerySemanticHeaderDocumentRecoveryResume ->
+                when (val continuation = QueryExecutionContinuation.Output.parse(recovery.continuation.value)) {
+                    is Refinement.Refined ->
+                        QuerySessionState.Output(QueryResultRetention.NotRequested, continuation.value)
+                    is Refinement.Rejected -> QuerySessionState.Closed
+                }
+            is QuerySemanticHeaderDocumentRecoveryUnavailable -> QuerySessionState.Closed
+        }
+    } catch (_: SerializationException) {
+        QuerySessionState.Closed
+    }
+
+private fun JsonObject.resultQuerySessionAuthority(): QuerySessionState =
     try {
         val authority = authorityJson.decodeFromJsonElement<QuerySessionResultAuthority>(this)
         val progress = authority.qualification?.progress as? QueryQualifiedProgressDocument.Resumable
