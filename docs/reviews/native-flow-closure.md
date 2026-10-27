@@ -115,7 +115,7 @@ The B0/B1 columns report actual synthetic behavior, not private incident reprodu
 | HRC-1, REPORTED | UNREPRODUCED for the reported first failure after proven helper RETURN | Outer workload stops before callback entry. Separate helper-result seed already passes | Entry failure stays distinct from helper return | Both exact helper routes pass. No generic-substitution defect claim | `N#testHelperReturnInCallback`, `N#testHelperResultReturnsToItsOwnCallback` | REQUIRED / UNMAPPED / PENDING |
 | FPD-1.*, REPORTED | UNREPRODUCED for the reported formal stop with `NONE` evidence | Generic factory stops at the same callback entry | Callback failure remains distinct from factory substitution | Fixed source factory route reaches its observer, PASS | `N#testGenericFactoryInCallback` | REQUIRED / UNMAPPED / PENDING |
 | HBP-1, REPORTED | Synthetic surrogate passes. Exact enterprise proxy replay remains UNREPRODUCED | Exact downstream argument, `UNMODELED_CALL`, exhausted empty inventory, PASS | Unchanged | Same argument, cause, inventory and original grants, PASS | `N#testDownstreamHeaderSeedKeepsEmptyImplementationInventory` | REQUIRED / UNMAPPED / PENDING |
-| SCP-1, REPORTED | UNREPRODUCED for the unknown original directory | No matched directory supplied | No matched diagnosis | Existing exact-domain conservation controls pass through the final gate. They do not reproduce the private question | `QueryValuePathStateTest` and `QueryCoverageRetentionTest` | REQUIRED / UNMAPPED / PENDING |
+| SCP-1, REPORTED | UNREPRODUCED for the unknown original directory | No matched directory supplied | No matched diagnosis | PENDING. No matched restricted-directory completion question exists | UNMAPPED | REQUIRED / UNMAPPED / PENDING |
 | SCP-2.*, REPORTED | UNREPRODUCED for the unknown broader domain and frontier set | No matched broader question supplied | No matched diagnosis | Original-token and open/external controls preserve their actual frontier sets | `N#testOriginalTokenKeepsExactLibraryFrontier`, `N#testOpenConversionKeepsItsUnprovedDispatch`, `N#testExternalConversionKeepsItsExactFrontier` | REQUIRED / UNMAPPED / PENDING |
 | STR-1, REPORTED | REPRODUCED synthetic unsupported template entry | Simple/braced/raw/repeated/nullable/constant-result routes reject as unsupported | Same first source entry | Typed derived content reaches fixed observers, PASS | `N#testSimpleStringContent`, `testBracedStringContent`, `testRawStringContent`, `testRepeatedStringContent`, `testNullableStringContent`, `testConstantResultContributesContent` | REQUIRED / UNMAPPED / PENDING |
 | HRT-1, NEW_REQUIREMENT | N/A reproduction | No template contribution | Same | Original supported prefix plus exact library frontier, PASS. Header argument remains unestablished | `N#testOriginalTokenKeepsExactLibraryFrontier` | NOT_APPLICABLE / N/A. No enterprise counterpart identified |
@@ -151,7 +151,7 @@ The D3 count beyond that named scope is **0**.
 File extraction and typed projections add no semantic operation.
 The old `ValueFlow.kt` step anchor now resolves to `relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowStep.kt`.
 The old `ValueSite.kt` invocation anchor now resolves to `relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueInvocation.kt`.
-These relocations keep the same relation-contract owner and scope.
+These moved files keep the same relation-contract owner and scope.
 
 ## Compatibility and generated owners
 
@@ -193,7 +193,8 @@ The new hosted object case also asserts the exact member identity, literal role 
 
 | Obligations | Smallest assertion owner |
 | --- | --- |
-| X-01, X-12–X-15 | Existing relation constructor/readmission and query source/state/retention suites, plus protocol admission |
+| X-01, X-12, X-14–X-15 | Existing relation constructor/readmission and query source/state/retention suites, plus protocol admission |
+| X-13 | `RunnerControlledWalkPageTest#a different traversal extent strategy or domain cannot discharge a retained one-hop remainder` rejects a changed expansion domain. It does not reproduce SCP-1 |
 | X-02–X-03 | `NativeCallbackReturnFlowTest#testIgnoredOuterCallbackRejectsNestedProducer` and `testReturnedUninvokedCallbackRemainsRejected` |
 | X-04–X-08 | Existing `NativeCallbackArgumentBindingTest`, `NativeRepeatedCallbackInputTest`, and new constant/sibling/helper closure controls |
 | X-09–X-11 | Existing `NativeNestedCallbackCompositionTest`, supplier composition, conditional/deferred/recursion controls |
@@ -265,8 +266,62 @@ The test now compares encoded fields directly. The guard baseline received no al
 - The installed build does not contain this change. No installed matching host or enterprise outcome is established.
 - The original-token header argument remains unestablished under the approved fallback.
 - The OpenWiki lifecycle adds 48 historical pages to the scoped plan. That wider refresh remains pending, with no finished Claims claim.
-- Complete repository gates, the final execution accountant, prose assessment, and delivery evidence remain pending until the delivery record replaces this line.
 
 The next enterprise action needs an authorized matching host and the exact private producer/scope/run mapping.
 Only the owner can grant D5 or an unapproved oracle downgrade.
 No synthetic pass, green PR, or qualified-library result closes these unmet criteria.
+
+## Delivery record
+
+The final implementation commit is `a0f02d69e5767aab69f3e2501a4be9610bd38cbf`.
+Its tree is `57e3aec819939313ef47450f91bf0f8bd2244bf4`. The source gate examined a clean tree at that identity.
+The later evidence commit changes this report only. The push receipt and PR checks identify the final delivery commit separately.
+
+The complete source command passed:
+
+```sh
+GRADLE_OPTS=-Dorg.gradle.daemon=false mise exec -- python3 .github/scripts/ci/source_validation.py
+```
+
+Its result is `SOURCE_VALIDATED`, exit 0, with no missing or forbidden tasks.
+Gradle reports 566 actionable tasks: 167 executed, 40 from cache, and 359 up-to-date.
+The required source, architecture, JSON, generation, documentation, installation-fixture, affected-consumer, and knowledge-link guards pass.
+Compatible cached results remain distinct from fresh executions.
+The 50 JUnit task reports contain 5,728 cases: 5,725 passes, zero failures/errors, and three skips.
+Those task populations overlap. Their sum is not a unique semantic-behavior count.
+The three skips belong to installed Codex admission, installed socket alias acceptance, and installed raw-display schema qualification.
+The first two need `KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE`. These skips supply no installed-host proof.
+
+The current native execution accountant passes 454/454 distinct manifest identities with zero issues, failures, errors, or skips.
+Its freshly executed populations contain 322 relation cases, 125 hosted cases, and seven symbol cases.
+The 37 closure cases and three hosted string cases pass within those populations.
+The CLI suite passes 492/492 and the workspace suite passes 316/316 through compatible up-to-date results.
+The standalone Node cohorts report 56/56 and 96/97 passes. The latter keeps one platform skip, with zero failures.
+Nested Node assertions remain separate from their JUnit wrapper counts.
+The host-observation process passes 332/332. Other Python cohorts pass 7, 10, 33, 8, 6, and 5 cases.
+These process counts do not enlarge the 454-case semantic claim.
+
+Raw evidence remains under `build/reports/native-flow-closure/source-final/`.
+It contains the source identity, task graph, command log, current JUnit copies, per-task counts, and execution-accountant result.
+Earlier failed gate receipts remain in the numbered source directories.
+The source gate exposed stale consumer expectations, schema-size pressure, exact capacity changes, and collapsed diagnostic codes.
+Their corrected assertions preserve original limits and typed causes. No gate or allowance was removed.
+
+The public schema uses version 18 and query-run response v9. Generated hosted digests carry the actual encoded changes.
+The production-query witnesses preserve classification and construction evidence through retained reads with zero semantic calls.
+The original comparison corpus keeps 11 passes and changes 15 expected failures to passes.
+No unexpected semantic outcome delta remains in that frozen synthetic population.
+The D1 decision remains the pre-approved qualified-library fallback. D3 records zero more in-route operations.
+The implementation adds typed evidence and focused controls within the declared owners. It adds no generic model registry.
+
+At this evidence commit, the pre-push product gate and remote PR checks have no result yet.
+Their later receipts must name the actual delivery commit. Neither supplies the missing private incident mapping.
+The milestone remains OPEN and the selected profile remains a target.
+A green delivery does not establish the complete original-token header route or enterprise replay.
+
+The changed prose is ASSESSED with Vale 3.24.0 and the pinned Repository Knowledge procedure.
+The glossary assessment examines 23 entries. The public response page is IN_SCOPE. The three historical evidence documents are OUT_OF_SCOPE.
+`Slopsentral.Grade` remains advisory at line 1 in all four assessed files because exact technical identities and evidence need precise terms.
+`Slopsentral.LongSentence` remains at lines 162, 234, and 251 in the Pi fixture README.
+Those inherited historical statements remain unchanged. The assessment does not prove reader comprehension.
+The raw reports are `final-vale.json` and `final-assessment.json` under the evidence directory.
