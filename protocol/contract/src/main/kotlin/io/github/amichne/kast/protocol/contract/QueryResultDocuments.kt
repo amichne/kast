@@ -18,6 +18,11 @@ enum class QueryBindingRowDocumentFailure {
 }
 
 sealed interface QueryResultItemDocument {
+    data class DeferredDetail(
+        val detail: QueryDeferredDetailDocument,
+        override val rowId: QueryResultRowReference? = null,
+    ) : QueryResultItemDocument
+
     data class ImpactWitness(val item: ImpactWitnessItemDocument) : QueryResultItemDocument {
         override val rowId: QueryResultRowReference?
             get() = null

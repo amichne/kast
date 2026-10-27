@@ -362,6 +362,9 @@ internal fun changeFilePreviewsSchema(): JsonObject =
 private val queryRunDocumentSchema: JsonObject by lazy {
     unionSchema(
         generatedOutputSchema(
+            io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument.serializer()
+        ),
+        generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.completeSerializer
         ),
         generatedOutputSchema(

@@ -53,6 +53,48 @@ import org.junit.jupiter.api.Test
 /** Pure detached ownership: the explicit pending charge is not a native memory or compiler claim. */
 class QueryProducerPayloadReleaseTest {
     @Test
+    fun `a small presentation header cannot reduce the charge for its large retained semantic page`() = runTest {
+        assertPresentationCharge(
+            "x".repeat(12_000),
+            QueryPublicationCommit.Rejected(QueryPublicationFailure.PUBLISHED_PAGE_MISMATCH),
+        )
+    }
+
+    @Test
+    fun `a small retained semantic page commits with a separately measured header charge`() = runTest {
+        assertPresentationCharge("small", QueryPublicationCommit.Committed)
+    }
+
+    private suspend fun assertPresentationCharge(name: String, expected: QueryPublicationCommit) {
+        val fixture = fixture()
+        val store = QueryStateStore(capacity = 3, maximumBytes = 100_000L, clock = { 0L })
+        val token = (store.issueCheckpoint(fixture.request, fixture.checkpoint) as QueryCheckpointIssuance.Issued).token
+        val producer = store.acquireCheckpoint(token, fixture.lease, 10_000) as QueryCheckpointAcquisition.Acquired
+        val page = factPage(fixture.page, name, 0, 1, null)
+        val full = (CanonicalOperationWireBindings.queryRun.encodeOutcome(page) as WireEncoding.Encoded).document
+        val header =
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument.generated(
+                    io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument.serializer()
+                )
+                .create(io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument.from(page))
+                .value
+        val responseBytes = QueryRetentionByteCount.parse(header.toByteArray(Charsets.UTF_8).size.toLong()).refined()
+        val retainedBytes = QueryRetentionByteCount.parse(full.toByteArray(Charsets.UTF_8).size.toLong()).refined()
+        assertTrue(responseBytes.value < 4096)
+        val charge = QueryPublicationPageCharge.Encoded.fromPresentationEncoding(page, responseBytes, retainedBytes)
+        val actual = store.commitPublication(producer.claim, page, charge)
+        assertEquals(expected, actual)
+        assertEquals(responseBytes, charge.encodedBytes)
+        assertEquals(retainedBytes, charge.retainedPageBytes)
+        store.releasePublication(producer.claim)
+        if (expected is QueryPublicationCommit.Rejected)
+            assertSame(
+                fixture.checkpoint,
+                (store.restoreCheckpoint(token, fixture.lease) as QueryCheckpointRestoration.Restored).checkpoint,
+            )
+    }
+
+    @Test
     fun `encoded page charge cannot be rebound to a different publication`() = runTest {
         val fixture = fixture()
         val store = QueryStateStore(capacity = 3, maximumBytes = 100_000L, clock = { 0L })

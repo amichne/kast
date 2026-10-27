@@ -9,6 +9,8 @@ import io.github.amichne.kast.protocol.contract.ImpactPresentationFailureDocumen
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument
+import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
@@ -31,6 +33,7 @@ import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch
+import io.github.amichne.kast.protocol.contract.originalEvidenceSummaryDocument
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import kotlinx.serialization.SerialName
@@ -215,13 +218,17 @@ internal object CanonicalQuerySerializers {
         )
 }
 
-private fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
+internal fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
     when (this) {
         is QueryReferenceDocument.ExactSymbol -> QueryReferenceWireDocument.ExactSymbol(token.value)
     }
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
+        originalEvidenceSummary = originalEvidenceSummaryDocument,
+        deferredEvidence = deferredEvidence.values,
+        detail = detail,
+        detailSelection = detailSelection,
         interpretation = interpretation,
         invocation = invocation,
         evidenceWindow = evidenceWindow,
@@ -243,9 +250,13 @@ private fun QueryRunResult.toQueryWireDocument() =
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
-    toContractContent().flatMapConverted { it.withWirePresentationWindow(presentationWindow) }
+    deferredEvidence.bounded().flatMapConverted { boundedDeferred ->
+        toContractContent(boundedDeferred).flatMapConverted { it.withWirePresentationWindow(presentationWindow) }
+    }
 
-private fun QueryRunResultWireDocument.toContractContent(): WireDocumentConversion<QueryRunResult> =
+private fun QueryRunResultWireDocument.toContractContent(
+    boundedDeferred: BoundedProtocolList<QueryDeferredDetailDocument>
+): WireDocumentConversion<QueryRunResult> =
     items.convertEach(QueryResultItemWireDocument::toContract).flatMapConverted { queryItems ->
         queryItems.bounded().flatMapConverted { boundedItems ->
             failures.convertEach(QueryItemFailureWireDocument::toContract).flatMapConverted { queryFailures ->
@@ -265,24 +276,16 @@ private fun QueryRunResultWireDocument.toContractContent(): WireDocumentConversi
                                                         relationObservations.toBoundedRelations().mapConverted {
                                                             boundedRelations ->
                                                             QueryRunResult(
-                                                                interpretation = interpretation,
-                                                                invocation = invocation,
-                                                                evidenceWindow = evidenceWindow,
-                                                                question = question,
-                                                                presentationOutput = presentationOutput,
-                                                                impactAccounting = impactAccounting,
-                                                                items = boundedItems,
-                                                                failures = boundedFailures,
-                                                                omissions = boundedOmissions,
-                                                                walkObservations = boundedObservations,
-                                                                referenceObservations = boundedReferences,
-                                                                discoveryObservations = boundedDiscoveries,
-                                                                relationObservations = boundedRelations,
-                                                                retention = retention,
-                                                                nextCursor = nextCursor,
-                                                                executionBudget = executionBudget,
-                                                                referenceAcquisitions = referenceAcquisitions,
-                                                            )
+                                                                    question = question,
+                                                                    items = boundedItems,
+                                                                    failures = boundedFailures,
+                                                                    omissions = boundedOmissions,
+                                                                    walkObservations = boundedObservations,
+                                                                    referenceObservations = boundedReferences,
+                                                                    discoveryObservations = boundedDiscoveries,
+                                                                    relationObservations = boundedRelations,
+                                                                )
+                                                                .withWireResultMetadata(this, boundedDeferred)
                                                         }
                                                     }
                                                 }
@@ -296,24 +299,30 @@ private fun QueryRunResultWireDocument.toContractContent(): WireDocumentConversi
         }
     }
 
+private fun QueryRunResult.withWireResultMetadata(
+    wire: QueryRunResultWireDocument,
+    deferred: BoundedProtocolList<QueryDeferredDetailDocument>,
+): QueryRunResult =
+    copy(
+        originalEvidenceSummary = QueryEvidenceSummaryState.Captured(wire.originalEvidenceSummary),
+        deferredEvidence = deferred,
+        detail = wire.detail,
+        detailSelection = wire.detailSelection,
+        interpretation = wire.interpretation,
+        invocation = wire.invocation,
+        evidenceWindow = wire.evidenceWindow,
+        presentationOutput = wire.presentationOutput,
+        impactAccounting = wire.impactAccounting,
+        retention = wire.retention,
+        nextCursor = wire.nextCursor,
+        executionBudget = wire.executionBudget,
+        referenceAcquisitions = wire.referenceAcquisitions,
+    )
+
 private fun List<QueryRelationObservationWireDocument>.toBoundedRelations() =
     convertEach(QueryRelationObservationWireDocument::toContract).flatMapConverted { it.bounded() }
 
-private fun QueryRelationOmissionDocument.toWire(): QueryRelationOmissionWireDocument =
-    QueryRelationOmissionWireDocument(
-        subject = subject.toWire() as QueryReferenceWireDocument.ExactSymbol,
-        relation = relation.toWireDocument(),
-        evidence = evidence.toWireDocument(),
-    )
-
-private fun QueryRelationOmissionWireDocument.toContract(): WireDocumentConversion<QueryRelationOmissionDocument> =
-    subject.token.protocolText().flatMapConverted { token ->
-        evidence.toContract().mapConverted { omission ->
-            QueryRelationOmissionDocument(QueryReferenceDocument.ExactSymbol(token), relation.toContract(), omission)
-        }
-    }
-
-private fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
+internal fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
     when (this) {
         is QueryItemFailureDocument.Refinement ->
             QueryItemFailureWireDocument.Refinement(
@@ -357,7 +366,7 @@ private fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
 private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<QueryItemFailureDocument> =
     when (this) {
         is QueryItemFailureWireDocument.Refinement ->
-            location.file.protocolText().flatMapConverted { file ->
+            location.file.queryProtocolText().flatMapConverted { file ->
                 location.offset.protocolOffset().mapConverted { offset ->
                     QueryItemFailureDocument.Refinement(
                         QueryRefinementLocationDocument(file, offset),
@@ -366,21 +375,21 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
                 }
             }
         is QueryItemFailureWireDocument.ExactReference ->
-            ref.token.protocolText().mapConverted { token ->
+            ref.token.queryProtocolText().mapConverted { token ->
                 QueryItemFailureDocument.ExactReference(
                     QueryReferenceDocument.ExactSymbol(token),
                     QueryExactFailureDocument.valueOf(reason.name),
                 )
             }
         is QueryItemFailureWireDocument.Predicate ->
-            ref.token.protocolText().mapConverted { token ->
+            ref.token.queryProtocolText().mapConverted { token ->
                 QueryItemFailureDocument.Predicate(
                     QueryReferenceDocument.ExactSymbol(token),
                     QueryPredicateFailureDocument.valueOf(reason.name),
                 )
             }
         is QueryItemFailureWireDocument.Source ->
-            ref.token.protocolText().mapConverted { token ->
+            ref.token.queryProtocolText().mapConverted { token ->
                 QueryItemFailureDocument.Source(
                     QueryReferenceDocument.ExactSymbol(token),
                     QuerySourceFailureDocument.valueOf(reason.name),
@@ -388,7 +397,7 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
             }
         is QueryItemFailureWireDocument.SourceEnumerationIncomplete -> toSourceEnumerationContract()
         is QueryItemFailureWireDocument.Relation ->
-            ref.token.protocolText().mapConverted { token ->
+            ref.token.queryProtocolText().mapConverted { token ->
                 QueryItemFailureDocument.Relation(
                     QueryReferenceDocument.ExactSymbol(token),
                     relation.toContract(),
@@ -396,7 +405,7 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
                 )
             }
         is QueryItemFailureWireDocument.Walk ->
-            ref.token.protocolText().mapConverted { token ->
+            ref.token.queryProtocolText().mapConverted { token ->
                 QueryItemFailureDocument.Walk(
                     QueryReferenceDocument.ExactSymbol(token),
                     relation.toContract(),
@@ -407,7 +416,7 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
 
 private fun QueryItemFailureWireDocument.SourceEnumerationIncomplete.toSourceEnumerationContract():
     WireDocumentConversion<QueryItemFailureDocument.SourceEnumerationIncomplete> =
-    combineConverted(ref.token.protocolText(), qualification.toContract()) { reference, progress ->
+    combineConverted(ref.token.queryProtocolText(), qualification.toContract()) { reference, progress ->
         QueryItemFailureDocument.SourceEnumerationIncomplete(QueryReferenceDocument.ExactSymbol(reference), progress)
     }
 
@@ -505,7 +514,7 @@ private fun QueryReferenceRejectionReason.toWire() = QueryReferenceRejectionReas
 
 private fun QueryReferenceRejectionReasonWireDocument.toContract() = QueryReferenceRejectionReason.valueOf(name)
 
-private fun String.protocolText() = ProtocolText.parse(this).toWireDocumentConversion()
+internal fun String.queryProtocolText() = ProtocolText.parse(this).toWireDocumentConversion()
 
 private fun Int.protocolOffset() = ProtocolOffset.parse(this).toWireDocumentConversion()
 

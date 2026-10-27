@@ -82,7 +82,7 @@
           "maximum": 2147483647
         },
         "maxReturnedBytes": {
-          "description": "Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
+          "description": "Query minimum: 4096 UTF-8 bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
           "type": [
             "integer",
             "null"

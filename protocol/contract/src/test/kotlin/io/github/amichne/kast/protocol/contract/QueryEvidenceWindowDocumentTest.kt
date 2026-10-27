@@ -14,6 +14,22 @@ class QueryEvidenceWindowDocumentTest {
     private val json = Json { encodeDefaults = true }
 
     @Test
+    fun `final presentation with deferred evidence never reports final evidence delivery`() {
+        val page = QueryEvidenceWindowDocument.create(cursor(0), cursor(2), cursor(2), deferredCount = 1).refined()
+        assertEquals(QueryEvidenceWindowKind.DEFERRED_DETAIL, page.type)
+        assertNull(page.nextCursor)
+        assertEquals(1, page.deferredCount)
+        val encoded = json.encodeToString(QueryEvidenceWindowDocument.serializer(), page)
+        assertEquals(
+            "DEFERRED_DETAIL",
+            Json.parseToJsonElement(encoded).jsonObject.getValue("type").jsonPrimitive.content,
+        )
+        assertThrows(SerializationException::class.java) {
+            json.decodeFromString(QueryEvidenceWindowDocument.serializer(), encoded.replace("DEFERRED_DETAIL", "FINAL"))
+        }
+    }
+
+    @Test
     fun `encoded evidence window has required finite kind and independent positions`() {
         val page = QueryEvidenceWindowDocument.create(cursor(100), cursor(200), cursor(1100)).refined()
         val encoded = json.encodeToString(QueryEvidenceWindowDocument.serializer(), page)

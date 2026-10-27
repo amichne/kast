@@ -11,7 +11,7 @@ Returned capabilities: Exact symbols with identity and location.
 Legal next actions: Reuse the issued exact ref unchanged. Read relations.md.
 
 Canonical choices and defaults:
-- `LocationSource.type`: choices: ["AT_LOCATION"], default: "AT_LOCATION".
+- `LocationSource.type`: choices: `["AT_LOCATION"]`, default: `"AT_LOCATION"`.
 
 COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 

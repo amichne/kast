@@ -11,9 +11,9 @@ Returned capabilities: Grouped symbols, connections, and occurrences.
 Legal next actions: Preserve completion and omissions. Read retained-evidence.md.
 
 Canonical choices and defaults:
-- `Trace.type`: choices: ["TRACE"], default: "TRACE".
-- `SymbolsOutput.type`: choices: ["SYMBOLS"], default: "SYMBOLS".
-- `SymbolsOutput.fields`: choices: ["NAME","LOCATION","SIGNATURE","SOURCE"].
+- `Trace.type`: choices: `["TRACE"]`, default: `"TRACE"`.
+- `SymbolsOutput.type`: choices: `["SYMBOLS"]`, default: `"SYMBOLS"`.
+- `SymbolsOutput.fields`: choices: `["NAME","LOCATION","SIGNATURE","SOURCE"]`.
 
 COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
