@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343.668 354.30000000000007" width="343.668" height="354.30000000000007" style="--bg:#FBFBF9;--fg:#20231F;--line:#9CA59A;--accent:#3154C7;--muted:#52594E;--surface:#F2F3EE;--border:#B9C1B4;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343.668 354.30000000000007" width="343.668" height="354.30000000000007" style="--bg:#F1F2EF;--fg:#303A34;--line:#88968B;--accent:#405d4d;--muted:#58635B;--surface:#E8ECE5;--border:#A2AEA3;background:var(--bg)">
 <style>
 
   text { font-family: 'SUSE', system-ui, sans-serif; }
@@ -38,8 +38,8 @@
 </g>
 <g class="node" data-id="R" data-label="Shared settled read
 one exact value site" data-shape="rectangle">
-  <rect x="93.06099999999999" y="96.9" width="157.54600000000002" height="53.800000000000004" rx="0" ry="0" fill="#EAF0FF" stroke="#3154C7" stroke-width="0.75" />
-  <text x="171.834" y="123.80000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="171.834" dy="-3.9000000000000012">Shared settled read</tspan><tspan x="171.834" dy="16.900000000000002">one exact value site</tspan></text>
+  <rect x="93.06099999999999" y="96.9" width="157.54600000000002" height="53.800000000000004" rx="0" ry="0" fill="#E0EAE0" stroke="#405d4d" stroke-width="0.75" />
+  <text x="171.834" y="123.80000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="171.834" dy="-3.9000000000000012">Shared settled read</tspan><tspan x="171.834" dy="16.900000000000002">one exact value site</tspan></text>
 </g>
 <g class="node" data-id="B" data-label="Route B arrives" data-shape="rectangle">
   <rect x="185.834" y="24" width="133.834" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
@@ -58,6 +58,6 @@ keep history B" data-shape="rectangle">
 <g class="node" data-id="L" data-label="Investigation ledger
 every route and obligation" data-shape="stadium">
   <rect x="74.9065" y="276.5" width="193.855" height="53.800000000000004" rx="26.900000000000002" ry="26.900000000000002" fill="#E5F5EE" stroke="#278160" stroke-width="0.75" />
-  <text x="171.834" y="303.4" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="171.834" dy="-3.9000000000000012">Investigation ledger</tspan><tspan x="171.834" dy="16.900000000000002">every route and obligation</tspan></text>
+  <text x="171.834" y="303.4" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="171.834" dy="-3.9000000000000012">Investigation ledger</tspan><tspan x="171.834" dy="16.900000000000002">every route and obligation</tspan></text>
 </g>
 </svg>

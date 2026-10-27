@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 533.6972499999999 853.2229999999998" width="533.6972499999999" height="853.2229999999998" style="--bg:#FBFBF9;--fg:#20231F;--line:#9CA59A;--accent:#3154C7;--muted:#52594E;--surface:#F2F3EE;--border:#B9C1B4;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 533.6972499999999 853.2229999999998" width="533.6972499999999" height="853.2229999999998" style="--bg:#F1F2EF;--fg:#303A34;--line:#88968B;--accent:#405d4d;--muted:#58635B;--surface:#E8ECE5;--border:#A2AEA3;background:var(--bg)">
 <style>
 
   text { font-family: 'SUSE', system-ui, sans-serif; }
@@ -61,11 +61,11 @@
 <g class="node" data-id="R" data-label="Typed stop
 no exclusion evidence" data-shape="rectangle">
   <rect x="24" y="539.523" width="173.84799999999998" height="53.800000000000004" rx="0" ry="0" fill="#FAE8E5" stroke="#BC6258" stroke-width="0.75" />
-  <text x="110.92399999999999" y="566.423" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="110.92399999999999" dy="-3.9000000000000012">Typed stop</tspan><tspan x="110.92399999999999" dy="16.900000000000002">no exclusion evidence</tspan></text>
+  <text x="110.92399999999999" y="566.423" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="110.92399999999999" dy="-3.9000000000000012">Typed stop</tspan><tspan x="110.92399999999999" dy="16.900000000000002">no exclusion evidence</tspan></text>
 </g>
 <g class="node" data-id="P" data-label="Immutable candidate paths" data-shape="rectangle">
-  <rect x="225.84799999999998" y="311.322" width="193.11399999999998" height="36.900000000000006" rx="0" ry="0" fill="#EAF0FF" stroke="#3154C7" stroke-width="0.75" />
-  <text x="322.405" y="329.772" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F" dy="4.55">Immutable candidate paths</text>
+  <rect x="225.84799999999998" y="311.322" width="193.11399999999998" height="36.900000000000006" rx="0" ry="0" fill="#E0EAE0" stroke="#405d4d" stroke-width="0.75" />
+  <text x="322.405" y="329.772" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34" dy="4.55">Immutable candidate paths</text>
 </g>
 <g class="node" data-id="V" data-label="Bounded VFS inventory" data-shape="rectangle">
   <rect x="231.03499999999997" y="384.222" width="182.73999999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
@@ -88,6 +88,6 @@ PSI and declaration AST" data-shape="rectangle">
 <g class="node" data-id="K" data-label="Compiler confirms
 exact identity" data-shape="stadium">
   <rect x="146.59825" y="775.4229999999999" width="146.43099999999998" height="53.800000000000004" rx="26.900000000000002" ry="26.900000000000002" fill="#E5F5EE" stroke="#278160" stroke-width="0.75" />
-  <text x="219.81375" y="802.3229999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="219.81375" dy="-3.9000000000000012">Compiler confirms</tspan><tspan x="219.81375" dy="16.900000000000002">exact identity</tspan></text>
+  <text x="219.81375" y="802.3229999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="219.81375" dy="-3.9000000000000012">Compiler confirms</tspan><tspan x="219.81375" dy="16.900000000000002">exact identity</tspan></text>
 </g>
 </svg>

@@ -8,10 +8,10 @@ const diagrams = JSON.parse(await readFile(new URL('diagrams.json', import.meta.
 const check = process.argv.includes('--check');
 const site = JSON.parse(await readFile(new URL('../../public/docs.json', import.meta.url), 'utf8'));
 const colors = {
-  paper: [site.background.color.light, site.background.color.dark], ink: ['#20231F', '#F0F1EB'],
-  accent: [site.colors.primary, site.colors.light], muted: ['#52594E', '#B3B9AC'],
-  line: ['#9CA59A', '#697265'], surface: ['#F2F3EE', '#22251F'],
-  border: ['#B9C1B4', '#515B4B'], proof: ['#EAF0FF', '#232F50'],
+  paper: [site.background.color.light, site.background.color.dark], ink: ['#303A34', '#E1E6DE'],
+  accent: [site.colors.primary, site.colors.light], muted: ['#58635B', '#ADB7AD'],
+  line: ['#88968B', '#879589'], surface: ['#E8ECE5', '#2D342E'],
+  border: ['#A2AEA3', '#68776A'], proof: ['#E0EAE0', '#35493B'],
   result: ['#E5F5EE', '#19382E'], resultLine: ['#278160', '#8CD2B6'],
   stop: ['#FAE8E5', '#422823'], stopLine: ['#BC6258', '#F0A99C'],
 };
