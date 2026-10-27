@@ -7,10 +7,8 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactExecutionFailureDocument
 import io.github.amichne.kast.protocol.contract.ImpactPresentationFailureDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument
-import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
@@ -33,7 +31,6 @@ import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch
-import io.github.amichne.kast.protocol.contract.originalEvidenceSummaryDocument
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import kotlinx.serialization.SerialName
@@ -225,7 +222,7 @@ internal fun QueryReferenceDocument.toWire(): QueryReferenceWireDocument =
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
-        originalEvidenceSummary = originalEvidenceSummaryDocument,
+        originalEvidenceSummary = originalEvidenceSummary,
         deferredEvidence = deferredEvidence.values,
         detail = detail,
         detailSelection = detailSelection,
@@ -304,7 +301,7 @@ private fun QueryRunResult.withWireResultMetadata(
     deferred: BoundedProtocolList<QueryDeferredDetailDocument>,
 ): QueryRunResult =
     copy(
-        originalEvidenceSummary = QueryEvidenceSummaryState.Captured(wire.originalEvidenceSummary),
+        originalEvidenceSummary = wire.originalEvidenceSummary,
         deferredEvidence = deferred,
         detail = wire.detail,
         detailSelection = wire.detailSelection,
@@ -513,8 +510,6 @@ private fun QueryLimitationWireDocument.toContract() = QueryLimitationDocument.v
 private fun QueryReferenceRejectionReason.toWire() = QueryReferenceRejectionReasonWireDocument.valueOf(name)
 
 private fun QueryReferenceRejectionReasonWireDocument.toContract() = QueryReferenceRejectionReason.valueOf(name)
-
-internal fun String.queryProtocolText() = ProtocolText.parse(this).toWireDocumentConversion()
 
 private fun Int.protocolOffset() = ProtocolOffset.parse(this).toWireDocumentConversion()
 

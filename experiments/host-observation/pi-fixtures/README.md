@@ -138,7 +138,26 @@ cached WebSocket reuse sending one denied request, and the isolated SSE worker
 sending zero denied requests. It is compatibility/transport proof, not live
 model, native query or exhaustive-oracle evidence.
 
-# Reviewed shared-client envelope provenance
+# Current shared-client envelope provenance
+
+`query-delivery-cases.json` now comes from the candidate shared client.
+It includes the mandatory semantic header and exact aggregate serialization costs.
+The canonical fixture input remains unchanged.
+The output records the exact client and canonical SHA-256 values.
+These fixtures prove portable delivery behavior, without native semantic work or model inference.
+
+```sh
+node experiments/host-observation/generate_pi_delivery_fixtures.mjs \
+  cli/src/main/js/query-delivery.mjs \
+  experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json \
+  experiments/host-observation/pi-fixtures/query-delivery-cases.json --candidate
+```
+
+The candidate mode uses the supplied source directly.
+The historical mode still needs the pinned source digest.
+The deadline case explicitly selects `BOUNDED` because `RUNNER_CONTROLLED` has no implicit semantic deadline.
+
+# Historical shared-client envelope provenance
 
 `delivery-canonical-rpc.json` comes from the actual compiled #995 fixture owner
 `QueryDeliveryFixtures.INSTANCE.serialized()`, called by

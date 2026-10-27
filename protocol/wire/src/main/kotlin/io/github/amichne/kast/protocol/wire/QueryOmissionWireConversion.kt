@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 
@@ -16,3 +17,5 @@ internal fun QueryRelationOmissionWireDocument.toContract(): WireDocumentConvers
             QueryRelationOmissionDocument(QueryReferenceDocument.ExactSymbol(token), relation.toContract(), omission)
         }
     }
+
+internal fun String.queryProtocolText() = ProtocolText.parse(this).toWireDocumentConversion()

@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class QueryCompleteCliDocument(
     @SerialName("original_evidence_summary")
-    val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument,
+    val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument?,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("deferred_evidence")
     val deferredEvidence: List<io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument> = emptyList(),
@@ -73,7 +73,7 @@ internal data class QueryCompleteCliDocument(
 @Serializable
 internal data class QueryQualifiedCliDocument(
     @SerialName("original_evidence_summary")
-    val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument,
+    val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument?,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("deferred_evidence")
     val deferredEvidence: List<io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument> = emptyList(),

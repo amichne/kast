@@ -1,6 +1,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -40,16 +41,36 @@ data class QueryOriginalEvidenceSummaryDocument(
     @SerialName("failure_count") val failureCount: ProtocolOffset,
     @SerialName("omission_count") val omissionCount: ProtocolOffset,
     @SerialName("evidence_count") val evidenceCount: ProtocolOffset,
-    @SerialName("failure_kinds") val failureKinds: BoundedProtocolList<QueryEvidenceFailureKind>,
-    @SerialName("omission_reasons") val omissionReasons: BoundedProtocolList<RelationLimitationDocument>,
-    @SerialName("refinement_reasons") val refinementReasons: BoundedProtocolList<QueryExactFailureDocument>,
-    @SerialName("exact_reasons") val exactReasons: BoundedProtocolList<QueryExactFailureDocument>,
-    @SerialName("predicate_reasons") val predicateReasons: BoundedProtocolList<QueryPredicateFailureDocument>,
-    @SerialName("source_reasons") val sourceReasons: BoundedProtocolList<QuerySourceFailureDocument>,
-    @SerialName("source_limitations") val sourceLimitations: BoundedProtocolList<SourceReadLimitationDocument>,
-    @SerialName("relation_reasons") val relationReasons: BoundedProtocolList<QueryRelationFailureDocument>,
-    @SerialName("walk_one_hop_reasons") val walkOneHopReasons: BoundedProtocolList<QueryRelationFailureDocument>,
-    @SerialName("walk_reasons") val walkReasons: BoundedProtocolList<QueryEvidenceWalkFailureKind>,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("failure_kinds")
+    val failureKinds: BoundedProtocolList<QueryEvidenceFailureKind> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("omission_reasons")
+    val omissionReasons: BoundedProtocolList<RelationLimitationDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("refinement_reasons")
+    val refinementReasons: BoundedProtocolList<QueryExactFailureDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("exact_reasons")
+    val exactReasons: BoundedProtocolList<QueryExactFailureDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("predicate_reasons")
+    val predicateReasons: BoundedProtocolList<QueryPredicateFailureDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("source_reasons")
+    val sourceReasons: BoundedProtocolList<QuerySourceFailureDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("source_limitations")
+    val sourceLimitations: BoundedProtocolList<SourceReadLimitationDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("relation_reasons")
+    val relationReasons: BoundedProtocolList<QueryRelationFailureDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("walk_one_hop_reasons")
+    val walkOneHopReasons: BoundedProtocolList<QueryRelationFailureDocument> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("walk_reasons")
+    val walkReasons: BoundedProtocolList<QueryEvidenceWalkFailureKind> = finite(emptyList()),
 ) {
     companion object {
         fun from(result: QueryRunResult): QueryOriginalEvidenceSummaryDocument {
@@ -78,10 +99,10 @@ data class QueryOriginalEvidenceSummaryDocument(
     }
 }
 
-val QueryRunResult.originalEvidenceSummaryDocument: QueryOriginalEvidenceSummaryDocument
+val QueryRunResult.originalEvidenceSummaryDocument: QueryOriginalEvidenceSummaryDocument?
     get() =
         when (val state = originalEvidenceSummary) {
-            QueryEvidenceSummaryState.Uncaptured -> QueryOriginalEvidenceSummaryDocument.from(this)
+            QueryEvidenceSummaryState.Uncaptured -> null
             is QueryEvidenceSummaryState.Captured -> state.summary
         }
 

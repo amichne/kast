@@ -62,7 +62,7 @@ class PublicToolRecipeTest {
     @Test
     fun `authored recipe inventory passes production schema and typed admission`() {
         assertEquals(4, tools.size)
-        assertEquals(32, PublicToolIdentity.entries.sumOf { examples(it).size })
+        assertEquals(33, PublicToolIdentity.entries.sumOf { examples(it).size })
         assertEquals(29, PublicToolIdentity.entries.sumOf { examples(it, "invalidExamples").size })
         PublicToolIdentity.entries.forEach { identity ->
             examples(identity).forEach { (name, example) ->
@@ -149,11 +149,13 @@ class PublicToolRecipeTest {
                 assertEquals(50, run.executionBudget!!.maxResults!!.value)
             }
         val trace = query("traceAffectedUses") as QueryRunRequest.Run
-        assertSelectedReference(trace)
+        assertSelectedReference(trace, "exact:v5:NON_ISSUED_EXAMPLE_ONLY")
         assertSymbolFields(trace)
         assertEquals(listOf(QueryStepDocument.Trace(QueryExpansionScopeDocument.Workspace)), trace.steps.values)
         assertEquals(QueryRetentionModeDocument.RETAIN, trace.retention)
-        assertEquals(30000L, trace.executionBudget!!.maxElapsedMillis!!.value)
+        assertEquals(20, trace.executionBudget!!.maxResults!!.value)
+        assertNull(trace.executionBudget!!.maxElapsedMillis)
+        assertNull(trace.executionBudget!!.maxReturnedBytes)
     }
 
     @Test
@@ -182,9 +184,9 @@ class PublicToolRecipeTest {
         assertTrue(impact.models.values.isEmpty())
     }
 
-    private fun assertSelectedReference(run: QueryRunRequest.Run) {
+    private fun assertSelectedReference(run: QueryRunRequest.Run, reference: String = "<exact-ref-returned-by-Kast>") {
         assertEquals(
-            listOf("<exact-ref-returned-by-Kast>"),
+            listOf(reference),
             (run.from as QueryFromDocument.References).values.values.map { it.token.value },
         )
     }

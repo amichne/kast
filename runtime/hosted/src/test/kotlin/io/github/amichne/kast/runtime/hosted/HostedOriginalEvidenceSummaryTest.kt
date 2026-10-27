@@ -37,7 +37,14 @@ class HostedOriginalEvidenceSummaryTest {
                         )
                         .refined()
             )
-        val prefix = full.presentationPrefix(0).refined()
+        val captured =
+            full.copy(
+                originalEvidenceSummary =
+                    io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState.Captured(
+                        io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument.from(full)
+                    )
+            )
+        val prefix = captured.presentationPrefix(0).refined()
         val projected =
             CanonicalQueryCliDocuments.project(original.copy(evidence = original.evidence.copy(payload = prefix)))
                 as ProjectedOperationOutcome.Complete
