@@ -4,11 +4,13 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
 import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallbackInputFailureDocument
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
+import io.github.amichne.kast.protocol.contract.ImpactFlowDomainDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
@@ -53,6 +55,8 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
                         "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
                         "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
+                        "impactCallbackInputFailure" to ImpactCallbackInputFailureDocument.serializer(),
+                        "impactFlowDomain" to ImpactFlowDomainDocument.serializer(),
                     )
             )
         }

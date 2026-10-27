@@ -113,7 +113,7 @@ The B0/B1 columns report actual synthetic behavior, not private incident reprodu
 | HRC-1, REPORTED | UNREPRODUCED for the reported first failure after proven helper RETURN | Outer workload stops before callback entry. Separate helper-result seed already passes | Entry failure stays distinct from helper return | Both exact helper routes pass. No generic-substitution defect claim | `N#testHelperReturnInCallback`, `N#testHelperResultReturnsToItsOwnCallback` | REQUIRED / UNMAPPED / PENDING |
 | FPD-1.*, REPORTED | UNREPRODUCED for the reported formal stop with `NONE` evidence | Generic factory stops at the same callback entry | Callback failure remains distinct from factory substitution | Fixed source factory route reaches its observer, PASS | `N#testGenericFactoryInCallback` | REQUIRED / UNMAPPED / PENDING |
 | HBP-1, REPORTED | Synthetic surrogate passes. Exact enterprise proxy replay remains UNREPRODUCED | Exact downstream argument, `UNMODELED_CALL`, exhausted empty inventory, PASS | Unchanged | Same argument, cause, inventory and original grants, PASS | `N#testDownstreamHeaderSeedKeepsEmptyImplementationInventory` | REQUIRED / UNMAPPED / PENDING |
-| SCP-1, REPORTED | UNREPRODUCED for the unknown original directory | No matched directory supplied | No matched diagnosis | Existing exact-domain conservation controls pass through the final gate. They do not reproduce the private question | Existing query domain/state suites | REQUIRED / UNMAPPED / PENDING |
+| SCP-1, REPORTED | UNREPRODUCED for the unknown original directory | No matched directory supplied | No matched diagnosis | Existing exact-domain conservation controls pass through the final gate. They do not reproduce the private question | `QueryValuePathStateTest` and `QueryCoverageRetentionTest` | REQUIRED / UNMAPPED / PENDING |
 | SCP-2.*, REPORTED | UNREPRODUCED for the unknown broader domain and frontier set | No matched broader question supplied | No matched diagnosis | Original-token and open/external controls preserve their actual frontier sets | `N#testOriginalTokenKeepsExactLibraryFrontier`, `N#testOpenConversionKeepsItsUnprovedDispatch`, `N#testExternalConversionKeepsItsExactFrontier` | REQUIRED / UNMAPPED / PENDING |
 | STR-1, REPORTED | REPRODUCED synthetic unsupported template entry | Simple/braced/raw/repeated/nullable/constant-result routes reject as unsupported | Same first source entry | Typed derived content reaches fixed observers, PASS | `N#testSimpleStringContent`, `testBracedStringContent`, `testRawStringContent`, `testRepeatedStringContent`, `testNullableStringContent`, `testConstantResultContributesContent` | REQUIRED / UNMAPPED / PENDING |
 | HRT-1, NEW_REQUIREMENT | N/A reproduction | No template contribution | Same | Original supported prefix plus exact library frontier, PASS. Header argument remains unestablished | `N#testOriginalTokenKeepsExactLibraryFrontier` | NOT_APPLICABLE / N/A. No enterprise counterpart identified |
@@ -150,8 +150,18 @@ File extraction and typed projections add no semantic operation.
 
 The authored public schema changes contract `17` to `18` once.
 `packaging/generate-public-query.py` regenerates its 69 public artifacts from that owner.
+The existing Pi exporter regenerates the question, qualification, and result schema fixtures from their canonical serializers.
 The canonical query-response schema changes `kast.query.run.v8` to `kast.query.run.v9` with its endpoint schemas and consumers.
 No shared universal version or persistent migration exists.
+
+The wider consumer run exposes stale public-version, closed-failure, and encoded-finding expectations.
+Those fixtures now assert contract `18`, `CLASSIFICATION_MISMATCH`, and the required classification field.
+The same run exposes an unexpected packaged-catalog cap after schema expansion.
+The existing serializer-reference owner now shares exact callback-failure and flow-domain definitions.
+Independent schema comparisons preserve their complete shapes and local references.
+The catalog now encodes 1,021,086 bytes under the unchanged 1,048,576-byte allowance.
+The installed projection also passes its unchanged 4096-byte headroom assertion.
+No query grant, provider cap, or headroom changed.
 
 The hosted runtime protocol identity remains `kast.ide-hosted.runtime.v3` under its existing version rule.
 Its actual generated wire digest changes independently:
@@ -163,6 +173,8 @@ Its actual generated wire digest changes independently:
 
 The base digest comes from unchanged production code in `/tmp/kast-native-flow-b0-01a17ec9` at the execution base.
 The final digest comes from the task checkout's generated contract.
+A later installed-source query rejects with `daemon-operation-lifecycle-model-reload-required`. Ordinary source inspection supplies the schema-owner evidence.
+No changed installed-host proof follows from that rejection.
 Both raw contracts remain in `build/reports/native-flow-closure/contracts/`.
 
 `READ_RESULT` presents kept evidence or rejects with its typed stale/unavailable cause.
@@ -207,6 +219,7 @@ The constant getter gains no stored-field transfer or observer arrival.
 The final source prefix remains the frozen prefix. Its extracted SHA-256 is `ff0caac4499a90642420b8b431f107b3893a685c154dec776c31bc3f10221c97`.
 New control declarations append after it.
 The 54 frozen resource inputs remain unchanged.
+The final carrier table contains 72 reviewed files, including the extracted closure fixture and declaration-selector helper.
 
 Two-run equality passes inside each final focused fixture basis.
 The comparison does not claim byte-identical proofs across different disposable project bases.
@@ -240,7 +253,6 @@ The test now compares encoded fields directly. The guard baseline received no al
 - The NPA pair, reported post-RETURN HRC failure, FPD formal stop, exact HBP proxy, and SCP domains lack matched reproduction or D5 waiver.
 - The installed build does not contain this change. No installed matching host or enterprise outcome is established.
 - The original-token header argument remains unestablished under the approved fallback.
-- The historical raw proof capture cannot establish byte-identical cross-build proof equality across different semantic bases.
 - The OpenWiki lifecycle adds 48 historical pages to the scoped plan. That wider refresh remains pending, with no finished Claims claim.
 - Complete repository gates, the final execution accountant, prose assessment, and delivery evidence remain pending until the delivery record replaces this line.
 

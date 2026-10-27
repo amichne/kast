@@ -172,7 +172,7 @@ X-21, X-26, X-27, and the conditional X-36 obligation remain unresolved.
 An exact unsupported conversion needs its established prefix and finite reason.
 No fallback for Pair/Map construction waives these conversion obligations.
 
-Path classification now handles every compiler, reviewed-library, representation-model, and boundary-model alternative explicitly.
+Path classification now handles every compiler, reviewed-library, representation-model, and `ModeledBoundary` alternative explicitly.
 Both domain and protocol folds preserve derivation and stop at the first unproved correspondence.
 The serializer rejects an encoded classification that disagrees with the retained steps.
 The current new projection assertion covers a `ModeledBoundary` step and the emitted classification field.
@@ -289,7 +289,7 @@ This reviewer treats the new return behavior as pending until its corrected nati
 | Inherited or synthesized member | Preserve independent compiler/source support. Synthesis or a missing reviewed rule alone proves no opacity. |
 | Conversion readmission | A different callable, occurrence, owner, basis, frame, or result role cannot consume the retained conversion proof. |
 | Null record shape and scope | Reject an outside-owner template, wrong source, invalid nested ranges, and foreign basis. Keep the valid constant record. |
-| Null record capacity | Original output and byte grants account for the record. A rejected append keeps the prior step unchanged. |
+| Null record capacity | Original output and byte grants account for the record. A rejected append keeps the original step unchanged. |
 | Encoded null evidence | Assert exact record kind and ranges in findings and value paths. A round trip alone supplies no independent shape oracle. |
 
 The current null assertion counts records through the baseline-compatible `getStringConstructions` method.
@@ -376,13 +376,48 @@ The source route resolves the actual property, explicit dispatch receiver, final
 It does not bypass the getter through the property's name.
 Source references are `NativeConstructorPropertyStorageTest.kt:72`, `NativeNamedGetter.kt:22`, and `NativeValueGetterReceiver.kt:13` within `relation/intellij`.
 The assertion needs a new execution before a pass claim.
-The earlier broad run used the prior assertion and retains its actual failure status.
+The earlier broad run used the original assertion and keeps its actual failure status.
 
 HRT-1 and HBP-1 now use the same two-run comparison helper.
 HRT-1 needs one `EXTERNAL_CALL` obligation at the exact `to` expression and forbids the selected `fetch` argument.
 HBP-1 now needs the exact `fetch` callable, argument position zero, and the original downstream producer range.
 Its exhausted empty implementation inventory remains separate from the original-token route.
 These changes strengthen the frozen identities and do not waive enterprise replay.
+
+## Schema size and compatibility correction
+
+The schema correction preserves canonical owners and the existing byte limits.
+`CanonicalSchemaReferences` now names the actual `ImpactCallbackInputFailureDocument` and `ImpactFlowDomainDocument` serializer descriptors.
+`InstalledServerProjectionDocuments` supplies both definitions from those same serializers through the existing local-reference mechanism.
+No field, constraint, failure variant, or evidence qualifier was removed.
+
+`ImplementationDispatchSchemaReuseTest` adds both definitions to its independent shape comparisons.
+The independent generator still uses only its original recursion anchors, not the installed factoring map.
+The local-reference and malformed-proof assertions remain in place.
+Thus the expected-schema change preserves its independent oracle.
+
+The reviewer parsed the current generated Pi result schema without a Gradle invocation.
+It contains five references to `impactImplementationDispatch`, eleven to `impactCallbackInputFailure`, and six to `impactFlowDomain`.
+Both new definitions exist. Every reference in the three regenerated Pi schemas resolves locally.
+The fifth dispatch reference belongs to the new canonical callback-failure position.
+The count change from four to five therefore reflects the actual factored schema, not a relaxed inequality.
+
+The executor reports that repeated inline schemas exceeded the catalog cap, and failure-only factoring remained too large.
+Reusing the six identical flow-domain shapes preserves their canonical contract.
+The packaged limit remains 1,048,576 bytes.
+The installed-schema assertion still reserves 4,096 bytes within that limit.
+A smaller individual result schema does not itself prove that the complete catalog fits.
+The final packaged and installed byte assertions still need their executed results.
+
+The finite failure oracle now explicitly includes `CLASSIFICATION_MISMATCH` and its serialized example.
+The compact-finding key oracle now includes the authored `classification` field.
+The public catalog assertions now expect contract 18, matching the authored schema and `PUBLIC_TOOL_CONTRACT_VERSION`.
+Other schema/version owners remain independent.
+The Pi exporter reads the canonical serializers and installed semantic-schema owner. It does not hand-edit the three generated shapes.
+Their final parity assertion remains necessary.
+
+Source review found no oracle downgrade or loss of schema authority in this correction.
+This reviewer changed only this document and ran no Gradle command.
 
 ## Final focused execution disposition
 
@@ -397,3 +432,9 @@ The corrected getter and two-run header selector then passed 3/3, with zero fail
 The command log is `/tmp/kast-native-closure-corpus-repair.log`.
 Its XML remains in `build/reports/native-flow-closure/corpus-repair/`.
 This execution resolves the focused pending result. The complete source gate remains separate.
+
+The final catalog encodes 1,021,086 bytes under the unchanged 1,048,576-byte cap.
+The installed projection passes its unchanged 4096-byte headroom assertion.
+The catalog/serializer cohort passes 16/16. The final RPC/parity cohort passes 26/26.
+The host-observation cohort passes 332/332. These cohorts have zero failures, errors, and skips.
+The Node adapter process keeps its two existing platform skips. Its current count remains separate from the JUnit wrapper.

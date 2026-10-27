@@ -254,3 +254,16 @@ after the initial submission is READ_RESULT or output-only RESUME. The
 classifier/controller do not contain continuation-management logic. These are
 portable client/harness contract observations, not native work, owner-clock
 expiry, cancellation settlement, or model usability evidence.
+
+## Native flow closure export on 2026-10-27
+
+The existing `PiQuestionSchema.java` exporter regenerates all three schemas from the changed canonical serializers.
+The result keeps string-content evidence, conversion identity, constant-null construction, path classification, and typed acquisition failures.
+The installed schema reuses the exact callback-failure and flow-domain serializers through local references.
+This export does no semantic query and supplies no installed-host or enterprise proof.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `query-question.schema.json` | `8de54f576ea8c972acff48461f885d4fcb1f839625620c5d796f0ebb4f914724` |
+| `query-qualification.schema.json` | `61fbf8265bceed85e768d41ae9dbe9c5f51d3656a17b47adaed73fa333842c16` |
+| `query-result.schema.json` | `556d263d0b9135862835f284a58c0ec46f9ac16d162138f561d4dcf1e7125fe5` |
