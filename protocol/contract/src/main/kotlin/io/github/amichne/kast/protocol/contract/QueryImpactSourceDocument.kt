@@ -154,6 +154,17 @@ sealed interface QueryImpactSourceFailureDocument {
     data class Admission(val cause: QueryImpactSourceFailureCode, val position: ProtocolOffset) :
         QueryImpactSourceFailureDocument
 
+    @Serializable
+    @SerialName("PRODUCER_EXECUTION")
+    data class ProducerExecution(
+        val cause: QueryImpactSourceFailureCode,
+        val position: ProtocolOffset,
+        val enclosing: ImpactDeclarationReferenceDocument,
+        val anchor: ImpactSourceRangeDocument,
+        val failure: ImpactProducerExecutionFailureDocument,
+        @kotlinx.serialization.EncodeDefault val stage: ImpactProducerExecutionStageDocument = ImpactProducerExecutionStageDocument.INITIAL_EXECUTION,
+    ) : QueryImpactSourceFailureDocument
+
     @Serializable(with = QueryImpactReferenceRejectedSerializer::class)
     @kotlinx.serialization.KeepGeneratedSerializer
     @SerialName("REFERENCE")

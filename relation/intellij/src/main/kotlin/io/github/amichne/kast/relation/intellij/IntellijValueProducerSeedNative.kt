@@ -108,7 +108,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             }
         val expression =
             when (val admitted = exactSeedExpression(enclosing, request)) {
-                is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(admitted.failure)
+                is Refinement.Rejected -> return admitted.failure
                 is Refinement.Refined -> admitted.value
             }
         val endpoint =
@@ -252,21 +252,24 @@ private data class NativeSeedExpression(
 private fun exactSeedExpression(
     enclosing: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     request: ValueProducerSeedRequest,
-): Refinement<NativeSeedExpression, ValueProducerSeedRejection> {
+): Refinement<NativeSeedExpression, ValueProducerSeedRead.Rejected> {
     val expression =
         enclosing.owner.exactValueElement(request.anchor)
-            ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+            ?: return Refinement.Rejected(ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH))
     val call =
         when (expression) {
             is KtCallElement -> expression
             is KtQualifiedExpression -> expression.selectorExpression as? KtCallElement
             else -> null
-        } ?: return Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+        }
+            ?: return Refinement.Rejected(
+                ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+            )
     val canonical =
         call.valueInvocationExpression() as? KtExpression
-            ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+            ?: return Refinement.Rejected(ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH))
     if (expression !== call && expression !== canonical)
-        return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+        return Refinement.Rejected(ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH))
     return when (
         val execution =
             nativeValueInitialExecution(
@@ -282,7 +285,27 @@ private fun exactSeedExpression(
             Refinement.Refined(
                 NativeSeedExpression(canonical, call, execution.value.owner, execution.value.examinedWork)
             )
-        is Refinement.Rejected -> Refinement.Rejected(execution.failure.producerCause())
+        is Refinement.Rejected ->
+            Refinement.Rejected(
+                ValueProducerSeedRead.Rejected(
+                    execution.failure.producerCause(),
+                    io.github.amichne.kast.relation.contract.ValueProducerSeedDiagnostic.InitialExecution(
+                        RelationEndpoint.subject(request.enclosing),
+                        request.anchor,
+                        when (val failure = execution.failure) {
+                            is NativeInitialValueFailure.Native ->
+                                io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure.Native(
+                                    failure.cause
+                                )
+                            is NativeInitialValueFailure.Unsupported ->
+                                io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure.Unsupported(
+                                    failure.cause,
+                                    failure.callbackFailures,
+                                )
+                        },
+                    ),
+                )
+            )
     }
 }
 
@@ -295,7 +318,22 @@ private fun NativeInitialValueFailure.producerCause(): ValueProducerSeedRejectio
                 ValueFlowUnsupportedCause.TIME_LIMIT_REACHED -> ValueProducerSeedRejection.TIME_LIMIT_REACHED
                 ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED -> ValueProducerSeedRejection.BYTE_LIMIT_REACHED
                 ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED -> ValueProducerSeedRejection.GRANT_TOO_SMALL
-                else -> ValueProducerSeedRejection.OWNER_MISMATCH
+                ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED -> ValueProducerSeedRejection.FINALLY_UNSUPPORTED
+                ValueFlowUnsupportedCause.ABRUPT_COMPLETION -> ValueProducerSeedRejection.ABRUPT_COMPLETION
+                ValueFlowUnsupportedCause.EXTERNAL_CALL -> ValueProducerSeedRejection.EXTERNAL_CALL
+                ValueFlowUnsupportedCause.UNMODELED_CALL -> ValueProducerSeedRejection.UNMODELED_CALL
+                ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW -> ValueProducerSeedRejection.MUTABLE_CONTROL_FLOW
+                ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION -> ValueProducerSeedRejection.UNSUPPORTED_EXPRESSION
+                ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE -> ValueProducerSeedRejection.UNRESOLVED_REFERENCE
+                ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY -> ValueProducerSeedRejection.UNSUPPORTED_PROPERTY
+                ValueFlowUnsupportedCause.UNSUPPORTED_RETURN -> ValueProducerSeedRejection.UNSUPPORTED_RETURN
+                ValueFlowUnsupportedCause.NESTED_EXECUTION -> ValueProducerSeedRejection.NESTED_EXECUTION
+                ValueFlowUnsupportedCause.OUTSIDE_DOMAIN -> ValueProducerSeedRejection.OUTSIDE_DOMAIN
+                ValueFlowUnsupportedCause.ACCESS_PATH_DEPTH_EXCEEDED ->
+                    ValueProducerSeedRejection.ACCESS_PATH_DEPTH_EXCEEDED
+                ValueFlowUnsupportedCause.CALL_CONTEXT_DEPTH_EXCEEDED ->
+                    ValueProducerSeedRejection.CALL_CONTEXT_DEPTH_EXCEEDED
+                ValueFlowUnsupportedCause.RECURSIVE_SOURCE_CALL -> ValueProducerSeedRejection.RECURSIVE_SOURCE_CALL
             }
     }
 
@@ -340,8 +378,8 @@ private fun ValueFlowRejection.seedCause(
                 NativeSeedDeclaration.CALLABLE -> ValueProducerSeedRejection.STALE_CALLABLE
             }
         ValueFlowRejection.OUTSIDE_DOMAIN -> ValueProducerSeedRejection.OUTSIDE_DOMAIN
-        ValueFlowRejection.OWNER_UNAVAILABLE,
-        ValueFlowRejection.NESTED_EXECUTION -> ValueProducerSeedRejection.OWNER_MISMATCH
+        ValueFlowRejection.OWNER_UNAVAILABLE -> ValueProducerSeedRejection.OWNER_UNAVAILABLE
+        ValueFlowRejection.NESTED_EXECUTION -> ValueProducerSeedRejection.NESTED_EXECUTION
         ValueFlowRejection.AUTHORITY_MOVED -> ValueProducerSeedRejection.AUTHORITY_MOVED
         ValueFlowRejection.UNSUPPORTED_SEED -> ValueProducerSeedRejection.UNSUPPORTED_INVOCATION
         ValueFlowRejection.UNRESOLVED_SEED -> ValueProducerSeedRejection.UNRESOLVED_INVOCATION

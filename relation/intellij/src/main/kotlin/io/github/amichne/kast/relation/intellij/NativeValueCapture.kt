@@ -23,6 +23,7 @@ internal fun nativeValueCaptureOwner(
     projection: IntellijK2RelationProjection,
     admitWork: () -> CallbackWorkAdmission,
     expiry: () -> CallbackExpiryAdmission,
+    recordFailure: (io.github.amichne.kast.relation.contract.ValueCallbackInputFailure) -> Unit = {},
 ): Refinement<NativeValueExecution, ValueFlowUnsupportedCause> {
     val anonymous =
         when (val result = captureLiteral(element, host)) {
@@ -46,7 +47,7 @@ internal fun nativeValueCaptureOwner(
             callbackExpiry = expiry,
         )
     val captured =
-        when (val graph = captureGraph(read, evidence)) {
+        when (val graph = captureGraph(read, evidence, recordFailure)) {
             is Refinement.Rejected -> graph
             is Refinement.Refined -> ValueExecutionOwner.callback(enclosing, graph.value.first, graph.value.second)
         }
@@ -91,6 +92,7 @@ private fun captureLiteral(element: PsiElement, host: PsiElement): Refinement<Kt
 private fun captureGraph(
     read: CallbackInvocationFlowRead,
     evidence: io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence,
+    recordFailure: (io.github.amichne.kast.relation.contract.ValueCallbackInputFailure) -> Unit,
 ): Refinement<Pair<RelationCallableBody.Anonymous, CompleteCallbackFlowGraph>, ValueFlowUnsupportedCause> {
     val body: RelationCallableBody.Anonymous
     val graph =
@@ -111,12 +113,18 @@ private fun captureGraph(
                     }
                 CompleteCallbackFlowGraph.admit(read.flow, named)
             }
-            is CallbackInvocationFlowRead.Unavailable -> return Refinement.Rejected(read.cause.captureCause())
-            is CallbackInvocationFlowRead.ContractRejected ->
+            is CallbackInvocationFlowRead.Unavailable -> {
+                recordFailure(io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Callback(read.cause))
+                return Refinement.Rejected(read.cause.captureCause())
+            }
+            is CallbackInvocationFlowRead.ContractRejected -> {
+                recordFailure(io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Contract(read.cause))
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            }
         }
     return when (graph) {
-        is Refinement.Rejected ->
+        is Refinement.Rejected -> {
+            recordFailure(io.github.amichne.kast.relation.contract.ValueCallbackInputFailure.Graph(graph.failure))
             Refinement.Rejected(
                 when (val cause = graph.failure) {
                     is io.github.amichne.kast.relation.contract.StaticCallbackGraphFailure.Unavailable ->
@@ -124,6 +132,7 @@ private fun captureGraph(
                     else -> ValueFlowUnsupportedCause.NESTED_EXECUTION
                 }
             )
+        }
         is Refinement.Refined -> Refinement.Refined(body to graph.value)
     }
 }

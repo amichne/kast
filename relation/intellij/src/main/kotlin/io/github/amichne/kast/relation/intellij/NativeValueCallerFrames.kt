@@ -295,6 +295,7 @@ internal fun nativeValueInitialExecution(
                 return Refinement.Rejected(NativeInitialValueFailure.Native(plain.failure))
     }
     val allowance = IntellijRelationAllowance(System.nanoTime()) { System.nanoTime() }
+    val failures = mutableListOf<io.github.amichne.kast.relation.contract.ValueCallbackInputFailure>()
     val captured =
         nativeValueCaptureOwner(
             element,
@@ -318,10 +319,12 @@ internal fun nativeValueInitialExecution(
                 if (allowance.elapsedLimitReached(scope.request.budget.resources)) CallbackExpiryAdmission.EXPIRED
                 else CallbackExpiryAdmission.CURRENT
             },
+            recordFailure = { failures.add(it) },
         )
     return when (captured) {
         is Refinement.Refined -> Refinement.Refined(initialValueRead(captured.value, allowance.examined))
-        is Refinement.Rejected -> Refinement.Rejected(NativeInitialValueFailure.Unsupported(captured.failure))
+        is Refinement.Rejected ->
+            Refinement.Rejected(NativeInitialValueFailure.Unsupported(captured.failure, failures.toList()))
     }
 }
 
@@ -339,7 +342,10 @@ private fun initialValueRead(execution: NativeValueExecution, work: Long): Nativ
 internal sealed interface NativeInitialValueFailure {
     data class Native(val cause: ValueFlowRejection) : NativeInitialValueFailure
 
-    data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeInitialValueFailure
+    data class Unsupported(
+        val cause: ValueFlowUnsupportedCause,
+        val callbackFailures: List<io.github.amichne.kast.relation.contract.ValueCallbackInputFailure> = emptyList(),
+    ) : NativeInitialValueFailure
 
     fun seedRejection(): ValueFlowRejection =
         when (this) {
