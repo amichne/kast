@@ -39,6 +39,12 @@ internal fun StringBuilder.valueState(site: ValueSite) {
     field(site.conditions.facts.size.toString())
     site.conditions.facts.forEach { condition ->
         when (condition) {
+            is ValueCondition.DeclaredCallbackResult -> {
+                field("DECLARED_CALLBACK_RESULT")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                declaredCallbackBinding(condition.binding)
+            }
             is ValueCondition.StableLocal -> {
                 field("STABLE_LOCAL")
                 conditionOrigin(condition.origin)
@@ -81,8 +87,28 @@ private fun StringBuilder.valueState(
     path: ValueAccessPath,
     stack: ValueCallStack,
 ) {
-    when (val context = execution.context) {
+    executionContext(execution.context)
+    field(path.depth.toString())
+    path.segments.forEach { segment ->
+        when (segment) {
+            ValuePathSegment.Element -> field("ELEMENT")
+            is ValuePathSegment.Field -> {
+                field("FIELD")
+                endpoint(segment.field.declaration)
+            }
+        }
+    }
+    field(stack.frames.size.toString())
+    stack.frames.forEach { frame -> callFrame(frame) }
+}
+
+private fun StringBuilder.executionContext(context: ValueExecutionContext) {
+    when (context) {
         ValueExecutionContext.Declaration -> Unit
+        is ValueExecutionContext.DeclaredCallback -> {
+            field("DECLARED_CALLBACK_VALUE")
+            declaredCallbackBinding(context.binding)
+        }
         is ValueExecutionContext.ReviewedCallback -> {
             field("REVIEWED_CALLBACK_VALUE")
             field(context.binding.body.compilerIdentity.value)
@@ -115,18 +141,6 @@ private fun StringBuilder.valueState(
             field(context.selectedInvocation.invocation.canonicalProjection())
         }
     }
-    field(path.depth.toString())
-    path.segments.forEach { segment ->
-        when (segment) {
-            ValuePathSegment.Element -> field("ELEMENT")
-            is ValuePathSegment.Field -> {
-                field("FIELD")
-                endpoint(segment.field.declaration)
-            }
-        }
-    }
-    field(stack.frames.size.toString())
-    stack.frames.forEach { frame -> callFrame(frame) }
 }
 
 internal fun StringBuilder.callFrame(frame: ValueCallFrame) {
@@ -188,6 +202,10 @@ internal fun StringBuilder.formalPosition(position: ValueFormalPosition) {
 
 internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
     when (operation) {
+        is ValueSourceOperation.DeclaredCallbackResult -> {
+            field("DECLARED_CALLBACK_RESULT")
+            declaredCallbackBinding(operation.binding)
+        }
         is ValueSourceOperation.Enter -> {
             field("ENTER")
             callFrame(operation.frame)
@@ -203,22 +221,12 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
         }
         is ValueSourceOperation.CallbackReturn -> {
             field("CALLBACK_RETURN")
-            field(operation.invocation.body.compilerIdentity.value)
-            range(operation.invocation.body.range)
-            valueCall(operation.invocation.supply.invocation)
-            range(operation.invocation.supply.parameter.range)
-            field(operation.invocation.supply.position.value.toString())
-            field(operation.invocation.invocation.canonicalProjection())
+            captureInvocation(operation.invocation)
             callFrame(operation.frame)
         }
         is ValueSourceOperation.CallbackArgumentEntry -> {
             field("CALLBACK_ARGUMENT_ENTRY")
-            field(operation.invocation.body.compilerIdentity.value)
-            range(operation.invocation.body.range)
-            valueCall(operation.invocation.supply.invocation)
-            range(operation.invocation.supply.parameter.range)
-            field(operation.invocation.supply.position.value.toString())
-            field(operation.invocation.invocation.canonicalProjection())
+            captureInvocation(operation.invocation)
             callFrame(operation.supplierFrame)
             formalPosition(ValueFormalPosition.Parameter(operation.parameter))
             range(operation.argumentRange)
@@ -234,4 +242,28 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
             endpoint(operation.storage.field.declaration)
         }
     }
+}
+
+private fun StringBuilder.captureInvocation(invocation: ValueCaptureInvocation) {
+    field(invocation.body.compilerIdentity.value)
+    range(invocation.body.range)
+    valueCall(invocation.supply.invocation)
+    range(invocation.supply.parameter.range)
+    field(invocation.supply.position.value.toString())
+    field(invocation.invocation.canonicalProjection())
+}
+
+private fun StringBuilder.declaredCallbackBinding(binding: DeclaredCallbackValueBinding) {
+    endpoint(binding.enclosing)
+    body(binding.body)
+    occurrence(binding.contract.occurrence)
+    body(binding.contract.owner)
+    field(binding.contract.target.compilerIdentity.value)
+    field(binding.contract.target.file.stableValue)
+    range(binding.contract.target.range)
+    field(binding.contract.position.value.toString())
+    field(binding.contract.classDigest.value)
+    field(binding.contract.provenance.name)
+    field(binding.contract.invocationKind.name)
+    field(binding.resultEffect.name)
 }

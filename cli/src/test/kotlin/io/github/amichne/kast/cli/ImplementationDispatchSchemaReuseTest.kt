@@ -14,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowBudgetDocument
@@ -75,6 +76,7 @@ class ImplementationDispatchSchemaReuseTest {
                 "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
                 "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
+                "impactDeclaredCallbackValueBinding" to ImpactDeclaredCallbackValueBindingDocument.serializer(),
             )
         for ((name, serializer) in serializers) {
             assertions.assertDefinitionEquivalent(

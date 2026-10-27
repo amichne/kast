@@ -45,23 +45,27 @@ internal fun nativeValueCaptureOwner(
             summaries = CallbackParameterSummaries(scope.request.budget, projection.observation),
             callbackExpiry = expiry,
         )
-    return when (val graph = captureGraph(read, evidence)) {
-        is Refinement.Rejected -> {
-            if (graph.failure != ValueFlowUnsupportedCause.NESTED_EXECUTION) return graph
-            val context = IntellijCallbackFlowContext(scope, projection, admitWork, projection.observation, expiry)
-            when (val reviewed = readReviewedCallbackValueBinding(anonymous, enclosing, context)) {
-                is Refinement.Refined ->
-                    Refinement.Refined(
-                        NativeValueExecution(anonymous, ValueExecutionOwner.reviewedCallback(reviewed.value))
-                    )
-                is Refinement.Rejected -> Refinement.Rejected(reviewed.failure.valueFlowCause())
-            }
+    val captured =
+        when (val graph = captureGraph(read, evidence)) {
+            is Refinement.Rejected -> graph
+            is Refinement.Refined -> ValueExecutionOwner.callback(enclosing, graph.value.first, graph.value.second)
         }
+    when (captured) {
+        is Refinement.Refined -> return Refinement.Refined(NativeValueExecution(anonymous, captured.value))
+        is Refinement.Rejected -> if (captured.failure != ValueFlowUnsupportedCause.NESTED_EXECUTION) return captured
+    }
+    val context = IntellijCallbackFlowContext(scope, projection, admitWork, projection.observation, expiry)
+    when (val declared = readDeclaredCallbackValueBinding(anonymous, enclosing, context)) {
         is Refinement.Refined ->
-            when (val owner = ValueExecutionOwner.callback(enclosing, graph.value.first, graph.value.second)) {
-                is Refinement.Refined -> Refinement.Refined(NativeValueExecution(anonymous, owner.value))
-                is Refinement.Rejected -> owner
-            }
+            return Refinement.Refined(
+                NativeValueExecution(anonymous, ValueExecutionOwner.declaredCallback(declared.value))
+            )
+        is Refinement.Rejected -> if (declared.failure != ValueFlowUnsupportedCause.NESTED_EXECUTION) return declared
+    }
+    return when (val reviewed = readReviewedCallbackValueBinding(anonymous, enclosing, context)) {
+        is Refinement.Refined ->
+            Refinement.Refined(NativeValueExecution(anonymous, ValueExecutionOwner.reviewedCallback(reviewed.value)))
+        is Refinement.Rejected -> Refinement.Rejected(reviewed.failure.valueFlowCause())
     }
 }
 

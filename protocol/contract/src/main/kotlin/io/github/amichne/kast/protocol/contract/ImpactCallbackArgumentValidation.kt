@@ -63,6 +63,7 @@ private fun ImpactSourceOperationDocument.CallbackArgumentEntry.matchesSupplierE
                 execution.invocations == callback.invocations &&
                 execution.invocations.values.count { it.body == execution.body } == 1 &&
                 execution.admitsSelection()
+        is ImpactExecutionOwnerDocument.DeclaredCallback -> false
         is ImpactExecutionOwnerDocument.ReviewedCallback -> false
     }
 

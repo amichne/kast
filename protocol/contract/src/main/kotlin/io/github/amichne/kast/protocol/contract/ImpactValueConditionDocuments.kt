@@ -28,7 +28,14 @@ data class ImpactValueConditionOriginDocument(
 sealed interface ImpactValueConditionDocument {
     val origin: ImpactValueConditionOriginDocument
     val useRange: ImpactSourceRangeDocument
-    val originalType: ProtocolText
+
+    @Serializable
+    @SerialName("DECLARED_CALLBACK_RESULT")
+    data class DeclaredCallbackResult(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+        val binding: ImpactDeclaredCallbackValueBindingDocument,
+    ) : ImpactValueConditionDocument
 
     @Serializable
     @SerialName("STABLE_LOCAL")
@@ -36,7 +43,7 @@ sealed interface ImpactValueConditionDocument {
         override val origin: ImpactValueConditionOriginDocument,
         override val useRange: ImpactSourceRangeDocument,
         val version: ImpactLocalVersionDocument.Defined,
-        override val originalType: ProtocolText,
+        val originalType: ProtocolText,
         val refinedType: ProtocolText,
     ) : ImpactValueConditionDocument
 
@@ -46,7 +53,7 @@ sealed interface ImpactValueConditionDocument {
         override val origin: ImpactValueConditionOriginDocument,
         override val useRange: ImpactSourceRangeDocument,
         val kind: ImpactReceiverKindDocument,
-        override val originalType: ProtocolText,
+        val originalType: ProtocolText,
         val refinedType: ProtocolText,
     ) : ImpactValueConditionDocument
 
@@ -57,7 +64,7 @@ sealed interface ImpactValueConditionDocument {
         override val origin: ImpactValueConditionOriginDocument,
         override val useRange: ImpactSourceRangeDocument,
         val kind: ImpactCastKindDocument,
-        override val originalType: ProtocolText,
+        val originalType: ProtocolText,
         val targetType: ProtocolText,
     ) : ImpactValueConditionDocument
 }

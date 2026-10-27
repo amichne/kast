@@ -44,6 +44,7 @@ private constructor(
                     ValueExecutionContext.Declaration -> callable.signature as? CanonicalCompilerCallableSignature
                     is ValueExecutionContext.Callback -> context.body.signature
                     is ValueExecutionContext.ReviewedCallback -> context.binding.body.signature
+                    is ValueExecutionContext.DeclaredCallback -> context.binding.body.signature
                 } ?: return Refinement.Rejected(ValueCallBindingFailure.INVALID_PARAMETER)
             if (position.value !in signature.valueParameters.indices)
                 return Refinement.Rejected(ValueCallBindingFailure.INVALID_PARAMETER)

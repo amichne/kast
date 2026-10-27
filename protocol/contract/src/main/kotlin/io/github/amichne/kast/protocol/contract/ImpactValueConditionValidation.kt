@@ -11,23 +11,27 @@ private fun List<ImpactValueConditionDocument>.hasSameConditions(other: List<Imp
     size == other.size && zip(other).all { (first, second) -> first.hasSameCondition(second) }
 
 private fun ImpactValueConditionDocument.hasSameCondition(other: ImpactValueConditionDocument): Boolean =
-    sourceSite().hasSameValueIdentity(other.sourceSite()) &&
-        useRange == other.useRange &&
-        originalType == other.originalType &&
-        hasSameRefinement(other)
+    sourceSite().hasSameValueIdentity(other.sourceSite()) && useRange == other.useRange && hasSameRefinement(other)
 
 private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueConditionDocument): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.DeclaredCallbackResult ->
+            other is ImpactValueConditionDocument.DeclaredCallbackResult && binding == other.binding
         is ImpactValueConditionDocument.StableLocal ->
             other is ImpactValueConditionDocument.StableLocal &&
+                originalType == other.originalType &&
                 version == other.version &&
                 refinedType == other.refinedType
         is ImpactValueConditionDocument.StableReceiver ->
             other is ImpactValueConditionDocument.StableReceiver &&
+                originalType == other.originalType &&
                 kind == other.kind &&
                 refinedType == other.refinedType
         is ImpactValueConditionDocument.CastSuccess ->
-            other is ImpactValueConditionDocument.CastSuccess && kind == other.kind && targetType == other.targetType
+            other is ImpactValueConditionDocument.CastSuccess &&
+                originalType == other.originalType &&
+                kind == other.kind &&
+                targetType == other.targetType
     }
 
 internal fun ImpactValueSiteReferenceDocument.admitsConditions(): Boolean =
@@ -38,21 +42,27 @@ internal fun ImpactValueSiteReferenceDocument.admitsConditions(): Boolean =
 private fun ImpactValueConditionDocument.admits(basis: ImpactSemanticBasisDocument): Boolean =
     origin.execution.enclosing.declarationFailure() is Refinement.Refined &&
         sourceSite().isOnBasis(basis) &&
-        origin.execution.executionOwner.admits(origin.execution.enclosing, useRange) &&
-        originalType.isCanonicalType() &&
+        (this is ImpactValueConditionDocument.DeclaredCallbackResult ||
+            origin.execution.executionOwner.admits(origin.execution.enclosing, useRange)) &&
         admitsRefinement()
 
 private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.DeclaredCallbackResult -> admitsResult()
         is ImpactValueConditionDocument.StableLocal ->
-            sourceSite().admitsLocalVersion() && version.admitsLocalRead(useRange) && refinedType.isCanonicalType()
+            sourceSite().admitsLocalVersion() &&
+                version.admitsLocalRead(useRange) &&
+                originalType.isCanonicalType() &&
+                refinedType.isCanonicalType()
         is ImpactValueConditionDocument.StableReceiver ->
             origin.role == ImpactValueRoleDocument.Formal(ImpactFormalPositionDocument.Receiver(kind)) &&
+                originalType.isCanonicalType() &&
                 refinedType.isCanonicalType()
         is ImpactValueConditionDocument.CastSuccess ->
             (origin.role == ImpactValueRoleDocument.ExpressionResult ||
                 origin.role == ImpactValueRoleDocument.LocalRead) &&
                 useRange.containsExecutionRange(origin.range) &&
+                originalType.isCanonicalType() &&
                 targetType.isCanonicalType()
     }
 
@@ -78,6 +88,7 @@ internal fun ImpactValueSiteReferenceDocument.conservesConditions(
 
 private fun ImpactValueConditionDocument.matchesTransferKind(kind: ImpactTransferKindDocument): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.DeclaredCallbackResult -> kind == ImpactTransferKindDocument.SOURCE_CALL_RETURN
         is ImpactValueConditionDocument.StableLocal -> kind == ImpactTransferKindDocument.LOCAL_READ
         is ImpactValueConditionDocument.StableReceiver -> kind == ImpactTransferKindDocument.FIELD_READ
         is ImpactValueConditionDocument.CastSuccess -> kind == ImpactTransferKindDocument.CAST_RESULT
@@ -94,6 +105,7 @@ private fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReferenceD
         localVersion =
             when (this) {
                 is ImpactValueConditionDocument.StableLocal -> version
+                is ImpactValueConditionDocument.DeclaredCallbackResult,
                 is ImpactValueConditionDocument.StableReceiver,
                 is ImpactValueConditionDocument.CastSuccess -> ImpactLocalVersionDocument.Unversioned
             },

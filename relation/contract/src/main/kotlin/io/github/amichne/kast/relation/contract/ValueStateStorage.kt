@@ -18,6 +18,7 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
         .addBytes(origin.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
         .addBytes(
             when (condition) {
+                is ValueCondition.DeclaredCallbackResult -> condition.binding.retainedBytes
                 is ValueCondition.StableLocal ->
                     VALUE_CALL_PROOF_BYTES.addBytes(
                             condition.version.execution.enclosing.detachedTextUnits().multiplyBytes(2)
@@ -42,6 +43,7 @@ private fun valueExecutionStorageBytes(execution: ValueExecutionOwner): Long =
     when (val context = execution.context) {
         ValueExecutionContext.Declaration -> 0L
         is ValueExecutionContext.ReviewedCallback -> context.binding.retainedBytes
+        is ValueExecutionContext.DeclaredCallback -> context.binding.retainedBytes
         is ValueExecutionContext.Callback ->
             (context.invocations + context.selectedInvocation).fold(VALUE_CALL_PROOF_BYTES) { total, frame ->
                 total
@@ -72,6 +74,7 @@ internal fun sourceEvidenceStorageBytes(operation: ValueSourceOperation): Long =
         is ValueSourceOperation.Enter -> valueFrameStorageBytes(operation.frame).addBytes(VALUE_CALL_PROOF_BYTES)
         is ValueSourceOperation.Return -> valueFrameStorageBytes(operation.frame)
         is ValueSourceOperation.SeedReturn -> valueFrameStorageBytes(operation.frame)
+        is ValueSourceOperation.DeclaredCallbackResult -> operation.binding.retainedBytes
         is ValueSourceOperation.CallbackReturn ->
             valueFrameStorageBytes(operation.frame)
                 .addBytes(operation.invocation.invocation.retainedBytes)

@@ -10,6 +10,7 @@ internal fun ValueExecutionContext.storageBytes(g: QueryImpactRetainedGraph): Lo
     when (this) {
         ValueExecutionContext.Declaration -> 0L
         is ValueExecutionContext.ReviewedCallback -> g.node(this) { binding.storageBytes(g) }
+        is ValueExecutionContext.DeclaredCallback -> g.node(this) { binding.storageBytes(g) }
         is ValueExecutionContext.Callback ->
             g.node(this) {
                 body
@@ -18,6 +19,10 @@ internal fun ValueExecutionContext.storageBytes(g: QueryImpactRetainedGraph): Lo
                     .saturatedAdd(selectedInvocation.storageBytes(g))
             }
     }
+
+internal fun io.github.amichne.kast.relation.contract.DeclaredCallbackValueBinding.storageBytes(
+    g: QueryImpactRetainedGraph
+): Long = g.node(this) { retainedBytes }
 
 internal fun ReviewedCallbackValueBinding.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {

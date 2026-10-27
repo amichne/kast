@@ -26,6 +26,7 @@ private fun ValueCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.node(useRange) { 0L })
             .saturatedAdd(
                 when (this) {
+                    is ValueCondition.DeclaredCallbackResult -> binding.storageBytes(g)
                     is ValueCondition.StableLocal ->
                         version
                             .storageBytes(g)
@@ -86,6 +87,7 @@ internal fun ValueSourceOperation.storageBytes(g: QueryImpactRetainedGraph): Lon
             is ValueSourceOperation.Enter -> frame.storageBytes(g).saturatedAdd(position.storageBytes(g))
             is ValueSourceOperation.Return -> frame.storageBytes(g)
             is ValueSourceOperation.SeedReturn -> frame.storageBytes(g)
+            is ValueSourceOperation.DeclaredCallbackResult -> binding.storageBytes(g)
             is ValueSourceOperation.CallbackReturn -> frame.storageBytes(g).saturatedAdd(invocation.storageBytes(g))
             is ValueSourceOperation.CallbackArgumentEntry ->
                 supplierFrame

@@ -20,6 +20,7 @@ import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryResultRetentionEvidence
 import io.github.amichne.kast.query.protocol.QueryResultRetentionObservation
 import io.github.amichne.kast.query.protocol.QueryStateStore
+import io.github.amichne.kast.query.service.QueryNanoClock
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -191,7 +192,7 @@ internal class NativePacketQueryServices(
             oneHop = RelationBudget(resources, RelationByteLimit.parse(RETURNED_BYTES).packetQueryRefined()),
         )
 
-    private fun operations(presentation: QueryPresentationExecution?) =
+    private fun operations(presentation: QueryPresentationExecution?, checkpoint: NativePacketQueryCheckpoint?) =
         QueryService(
             discovery = SymbolDiscoveryService(validation, symbols.discovery),
             exact = SymbolExactService(validation, symbols.exact),
@@ -199,19 +200,30 @@ internal class NativePacketQueryServices(
             relations = relations,
             traversal = hostedTraversalOperations(relations, observation),
             traversalCeiling = traversal,
-            valueFlow = valueFlow,
+            clock = checkpoint ?: QueryNanoClock(System::nanoTime),
+            valueFlow =
+                ValueFlowCompilerPort { request ->
+                    valueFlow.read(request).also { checkpoint?.observed(it) }
+                },
             presentation = presentation,
         )
 
     private val state = QueryStateStore()
     val protocol = protocol()
 
-    fun protocol(presentation: QueryPresentationExecution? = null): CanonicalQueryProtocol {
-        val operations = operations(presentation)
+    fun protocol(
+        presentation: QueryPresentationExecution? = null,
+        checkpoint: NativePacketQueryCheckpoint? = null,
+    ): CanonicalQueryProtocol {
+        val operations = operations(presentation, checkpoint)
         return CanonicalQueryProtocol(
             operations =
                 QueryOperations { request ->
-                    operations.run(request).also { lastExecution = it }
+                    checkpoint?.entering(request)
+                    operations.run(request).also { result ->
+                        lastExecution = result
+                        checkpoint?.completed(result)
+                    }
                 },
             authority = references,
             state = state,

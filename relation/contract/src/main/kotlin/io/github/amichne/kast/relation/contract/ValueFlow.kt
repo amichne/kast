@@ -14,6 +14,7 @@ enum class ValueTransferKind {
     WRAPPER_RETURN,
     RECEIVER,
     SOURCE_CALL_ENTRY,
+    /** Source return to a call result, including a conditional compiler-declared binary callback result. */
     SOURCE_CALL_RETURN,
     FIELD_READ,
     CONSTRUCTOR_FIELD,
@@ -43,6 +44,11 @@ private constructor(
     }
 
     companion object {
+        fun declaredCallbackResult(
+            source: ValueSite,
+            binding: DeclaredCallbackValueBinding,
+        ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> = binding.resultTransfer(source)
+
         /** The native adapter owns semantic confirmation; this constructor preserves its detached invariants. */
         fun fromCompiler(
             source: ValueSite,

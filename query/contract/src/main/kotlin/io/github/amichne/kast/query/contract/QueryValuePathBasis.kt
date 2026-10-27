@@ -250,6 +250,8 @@ private fun ValueTransferEvidence.hasForeignBasis(lease: SemanticReadAuthority):
                     operation.frame.hasForeignBasis(lease) || operation.position.hasForeignBasis(lease)
                 is ValueSourceOperation.Return -> operation.frame.hasForeignBasis(lease)
                 is ValueSourceOperation.SeedReturn -> operation.frame.hasForeignBasis(lease)
+                is ValueSourceOperation.DeclaredCallbackResult ->
+                    operation.binding.enclosing.lease != lease || operation.binding.basis != lease.identity
                 is ValueSourceOperation.CallbackReturn ->
                     operation.frame.hasForeignBasis(lease) ||
                         operation.invocation.supply.invocation.hasForeignBasis(lease)

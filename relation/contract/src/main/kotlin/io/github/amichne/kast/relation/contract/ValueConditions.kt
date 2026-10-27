@@ -37,6 +37,31 @@ sealed interface ValueCondition {
     val origin: ValueConditionOrigin
     val useRange: ExactDeclarationTextRange
 
+    /** Conditional result dependence, without asserting invocation or normal completion at runtime. */
+    @ConsistentCopyVisibility
+    data class DeclaredCallbackResult
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+        val binding: DeclaredCallbackValueBinding,
+    ) : ValueCondition {
+        companion object {
+            fun fromCompiler(
+                source: ValueSite,
+                binding: DeclaredCallbackValueBinding,
+            ): Refinement<DeclaredCallbackResult, ValueSiteFailure> =
+                if (binding.admitsReturn(source))
+                    Refinement.Refined(
+                        DeclaredCallbackResult(
+                            ValueConditionOrigin.fromSite(source),
+                            binding.contract.occurrence.range,
+                            binding,
+                        )
+                    )
+                else Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+        }
+    }
+
     /** A stable use-site refinement belongs to one exact reaching definition, not every value of the local. */
     @ConsistentCopyVisibility
     data class StableLocal
@@ -172,16 +197,15 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
         if (target.conditions.facts.size != facts.size + 1) return false
         if (target.conditions.facts.dropLast(1) != facts) return false
         val added = target.conditions.facts.last()
+        if (!added.origin.matches(source) || added.useRange != target.range) return false
         return when (added) {
+            is ValueCondition.DeclaredCallbackResult ->
+                kind == ValueTransferKind.SOURCE_CALL_RETURN &&
+                    source.executionOwner == ValueExecutionOwner.declaredCallback(added.binding)
             is ValueCondition.StableLocal ->
-                kind == ValueTransferKind.LOCAL_READ &&
-                    added.origin.matches(source) &&
-                    added.version == source.localVersion &&
-                    added.useRange == target.range
-            is ValueCondition.StableReceiver ->
-                kind == ValueTransferKind.FIELD_READ && added.origin.matches(source) && added.useRange == target.range
-            is ValueCondition.CastSuccess ->
-                kind == ValueTransferKind.CAST_RESULT && added.origin.matches(source) && added.useRange == target.range
+                kind == ValueTransferKind.LOCAL_READ && added.version == source.localVersion
+            is ValueCondition.StableReceiver -> kind == ValueTransferKind.FIELD_READ
+            is ValueCondition.CastSuccess -> kind == ValueTransferKind.CAST_RESULT
         }
     }
 

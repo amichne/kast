@@ -1299,6 +1299,7 @@ R2_PUBLIC_RESOURCES = "runtime/hosted/src/nativeTest/resources/semantic-owners"
 R1_SHARED_INPUTS = (
     f"{R1_ADAPTER_RESOURCES}/CallerCombinations.kt",
     f"{R1_ADAPTER_RESOURCES}/DependencyEffects.kt",
+    f"{R1_ADAPTER_RESOURCES}/ResultEffects.kt",
     f"{R1_ADAPTER_RESOURCES}/Targets.kt",
     f"{R1_ADAPTER_RESOURCES}/language-negative/DuplicateEffects.kt",
     f"{R1_PUBLIC_RESOURCES}/DependencyEffects.kt",

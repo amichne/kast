@@ -12,6 +12,14 @@ import io.github.amichne.kast.relation.contract.ValueConditions
 internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolList<ImpactValueConditionDocument>> =
     facts.impactEach { condition ->
         when (condition) {
+            is ValueCondition.DeclaredCallbackResult ->
+                condition.origin
+                    .impactDocument()
+                    .impactZip(condition.useRange.impactDocument())
+                    .impactZip(condition.binding.impactDocument())
+                    .impactMap { (origin, binding) ->
+                        ImpactValueConditionDocument.DeclaredCallbackResult(origin.first, origin.second, binding)
+                    }
             is ValueCondition.StableLocal -> condition.impactDocument()
             is ValueCondition.StableReceiver ->
                 condition.origin

@@ -462,20 +462,20 @@ def owned_resource_inputs(tmp_path: Path) -> Path:
     return repository
 
 
-def test_actual_53_resources_match_the_independent_manifests() -> None:
+def test_actual_54_resources_match_the_independent_manifests() -> None:
     repository = Path(__file__).resolve().parents[3]
     report = subject.resource_input_guard(repository)
     assert report.status == "PASS"
-    assert report.required_resource_count == 53
-    assert report.observed_resource_count == 53
+    assert report.required_resource_count == 54
+    assert report.observed_resource_count == 54
     assert report.issues == ()
 
 
 def test_owned_resource_guard_accepts_declared_inputs(tmp_path: Path) -> None:
     report = subject.resource_input_guard(owned_resource_inputs(tmp_path))
     assert report.status == "PASS"
-    assert report.required_resource_count == 11
-    assert report.observed_resource_count == 11
+    assert report.required_resource_count == 12
+    assert report.observed_resource_count == 12
 
 
 def test_resource_guard_rejects_valid_utf8_kotlin_source_drift(tmp_path: Path) -> None:

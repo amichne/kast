@@ -13,6 +13,9 @@ sealed interface ValueSourceOperation {
 
     data class CallbackReturn(val invocation: ValueCaptureInvocation, val frame: ValueCallFrame) : ValueSourceOperation
 
+    /** A source lambda return reaches its supplier expression through an exact binary result contract. */
+    data class DeclaredCallbackResult(val binding: DeclaredCallbackValueBinding) : ValueSourceOperation
+
     data class CallbackArgumentEntry(
         val invocation: ValueCaptureInvocation,
         val supplierFrame: ValueCallFrame,
@@ -41,6 +44,7 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
                     source.callStack == ValueCallStack.Empty &&
                     target.callStack == ValueCallStack.Empty
             is ValueSourceOperation.CallbackReturn -> op.admitsCallbackReturn(source, target, kind)
+            is ValueSourceOperation.DeclaredCallbackResult -> op.admitsDeclaredCallbackResult(source, target, kind)
             is ValueSourceOperation.CallbackArgumentEntry -> op.admitsCallbackArgument(source, target, kind)
             is ValueSourceOperation.ReadField -> op.admitsField(source, target, kind)
             is ValueSourceOperation.ConstructField -> op.admitsConstruction(source, target, kind)
@@ -121,3 +125,22 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
 
     override fun hashCode(): Int = operation.hashCode()
 }
+
+private fun ValueSourceOperation.DeclaredCallbackResult.admitsDeclaredCallbackResult(
+    source: ValueSite,
+    target: ValueSite,
+    kind: ValueTransferKind,
+): Boolean =
+    kind == ValueTransferKind.SOURCE_CALL_RETURN &&
+        binding.admitsReturn(source) &&
+        target.executionOwner == ValueExecutionOwner.declaration(binding.enclosing) &&
+        target.range == binding.contract.occurrence.range &&
+        target.role == ValueRole.ExpressionResult &&
+        source.valuePath == target.valuePath &&
+        source.callStack == target.callStack &&
+        target.conditions.facts.any {
+            it is ValueCondition.DeclaredCallbackResult &&
+                it.binding == binding &&
+                it.origin.matches(source) &&
+                it.useRange == target.range
+        }

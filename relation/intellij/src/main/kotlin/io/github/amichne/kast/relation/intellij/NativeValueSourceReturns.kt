@@ -42,6 +42,12 @@ internal class NativeValueSourceReturns(
     val isReviewedCallback: Boolean
         get() = source.executionOwner.context is ValueExecutionContext.ReviewedCallback
 
+    val isDeclaredCallback: Boolean
+        get() = source.executionOwner.context is ValueExecutionContext.DeclaredCallback
+
+    fun declaredCallback(owner: PsiElement, consume: (NativeValueReturnEffect) -> Boolean): Boolean =
+        consume(nativeDeclaredCallbackReturn(request, scope, projection, allowance, owner))
+
     fun reviewedCallback(owner: PsiElement, consume: (NativeValueReturnEffect) -> Boolean): Boolean =
         consume(nativeReviewedCallbackReturn(request, scope, projection, allowance, owner))
 

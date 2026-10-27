@@ -16,6 +16,9 @@ sealed interface ValueExecutionContext {
 
     /** Conditional library value correspondence remains distinct from source invocation evidence. */
     data class ReviewedCallback internal constructor(val binding: ReviewedCallbackValueBinding) : ValueExecutionContext
+
+    /** Compiler-declared dependency effects retain the selected source supplier, not a binary body. */
+    data class DeclaredCallback internal constructor(val binding: DeclaredCallbackValueBinding) : ValueExecutionContext
 }
 
 data class ValueCaptureInvocation
@@ -44,6 +47,7 @@ private constructor(
             ValueExecutionContext.Declaration -> enclosing.range
             is ValueExecutionContext.Callback -> context.body.range
             is ValueExecutionContext.ReviewedCallback -> context.binding.body.range
+            is ValueExecutionContext.DeclaredCallback -> context.binding.body.range
         }
     val identity = ValueExecutionIdentity(enclosing.valueIdentity, basis, context)
 
@@ -57,6 +61,7 @@ private constructor(
         when (val execution = context) {
             ValueExecutionContext.Declaration -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.ReviewedCallback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            is ValueExecutionContext.DeclaredCallback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.Callback ->
                 if (invocation != execution.selectedInvocation)
                     Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
@@ -89,6 +94,9 @@ private constructor(
 
         fun reviewedCallback(binding: ReviewedCallbackValueBinding): ValueExecutionOwner =
             ValueExecutionOwner(binding.enclosing, ValueExecutionContext.ReviewedCallback(binding))
+
+        fun declaredCallback(binding: DeclaredCallbackValueBinding): ValueExecutionOwner =
+            ValueExecutionOwner(binding.enclosing, ValueExecutionContext.DeclaredCallback(binding))
 
         fun callback(
             enclosing: RelationEndpoint,

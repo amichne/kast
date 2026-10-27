@@ -29,6 +29,8 @@ internal fun ImpactExecutionOwnerDocument.admits(
         ImpactExecutionOwnerDocument.Declaration -> host.range.containsExecutionRange(anchor)
         is ImpactExecutionOwnerDocument.ReviewedCallback ->
             binding.admits(host) && binding.body.range.containsExecutionRange(anchor)
+        is ImpactExecutionOwnerDocument.DeclaredCallback ->
+            binding.admits(host) && binding.body.range.containsExecutionRange(anchor)
         is ImpactExecutionOwnerDocument.Callback ->
             body.file == host.file &&
                 host.range.containsExecutionRange(body.range) &&
@@ -59,6 +61,8 @@ internal fun ImpactExecutionOwnerDocument.isOnBasis(basis: ImpactSemanticBasisDo
                 ImpactExecutionOwnerDocument.Declaration -> true
                 is ImpactExecutionOwnerDocument.ReviewedCallback ->
                     binding.basis == basis && binding.admits(binding.enclosing)
+                is ImpactExecutionOwnerDocument.DeclaredCallback ->
+                    binding.contract.basis == basis && binding.admits(binding.enclosing)
                 is ImpactExecutionOwnerDocument.Callback ->
                     admitsSelection() &&
                         invocations.values.all { it.enclosing.basis == basis && it.supply.callable.basis == basis }

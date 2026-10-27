@@ -211,6 +211,32 @@ val compileDeclaredEffectFixture =
         if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
     }
 
+val compileResultEffectFixture =
+    tasks.register<CompileDependencyFixture>("compileResultEffectFixture") {
+        sourceFile.set(layout.projectDirectory.file("src/nativeTest/resources/semantic-effects/ResultEffects.kt"))
+        compilerClasspath.from(configurations.named("kotlinCompilerClasspath"))
+        dependencies.from(contractFixtureStdlib)
+        compilerArguments.set(
+            listOf(
+                "-no-stdlib",
+                "-no-reflect",
+                "-language-version",
+                "2.4",
+                "-api-version",
+                "2.4",
+                "-Xallow-returns-result-of",
+                "-Xreturn-value-checker=check",
+            )
+        )
+        javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+        archiveFile.set(layout.buildDirectory.file("native-test/dependencies/result-effects.jar"))
+        timeout.set(Duration.ofSeconds(60))
+    }
+
+tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
+    from(compileResultEffectFixture.flatMap { it.archiveFile }) { into("contract-libraries") }
+}
+
 val nativeDependencyFixtureElements =
     configurations.create("nativeDependencyFixtureElements") {
         isCanBeConsumed = true
@@ -285,6 +311,8 @@ registerRelationNativeFixtures(
         "*NativeTypeOperationFlowTest",
         "*NativeContractPayloadTest",
         "*NativeContractScopeTest",
+        "*NativeBinaryResultContractTest",
+        "*NativeBinaryResultValueTest",
         "*NativeConfiguredDestructuringTest",
         "*NativeLocalValueVersionTest",
         "*NativeCallbackArgumentBindingTest",

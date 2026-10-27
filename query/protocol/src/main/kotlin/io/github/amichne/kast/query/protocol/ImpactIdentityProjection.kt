@@ -135,6 +135,8 @@ internal fun ValueExecutionIdentity.impactDocument(): ImpactProjected<ImpactExec
             Refinement.Refined(ImpactExecutionOwnerDocument.Declaration)
         is io.github.amichne.kast.relation.contract.ValueExecutionContext.ReviewedCallback ->
             execution.binding.impactDocument().impactMap(ImpactExecutionOwnerDocument::ReviewedCallback)
+        is io.github.amichne.kast.relation.contract.ValueExecutionContext.DeclaredCallback ->
+            execution.binding.impactDocument().impactMap(ImpactExecutionOwnerDocument::DeclaredCallback)
         is io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback ->
             execution.body
                 .impactCaptureBody()

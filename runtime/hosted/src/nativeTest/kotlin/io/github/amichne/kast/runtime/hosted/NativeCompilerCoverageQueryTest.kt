@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.EmptyImpactConditions
 import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
 import io.github.amichne.kast.protocol.contract.ImpactCastKindDocument
-import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
@@ -20,6 +19,8 @@ import io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.relation.contract.ValueCondition
+import io.github.amichne.kast.relation.contract.ValueTransferKind
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -87,6 +88,37 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
 
     fun testStableLocalRetainsItsDefinitionAndUseConditionThroughTheConsumer() = runBlocking {
         complete("stableLocal", "", "widen")
+    }
+
+    fun testStableLocalSurvivesSemanticCheckpointAndProtocolResume() = runBlocking {
+        val fixture = prepare()
+        val checkpoint = NativePacketQueryCheckpoint { step ->
+            step.transfers.any { transfer ->
+                transfer.target.conditions.facts.any { it is ValueCondition.StableLocal }
+            }
+        }
+        assertCoverageResumed(
+            fixture = fixture,
+            scenario = "stableLocal",
+            expected = consumer(fixture.source, "stableLocal", ""),
+            checkpoint = checkpoint,
+        )
+    }
+
+    fun testConfiguredGetterSurvivesSemanticCheckpointAndProtocolResume() = runBlocking {
+        val fixture = prepareConfigured()
+        val getter = fixture.source.declaration("", "getter")
+        val checkpoint = NativePacketQueryCheckpoint { step ->
+            step.source.enclosing.file == getter.file &&
+                step.source.enclosing.range == getter.range &&
+                step.transfers.any { it.kind == ValueTransferKind.RETURN }
+        }
+        assertCoverageResumed(
+            fixture = fixture,
+            scenario = "namedGetter",
+            expected = consumer(fixture.source, "namedGetter", ""),
+            checkpoint = checkpoint,
+        )
     }
 
     fun testOrderedComponentsReachOnlyTheExactSelectedConsumer() = runBlocking {
@@ -188,7 +220,7 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
             }
         println("COMPILER_COVERAGE_EXPECTED $scenario ${Json.encodeToString(expected)}")
         println("COMPILER_COVERAGE_TERMINALS $scenario ${Json.encodeToString(capture.paths.map { it.terminal })}")
-        assertEndpoints(source = source, scenario = scenario, expected = expected, transfers = routes.flatten())
+        assertCoverageEndpoints(source = source, scenario = scenario, expected = expected, transfers = routes.flatten())
         assertTrue(
             "No contiguous producer-to-consumer route crossed $operation: " +
                 routes.map { route ->
@@ -210,35 +242,6 @@ class NativeCompilerCoverageQueryTest : NativeCompilerCoverageFixtureTest() {
         assertTrue(
             "$scenario did not complete: ${fixture.services.executionSummary()}",
             capture.outcome is OperationOutcome.Complete,
-        )
-    }
-
-    private suspend fun assertEndpoints(
-        source: NativePacketQuerySource,
-        scenario: String,
-        expected: ImpactValueSiteReferenceDocument,
-        transfers: List<ImpactCompilerTransferDocument>,
-    ) {
-        val consumers =
-            setOf(
-                source.reference(source.declaration("", "consume")),
-                source.reference(source.declaration("", "forbidden")),
-            )
-        val endpoints =
-            transfers
-                .map { it.target }
-                .filter { site ->
-                    val role = site.role
-                    role is ImpactValueRoleDocument.Argument && role.invocation.callable in consumers
-                }
-                .toSet()
-        println("COMPILER_COVERAGE_ACTUAL $scenario ${Json.encodeToString(endpoints.toList())}")
-        assertEquals("Unexpected consumer endpoint set for $scenario", setOf(expected), endpoints)
-        assertTrue(
-            "Unrelated value reached a forbidden source range",
-            transfers.none {
-                it.target.range == source.markedRange("$scenario-forbidden")
-            },
         )
     }
 

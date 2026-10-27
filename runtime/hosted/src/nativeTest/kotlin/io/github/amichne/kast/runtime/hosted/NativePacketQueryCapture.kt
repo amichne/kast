@@ -23,6 +23,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
@@ -30,7 +31,10 @@ import io.github.amichne.kast.query.protocol.QueryInvocationPolicy
 import io.github.amichne.kast.query.protocol.QueryPublishedPage
 
 /** The production protocol alone explores paths and owns their retained presentation. */
-internal class NativePacketQueryCapture(private val services: NativePacketQueryServices) {
+internal class NativePacketQueryCapture(
+    private val services: NativePacketQueryServices,
+    private val checkpoint: NativePacketQueryCheckpoint? = null,
+) {
     private val budget = NativePacketQueryServices.budget
     private val policy =
         QueryInvocationPolicy(
@@ -90,14 +94,14 @@ internal class NativePacketQueryCapture(private val services: NativePacketQueryS
             }
         check(paths.isNotEmpty()) { "No retained compiler witness exists for emitted-witness evaluation" }
         recordCapture(outgoing, reads, paths.size)
-        return NativePacketQueryResult(outcome, paths)
+        return NativePacketQueryResult(outcome, paths, result)
     }
 
-    private suspend fun execute(request: QueryRunRequest): QueryPublishedPage =
+    internal suspend fun execute(request: QueryRunRequest): QueryPublishedPage =
         QueryPresentationExecution.evaluateAndFit(
             evaluate = { owner ->
                 services
-                    .protocol(owner)
+                    .protocol(owner, checkpoint)
                     .execute(
                         request = request,
                         lease = services.lease,
@@ -183,6 +187,10 @@ internal class NativePacketQueryCapture(private val services: NativePacketQueryS
 
 internal fun <T> packetQueryList(values: List<T>) = BoundedProtocolList.create(values).packetQueryRefined()
 
-internal data class NativePacketQueryResult(val outcome: QueryPublishedPage, val paths: List<ImpactPathDocument>)
+internal data class NativePacketQueryResult(
+    val outcome: QueryPublishedPage,
+    val paths: List<ImpactPathDocument>,
+    val retained: QueryRunResult,
+)
 
 private data class PacketQueryRetention(val reference: QueryResultReference, val unproven: Boolean)
