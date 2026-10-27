@@ -141,12 +141,17 @@ private fun PublicToolRetention?.lower(): QueryRetentionModeDocument =
     }
 
 private fun PublicToolReadResultAction.lowerReadResult(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
-    Refinement.Refined(PublicToolCanonical.Query(lowerReadResultRequest()))
+    when (val admitted = admitDetailSelection()) {
+        is Refinement.Refined -> Refinement.Refined(PublicToolCanonical.Query(lowerReadResultRequest()))
+        is Refinement.Rejected -> admitted
+    }
 
 private fun PublicToolReadResultAction.lowerReadResultRequest(): QueryRunRequest.ReadResult {
     val selected = output?.lower() ?: PublicToolDefaults.output
     val retainedCursor = cursor ?: QueryResultCursor.Start
     val budget = (executionBudget ?: PublicToolDefaults.executionBudget).lower()
+    val selectedDetail = detail
+    if (selectedDetail != null) return QueryRunRequest.ReadResult.detail(result, selectedDetail, selected, budget)
     return when (selected) {
         is QueryOutputDocument.Symbols ->
             QueryRunRequest.ReadResult.symbols(result, retainedCursor, selected, budget, evidenceCursor)

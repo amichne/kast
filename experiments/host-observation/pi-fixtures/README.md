@@ -69,7 +69,7 @@ offline by `PiQuestionSchema.java`. It calls the existing `generatedRequestSchem
 owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
-qualified and rejected serializers with existing local output definitions.
+qualified and rejected serialization code with existing local output definitions.
 The 2026-10-18 export uses the compositional callback changes based on source `50f064f1779433c49f3d513919b3474b7cc3ed0e`.
 The artifact digests identify the examined sources and generated result schema.
 
@@ -123,13 +123,12 @@ To export it, add `query/contract/build/libs/*` to the classpath above and pass
 its destination after the three schema paths. Existing three-argument export
 remains supported. No CLI production dependency or public wire enum is added.
 
-The three `*-document.json` files are public/synthetic query document DTOs,
-serialized offline by the installed release's **actual Kotlin serializers** with
-`PiCanonicalFixture.java`. No services, IDEs, compiler queries or models were
-composed. They prove producer-owned serialized shapes, not semantic admission
+The historical three `*-document.json` files are public/synthetic query document DTOs,
+serialized offline by the installed release's **actual Kotlin serialization code** with
+`PiCanonicalFixture.java`. No service, IDE, compiler query, or model ran. They prove producer-owned serialized shapes, not semantic admission
 of their synthetic identity tokens or their row counts.
 
-Producer: Kast LOCAL_BUILD 0.50.0, source
+Historical producer: Kast LOCAL_BUILD 0.50.0, source
 `659714d4aa8adfeb2e8b085efdb3cf230f82e92c`, tree
 `b7766ef03c19bc7c7025152f6fadbb34901f8e07`, contract 14.
 `wire-0.50.0.jar` SHA256:
@@ -169,12 +168,59 @@ cached WebSocket reuse sending one denied request, and the isolated SSE worker
 sending zero denied requests. It is compatibility/transport proof, not live
 model, native query or exhaustive-oracle evidence.
 
-# Reviewed shared-client envelope provenance
+# Current shared-client envelope provenance
 
-`delivery-canonical-rpc.json` comes from the actual compiled #995 fixture owner
+`query-delivery-cases.json` now comes from the candidate shared client.
+It includes the necessary semantic header and exact aggregate serialization costs.
+The canonical input comes from the current compiled `QueryDeliveryFixtures` owner.
+That owner serializes typed facts and admits each document against its current schema.
+The three synthetic `*-document.json` files also use the current compiled serialization code.
+Their original public facts remain unchanged.
+The output records the exact client and canonical SHA-256 values.
+These fixtures prove portable delivery behavior, without native semantic work or model inference.
+
+```sh
+node experiments/host-observation/generate_pi_delivery_fixtures.mjs \
+  cli/src/main/js/query-delivery.mjs \
+  experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json \
+  experiments/host-observation/pi-fixtures/query-delivery-cases.json --candidate
+```
+
+The candidate mode uses the supplied source directly.
+The historical mode still needs the pinned source digest.
+It also needs the pinned historical canonical input digest.
+The deadline case explicitly selects `BOUNDED` because `RUNNER_CONTROLLED` has no implicit semantic deadline.
+
+`native-current-documents.json` contains current typed projections of the pinned native receipts.
+The original `query-presentation-native.json` receipts stay unchanged.
+The Python oracle compares each original field and budget grant with its current projection.
+An absent legacy summary becomes explicit `null`, which means that original counts remain unknown.
+The old budget shape uses the concrete `ExecutionBudgetReport.Bounded` decoder.
+The normal serializer emits its explicit `BOUNDED` discriminator.
+Unknown discriminators still fail admission.
+
+Use the current compiled classpath for these offline exports:
+
+```sh
+mise exec -- java -cp "$CURRENT_CLASSPATH" \
+  experiments/host-observation/PiDeliveryCanonicalFixtures.java \
+  experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json
+mise exec -- java -cp "$CURRENT_CLASSPATH" \
+  experiments/host-observation/PiCanonicalFixture.java native-projection \
+  cli/src/test/resources/query-presentation-native.json \
+  experiments/host-observation/pi-fixtures/native-current-documents.json \
+  --legacy-nullable-input --legacy-bounded-input
+```
+
+The same exporter refreshes each synthetic document with its variant, input path, output path, and `--legacy-nullable-input`.
+These exports preserve synthetic and recorded semantic facts. They establish current serialized shapes without new native or model work.
+
+# Historical shared-client envelope provenance
+
+The historical `delivery-canonical-rpc.json` came from the actual compiled #995 fixture owner
 `QueryDeliveryFixtures.INSTANCE.serialized()`, called by
 `PiDeliveryCanonicalFixtures.java`. That owner constructs domain facts, uses the
-production Kotlin serializers, and asserts every document against its actual
+production Kotlin serialization code, and asserts every document against its actual
 query schema. No owner checkout or compiled file was modified.
 
 Pinned #995 source: `36a2e6d256d620cf37a4e7e622ee643d4c38c178`.
@@ -184,7 +230,7 @@ Pinned #995 source: `36a2e6d256d620cf37a4e7e622ee643d4c38c178`.
 - Actual compiled fixture class SHA256: `11dfeab7a65936ce7628d968de9f29628e9d1943d08478df4edb03d37162656d`
 - Canonical JSON SHA256: `868a92ac907a860b35ea08dee088f25661aa1535c011467786fc2000231705ad`
 
-`query-delivery-cases.json` is emitted by that pinned production shared client
+The historical `query-delivery-cases.json` came from that pinned production shared client
 using these canonical inputs. It covers complete, qualified, rejected proof,
 suffix retention loss, expired result, output/read budget increases, cancellation
 before/after a page, lost delivery, aggregate deadline, and oversized initial
@@ -192,13 +238,15 @@ presentation with null initial. The oversized input control repeats the owning
 client test's deliberate name-byte overflow; its envelope is still produced by
 the real client. No positive envelope is hand-shaped.
 
-Reproduce the stored envelope bytes with the exact client source:
+Reproduce the historical envelope bytes with the exact client source and canonical input:
 
 ```sh
 node experiments/host-observation/generate_pi_delivery_fixtures.mjs \
-  "$CLIENT_SOURCE" experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json \
+  "$CLIENT_SOURCE" "$HISTORICAL_CANONICAL_INPUT" \
   /tmp/query-delivery-cases.json
 ```
+
+Both historical input files must match the pinned digests. The current canonical fixture uses the candidate producer.
 
 The generator changes no production source; it exposes the two existing
 functions only, doubles external RPC transport and checks that every request

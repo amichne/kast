@@ -4,7 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 
 /** Cross-field response admission supplements generated shape validation; it does not establish ledger authority. */
 fun QueryRunResult.validateImpactAccounting(): Refinement<Unit, ImpactAccountingFailure> {
-    val pathCount = items.values.count { it is QueryResultItemDocument.ValuePath }.toLong()
+    val pathCount = items.values.count { it.detailKind() == QueryEntryDetailKind.VALUE_PATH }.toLong()
     if (impactAccounting == ImpactAccountingDocument.NotApplicable) return validateNonImpactAccounting(pathCount)
     if (!question.output.requiresImpactAccounting())
         return Refinement.Rejected(ImpactAccountingFailure.ACCOUNTING_FOR_NON_VALUE_OUTPUT)
@@ -30,7 +30,7 @@ fun QueryRunResult.validateImpactAccounting(): Refinement<Unit, ImpactAccounting
 private fun QueryRunResult.validateNonImpactAccounting(pathCount: Long): Refinement<Unit, ImpactAccountingFailure> =
     if (
         pathCount != 0L ||
-            items.values.any { it is QueryResultItemDocument.ImpactWitness } ||
+            items.values.any { it.detailKind() == QueryEntryDetailKind.IMPACT_WITNESS } ||
             question.output.requiresImpactAccounting()
     )
         Refinement.Rejected(ImpactAccountingFailure.MISSING_VALUE_ACCOUNTING)
@@ -43,7 +43,12 @@ private fun QueryRunResult.validateImpactRows(pathCount: Long): Refinement<Unit,
         return if (pathCount != items.values.size.toLong()) Refinement.Rejected(ImpactAccountingFailure.MIXED_ROW_KINDS)
         else Refinement.Refined(Unit)
     val witnessItems = items.values.filterIsInstance<QueryResultItemDocument.ImpactWitness>()
-    if (pathCount != 0L || witnessItems.size != items.values.size)
+    val deferred = items.values.filterIsInstance<QueryResultItemDocument.DeferredDetail>()
+    if (
+        deferred.any { it.detail.selector.kind != QueryEntryDetailKind.IMPACT_WITNESS } ||
+            pathCount != 0L ||
+            witnessItems.size + deferred.size != items.values.size
+    )
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
     if (witnessItems.any { it.item.section != witnessView.section || it.item.witness.section() != witnessView.section })
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
@@ -53,8 +58,27 @@ private fun QueryRunResult.validateImpactRows(pathCount: Long): Refinement<Unit,
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return specific
     }
-    return witnessView.validateWitnessOrdinals(witnessItems)
+    return witnessView.validatePresentationOrdinals(items.values)
 }
+
+private fun ImpactAccountingViewDocument.Witness.validatePresentationOrdinals(
+    items: List<QueryResultItemDocument>
+): Refinement<Unit, ImpactAccountingFailure> {
+    if (nextOrdinal.value < firstOrdinal.value || nextOrdinal.value > sectionCount.value)
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
+    if (nextOrdinal.value - firstOrdinal.value != items.size.toLong())
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
+    if (items.withIndex().any { (index, item) -> !item.matchesWitnessOrdinal(firstOrdinal.value + index) })
+        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
+    return Refinement.Refined(Unit)
+}
+
+private fun QueryResultItemDocument.matchesWitnessOrdinal(expected: Long): Boolean =
+    when (this) {
+        is QueryResultItemDocument.ImpactWitness -> item.ordinal.value == expected
+        is QueryResultItemDocument.DeferredDetail -> detail.selector.ordinal.value.toLong() == expected
+        else -> false
+    }
 
 private fun ImpactAccountingDocument.Investigated.validateWitnessSection(
     view: ImpactAccountingViewDocument.Witness,
@@ -93,18 +117,6 @@ private fun validateFindingReferences(
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
     if (references.map { it.pathRowId }.distinct().size != references.size)
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
-    return Refinement.Refined(Unit)
-}
-
-private fun ImpactAccountingViewDocument.Witness.validateWitnessOrdinals(
-    items: List<QueryResultItemDocument.ImpactWitness>
-): Refinement<Unit, ImpactAccountingFailure> {
-    if (nextOrdinal.value < firstOrdinal.value || nextOrdinal.value > sectionCount.value)
-        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
-    if (nextOrdinal.value - firstOrdinal.value != items.size.toLong())
-        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
-    if (items.withIndex().any { (index, item) -> item.item.ordinal.value != firstOrdinal.value + index })
-        return Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH)
     return Refinement.Refined(Unit)
 }
 

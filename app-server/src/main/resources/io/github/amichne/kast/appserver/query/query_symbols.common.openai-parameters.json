@@ -14,7 +14,7 @@
   ],
   "additionalProperties": false,
   "$defs": {
-    "DirectoryScope": {
+    "Directory": {
       "type": "object",
       "properties": {
         "type": {
@@ -52,7 +52,7 @@
       ],
       "additionalProperties": false
     },
-    "PackageScope": {
+    "Package": {
       "type": "object",
       "properties": {
         "type": {
@@ -90,7 +90,7 @@
       ],
       "additionalProperties": false
     },
-    "SearchSource": {
+    "Search": {
       "type": "object",
       "properties": {
         "type": {
@@ -150,7 +150,7 @@
       ],
       "additionalProperties": false
     },
-    "ReferenceSource": {
+    "ExactRefs": {
       "type": "object",
       "properties": {
         "type": {
@@ -178,30 +178,30 @@
     "Output": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SymbolsOutput"
+          "$ref": "#/$defs/Symbols"
         },
         {
-          "$ref": "#/$defs/OccurrencesOutput"
+          "$ref": "#/$defs/Occurrences"
         },
         {
           "type": "null"
         }
       ]
     },
-    "ReadResultOutput": {
+    "ReadOutput": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SymbolsOutput"
+          "$ref": "#/$defs/Symbols"
         },
         {
-          "$ref": "#/$defs/OccurrencesOutput"
+          "$ref": "#/$defs/Occurrences"
         },
         {
           "type": "null"
         }
       ]
     },
-    "SymbolsOutput": {
+    "Symbols": {
       "type": "object",
       "properties": {
         "type": {
@@ -231,7 +231,7 @@
       ],
       "additionalProperties": false
     },
-    "OccurrencesOutput": {
+    "Occurrences": {
       "type": "object",
       "properties": {
         "type": {
@@ -246,7 +246,7 @@
       ],
       "additionalProperties": false
     },
-    "ExpandRelation": {
+    "Relation": {
       "type": "object",
       "properties": {
         "type": {
@@ -270,7 +270,7 @@
         "expansionScope": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ExpansionScope"
+              "$ref": "#/$defs/Expansion"
             },
             {
               "type": "null"
@@ -305,7 +305,8 @@
             "null"
           ],
           "minimum": 1,
-          "maximum": 9223372036854775807
+          "maximum": 9223372036854775807,
+          "description": "Query minimum: 4096 UTF-8 bytes."
         }
       },
       "required": [
@@ -314,11 +315,11 @@
       ],
       "additionalProperties": false
     },
-    "ResultReference": {
+    "ResultRef": {
       "type": "string",
       "pattern": "^result:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
-    "ResultCursor": {
+    "RowCursor": {
       "type": [
         "integer",
         "null"
@@ -334,7 +335,7 @@
       "minimum": 0,
       "maximum": 1000000
     },
-    "RunAction": {
+    "Run": {
       "type": "object",
       "properties": {
         "type": {
@@ -358,7 +359,7 @@
           "maxItems": 1000
         },
         "terminalStep": {
-          "$ref": "#/$defs/TerminalStep"
+          "$ref": "#/$defs/Terminal"
         },
         "retention": {
           "type": [
@@ -403,7 +404,7 @@
       ],
       "additionalProperties": false
     },
-    "ResumeAction": {
+    "Resume": {
       "type": "object",
       "properties": {
         "type": {
@@ -413,7 +414,7 @@
           ]
         },
         "continuation": {
-          "$ref": "#/$defs/ExecutionContinuation"
+          "$ref": "#/$defs/OutputRef"
         },
         "executionBudget": {
           "anyOf": [
@@ -443,12 +444,12 @@
           ]
         },
         "result": {
-          "$ref": "#/$defs/ResultReference"
+          "$ref": "#/$defs/ResultRef"
         },
         "cursor": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ResultCursor"
+              "$ref": "#/$defs/RowCursor"
             },
             {
               "type": "null"
@@ -458,7 +459,7 @@
         "output": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ReadResultOutput"
+              "$ref": "#/$defs/ReadOutput"
             },
             {
               "type": "null"
@@ -484,6 +485,16 @@
               "type": "null"
             }
           ]
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Detail"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -492,15 +503,16 @@
         "cursor",
         "output",
         "executionBudget",
-        "evidence_cursor"
+        "evidence_cursor",
+        "detail"
       ],
       "additionalProperties": false
     },
-    "ExecutionContinuation": {
+    "OutputRef": {
       "type": "string",
       "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
-    "LocationSource": {
+    "Location": {
       "type": "object",
       "properties": {
         "type": {
@@ -527,10 +539,10 @@
     "Scope": {
       "anyOf": [
         {
-          "$ref": "#/$defs/DirectoryScope"
+          "$ref": "#/$defs/Directory"
         },
         {
-          "$ref": "#/$defs/PackageScope"
+          "$ref": "#/$defs/Package"
         },
         {
           "type": "null"
@@ -540,36 +552,36 @@
     "Source": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SearchSource"
+          "$ref": "#/$defs/Search"
         },
         {
-          "$ref": "#/$defs/LocationSource"
+          "$ref": "#/$defs/Location"
         },
         {
-          "$ref": "#/$defs/ReferenceSource"
+          "$ref": "#/$defs/ExactRefs"
         }
       ]
     },
     "Step": {
       "anyOf": [
         {
-          "$ref": "#/$defs/ExpandRelation"
+          "$ref": "#/$defs/Relation"
         }
       ]
     },
     "Action": {
       "anyOf": [
         {
-          "$ref": "#/$defs/RunAction"
+          "$ref": "#/$defs/Run"
         },
         {
-          "$ref": "#/$defs/ResumeAction"
+          "$ref": "#/$defs/Resume"
         },
         {
           "$ref": "#/$defs/ReadResultAction"
         },
         {
-          "$ref": "#/$defs/ReadSourceAction"
+          "$ref": "#/$defs/ReadSource"
         }
       ]
     },
@@ -658,7 +670,7 @@
       ],
       "additionalProperties": false
     },
-    "ExpansionScope": {
+    "Expansion": {
       "anyOf": [
         {
           "$ref": "#/$defs/ImpactWorkspaceDomain"
@@ -671,11 +683,11 @@
         }
       ]
     },
-    "SourceCandidateReference": {
+    "SourceRef": {
       "type": "string",
       "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$"
     },
-    "ReadSourceAction": {
+    "ReadSource": {
       "type": "object",
       "properties": {
         "type": {
@@ -685,7 +697,7 @@
           ]
         },
         "candidateRef": {
-          "$ref": "#/$defs/SourceCandidateReference"
+          "$ref": "#/$defs/SourceRef"
         },
         "region": {
           "type": [
@@ -706,7 +718,7 @@
         "text": {
           "anyOf": [
             {
-              "$ref": "#/$defs/SourceText"
+              "$ref": "#/$defs/Text"
             },
             {
               "type": "null"
@@ -733,7 +745,7 @@
       ],
       "additionalProperties": false
     },
-    "TerminalStep": {
+    "Terminal": {
       "anyOf": [
         {
           "$ref": "#/$defs/Emit"
@@ -772,7 +784,7 @@
     "TraceOutput": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SymbolsOutput"
+          "$ref": "#/$defs/Symbols"
         }
       ]
     },
@@ -788,7 +800,7 @@
         "expansionScope": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ExpansionScope"
+              "$ref": "#/$defs/Expansion"
             },
             {
               "type": "null"
@@ -813,7 +825,7 @@
       ],
       "additionalProperties": false
     },
-    "SourceTextComplete": {
+    "FullText": {
       "type": "object",
       "properties": {
         "type": {
@@ -828,7 +840,7 @@
       ],
       "additionalProperties": false
     },
-    "SourceTextNone": {
+    "NoText": {
       "type": "object",
       "properties": {
         "type": {
@@ -843,7 +855,7 @@
       ],
       "additionalProperties": false
     },
-    "SourceTextWindow": {
+    "TextWindow": {
       "type": "object",
       "properties": {
         "type": {
@@ -876,23 +888,23 @@
       ],
       "additionalProperties": false
     },
-    "SourceText": {
+    "Text": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SourceTextComplete"
+          "$ref": "#/$defs/FullText"
         },
         {
-          "$ref": "#/$defs/SourceTextNone"
+          "$ref": "#/$defs/NoText"
         },
         {
-          "$ref": "#/$defs/SourceTextWindow"
+          "$ref": "#/$defs/TextWindow"
         },
         {
-          "$ref": "#/$defs/SourceTextExcerpt"
+          "$ref": "#/$defs/TextExcerpt"
         }
       ]
     },
-    "SourceTextExcerpt": {
+    "TextExcerpt": {
       "type": "object",
       "properties": {
         "type": {
@@ -925,6 +937,75 @@
         "RUNNER_CONTROLLED",
         null
       ]
+    },
+    "Section": {
+      "type": "string",
+      "enum": [
+        "CANONICAL_ENTRY_JSON"
+      ]
+    },
+    "Detail": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/ResultRef"
+        },
+        "section": {
+          "$ref": "#/$defs/Section"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "ROW",
+            "EVIDENCE"
+          ]
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "EXACT_SYMBOL",
+            "OCCURRENCE",
+            "REFERENCE_OCCURRENCE",
+            "TRAVERSAL_RECORD",
+            "BINDING_ROW",
+            "VALUE_PATH",
+            "IMPACT_WITNESS",
+            "FAILURE",
+            "OMISSION",
+            "WALK_OBSERVATION",
+            "REFERENCE_OBSERVATION",
+            "DISCOVERY_OBSERVATION",
+            "RELATION_OBSERVATION"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "result",
+        "section",
+        "target",
+        "ordinal",
+        "kind",
+        "sha256",
+        "offset"
+      ],
+      "additionalProperties": false
     }
   }
 }

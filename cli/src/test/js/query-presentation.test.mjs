@@ -17,6 +17,90 @@ const owner = new SourceTextModule(readFileSync(new URL('../../main/js/query-del
 await owner.link(() => { throw new Error('Pure delivery presentation must not import effects'); });
 await owner.evaluate();
 const { queryPresentation, awaitQueryDelivery, createQueryDeliveryEnvelope } = owner.namespace;
+
+for (const [name, outcome] of [['proof', 'qualified'], ['rejected', 'rejected_document']])
+test(`oversized ${outcome} preserves semantic header and exact aggregate limit`, async () => {
+  const fixtures=JSON.parse(readFileSync(new URL('../../../../experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json',import.meta.url)));
+  const reply=structuredClone(fixtures[name]);
+  const rows=reply.document.items??reply.document.rejection.detail.evidence.preview;
+  rows[0].name='λ"\\'.repeat(100000);
+  let calls=0;
+  const result=await awaitQueryDelivery({request:{type:'RUN',source:{type:'SEARCH_DECLARATIONS',declarationName:'fixture'},terminalStep:{type:'EMIT'}}},
+    async()=>{assert.equal(++calls,1,'An oversized initial response cannot trigger an unbounded drain');return reply;},
+    {callTimeoutMillis:1000},undefined,()=>0);
+  assert.equal(result.initial,null);
+  assert.equal(result.delivery.stop,'BYTE_LIMIT');
+  assert.equal(result.semantic.original_outcome,outcome);
+  assert.equal(result.semantic.coverage.type,'QUALIFIED');
+  assert.equal(result.semantic.coverage.known_minimum,43);
+  assert.deepEqual(Array.from(result.semantic.coverage.limitations),['TIME_LIMIT_REACHED']);
+  assert.equal(result.semantic.completion.model,'COMPILER_RESOLVED_STATIC_V1');
+  assert.equal(result.semantic.authority.type,'RETAINED_RESULT');
+  assert.equal(result.semantic.authority.result,'result:v1:00000000-0000-0000-0000-000000000001');
+  assert.equal(result.semantic.presentation.rows,0);
+  assert.equal(result.semantic.presentation.detail,'DEFERRED_DETAIL');
+  assert.equal(result.semantic.recovery.type,'READ_RESULT');
+  assert.ok(Buffer.byteLength(JSON.stringify(result),'utf8')<=262144);
+  assert.ok(Buffer.byteLength(queryPresentation(result),'utf8')<=262144);
+});
+
+test('original omitted failure and omission kinds survive a prefix that presents neither entry', async () => {
+  const fixtures=JSON.parse(readFileSync(new URL('../../../../experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json',import.meta.url)));
+  const reply=structuredClone(fixtures.prefix);
+  reply.document.original_evidence_summary={failure_count:1,omission_count:1,evidence_count:2,
+    failure_kinds:['EXACT_REFERENCE'],omission_reasons:['PROVIDER_STALLED'],
+    refinement_reasons:[],exact_reasons:['COMPILER_IDENTITY_UNAVAILABLE'],predicate_reasons:[],source_reasons:[],
+    source_limitations:[],relation_reasons:[],walk_one_hop_reasons:[],walk_reasons:[]};
+  assert.deepEqual(reply.document.failures,[]);
+  assert.deepEqual(reply.document.omissions,[]);
+  reply.document.items[0].name='λ"\\'.repeat(100000);
+  const result=await awaitQueryDelivery({request:{type:'RUN',source:{type:'SEARCH_DECLARATIONS',declarationName:'fixture'},terminalStep:{type:'EMIT'}}},
+    async()=>reply,{callTimeoutMillis:1000},undefined,()=>0);
+  assert.equal(result.initial,null);
+  assert.equal(result.semantic.blockers.failure_count,1);
+  assert.deepEqual(Array.from(result.semantic.blockers.kinds),['EXACT_REFERENCE']);
+  assert.deepEqual(Array.from(result.semantic.blockers.codes),['COMPILER_IDENTITY_UNAVAILABLE']);
+  assert.equal(result.semantic.omissions.count,1);
+  assert.deepEqual(Array.from(result.semantic.omissions.codes),['PROVIDER_STALLED']);
+  assert.equal(result.semantic.presentation.evidence_total,2);
+  assert.equal(result.semantic.presentation.evidence_presented,0);
+});
+
+test('a deferred summary reaches the next row without claiming delivered detail', async () => {
+  const fixtures=JSON.parse(readFileSync(new URL('../../../../experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json',import.meta.url)));
+  const prefix=structuredClone(fixtures.prefix),tail=structuredClone(fixtures.rows);
+  const resultReference='result:v1:00000000-0000-0000-0000-000000000001';
+  prefix.document.invocation.accumulated_row_count=2;
+  prefix.document.items=[{type:'DEFERRED_DETAIL',detail:{selector:{result:resultReference,
+    section:'CANONICAL_ENTRY_JSON',target:'ROW',ordinal:0,kind:'exact-symbol',sha256:'a'.repeat(64),offset:0},meaning:'Large exact symbol'}}];
+  tail.document.items=tail.document.items.slice(0,1);delete tail.document.next_cursor;
+  for(const reply of [prefix,tail]) {
+    reply.document.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    reply.document.failures=[];
+  }
+  const requests=[],replies=[prefix,tail];
+  const result=await awaitQueryDelivery({request:{type:'RUN',source:{type:'SEARCH_DECLARATIONS',declarationName:'fixture'},terminalStep:{type:'EMIT'}}},
+    async request=>{requests.push(request);assert.ok(requests.length<=2);return replies[requests.length-1];},
+    {callTimeoutMillis:1000},undefined,()=>0);
+  assert.deepEqual(requests.map(value=>value.request.type),['RUN','READ_RESULT']);
+  assert.equal(result.delivery.stop,'DELIVERED');
+  assert.equal(result.semantic.presentation.rows,2);
+  assert.equal(result.semantic.presentation.deferred_count,1);
+  assert.equal(result.semantic.presentation.detail,'DEFERRED_DETAIL');
+  assert.equal(result.semantic.presentation.evidence_presented,0);
+  assert.equal(result.pages[0].document.items[0].name,'function1');
+  assert.ok(queryPresentation(result).includes('DEFERRED_DETAIL'));
+});
+
+test('ordinary qualified coverage preserves its known minimum and finite limitations', () => {
+  const fixtures=JSON.parse(readFileSync(new URL('../../../../experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json',import.meta.url)));
+  const reply=fixtures.outputPrefix;
+  const result=createQueryDeliveryEnvelope(reply,[],{stop:'BYTE_LIMIT',rpc_count:1,request_bytes:0,response_bytes:1,result:null});
+  assert.equal(result.semantic.original_outcome,'qualified');
+  assert.equal(result.semantic.coverage.type,'QUALIFIED');
+  assert.equal(result.semantic.coverage.known_minimum,43);
+  assert.deepEqual(Array.from(result.semantic.coverage.limitations),['time-limit-reached']);
+});
 for (const executionMode of [undefined, null, 'RUNNER_CONTROLLED', 'BOUNDED'])
 test(`RUN executionMode=${executionMode} selects the normalized transport lifetime`, async () => {
   let time = 0;
@@ -595,13 +679,96 @@ test('expired detail handle returns the exact finite rejection without reviving 
   assert.equal(queryPresentation(result), JSON.stringify(unavailable));
 });
 
-test('fixed result oracle preserves evidence and accounts for terminal request bytes without semantic replay', async () => {
+// These positions come from the independent 43-row fixture oracle, not the delivery implementation.
+const expectedRowWindows = {
+  complete: [{ type: 'MORE', start: 0, end: 1, total: 43 },
+    { type: 'FINAL', start: 1, end: 43, total: 43 }, { type: 'FINAL', start: 43, end: 43, total: 43 }],
+  qualified: [null, null],
+  rejectedProof: [null, { type: 'FINAL', start: 0, end: 43, total: 43 },
+    { type: 'FINAL', start: 43, end: 43, total: 43 }],
+  expired: [{ type: 'MORE', start: 0, end: 1, total: 43 }, null],
+  unavailable: [null, null], budgetIncrease: [null, null],
+  readBudgetIncrease: [{ type: 'MORE', start: 0, end: 1, total: 43 }, null],
+};
+const fixedResultIdentity = 'result:v1:00000000-0000-0000-0000-000000000001';
+function assertExpectedRowWindows(result, name) {
+  const replies = [result.initial, ...result.pages], expected = expectedRowWindows[name];
+  assert.equal(replies.length, expected.length);
+  for (const [index, reply] of replies.entries()) {
+    if (expected[index] == null) assert.equal(reply.document.row_window ?? null, null);
+    else {
+      assert.deepEqual(reply.document.row_window, expected[index]);
+      assert.deepEqual(reply.document.retention, { kind: 'retained', reference: fixedResultIdentity });
+    }
+  }
+}
+
+// Test-only comparison with historical bytes. Keep current bytes and all meaningful current facts.
+// A nonnull row window enters this view only after exact comparison with the independent positions.
+function historicalRepresentation(value, expectedWindows = []) {
+  if (Array.isArray(value)) {
+    const children = value.map(child => historicalRepresentation(child, expectedWindows));
+    return { value: children.map(child => child.value), extraSyntaxBytes: children.reduce((sum, child) => sum + child.extraSyntaxBytes, 0) };
+  }
+  if (value == null || typeof value !== 'object') return { value, extraSyntaxBytes: 0 };
+  const kept = [], removed = [];
+  let extraSyntaxBytes = 0;
+  for (const [key, child] of Object.entries(value)) {
+    let expected;
+    if (key === 'original_evidence_summary' && child === null) expected = null;
+    else if (key === 'original_evidence_summary_state' && child?.type === 'UNCAPTURED' && Object.keys(child).length === 1)
+      expected = { type: 'UNCAPTURED' };
+    else if (key === 'row_window') {
+      if (child === null) expected = null;
+      else {
+        expected = expectedWindows.find(window => window != null && JSON.stringify(window) === JSON.stringify(child));
+        assert.ok(expected, 'A meaningful row window needs independent exact facts before historical comparison');
+        assert.deepEqual(child, expected);
+      }
+    }
+    if (expected !== undefined) {
+      removed.push(key);
+      // Each removed member has its encoded key, colon, and independently expected value.
+      extraSyntaxBytes += Buffer.byteLength(JSON.stringify(key)) + 1 + Buffer.byteLength(JSON.stringify(expected));
+    } else {
+      const projected = historicalRepresentation(child, expectedWindows);
+      kept.push([key, projected.value]);
+      extraSyntaxBytes += projected.extraSyntaxBytes;
+    }
+  }
+  // Object separators add one byte per extra member, except an otherwise empty object.
+  extraSyntaxBytes += Math.max(0, kept.length + removed.length - 1) - Math.max(0, kept.length - 1);
+  return { value: Object.fromEntries(kept), extraSyntaxBytes };
+}
+
+test('historical byte comparison keeps captured facts and rejects an unproved row window', () => {
+  const facts = { original_evidence_summary: { failure_count: 2, omission_count: 1, evidence_count: 3 },
+    original_evidence_summary_state: { type: 'CAPTURED', summary: { failure_count: 2 } },
+    retained: fixedResultIdentity, outcome: 'qualified' };
+  assert.deepEqual(historicalRepresentation(facts), { value: facts, extraSyntaxBytes: 0 });
+  const window = { type: 'FINAL', start: 0, end: 99, total: 99 };
+  assert.throws(() => historicalRepresentation({ row_window: window }, expectedRowWindows.complete),
+    /independent exact facts/);
+  const unknown = { identity: fixedResultIdentity, original_evidence_summary: null,
+    original_evidence_summary_state: { type: 'UNCAPTURED' }, row_window: null };
+  const projected = historicalRepresentation(unknown);
+  assert.deepEqual(projected.value, { identity: fixedResultIdentity });
+  assert.equal(projected.extraSyntaxBytes, 33 + 56 + 18);
+  assert.equal(Buffer.byteLength(JSON.stringify(unknown)), Buffer.byteLength(JSON.stringify(projected.value)) + projected.extraSyntaxBytes);
+});
+
+test('fixed result oracle preserves evidence and accounts for terminal request bytes without semantic replay', async t => {
   // Only the fresh RUN shape changes. Preserve the historical capture and its measured evidence.
   const terminalBytes = Buffer.byteLength(JSON.stringify({ terminalStep: { type: 'EMIT', output: null } }))
     - Buffer.byteLength(JSON.stringify({ output: null }));
   for (const measurement of measurements.cases) {
     const frozen = captured.cases[measurement.name].result;
     const replies = [frozen.initial, ...frozen.pages], requests = [];
+    assertExpectedRowWindows(frozen, measurement.name);
+    const historical = replies.map(reply => historicalRepresentation(reply, expectedRowWindows[measurement.name]));
+    const addedResponseSyntax = historical.reduce((sum, reply) => sum + reply.extraSyntaxBytes, 0);
+    const historicalResponseBytes = historical.reduce((sum, reply) => sum + Buffer.byteLength(JSON.stringify(reply.value)), 0);
+    assert.equal(historicalResponseBytes, measurement.after.responseBytes);
     let responseBytes = 0;
     const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
       terminalStep: { type: 'EMIT', output: { type: 'SYMBOLS', fields: ['NAME'] } }, executionBudget: { maxResults: 43 } } },
@@ -615,7 +782,7 @@ test('fixed result oracle preserves evidence and accounts for terminal request b
     }, { callTimeoutMillis: 1000 }, undefined, () => 0);
     assert.equal(requests.length, replies.length, 'All fixture replies consumed');
     const expected = structuredClone(frozen);
-    expected.delivery.request_bytes += terminalBytes;
+    // The candidate fixture already records terminal grammar and the mandatory header.
     assert.equal(JSON.stringify(result), JSON.stringify(expected));
     const metrics = {
       logicalQueries: 1, physicalRpcs: requests.length,
@@ -623,24 +790,30 @@ test('fixed result oracle preserves evidence and accounts for terminal request b
       requestBytes: requests.reduce((bytes, request) => bytes + Buffer.byteLength(JSON.stringify(request)), 0),
       responseBytes, modelVisibleBytes: Buffer.byteLength(queryPresentation(result)),
     };
-    assert.deepEqual(metrics, { ...measurement.after,
-      requestBytes: measurement.after.requestBytes + terminalBytes,
-      modelVisibleBytes: measurements.summaryFollowUp.cases[measurement.name].modelVisibleBytes });
-    assert.deepEqual({ ...metrics, modelVisibleBytes: Buffer.byteLength(JSON.stringify(frozen)) },
-      { ...measurement.before, requestBytes: measurement.before.requestBytes + terminalBytes });
+    assert.equal(metrics.logicalQueries,1);
+    assert.equal(metrics.physicalRpcs,measurement.after.physicalRpcs);
+    assert.equal(metrics.responseBytes, measurement.after.responseBytes + addedResponseSyntax);
+    // For complete: 278 = three null-summary fields (99) plus asserted row-window syntax (179).
+    // This is representation cost, not an improvement or a change to original evidence counts.
+    t.diagnostic(`${measurement.name}: current response=${metrics.responseBytes}, historical=${historicalResponseBytes}, added syntax=${addedResponseSyntax}`);
+    // Historical byte measurements exclude the new mandatory semantic header.
     assert.equal(metrics.semanticExecutions, 1);
     assert.equal(metrics.requestBytes, result.delivery.request_bytes);
     assert.equal(metrics.responseBytes, result.delivery.response_bytes);
   }
 });
 
-test('presentation serialization avoids full declaration keys while the summary preserves exact evidence', async () => {
-  let calls = 0, bytes = 0, dictionaryCalls = 0, dictionaryBytes = 0;
+test('presentation serialization avoids full declaration keys while the summary preserves exact evidence', async t => {
+  let calls = 0, bytes = 0, dictionaryCalls = 0, dictionaryBytes = 0, historicalBytes = 0, addedSyntaxBytes = 0;
+  let independentlyExpectedWindows = [];
   const dictionaryObjects = new Set(native.cases.occurrences.reply.document.items.flatMap(row =>
     [row.occurrence.target, row.occurrence.ownership.declaration]));
   const measuredJSON = { parse: JSON.parse, stringify(value, ...arguments_) {
     const encoded = JSON.stringify(value, ...arguments_);
     calls++; bytes += Buffer.byteLength(encoded);
+    const historical = historicalRepresentation(value, independentlyExpectedWindows);
+    historicalBytes += Buffer.byteLength(JSON.stringify(historical.value));
+    addedSyntaxBytes += historical.extraSyntaxBytes;
     if (dictionaryObjects.has(value)) { dictionaryCalls++; dictionaryBytes += Buffer.byteLength(encoded); }
     return encoded;
   } };
@@ -654,16 +827,24 @@ test('presentation serialization avoids full declaration keys while the summary 
       request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(reply)), result: reply.document.retention.reference }) };
   for (const measurement of measurements.presentationSerialization.cases) {
     const result = fixtures[measurement.name];
-    calls = bytes = dictionaryCalls = dictionaryBytes = 0;
+    calls = bytes = dictionaryCalls = dictionaryBytes = historicalBytes = addedSyntaxBytes = 0;
+    independentlyExpectedWindows = measurement.name === 'complete' ? expectedRowWindows.complete : [];
+    if (measurement.name === 'complete') assertExpectedRowWindows(result, 'complete');
     assert.equal(instrumented.namespace.queryPresentation(result), queryPresentation(result));
     if (measurement.name === 'occurrencesPrefix')
       assert.equal(createHash('sha256').update(queryPresentation(result)).digest('hex'),
         measurements.summaryFollowUp.cases.occurrencesPrefix.textSha256,
         'The fixed compact presentation remains reproducible');
-    assert.deepEqual({ calls, bytes }, measurements.summaryFollowUp.cases[measurement.name].serialization);
+    const frozen = measurements.summaryFollowUp.cases[measurement.name].serialization;
+    assert.deepEqual({ calls, bytes: historicalBytes }, frozen);
+    assert.equal(bytes, frozen.bytes + addedSyntaxBytes);
+    // Complete adds 369 bytes: four null-summary fields (132) plus asserted window syntax (237).
+    // The first metadata is serialized twice. Both later pages are serialized once. Calls stay 51.
+    t.diagnostic(`${measurement.name}: current stringify calls=${calls}, bytes=${bytes}, historical=${historicalBytes}, added syntax=${addedSyntaxBytes}`);
     if (measurement.dictionaryKeyConstruction)
       assert.deepEqual({ calls: dictionaryCalls, bytes: dictionaryBytes }, measurement.dictionaryKeyConstruction);
-    assert.deepEqual({ calls: 1, bytes: Buffer.byteLength(JSON.stringify(result)) }, measurement.before);
+    assert.equal(calls>0,true);
+    assert.equal(Buffer.byteLength(JSON.stringify(result))>measurement.before.bytes,true,'The mandatory header has an explicit encoded cost');
   }
 });
 
@@ -742,7 +923,7 @@ test('smaller description-key work cannot buy extra canonical envelope drainage'
   assert.equal(view.details.request.result, source.document.retention.reference);
   assert.equal(queryPresentation(result, true), JSON.stringify(result));
   assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 262144);
-  assert.equal(Buffer.byteLength(JSON.stringify(result)), 239645);
+  assert.equal(Buffer.byteLength(JSON.stringify(result)), 240507);
   assert.equal(Buffer.byteLength(view.text), measurements.summaryFollowUp.synthetic185.visibleBytes);
   assert.equal(readBytes, 279333);
   console.log(JSON.stringify({ boundary: 'Synthetic pure canonical-envelope drainage',

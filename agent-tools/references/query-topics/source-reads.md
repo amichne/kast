@@ -11,8 +11,8 @@ Returned capabilities: Source text and region identity.
 Legal next actions: Preserve freshness failures. A window does not prove complete source.
 
 Canonical choices and defaults:
-- `ReadSourceAction.type`: choices: ["READ_SOURCE"], default: "READ_SOURCE".
-- `ReadSourceAction.region`: choices: ["ANCHOR","CALLABLE_BODY","CLASS_BODY","FILE","ENCLOSING_DECLARATION","ENCLOSING_CALLABLE_BODY","ENCLOSING_CLASS_BODY",null], default: "ANCHOR".
+- `ReadSourceAction.type`: choices: `["READ_SOURCE"]`, default: `"READ_SOURCE"`.
+- `ReadSourceAction.region`: choices: `["ANCHOR","CALLABLE_BODY","CLASS_BODY","FILE","ENCLOSING_DECLARATION","ENCLOSING_CALLABLE_BODY","ENCLOSING_CLASS_BODY",null]`, default: `"ANCHOR"`.
 
 COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 

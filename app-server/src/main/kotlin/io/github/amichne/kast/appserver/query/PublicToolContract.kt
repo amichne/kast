@@ -4,8 +4,8 @@ import io.github.amichne.kast.appserver.schema.*
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
@@ -44,6 +44,9 @@ enum class PublicToolParameter(val path: String) {
     EXECUTION_MODE("executionMode"),
     EXECUTION_BUDGET_MAX_WORK_UNITS("executionBudget.maxWorkUnits"),
     EXECUTION_BUDGET_MAX_RETURNED_BYTES("executionBudget.maxReturnedBytes"),
+    DETAIL_RESULT("detail.result"),
+    DETAIL_KIND("detail.kind"),
+    DETAIL_CURSOR("detail.ordinal"),
 }
 
 @Serializable
@@ -59,8 +62,12 @@ enum class PublicToolRule(val correction: String) {
         "RUNNER_CONTROLLED does not accept maxWorkUnits; remove executionBudget.maxWorkUnits or select BOUNDED."
     ),
     OUTPUT_CONTROL_ALLOWANCE(
-        "maxReturnedBytes must be at least $PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES bytes. Smaller requests use the protocol control allowance."
+        "maxReturnedBytes must be at least $PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES bytes. " +
+            "Smaller requests use the protocol control allowance."
     ),
+    SAME_RETAINED_RESULT("Use the detail selector with its original retained result."),
+    DETAIL_TARGET_KIND("Use a row kind for ROW or an evidence kind for EVIDENCE."),
+    DETAIL_CURSOR_CONTROL("Use detail.ordinal for detail reads. Omit cursor and evidence_cursor."),
 }
 
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */
@@ -138,21 +145,27 @@ private constructor(
 }
 
 private fun PublicToolDocument.admitOutputAllowance(): Refinement<Unit, PublicToolInputFailure> {
-    val budget = when (this) {
-        is PublicToolQuerySymbols -> when (val action = request) {
-            is PublicToolRunAction -> action.executionBudget
-            is PublicToolResumeAction -> action.executionBudget
-            is PublicToolReadResultAction -> action.executionBudget
-            is PublicToolReadSourceAction -> action.executionBudget
+    val budget =
+        when (this) {
+            is PublicToolQuerySymbols ->
+                when (val action = request) {
+                    is PublicToolRunAction -> action.executionBudget
+                    is PublicToolResumeAction -> action.executionBudget
+                    is PublicToolReadResultAction -> action.executionBudget
+                    is PublicToolReadSourceAction -> action.executionBudget
+                }
+            is PublicToolCheckDiagnostics,
+            is PublicToolAddDeclaration,
+            is PublicToolReplaceBody -> null
         }
-        is PublicToolCheckDiagnostics,
-        is PublicToolAddDeclaration,
-        is PublicToolReplaceBody -> null
-    }
     val bytes = budget?.maxReturnedBytes
     return if (bytes != null && bytes < PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES)
-        Refinement.Rejected(PublicToolInputFailure.Parameter(
-            PublicToolParameter.EXECUTION_BUDGET_MAX_RETURNED_BYTES, PublicToolRule.OUTPUT_CONTROL_ALLOWANCE))
+        Refinement.Rejected(
+            PublicToolInputFailure.Parameter(
+                PublicToolParameter.EXECUTION_BUDGET_MAX_RETURNED_BYTES,
+                PublicToolRule.OUTPUT_CONTROL_ALLOWANCE,
+            )
+        )
     else Refinement.Refined(Unit)
 }
 
@@ -163,10 +176,11 @@ object PublicToolContract {
         explicitNulls = true
         encodeDefaults = true
     }
-    private val commonEncodingJson = Json(json) {
-        explicitNulls = false
-        encodeDefaults = false
-    }
+    private val commonEncodingJson =
+        Json(json) {
+            explicitNulls = false
+            encodeDefaults = false
+        }
 
     private val parametersByIdentity by lazy {
         PublicToolIdentity.entries.associateWith { identity ->
@@ -193,8 +207,9 @@ object PublicToolContract {
     }
 
     private fun readQuerySchema(resource: String): JsonObject =
-        requireNotNull(javaClass.getResourceAsStream(resource)).bufferedReader(Charsets.UTF_8)
-            .use { Json.parseToJsonElement(it.readText()).jsonObject }
+        requireNotNull(javaClass.getResourceAsStream(resource)).bufferedReader(Charsets.UTF_8).use {
+            Json.parseToJsonElement(it.readText()).jsonObject
+        }
 
     private val examplesByIdentity by lazy {
         PublicToolIdentity.entries.associateWith { identity ->

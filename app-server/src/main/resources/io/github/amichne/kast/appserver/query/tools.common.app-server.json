@@ -11,8 +11,7 @@
         "type": "object",
         "properties": {
           "verbose": {
-            "type": "boolean",
-            "default": false
+            "type": "boolean"
           },
           "request": {
             "$ref": "#/$defs/Action"
@@ -23,15 +22,14 @@
         ],
         "additionalProperties": false,
         "$defs": {
-          "DirectoryScope": {
+          "Directory": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "DIRECTORY"
-                ],
-                "default": "DIRECTORY"
+                ]
               },
               "relativeDirectoryPath": {
                 "type": "string",
@@ -42,8 +40,7 @@
                 "type": [
                   "boolean",
                   "null"
-                ],
-                "default": true
+                ]
               },
               "sourceSetNames": {
                 "type": [
@@ -66,15 +63,14 @@
             ],
             "additionalProperties": false
           },
-          "PackageScope": {
+          "Package": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "PACKAGE"
-                ],
-                "default": "PACKAGE"
+                ]
               },
               "packageName": {
                 "type": "string",
@@ -85,8 +81,7 @@
                 "type": [
                   "boolean",
                   "null"
-                ],
-                "default": true
+                ]
               },
               "sourceSetNames": {
                 "type": [
@@ -109,15 +104,14 @@
             ],
             "additionalProperties": false
           },
-          "SearchSource": {
+          "Search": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "SEARCH_DECLARATIONS"
-                ],
-                "default": "SEARCH_DECLARATIONS"
+                ]
               },
               "declarationName": {
                 "type": "string",
@@ -170,15 +164,14 @@
             ],
             "additionalProperties": false
           },
-          "ReferenceSource": {
+          "ExactRefs": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "SYMBOL_REFS"
-                ],
-                "default": "SYMBOL_REFS"
+                ]
               },
               "symbolRefs": {
                 "type": "array",
@@ -201,38 +194,37 @@
           "Output": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SymbolsOutput"
+                "$ref": "#/$defs/Symbols"
               },
               {
-                "$ref": "#/$defs/OccurrencesOutput"
+                "$ref": "#/$defs/Occurrences"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "ReadResultOutput": {
+          "ReadOutput": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SymbolsOutput"
+                "$ref": "#/$defs/Symbols"
               },
               {
-                "$ref": "#/$defs/OccurrencesOutput"
+                "$ref": "#/$defs/Occurrences"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "SymbolsOutput": {
+          "Symbols": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "SYMBOLS"
-                ],
-                "default": "SYMBOLS"
+                ]
               },
               "fields": {
                 "type": "array",
@@ -256,15 +248,14 @@
             ],
             "additionalProperties": false
           },
-          "OccurrencesOutput": {
+          "Occurrences": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "OCCURRENCES"
-                ],
-                "default": "OCCURRENCES"
+                ]
               }
             },
             "required": [
@@ -272,15 +263,14 @@
             ],
             "additionalProperties": false
           },
-          "ExpandRelation": {
+          "Relation": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "EXPAND_RELATION"
-                ],
-                "default": "EXPAND_RELATION"
+                ]
               },
               "relation": {
                 "type": "string",
@@ -297,7 +287,7 @@
               "expansionScope": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/ExpansionScope"
+                    "$ref": "#/$defs/Expansion"
                   },
                   {
                     "type": "null"
@@ -331,20 +321,20 @@
                   "null"
                 ],
                 "minimum": 1,
-                "maximum": 9223372036854775807
+                "maximum": 9223372036854775807,
+                "description": "Query minimum: 4096 UTF-8 bytes."
               }
             },
             "required": [],
-            "additionalProperties": false,
-            "default": {}
+            "additionalProperties": false
           },
-          "ResultReference": {
+          "ResultRef": {
             "type": "string",
             "pattern": "^result:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
             "minLength": 46,
             "maxLength": 46
           },
-          "ResultCursor": {
+          "RowCursor": {
             "type": [
               "integer",
               "null"
@@ -360,15 +350,14 @@
             "minimum": 0,
             "maximum": 1000000
           },
-          "RunAction": {
+          "Run": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "RUN"
-                ],
-                "default": "RUN"
+                ]
               },
               "source": {
                 "$ref": "#/$defs/Source"
@@ -382,11 +371,10 @@
                   "$ref": "#/$defs/Step"
                 },
                 "minItems": 0,
-                "maxItems": 1000,
-                "default": []
+                "maxItems": 1000
               },
               "terminalStep": {
-                "$ref": "#/$defs/TerminalStep"
+                "$ref": "#/$defs/Terminal"
               },
               "retention": {
                 "type": [
@@ -427,18 +415,17 @@
             ],
             "additionalProperties": false
           },
-          "ResumeAction": {
+          "Resume": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "RESUME"
-                ],
-                "default": "RESUME"
+                ]
               },
               "continuation": {
-                "$ref": "#/$defs/ExecutionContinuation"
+                "$ref": "#/$defs/OutputRef"
               },
               "executionBudget": {
                 "anyOf": [
@@ -464,16 +451,15 @@
                 "type": "string",
                 "enum": [
                   "READ_RESULT"
-                ],
-                "default": "READ_RESULT"
+                ]
               },
               "result": {
-                "$ref": "#/$defs/ResultReference"
+                "$ref": "#/$defs/ResultRef"
               },
               "cursor": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/ResultCursor"
+                    "$ref": "#/$defs/RowCursor"
                   },
                   {
                     "type": "null"
@@ -483,7 +469,7 @@
               "output": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/ReadResultOutput"
+                    "$ref": "#/$defs/ReadOutput"
                   },
                   {
                     "type": "null"
@@ -509,6 +495,16 @@
                     "type": "null"
                   }
                 ]
+              },
+              "detail": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Detail"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
@@ -517,21 +513,20 @@
             ],
             "additionalProperties": false
           },
-          "ExecutionContinuation": {
+          "OutputRef": {
             "type": "string",
             "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
             "minLength": 52,
             "maxLength": 52
           },
-          "LocationSource": {
+          "Location": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "AT_LOCATION"
-                ],
-                "default": "AT_LOCATION"
+                ]
               },
               "file": {
                 "type": "string",
@@ -553,10 +548,10 @@
           "Scope": {
             "anyOf": [
               {
-                "$ref": "#/$defs/DirectoryScope"
+                "$ref": "#/$defs/Directory"
               },
               {
-                "$ref": "#/$defs/PackageScope"
+                "$ref": "#/$defs/Package"
               },
               {
                 "type": "null"
@@ -566,36 +561,36 @@
           "Source": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SearchSource"
+                "$ref": "#/$defs/Search"
               },
               {
-                "$ref": "#/$defs/LocationSource"
+                "$ref": "#/$defs/Location"
               },
               {
-                "$ref": "#/$defs/ReferenceSource"
+                "$ref": "#/$defs/ExactRefs"
               }
             ]
           },
           "Step": {
             "anyOf": [
               {
-                "$ref": "#/$defs/ExpandRelation"
+                "$ref": "#/$defs/Relation"
               }
             ]
           },
           "Action": {
             "anyOf": [
               {
-                "$ref": "#/$defs/RunAction"
+                "$ref": "#/$defs/Run"
               },
               {
-                "$ref": "#/$defs/ResumeAction"
+                "$ref": "#/$defs/Resume"
               },
               {
                 "$ref": "#/$defs/ReadResultAction"
               },
               {
-                "$ref": "#/$defs/ReadSourceAction"
+                "$ref": "#/$defs/ReadSource"
               }
             ]
           },
@@ -606,8 +601,7 @@
                 "type": "string",
                 "enum": [
                   "WORKSPACE"
-                ],
-                "default": "WORKSPACE"
+                ]
               }
             },
             "required": [
@@ -622,8 +616,7 @@
                 "type": "string",
                 "enum": [
                   "RETAINED_SEED"
-                ],
-                "default": "RETAINED_SEED"
+                ]
               }
             },
             "required": [
@@ -638,8 +631,7 @@
                 "type": "string",
                 "enum": [
                   "SOURCE_DOMAIN"
-                ],
-                "default": "SOURCE_DOMAIN"
+                ]
               },
               "sourceSets": {
                 "type": "array",
@@ -657,7 +649,6 @@
                   "string",
                   "null"
                 ],
-                "default": null,
                 "minLength": 1,
                 "maxLength": 4096
               },
@@ -665,8 +656,7 @@
                 "type": [
                   "boolean",
                   "null"
-                ],
-                "default": true
+                ]
               },
               "sourcePolicy": {
                 "type": "string",
@@ -692,7 +682,7 @@
             ],
             "additionalProperties": false
           },
-          "ExpansionScope": {
+          "Expansion": {
             "anyOf": [
               {
                 "$ref": "#/$defs/ImpactWorkspaceDomain"
@@ -705,23 +695,22 @@
               }
             ]
           },
-          "SourceCandidateReference": {
+          "SourceRef": {
             "type": "string",
             "minLength": 1,
             "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$"
           },
-          "ReadSourceAction": {
+          "ReadSource": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "READ_SOURCE"
-                ],
-                "default": "READ_SOURCE"
+                ]
               },
               "candidateRef": {
-                "$ref": "#/$defs/SourceCandidateReference"
+                "$ref": "#/$defs/SourceRef"
               },
               "region": {
                 "type": [
@@ -737,13 +726,12 @@
                   "ENCLOSING_CALLABLE_BODY",
                   "ENCLOSING_CLASS_BODY",
                   null
-                ],
-                "default": "ANCHOR"
+                ]
               },
               "text": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/SourceText"
+                    "$ref": "#/$defs/Text"
                   },
                   {
                     "type": "null"
@@ -767,7 +755,7 @@
             ],
             "additionalProperties": false
           },
-          "TerminalStep": {
+          "Terminal": {
             "anyOf": [
               {
                 "$ref": "#/$defs/Emit"
@@ -784,8 +772,7 @@
                 "type": "string",
                 "enum": [
                   "EMIT"
-                ],
-                "default": "EMIT"
+                ]
               },
               "output": {
                 "anyOf": [
@@ -806,7 +793,7 @@
           "TraceOutput": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SymbolsOutput"
+                "$ref": "#/$defs/Symbols"
               }
             ]
           },
@@ -817,13 +804,12 @@
                 "type": "string",
                 "enum": [
                   "TRACE"
-                ],
-                "default": "TRACE"
+                ]
               },
               "expansionScope": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/ExpansionScope"
+                    "$ref": "#/$defs/Expansion"
                   },
                   {
                     "type": "null"
@@ -846,15 +832,14 @@
             ],
             "additionalProperties": false
           },
-          "SourceTextComplete": {
+          "FullText": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "COMPLETE"
-                ],
-                "default": "COMPLETE"
+                ]
               }
             },
             "required": [
@@ -862,15 +847,14 @@
             ],
             "additionalProperties": false
           },
-          "SourceTextNone": {
+          "NoText": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "NONE"
-                ],
-                "default": "NONE"
+                ]
               }
             },
             "required": [
@@ -878,15 +862,14 @@
             ],
             "additionalProperties": false
           },
-          "SourceTextWindow": {
+          "TextWindow": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "WINDOW"
-                ],
-                "default": "WINDOW"
+                ]
               },
               "beforeLines": {
                 "type": [
@@ -894,8 +877,7 @@
                   "null"
                 ],
                 "minimum": 0,
-                "maximum": 1000,
-                "default": 5
+                "maximum": 1000
               },
               "afterLines": {
                 "type": [
@@ -903,8 +885,7 @@
                   "null"
                 ],
                 "minimum": 0,
-                "maximum": 1000,
-                "default": 5
+                "maximum": 1000
               }
             },
             "required": [
@@ -912,31 +893,30 @@
             ],
             "additionalProperties": false
           },
-          "SourceText": {
+          "Text": {
             "anyOf": [
               {
-                "$ref": "#/$defs/SourceTextComplete"
+                "$ref": "#/$defs/FullText"
               },
               {
-                "$ref": "#/$defs/SourceTextNone"
+                "$ref": "#/$defs/NoText"
               },
               {
-                "$ref": "#/$defs/SourceTextWindow"
+                "$ref": "#/$defs/TextWindow"
               },
               {
-                "$ref": "#/$defs/SourceTextExcerpt"
+                "$ref": "#/$defs/TextExcerpt"
               }
             ]
           },
-          "SourceTextExcerpt": {
+          "TextExcerpt": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
                   "EXCERPT"
-                ],
-                "default": "EXCERPT"
+                ]
               },
               "maxLines": {
                 "type": [
@@ -944,8 +924,7 @@
                   "null"
                 ],
                 "minimum": 1,
-                "maximum": 1000,
-                "default": 40
+                "maximum": 1000
               }
             },
             "required": [
@@ -961,8 +940,78 @@
             "enum": [
               "RUNNER_CONTROLLED",
               null
+            ]
+          },
+          "Section": {
+            "type": "string",
+            "enum": [
+              "CANONICAL_ENTRY_JSON"
+            ]
+          },
+          "Detail": {
+            "type": [
+              "object",
+              "null"
             ],
-            "default": null
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/ResultRef"
+              },
+              "section": {
+                "$ref": "#/$defs/Section"
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "ROW",
+                  "EVIDENCE"
+                ]
+              },
+              "ordinal": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "EXACT_SYMBOL",
+                  "OCCURRENCE",
+                  "REFERENCE_OCCURRENCE",
+                  "TRAVERSAL_RECORD",
+                  "BINDING_ROW",
+                  "VALUE_PATH",
+                  "IMPACT_WITNESS",
+                  "FAILURE",
+                  "OMISSION",
+                  "WALK_OBSERVATION",
+                  "REFERENCE_OBSERVATION",
+                  "DISCOVERY_OBSERVATION",
+                  "RELATION_OBSERVATION"
+                ]
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "result",
+              "section",
+              "target",
+              "ordinal",
+              "kind",
+              "sha256",
+              "offset"
+            ],
+            "additionalProperties": false
           }
         }
       },
@@ -1056,7 +1105,7 @@
                 "maximum": 2147483647
               },
               "maxReturnedBytes": {
-                "description": "Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
+                "description": "Query minimum: 4096 UTF-8 bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
                 "type": [
                   "integer",
                   "null"

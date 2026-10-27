@@ -51,12 +51,15 @@ console.log(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map({owner})));
         public = json.loads((here.parents[1] / "cli/src/test/resources/query-presentation-native.json").read_text())
         seed = json.loads((here / "pi-fixtures/query-delivery-cases.json").read_text())["cases"]["rejectedProof"]["result"]
         originals = [seed["initial"]["document"], seed["pages"][0]["document"]]
-        current = {name: copy.deepcopy(case["reply"]["document"]) for name, case in public["cases"].items()}
-        # Project current report syntax without changing the pinned native receipts.
-        for document in current.values():
-            budget = document["execution_budget"]
-            self.assertEqual({"max_elapsed_ms", "max_work_units", "max_results", "max_returned_bytes"}, set(budget))
-            document["execution_budget"] = {"mode": "BOUNDED", **budget}
+        current = json.loads((here / "pi-fixtures/native-current-documents.json").read_text())
+        self.assertEqual(set(public["cases"]), set(current))
+        for name, document in current.items():
+            original = public["cases"][name]["reply"]["document"]
+            self.assertIsNone(document["original_evidence_summary"])
+            self.assertEqual({"mode": "BOUNDED", **original["execution_budget"]}, document["execution_budget"])
+            for key, value in original.items():
+                if key != "execution_budget":
+                    self.assertEqual(value, document[key], (name, key))
         originals += list(current.values())
         self.assertTrue(all(validator.is_valid(case) for case in originals))
         cases = copy.deepcopy(originals)

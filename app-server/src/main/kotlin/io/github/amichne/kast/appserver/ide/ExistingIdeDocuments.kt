@@ -121,17 +121,26 @@ object ExistingIdeDocuments {
         descriptor: ExistingIdeDescriptor,
     ): ExistingIdeDecodedResponse {
         // Duplicate fields and trailing documents fail before either schema or operation decoding.
-        try {
-            mapper.readTree(raw)
-        } catch (_: RuntimeException) {
-            return ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.StrictJson)
-        } catch (_: java.io.IOException) {
-            return ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.StrictJson)
-        }
+        val strict =
+            try {
+                mapper.readTree(raw)
+            } catch (_: RuntimeException) {
+                return ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.StrictJson)
+            } catch (_: java.io.IOException) {
+                return ExistingIdeDecodedResponse.rejected(ExistingIdeResponseDecodeFailure.StrictJson)
+            }
         val context = ResponseContext(root, descriptor)
         val host = read(raw, "hosted-endpoint.schema.json")
         if (host is Refinement.Refined)
             return ExistingIdeDecodedResponse.fromExchange(hostResponse(host.value, operation, context))
+        if (strict.path("type").asString() == "QUERY_PRESENTATION_HEADER") {
+            val presentation = read(raw, "query-presentation-header.schema.json")
+            return if (presentation is Refinement.Refined)
+                ExistingIdeDecodedResponse.fromExchange(
+                    queryPresentationResponse(presentation.value.toString(), operation, context)
+                )
+            else ExistingIdeDecodedResponse.fromExchange(responseRejected())
+        }
         return when (operation) {
             is ExistingIdeOperation.Read -> readResponse(raw, operation, context)
             ExistingIdeOperation.Status -> ExistingIdeDecodedResponse.fromExchange(responseRejected())
@@ -163,6 +172,44 @@ object ExistingIdeDocuments {
         )
             received(node.toString())
         else responseRejected()
+    }
+
+    private fun queryPresentationResponse(
+        raw: String,
+        operation: ExistingIdeOperation,
+        context: ResponseContext,
+    ): ExistingIdeExchange {
+        if (operation !is ExistingIdeOperation.Read || operation.kind != ExistingIdeReadOperation.QUERY_RUN)
+            return responseRejected()
+        val header =
+            try {
+                Json.decodeFromString<
+                    io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument
+                >(
+                    raw
+                )
+            } catch (_: kotlinx.serialization.SerializationException) {
+                return responseRejected()
+            }
+        if (!header.hasConsistentOutcome()) return responseRejected()
+        val binding = header.binding
+        val admitted =
+            when (binding) {
+                is io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentAuthorityLiveDigest ->
+                    binding.workspaceDigest ==
+                        io.github.amichne.kast.protocol.contract.QueryWorkspaceDigest.fromRoot(
+                            context.root.path.toString()
+                        ) &&
+                        binding.host.value == context.descriptor.host.toString() &&
+                        binding.epoch > 0 &&
+                        binding.version == 1L
+                io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentAuthorityUnavailable ->
+                    header.status ==
+                        io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderStatus.REJECTED
+                is io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentAuthorityLive,
+                is io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentAuthorityRetainedResult -> false
+            }
+        return if (admitted) ExistingIdeExchange.Semantic(header.project()) else responseRejected()
     }
 
     private fun changeResponse(
