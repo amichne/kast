@@ -20,6 +20,7 @@ code_sources:
 
 `onboarding.template.md` owns the shared prose.
 `packaging/generate-public-query.py` owns `references/onboarding.md`, `references/query-schema.json`, and `references/query-examples.json`.
+The same generator owns `references/query-topics.md` and its named topic files.
 Change the template or the authored public schema before regeneration.
 Do not add a discoverable `SKILL.md` or a standalone skill archive.
 

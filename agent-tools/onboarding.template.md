@@ -78,4 +78,4 @@ Minimal interface query:
 - Never invent references, exchange token families, or resubmit a query to recover lost output.
 - Diagnostic paths are workspace-relative. Changes need the user's request and an issued `exactTarget`.
 
-Use supplied schema and example paths on demand. Placeholders grant no source access or semantic authority.
+Read `query-topics.md` beside the schema for named help topics. Placeholders grant no authority.

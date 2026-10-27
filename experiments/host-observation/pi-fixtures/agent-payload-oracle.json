@@ -1,0 +1,14 @@
+{
+  "authority": "Authored from fixture source before product changes. Expected facts do not come from query output.",
+  "fixture": "experiments/host-observation/semantic-fixture",
+  "scope": {"packageName": "repro.payload", "includeSubpackages": false, "sourceSetNames": ["main"]},
+  "lookup": {"name": "payloadTarget", "expectedOverloads": ["payloadTarget(kotlin.String): kotlin.String", "payloadTarget(kotlin.Int): kotlin.Int"]},
+  "selected": {"file": "logging/src/main/kotlin/repro/payload/PayloadFixture.kt", "line": 3, "parameterType": "kotlin.String"},
+  "callers": [{"name": "payloadCaller", "file": "logging/src/main/kotlin/repro/payload/PayloadFixture.kt", "line": 5}],
+  "traceCallerPath": ["payloadTarget", "payloadCaller", "payloadOuter"],
+  "wrongFileControl": {"file": "logging/src/main/kotlin/repro/payload/other/PayloadControl.kt", "line": 3, "caller": "payloadUnrelated"},
+  "qualifiedControl": {"type": "qualified", "coverage": "QUALIFIED", "knownMinimum": 43, "limitation": "TIME_LIMIT_REACHED", "fixtureOwner": "QueryDeliveryFixtures.prefix"},
+  "rejectedControl": {"type": "rejected_document", "failure": "COMPLETION_UNPROVEN", "fixtureOwner": "QueryDeliveryFixtures.proof"},
+  "oversizedControl": {"first": "large-witness", "second": "small-entry", "detail": "λ\"\\", "repeat": 8192, "summaryIsEvidenceDelivery": false},
+  "staleAndWrongKind": {"semanticReplay": false, "expected": "finite rejection"}
+}
