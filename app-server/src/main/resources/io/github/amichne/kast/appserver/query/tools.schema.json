@@ -3595,14 +3595,14 @@
           }
         },
         "referenceOccurrences": {
-          "summary": "Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "summary": "Copy an issued exact reference instead of the non-issued example token. Return individual compiler-confirmed references.",
           "value": {
             "request": {
               "type": "RUN",
               "source": {
                 "type": "SYMBOL_REFS",
                 "symbolRefs": [
-                  "<exact-ref-returned-by-Kast>"
+                  "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
                 ]
               },
               "steps": [
@@ -4165,14 +4165,14 @@
           }
         },
         "traceAffectedUses": {
-          "summary": "Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.",
+          "summary": "Copy an issued exact reference instead of the non-issued example token. Trace affected uses with original completion and qualifications.",
           "value": {
             "request": {
               "type": "RUN",
               "source": {
                 "type": "SYMBOL_REFS",
                 "symbolRefs": [
-                  "<exact-ref-returned-by-Kast>"
+                  "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
                 ]
               },
               "steps": [],
@@ -4192,7 +4192,7 @@
               },
               "retention": "RETAIN",
               "executionBudget": {
-                "maxElapsedMs": 30000
+                "maxResults": 20
               }
             }
           }
@@ -4925,13 +4925,79 @@
     }
   ],
   "rowCompatibility": [
-    { "operation": "WHERE, DISTINCT_SYMBOLS", "input": "Symbols", "result": "Symbols" },
-    { "operation": "EXPAND_RELATION, WALK", "input": "Symbols", "result": "Symbols with relation or traversal evidence" },
-    { "operation": "JOIN INNER", "input": "Symbols and one retained symbol operand", "result": "Named binding rows" },
-    { "operation": "JOIN SEMI, JOIN ANTI", "input": "Symbols and one retained symbol operand", "result": "Symbols; ANTI needs complete right coverage" },
-    { "operation": "PROJECT_BINDING", "input": "Binding rows and one declared binding name", "result": "Symbols" },
-    { "operation": "TRACE", "input": "Symbols", "result": "Grouped symbols with proven connections and occurrences" },
-    { "operation": "EMIT", "input": "Rows compatible with the selected output", "result": "The existing typed result projection" }
+    {
+      "operation": "WHERE, DISTINCT_SYMBOLS",
+      "input": "Symbols",
+      "result": "Symbols"
+    },
+    {
+      "operation": "EXPAND_RELATION, WALK",
+      "input": "Symbols",
+      "result": "Symbols with relation or traversal evidence"
+    },
+    {
+      "operation": "JOIN INNER",
+      "input": "Symbols and one retained symbol operand",
+      "result": "Named binding rows"
+    },
+    {
+      "operation": "JOIN SEMI, JOIN ANTI",
+      "input": "Symbols and one retained symbol operand",
+      "result": "Symbols; ANTI needs complete right coverage"
+    },
+    {
+      "operation": "PROJECT_BINDING",
+      "input": "Binding rows and one declared binding name",
+      "result": "Symbols"
+    },
+    {
+      "operation": "TRACE",
+      "input": "Symbols",
+      "result": "Grouped symbols with proven connections and occurrences"
+    },
+    {
+      "operation": "EMIT",
+      "input": "Rows compatible with the selected output",
+      "result": "The existing typed result projection"
+    }
   ],
-  "contractVersion": 17
+  "contractVersion": 17,
+  "catalogs": {
+    "COMMON": {
+      "description": "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload before relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve original authority and freshness. This session exposes the common query grammar. Start a COMPLETE session for advanced operations.",
+      "variants": {
+        "Source": [
+          "SearchSource",
+          "LocationSource",
+          "ReferenceSource"
+        ],
+        "Step": [
+          "ExpandRelation"
+        ],
+        "Output": [
+          "SymbolsOutput",
+          "OccurrencesOutput"
+        ],
+        "ReadResultOutput": [
+          "SymbolsOutput",
+          "OccurrencesOutput"
+        ]
+      },
+      "outputControls": [
+        "maxResults",
+        "maxReturnedBytes"
+      ],
+      "examples": [
+        "scopedInterfaceDeclaration",
+        "containingDeclaration",
+        "referenceOccurrences",
+        "traceAffectedUses",
+        "readRetained",
+        "readSourceExactSymbol"
+      ]
+    },
+    "COMPLETE": {
+      "description": "Complete canonical public query grammar."
+    }
+  }
 }

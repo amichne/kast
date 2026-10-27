@@ -1,4 +1,4 @@
-# retainByName
+# `retainByName`
 
 Retain a bounded exact-name result for same-basis presentation or composition; inspect the retention outcome.
 

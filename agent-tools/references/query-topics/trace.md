@@ -1,9 +1,9 @@
 # trace
 
-Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.
+Copy an issued exact reference instead of the non-issued example token. Trace affected uses with original completion and qualifications.
 
 ```json
-{"request":{"type":"RUN","source":{"type":"SYMBOL_REFS","symbolRefs":["<exact-ref-returned-by-Kast>"]},"steps":[],"terminalStep":{"type":"TRACE","expansionScope":{"type":"WORKSPACE"},"output":{"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE"]}},"retention":"RETAIN","executionBudget":{"maxElapsedMs":30000}}}
+{"request":{"type":"RUN","source":{"type":"SYMBOL_REFS","symbolRefs":["exact:v5:NON_ISSUED_EXAMPLE_ONLY"]},"steps":[],"terminalStep":{"type":"TRACE","expansionScope":{"type":"WORKSPACE"},"output":{"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE"]}},"retention":"RETAIN","executionBudget":{"maxResults":20}}}
 ```
 
 Accepted references: Issued exact symbols in SYMBOL_REFS.
@@ -15,6 +15,6 @@ Canonical choices and defaults:
 - `SymbolsOutput.type`: choices: ["SYMBOLS"], default: "SYMBOLS".
 - `SymbolsOutput.fields`: choices: ["NAME","LOCATION","SIGNATURE","SOURCE"].
 
-Supported outputs: SymbolsOutput, OccurrencesOutput, TraversalRecordsOutput, BindingRowsOutput, ValuePathsOutput, ImpactWitnessOutput. TRACE accepts SYMBOLS only.
+COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
 Read `../query-schema.json` for complete shapes and constraints.

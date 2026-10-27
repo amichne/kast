@@ -1,4 +1,4 @@
-# boundedCallerWalk
+# `boundedCallerWalk`
 
 Trace callers for two hops with depth-bearing records. Replace the illustrative exact-ref placeholder with an issued ref.
 

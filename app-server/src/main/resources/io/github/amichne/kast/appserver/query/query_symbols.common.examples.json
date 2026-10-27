@@ -1,0 +1,159 @@
+{
+  "examples": {
+    "scopedInterfaceDeclaration": {
+      "summary": "Find an interface by its simple name and Kotlin package. Interfaces use the CLASS declaration family.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "OrderRepository",
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "scope": {
+              "type": "PACKAGE",
+              "packageName": "com.example.orders",
+              "includeSubpackages": false,
+              "sourceSetNames": [
+                "main"
+              ]
+            }
+          },
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
+          },
+          "executionBudget": {
+            "maxResults": 20
+          }
+        }
+      }
+    },
+    "containingDeclaration": {
+      "summary": "Find the named declaration containing a known UTF-16 offset; adapt the illustrative relative file and offset.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "AT_LOCATION",
+            "file": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt",
+            "offset": 100
+          },
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE",
+                "SOURCE"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "referenceOccurrences": {
+      "summary": "Copy an issued exact reference instead of the non-issued example token. Return individual compiler-confirmed references.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
+            ]
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES"
+            }
+          ],
+          "terminalStep": {
+            "type": "EMIT",
+            "output": {
+              "type": "OCCURRENCES"
+            }
+          },
+          "executionBudget": {
+            "maxResults": 50
+          }
+        }
+      }
+    },
+    "traceAffectedUses": {
+      "summary": "Copy an issued exact reference instead of the non-issued example token. Trace affected uses with original completion and qualifications.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
+            ]
+          },
+          "steps": [],
+          "terminalStep": {
+            "type": "TRACE",
+            "expansionScope": {
+              "type": "WORKSPACE"
+            },
+            "output": {
+              "type": "SYMBOLS",
+              "fields": [
+                "NAME",
+                "LOCATION",
+                "SIGNATURE"
+              ]
+            }
+          },
+          "retention": "RETAIN",
+          "executionBudget": {
+            "maxResults": 20
+          }
+        }
+      }
+    },
+    "readRetained": {
+      "summary": "Present retained symbol rows without new semantic evaluation. Replace the non-issued all-zero result handle.",
+      "value": {
+        "request": {
+          "type": "READ_RESULT",
+          "result": "result:v1:00000000-0000-0000-0000-000000000000",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "executionBudget": {
+            "maxResults": 20
+          }
+        }
+      }
+    },
+    "readSourceExactSymbol": {
+      "summary": "Read the body of an issued exact declaration under its original authority.",
+      "value": {
+        "request": {
+          "type": "READ_SOURCE",
+          "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+          "region": "CALLABLE_BODY"
+        }
+      }
+    }
+  },
+  "invalidExamples": {}
+}

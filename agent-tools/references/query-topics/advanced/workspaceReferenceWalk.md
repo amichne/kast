@@ -1,4 +1,4 @@
-# workspaceReferenceWalk
+# `workspaceReferenceWalk`
 
 Illustrative one-hop walk with explicit workspace expansion independent of the selected symbol scope.
 

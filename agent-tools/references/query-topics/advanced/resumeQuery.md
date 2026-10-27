@@ -1,4 +1,4 @@
-# resumeQuery
+# `resumeQuery`
 
 Deliver already-produced output without semantic execution. Replace the illustrative all-zero continuation with an issued output token.
 

@@ -11,6 +11,7 @@ import io.github.amichne.kast.cli.direct.DirectToolStage
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.observeDirectToolStage
+import io.github.amichne.kast.cli.direct.selectDirectCatalog
 import io.github.amichne.kast.cli.mcp.McpChangePhase
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.kernel.Refinement
@@ -42,31 +43,39 @@ object KastToolRpcMain {
         }
 
     private fun runInstalled(args: Array<String>) {
+        val selected = when (val selection = selectDirectCatalog(args.toList())) {
+            is Refinement.Refined -> selection.value
+            is Refinement.Rejected -> {
+                printReply(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND))
+                return
+            }
+        }
+        val command = selected.command
         val directory = Path.of("").toAbsolutePath()
         val home = Path.of(System.getProperty("user.home"))
         val session =
             observeDirectToolStage(DirectToolStage.SESSION_COMPOSITION) {
-                KastDirectToolSession.installed(directory, home, System.getenv())
+                KastDirectToolSession.installed(directory, home, System.getenv(), selected.catalog)
             }
         val bridge =
             observeDirectToolStage(DirectToolStage.BRIDGE_COMPOSITION) {
                 session?.let(::KastToolRpcBridge)
             }
-        if (args.contentEquals(arrayOf("query-session"))) {
+        if (command == listOf("query-session")) {
             runQuerySession(session, bridge)
             return
         }
         val response =
             when {
                 session == null || bridge == null -> ToolRpcReply.Rejected(ToolRpcFailure.CATALOG_UNAVAILABLE)
-                args.contentEquals(arrayOf("catalog")) -> bridge.catalog()
-                args.size == 2 && args[0] == "call" -> {
+                command == listOf("catalog") -> bridge.catalog()
+                command.size == 2 && command[0] == "call" -> {
                     val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
                     if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
                         ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
                     else if (session.admission() != InstalledToolAdmission.AVAILABLE)
                         ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
-                    else invokeObserved(bridge, args[1], bytes)
+                    else invokeObserved(bridge, command[1], bytes)
                 }
                 else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
             }
@@ -80,7 +89,7 @@ object KastToolRpcMain {
                 printReply(ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED))
             else ->
                 OneShotInvocationRecord.begin()?.use {
-                    KastToolRpcQuerySession(bridge::callAdmitted).run(System.`in`, ::printReply)
+                    KastToolRpcQuerySession(session.queryCatalog, bridge::callAdmitted).run(System.`in`, ::printReply)
                 } ?: printReply(ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE))
         }
     }
@@ -134,7 +143,7 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
                 when (
                     val admission =
                         observeDirectToolStage(DirectToolStage.REQUEST_ADMISSION) {
-                            PublicToolContract.admit(identity, arguments)
+                            PublicToolContract.admit(identity, arguments, session.queryCatalog)
                         }
                 ) {
                     is Refinement.Refined -> admission.value
@@ -148,6 +157,8 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
     fun callAdmitted(request: AdmittedPublicTool): ToolRpcReply {
         if (session.admission() != InstalledToolAdmission.AVAILABLE)
             return ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
+        if (request.catalog != session.queryCatalog)
+            return ToolRpcReply.Rejected.publicInput(PublicToolInputFailure.SchemaMismatch)
         if (!session.supports(request.identity.toolName)) return ToolRpcReply.Rejected(ToolRpcFailure.UNKNOWN_TOOL)
         return invoke(request.identity.toolName) { session.invokeAdmitted(request) }
     }
@@ -238,6 +249,7 @@ internal sealed interface ToolRpcReply {
                 Rejected(
                     when (detail) {
                         is QuerySessionRejectionDetail.RequestConstraint,
+                is QuerySessionRejectionDetail.OutputAllowance,
                         is QuerySessionRejectionDetail.SourceAnchor -> ToolRpcFailure.INVALID_ARGUMENTS
                         is QuerySessionRejectionDetail.NewRun,
                         is QuerySessionRejectionDetail.SourceRead,

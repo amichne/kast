@@ -1,4 +1,4 @@
-# intersectRetained
+# `intersectRetained`
 
 Intersect two retained symbol results by canonical identity. Replace both non-issued illustrative result handles.
 

@@ -1,4 +1,4 @@
-# knownAppServerClass
+# `knownAppServerClass`
 
 Use direct exact declaration discovery for a known class name.
 

@@ -1,4 +1,4 @@
-# directCallees
+# `directCallees`
 
 Find distinct declarations called by an exact function. Replace the illustrative exact-ref placeholder with an issued ref.
 

@@ -17,6 +17,6 @@ Canonical choices and defaults:
 - `SymbolsOutput.type`: choices: ["SYMBOLS"], default: "SYMBOLS".
 - `SymbolsOutput.fields`: choices: ["NAME","LOCATION","SIGNATURE","SOURCE"].
 
-Supported outputs: SymbolsOutput, OccurrencesOutput, TraversalRecordsOutput, BindingRowsOutput, ValuePathsOutput, ImpactWitnessOutput. TRACE accepts SYMBOLS only.
+COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
 Read `../query-schema.json` for complete shapes and constraints.

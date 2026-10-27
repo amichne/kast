@@ -13,6 +13,6 @@ Legal next actions: Use returned cursors with the same result. Never replay RUN 
 Canonical choices and defaults:
 - `ReadResultAction.type`: choices: ["READ_RESULT"], default: "READ_RESULT".
 
-Supported outputs: SymbolsOutput, OccurrencesOutput, TraversalRecordsOutput, BindingRowsOutput, ValuePathsOutput, ImpactWitnessOutput. TRACE accepts SYMBOLS only.
+COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
 Read `../query-schema.json` for complete shapes and constraints.

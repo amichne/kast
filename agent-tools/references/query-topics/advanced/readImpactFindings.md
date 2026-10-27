@@ -1,4 +1,4 @@
-# readImpactFindings
+# `readImpactFindings`
 
 Read compact findings for an illustrative retained investigation. Each finding preserves its terminal qualification and links to the exact original VALUE_PATHS row; expand that row using its path ordinal as the presentation cursor and executionBudget.maxResults 1.
 

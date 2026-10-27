@@ -1,4 +1,4 @@
-# representationImpact
+# `representationImpact`
 
 Illustrative handles only: investigate an exact producer invocation across the workspace and retain value paths. Empty reviewed models leave representation and boundary obligations qualified; native admission must revalidate the handles and whole invocation anchor.
 

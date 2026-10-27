@@ -1,4 +1,4 @@
-# narrowReferenceExpansion
+# `narrowReferenceExpansion`
 
 Illustrative exact reference with native expansion restricted to one imported source set and directory. Replace the handle with an issued current-basis reference; the directory restricts destinations, not seed selection.
 

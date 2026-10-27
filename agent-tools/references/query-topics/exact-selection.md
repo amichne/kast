@@ -13,6 +13,6 @@ Legal next actions: Reuse the issued exact ref unchanged. Read relations.md.
 Canonical choices and defaults:
 - `LocationSource.type`: choices: ["AT_LOCATION"], default: "AT_LOCATION".
 
-Supported outputs: SymbolsOutput, OccurrencesOutput, TraversalRecordsOutput, BindingRowsOutput, ValuePathsOutput, ImpactWitnessOutput. TRACE accepts SYMBOLS only.
+COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
 Read `../query-schema.json` for complete shapes and constraints.

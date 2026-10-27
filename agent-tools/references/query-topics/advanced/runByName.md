@@ -1,4 +1,4 @@
-# runByName
+# `runByName`
 
 Find declarations by exact name.
 

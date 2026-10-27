@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.query.PublicToolRule
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocumentFailure
+import io.github.amichne.kast.protocol.contract.PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -20,6 +21,10 @@ import kotlinx.serialization.encoding.Encoder
 /** Shared tool rejection detail; the semantic owner decides source freshness. */
 @Serializable
 internal sealed interface QuerySessionRejectionDetail {
+    @Serializable
+    @SerialName("OUTPUT_ALLOWANCE_REJECTED")
+    data class OutputAllowance(@Required val minimumBytes: Long = PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES) : QuerySessionRejectionDetail
+
     @Serializable
     @SerialName("REQUEST_CONSTRAINT_REJECTED")
     data class RequestConstraint(
@@ -99,9 +104,13 @@ internal fun publicToolInputRejectionDetail(failure: PublicToolInputFailure): Qu
                 PublicToolRule.INDEXED_WORD,
                 PublicToolRule.WORKSPACE_RELATIVE_PATH,
                 PublicToolRule.PACKAGE_NAME,
+                PublicToolRule.OUTPUT_CONTROL_ALLOWANCE,
                 PublicToolRule.CANONICAL_STEP_LIMIT -> null
             }
-        is PublicToolInputFailure.Parameter,
+        is PublicToolInputFailure.Parameter ->
+            if (failure.parameter == PublicToolParameter.EXECUTION_BUDGET_MAX_RETURNED_BYTES &&
+                failure.rule == PublicToolRule.OUTPUT_CONTROL_ALLOWANCE) QuerySessionRejectionDetail.OutputAllowance()
+            else null
         is PublicToolInputFailure.SourceAnchor,
         PublicToolInputFailure.SchemaMismatch,
         PublicToolInputFailure.SchemaRejected,

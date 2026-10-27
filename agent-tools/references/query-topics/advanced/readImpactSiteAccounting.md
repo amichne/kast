@@ -1,4 +1,4 @@
-# readImpactSiteAccounting
+# `readImpactSiteAccounting`
 
 Read accounting for the original native-admitted requested-site universe from an illustrative retained result. Reached and excluded rows link exact original paths; unmatched rows preserve required relationship obligations.
 
