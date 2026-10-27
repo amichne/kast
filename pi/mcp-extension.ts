@@ -63,6 +63,7 @@ export default function (pi: ExtensionAPI) {
   const installation = join(homedir(), ".local/share/kast/installation");
   pi.registerMcpServer("kast", {
     command: join(installation, "bin/kast-mcp-complete"),
+    args: ["--catalog=COMPLETE"],
     // Pi 1.1.0 accepts positive server-wide timeouts, with no ExtensionAPI override per call.
     // A user mcp.json entry named kast overrides this registration. The direct adapter in
     // extension.ts supports RUNNER_CONTROLLED without a subprocess deadline.

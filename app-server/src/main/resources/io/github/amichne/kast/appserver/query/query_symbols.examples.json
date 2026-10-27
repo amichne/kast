@@ -172,14 +172,14 @@
       }
     },
     "referenceOccurrences": {
-      "summary": "Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.",
+      "summary": "Copy an issued exact reference instead of the non-issued example token. Return individual compiler-confirmed references.",
       "value": {
         "request": {
           "type": "RUN",
           "source": {
             "type": "SYMBOL_REFS",
             "symbolRefs": [
-              "<exact-ref-returned-by-Kast>"
+              "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
             ]
           },
           "steps": [
@@ -742,14 +742,14 @@
       }
     },
     "traceAffectedUses": {
-      "summary": "Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.",
+      "summary": "Copy an issued exact reference instead of the non-issued example token. Trace affected uses with original completion and qualifications.",
       "value": {
         "request": {
           "type": "RUN",
           "source": {
             "type": "SYMBOL_REFS",
             "symbolRefs": [
-              "<exact-ref-returned-by-Kast>"
+              "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
             ]
           },
           "steps": [],
@@ -769,7 +769,7 @@
           },
           "retention": "RETAIN",
           "executionBudget": {
-            "maxElapsedMs": 30000
+            "maxResults": 20
           }
         }
       }

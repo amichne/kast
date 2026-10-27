@@ -1,4 +1,4 @@
-# scopedTextWord
+# `scopedTextWord`
 
 Find functions containing the indexed word launchd under app-server; inspect or traverse each exact returned ref.
 

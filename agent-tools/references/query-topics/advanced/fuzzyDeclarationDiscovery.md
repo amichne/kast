@@ -1,4 +1,4 @@
-# fuzzyDeclarationDiscovery
+# `fuzzyDeclarationDiscovery`
 
 Opt into fuzzy simple-name discovery under a known directory, then select the returned exact declaration.
 

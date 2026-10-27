@@ -659,6 +659,7 @@ function run(args: string[], input: string, cwd: string, policy?: {callTimeoutMi
 type ToolRpcResult =
   | { type: "complete" | "qualified" | "rejected_document"; document: Record<string, unknown> }
   | { type: "rejected"; failure: (typeof TOOL_RPC_FAILURES)[number]; detail?: never }
+  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: { type: "OUTPUT_ALLOWANCE_REJECTED"; minimumBytes: number } }
   | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: {
       type: "REQUEST_CONSTRAINT_REJECTED";
       parameters: ["executionMode", "executionBudget.maxWorkUnits"] | ["executionBudget.maxWorkUnits", "executionMode"];
@@ -689,6 +690,8 @@ function isToolResult(value: unknown): value is ToolRpcResult {
     if (keys(value, ["type", "failure"])) return true;
     if (!keys(value, ["type", "failure", "detail"]) || !object(value.detail) || typeof value.detail.type !== "string") return false;
     const detail = value.detail;
+    if (detail.type === "OUTPUT_ALLOWANCE_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
+      keys(detail, ["type", "minimumBytes"]) && detail.minimumBytes === 4096;
     if (detail.type === "REQUEST_CONSTRAINT_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
       keys(detail, ["type", "parameters", "rule", "remedies"]) && detail.rule === "RUNNER_CONTROLLED_WORK_LIMIT" &&
       Array.isArray(detail.parameters) && detail.parameters.length === 2 &&

@@ -1,4 +1,4 @@
-# completeImpactFindings
+# `completeImpactFindings`
 
 Complete the original impact investigation, then present compact findings linked to retained original path evidence.
 

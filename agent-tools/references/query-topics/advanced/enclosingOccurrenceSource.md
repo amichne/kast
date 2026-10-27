@@ -1,4 +1,4 @@
-# enclosingOccurrenceSource
+# `enclosingOccurrenceSource`
 
 Read the smallest callable body around an issued occurrence with a bounded line window. This example token grants no authority.
 

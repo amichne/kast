@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
 class PublicToolExecutionConstraintTest {
     @Test
     fun `execution mode and work budget combinations retain their public admission meaning`() {
-        val outputAndTimeout = PublicToolExecutionBudget(maxElapsedMs = 3000, maxResults = 2, maxReturnedBytes = 2000)
+        val outputAndTimeout = PublicToolExecutionBudget(maxElapsedMs = 3000, maxResults = 2, maxReturnedBytes = 4096)
         val runner = QueryExecutionModeDocument.RUNNER_CONTROLLED
         val bounded = QueryExecutionModeDocument.BOUNDED
         val workOfOne = PublicToolExecutionBudget(maxWorkUnits = 1)

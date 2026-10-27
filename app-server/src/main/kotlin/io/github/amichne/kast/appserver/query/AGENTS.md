@@ -21,6 +21,15 @@ code_sources:
 
 # Public query interface
 
+`PublicToolCatalog` selects `COMMON` or `COMPLETE` once per direct session.
+The generator projects `COMMON` from canonical schema paths in `catalogs.COMMON`.
+Admit with the selected catalog and preserve it in `AdmittedPublicTool`.
+Reject unsupported variants before native work.
+`COMPLETE` keeps the advanced grammar.
+
+Public query output budgets need at least `PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES` bytes.
+Smaller requests return `OUTPUT_ALLOWANCE_REJECTED` with the supported allowance before native work.
+
 Follow the root Engineering Dictum and `openwiki/contracts/public-tools.md`.
 The authored schema owns parameter metadata and defaults; generated files are not
 editable authorities. Run `:app-server:verifyPublicQueryGeneration` after schema

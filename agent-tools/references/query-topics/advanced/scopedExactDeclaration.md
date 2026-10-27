@@ -1,4 +1,4 @@
-# scopedExactDeclaration
+# `scopedExactDeclaration`
 
 Find a class by exact simple name in one package and source set, including its committed source context.
 

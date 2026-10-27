@@ -1,9 +1,9 @@
 # relations
 
-Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.
+Copy an issued exact reference instead of the non-issued example token. Return individual compiler-confirmed references.
 
 ```json
-{"request":{"type":"RUN","source":{"type":"SYMBOL_REFS","symbolRefs":["<exact-ref-returned-by-Kast>"]},"steps":[{"type":"EXPAND_RELATION","relation":"REFERENCES"}],"terminalStep":{"type":"EMIT","output":{"type":"OCCURRENCES"}},"executionBudget":{"maxResults":50}}}
+{"request":{"type":"RUN","source":{"type":"SYMBOL_REFS","symbolRefs":["exact:v5:NON_ISSUED_EXAMPLE_ONLY"]},"steps":[{"type":"EXPAND_RELATION","relation":"REFERENCES"}],"terminalStep":{"type":"EMIT","output":{"type":"OCCURRENCES"}},"executionBudget":{"maxResults":50}}}
 ```
 
 Accepted references: Issued exact symbols in SYMBOL_REFS.
@@ -15,6 +15,6 @@ Canonical choices and defaults:
 - `ExpandRelation.relation`: choices: ["REFERENCES","CALLERS","CALLEES","IMPLEMENTATIONS","INHERITORS","OVERRIDES","TYPE_USES"].
 - `OccurrencesOutput.type`: choices: ["OCCURRENCES"], default: "OCCURRENCES".
 
-Supported outputs: SymbolsOutput, OccurrencesOutput, TraversalRecordsOutput, BindingRowsOutput, ValuePathsOutput, ImpactWitnessOutput. TRACE accepts SYMBOLS only.
+COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
 Read `../query-schema.json` for complete shapes and constraints.

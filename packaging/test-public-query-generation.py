@@ -21,6 +21,22 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
 
+    def test_common_catalog_is_one_closed_generated_query_projection(self):
+        outputs = generator.render_tools(self.authority)
+        schema = json.loads(outputs[generator.RESOURCES / 'query_symbols.common.parameters.json'])
+        definitions = schema['$defs']
+        self.assertEqual(['SearchSource', 'LocationSource', 'ReferenceSource'],
+                         [value['$ref'].split('/')[-1] for value in definitions['Source']['anyOf']])
+        self.assertEqual([{'$ref': '#/$defs/ExpandRelation'}], definitions['Step']['anyOf'])
+        self.assertEqual({'maxResults', 'maxReturnedBytes'}, set(definitions['ExecutionBudget']['properties']))
+        self.assertEqual(['RUNNER_CONTROLLED', None], definitions['ExecutionMode']['enum'])
+        self.assertNotIn('ImpactDeclarationReference', definitions)
+        self.assertNotIn('AllSource', definitions)
+        self.assertLessEqual(len(json.dumps(schema, separators=(',', ':')).encode()), 10_000)
+        catalog = json.loads(outputs[generator.RESOURCES / 'tools.common.app-server.json'])
+        self.assertEqual(1, sum(tool['name'] == 'query_symbols' for tool in catalog['tools']))
+        self.assertEqual(schema, catalog['tools'][0]['inputSchema'])
+
     def test_focused_topics_are_bounded_and_use_authored_examples(self):
         outputs = generator.render_tools(self.authority)
         root = ROOT / 'agent-tools/references/query-topics'

@@ -51,7 +51,7 @@ class PublicRunnerControlledExecutionTest {
                 source = PublicToolReferenceSource(references),
                 terminalStep = PublicToolEmit(),
                 executionMode = QueryExecutionModeDocument.RUNNER_CONTROLLED,
-                executionBudget = PublicToolExecutionBudget(maxResults = 2, maxReturnedBytes = 2000),
+                executionBudget = PublicToolExecutionBudget(maxResults = 2, maxReturnedBytes = 4096),
             )
         assertInstanceOf(
             Refinement.Refined::class.java,

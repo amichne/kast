@@ -181,7 +181,7 @@ function assertContinuesWithoutContext(f, reason) {
 test('Pi registers native MCP and reads shared context without a child process', async t => {
   const f = await fixture(t);
   assert.deepEqual(f.servers, [['kast', {
-    command: join(f.installation, 'bin/kast-mcp-complete'), timeout: 180,
+    command: join(f.installation, 'bin/kast-mcp-complete'), args: ['--catalog=COMPLETE'], timeout: 180,
   }]]);
   assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }), undefined);
   await f.handlers.get('session_start')({}, f.ctx);

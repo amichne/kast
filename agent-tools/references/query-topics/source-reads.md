@@ -14,6 +14,6 @@ Canonical choices and defaults:
 - `ReadSourceAction.type`: choices: ["READ_SOURCE"], default: "READ_SOURCE".
 - `ReadSourceAction.region`: choices: ["ANCHOR","CALLABLE_BODY","CLASS_BODY","FILE","ENCLOSING_DECLARATION","ENCLOSING_CALLABLE_BODY","ENCLOSING_CLASS_BODY",null], default: "ANCHOR".
 
-Supported outputs: SymbolsOutput, OccurrencesOutput, TraversalRecordsOutput, BindingRowsOutput, ValuePathsOutput, ImpactWitnessOutput. TRACE accepts SYMBOLS only.
+COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 
 Read `../query-schema.json` for complete shapes and constraints.

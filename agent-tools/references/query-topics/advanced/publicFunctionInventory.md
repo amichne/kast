@@ -1,4 +1,4 @@
-# publicFunctionInventory
+# `publicFunctionInventory`
 
 List public functions with a known name prefix in one module directory; strict execution proves the full answer before returning a bounded presentation.
 

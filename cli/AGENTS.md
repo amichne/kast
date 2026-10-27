@@ -74,6 +74,9 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 
 ## Navigation Hints
 
+- Direct MCP and tool RPC sessions default to `COMMON`. Select `--catalog=COMPLETE` before the command for advanced grammar.
+- Keep the selected catalog stable through discovery, public admission, and retained reads. Pi native MCP registration explicitly selects `COMPLETE`.
+
 - Trace MCP and tool RPC through `KastDirectToolSession`. The MCP transport does not start an App Server broker.
 - Fresh and replacement installations select private endpoints and do not enable a daemon. Legacy retirement and recovery keep their ownership rules.
 - MCP starts preparation at legacy initialization or its first admitted modern request. Semantic calls wait for the selected workspace endpoint.
