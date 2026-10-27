@@ -283,6 +283,7 @@ internal data class PublicToolReadResultAction(
     @SerialName("evidence_cursor")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val evidenceCursor: QueryEvidenceCursor? = null,
+    val detail: io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument? = null,
 ) : PublicToolAction
 
 @Serializable

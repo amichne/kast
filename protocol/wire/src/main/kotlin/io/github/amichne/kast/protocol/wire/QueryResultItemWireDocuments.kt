@@ -19,6 +19,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface QueryResultItemWireDocument {
     @Serializable
+    @SerialName("DEFERRED_DETAIL")
+    data class DeferredDetail(
+        val detail: io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: io.github.amichne.kast.protocol.contract.QueryResultRowReference? = null,
+    ) : QueryResultItemWireDocument
+
+    @Serializable
     @SerialName("IMPACT_WITNESS")
     data class ImpactWitness(val item: io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument) :
         QueryResultItemWireDocument
@@ -115,6 +124,7 @@ internal sealed interface QueryBindingCellWireDocument {
 
 internal fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
     when (this) {
+        is QueryResultItemDocument.DeferredDetail -> QueryResultItemWireDocument.DeferredDetail(detail, rowId)
         is QueryResultItemDocument.ImpactWitness -> QueryResultItemWireDocument.ImpactWitness(item)
         is QueryResultItemDocument.ValuePath -> QueryResultItemWireDocument.ValuePath(path, rowId?.value)
         is QueryResultItemDocument.ExactSymbol -> toExactWire()
@@ -172,6 +182,8 @@ private fun QueryBindingCellDocument.toWire(): QueryBindingCellWireDocument =
 
 internal fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<QueryResultItemDocument> =
     when (this) {
+        is QueryResultItemWireDocument.DeferredDetail ->
+            WireDocumentConversion.Converted(QueryResultItemDocument.DeferredDetail(detail, rowId))
         is QueryResultItemWireDocument.ImpactWitness ->
             WireDocumentConversion.Converted(QueryResultItemDocument.ImpactWitness(item))
         is QueryResultItemWireDocument.ValuePath ->

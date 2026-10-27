@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
+import io.github.amichne.kast.cli.direct.DirectCatalogArguments
 import io.github.amichne.kast.cli.direct.DirectToolStage
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
@@ -33,23 +34,20 @@ object KastToolRpcMain {
     @JvmStatic
     fun main(args: Array<String>) =
         observeDirectToolStage(DirectToolStage.MAIN) {
-            if (args.contentEquals(arrayOf("plan-query"))) {
-                val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
-                println(toolRpcJson.encodeToString<QueryCostPlanReply>(planToolQuery(bytes)))
-                System.out.flush()
-            } else {
-                runInstalled(args)
+            when (val selection = selectDirectCatalog(args.toList())) {
+                is Refinement.Rejected -> printReply(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND))
+                is Refinement.Refined -> {
+                    val selected = selection.value
+                    if (selected.command == listOf("plan-query")) {
+                        val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
+                        println(toolRpcJson.encodeToString<QueryCostPlanReply>(planToolQuery(bytes, selected.catalog)))
+                        System.out.flush()
+                    } else runInstalled(selected)
+                }
             }
         }
 
-    private fun runInstalled(args: Array<String>) {
-        val selected = when (val selection = selectDirectCatalog(args.toList())) {
-            is Refinement.Refined -> selection.value
-            is Refinement.Rejected -> {
-                printReply(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND))
-                return
-            }
-        }
+    private fun runInstalled(selected: DirectCatalogArguments) {
         val command = selected.command
         val directory = Path.of("").toAbsolutePath()
         val home = Path.of(System.getProperty("user.home"))
@@ -249,7 +247,8 @@ internal sealed interface ToolRpcReply {
                 Rejected(
                     when (detail) {
                         is QuerySessionRejectionDetail.RequestConstraint,
-                is QuerySessionRejectionDetail.OutputAllowance,
+                        is QuerySessionRejectionDetail.OutputAllowance,
+                        is QuerySessionRejectionDetail.DetailSelector,
                         is QuerySessionRejectionDetail.SourceAnchor -> ToolRpcFailure.INVALID_ARGUMENTS
                         is QuerySessionRejectionDetail.NewRun,
                         is QuerySessionRejectionDetail.SourceRead,

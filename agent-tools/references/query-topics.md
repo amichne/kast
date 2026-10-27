@@ -7,6 +7,8 @@ Examples contain illustrative references. Only issued references grant authority
 COMMON exposes one subset of the query grammar. Select COMPLETE explicitly for advanced operations.
 A session keeps its catalog. Deferred clients can select COMPLETE.
 
+Public output budgets need at least 4096 UTF-8 bytes.
+
 - [declarations](query-topics/declarations.md)
 - [exact-selection](query-topics/exact-selection.md)
 - [relations](query-topics/relations.md)
@@ -38,3 +40,4 @@ Advanced example addresses:
 - [`readCallbackSource`](query-topics/advanced/readCallbackSource.md)
 - [`completeImpactFindings`](query-topics/advanced/completeImpactFindings.md)
 - [`enclosingOccurrenceSource`](query-topics/advanced/enclosingOccurrenceSource.md)
+- [`readRetainedDetail`](query-topics/advanced/readRetainedDetail.md)

@@ -18,8 +18,8 @@ import io.github.amichne.kast.cli.mcp.McpInvestigationTools
 import io.github.amichne.kast.cli.mcp.McpSingleChangeTool
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
-import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
@@ -82,7 +82,8 @@ internal class KastDirectToolSession(
                 ?: admitAndInvokePublic(name, arguments, queryCatalog, invokePublic)
 
     fun invokeAdmitted(request: AdmittedPublicTool): CliExit =
-        if (request.catalog != queryCatalog) CliExit.PublicInputRejected(io.github.amichne.kast.appserver.query.PublicToolInputFailure.SchemaMismatch)
+        if (request.catalog != queryCatalog)
+            CliExit.PublicInputRejected(io.github.amichne.kast.appserver.query.PublicToolInputFailure.SchemaMismatch)
         else if (admission() == InstalledToolAdmission.AVAILABLE) invokePublic(request)
         else boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
 
@@ -155,11 +156,15 @@ internal class KastDirectToolSession(
                             }
                         observeDirectToolStage(DirectToolStage.DIRECT_CATALOG_PROJECTION) {
                             selected.map {
-                                val identity = PublicToolIdentity.entries.single { identity -> identity.toolName == it.name.value }
-                                catalog.getValue(it.name.value).directToolDocument().copy(
-                                    inputSchema = PublicToolContract.parameters(identity, queryCatalog),
-                                    description = identity.descriptionFor(queryCatalog),
-                                )
+                                val identity =
+                                    PublicToolIdentity.entries.single { identity -> identity.toolName == it.name.value }
+                                catalog
+                                    .getValue(it.name.value)
+                                    .directToolDocument()
+                                    .copy(
+                                        inputSchema = PublicToolContract.parameters(identity, queryCatalog),
+                                        description = identity.descriptionFor(queryCatalog),
+                                    )
                             } + directSupportTools()
                         }
                     },

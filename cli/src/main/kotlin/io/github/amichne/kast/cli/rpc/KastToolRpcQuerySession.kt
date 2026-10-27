@@ -15,8 +15,8 @@ import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -119,7 +119,10 @@ private sealed interface QuerySessionInput {
     data class Source(override val tool: AdmittedPublicTool) : QuerySessionInput
 }
 
-private fun admitQuerySessionInput(bytes: ByteArray, catalog: PublicToolCatalog): Refinement<QuerySessionInput, ToolRpcReply.Rejected> {
+private fun admitQuerySessionInput(
+    bytes: ByteArray,
+    catalog: PublicToolCatalog,
+): Refinement<QuerySessionInput, ToolRpcReply.Rejected> {
     val input =
         when (val decoded = decodeToolRpcInput(bytes)) {
             is Refinement.Refined -> decoded.value

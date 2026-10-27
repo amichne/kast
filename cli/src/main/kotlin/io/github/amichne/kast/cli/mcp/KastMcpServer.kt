@@ -37,7 +37,7 @@ internal class KastMcpServer(
         val publicationLock = Any()
         fun publish(response: McpResponse) =
             synchronized(publicationLock) {
-                output.println(mcpWire.encodeToString(response))
+                output.println(encodeBoundedMcpResponse(response))
                 output.flush()
             }
         val runner =

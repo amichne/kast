@@ -8,12 +8,12 @@ Copy an issued exact reference instead of the non-issued example token. Return i
 
 Accepted references: Issued exact symbols in SYMBOL_REFS.
 Returned capabilities: Occurrences and source selectors.
-Legal next actions: Read selected source or retain the result.
+Legal next actions: Read selected source. Keep the result with `retention=RETAIN`.
 
 Canonical choices and defaults:
-- `ExpandRelation.type`: choices: ["EXPAND_RELATION"], default: "EXPAND_RELATION".
-- `ExpandRelation.relation`: choices: ["REFERENCES","CALLERS","CALLEES","IMPLEMENTATIONS","INHERITORS","OVERRIDES","TYPE_USES"].
-- `OccurrencesOutput.type`: choices: ["OCCURRENCES"], default: "OCCURRENCES".
+- `ExpandRelation.type`: choices: `["EXPAND_RELATION"]`, default: `"EXPAND_RELATION"`.
+- `ExpandRelation.relation`: choices: `["REFERENCES","CALLERS","CALLEES","IMPLEMENTATIONS","INHERITORS","OVERRIDES","TYPE_USES"]`.
+- `OccurrencesOutput.type`: choices: `["OCCURRENCES"]`, default: `"OCCURRENCES"`.
 
 COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.
 

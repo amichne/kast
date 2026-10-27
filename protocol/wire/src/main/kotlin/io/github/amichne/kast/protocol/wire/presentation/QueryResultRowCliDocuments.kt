@@ -17,6 +17,16 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface QueryResultItemCliDocument {
     @Serializable
+    @SerialName("DEFERRED_DETAIL")
+    data class DeferredDetail(
+        val detail: io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
+        @SerialName("row_id")
+        val rowId: io.github.amichne.kast.protocol.contract.QueryResultRowReference? = null,
+    ) : QueryResultItemCliDocument
+
+    @Serializable
     @SerialName("exact-symbol-node")
     data class ExactSymbolNode(
         @ProtocolStringConstraint(pattern = "^node:v1:[0-9a-f]{64}$") val node: String,
@@ -155,6 +165,7 @@ internal data class QuerySourceWindowCliDocument(
 
 internal fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument =
     when (this) {
+        is QueryResultItemDocument.DeferredDetail -> QueryResultItemCliDocument.DeferredDetail(detail, rowId)
         is QueryResultItemDocument.ImpactWitness -> QueryResultItemCliDocument.ImpactWitness(item)
         is QueryResultItemDocument.ValuePath -> QueryResultItemCliDocument.ValuePath(path, rowId?.value)
         is QueryResultItemDocument.ExactSymbol -> toExactCliDocument()

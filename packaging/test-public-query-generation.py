@@ -21,14 +21,29 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
 
+    def test_detail_selector_reuses_typed_authority_in_both_catalogs(self):
+        outputs = generator.render_tools(self.authority)
+        for name in ('query_symbols.parameters.json', 'query_symbols.common.parameters.json'):
+            definitions = json.loads(outputs[generator.RESOURCES / name])['$defs']
+            detail = definitions['ReadResultAction']['properties']['detail']
+            selector = definitions[detail['anyOf'][0]['$ref'].split('/')[-1]]
+            self.assertEqual({'result', 'section', 'target', 'ordinal', 'kind', 'sha256', 'offset'}, set(selector['required']))
+            result = definitions[selector['properties']['result']['$ref'].split('/')[-1]]
+            self.assertEqual(46, result['minLength'])
+            self.assertEqual('^[0-9a-f]{64}$', selector['properties']['sha256']['pattern'])
+
     def test_common_catalog_is_one_closed_generated_query_projection(self):
         outputs = generator.render_tools(self.authority)
         schema = json.loads(outputs[generator.RESOURCES / 'query_symbols.common.parameters.json'])
         definitions = schema['$defs']
-        self.assertEqual(['SearchSource', 'LocationSource', 'ReferenceSource'],
-                         [value['$ref'].split('/')[-1] for value in definitions['Source']['anyOf']])
-        self.assertEqual([{'$ref': '#/$defs/ExpandRelation'}], definitions['Step']['anyOf'])
+        self.assertEqual(['SEARCH_DECLARATIONS', 'AT_LOCATION', 'SYMBOL_REFS'],
+                         [definitions[value['$ref'].split('/')[-1]]['properties']['type']['enum'][0]
+                          for value in definitions['Source']['anyOf']])
+        self.assertEqual(['EXPAND_RELATION'], [definitions[value['$ref'].split('/')[-1]]['properties']['type']['enum'][0]
+                         for value in definitions['Step']['anyOf']])
         self.assertEqual({'maxResults', 'maxReturnedBytes'}, set(definitions['ExecutionBudget']['properties']))
+        self.assertEqual('Query minimum: 4096 UTF-8 bytes.',
+                         definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'])
         self.assertEqual(['RUNNER_CONTROLLED', None], definitions['ExecutionMode']['enum'])
         self.assertNotIn('ImpactDeclarationReference', definitions)
         self.assertNotIn('AllSource', definitions)
@@ -57,7 +72,7 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.authority['$defs']['SearchSource']['properties']['nameMatch']['default'] = 'NEW_MATCH'
         topic = generator.render_tools(self.authority)[ROOT / 'agent-tools/references/query-topics/declarations.md']
         self.assertIn('NEW_MATCH', topic)
-        self.assertIn('default: "NEW_MATCH"', topic)
+        self.assertIn('default: `"NEW_MATCH"`', topic)
 
     def test_onboarding_reference_preserves_schema_and_interface_query(self):
         generated = generator.render_tools(self.authority)
@@ -113,6 +128,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
         # Contract 17 adds required terminal variants and their output applicability to contract 16.
         self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 52_000)
         definitions = parameters["$defs"]
+        self.assertIn('Query minimum: 4096 UTF-8 bytes.',
+                      definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'])
         self.assertEqual(
             {"$ref": "#/$defs/ImpactDeclarationReference"},
             definitions["ImpactDeclaration"]["properties"]["declaration"],
@@ -143,6 +160,22 @@ class PublicQueryGenerationTest(unittest.TestCase):
         for name, digest in expected.items():
             schema = json.loads(generated[generator.RESOURCES / name])
             definitions = schema["$defs"]
+            # Optional detail syntax and three source-backed descriptions form the intentional delta.
+            # Remove that exact delta to keep the prior complete grammar pinned byte-for-byte.
+            definitions['ReadResultAction']['properties'].pop('detail')
+            if 'openai' in name:
+                definitions['ReadResultAction']['required'].remove('detail')
+            definitions['ReferenceSource']['properties']['symbolRefs']['items']['description'] = (
+                'Opaque exact-symbol reference returned by Kast. Copy the token verbatim; '
+                'do not construct, edit, or substitute a candidate reference.'
+            )
+            definitions['EvidenceCursor']['description'] = (
+                "Optional offset in the retained result's evidence. It is independent of the row presentation cursor "
+                "and performs no semantic execution. Omission or null preserves the existing evidence presentation."
+            )
+            definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'] = (
+                'Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.'
+            )
 
             def expand(node):
                 if isinstance(node, list):

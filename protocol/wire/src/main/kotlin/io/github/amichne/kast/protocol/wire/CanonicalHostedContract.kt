@@ -28,6 +28,7 @@ object CanonicalHostedContract {
             "hosted-query.schema.json",
             "hosted-workspace-refresh.schema.json",
             "hosted-request.schema.json",
+            "query-presentation-header.schema.json",
         )
     val document: HostedContractDocument by lazy {
         val digest = MessageDigest.getInstance("SHA-256")

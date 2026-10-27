@@ -3,10 +3,10 @@ package io.github.amichne.kast.cli.rpc
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.appserver.query.PublicToolParameter
 import io.github.amichne.kast.appserver.query.PublicToolRule
+import io.github.amichne.kast.protocol.contract.PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocumentFailure
-import io.github.amichne.kast.protocol.contract.PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -23,7 +23,12 @@ import kotlinx.serialization.encoding.Encoder
 internal sealed interface QuerySessionRejectionDetail {
     @Serializable
     @SerialName("OUTPUT_ALLOWANCE_REJECTED")
-    data class OutputAllowance(@Required val minimumBytes: Long = PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES) : QuerySessionRejectionDetail
+    data class OutputAllowance(@Required val minimumBytes: Long = PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES) :
+        QuerySessionRejectionDetail
+
+    @Serializable
+    @SerialName("DETAIL_SELECTOR_REJECTED")
+    data class DetailSelector(val rule: PublicToolRule) : QuerySessionRejectionDetail
 
     @Serializable
     @SerialName("REQUEST_CONSTRAINT_REJECTED")
@@ -105,12 +110,27 @@ internal fun publicToolInputRejectionDetail(failure: PublicToolInputFailure): Qu
                 PublicToolRule.WORKSPACE_RELATIVE_PATH,
                 PublicToolRule.PACKAGE_NAME,
                 PublicToolRule.OUTPUT_CONTROL_ALLOWANCE,
+                PublicToolRule.SAME_RETAINED_RESULT,
+                PublicToolRule.DETAIL_TARGET_KIND,
+                PublicToolRule.DETAIL_CURSOR_CONTROL,
                 PublicToolRule.CANONICAL_STEP_LIMIT -> null
             }
         is PublicToolInputFailure.Parameter ->
-            if (failure.parameter == PublicToolParameter.EXECUTION_BUDGET_MAX_RETURNED_BYTES &&
-                failure.rule == PublicToolRule.OUTPUT_CONTROL_ALLOWANCE) QuerySessionRejectionDetail.OutputAllowance()
-            else null
+            when {
+                failure.parameter == PublicToolParameter.EXECUTION_BUDGET_MAX_RETURNED_BYTES &&
+                    failure.rule == PublicToolRule.OUTPUT_CONTROL_ALLOWANCE ->
+                    QuerySessionRejectionDetail.OutputAllowance()
+                failure.parameter == PublicToolParameter.DETAIL_RESULT &&
+                    failure.rule == PublicToolRule.SAME_RETAINED_RESULT ->
+                    QuerySessionRejectionDetail.DetailSelector(failure.rule)
+                failure.parameter == PublicToolParameter.DETAIL_KIND &&
+                    failure.rule == PublicToolRule.DETAIL_TARGET_KIND ->
+                    QuerySessionRejectionDetail.DetailSelector(failure.rule)
+                failure.parameter == PublicToolParameter.DETAIL_CURSOR &&
+                    failure.rule == PublicToolRule.DETAIL_CURSOR_CONTROL ->
+                    QuerySessionRejectionDetail.DetailSelector(failure.rule)
+                else -> null
+            }
         is PublicToolInputFailure.SourceAnchor,
         PublicToolInputFailure.SchemaMismatch,
         PublicToolInputFailure.SchemaRejected,
