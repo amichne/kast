@@ -419,6 +419,28 @@ Their final parity assertion remains necessary.
 Source review found no oracle downgrade or loss of schema authority in this correction.
 This reviewer changed only this document and ran no Gradle command.
 
+## Storage-capacity oracle correction
+
+The revised `QueryInvocationStorageWorkTest` preserves the original capacity and rollback oracle.
+The fixture still contains two observations and uses the original policy and fixture budgets.
+Each observation adds one reference to the already shared empty construction list.
+The graph charges 8 bytes per reference with its unchanged factor of eight, so those references add 128 semantic bytes.
+
+The reviewer separately counted the literal encoded fields.
+The exact classification adds 63 UTF-8 bytes. The empty construction field adds 25 bytes.
+The resulting expected components are 354,424 semantic bytes, 2,816 preview bytes, and 256 row-reference bytes.
+Their sum is 357,496 bytes. The expectations do not read their answer from production measurement.
+
+The test keeps the original 357,280-byte grant and expects `RETAINED_BYTES_LIMIT` with empty accounting and no admitted row shape.
+It separately rejects 357,495 bytes, then accepts exactly 357,496 bytes on the same instance.
+The final estimate must equal the fresh accepted estimate, so the retry still examines rollback of graph accounting.
+This is an explicit capacity control, not an increased grant for a positive semantic workload.
+The source review found no oracle downgrade.
+
+Source owners are `QueryInvocationStorageWorkTest.kt`, `QueryImpactRelationStorage.kt`, and `QueryImpactRetainedGraph.kt` within `query`.
+The focused execution remains pending in this review.
+This reviewer ran no Gradle command and changed only this document.
+
 ## Final focused execution disposition
 
 The current XML at `build/reports/native-flow-closure/final-focused/` records the corrected hosted cohort and signature controls.
@@ -447,3 +469,6 @@ The native caller consumes that one decision. It does not repeat the coverage ex
 The existing matched basis and original inventory remain intact. Private copy visibility prevents an unchecked replacement.
 The six `ValueImplementationObligationOracleTest` assertions pass, including both coverage states and a foreign basis.
 This refinement preserves the existing production decision. It supplies no new incident reproduction claim.
+
+The focused storage cohort then passed 4/4 with zero failures, errors, and skips.
+The command log is `/tmp/kast-native-closure-storage-consumer.log`.

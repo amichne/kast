@@ -55,8 +55,16 @@ class QueryInvocationStorageWorkTest {
         val accepted = case.facts()
         assertInstanceOf(Refinement.Refined::class.java, accepted.append(case.page, Long.MAX_VALUE))
         assertCharge(accepted)
-        val required = 357_280L
+        val required = 357_496L
         val rejected = case.facts()
+        // The original grant remains a rejection after the required evidence adds 216 bytes.
+        val originalGrant = assertInstanceOf(Refinement.Rejected::class.java, rejected.append(case.page, 357_280L))
+        assertEquals(
+            QueryInvocationStop.RETAINED_BYTES_LIMIT,
+            assertInstanceOf(QueryInvocationTransition.Stopped::class.java, originalGrant.failure).reason,
+        )
+        assertEquals(QueryInvocationFactsRetentionEstimate.Empty, rejected.retentionEstimate)
+        assertFalse(rejected.hasObservedRowShape)
 
         val failure = assertInstanceOf(Refinement.Rejected::class.java, rejected.append(case.page, required - 1))
         assertEquals(
@@ -100,11 +108,13 @@ class QueryInvocationStorageWorkTest {
     private fun assertCharge(facts: QueryInvocationFacts) {
         // Two sites and their two identities add four references to one shared conditions object.
         // Its empty-list payload is already shared: (512 + 4 * 8 + 8) * 8 = 4,416 over the prior 349,880.
-        assertEquals(354_296L, facts.retentionEstimate.semantic.value)
+        // Two observations now also keep references to the shared empty construction list: 2 * 8 * 8 = 128.
+        assertEquals(354_424L, facts.retentionEstimate.semantic.value)
         // Producer, transfer source/target and terminal site each encode the required 16-byte ,"conditions":[] field.
-        assertEquals(2_728L, facts.retentionEstimate.preview.value)
+        // The required EXACT classification adds 63 bytes; the empty construction field adds 25 bytes.
+        assertEquals(2_816L, facts.retentionEstimate.preview.value)
         assertEquals(256L, facts.retentionEstimate.rowReferenceCells.value)
-        assertEquals(357_280L, facts.retainedBytes)
+        assertEquals(357_496L, facts.retainedBytes)
     }
 
     private class Case(overhead: Long = 1_024L) {

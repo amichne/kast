@@ -233,6 +233,10 @@ The original raw log prints some proof objects as presentation references.
 Its completeness as a machine-readable cross-build proof corpus remains limited. This report does not erase that limit.
 No unexpected positive-workload resource cap occurred in the focused cohort.
 Intentional byte/work/recursion limits remain separate controls with their original grants.
+The storage oracle accounts for 128 more semantic bytes and 88 more encoded bytes from the required fields.
+It still rejects the original 357,280-byte grant and keeps empty state.
+Its explicit current-capacity retry rejects 357,495 bytes and accepts the independently derived 357,496-byte footprint.
+The query policy and fixture budgets remain unchanged. This is an intentional capacity control, not positive-workload budget adjustment.
 
 The focused commands are:
 
