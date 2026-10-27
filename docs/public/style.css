@@ -282,3 +282,82 @@
   .kast-sidebar-collapsed #kast-sidebar-toggle { left: 1rem; }
   .kast-sidebar-collapsed #kast-sidebar-toggle svg { transform: scaleX(-1); }
 }
+
+/* Shared Kast interface tokens. Diagram colors remain owned by their renderer. */
+:root {
+  --kast-page: #f1f2ef;
+  --kast-surface: #e8ece5;
+  --kast-raised: #f8f9f6;
+  --kast-text: #303a34;
+  --kast-muted: #58635b;
+  --kast-divider: #d5dbd2;
+  --kast-control: #88968b;
+  --kast-accent: #405d4d;
+  --kast-focus: #315c45;
+  --kast-radius: 6px;
+}
+.dark {
+  --kast-page: #242925;
+  --kast-surface: #2d342e;
+  --kast-raised: #343d34;
+  --kast-text: #e1e6de;
+  --kast-muted: #adb7ad;
+  --kast-divider: #424b42;
+  --kast-control: #879589;
+  --kast-accent: #b1c4b4;
+  --kast-focus: #c4dcc7;
+}
+html, body { background: var(--kast-page); color: var(--kast-text); }
+#sidebar { background: var(--kast-page); border-color: var(--kast-divider); }
+#sidebar a { text-shadow: none; }
+#sidebar a:hover { color: var(--kast-accent); }
+#search-bar-entry, #assistant-entry, #kast-sidebar-toggle {
+  background: var(--kast-raised); color: var(--kast-text); border-color: var(--kast-control);
+  border-radius: var(--kast-radius); box-shadow: none;
+}
+#kast-sidebar-toggle:hover { color: var(--kast-accent); }
+:where(a, button, summary, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--kast-focus); outline-offset: 3px;
+}
+::selection { background: var(--kast-accent); color: var(--kast-raised); }
+.dark ::selection { color: var(--kast-page); }
+#content-area { min-width: 0; }
+#page-title { color: var(--kast-text); font-size: clamp(1.9rem, 3vw, 2.4rem); line-height: 1.15; letter-spacing: normal; font-weight: 600; }
+#content { color: var(--kast-text); font-size: 1rem; line-height: 1.65; }
+#content :is(h2, h3, h4) { color: var(--kast-text); letter-spacing: normal; font-weight: 600; }
+#content h2 { font-size: 1.5rem; }
+#content h3 { font-size: 1.2rem; }
+#content p, #content li { line-height: 1.65; }
+#content a:not(.card) { text-underline-offset: 3px; }
+#content :is(pre, table) { max-width: 100%; }
+#content pre { overflow-x: auto; border-radius: var(--kast-radius); }
+#content table { display: block; overflow-x: auto; border-collapse: collapse; }
+#content :is(th, td) { border-color: var(--kast-divider); }
+#content blockquote { border-color: var(--kast-control); color: var(--kast-text); }
+#pagination { background: var(--kast-surface); border: 1px solid var(--kast-divider); border-radius: var(--kast-radius); }
+.kast-field { display: none; position: fixed; z-index: 50; left: 9.5rem; bottom: 88px; width: 19rem; height: 210px; overflow: hidden; opacity: .5; pointer-events: none; }
+.kast-field { background: center / contain no-repeat url("/images/kast-field-static.svg"); }
+.kast-field canvas { width: 100%; height: 100%; }
+.kast-field canvas { display: none; touch-action: pan-y; }
+.kast-field-ready { background-image: none; }
+.kast-field-ready canvas { display: block; }
+.dark .kast-field:not(.kast-field-ready) { background-image: url("/images/kast-field-static-dark.svg"); }
+.value-journey {
+  --vj-paper: var(--kast-raised); --vj-ink: var(--kast-text); --vj-muted: var(--kast-muted);
+  --vj-line: var(--kast-divider); --vj-soft: var(--kast-surface); --vj-accent: var(--kast-accent); --vj-mark: #dce6dc;
+}
+.dark .value-journey { --vj-mark: #405247; }
+.value-journey .vj-kicker { font-size: .75rem; letter-spacing: normal; text-transform: none; }
+.value-journey :is(.vj-workbench, .vj-containment, &.vj-overview, &.vj-loading) { border-radius: var(--kast-radius); }
+.kast-diagram { border-radius: var(--kast-radius); }
+@media (min-width: 1024px) { .kast-field { display: block; }
+  .kast-sidebar-collapsed .kast-field { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .kast-field * { animation: none !important; transition: none !important; } }
+/* Content and navigation contrast use stronger colors than decorative rules. */
+#sidebar #navigation-items a, #content-side-layout a { color: var(--kast-muted); }
+#sidebar #navigation-items a:hover, #content-side-layout a:hover { color: var(--kast-text); }
+#sidebar #navigation-items a[class*="border-primary"] { color: var(--kast-accent); border-color: var(--kast-accent); font-weight: 600; }
+#sidebar .nav-logo { height: 2rem; }
+#header p { color: var(--kast-muted); }
+#content :is(pre, .code-block) { background-color: var(--kast-surface); }
