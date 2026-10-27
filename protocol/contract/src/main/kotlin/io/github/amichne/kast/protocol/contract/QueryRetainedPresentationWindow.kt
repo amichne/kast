@@ -117,7 +117,6 @@ private fun QueryRunResult.presentationSlice(
         }
     return Refinement.Refined(
         copy(
-            originalEvidenceSummary = QueryEvidenceSummaryState.Captured(originalEvidenceSummaryDocument),
             items = bounded,
             failures = evidence.failures,
             omissions = evidence.omissions,

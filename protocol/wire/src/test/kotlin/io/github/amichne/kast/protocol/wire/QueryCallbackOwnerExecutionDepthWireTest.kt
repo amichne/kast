@@ -76,6 +76,7 @@ class QueryCallbackOwnerExecutionDepthWireTest {
                     bounded(emptyList()),
                     QueryOutputDocument.Symbols(bounded(emptyList())),
                 ),
+            originalEvidenceSummary = io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState.Uncaptured,
             impactAccounting = ImpactAccountingDocument.NotApplicable,
             items = emptyList(),
             failures = emptyList(),

@@ -71,10 +71,28 @@ class HostedQueryPresentationHeaderTest {
                     )
                     .refined(),
             )
-        val header = encodeHeader(qualified).getValue("semantic").jsonObject
+        val payload = qualified.evidence.payload
+        val captured =
+            qualified.copy(
+                evidence =
+                    qualified.evidence.copy(
+                        payload =
+                            payload.copy(
+                                originalEvidenceSummary =
+                                    io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState.Captured(
+                                        io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument
+                                            .from(payload)
+                                    )
+                            )
+                    )
+            )
+        val header = encodeHeader(captured).getValue("semantic").jsonObject
         assertEquals("qualified", header.getValue("original_outcome").jsonPrimitive.content)
         assertEquals("1", header.getValue("blockers").jsonObject.getValue("failure_count").jsonPrimitive.content)
         assertZeroPresented(header)
+        val unknown = encodeHeader(qualified).getValue("semantic").jsonObject.getValue("blockers").jsonObject
+        assertEquals("null", unknown.getValue("failure_count").jsonPrimitive.content)
+        assertTrue(unknown.getValue("codes").toString().contains("compiler-identity-unavailable"))
     }
 
     @Test

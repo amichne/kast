@@ -128,5 +128,10 @@
   "kast": {
     "productVersion": "0.0.3719",
     "installedManifestSha256": "d8c977d1028aad719009c57a6a7b92cbd463feafb1365d916d4c3f8709c313e5"
+  },
+  "baselineSource": {
+    "revision": "d280e9fb04cfb3d266c84371fe97e103b99ccb59",
+    "inputSchemaEqual": true,
+    "installedRuntimeSourceRevision": "UNAVAILABLE"
   }
 }
