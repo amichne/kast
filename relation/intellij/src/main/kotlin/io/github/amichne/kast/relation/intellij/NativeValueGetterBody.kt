@@ -67,3 +67,11 @@ private fun KaSession.getterField(
 
 private fun getterBodyRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
     Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+
+/** A compiler constant expression discards the incoming receiver without a fabricated result edge. */
+internal fun nativeGetterDiscardsReceiver(property: KtProperty, projection: IntellijK2RelationProjection): Boolean {
+    val getter = property.getter ?: return false
+    val body = getter.bodyExpression ?: return false
+    if (body is KtBlockExpression) return false
+    return projection.observation.observedAnalyze(body) { body.evaluate() != null }
+}

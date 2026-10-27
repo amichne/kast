@@ -80,6 +80,7 @@ sealed interface ImpactWitnessDocument {
         @EncodeDefault
         val reviewedTransferCount: QueryDiscoveryCountDocument =
             (QueryDiscoveryCountDocument.parse(0) as Refinement.Refined).value,
+        val stringConstructions: BoundedProtocolList<ImpactStringConstructionDocument> = EmptyImpactStringConstructions,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -126,6 +127,7 @@ data class ImpactFindingDocument(
     val representation: ImpactFindingRepresentationDocument,
     val terminal: ImpactFindingTerminalDocument,
     val boundaryObligations: BoundedProtocolList<ImpactBoundaryObligationDocument>,
+    val classification: ImpactPathClassificationDocument,
     @EncodeDefault
     val reviewedRelations: BoundedProtocolList<ImpactReviewedValueBindingDocument> =
         (BoundedProtocolList.create(emptyList<ImpactReviewedValueBindingDocument>()) as Refinement.Refined).value,

@@ -46,7 +46,7 @@ If tools, readiness, or scope block a query, use ordinary reads and state the li
 
 Do not repeat discovery or failures without new evidence or changed prerequisites.
 Incomplete results and scope qualifications do not prove absence. Preserve them.
-Public tool contract: `17`. The installed schema governs.
+Public tool contract: `18`. The installed schema governs.
 
 `RUN` needs `source`, optional transformation `steps`, and one non-null `terminalStep` object tagged `EMIT` or `TRACE`.
 Use `terminalStep.output`, not `RUN.output`. `EMIT` accepts all outputs; `TRACE` accepts only `SYMBOLS` and owns `expansionScope` directly.

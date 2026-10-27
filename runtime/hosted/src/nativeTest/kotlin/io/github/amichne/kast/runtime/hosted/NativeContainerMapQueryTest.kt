@@ -26,6 +26,8 @@ class NativeContainerMapQueryTest : NativeContainerQueryFixtureTest() {
 
     fun testConcreteMapCompletesThroughRetainedWireEvidence() = runBlocking<Unit> { positive("concrete") }
 
+    fun testAnonymousCallerCompletesThroughRetainedWireEvidence() = runBlocking<Unit> { positive("anonymous") }
+
     fun testImplicitParameterCompletesThroughRetainedWireEvidence() = runBlocking<Unit> { positive("implicit") }
 
     fun testInterfaceMapCompletesWithoutErasingItsImplementationFrame() = runBlocking {
@@ -65,9 +67,20 @@ class NativeContainerMapQueryTest : NativeContainerQueryFixtureTest() {
         val fixture = containerFixture()
         val source = fixture.source
         val producer = source.producer("", "${scenario}Case", "origin")
-        val expectedProducer = producerSite(source, "${scenario}Case", producer.anchor)
-        val expected = observer(source, scenario)
         val captured = NativeContainerQueryCapture(fixture.services).capture(producer)
+        val lexical = producerSite(source, "${scenario}Case", producer.anchor)
+        val expectedProducer =
+            if (scenario == "anonymous") anonymousProducer(source, lexical, captured.paths) else lexical
+        val observer = observer(source, scenario)
+        val argument = observer.role as ImpactValueRoleDocument.Argument
+        val expected =
+            observer.copy(
+                executionOwner = expectedProducer.executionOwner,
+                role =
+                    argument.copy(
+                        invocation = argument.invocation.copy(executionOwner = expectedProducer.executionOwner)
+                    ),
+            )
         val routes = routes(captured.paths, expectedProducer)
         val prefixes = routes.mapNotNull { it.prefixToObserver(expectedProducer, expected) }
         val route = prefixes.firstOrNull { !callback || it.crossesCallback() }
@@ -76,6 +89,21 @@ class NativeContainerMapQueryTest : NativeContainerQueryFixtureTest() {
         if (callback) callbackWitness(selected)
         assertWireEvidence(routes.flatten())
         return ContainerQueryWitness(source, selected)
+    }
+
+    private suspend fun anonymousProducer(
+        source: NativePacketQuerySource,
+        expected: ImpactValueSiteReferenceDocument,
+        paths: List<ImpactPathDocument>,
+    ): ImpactValueSiteReferenceDocument {
+        val actual = paths.first().producer
+        val owner = actual.executionOwner as ImpactExecutionOwnerDocument.Callback
+        assertEquals(source.markedRange("anonymous-body"), owner.body.range)
+        val invocation = owner.invocations.values.single { it.body == owner.body }
+        assertEquals(source.reference(source.declaration("", "invokeNow")), invocation.supply.callable)
+        assertEquals(expected.enclosing, invocation.enclosing)
+        assertEquals(expected.copy(executionOwner = owner), actual)
+        return actual
     }
 
     private suspend fun producerSite(

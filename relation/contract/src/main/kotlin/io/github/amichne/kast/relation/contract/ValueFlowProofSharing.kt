@@ -34,6 +34,7 @@ class ValueFlowProofSharing(previous: Collection<ValueFlowStep> = emptyList()) {
         executionOwner(site.executionOwner)
         val invocation =
             when (val role = site.role) {
+                is ValueRole.StringConversionResult -> role.invocation
                 is ValueRole.LoopResult -> {
                     role.result.protocol.invocations().forEach {
                         callable(it)

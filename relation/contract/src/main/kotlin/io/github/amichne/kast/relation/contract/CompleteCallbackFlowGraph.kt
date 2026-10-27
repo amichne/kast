@@ -12,6 +12,27 @@ private constructor(
     val basis: io.github.amichne.kast.workspace.contract.SemanticReadIdentity,
 ) {
     companion object {
+        /** Each alternative already proves its own source route on the same root and basis. */
+        fun combine(
+            alternatives: List<CompleteCallbackFlowGraph>
+        ): Refinement<CompleteCallbackFlowGraph, StaticCallbackGraphFailure> {
+            val first =
+                alternatives.firstOrNull() ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
+            if (
+                alternatives.any {
+                    it.basis != first.basis || it.root != first.root
+                }
+            )
+                return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+            return Refinement.Refined(
+                CompleteCallbackFlowGraph(
+                    first.root,
+                    Collections.unmodifiableList(alternatives.flatMap { it.edges }.distinct()),
+                    first.basis,
+                )
+            )
+        }
+
         fun admit(flow: CallbackInvocationFlow): Refinement<CompleteCallbackFlowGraph, StaticCallbackGraphFailure> {
             val composition = CallbackFlowComposition()
             return when (val root = composition.append(flow)) {

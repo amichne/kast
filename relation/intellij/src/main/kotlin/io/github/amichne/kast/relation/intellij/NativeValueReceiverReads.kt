@@ -53,6 +53,7 @@ internal class NativeValueReceiverReads(
             consume(Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION))
             return
         }
+        if (nativeGetterDiscardsReceiver(property, projection)) return
         when (val body = nativeGetterBody(property, projection)) {
             is Refinement.Rejected -> consume(body)
             is Refinement.Refined ->

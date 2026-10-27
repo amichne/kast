@@ -162,7 +162,8 @@ sealed interface QueryImpactSourceFailureDocument {
         val enclosing: ImpactDeclarationReferenceDocument,
         val anchor: ImpactSourceRangeDocument,
         val failure: ImpactProducerExecutionFailureDocument,
-        @kotlinx.serialization.EncodeDefault val stage: ImpactProducerExecutionStageDocument = ImpactProducerExecutionStageDocument.INITIAL_EXECUTION,
+        @kotlinx.serialization.EncodeDefault
+        val stage: ImpactProducerExecutionStageDocument = ImpactProducerExecutionStageDocument.INITIAL_EXECUTION,
     ) : QueryImpactSourceFailureDocument
 
     @Serializable(with = QueryImpactReferenceRejectedSerializer::class)

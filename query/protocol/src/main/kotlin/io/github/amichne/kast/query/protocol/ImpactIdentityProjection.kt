@@ -198,6 +198,8 @@ internal fun io.github.amichne.kast.relation.contract.ValueCaptureInvocation.imp
 
 internal fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument> =
     when (this) {
+        is ValueRole.StringConversionResult ->
+            invocation.impactDocument().impactMap(ImpactValueRoleDocument::StringConversionResult)
         ValueRole.ExpressionResult -> Refinement.Refined(ImpactValueRoleDocument.ExpressionResult)
         is ValueRole.LoopResult -> result.impactDocument().impactMap(ImpactValueRoleDocument::LoopResult)
         ValueRole.LocalBinding -> Refinement.Refined(ImpactValueRoleDocument.LocalBinding)

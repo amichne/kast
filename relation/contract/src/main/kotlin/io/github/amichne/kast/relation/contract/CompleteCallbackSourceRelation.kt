@@ -83,6 +83,11 @@ internal fun CallbackInvocationFlowCause.sourceAdmission(): Refinement<Unit, Sta
         CallbackInvocationFlowCause.NO_INVOCATION_PROVEN -> Refinement.Refined(Unit)
         CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE,
         CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING,
+        CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH,
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE,
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH,
+        CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED,
+        CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE,
         CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE,
         CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE,
         CallbackInvocationFlowCause.DEPENDENCY_BINARY_CHANGED,

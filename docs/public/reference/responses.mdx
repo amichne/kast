@@ -26,7 +26,7 @@ Complete coverage means that the scan finished within the declared supported dom
 
 ## RUN completion
 
-The query response uses `kast.query.run.v8`. Host and Control must agree on that contract.
+The query response uses `kast.query.run.v9`. Host and Control must agree on that contract.
 
 Every public run uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. The work must finish without item failures or omitted evidence.
 
@@ -165,6 +165,32 @@ A small row count does not prove that either allowance has enough capacity. A by
 The IDEA `kast_semantic_read` receipt reports retention allowances and what storage was admitted or required. It also reports specific decision counters.
 
 That receipt counts proof storage with a conservative charge. It does not measure heap use or encoded output bytes.
+
+## Value-path relationships
+
+Full paths and compact findings include `classification`.
+
+| Classification | Meaning |
+| --- | --- |
+| `ESTABLISHED` with `EXACT` | Every admitted step preserves the tracked value. |
+| `ESTABLISHED` with `DERIVED` | The path includes established content construction. |
+| `NOT_ESTABLISHED` | The record identifies the first step without established value correspondence. |
+
+A later exact step keeps earlier derivation or missing proof.
+Compiler, reviewed-library, and model evidence keep their distinct authority.
+Admitted modeled connections keep their models and qualifications.
+A modeled step alone yields `NOT_ESTABLISHED`.
+
+A Kotlin string template consumes the established embedded result.
+A `String?` value contributes content only when its value is non-null.
+Its null alternative constructs literal `null` without source-content contribution.
+A null-only result keeps an explicit constant-construction record.
+Each repeated entry keeps its own occurrence, even when entries reach one requested site.
+
+A constant getter or conversion can discard its input.
+Its own String result can still contribute content.
+An implicit object conversion uses the selected `kotlin.Any.toString()` member or override.
+An unsupported conversion keeps its exact entry and selected member evidence.
 
 ## Saved state and identity
 

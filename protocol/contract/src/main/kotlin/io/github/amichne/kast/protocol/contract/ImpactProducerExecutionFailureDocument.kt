@@ -4,7 +4,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class ImpactProducerExecutionStageDocument { INITIAL_EXECUTION }
+enum class ImpactProducerExecutionStageDocument {
+    INITIAL_EXECUTION
+}
 
 @Serializable
 sealed interface ImpactProducerExecutionFailureDocument {

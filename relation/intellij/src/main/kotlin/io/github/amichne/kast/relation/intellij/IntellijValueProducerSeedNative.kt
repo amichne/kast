@@ -285,29 +285,27 @@ private fun exactSeedExpression(
             Refinement.Refined(
                 NativeSeedExpression(canonical, call, execution.value.owner, execution.value.examinedWork)
             )
-        is Refinement.Rejected ->
-            Refinement.Rejected(
-                ValueProducerSeedRead.Rejected(
-                    execution.failure.producerCause(),
-                    io.github.amichne.kast.relation.contract.ValueProducerSeedDiagnostic.InitialExecution(
-                        RelationEndpoint.subject(request.enclosing),
-                        request.anchor,
-                        when (val failure = execution.failure) {
-                            is NativeInitialValueFailure.Native ->
-                                io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure.Native(
-                                    failure.cause
-                                )
-                            is NativeInitialValueFailure.Unsupported ->
-                                io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure.Unsupported(
-                                    failure.cause,
-                                    failure.callbackFailures,
-                                )
-                        },
-                    ),
-                )
-            )
+        is Refinement.Rejected -> Refinement.Rejected(execution.failure.seedRejection(request))
     }
 }
+
+private fun NativeInitialValueFailure.seedRejection(request: ValueProducerSeedRequest): ValueProducerSeedRead.Rejected =
+    ValueProducerSeedRead.Rejected(
+        producerCause(),
+        io.github.amichne.kast.relation.contract.ValueProducerSeedDiagnostic.InitialExecution(
+            RelationEndpoint.subject(request.enclosing),
+            request.anchor,
+            when (this) {
+                is NativeInitialValueFailure.Native ->
+                    io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure.Native(cause)
+                is NativeInitialValueFailure.Unsupported ->
+                    io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure.Unsupported(
+                        cause,
+                        callbackFailures,
+                    )
+            },
+        ),
+    )
 
 private fun NativeInitialValueFailure.producerCause(): ValueProducerSeedRejection =
     when (this) {

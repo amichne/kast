@@ -38,10 +38,7 @@ private class NativeSelectedCallbackInputFlow(
         val index = frames.indexOf(binding.frame)
         if (index < 0) return unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val owner = binding.invocationOwner
-        if (
-            owner !is RelationCallableBody.Named ||
-                owner.compilerIdentity != binding.invocation.enclosing.compilerIdentity
-        )
+        if (!binding.frame.invocation.executionOwner.represents(owner))
             return unavailable(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
         val body =
             context.anonymous(literal) ?: return unavailable(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
@@ -66,7 +63,12 @@ private class NativeSelectedCallbackInputFlow(
                 is Refinement.Refined -> read.value.withSupplierQualification()
                 is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(read.failure)
             }
-        return observed(body, binding, scanned)
+        val supplied =
+            when (val result = IntellijCallbackSupplierExecution(context, prepared, summaries).read(scanned)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(result.failure)
+            }
+        return observed(body, binding, supplied)
     }
 
     private fun prepare(

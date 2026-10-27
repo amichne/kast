@@ -27,6 +27,7 @@ internal fun ValueFlowObligation.hasForeignBasis(lease: SemanticReadAuthority): 
         when (val proof = evidence) {
             is ValueFlowObligationEvidence.CallbackInput -> !proof.failure.matchesBasis(lease.identity)
             ValueFlowObligationEvidence.None,
+            is ValueFlowObligationEvidence.StringConversion -> false
             is ValueFlowObligationEvidence.Expression -> false
             is ValueFlowObligationEvidence.ImplementationDispatch -> proof.dispatch.hasForeignBasis(lease)
         }

@@ -3,6 +3,9 @@ package io.github.amichne.kast.protocol.contract
 /** Formal and invocation roles can themselves retain a callback execution with observed dispatch counters. */
 internal fun ImpactValueRoleDocument.hasSameRoleIdentity(other: ImpactValueRoleDocument): Boolean =
     when (this) {
+        is ImpactValueRoleDocument.StringConversionResult ->
+            other is ImpactValueRoleDocument.StringConversionResult &&
+                invocation.hasSameInvocationIdentity(other.invocation)
         is ImpactValueRoleDocument.Argument ->
             other is ImpactValueRoleDocument.Argument && hasSameArgumentIdentity(other)
         is ImpactValueRoleDocument.Receiver ->

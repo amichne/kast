@@ -336,6 +336,7 @@ registerHostedNativeFixtures(
         "*NativeTraceEffectGapTest",
         "*NativeCompilerCoverageQueryTest",
         "*NativeContainerMapQueryTest",
+        "*NativeStringContentQueryTest",
         "*NativeCompilerCoverageControlsTest",
     ),
 )

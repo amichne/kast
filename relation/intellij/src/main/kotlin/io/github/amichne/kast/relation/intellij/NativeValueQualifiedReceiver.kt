@@ -27,11 +27,37 @@ internal class NativeValueQualifiedReceiver(
                     )
             ) {
                 is Refinement.Refined -> field(result.value)
-                is Refinement.Rejected -> retained.unresolvedAt(result.failure, qualified)
+                is Refinement.Rejected -> getter(expression, qualified, result.failure)
             }
             return
         }
         callReceiver(expression, qualified, call)
+    }
+
+    private fun getter(
+        expression: KtExpression,
+        qualified: KtQualifiedExpression,
+        cause: io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause,
+    ) {
+        val syntax = qualified.nativeValueCallSyntax() as? NativeValueCallSyntax.PropertyRead
+        if (
+            syntax == null ||
+                cause != io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY
+        )
+            retained.unresolvedAt(cause, qualified)
+        else
+            when (
+                val getter =
+                    nativeNamedGetterReceiver(
+                        syntax = syntax,
+                        execution = source.executionOwner,
+                        scope = scope,
+                        projection = projection,
+                    )
+            ) {
+                is Refinement.Refined -> retained.emit(expression, getter.value, ValueTransferKind.RECEIVER)
+                is Refinement.Rejected -> retained.unresolvedAt(getter.failure, qualified)
+            }
     }
 
     private fun callReceiver(expression: KtExpression, qualified: KtQualifiedExpression, call: KtCallElement) {

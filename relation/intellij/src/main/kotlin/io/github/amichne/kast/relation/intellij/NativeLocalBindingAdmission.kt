@@ -20,6 +20,7 @@ internal fun PsiElement.isNativeReferenceBinding(role: ValueRole): Boolean =
             }
         is ValueRole.Formal ->
             role.position is ValueFormalPosition.Parameter && (this is KtParameter || this is KtFunctionLiteral)
+        is ValueRole.StringConversionResult,
         is ValueRole.Argument,
         is ValueRole.Receiver,
         is ValueRole.LoopResult,

@@ -211,6 +211,8 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
 
     private fun role(previous: ValueRole): CallbackReadmission<ValueRole> =
         when (previous) {
+            is ValueRole.StringConversionResult ->
+                call(previous.invocation).then { Refinement.Refined(ValueRole.StringConversionResult(it)) }
             is ValueRole.LoopResult ->
                 Refinement.Rejected(CallbackSummaryReadmissionFailure.Site(ValueSiteFailure.STATE_BASIS_MISMATCH))
             is ValueRole.Argument ->

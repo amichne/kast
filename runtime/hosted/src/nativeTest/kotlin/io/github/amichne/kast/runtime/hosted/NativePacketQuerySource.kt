@@ -211,6 +211,9 @@ internal class NativePacketQuerySource(
         return selectors.map { selector -> QueryImpactDeclarationDocument(token(selector), reference(selector)) }
     }
 
+    suspend fun requestedDeclaration(owner: String, member: String): QueryImpactDeclarationDocument =
+        declaration(owner, member).let { QueryImpactDeclarationDocument(token(it), reference(it)) }
+
     fun reference(selector: SymbolSelector) =
         ImpactDeclarationReferenceDocument(
             basis =

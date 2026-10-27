@@ -215,6 +215,7 @@ fun QueryImpactSourceDocument.selectPeerSites(
 internal fun ImpactValueSiteReferenceDocument.declarationClaims(): List<ImpactDeclarationReferenceDocument> =
     listOf(enclosing) +
         when (val syntax = role) {
+            is ImpactValueRoleDocument.StringConversionResult -> listOf(syntax.invocation.callable)
             is ImpactValueRoleDocument.LoopResult ->
                 syntax.result.protocol.let {
                     listOf(it.enclosing, it.iterator.callable, it.hasNext.callable, it.next.callable)

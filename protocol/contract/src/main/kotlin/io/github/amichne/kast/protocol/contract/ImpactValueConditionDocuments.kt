@@ -30,6 +30,14 @@ sealed interface ImpactValueConditionDocument {
     val useRange: ImpactSourceRangeDocument
 
     @Serializable
+    @SerialName("STRING_CONTENT_NON_NULL")
+    data class StringContentNonNull(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+        val entryRange: ImpactSourceRangeDocument,
+    ) : ImpactValueConditionDocument
+
+    @Serializable
     @SerialName("DECLARED_CALLBACK_RESULT")
     data class DeclaredCallbackResult(
         override val origin: ImpactValueConditionOriginDocument,

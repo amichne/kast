@@ -41,6 +41,7 @@ internal fun ImpactValueSiteReferenceDocument.isOnBasis(basis: ImpactSemanticBas
         admitsExecutionOwner() &&
         executionOwner.isOnBasis(basis) &&
         when (val position = role) {
+            is ImpactValueRoleDocument.StringConversionResult -> position.invocation.isOnBasis(basis)
             is ImpactValueRoleDocument.LoopResult -> position.result.protocol.admits()
             is ImpactValueRoleDocument.Argument -> position.invocation.isOnBasis(basis)
             is ImpactValueRoleDocument.Receiver -> position.invocation.isOnBasis(basis)

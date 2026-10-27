@@ -4,6 +4,10 @@ import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 /** Keep the failed compiler boundary and its finite reason separate from the broad flow limitation. */
 sealed interface ValueCallbackInputFailure {
+    data class ImplementationRejected(val cause: RelationCompilerRejection) : ValueCallbackInputFailure
+
+    data class ImplementationIncomplete(val dispatch: ValueImplementationDispatch) : ValueCallbackInputFailure
+
     data class Callback(val cause: CallbackInvocationFlowCause) : ValueCallbackInputFailure
 
     data class Contract(val cause: CallbackInvocationFlowFailure) : ValueCallbackInputFailure
@@ -12,8 +16,10 @@ sealed interface ValueCallbackInputFailure {
 
     fun matchesBasis(basis: SemanticReadIdentity): Boolean =
         when (this) {
+            is ImplementationRejected,
             is Callback,
             is Contract -> true
+            is ImplementationIncomplete -> dispatch.batch.request.subject.lease.identity == basis
             is Graph ->
                 when (val failure = cause) {
                     is StaticCallbackGraphFailure.ImmutableUnresolved -> failure.flow.basis == basis
@@ -37,8 +43,10 @@ sealed interface ValueCallbackInputFailure {
                 .addBytes(canonicalProjection().length.toLong().multiplyBytes(2))
                 .addBytes(
                     when (this) {
+                        is ImplementationRejected,
                         is Callback,
                         is Contract -> 0L
+                        is ImplementationIncomplete -> dispatch.retainedIdentityBytes
                         is Graph ->
                             when (val failure = cause) {
                                 is StaticCallbackGraphFailure.ImmutableUnresolved -> failure.flow.retainedBytes
@@ -60,6 +68,14 @@ sealed interface ValueCallbackInputFailure {
 
 internal fun ValueCallbackInputFailure.canonicalProjection(): String = buildString {
     when (val failure = this@canonicalProjection) {
+        is ValueCallbackInputFailure.ImplementationRejected -> {
+            field("IMPLEMENTATION_REJECTED")
+            field(failure.cause.name)
+        }
+        is ValueCallbackInputFailure.ImplementationIncomplete -> {
+            field("IMPLEMENTATION_INCOMPLETE")
+            field(failure.dispatch.identity.canonical)
+        }
         is ValueCallbackInputFailure.Callback -> {
             field("CALLBACK")
             field(failure.cause.name)

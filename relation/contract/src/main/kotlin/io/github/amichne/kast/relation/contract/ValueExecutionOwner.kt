@@ -53,6 +53,20 @@ private constructor(
 
     fun belongsTo(host: RelationEndpoint): Boolean = identity.host == host.valueIdentity && basis == host.lease.identity
 
+    /** Match a compiler body against the admitted execution, including an exact anonymous supplier. */
+    fun represents(body: RelationCallableBody): Boolean =
+        when (body) {
+            is RelationCallableBody.Named ->
+                context == ValueExecutionContext.Declaration && enclosing.matchesCallbackRoot(body.evidence)
+            is RelationCallableBody.Anonymous ->
+                when (val execution = context) {
+                    ValueExecutionContext.Declaration -> false
+                    is ValueExecutionContext.Callback -> execution.body == body
+                    is ValueExecutionContext.ReviewedCallback -> execution.binding.body == body
+                    is ValueExecutionContext.DeclaredCallback -> execution.binding.body == body
+                }
+        }
+
     fun hasSameProofAs(other: ValueExecutionOwner): Boolean =
         identity == other.identity && enclosing.hasSameProofAs(other.enclosing)
 
@@ -65,7 +79,12 @@ private constructor(
             is ValueExecutionContext.Callback ->
                 if (invocation != execution.selectedInvocation)
                     Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-                else supplierOwner(invocation.supply.invocationOwner, execution)
+                else {
+                    val caller = invocation.supply.invocation.executionOwner
+                    if (caller.belongsTo(enclosing) && caller.represents(invocation.supply.invocationOwner))
+                        Refinement.Refined(caller)
+                    else supplierOwner(invocation.supply.invocationOwner, execution)
+                }
         }
 
     private fun supplierOwner(

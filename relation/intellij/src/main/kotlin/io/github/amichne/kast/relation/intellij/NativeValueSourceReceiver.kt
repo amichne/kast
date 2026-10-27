@@ -73,7 +73,7 @@ internal fun IntellijRelationAllowance.nativeValueReceiverFormal(
             is IntellijRelationSubjectLookup.Rejected -> return receiverRejected()
         }
     val expression = host.exactValueElement(role.call.range) ?: return receiverRejected()
-    val syntax = expression.nativeValueCallSyntax(function) ?: return receiverRejected()
+    val syntax = expression.nativeSelectedValueCallSyntax(function, projection) ?: return receiverRejected()
     when (val admitted = admitReceiverCall(syntax, role, function, scope, projection)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admitted
@@ -98,7 +98,9 @@ private fun IntellijRelationAllowance.admitReceiverCall(
     projection: IntellijK2RelationProjection,
 ): Refinement<Unit, ValueFlowUnsupportedCause> =
     when (syntax) {
+        is NativeValueCallSyntax.StringConversion -> Refinement.Refined(Unit)
         is NativeValueCallSyntax.Explicit -> Refinement.Refined(Unit)
+        is NativeValueCallSyntax.PropertyRead -> receiverRejected()
         is NativeValueCallSyntax.Component -> admitComponentReceiver(syntax, role, function, scope, projection)
         is NativeValueCallSyntax.Loop ->
             when (
@@ -145,11 +147,39 @@ internal fun nativeReceiverPosition(
     function: KtNamedFunction,
     projection: IntellijK2RelationProjection,
 ): ValueReceiverKind? =
+    if (syntax is NativeValueCallSyntax.StringConversion) stringReceiverPosition(range, syntax, function, projection)
+    else regularReceiverPosition(role, range, syntax, function, projection)
+
+private fun stringReceiverPosition(
+    range: ExactDeclarationTextRange,
+    syntax: NativeValueCallSyntax.StringConversion,
+    function: KtNamedFunction,
+    projection: IntellijK2RelationProjection,
+): ValueReceiverKind? =
+    when (val selected = nativeStringConversionDeclaration(syntax.expression, projection)) {
+        is Refinement.Refined ->
+            if (
+                selected.value.originalElement == function.originalElement &&
+                    range == sourceValueRange(syntax.expression)
+            )
+                ValueReceiverKind.DISPATCH
+            else null
+        is Refinement.Rejected -> null
+    }
+
+private fun regularReceiverPosition(
+    role: ValueRole.Receiver,
+    range: ExactDeclarationTextRange,
+    syntax: NativeValueCallSyntax,
+    function: KtNamedFunction,
+    projection: IntellijK2RelationProjection,
+): ValueReceiverKind? =
     projection.observation.observedAnalyze(syntax.element) {
         val resolved = resolveNativeValueCall(syntax) ?: return@observedAnalyze null
         val symbol = resolved.signature.symbol
         if (symbol.psi?.originalElement != function.originalElement) return@observedAnalyze null
         when (syntax) {
+            is NativeValueCallSyntax.StringConversion -> null
             is NativeValueCallSyntax.Explicit ->
                 matchedReceiverPosition(
                     kind = role.kind,
@@ -158,6 +188,7 @@ internal fun nativeReceiverPosition(
                     extension = resolved.extensionReceiver,
                     dispatch = resolved.dispatchReceiver,
                 )
+            is NativeValueCallSyntax.PropertyRead -> null
             is NativeValueCallSyntax.Component ->
                 if (range == sourceValueRange(syntax.entry)) nativeComponentReceiverKind(syntax.entry) else null
             is NativeValueCallSyntax.Loop ->

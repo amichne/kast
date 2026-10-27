@@ -3,6 +3,14 @@ package io.github.amichne.kast.relation.contract
 internal fun StringBuilder.transferEvidence(evidence: ValueTransferEvidence) {
     when (evidence) {
         ValueTransferEvidence.Direct -> field("DIRECT")
+        is ValueStringContent -> {
+            field("STRING_CONTENT")
+            range(evidence.templateRange)
+            range(evidence.entryRange)
+            range(evidence.inputRange)
+            field(evidence.input.name)
+            field(evidence.nullAlternative.name)
+        }
         is ValueSourceTransfer -> sourceOperation(evidence.operation)
         is ValueLoopTransfer -> {
             field("LOOP_TRANSFER")
@@ -63,6 +71,12 @@ internal fun StringBuilder.localVersion(version: ValueLocalVersion) {
 
 internal fun StringBuilder.valueRole(role: ValueRole) {
     when (role) {
+        is ValueRole.StringConversionResult -> {
+            field("STRING_CONVERSION_RESULT")
+            endpoint(role.invocation.enclosing)
+            endpoint(role.invocation.callable)
+            range(role.invocation.range)
+        }
         ValueRole.ExpressionResult -> field("EXPRESSION_RESULT")
         is ValueRole.LoopResult -> {
             field("LOOP_RESULT")

@@ -28,13 +28,13 @@ class ImpactCallbackInputFailureProjectionTest {
     fun `all callback and contract enums survive projection without unknown or generic substitution`() {
         for (cause in CallbackInvocationFlowCause.entries) {
             val projected =
-                ValueCallbackInputFailure.Callback(cause).impactDocument()
+                ValueCallbackInputFailure.Callback(cause).impactDocument().value()
                     as ImpactCallbackInputFailureDocument.Callback
             assertEquals(cause.name, projected.cause.name)
         }
         for (cause in CallbackInvocationFlowFailure.entries) {
             val projected =
-                ValueCallbackInputFailure.Contract(cause).impactDocument()
+                ValueCallbackInputFailure.Contract(cause).impactDocument().value()
                     as ImpactCallbackInputFailureDocument.Contract
             assertEquals(cause.name, projected.cause.name)
         }
@@ -94,8 +94,9 @@ class ImpactCallbackInputFailureProjectionTest {
                 )
                 .value()
         val projected =
-            ValueCallbackInputFailure.Graph(StaticCallbackGraphFailure.ImmutableUnresolved(flow)).impactDocument()
-                as ImpactCallbackInputFailureDocument.ImmutableGraph
+            ValueCallbackInputFailure.Graph(StaticCallbackGraphFailure.ImmutableUnresolved(flow))
+                .impactDocument()
+                .value() as ImpactCallbackInputFailureDocument.ImmutableGraph
         val encoded =
             Json.parseToJsonElement(Json.encodeToString<ImpactCallbackInputFailureDocument>(projected)).jsonObject
         assertEquals("IMMUTABLE_GRAPH", encoded.getValue("type").jsonPrimitive.content)

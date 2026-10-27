@@ -39,6 +39,6 @@ private fun ValueProducerExecutionFailure.impactDocument(): ImpactProjected<Impa
             Refinement.Refined(ImpactProducerExecutionFailureDocument.Native(cause.impactDocument()))
         is ValueProducerExecutionFailure.Unsupported ->
             callbackFailures
-                .impactEach { Refinement.Refined(it.impactDocument()) }
+                .impactEach { it.impactDocument() }
                 .impactMap { ImpactProducerExecutionFailureDocument.Unsupported(cause.impactDocument(), it) }
     }

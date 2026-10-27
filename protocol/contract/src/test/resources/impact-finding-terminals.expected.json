@@ -422,7 +422,8 @@
       },
       "examinedWorkUnits": 1,
       "retainedBytes": 200,
-      "terminal": "SUPPORTED_DOMAIN_EXHAUSTED"
+      "terminal": "SUPPORTED_DOMAIN_EXHAUSTED",
+      "stringConstructions": []
     }
   },
   {

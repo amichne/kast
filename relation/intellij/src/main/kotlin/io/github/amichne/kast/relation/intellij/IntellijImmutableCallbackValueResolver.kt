@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.psi.KtWhenExpression
 internal class IntellijImmutableCallbackValueResolver(
     private val context: IntellijCallbackFlowContext,
     private val summaries: CallbackParameterSummaries,
+    private val execution: NativeCallbackValueExecution = NativeCallbackValueExecution.Lexical,
 ) {
     private data class Arrival(
         val target: ValueSite,
@@ -123,10 +124,10 @@ internal class IntellijImmutableCallbackValueResolver(
             )
                 return rejected(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
             val binding =
-                context.site(property, owner, ValueRole.LocalBinding)
+                site(property, owner, ValueRole.LocalBinding)
                     ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             val read =
-                context.site(value, owner, ValueRole.LocalRead)
+                site(value, owner, ValueRole.LocalRead)
                     ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             val arrivals =
                 listOf(Arrival(binding, ValueTransferKind.LOCAL_BINDING), Arrival(read, ValueTransferKind.LOCAL_READ))
@@ -179,7 +180,7 @@ internal class IntellijImmutableCallbackValueResolver(
                     is Refinement.Rejected -> return read
                 }
             val destination =
-                context.site(value, owner, ValueRole.ExpressionResult)
+                site(value, owner, ValueRole.ExpressionResult)
                     ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             for (candidate in candidates) {
                 when (val permit = context.permit()) {
@@ -276,7 +277,7 @@ internal class IntellijImmutableCallbackValueResolver(
         pending: ArrayDeque<Pending>,
     ): Refinement<Unit, CallbackInvocationFlowCause> {
         val destination =
-            context.site(expression, owner, ValueRole.ExpressionResult)
+            site(expression, owner, ValueRole.ExpressionResult)
                 ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         for (alternative in alternatives) {
             when (val permitted = context.permit()) {
@@ -312,7 +313,15 @@ internal class IntellijImmutableCallbackValueResolver(
         arrivals: List<Arrival>,
     ): Refinement<ImmutableCallbackValue, CallbackInvocationFlowCause> {
         val source =
-            when (val admitted = ValueSite.fromCompiler(owner, origin.range, ValueRole.ExpressionResult)) {
+            when (
+                val admitted =
+                    ValueSite.fromCompiler(
+                        enclosing = owner,
+                        range = origin.range,
+                        role = ValueRole.ExpressionResult,
+                        executionOwner = execution.owner(owner),
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             }
@@ -331,5 +340,21 @@ internal class IntellijImmutableCallbackValueResolver(
         }
     }
 
+    private fun site(element: PsiElement, owner: RelationEndpoint, role: ValueRole): ValueSite? =
+        context.site(element = element, target = owner, role = role, executionOwner = execution.owner(owner))
+
     private fun rejected(cause: CallbackInvocationFlowCause) = Refinement.Rejected(cause)
+}
+
+internal sealed interface NativeCallbackValueExecution {
+    data object Lexical : NativeCallbackValueExecution
+
+    data class Proven(val execution: io.github.amichne.kast.relation.contract.ValueExecutionOwner) :
+        NativeCallbackValueExecution
+
+    fun owner(enclosing: RelationEndpoint): io.github.amichne.kast.relation.contract.ValueExecutionOwner =
+        when (this) {
+            Lexical -> io.github.amichne.kast.relation.contract.ValueExecutionOwner.declaration(enclosing)
+            is Proven -> execution
+        }
 }

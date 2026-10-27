@@ -29,6 +29,8 @@ internal fun nativeCallbackInputObligation(
 
 internal fun ValueCallbackInputFailure.nativeCallbackInputCause(): ValueFlowUnsupportedCause =
     when (this) {
+        is ValueCallbackInputFailure.ImplementationRejected -> ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE
+        is ValueCallbackInputFailure.ImplementationIncomplete -> implementationCapacityCause(dispatch.coverage)
         is ValueCallbackInputFailure.Callback -> cause.nativeCallbackInputCause()
         is ValueCallbackInputFailure.Contract -> ValueFlowUnsupportedCause.NESTED_EXECUTION
         is ValueCallbackInputFailure.Graph -> cause.nativeCallbackInputCause()
@@ -73,6 +75,11 @@ private fun CallbackInvocationFlowCause.nativeCallbackInputCause(): ValueFlowUns
         CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY,
         CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE,
         CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING,
+        CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH,
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE,
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH,
+        CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED,
+        CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE,
         CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE,
         CallbackInvocationFlowCause.EXTERNAL_CALLABLE,
         CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN,
@@ -84,4 +91,23 @@ private fun CallbackInvocationFlowCause.nativeCallbackInputCause(): ValueFlowUns
         CallbackInvocationFlowCause.CALLBACK_CYCLE,
         CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION,
         CallbackInvocationFlowCause.NO_INVOCATION_PROVEN -> ValueFlowUnsupportedCause.NESTED_EXECUTION
+    }
+
+private fun implementationCapacityCause(
+    coverage: io.github.amichne.kast.relation.contract.ValueImplementationCoverage
+): ValueFlowUnsupportedCause =
+    when (coverage) {
+        is io.github.amichne.kast.relation.contract.ValueImplementationCoverage.Exhausted ->
+            ValueFlowUnsupportedCause.NESTED_EXECUTION
+        is io.github.amichne.kast.relation.contract.ValueImplementationCoverage.Incomplete ->
+            implementationCapacityCause(coverage.evidence.limitations.map { it.nativeImplementationCause() }.toSet())
+    }
+
+private fun implementationCapacityCause(causes: Set<ValueFlowUnsupportedCause>): ValueFlowUnsupportedCause =
+    when {
+        ValueFlowUnsupportedCause.WORK_LIMIT_REACHED in causes -> ValueFlowUnsupportedCause.WORK_LIMIT_REACHED
+        ValueFlowUnsupportedCause.TIME_LIMIT_REACHED in causes -> ValueFlowUnsupportedCause.TIME_LIMIT_REACHED
+        ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED in causes -> ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED
+        ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED in causes -> ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED
+        else -> ValueFlowUnsupportedCause.NESTED_EXECUTION
     }

@@ -21,6 +21,7 @@ internal fun nativeValueCaptureOwner(
     enclosing: RelationEndpoint,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
+    allowance: IntellijRelationAllowance,
     admitWork: () -> CallbackWorkAdmission,
     expiry: () -> CallbackExpiryAdmission,
     recordFailure: (io.github.amichne.kast.relation.contract.ValueCallbackInputFailure) -> Unit = {},
@@ -56,6 +57,28 @@ internal fun nativeValueCaptureOwner(
         is Refinement.Rejected -> if (captured.failure != ValueFlowUnsupportedCause.NESTED_EXECUTION) return captured
     }
     val context = IntellijCallbackFlowContext(scope, projection, admitWork, projection.observation, expiry)
+    when (
+        val implemented =
+            NativeInitialImplementationCapture(
+                    context = context,
+                    allowance = allowance,
+                    projection = projection,
+                    recordFailure = recordFailure,
+                )
+                .read(anonymous, host, enclosing)
+    ) {
+        is Refinement.Refined -> return implemented
+        is Refinement.Rejected ->
+            if (implemented.failure != ValueFlowUnsupportedCause.NESTED_EXECUTION) return implemented
+    }
+    return declaredOrReviewedCapture(anonymous, enclosing, context)
+}
+
+private fun declaredOrReviewedCapture(
+    anonymous: KtFunction,
+    enclosing: RelationEndpoint,
+    context: IntellijCallbackFlowContext,
+): Refinement<NativeValueExecution, ValueFlowUnsupportedCause> {
     when (val declared = readDeclaredCallbackValueBinding(anonymous, enclosing, context)) {
         is Refinement.Refined ->
             return Refinement.Refined(

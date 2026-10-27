@@ -5056,7 +5056,7 @@
       "result": "The existing typed result projection"
     }
   ],
-  "contractVersion": 17,
+  "contractVersion": 18,
   "catalogs": {
     "COMMON": {
       "description": "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload before relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve original authority and freshness. This session exposes the common query grammar. Start a COMPLETE session for advanced operations.",

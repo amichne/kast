@@ -83,6 +83,7 @@ class ImpactReviewedFindingProjectionTest {
             ((page.values.single() as QueryResultItemDocument.ImpactWitness).item.witness
                     as ImpactWitnessDocument.Finding)
                 .finding
+        assertReviewedClassification(finding)
         assertEquals(ImpactFindingRepresentationDocument.NotModeled, finding.representation)
         val binding = finding.reviewedRelations.values.single()
         assertEquals(fixture.binding.impactDocument().reviewed(), binding)
@@ -208,3 +209,14 @@ private fun <V, F> Refinement<V, F>.reviewed(): V =
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Invalid reviewed projection fixture: $failure")
     }
+
+private fun assertReviewedClassification(finding: io.github.amichne.kast.protocol.contract.ImpactFindingDocument) {
+    val encoded =
+        kotlinx.serialization.json.Json.encodeToJsonElement(
+            io.github.amichne.kast.protocol.contract.ImpactFindingDocument.serializer(),
+            finding,
+        )
+    val classification =
+        (encoded as kotlinx.serialization.json.JsonObject)["classification"] as? kotlinx.serialization.json.JsonObject
+    assertEquals("EXACT", (classification?.get("relationship") as? kotlinx.serialization.json.JsonPrimitive)?.content)
+}

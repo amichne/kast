@@ -36,8 +36,12 @@ internal fun QueryImpactPath.impactDocument(): ImpactProjected<ImpactPathDocumen
             }
         )
         .impactZip(terminal.impactDocument())
-        .impactMap { (path, terminal) ->
-            ImpactPathDocument(path.first.first, path.first.second, path.second, terminal)
+        .impactZip(classificationDocument())
+        .impactThen { (fields, classification) ->
+            val (path, terminal) = fields
+            val document = ImpactPathDocument(path.first.first, path.first.second, path.second, terminal)
+            if (document.classification == classification) Refinement.Refined(document)
+            else Refinement.Rejected(ImpactPathProjectionFailure.CLASSIFICATION_MISMATCH)
         }
 
 internal fun QueryImpactStep.impactDocument(): ImpactProjected<ImpactPathStepDocument> =
@@ -135,7 +139,9 @@ private fun QueryImpactTerminal.SupportedDomainEnd.projectSupportedDomainEnd():
             QueryDiscoveryCountDocument.parse(observation.retainedBytes)
                 .impactFailure(ImpactPathProjectionFailure::Count)
         )
-        .impactMap { (observation, bytes) ->
+        .impactZip(observation.stringConstructions.impactEach { it.impactDocument() })
+        .impactMap { (previous, constructions) ->
+            val (observation, bytes) = previous
             ImpactPathTerminalDocument.SupportedDomainEnd(
                 ImpactFlowEndObservationDocument(
                     observation.first.first,
@@ -143,6 +149,7 @@ private fun QueryImpactTerminal.SupportedDomainEnd.projectSupportedDomainEnd():
                     observation.second,
                     bytes,
                     ImpactFlowTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED,
+                    constructions,
                 )
             )
         }

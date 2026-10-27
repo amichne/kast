@@ -78,7 +78,12 @@ internal class IntellijValueFlowNative(
                     retained.reviewedEdges,
                 )
         ) {
-            is Refinement.Refined -> ValueFlowRead.Observed(step.value)
+            is Refinement.Refined ->
+                when (val complete = step.value.withStringConstructions(retained.stringConstructions)) {
+                    is Refinement.Refined -> ValueFlowRead.Observed(complete.value)
+                    is Refinement.Rejected ->
+                        ValueFlowRead.ContractRejected(complete.failure, nativeWorkCount(examined))
+                }
             is Refinement.Rejected -> ValueFlowRead.ContractRejected(step.failure, nativeWorkCount(examined))
         }
     }
@@ -92,6 +97,7 @@ internal class IntellijValueFlowNative(
 
     private fun readRole(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
         when (val role = request.source.role) {
+            is ValueRole.StringConversionResult -> convertedString(element, role)
             ValueRole.LocalBinding -> retained.unresolvedAt(element.nativeLocalBindingCause(), element)
             is ValueRole.LoopResult ->
                 if (element is KtForExpression)
@@ -115,6 +121,16 @@ internal class IntellijValueFlowNative(
             }
         }
         return Refinement.Refined(Unit)
+    }
+
+    private fun convertedString(element: PsiElement, role: ValueRole.StringConversionResult) {
+        val expression = element as? KtExpression
+        val entry = expression?.parent as? org.jetbrains.kotlin.psi.KtStringTemplateEntryWithExpression
+        if (expression == null || entry == null)
+            retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
+        else
+            NativeStringContent(request.source, scope, projection, retained)
+                .readConverted(expression, entry, role.invocation)
     }
 
     private fun formalInput(element: PsiElement) {

@@ -282,6 +282,7 @@ internal class IntellijLocalBindingReads(
                                 enclosing = request.source.enclosing,
                                 scope = scope,
                                 projection = projection,
+                                allowance = captureAllowance,
                                 admitWork = ::admitCaptureWork,
                                 expiry = {
                                     if (captureAllowance.elapsedLimitReached(request.budget.resources))

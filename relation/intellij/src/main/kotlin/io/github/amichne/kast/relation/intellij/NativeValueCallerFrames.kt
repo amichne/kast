@@ -128,6 +128,16 @@ internal class NativeValueCallerFrames(
                 is Refinement.Refined -> bound.value
                 is Refinement.Rejected -> return bound
             }
+        return admittedInvocation(call, host, enclosing, admission, callee)
+    }
+
+    private fun admittedInvocation(
+        call: NativeValueCallSyntax,
+        host: PsiNamedElement,
+        enclosing: RelationEndpoint,
+        admission: NativeCallerOwnerAdmission,
+        callee: RelationEndpoint,
+    ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
         val expression = call.anchor
         val admitted =
             projection.observation.call(IntellijReadCall.VALUE_RETURN_OWNER_ADMISSION) {
@@ -144,7 +154,10 @@ internal class NativeValueCallerFrames(
             }
         return when (
             val value =
-                if (call is NativeValueCallSyntax.Component && callee.signature is CanonicalCompilerSignature.Property)
+                if (
+                    (call is NativeValueCallSyntax.Component || call is NativeValueCallSyntax.PropertyRead) &&
+                        callee.signature is CanonicalCompilerSignature.Property
+                )
                     ValueInvocation.getterFromCompiler(
                         enclosing = enclosing,
                         range = sourceValueRange(expression),
@@ -169,7 +182,25 @@ internal class NativeValueCallerFrames(
         enclosing: RelationEndpoint,
         allowance: IntellijRelationAllowance,
     ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
+        if (call is NativeValueCallSyntax.StringConversion)
+            return nativeValueCallableEndpoint(
+                declaration = call.function,
+                enclosing = enclosing,
+                scope = scope,
+                projection = projection,
+            )
         if (call is NativeValueCallSyntax.Component) return selectedComponent(call, enclosing, allowance)
+        if (call is NativeValueCallSyntax.PropertyRead)
+            return when (val selected = nativeNamedGetter(call, projection)) {
+                is Refinement.Refined ->
+                    nativeValueCallableEndpoint(
+                        declaration = selected.value,
+                        enclosing = enclosing,
+                        scope = scope,
+                        projection = projection,
+                    )
+                is Refinement.Rejected -> selected
+            }
         val declaration =
             projection.observation.observedAnalyze(call.element) {
                 (resolveNativeValueCall(call)?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
@@ -259,6 +290,7 @@ internal class NativeValueCallerFrames(
                         enclosing = enclosing,
                         scope = scope,
                         projection = projection,
+                        allowance = allowance,
                         admitWork = { allowance.admitCallbackWork(scope.request.budget.resources) },
                         expiry = {
                             if (allowance.elapsedLimitReached(scope.request.budget.resources))
@@ -303,6 +335,7 @@ internal fun nativeValueInitialExecution(
             enclosing,
             scope,
             projection,
+            allowance,
             admitWork = {
                 when {
                     allowance.elapsedLimitReached(scope.request.budget.resources) ->

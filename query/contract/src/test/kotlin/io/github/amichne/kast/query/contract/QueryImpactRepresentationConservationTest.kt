@@ -74,6 +74,15 @@ class QueryImpactRepresentationConservationTest {
         val f = Fixture()
         val rules = listOf("first", "second").map { model(f, it) }
         val paths = rules.map { f.modeledPath(it) }
+        paths.forEach { path ->
+            val expected =
+                QueryImpactClassification.NotEstablished(
+                    path.steps.last(),
+                    QueryImpactCorrespondenceFailure.REPRESENTATION_MODEL_ONLY,
+                )
+            assertEquals(expected, path.classification)
+            assertEquals(expected, (path.steps + path.steps.first()).classifyImpact())
+        }
         assertEquals(
             Refinement.Rejected(QueryImpactLedgerFailure.MISSING_BRANCH),
             f.ledger(rules, paths.take(1), f.resultObservation),

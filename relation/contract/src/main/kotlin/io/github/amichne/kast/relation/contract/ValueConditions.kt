@@ -37,6 +37,34 @@ sealed interface ValueCondition {
     val origin: ValueConditionOrigin
     val useRange: ExactDeclarationTextRange
 
+    @ConsistentCopyVisibility
+    data class StringContentNonNull
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+        val entryRange: ExactDeclarationTextRange,
+    ) : ValueCondition {
+        companion object {
+            fun fromCompiler(
+                source: ValueSite,
+                content: ValueStringContent,
+            ): Refinement<StringContentNonNull, ValueSiteFailure> =
+                if (
+                    content.input == ValueStringContentInput.NULLABLE_STRING &&
+                        source.executionOwner.range.containsValueRange(content.templateRange) &&
+                        content.inputRange.containsValueRange(source.range)
+                )
+                    Refinement.Refined(
+                        StringContentNonNull(
+                            ValueConditionOrigin.fromSite(source),
+                            content.templateRange,
+                            content.entryRange,
+                        )
+                    )
+                else Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER)
+        }
+    }
+
     /** Conditional result dependence, without asserting invocation or normal completion at runtime. */
     @ConsistentCopyVisibility
     data class DeclaredCallbackResult
@@ -206,6 +234,7 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
                 kind == ValueTransferKind.LOCAL_READ && added.version == source.localVersion
             is ValueCondition.StableReceiver -> kind == ValueTransferKind.FIELD_READ
             is ValueCondition.CastSuccess -> kind == ValueTransferKind.CAST_RESULT
+            is ValueCondition.StringContentNonNull -> kind == ValueTransferKind.STRING_CONTENT
         }
     }
 

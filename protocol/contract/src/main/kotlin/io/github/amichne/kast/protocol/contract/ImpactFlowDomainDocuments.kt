@@ -107,9 +107,29 @@ data class ImpactFlowEndObservationDocument(
     val examinedWorkUnits: QueryDiscoveryCountDocument,
     val retainedBytes: QueryDiscoveryCountDocument,
     val terminal: ImpactFlowTerminalDocument,
+    val stringConstructions: BoundedProtocolList<ImpactStringConstructionDocument> = EmptyImpactStringConstructions,
 )
 
 @Serializable
 enum class ImpactFlowTerminalDocument {
     SUPPORTED_DOMAIN_EXHAUSTED
 }
+
+@Serializable
+data class ImpactStringConstructionDocument(
+    val source: ImpactValueSiteReferenceDocument,
+    val templateRange: ImpactSourceRangeDocument,
+    val entryRange: ImpactSourceRangeDocument,
+    val inputRange: ImpactSourceRangeDocument,
+    val kind: ImpactStringConstructionKindDocument,
+)
+
+@Serializable
+enum class ImpactStringConstructionKindDocument {
+    CONSTANT_NULL_TEXT_WITHOUT_SOURCE_CONTENT
+}
+
+val EmptyImpactStringConstructions: BoundedProtocolList<ImpactStringConstructionDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactStringConstructionDocument>())
+            as io.github.amichne.kast.kernel.Refinement.Refined)
+        .value

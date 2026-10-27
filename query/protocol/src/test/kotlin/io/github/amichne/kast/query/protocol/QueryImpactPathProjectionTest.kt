@@ -58,12 +58,21 @@ import org.junit.jupiter.api.Test
 
 class QueryImpactPathProjectionTest {
     @Test
+    fun `modeled path never defaults to exact correspondence`() {
+        val fixture = ImpactPathProjectionFixture()
+        val encoded =
+            Json.encodeToJsonElement(ImpactPathDocument.serializer(), boundaryPath(fixture).impactDocument().refined())
+                .jsonObject
+        assertEquals("NOT_ESTABLISHED", encoded["classification"]?.jsonObject?.get("type")?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun `consumer projection retains different current state and complete expected rule separately`() {
         val fixture = ImpactPathProjectionFixture()
         val path = consumerPath(fixture)
         val encoded =
             Json.encodeToJsonElement(ImpactPathDocument.serializer(), path.impactDocument().refined()).jsonObject
-        assertEquals(setOf("producer", "steps", "representation", "terminal"), encoded.keys)
+        assertEquals(setOf("producer", "steps", "representation", "terminal", "classification"), encoded.keys)
         assertEquals(
             "COMPILER",
             encoded.getValue("steps").jsonArray.single().jsonObject.getValue("type").jsonPrimitive.content,

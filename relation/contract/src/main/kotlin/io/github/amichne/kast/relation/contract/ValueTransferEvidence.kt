@@ -50,6 +50,7 @@ sealed interface ValueTransferEvidence {
     fun admits(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
         when (this) {
             Direct -> admitsDirect(source, target, kind)
+            is ValueStringContent -> admitsContent(source, target, kind)
             is ValueSourceTransfer -> admitsSource(source, target, kind)
             is ValueLoopTransfer -> admitsLoop(source, target, kind)
             is NormalBranchResult -> admitsNormal(source, target, kind)
@@ -59,6 +60,7 @@ sealed interface ValueTransferEvidence {
         get() =
             when (this) {
                 Direct -> 0L
+                is ValueStringContent -> 256L
                 is ValueSourceTransfer -> sourceEvidenceStorageBytes(operation)
                 is ValueLoopTransfer -> storageBytes()
                 is NormalBranchResult -> 4096L
@@ -66,7 +68,7 @@ sealed interface ValueTransferEvidence {
 }
 
 private fun admitsDirect(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
-    kind !in SOURCE_TRANSFER_KINDS &&
+    admitsDirectKind(kind) &&
         source.admitsDirectLoop(target, kind) &&
         (kind != ValueTransferKind.CAST_RESULT || source.conditions.admits(source, target, kind)) &&
         (kind != ValueTransferKind.LOCAL_READ || source.localVersion.admitsRead(source, target)) &&
@@ -108,3 +110,6 @@ private val SOURCE_TRANSFER_KINDS =
         ValueTransferKind.FIELD_READ,
         ValueTransferKind.CONSTRUCTOR_FIELD,
     )
+
+private fun admitsDirectKind(kind: ValueTransferKind): Boolean =
+    kind != ValueTransferKind.STRING_CONTENT && kind !in SOURCE_TRANSFER_KINDS

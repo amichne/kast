@@ -1,5 +1,5 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
-const PUBLIC_TOOL_CONTRACT_VERSION = 17;
+const PUBLIC_TOOL_CONTRACT_VERSION = 18;
 // Generated loading policy; owned by tools.schema.json.
 const DEFERRED_TOOL_NAMES: readonly string[] = ["query_symbols", "add_declaration", "replace_body"];
 // Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.

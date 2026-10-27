@@ -84,7 +84,9 @@ private fun QueryImpactTerminal.SupportedDomainEnd.projectFindingEnd(): ImpactPr
         .impactZip(observation.domain.impactDocument())
         .impactZip(count(observation.examinedWorkUnits.value))
         .impactZip(count(observation.retainedBytes))
-        .impactMap { (end, bytes) ->
+        .impactZip(observation.stringConstructions.impactEach { it.impactDocument() })
+        .impactMap { (previous, constructions) ->
+            val (end, bytes) = previous
             ImpactFindingTerminalDocument.SupportedDomainEnd(
                 ImpactFlowEndObservationDocument(
                     end.first.first,
@@ -92,6 +94,7 @@ private fun QueryImpactTerminal.SupportedDomainEnd.projectFindingEnd(): ImpactPr
                     end.second,
                     bytes,
                     ImpactFlowTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED,
+                    constructions,
                 )
             )
         }

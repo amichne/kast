@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 17
+const val PUBLIC_TOOL_CONTRACT_VERSION = 18
 enum class PublicToolCatalog { COMMON, COMPLETE }
 
 const val PUBLIC_COMMON_QUERY_DESCRIPTION =

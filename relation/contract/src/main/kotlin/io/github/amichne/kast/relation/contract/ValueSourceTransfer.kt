@@ -116,7 +116,9 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
         enclosing.valueIdentity == call.enclosing.valueIdentity &&
             range == call.range &&
             basis == call.basis &&
-            (role == ValueRole.ExpressionResult || (role as? ValueRole.LoopResult)?.result?.invocation == call) &&
+            (role == ValueRole.ExpressionResult ||
+                (role as? ValueRole.LoopResult)?.result?.invocation == call ||
+                (role as? ValueRole.StringConversionResult)?.invocation == call) &&
             executionOwner == call.executionOwner
 
     private fun <T, F> Refinement<T, F>.matches(expected: T): Boolean = this is Refinement.Refined && value == expected

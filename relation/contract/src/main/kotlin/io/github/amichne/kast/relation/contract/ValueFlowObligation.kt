@@ -30,6 +30,13 @@ value class ValueFlowExpressionKind private constructor(val value: String) {
 sealed interface ValueFlowObligationEvidence {
     data object None : ValueFlowObligationEvidence
 
+    data class StringConversion
+    internal constructor(
+        val selection: ValueStringConversionSelection,
+        val entryRange: ExactDeclarationTextRange,
+        val inputRange: ExactDeclarationTextRange,
+    ) : ValueFlowObligationEvidence
+
     data class CallbackInput internal constructor(val failure: ValueCallbackInputFailure) : ValueFlowObligationEvidence
 
     data class Expression
@@ -62,6 +69,27 @@ private constructor(
     }
 
     companion object {
+        fun fromStringConversion(
+            site: ValueSite,
+            cause: ValueFlowUnsupportedCause,
+            selection: ValueStringConversionSelection,
+            entryRange: ExactDeclarationTextRange,
+            inputRange: ExactDeclarationTextRange,
+        ): Refinement<ValueFlowObligation, ValueFlowObligationFailure> =
+            if (
+                site.executionOwner.range.containsValueRange(entryRange) &&
+                    entryRange.containsValueRange(inputRange) &&
+                    inputRange.containsValueRange(site.range)
+            )
+                Refinement.Refined(
+                    ValueFlowObligation(
+                        site,
+                        cause,
+                        ValueFlowObligationEvidence.StringConversion(selection, entryRange, inputRange),
+                    )
+                )
+            else Refinement.Rejected(ValueFlowObligationFailure.EXPRESSION_OUTSIDE_OWNER)
+
         fun fromCallbackInput(
             site: ValueSite,
             failure: ValueCallbackInputFailure,
@@ -97,6 +125,7 @@ private constructor(
                     is ValueRole.Receiver -> role.call.callable.valueIdentity == question.subject.valueIdentity
                     // A return can preserve an unresolved caller investigation without asserting its relationship.
                     ValueRole.Return -> true
+                    is ValueRole.StringConversionResult,
                     is ValueRole.Formal,
                     is ValueRole.LoopResult,
                     ValueRole.ExpressionResult,

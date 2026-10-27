@@ -16,6 +16,8 @@ internal fun valueSiteStorageBytes(site: ValueSite): Long =
         )
         .addBytes(
             when (val role = site.role) {
+                is ValueRole.StringConversionResult ->
+                    VALUE_RECORD_OVERHEAD.addBytes(role.invocation.callable.detachedTextUnits().multiplyBytes(2))
                 is ValueRole.LoopResult -> role.result.protocol.retainedBytes()
                 is ValueRole.Argument ->
                     VALUE_RECORD_OVERHEAD.addBytes(role.call.callable.detachedTextUnits().multiplyBytes(2))

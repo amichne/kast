@@ -203,6 +203,9 @@ internal fun ImpactValueSiteReferenceDocument.isResultOf(frame: ImpactCallFrameD
     enclosing == frame.enclosing &&
         range == frame.invocation.range &&
         (role == ImpactValueRoleDocument.ExpressionResult ||
+            (role as? ImpactValueRoleDocument.StringConversionResult)
+                ?.invocation
+                ?.hasSameInvocationIdentity(frame.invocation) == true ||
             (role as? ImpactValueRoleDocument.LoopResult)?.let {
                 it.admits(this) && it.result.invocation.hasSameInvocationIdentity(frame.invocation)
             } == true) &&

@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackParameterSupplier
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.ValueCallFrame
-import io.github.amichne.kast.relation.contract.ValueCallTarget
 import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -34,10 +33,7 @@ internal class NativeCallbackArgumentInput(
         if (frame == null) return callbackInputRejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
         if (frame.callee != source.executionOwner)
             return callbackInputRejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-        if (
-            frame.callee.context != ValueExecutionContext.Declaration ||
-                frame.invocation.executionOwner.context != ValueExecutionContext.Declaration
-        )
+        if (frame.callee.context != ValueExecutionContext.Declaration)
             return callbackInputRejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
         val formal =
             when (val admitted = formal(binding)) {
@@ -125,24 +121,13 @@ internal class NativeCallbackArgumentInput(
         val lexical = context.receiverDeclaration(host)
         if (lexical == null) return callbackInputRejected()
         val read =
-            if (source.callStack.frames.any { it.target is ValueCallTarget.Implementation })
-                readSelectedCallbackInputFlow(
-                    supplier = supplier,
-                    frames = source.callStack.frames,
-                    literal = literal,
-                    context = context,
-                    summaries = summaries,
-                )
-            else
-                readCallbackInvocationFlow(
-                    boundary = literal,
-                    lexicalOwner = lexical,
-                    scope = scope,
-                    projection = projection,
-                    admitWork = admitWork,
-                    summaries = summaries,
-                    callbackExpiry = expiry,
-                )
+            readSelectedCallbackInputFlow(
+                supplier = supplier,
+                frames = source.callStack.frames,
+                literal = literal,
+                context = context,
+                summaries = summaries,
+            )
         return when (
             val execution =
                 nativeCallbackInputOwner(
