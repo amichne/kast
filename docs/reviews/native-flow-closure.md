@@ -8,6 +8,8 @@ The original token does not establish the header argument.
 
 The audited and execution base is `b43a9ebc720d4aeaa5267a7d9c6cddb4f1d66ad1`.
 The task branch is `codex/native-flow-closure-rev3`.
+The branch also integrates fetched `origin/main` at `8865c47c614c9f3835b51e9e1fd0efd09ca32da3`.
+That upstream change affects documentation only. The semantic comparison base and frozen production inputs remain unchanged.
 Commit `998fbb0b9` freezes the 26-case B0 fixture before production changes.
 Commit `f5f14e4fc` isolates diagnostic preservation before the semantic repairs.
 The final source identity and complete gate result appear in the delivery record at the end of this report.
@@ -146,6 +148,9 @@ The separate classification correction keeps representation metadata distinct fr
 All new semantic operations belong to the named callback, template, conversion, or exact-header-frontier scope.
 The D3 count beyond that named scope is **0**.
 File extraction and typed projections add no semantic operation.
+The old `ValueFlow.kt` step anchor now resolves to `relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowStep.kt`.
+The old `ValueSite.kt` invocation anchor now resolves to `relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueInvocation.kt`.
+These relocations keep the same relation-contract owner and scope.
 
 ## Compatibility and generated owners
 
