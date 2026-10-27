@@ -1,3 +1,5 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.application.ApplicationManager
@@ -10,7 +12,10 @@ import com.intellij.testFramework.IndexingTestUtil
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
@@ -41,6 +46,36 @@ class NativeCallbackArgumentBindingTest : NativePacketValueFixtureTest() {
         assertEquals("action", binding.receiver.text)
         assertEquals(sourceValueRange(call.parent), binding.invocationRange)
         assertEquals(0, binding.position.value)
+    }
+
+    fun testGenericCallbackPreservesCompilerArgumentIdentity() = checkFixture { file ->
+        assertGenericBinding(call(file, "generic", "action"))
+    }
+
+    fun testGenericMemberPayloadPreservesCompilerArgumentIdentity() = checkFixture { file ->
+        val owner = file.declarations.filterIsInstance<KtClass>().single { it.name == "Box" }
+        val function = owner.declarations.filterIsInstance<KtNamedFunction>().single { it.name == "map" }
+        val call = PsiTreeUtil.collectElementsOfType(function, KtCallExpression::class.java).single()
+        assertEquals("transform", call.calleeExpression?.text)
+        assertGenericBinding(call)
+    }
+
+    private fun assertGenericBinding(call: KtCallExpression) {
+        val expression = checkNotNull(call.valueArguments.single().getArgumentExpression())
+        IntellijReadObservation.None.observedAnalyze(call) {
+            val resolved = checkNotNull(call.resolveCall())
+            val callable = resolved.signature.symbol as KaNamedFunctionSymbol
+            assertTrue(confirmsBuiltinFunctionInvoke(callable))
+            assertEquals(setOf(expression), resolved.valueArgumentMapping.keys)
+            assertEquals(callable.valueParameters.single(), resolved.valueArgumentMapping.getValue(expression).symbol)
+        }
+        val binding = nativeCallbackArgumentBinding(call, expression, IntellijReadObservation.None).nativeRefined()
+        assertTrue(binding is NativeCallbackArgumentBinding.Mapped)
+        binding as NativeCallbackArgumentBinding.Mapped
+        assertEquals(0, binding.position.value)
+        assertSame(call.calleeExpression, binding.receiver)
+        assertEquals(sourceValueRange(call), binding.invocationRange)
+        assertEquals(sourceValueRange(expression), binding.argumentRange)
     }
 
     fun testRepeatedInvocationOccurrencesStayDistinct() = checkFixture { file ->
@@ -129,6 +164,8 @@ class NativeCallbackArgumentBindingTest : NativePacketValueFixtureTest() {
             class Payload
             class Authored { operator fun invoke(value: Payload): Payload = value }
             class Holder(val action: (Payload) -> Payload)
+            class Box<S>(val value: S) { fun <T> map(transform: (S) -> T): T = transform(value) }
+            fun <S, T> generic(value: S, action: (S) -> T): T = action(value)
             fun implicit(first: Payload, second: Payload, action: (Payload, Payload) -> Payload) = action(second, first)
             fun explicit(value: Payload, action: (Payload) -> Payload) = action.invoke(value)
             fun repeated(value: Payload, action: (Payload) -> Payload) { action(value); action(value) }

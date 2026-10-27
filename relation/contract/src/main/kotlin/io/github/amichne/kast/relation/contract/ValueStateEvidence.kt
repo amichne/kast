@@ -128,13 +128,13 @@ private fun StringBuilder.executionContext(context: ValueExecutionContext) {
             field(context.invocations.size.toString())
             context.invocations.forEach { frame ->
                 field(frame.body.compilerIdentity.value)
-                valueCall(frame.supply.invocation)
+                callFrame(frame.supply.frame)
                 range(frame.supply.parameter.range)
                 field(frame.supply.position.value.toString())
                 field(frame.invocation.canonicalProjection())
             }
             field("SELECTED_INVOCATION")
-            valueCall(context.selectedInvocation.supply.invocation)
+            callFrame(context.selectedInvocation.supply.frame)
             body(context.selectedInvocation.supply.invocationOwner)
             occurrence(context.selectedInvocation.supply.parameter)
             field(context.selectedInvocation.supply.position.value.toString())
@@ -247,7 +247,7 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
 private fun StringBuilder.captureInvocation(invocation: ValueCaptureInvocation) {
     field(invocation.body.compilerIdentity.value)
     range(invocation.body.range)
-    valueCall(invocation.supply.invocation)
+    callFrame(invocation.supply.frame)
     range(invocation.supply.parameter.range)
     field(invocation.supply.position.value.toString())
     field(invocation.invocation.canonicalProjection())

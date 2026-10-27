@@ -215,8 +215,7 @@ private class CallbackWorkspaceFiles {
     }
 
     private fun argument(value: CallbackArgumentBinding) {
-        files += value.invocation.enclosing.file
-        files += value.invocation.callable.file
+        value.frame.stateEndpoints().forEach { files += it.file }
         files += value.invocationOwner.file
         files += value.parameter.file
     }

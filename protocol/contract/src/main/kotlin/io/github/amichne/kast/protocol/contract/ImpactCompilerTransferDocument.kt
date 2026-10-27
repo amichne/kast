@@ -38,7 +38,7 @@ private fun ImpactTransferEvidenceDocument.NormalBranchResult.admitsNormalBranch
         (source.role == ImpactValueRoleDocument.ExpressionResult || source.role == ImpactValueRoleDocument.LocalRead) &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         source.enclosing == target.enclosing &&
-        source.executionOwner == target.executionOwner &&
+        source.executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
         source.valuePath == target.valuePath &&
         source.callStack.hasSameCallStackIdentity(target.callStack) &&
         admitsAnchors(source.range, target.range) &&
@@ -71,7 +71,7 @@ private fun ImpactValueSiteReferenceDocument.admitsCastResult(target: ImpactValu
     (role == ImpactValueRoleDocument.ExpressionResult || role == ImpactValueRoleDocument.LocalRead) &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         enclosing == target.enclosing &&
-        executionOwner == target.executionOwner &&
+        executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
         valuePath == target.valuePath &&
         callStack.hasSameCallStackIdentity(target.callStack) &&
         target.range.containsExecutionRange(range)
@@ -80,7 +80,7 @@ private fun ImpactTransferKindDocument.admitsDirectOwner(
     source: ImpactValueSiteReferenceDocument,
     target: ImpactValueSiteReferenceDocument,
 ): Boolean {
-    if (source.executionOwner == target.executionOwner) return true
+    if (source.executionOwner.hasSameExecutionIdentity(target.executionOwner)) return true
     val binding =
         source.role == ImpactValueRoleDocument.LocalBinding ||
             (source.role as? ImpactValueRoleDocument.Formal)?.position is ImpactFormalPositionDocument.Parameter

@@ -10,15 +10,15 @@ internal fun List<ImpactCallFrameDocument>.hasSameFrames(other: List<ImpactCallF
 
 internal fun ImpactCallFrameDocument.hasSameFrameIdentity(other: ImpactCallFrameDocument): Boolean =
     enclosing == other.enclosing &&
-        invocation == other.invocation &&
-        callee == other.callee &&
+        invocation.hasSameInvocationIdentity(other.invocation) &&
+        callee.hasSameExecutionIdentity(other.callee) &&
         target.hasSameTargetIdentity(other.target)
 
 fun ImpactValueSiteReferenceDocument.hasSameValueIdentity(other: ImpactValueSiteReferenceDocument): Boolean =
     enclosing == other.enclosing &&
         range == other.range &&
-        role == other.role &&
-        executionOwner == other.executionOwner &&
+        role.hasSameRoleIdentity(other.role) &&
+        executionOwner.hasSameExecutionIdentity(other.executionOwner) &&
         valuePath == other.valuePath &&
         callStack.hasSameCallStackIdentity(other.callStack) &&
         conditions.hasSameConditions(other.conditions) &&
@@ -35,7 +35,7 @@ internal fun ImpactBoundaryRuleDocument.Continuation.hasSameContinuationIdentity
         target.hasSamePositionIdentity(other.target) &&
         assumptions == other.assumptions
 
-private fun ImpactCallTargetDocument.hasSameTargetIdentity(other: ImpactCallTargetDocument): Boolean =
+internal fun ImpactCallTargetDocument.hasSameTargetIdentity(other: ImpactCallTargetDocument): Boolean =
     when (this) {
         ImpactCallTargetDocument.Direct -> other == ImpactCallTargetDocument.Direct
         is ImpactCallTargetDocument.Implementation ->

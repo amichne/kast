@@ -48,7 +48,7 @@ private fun valueExecutionStorageBytes(execution: ValueExecutionOwner): Long =
             (context.invocations + context.selectedInvocation).fold(VALUE_CALL_PROOF_BYTES) { total, frame ->
                 total
                     .addBytes(frame.invocation.retainedBytes)
-                    .addBytes(valueSiteStorageBytes(frame.supply.invocation.resultSite()))
+                    .addBytes(valueFrameStorageBytes(frame.supply.frame))
                     .addBytes(VALUE_CALL_PROOF_BYTES)
             }
     }
@@ -78,11 +78,11 @@ internal fun sourceEvidenceStorageBytes(operation: ValueSourceOperation): Long =
         is ValueSourceOperation.CallbackReturn ->
             valueFrameStorageBytes(operation.frame)
                 .addBytes(operation.invocation.invocation.retainedBytes)
-                .addBytes(valueSiteStorageBytes(operation.invocation.supply.invocation.resultSite()))
+                .addBytes(valueFrameStorageBytes(operation.invocation.supply.frame))
         is ValueSourceOperation.CallbackArgumentEntry ->
             valueFrameStorageBytes(operation.supplierFrame)
                 .addBytes(operation.invocation.invocation.retainedBytes)
-                .addBytes(valueSiteStorageBytes(operation.invocation.supply.invocation.resultSite()))
+                .addBytes(valueFrameStorageBytes(operation.invocation.supply.frame))
                 .addBytes(valueExecutionStorageBytes(operation.parameter.executionOwner))
                 .addBytes(operation.parameter.callable.detachedTextUnits().multiplyBytes(2))
                 .addBytes(operation.parameter.name.value.length.toLong().multiplyBytes(2))

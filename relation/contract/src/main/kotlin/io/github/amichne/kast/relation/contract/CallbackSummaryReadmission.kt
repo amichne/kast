@@ -8,6 +8,8 @@ import java.util.Collections
 sealed interface CallbackSummaryReadmissionFailure {
     data object DependencyContractNeedsFreshRead : CallbackSummaryReadmissionFailure
 
+    data object ImplementationNeedsFreshRead : CallbackSummaryReadmissionFailure
+
     data object WorkLimitReached : CallbackSummaryReadmissionFailure
 
     data object TimeLimitReached : CallbackSummaryReadmissionFailure

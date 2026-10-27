@@ -82,7 +82,7 @@ private class CallbackSupplierEndpoints {
     }
 
     private fun argument(value: CallbackArgumentBinding) {
-        call(value.invocation)
+        value.frame.stateEndpoints().forEach(::endpoint)
         files += value.invocationOwner.file
         files += value.parameter.file
     }

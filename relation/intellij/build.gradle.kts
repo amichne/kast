@@ -294,6 +294,9 @@ tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest) }
 registerRelationNativeFixtures(
     "semanticCoverageFixtureTest",
     listOf(
+        "*NativeConstructorPropertyStorageTest",
+        "*NativeImplicitLambdaParameterTest",
+        "*NativeContainerMapFlowTest",
         "*NativeDependencyCallbackTest",
         "*NativeDeclaredEffectCallbackTest",
         "*NativeCallbackCandidateFilterTest",

@@ -145,8 +145,7 @@ internal class IntellijFactoryBodyCalls(private val context: IntellijCallbackFlo
             matches.singleOrNull() ?: return rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
         val binding = capture.binding
         return when (
-            val formal =
-                CallbackParameterIdentity.fromCompiler(binding.invocation.callable, binding.position, binding.parameter)
+            val formal = CallbackParameterIdentity.fromCompiler(binding.callable, binding.position, binding.parameter)
         ) {
             is Refinement.Refined -> Refinement.Refined(CallbackFactoryBodyCall.Captured(invocation, formal.value))
             is Refinement.Rejected -> rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)

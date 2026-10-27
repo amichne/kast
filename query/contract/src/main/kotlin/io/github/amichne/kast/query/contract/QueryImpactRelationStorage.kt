@@ -17,7 +17,6 @@ import io.github.amichne.kast.relation.contract.ValueLoopTransfer
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSiteIdentity
-import io.github.amichne.kast.relation.contract.ValueSourceOperation
 import io.github.amichne.kast.relation.contract.ValueSourceTransfer
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferEvidence
@@ -265,10 +264,7 @@ internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
                     when (val proof = evidence) {
                         is ValueLoopTransfer ->
                             proof.iteration.storageBytes(g).saturatedAdd(g.node(proof.receiverKind) { 0L })
-                        is ValueSourceTransfer ->
-                            if (proof.operation is ValueSourceOperation.CallbackArgumentEntry)
-                                proof.operation.storageBytes(g)
-                            else proof.retainedBytes
+                        is ValueSourceTransfer -> proof.operation.storageBytes(g)
                         ValueTransferEvidence.Direct,
                         is ValueTransferEvidence.NormalBranchResult -> proof.retainedBytes
                     }

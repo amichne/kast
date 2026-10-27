@@ -19,7 +19,7 @@ fun ImpactValueSiteReferenceDocument.admitsExecutionOwner(): Boolean =
 private fun ImpactInvocationReferenceDocument.admitsOwner(
     host: ImpactDeclarationReferenceDocument,
     owner: ImpactExecutionOwnerDocument,
-): Boolean = executionOwner == owner && executionOwner.admits(host, range)
+): Boolean = executionOwner.hasSameExecutionIdentity(owner) && executionOwner.admits(host, range)
 
 internal fun ImpactExecutionOwnerDocument.admits(
     host: ImpactDeclarationReferenceDocument,
@@ -47,8 +47,7 @@ private fun ImpactCaptureInvocationDocument.admitsCapture(host: ImpactDeclaratio
         host.range.containsExecutionRange(body.range) &&
         supplyOwner.file == enclosing.file &&
         supplyOwner.range.containsExecutionRange(supply.range) &&
-        supply.callable.range.containsExecutionRange(parameter) &&
-        invocationOwner.range.containsExecutionRange(invocation)
+        admitsForwardings(host.basis)
 
 internal fun ImpactSourceRangeDocument.containsExecutionRange(other: ImpactSourceRangeDocument): Boolean =
     other.start.value < other.end.value && other.start.value >= start.value && other.end.value <= end.value
@@ -65,7 +64,11 @@ internal fun ImpactExecutionOwnerDocument.isOnBasis(basis: ImpactSemanticBasisDo
                     binding.contract.basis == basis && binding.admits(binding.enclosing)
                 is ImpactExecutionOwnerDocument.Callback ->
                     admitsSelection() &&
-                        invocations.values.all { it.enclosing.basis == basis && it.supply.callable.basis == basis }
+                        invocations.values.all { capture ->
+                            capture.enclosing.basis == basis &&
+                                capture.supply.callable.basis == basis &&
+                                capture.admitsForwardings(basis)
+                        }
             }
     }
 

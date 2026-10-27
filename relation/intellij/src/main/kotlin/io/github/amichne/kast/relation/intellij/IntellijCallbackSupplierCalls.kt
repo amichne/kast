@@ -8,6 +8,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
@@ -54,6 +57,52 @@ internal class IntellijCallbackSupplierCalls(
                     NativeSupplierMapping.Different ->
                         Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
                     is NativeSupplierMapping.Mapped -> Refinement.Refined(selected.value)
+                }
+        }
+    }
+
+    /** The active value path retains declared dispatch and selected source body as separate compiler proofs. */
+    fun readExact(
+        call: KtCallElement,
+        function: KtNamedFunction,
+        parameter: KtParameter,
+        formal: CallbackParameterIdentity,
+        frame: ValueCallFrame,
+    ): Refinement<NativeCallbackSupplierCall, CallbackInvocationFlowCause> {
+        when (val permitted = context.permit()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return permitted
+        }
+        val selected =
+            when (val restored = context.target(function)) {
+                is Refinement.Refined -> restored.value
+                is Refinement.Rejected -> return restored
+            }
+        if (selected != frame.callee.enclosing || formal.callable != selected)
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        if (
+            function.valueParameters.getOrNull(formal.position.value) != parameter ||
+                context.occurrence(parameter) != formal.parameter
+        )
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        val declared =
+            when (val restored = context.declaration(frame.invocation.callable)) {
+                is IntellijRelationSubjectLookup.Found -> restored.declaration as? KtNamedFunction
+                is IntellijRelationSubjectLookup.Rejected -> null
+            } ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        val declaredParameter =
+            declared.valueParameters.getOrNull(formal.position.value)
+                ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        return when (
+            val mapped =
+                map(call = call, function = declared, parameter = declaredParameter, formal = formal, frame = frame)
+        ) {
+            is Refinement.Rejected -> mapped
+            is Refinement.Refined ->
+                when (val value = mapped.value) {
+                    NativeSupplierMapping.Different ->
+                        Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    is NativeSupplierMapping.Mapped -> Refinement.Refined(value.value)
                 }
         }
     }
@@ -146,6 +195,7 @@ internal class IntellijCallbackSupplierCalls(
         function: KtNamedFunction,
         parameter: KtParameter,
         formal: CallbackParameterIdentity,
+        frame: ValueCallFrame? = null,
     ): Refinement<NativeSupplierMapping, CallbackInvocationFlowCause> {
         val argument = argument(call, function, parameter, formal)
         when (argument) {
@@ -154,6 +204,37 @@ internal class IntellijCallbackSupplierCalls(
                 return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             is NativeSupplierArgument.Selected -> Unit
         }
+        if (
+            frame?.target is ValueCallTarget.Implementation &&
+                argument.selection == NativeCallbackSupplierSelection.DEFAULT
+        )
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
+        val owner =
+            when (val read = supplyingOwner(call)) {
+                is Refinement.Refined -> read.value
+                is Refinement.Rejected -> return read
+            }
+        val binding =
+            when (val read = mappedBinding(call = call, owner = owner, formal = formal, frame = frame)) {
+                is Refinement.Refined -> read.value
+                is Refinement.Rejected -> return read
+            }
+        return Refinement.Refined(
+            NativeSupplierMapping.Mapped(
+                NativeCallbackSupplierCall(
+                    call = call,
+                    binding = binding,
+                    value = argument.value,
+                    selection = argument.selection,
+                    lexicalOwner = owner,
+                )
+            )
+        )
+    }
+
+    private fun supplyingOwner(
+        call: KtCallElement
+    ): Refinement<CompilerGroundedSymbolEvidence, CallbackInvocationFlowCause> {
         val declaration =
             when (val found = call.nearestDeclaration()) {
                 is ContainingDeclaration.Deferred -> found.enclosingDeclaration()
@@ -165,6 +246,15 @@ internal class IntellijCallbackSupplierCalls(
         val owner =
             context.receiverDeclaration(declaration.declaration)
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
+        return Refinement.Refined(owner)
+    }
+
+    private fun mappedBinding(
+        call: KtCallElement,
+        owner: CompilerGroundedSymbolEvidence,
+        formal: CallbackParameterIdentity,
+        frame: ValueCallFrame?,
+    ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowCause> {
         val enclosing =
             context.endpoint(owner) ?: return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
         val body =
@@ -174,24 +264,42 @@ internal class IntellijCallbackSupplierCalls(
             context.range(call.valueInvocationExpression())
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val invocation =
-            when (val admitted = ValueInvocation.fromCompiler(enclosing, range, formal.callable)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-            }
-        val binding =
             when (
-                val admitted = CallbackArgumentBinding.fromCompiler(invocation, body, formal.position, formal.parameter)
+                val admitted =
+                    ValueInvocation.fromCompiler(
+                        enclosing = enclosing,
+                        range = range,
+                        callable = frame?.invocation?.callable ?: formal.callable,
+                        executionOwner =
+                            frame?.invocation?.executionOwner ?: ValueExecutionOwner.declaration(enclosing),
+                    )
             ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             }
-        return Refinement.Refined(
-            NativeSupplierMapping.Mapped(
-                NativeCallbackSupplierCall(call, binding, argument.value, argument.selection, owner)
-            )
-        )
+        if (frame != null && invocation != frame.invocation)
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        return when (
+            val admitted =
+                if (frame == null)
+                    CallbackArgumentBinding.fromCompiler(
+                        invocation = invocation,
+                        invocationOwner = body,
+                        position = formal.position,
+                        parameter = formal.parameter,
+                    )
+                else
+                    CallbackArgumentBinding.fromCompiler(
+                        frame = frame,
+                        invocationOwner = body,
+                        position = formal.position,
+                        parameter = formal.parameter,
+                    )
+        ) {
+            is Refinement.Refined -> admitted
+            is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        }
     }
 }
 

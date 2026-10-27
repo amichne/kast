@@ -77,7 +77,7 @@ internal fun admitBoundCallbackFlow(
     if (binding.invocation.basis != basis) return Refinement.Rejected(CallbackInvocationFlowFailure.BASIS_MISMATCH)
     if (body.file != binding.invocation.enclosing.file || !binding.invocation.range.containsValueRange(body.range))
         return Refinement.Rejected(CallbackInvocationFlowFailure.BODY_OUTSIDE_ARGUMENT)
-    return admitInvocationRoutes(basis, binding.invocation.callable, binding.position, binding.parameter, invocations)
+    return admitInvocationRoutes(basis, binding.callable, binding.position, binding.parameter, invocations)
 }
 
 internal fun admitDefaultCallbackFlow(
@@ -148,7 +148,7 @@ private fun admitInvocationRoute(
                 forwarded.source.parameter != formalParameter
         )
             return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_FORWARDING_PATH)
-        callable = forwarded.target.invocation.callable
+        callable = forwarded.target.callable
         formalPosition = forwarded.target.position
         formalParameter = forwarded.target.parameter
     }
@@ -177,7 +177,7 @@ internal fun callbackExecutionNeedsQualification(
         when (binding) {
             is CallbackBindingEvidence.Bound -> {
                 if (!binding.binding.invocationOwner.isNamedOwnerOf(binding.binding.invocation.enclosing)) return true
-                binding.binding.invocation.callable
+                binding.binding.callable
             }
             is CallbackBindingEvidence.Default -> binding.binding.parameter.callable
             is CallbackBindingEvidence.DeferredDependency -> return false
@@ -193,7 +193,7 @@ internal fun callbackInvocationsNeedQualification(
     source: RelationEndpoint,
     invocations: List<CallbackParameterInvocation>,
 ): Boolean = invocations.any { invocation ->
-    val callable = invocation.forwardings.lastOrNull()?.target?.invocation?.callable ?: source
+    val callable = invocation.forwardings.lastOrNull()?.target?.callable ?: source
     invocation.forwardings.any { !it.target.invocationOwner.isNamedOwnerOf(it.source.callable) } ||
         !invocation.owner.isNamedOwnerOf(callable)
 }

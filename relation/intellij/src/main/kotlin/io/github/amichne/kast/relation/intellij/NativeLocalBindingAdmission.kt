@@ -7,6 +7,7 @@ import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueRole
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 
@@ -17,7 +18,8 @@ internal fun PsiElement.isNativeReferenceBinding(role: ValueRole): Boolean =
                 is Refinement.Refined -> binding.value == NativeLocalBindingMutability.IMMUTABLE
                 is Refinement.Rejected -> false
             }
-        is ValueRole.Formal -> role.position is ValueFormalPosition.Parameter && this is KtParameter
+        is ValueRole.Formal ->
+            role.position is ValueFormalPosition.Parameter && (this is KtParameter || this is KtFunctionLiteral)
         is ValueRole.Argument,
         is ValueRole.Receiver,
         is ValueRole.LoopResult,

@@ -19,10 +19,10 @@ sealed interface ImpactCallbackSelectionDocument {
 
 internal fun ImpactExecutionOwnerDocument.Callback.selects(invocation: ImpactCaptureInvocationDocument): Boolean =
     invocation.body == body &&
-        invocations.values.count { it == invocation } == 1 &&
+        invocations.values.count { it.hasSameCaptureIdentity(invocation) } == 1 &&
         when (val selected = selection) {
             ImpactCallbackSelectionDocument.Unique -> invocations.values.count { it.body == body } == 1
-            is ImpactCallbackSelectionDocument.Exact -> selected.invocation == invocation
+            is ImpactCallbackSelectionDocument.Exact -> selected.invocation.hasSameCaptureIdentity(invocation)
         }
 
 internal fun ImpactExecutionOwnerDocument.Callback.admitsSelection(): Boolean =

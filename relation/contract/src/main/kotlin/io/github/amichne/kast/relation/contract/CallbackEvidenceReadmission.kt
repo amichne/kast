@@ -148,9 +148,19 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
         }
 
     fun argument(previous: CallbackArgumentBinding): CallbackReadmission<CallbackArgumentBinding> =
-        call(previous.invocation).then { call ->
-            CallbackArgumentBinding.fromCompiler(call, previous.invocationOwner, previous.position, previous.parameter)
-                .callback()
+        when (previous.frame.target) {
+            is ValueCallTarget.Implementation ->
+                Refinement.Rejected(CallbackSummaryReadmissionFailure.ImplementationNeedsFreshRead)
+            ValueCallTarget.Direct ->
+                call(previous.invocation).then { call ->
+                    CallbackArgumentBinding.fromCompiler(
+                            call,
+                            previous.invocationOwner,
+                            previous.position,
+                            previous.parameter,
+                        )
+                        .callback()
+                }
         }
 
     fun call(previous: ValueInvocation): CallbackReadmission<ValueInvocation> =

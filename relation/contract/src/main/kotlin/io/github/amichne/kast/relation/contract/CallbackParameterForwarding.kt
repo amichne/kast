@@ -17,8 +17,7 @@ private constructor(
         get() =
             2048L
                 .addBytes(source.callable.detachedTextUnits().multiplyBytes(2))
-                .addBytes(target.invocation.enclosing.detachedTextUnits().multiplyBytes(2))
-                .addBytes(target.invocation.callable.detachedTextUnits().multiplyBytes(2))
+                .addBytes(valueFrameStorageBytes(target.frame))
                 .addBytes(
                     callableTransfers.fold(0L) { bytes, transfer ->
                         bytes.addBytes(transfer.source.retainedBytes).addBytes(transfer.target.retainedBytes)

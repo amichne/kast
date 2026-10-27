@@ -8,6 +8,7 @@ internal fun StringBuilder.binding(evidence: CallbackBindingEvidence) {
             range(evidence.binding.invocation.range)
             body(evidence.binding.invocationOwner)
             endpoint(evidence.binding.invocation.callable)
+            callFrame(evidence.binding.frame)
             field(evidence.binding.position.value.toString())
             occurrence(evidence.binding.parameter)
         }
