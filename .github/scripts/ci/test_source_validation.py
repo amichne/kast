@@ -78,8 +78,8 @@ class SourceValidationTest(unittest.TestCase):
         with (ROOT / verification_plan.MANIFEST).open() as manifest:
             expected = [row for row in csv.DictReader(manifest, delimiter="\t")
                         if row["verification_owner"] == ":runtime:hosted"]
+        self.assertTrue(expected)
         self.assertEqual(expected, actual)
-        self.assertEqual(106, len(actual))
         self.assertIn("-PkastSemanticOwners=:runtime:hosted", command)
         self.assertIn(":verifySelectedKotlinSemanticCoverage", command)
         self.assertNotIn("sourceValidationGate", command)

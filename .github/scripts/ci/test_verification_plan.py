@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The frozen owner matrix supplies expected obligations independently of the selector."""
 
+import csv
 import json
 import tempfile
 import unittest
@@ -18,6 +19,17 @@ class VerificationPlanTest(unittest.TestCase):
     def plan(self, *paths, root=ROOT):
         return selection.plan(
             root, MODULES, paths, "a" * 40, "b" * 40, "c" * 40, "d" * 40, "pull_request"
+        )
+
+    def assert_semantic_population(self, plan: selection.Plan, owners: set[str]) -> None:
+        with (ROOT / "config/kotlin-semantic-coverage/cases.tsv").open() as manifest:
+            expected = [row for row in csv.DictReader(manifest, delimiter="\t")
+                        if row["verification_owner"] in owners]
+        self.assertTrue(expected)
+        self.assertEqual(tuple(sorted(row["case_id"] for row in expected)), plan.caseIds)
+        self.assertEqual(tuple(sorted(row["test_result_id"] for row in expected)), plan.testResultIds)
+        self.assertEqual(
+            tuple(sorted({row["test_result_id"].split("#")[0] for row in expected})), plan.classes
         )
 
     def test_leaf_contract_adapter_and_shared_resource_consumers(self):
@@ -44,8 +56,7 @@ class VerificationPlanTest(unittest.TestCase):
                     self.assertIn(owner + ":check", plan.tasks)
                     self.assertIn(owner + ":scopedCheck", plan.tasks)
                 self.assertIn(":verifySelectedKotlinSemanticCoverage", plan.tasks)
-                self.assertEqual(321 if ":relation:intellij" in expected else 106, len(plan.caseIds))
-                self.assertEqual(37 if ":relation:intellij" in expected else 12, len(plan.classes))
+                self.assert_semantic_population(plan, expected & {":runtime:hosted", ":relation:intellij"})
                 self.assertNotIn(":installedProductTest", plan.tasks)
                 self.assertNotIn(":distribution:cli:nativeCompile", plan.tasks)
                 self.assertNotIn(":topology:build:check", plan.tasks)
@@ -66,7 +77,7 @@ class VerificationPlanTest(unittest.TestCase):
                 )
                 self.assertIn(":app-server:check", plan.tasks)
                 self.assertIn(":app-server:scopedCheck", plan.tasks)
-                self.assertEqual(106, len(plan.caseIds))
+                self.assert_semantic_population(plan, {":runtime:hosted"})
                 self.assertNotIn(":workspace:intellij-read:check", plan.tasks)
 
     def test_public_query_guard_cli_sources_keep_app_server_generation_consumers(self):
