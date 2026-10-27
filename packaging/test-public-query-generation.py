@@ -21,6 +21,28 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
 
+    def test_focused_topics_are_bounded_and_use_authored_examples(self):
+        outputs = generator.render_tools(self.authority)
+        root = ROOT / 'agent-tools/references/query-topics'
+        for name in ('declarations', 'exact-selection', 'relations', 'trace', 'retained-evidence', 'source-reads'):
+            topic = outputs[root / (name + '.md')]
+            self.assertLessEqual(len(topic.encode('utf-8')), 4096, name)
+            self.assertIn('Legal next actions:', topic)
+            self.assertIn('Accepted references:', topic)
+            self.assertIn('Returned capabilities:', topic)
+            for request in re.findall(r'```json\n(.*?)\n```', topic, re.DOTALL):
+                self.assertIn(json.loads(request), [example['value'] for example in self.authority['tools'][0]['examples'].values()])
+        index = outputs[ROOT / 'agent-tools/references/query-topics.md']
+        self.assertLessEqual(len(index.encode('utf-8')), 4096)
+        self.assertIn('advanced/', index)
+
+    def test_focused_topics_follow_canonical_enums_and_defaults(self):
+        self.authority['$defs']['SearchSource']['properties']['nameMatch']['enum'] = ['EXACT', 'NEW_MATCH', None]
+        self.authority['$defs']['SearchSource']['properties']['nameMatch']['default'] = 'NEW_MATCH'
+        topic = generator.render_tools(self.authority)[ROOT / 'agent-tools/references/query-topics/declarations.md']
+        self.assertIn('NEW_MATCH', topic)
+        self.assertIn('default: "NEW_MATCH"', topic)
+
     def test_onboarding_reference_preserves_schema_and_interface_query(self):
         generated = generator.render_tools(self.authority)
         root = ROOT / "agent-tools/references"

@@ -633,6 +633,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
             ], indent=2) + '\n'
             outputs[reference / 'onboarding.md'] = render_onboarding(authority)
             outputs[reference / 'query-row-compatibility.md'] = render_row_compatibility(authority)
+            outputs.update(render_query_topics(authority))
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
     outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(
@@ -640,6 +641,61 @@ def render_tools(authority: dict) -> dict[Path, str]:
         indent=2,
     ) + '\n'
     outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'
+    return outputs
+
+
+def render_query_topics(authority: dict) -> dict[Path, str]:
+    """Project focused help from canonical examples and metadata, without expanding refs."""
+    query = next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
+    definitions = authority['$defs']
+    root = ROOT / 'agent-tools/references'
+    topics = {
+        'declarations': ('scopedInterfaceDeclaration', ['SearchSource', 'SymbolsOutput'], 'None', 'Exact symbols', 'Select the exact owner, file, and signature. Read exact-selection.md.'),
+        'exact-selection': ('containingDeclaration', ['LocationSource'], 'None for AT_LOCATION. SYMBOL_REFS needs issued exact symbols', 'Exact symbols with identity and location', 'Reuse the issued exact ref unchanged. Read relations.md.'),
+        'relations': ('referenceOccurrences', ['ExpandRelation', 'OccurrencesOutput'], 'Issued exact symbols in SYMBOL_REFS', 'Occurrences and source selectors', 'Read selected source or retain the result.'),
+        'trace': ('traceAffectedUses', ['Trace', 'SymbolsOutput'], 'Issued exact symbols in SYMBOL_REFS', 'Grouped symbols, connections, and occurrences', 'Preserve completion and omissions. Read retained-evidence.md.'),
+        'retained-evidence': ('readRetained', ['ReadResultAction'], 'Issued result reference and its cursors', 'Presentation pages on the original basis', 'Use returned cursors with the same result. Never replay RUN to recover evidence.'),
+        'source-reads': ('readSourceExactSymbol', ['ReadSourceAction'], 'Issued candidate, exact symbol, or source selector', 'Source text and region identity', 'Preserve freshness failures. A window does not prove complete source.'),
+    }
+    outputs = {}
+    index = ['# Query topics', '', 'Read one named topic before its operation.', '',
+             'Examples contain illustrative references. Only issued references grant authority.', '',
+             'COMMON exposes one subset of the query grammar. Select COMPLETE explicitly for advanced operations.',
+             'A session keeps its catalog. Deferred clients can select COMPLETE.', '']
+    for name, (example, owners, references, capabilities, next_actions) in topics.items():
+        lines = ['# ' + name, '', query['examples'][example]['summary'], '',
+                 '```json', json.dumps(query['examples'][example]['value'], separators=(',', ':')), '```', '',
+                 'Accepted references: ' + references + '.',
+                 'Returned capabilities: ' + capabilities + '.',
+                 'Legal next actions: ' + next_actions, '', 'Canonical choices and defaults:']
+        for owner in owners:
+            node = definitions[owner]
+            for field, prop in node.get('properties', {}).items():
+                choices = prop.get('items', prop).get('enum')
+                if choices is not None or 'default' in prop:
+                    facts = []
+                    if choices is not None:
+                        facts.append('choices: ' + json.dumps(choices, separators=(',', ':')))
+                    if 'default' in prop:
+                        facts.append('default: ' + json.dumps(prop['default']))
+                    lines.append('- `' + owner + '.' + field + '`: ' + ', '.join(facts) + '.')
+        lines.extend(['', 'Supported outputs: ' + ', '.join(
+            branch['$ref'].split('/')[-1] for branch in definitions['Output']['anyOf'] if '$ref' in branch
+        ) + '. TRACE accepts SYMBOLS only.', '',
+                      'Read `../query-schema.json` for complete shapes and constraints.'])
+        content = '\n'.join(lines) + '\n'
+        if len(content.encode('utf-8')) > 4096:
+            raise ValueError(f'Query topic exceeds 4096 UTF-8 bytes: {name}')
+        outputs[root / 'query-topics' / (name + '.md')] = content
+        index.append(f'- [{name}](query-topics/{name}.md)')
+    index.extend(['', 'Advanced example addresses:'])
+    for name, example in query['examples'].items():
+        if name not in {item[0] for item in topics.values()}:
+            relative = 'query-topics/advanced/' + name + '.md'
+            content = '# ' + name + '\n\n' + example['summary'] + '\n\n```json\n' + json.dumps(example['value'], separators=(',', ':')) + '\n```\n'
+            outputs[root / relative] = content
+            index.append(f'- [{name}]({relative})')
+    outputs[root / 'query-topics.md'] = '\n'.join(index) + '\n'
     return outputs
 
 
