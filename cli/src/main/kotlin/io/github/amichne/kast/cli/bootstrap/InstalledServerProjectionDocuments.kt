@@ -180,6 +180,8 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 ),
             "impactCallFrame" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument.serializer()),
+            "impactCallTarget" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument.serializer()),
             "impactValueRole" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument.serializer()),
             "callbackGraphCause" to

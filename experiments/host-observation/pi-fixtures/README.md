@@ -1,5 +1,36 @@
 # Public canonical fixture provenance
 
+## 2026-10-27 Outcome forwarding refresh
+
+These schemas include the repaired Outcome forwarding evidence.
+The exporter uses exact invocation and callback-capture descriptors as recursive references.
+Each reference keeps its complete serializer definition.
+The result schema uses `installedSemanticResultSchema(QUERY_RUN)` and the shared call-target definition.
+
+The exporter ran against repaired sources based on `d280e9fb04cfb3d266c84371fe97e103b99ccb59`.
+The digests identify the exact exporter, compiled artifact, and output bytes.
+These exports prove schema shapes only.
+They do not prove installed-host behavior.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `PiQuestionSchema.java` | `ae501dfb73a6fd2fe6ddbccb9d8000fdb87c64e8ac198c530b1f0640a0cab54d` |
+| `cli-0.50.2-all.jar` | `926a03f3ec0891c03dbe6855ba3356444a95aa17c7a73b78c24164cc49154730` |
+| `query-question.schema.json` | `1935bc9f5488d86d1110834ff41a7ae43aed739397594f19e62f0e03cf4ce836` |
+| `query-qualification.schema.json` | `33ec05e89fef425c439389b790e68a7b336521f02cc2e46499299d6cf0e90a43` |
+| `query-result.schema.json` | `303fbae5fd7140c1eb5e0ae25a0400b0f510e2e7db4050eee78905c4cb886421` |
+
+Reproduce the exports from the repository root:
+
+```sh
+mise exec -- ./gradlew -Pversion=0.50.2 :cli:shadowJar
+mise exec -- java -cp 'cli/build/libs/cli-0.50.2-all.jar:query/contract/build/classes/kotlin/main' \
+  experiments/host-observation/PiQuestionSchema.java \
+  experiments/host-observation/pi-fixtures/query-question.schema.json \
+  experiments/host-observation/pi-fixtures/query-qualification.schema.json \
+  experiments/host-observation/pi-fixtures/query-result.schema.json
+```
+
 ## 2026-10-23 callback schema refresh
 
 All three schema files were exported from the local callback changes based on

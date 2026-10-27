@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelIdentity
@@ -230,6 +231,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     "impactInvocationReference",
                     "impactExecutionOwner",
                     "impactCaptureInvocation",
+                    "impactValueSiteReference",
                 ),
             name,
         )
@@ -238,6 +240,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
                     "impactExecutionOwner" to ImpactExecutionOwnerDocument.serializer(),
                     "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
+                    "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 )
                 .filterKeys { it in definitions }
                 .forEach { (definition, serializer) ->
@@ -251,9 +254,16 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
             if (
                 actual is JsonObject &&
                     "\$ref" !in actual &&
-                    expected["\$ref"]?.jsonPrimitive?.content == "#/\$defs/impactInvocationReference"
+                    expected["\$ref"]?.jsonPrimitive?.content in
+                        setOf("#/\$defs/impactInvocationReference", "#/\$defs/impactCaptureInvocation")
             ) {
-                compare(independentImpactSchema(ImpactInvocationReferenceDocument.serializer()), actual, path)
+                val serializer =
+                    when (expected.getValue("\$ref").jsonPrimitive.content) {
+                        "#/\$defs/impactInvocationReference" -> ImpactInvocationReferenceDocument.serializer()
+                        "#/\$defs/impactCaptureInvocation" -> ImpactCaptureInvocationDocument.serializer()
+                        else -> error("Expected a recursive impact descriptor")
+                    }
+                compare(independentImpactSchema(serializer), actual, path)
             } else {
                 assertEquals(expected, actual, "Reference at $path")
             }
