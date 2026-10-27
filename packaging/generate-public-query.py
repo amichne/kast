@@ -8,6 +8,7 @@ It does not generate semantic admission or compiler authority.
 from __future__ import annotations
 import argparse
 import copy
+from collections import Counter
 import json
 import re
 from pathlib import Path
@@ -222,6 +223,49 @@ def referenced_schema(root: dict, definitions: dict) -> dict:
     return dict(root, **({'$defs': {name: schema for name, schema in definitions.items() if name in reached}} if reached else {}))
 
 
+def inline_single_use_schema_leaves(schema: dict) -> dict:
+    """Substitute exact finite single-use nodes without duplicate expansion or changed constraints."""
+    definitions = schema.get('$defs', {})
+
+    def references(node):
+        counts = Counter()
+        def visit(value):
+            if isinstance(value, list):
+                for child in value:
+                    visit(child)
+            elif isinstance(value, dict):
+                if '$ref' in value:
+                    counts[value['$ref']] += 1
+                for child in value.values():
+                    visit(child)
+        visit(node)
+        return counts
+
+    inbound = references(schema)
+    selected = {name for name, definition in definitions.items()
+                if not references(definition) and inbound['#/$defs/' + name] == 1}
+
+    def rewrite(node):
+        if isinstance(node, list):
+            return [rewrite(child) for child in node]
+        if isinstance(node, dict):
+            reference = node.get('$ref')
+            name = reference[8:] if isinstance(reference, str) and reference.startswith('#/$defs/') else None
+            if name in selected:
+                if set(node) != {'$ref'}:
+                    raise ValueError('Single-use schema reference has unsupported sibling constraints')
+                return copy.deepcopy(definitions[name])
+            return {key: rewrite(child) for key, child in node.items()}
+        return node
+
+    result = rewrite(schema)
+    remaining = references(result)
+    for name in selected:
+        if remaining['#/$defs/' + name] == 0:
+            del result['$defs'][name]
+    return result
+
+
 def common_query_schema(authority: dict, *, strict: bool, minimum_bytes: int) -> dict:
     """Select a closed canonical subset before reference collection and projection."""
     policy = authority['catalogs']['COMMON']
@@ -278,7 +322,7 @@ def common_query_schema(authority: dict, *, strict: bool, minimum_bytes: int) ->
         return node
     result = rename(projected)
     result['$defs'] = {names.get(name, name): value for name, value in result['$defs'].items()}
-    return result
+    return inline_single_use_schema_leaves(result)
 
 
 def render_tools(authority: dict) -> dict[Path, str]:

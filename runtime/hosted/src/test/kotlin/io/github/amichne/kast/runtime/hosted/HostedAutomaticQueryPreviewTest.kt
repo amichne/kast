@@ -23,6 +23,74 @@ import org.junit.jupiter.api.Test
 
 class HostedAutomaticQueryPreviewTest {
     @Test
+    fun `oversized retained row presents a bounded selector before the later small row`() {
+        val original = HostedQueryRetainedPresentationTest().page(0, 2, 2)
+        val rows = original.evidence.payload.items.values
+        val first = rows.first() as io.github.amichne.kast.protocol.contract.QueryResultItemDocument.ExactSymbol
+        val large =
+            first.copy(
+                name = io.github.amichne.kast.protocol.contract.ProtocolText.parse("λ\"\\".repeat(4000)).refined()
+            )
+        val semantic =
+            original.copy(
+                evidence =
+                    original.evidence.copy(
+                        payload =
+                            original.evidence.payload.copy(
+                                items = BoundedProtocolList.create(listOf(large, rows[1])).refined()
+                            )
+                    )
+            )
+        val response =
+            encodeHostedQueryResponse(semantic, maximumBytes = ReturnedByteLimit.parse(8_000).refined()) {
+                error("An existing retained result must not allocate another evidence store")
+            }
+        assertInstanceOf(HostedResponse.Canonical::class.java, response)
+        val encoded = (response as HostedResponse.Canonical<*, *, *>).document
+        assertTrue(encoded.toByteArray(Charsets.UTF_8).size <= 8_000)
+        assertTrue(encoded.contains("DEFERRED_DETAIL"), encoded)
+        assertTrue(encoded.contains("row1"), encoded)
+    }
+
+    @Test
+    fun `oversized evidence summary keeps the later small evidence reachable`() {
+        val original = evidenceOnlyRead()
+        val first =
+            original.evidence.payload.failures.values.first()
+                as io.github.amichne.kast.protocol.contract.QueryItemFailureDocument.Predicate
+        val large =
+            first.copy(
+                ref =
+                    io.github.amichne.kast.protocol.contract.QueryReferenceDocument.ExactSymbol(
+                        io.github.amichne.kast.protocol.contract.ProtocolText.parse("exact:v3:" + "λ\"\\".repeat(4000))
+                            .refined()
+                    )
+            )
+        val payload =
+            original.evidence.payload.copy(
+                failures =
+                    BoundedProtocolList.create(listOf(large) + original.evidence.payload.failures.values.drop(1))
+                        .refined()
+            )
+        val response =
+            encodeHostedQueryResponse(
+                original.copy(evidence = original.evidence.copy(payload = payload)),
+                maximumBytes = ReturnedByteLimit.parse(8_000).refined(),
+            ) {
+                error("A retained evidence read cannot allocate another store")
+            }
+        assertInstanceOf(HostedResponse.Canonical::class.java, response)
+        val fitted =
+            ((response as HostedResponse.Canonical<*, *, *>).semantic as OperationOutcome.Qualified).evidence.payload
+                as QueryRunResult
+        assertEquals(1, fitted.deferredEvidence.values.size)
+        assertTrue(fitted.failures.values.isNotEmpty())
+        assertEquals(original.evidence.payload.failures.values[1], fitted.failures.values.first())
+        assertEquals(1, fitted.evidenceWindow!!.deferredCount)
+        assertEquals(original.qualification, (response.semantic as OperationOutcome.Qualified).qualification)
+    }
+
+    @Test
     fun `retained evidence read rejects an allowance that fits only its unchanged cursor envelope`() {
         val semantic = evidenceOnlyRead()
         val empty =

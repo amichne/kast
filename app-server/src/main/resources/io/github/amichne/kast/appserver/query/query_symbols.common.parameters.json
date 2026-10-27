@@ -13,88 +13,6 @@
   ],
   "additionalProperties": false,
   "$defs": {
-    "Directory": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "DIRECTORY"
-          ]
-        },
-        "relativeDirectoryPath": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 1048576
-        },
-        "includeSubdirectories": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "sourceSetNames": {
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1048576
-          },
-          "minItems": 1,
-          "maxItems": 1000,
-          "uniqueItems": true
-        }
-      },
-      "required": [
-        "type",
-        "relativeDirectoryPath"
-      ],
-      "additionalProperties": false
-    },
-    "Package": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "PACKAGE"
-          ]
-        },
-        "packageName": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 1048576
-        },
-        "includeSubpackages": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "sourceSetNames": {
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1048576
-          },
-          "minItems": 1,
-          "maxItems": 1000,
-          "uniqueItems": true
-        }
-      },
-      "required": [
-        "type",
-        "packageName"
-      ],
-      "additionalProperties": false
-    },
     "Search": {
       "type": "object",
       "properties": {
@@ -152,33 +70,6 @@
       "required": [
         "type",
         "declarationName"
-      ],
-      "additionalProperties": false
-    },
-    "ExactRefs": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "SYMBOL_REFS"
-          ]
-        },
-        "symbolRefs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1048576,
-            "pattern": "^exact:v[1-9][0-9]*:"
-          },
-          "minItems": 1,
-          "maxItems": 1000
-        }
-      },
-      "required": [
-        "type",
-        "symbolRefs"
       ],
       "additionalProperties": false
     },
@@ -325,22 +216,6 @@
       "minLength": 46,
       "maxLength": 46
     },
-    "RowCursor": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "minimum": 0,
-      "maximum": 1000000
-    },
-    "EvidenceCursor": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "minimum": 0,
-      "maximum": 1000000
-    },
     "Run": {
       "type": "object",
       "properties": {
@@ -391,7 +266,14 @@
         "executionMode": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ExecutionMode"
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "RUNNER_CONTROLLED",
+                null
+              ]
             },
             {
               "type": "null"
@@ -416,7 +298,10 @@
           ]
         },
         "continuation": {
-          "$ref": "#/$defs/OutputRef"
+          "type": "string",
+          "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "minLength": 52,
+          "maxLength": 52
         },
         "executionBudget": {
           "anyOf": [
@@ -450,7 +335,12 @@
         "cursor": {
           "anyOf": [
             {
-              "$ref": "#/$defs/RowCursor"
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1000000
             },
             {
               "type": "null"
@@ -480,7 +370,12 @@
         "evidence_cursor": {
           "anyOf": [
             {
-              "$ref": "#/$defs/EvidenceCursor"
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1000000
             },
             {
               "type": "null"
@@ -504,45 +399,89 @@
       ],
       "additionalProperties": false
     },
-    "OutputRef": {
-      "type": "string",
-      "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-      "minLength": 52,
-      "maxLength": 52
-    },
-    "Location": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "AT_LOCATION"
-          ]
-        },
-        "file": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 1048576
-        },
-        "offset": {
-          "type": "integer",
-          "minimum": 0
-        }
-      },
-      "required": [
-        "type",
-        "file",
-        "offset"
-      ],
-      "additionalProperties": false
-    },
     "Scope": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Directory"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "DIRECTORY"
+              ]
+            },
+            "relativeDirectoryPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1048576
+            },
+            "includeSubdirectories": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "sourceSetNames": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1048576
+              },
+              "minItems": 1,
+              "maxItems": 1000,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "type",
+            "relativeDirectoryPath"
+          ],
+          "additionalProperties": false
         },
         {
-          "$ref": "#/$defs/Package"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "PACKAGE"
+              ]
+            },
+            "packageName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1048576
+            },
+            "includeSubpackages": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "sourceSetNames": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1048576
+              },
+              "minItems": 1,
+              "maxItems": 1000,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "type",
+            "packageName"
+          ],
+          "additionalProperties": false
         },
         {
           "type": "null"
@@ -555,10 +494,57 @@
           "$ref": "#/$defs/Search"
         },
         {
-          "$ref": "#/$defs/Location"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "AT_LOCATION"
+              ]
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1048576
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "type",
+            "file",
+            "offset"
+          ],
+          "additionalProperties": false
         },
         {
-          "$ref": "#/$defs/ExactRefs"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "SYMBOL_REFS"
+              ]
+            },
+            "symbolRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1048576,
+                "pattern": "^exact:v[1-9][0-9]*:"
+              },
+              "minItems": 1,
+              "maxItems": 1000
+            }
+          },
+          "required": [
+            "type",
+            "symbolRefs"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -585,111 +571,97 @@
         }
       ]
     },
-    "ImpactWorkspaceDomain": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "WORKSPACE"
-          ]
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "ImpactRetainedDomain": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "RETAINED_SEED"
-          ]
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "ImpactSourceDomain": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "SOURCE_DOMAIN"
-          ]
-        },
-        "sourceSets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "minItems": 1,
-          "maxItems": 64,
-          "uniqueItems": true
-        },
-        "directory": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "minLength": 1,
-          "maxLength": 4096
-        },
-        "includeSubdirectories": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "sourcePolicy": {
-          "type": "string",
-          "enum": [
-            "PRODUCTION_ONLY",
-            "TEST_ONLY",
-            "PRODUCTION_AND_TEST"
-          ]
-        },
-        "generatedSources": {
-          "type": "string",
-          "enum": [
-            "EXCLUDE",
-            "INCLUDE"
-          ]
-        }
-      },
-      "required": [
-        "type",
-        "sourceSets",
-        "sourcePolicy",
-        "generatedSources"
-      ],
-      "additionalProperties": false
-    },
     "Expansion": {
       "anyOf": [
         {
-          "$ref": "#/$defs/ImpactWorkspaceDomain"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "WORKSPACE"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
         },
         {
-          "$ref": "#/$defs/ImpactRetainedDomain"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RETAINED_SEED"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
         },
         {
-          "$ref": "#/$defs/ImpactSourceDomain"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "SOURCE_DOMAIN"
+              ]
+            },
+            "sourceSets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "minItems": 1,
+              "maxItems": 64,
+              "uniqueItems": true
+            },
+            "directory": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "includeSubdirectories": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "sourcePolicy": {
+              "type": "string",
+              "enum": [
+                "PRODUCTION_ONLY",
+                "TEST_ONLY",
+                "PRODUCTION_AND_TEST"
+              ]
+            },
+            "generatedSources": {
+              "type": "string",
+              "enum": [
+                "EXCLUDE",
+                "INCLUDE"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "sourceSets",
+            "sourcePolicy",
+            "generatedSources"
+          ],
+          "additionalProperties": false
         }
       ]
-    },
-    "SourceRef": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$"
     },
     "ReadSource": {
       "type": "object",
@@ -701,7 +673,9 @@
           ]
         },
         "candidateRef": {
-          "$ref": "#/$defs/SourceRef"
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$"
         },
         "region": {
           "type": [
@@ -823,120 +797,92 @@
       ],
       "additionalProperties": false
     },
-    "FullText": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "COMPLETE"
-          ]
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "NoText": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "NONE"
-          ]
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "TextWindow": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "WINDOW"
-          ]
-        },
-        "beforeLines": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 1000
-        },
-        "afterLines": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 1000
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
     "Text": {
       "anyOf": [
         {
-          "$ref": "#/$defs/FullText"
-        },
-        {
-          "$ref": "#/$defs/NoText"
-        },
-        {
-          "$ref": "#/$defs/TextWindow"
-        },
-        {
-          "$ref": "#/$defs/TextExcerpt"
-        }
-      ]
-    },
-    "TextExcerpt": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "EXCERPT"
-          ]
-        },
-        "maxLines": {
-          "type": [
-            "integer",
-            "null"
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "COMPLETE"
+              ]
+            }
+          },
+          "required": [
+            "type"
           ],
-          "minimum": 1,
-          "maximum": 1000
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "NONE"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "WINDOW"
+              ]
+            },
+            "beforeLines": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "afterLines": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "EXCERPT"
+              ]
+            },
+            "maxLines": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "ExecutionMode": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "enum": [
-        "RUNNER_CONTROLLED",
-        null
-      ]
-    },
-    "Section": {
-      "type": "string",
-      "enum": [
-        "CANONICAL_ENTRY_JSON"
       ]
     },
     "Detail": {
@@ -949,7 +895,10 @@
           "$ref": "#/$defs/ResultRef"
         },
         "section": {
-          "$ref": "#/$defs/Section"
+          "type": "string",
+          "enum": [
+            "CANONICAL_ENTRY_JSON"
+          ]
         },
         "target": {
           "type": "string",

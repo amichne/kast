@@ -10,7 +10,6 @@ import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
@@ -111,7 +110,10 @@ internal class QueryOutcomeProjection(
         if (detail != null && detail.result != request.result)
             return Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
         val selectedRequest =
-            request.detailPresentation((QueryResultCursor.parse(restored.result.rowCount) as Refinement.Refined).value)
+            when (val admitted = RetainedQueryPresentation.detailPresentation(restored, request)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         val selectedMaximum = if (detail == null) maximumResults else (ResultLimit.parse(1) as Refinement.Refined).value
         val presentation =
             when (val admitted = RetainedQueryPresentation.create(restored, selectedRequest, selectedMaximum)) {

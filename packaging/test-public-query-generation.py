@@ -7,6 +7,7 @@ import importlib.util
 import json
 import re
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,20 +38,64 @@ class PublicQueryGenerationTest(unittest.TestCase):
         schema = json.loads(outputs[generator.RESOURCES / 'query_symbols.common.parameters.json'])
         definitions = schema['$defs']
         self.assertEqual(['SEARCH_DECLARATIONS', 'AT_LOCATION', 'SYMBOL_REFS'],
-                         [definitions[value['$ref'].split('/')[-1]]['properties']['type']['enum'][0]
+                         [definitions.get(value.get('$ref', '').split('/')[-1], value)['properties']['type']['enum'][0]
                           for value in definitions['Source']['anyOf']])
         self.assertEqual(['EXPAND_RELATION'], [definitions[value['$ref'].split('/')[-1]]['properties']['type']['enum'][0]
                          for value in definitions['Step']['anyOf']])
         self.assertEqual({'maxResults', 'maxReturnedBytes'}, set(definitions['ExecutionBudget']['properties']))
         self.assertEqual('Query minimum: 4096 UTF-8 bytes.',
                          definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'])
-        self.assertEqual(['RUNNER_CONTROLLED', None], definitions['ExecutionMode']['enum'])
+        self.assertEqual(['RUNNER_CONTROLLED', None],
+                         definitions['Run']['properties']['executionMode']['anyOf'][0]['enum'])
         self.assertNotIn('ImpactDeclarationReference', definitions)
         self.assertNotIn('AllSource', definitions)
         self.assertLessEqual(len(json.dumps(schema, separators=(',', ':')).encode()), 10_000)
         catalog = json.loads(outputs[generator.RESOURCES / 'tools.common.app-server.json'])
         self.assertEqual(1, sum(tool['name'] == 'query_symbols' for tool in catalog['tools']))
         self.assertEqual(schema, catalog['tools'][0]['inputSchema'])
+
+    def test_single_use_leaf_substitution_preserves_exact_constraints_and_shared_nodes(self):
+        source = {
+            'type': 'object', 'properties': {'one': {'$ref': '#/$defs/Only'},
+                'first': {'$ref': '#/$defs/Shared'}, 'second': {'$ref': '#/$defs/Shared'}},
+            'required': ['one'], 'additionalProperties': False,
+            '$defs': {'Only': {'type': 'string', 'minLength': 2, 'maxLength': 4, 'pattern': '^[a-z]+$'},
+                      'Shared': {'type': 'integer', 'minimum': 1, 'maximum': 3}},
+        }
+        expected = copy.deepcopy(source)
+        expected['properties']['one'] = {'type': 'string', 'minLength': 2, 'maxLength': 4, 'pattern': '^[a-z]+$'}
+        del expected['$defs']['Only']
+        self.assertEqual(expected, generator.inline_single_use_schema_leaves(source))
+        self.assertIn('Only', source['$defs'], 'The generator must not mutate its authority')
+
+    def test_single_use_leaf_substitution_rejects_sibling_constraints(self):
+        source = {'properties': {'value': {'$ref': '#/$defs/Only', 'maxLength': 1}},
+                  '$defs': {'Only': {'type': 'string', 'minLength': 2}}}
+        with self.assertRaisesRegex(ValueError, 'sibling constraints'):
+            generator.inline_single_use_schema_leaves(source)
+
+    def test_common_single_use_leaves_preserve_the_entire_expanded_contract(self):
+        for strict in (False, True):
+            with self.subTest(strict=strict):
+                with patch.object(generator, 'inline_single_use_schema_leaves', side_effect=copy.deepcopy):
+                    before = generator.common_query_schema(self.authority, strict=strict, minimum_bytes=4096)
+                after = generator.common_query_schema(self.authority, strict=strict, minimum_bytes=4096)
+                def expand(node, definitions):
+                    if isinstance(node, list):
+                        return [expand(child, definitions) for child in node]
+                    if isinstance(node, dict):
+                        if '$ref' in node:
+                            self.assertEqual({'$ref'}, set(node), 'No sibling constraints can disappear')
+                            return expand(definitions[node['$ref'][8:]], definitions)
+                        return {key: expand(child, definitions) for key, child in node.items() if key != '$defs'}
+                    return node
+                self.assertEqual(expand(before, before['$defs']), expand(after, after['$defs']))
+                self.assertLess(len(json.dumps(after)), len(json.dumps(before)))
+                self.assertLessEqual(len(json.dumps(after, separators=(',', ':')).encode()), 10_000)
+                self.assertEqual({'Directory', 'Package', 'ExactRefs', 'RowCursor', 'EvidenceCursor', 'OutputRef',
+                                  'Location', 'ImpactWorkspaceDomain', 'ImpactRetainedDomain', 'ImpactSourceDomain',
+                                  'SourceRef', 'FullText', 'NoText', 'TextWindow', 'TextExcerpt', 'ExecutionMode', 'Section'},
+                                 before['$defs'].keys() - after['$defs'].keys())
 
     def test_focused_topics_are_bounded_and_use_authored_examples(self):
         outputs = generator.render_tools(self.authority)

@@ -1,0 +1,723 @@
+{
+  "qualification": "ACTUAL_INSTALLED_PI_MCP_FACTORY_AND_CODEMODE_RENDERER_NOT_TASK_REPLAY",
+  "piVersion": "1.4.0",
+  "sdkRoot": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent",
+  "sourceFiles": [
+    {
+      "path": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-codemode/dist/declarations.js",
+      "sha256": "00ab54f850a7412d029f8d9699fcb51b1346f3cb2c58e47b63f9189292ec260c"
+    },
+    {
+      "path": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-ai/dist/api/openai-responses-shared.js",
+      "sha256": "eed025a4821b1e017dd024b930caf8fa11c7fe053a81efe11bd7d846fdc641d3"
+    },
+    {
+      "path": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent/dist/extensions/mcp/tools.js",
+      "sha256": "93d4aae2090400c1565ba536f38cf373f022de2c6519e37c02493fbe420842f5"
+    },
+    {
+      "path": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent/dist/extensions/codemode/tool.js",
+      "sha256": "8915e8f8b04444018bd8a97161c8c5c0b289a24793701b94362395c0249bd814"
+    },
+    {
+      "path": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent/dist/extensions/codemode/index.js",
+      "sha256": "7306902a1079689f601231d4c9bd3abb1d92ec388d202ff08920e4aee87343f4"
+    }
+  ],
+  "options": {
+    "server": "kast",
+    "exposure": "codemode",
+    "models": false,
+    "inlineBudget": 3000,
+    "inputMaxChars": 16000,
+    "sampleSeparator": "single LF, no trailing LF",
+    "namespaceDescription": "NOT_IN_CAPTURE",
+    "namespaceInstructions": "NOT_IN_CAPTURE"
+  },
+  "limits": [
+    "Full description is an explicit diagnostic, not actual task exposure.",
+    "Optional helpers are measured separately, not asserted loaded. Resource helpers need resource-capable servers.",
+    "Task-loaded declarations, repeated loads, model tokens, and full task consumption are NOT MEASURED.",
+    "No session, sandbox, tool, provider, native query, installation, or IDE action ran."
+  ],
+  "arms": [
+    {
+      "arm": "baseline",
+      "source": "/Users/amichne/.codex-workspaces/worktrees/ios-ce65fd8a-9ce0-4ea3-9e2b-1bac0a5b7518/kast/experiments/host-observation/agent-payload/baseline/tools-list.json.gz",
+      "compressedSha256": "5203928b3ee9d9f4bae770bc8f9eb55ef025f96bf4607e2795496c1b74f5231b",
+      "offeredToolCount": 5,
+      "entries": [
+        {
+          "name": "mcp__kast__add_declaration",
+          "declaration": {
+            "unicodeCharacters": 3472,
+            "utf16CodeUnits": 3472,
+            "utf8Bytes": 3472,
+            "sha256": "e0d2c9ace371f9dfc50726d1404f41c88d5238b6b3b88330b14416c00194514a"
+          },
+          "sample": {
+            "unicodeCharacters": 2118,
+            "utf16CodeUnits": 2118,
+            "utf8Bytes": 2118,
+            "sha256": "6e1122f97766095db0241c9f6592d9f9da1d641cacb6f28428e6d2aab715d72e"
+          },
+          "signature": {
+            "unicodeCharacters": 1625,
+            "utf16CodeUnits": 1625,
+            "utf8Bytes": 1625,
+            "sha256": "9cf023568d54970737c15cd1047d7f52e08c0e1a7b27285cac967df45c04f793"
+          },
+          "inputType": {
+            "unicodeCharacters": 559,
+            "utf16CodeUnits": 559,
+            "utf8Bytes": 559,
+            "sha256": "51b4b2266fb6591df7836b8192ce71fa1f6f3516aa5f1b20338a4929c5b36ae8"
+          }
+        },
+        {
+          "name": "mcp__kast__check_diagnostics",
+          "declaration": {
+            "unicodeCharacters": 30772,
+            "utf16CodeUnits": 30772,
+            "utf8Bytes": 30772,
+            "sha256": "6a49df57535d41ff2831ab85f796c2d76c867aa6dc0a3662a57bf3332b8d8cf7"
+          },
+          "sample": {
+            "unicodeCharacters": 2653,
+            "utf16CodeUnits": 2653,
+            "utf8Bytes": 2653,
+            "sha256": "2529c6248b193d2bd7049f0409641235a520408527b58fabfd3a84d4e9d88104"
+          },
+          "signature": {
+            "unicodeCharacters": 2229,
+            "utf16CodeUnits": 2229,
+            "utf8Bytes": 2229,
+            "sha256": "b28bc94d6ce28b5c6e2b014ee66c1e66b2b6300af38b578ea93b8764beb677cd"
+          },
+          "inputType": {
+            "unicodeCharacters": 1947,
+            "utf16CodeUnits": 1947,
+            "utf8Bytes": 1947,
+            "sha256": "a249352cb02ff90257a5142316bb883e5c9f0088a22defd62b65f747aaf0522a"
+          }
+        },
+        {
+          "name": "mcp__kast__health_check",
+          "declaration": {
+            "unicodeCharacters": 2511,
+            "utf16CodeUnits": 2511,
+            "utf8Bytes": 2511,
+            "sha256": "8e8fa35be5b175dbf8539d357f0eb87c0cdd45db1d6a336a4754dbc0ac565f74"
+          },
+          "sample": {
+            "unicodeCharacters": 1171,
+            "utf16CodeUnits": 1171,
+            "utf8Bytes": 1171,
+            "sha256": "4ad3d1bb9eac9b8dbd2cab3de5280dab289079e2fd9b7ad1332ff19e1568bbec"
+          },
+          "signature": {
+            "unicodeCharacters": 991,
+            "utf16CodeUnits": 991,
+            "utf8Bytes": 991,
+            "sha256": "6f82a23519f2c8750fed05e534e50c078fe51b21e31db7d0da5426a29e8fc9df"
+          },
+          "inputType": {
+            "unicodeCharacters": 22,
+            "utf16CodeUnits": 22,
+            "utf8Bytes": 22,
+            "sha256": "7ec7f6b36a3464c9c87ed5d1b55b72a7493f001c06ae76f6305b369266574a7b"
+          }
+        },
+        {
+          "name": "mcp__kast__query_symbols",
+          "declaration": {
+            "unicodeCharacters": 916720,
+            "utf16CodeUnits": 916720,
+            "utf8Bytes": 916720,
+            "sha256": "da02990bcb54f1605b82a2a44d3abce4e7e0f471a05726f2d8ea6e662ec21295"
+          },
+          "sample": {
+            "unicodeCharacters": 3132,
+            "utf16CodeUnits": 3132,
+            "utf8Bytes": 3132,
+            "sha256": "a2073f16018656a830eb8a3c61c00ba9fdc34d0ee74320caf0155bef5cf7382f"
+          },
+          "signature": {
+            "unicodeCharacters": 614,
+            "utf16CodeUnits": 614,
+            "utf8Bytes": 614,
+            "sha256": "cc5a73043fc7d97e552bddbea77bcb5453a7129d2f651092142af1a6f57e9250"
+          },
+          "inputType": {
+            "unicodeCharacters": 336,
+            "utf16CodeUnits": 336,
+            "utf8Bytes": 336,
+            "sha256": "5d663ecea0c7dbc9830fb187493dd3e3d44b8bf2a8fe9d063fc2b58071b16fbb"
+          }
+        },
+        {
+          "name": "mcp__kast__replace_body",
+          "declaration": {
+            "unicodeCharacters": 3281,
+            "utf16CodeUnits": 3281,
+            "utf8Bytes": 3281,
+            "sha256": "ccc3269ef47c7f4a266939015f1d91abe2849bbb967e18bcb1484942303cbbde"
+          },
+          "sample": {
+            "unicodeCharacters": 1934,
+            "utf16CodeUnits": 1934,
+            "utf8Bytes": 1934,
+            "sha256": "5e60b7b18fe9502e6011ccc81c2f72bb3a709f153bb141834328a93509e744e2"
+          },
+          "signature": {
+            "unicodeCharacters": 1592,
+            "utf16CodeUnits": 1592,
+            "utf8Bytes": 1592,
+            "sha256": "7aed6fd1032523c4ab8262595e8a5a72b7ef94ea188681d0e82a22d16d6b3544"
+          },
+          "inputType": {
+            "unicodeCharacters": 529,
+            "utf16CodeUnits": 529,
+            "utf8Bytes": 529,
+            "sha256": "cc83dd9f4f826166b6152f7eb90e747a84076a8219e33cc1b848452085e6c948"
+          }
+        }
+      ],
+      "allSamples": {
+        "unicodeCharacters": 11012,
+        "utf16CodeUnits": 11012,
+        "utf8Bytes": 11012,
+        "sha256": "b49ada99251389e84da54b343b21636fe3146733a478e2c32a7c777b3ee44142"
+      },
+      "allDeclarations": {
+        "unicodeCharacters": 10773,
+        "utf16CodeUnits": 10773,
+        "utf8Bytes": 10773,
+        "sha256": "8d02c9079fa7df02f0fda95d3e82f6b548a2990b6b9dcbc5054afc4eb07847cd"
+      },
+      "deferredDescription": {
+        "unicodeCharacters": 1234,
+        "utf16CodeUnits": 1234,
+        "utf8Bytes": 1234,
+        "sha256": "eac7fafecba85693dfc2c1db81437b8905ca7f462938487755e5192da8f64f17"
+      },
+      "fullDescriptionDiagnostic": {
+        "unicodeCharacters": 12440,
+        "utf16CodeUnits": 12440,
+        "utf8Bytes": 12440,
+        "sha256": "e6cf80173940953ceeea8e6049ee31ebc73f2f7725f30249ba15b1b12862834b"
+      },
+      "optionalHelpers": [
+        {
+          "name": "codemode",
+          "sample": {
+            "unicodeCharacters": 1380,
+            "utf16CodeUnits": 1380,
+            "utf8Bytes": 1380,
+            "sha256": "e4fea0545ea1e3627bb7a2725958e5c7de703f495edf7d049e320182e1da92ec"
+          }
+        },
+        {
+          "name": "tool_search",
+          "sample": {
+            "unicodeCharacters": 571,
+            "utf16CodeUnits": 571,
+            "utf8Bytes": 571,
+            "sha256": "d442a97387c4b0b80a5c5582df2089dd0cf526f9716d642d0d41e6bd42d12dca"
+          }
+        },
+        {
+          "name": "list_mcp_resources",
+          "sample": {
+            "unicodeCharacters": 810,
+            "utf16CodeUnits": 810,
+            "utf8Bytes": 810,
+            "sha256": "c922eb28ff87ebab8cd6632cfbeabc4c4d2f1f2bb3e0b8dc7f17af88380c12bc"
+          }
+        },
+        {
+          "name": "list_mcp_resource_templates",
+          "sample": {
+            "unicodeCharacters": 937,
+            "utf16CodeUnits": 937,
+            "utf8Bytes": 937,
+            "sha256": "96d62f5ee1d68f58dd71dcca3496c7e0d36751fd9418478bc1bbaa1ebcdcd687"
+          }
+        },
+        {
+          "name": "read_mcp_resource",
+          "sample": {
+            "unicodeCharacters": 580,
+            "utf16CodeUnits": 580,
+            "utf8Bytes": 580,
+            "sha256": "9813b83b50efcff413c37903adc36df92d0b2da58d7367d2e39093279f7bd714"
+          }
+        }
+      ],
+      "rawNameResponses": {
+        "unicodeCharacters": 59212,
+        "utf16CodeUnits": 59212,
+        "utf8Bytes": 59212,
+        "sha256": "b3c0d05956026ca9de7f79897a783f5178b45949553f33187f0e9617253d79c3"
+      },
+      "registeredNameResponses": {
+        "unicodeCharacters": 59267,
+        "utf16CodeUnits": 59267,
+        "utf8Bytes": 59267,
+        "sha256": "e25ac1d91c8b983f6b170d577cd2a1d9bacd8fdc53999d4803276a727da2017e"
+      }
+    },
+    {
+      "arm": "candidate-common",
+      "source": "/Users/amichne/.codex-workspaces/worktrees/ios-ce65fd8a-9ce0-4ea3-9e2b-1bac0a5b7518/kast/experiments/host-observation/agent-payload/candidate-common/tools-list.json.gz",
+      "compressedSha256": "3e00b44ae201f7a7c062fd80e040e0edb3bbfee543ae0e5d609b2cd389a19a52",
+      "offeredToolCount": 5,
+      "entries": [
+        {
+          "name": "mcp__kast__add_declaration",
+          "declaration": {
+            "unicodeCharacters": 9528,
+            "utf16CodeUnits": 9528,
+            "utf8Bytes": 9528,
+            "sha256": "7a031f23dcbc09e25ac9666c9f62ef351cb8b4e344b746abc08aa53a579d06c4"
+          },
+          "sample": {
+            "unicodeCharacters": 5188,
+            "utf16CodeUnits": 5188,
+            "utf8Bytes": 5188,
+            "sha256": "ced2cc34b3c55ad24c98f456897fdad201f1141ed59fab828cecba4ab2ee30f3"
+          },
+          "signature": {
+            "unicodeCharacters": 4695,
+            "utf16CodeUnits": 4695,
+            "utf8Bytes": 4695,
+            "sha256": "c2482ffe4453d0b5437f240ed5f9e34e0806a1679806f310665708137accbaba"
+          },
+          "inputType": {
+            "unicodeCharacters": 559,
+            "utf16CodeUnits": 559,
+            "utf8Bytes": 559,
+            "sha256": "51b4b2266fb6591df7836b8192ce71fa1f6f3516aa5f1b20338a4929c5b36ae8"
+          }
+        },
+        {
+          "name": "mcp__kast__check_diagnostics",
+          "declaration": {
+            "unicodeCharacters": 36824,
+            "utf16CodeUnits": 36824,
+            "utf8Bytes": 36824,
+            "sha256": "1922621a3f782109747f30a63fdf72d8ab8253528be0418399b84b6f0198220a"
+          },
+          "sample": {
+            "unicodeCharacters": 2649,
+            "utf16CodeUnits": 2649,
+            "utf8Bytes": 2649,
+            "sha256": "7bcd83ccde4f90409817d37eb5122810bf5a615fc86639a294a23caf04cb079d"
+          },
+          "signature": {
+            "unicodeCharacters": 2225,
+            "utf16CodeUnits": 2225,
+            "utf8Bytes": 2225,
+            "sha256": "a500d862649f873f6d51f3107a0dc4bf667319ec13235756549b0db45107a0cd"
+          },
+          "inputType": {
+            "unicodeCharacters": 1943,
+            "utf16CodeUnits": 1943,
+            "utf8Bytes": 1943,
+            "sha256": "a0b409be2dceb5fb5244b2af7cb4066240d5ae3250fc1321306026d5f0cb3f17"
+          }
+        },
+        {
+          "name": "mcp__kast__health_check",
+          "declaration": {
+            "unicodeCharacters": 8567,
+            "utf16CodeUnits": 8567,
+            "utf8Bytes": 8567,
+            "sha256": "3dc0d5ede74fb2c843e510d7c37a5524c6e21a590519dd8596fd6e67cf831638"
+          },
+          "sample": {
+            "unicodeCharacters": 4241,
+            "utf16CodeUnits": 4241,
+            "utf8Bytes": 4241,
+            "sha256": "b9908ca4f45fe1ab4c5ae92c5dfa96d4f64dd33296cfe8771c528d316f57b807"
+          },
+          "signature": {
+            "unicodeCharacters": 4061,
+            "utf16CodeUnits": 4061,
+            "utf8Bytes": 4061,
+            "sha256": "1401baa51bddc60db620954aa251a57076856aca3e3a3bfaca4b5e627305fb20"
+          },
+          "inputType": {
+            "unicodeCharacters": 22,
+            "utf16CodeUnits": 22,
+            "utf8Bytes": 22,
+            "sha256": "7ec7f6b36a3464c9c87ed5d1b55b72a7493f001c06ae76f6305b369266574a7b"
+          }
+        },
+        {
+          "name": "mcp__kast__query_symbols",
+          "declaration": {
+            "unicodeCharacters": 856718,
+            "utf16CodeUnits": 856718,
+            "utf8Bytes": 856718,
+            "sha256": "26efc889b3dc78d75214166b2584640ddb1d19c0bfcf1e065b844dfd0b082372"
+          },
+          "sample": {
+            "unicodeCharacters": 5918,
+            "utf16CodeUnits": 5918,
+            "utf8Bytes": 5918,
+            "sha256": "ed289703d1369b02313739a98f4265a509fb6419ac221e70a984fb46842282a2"
+          },
+          "signature": {
+            "unicodeCharacters": 5532,
+            "utf16CodeUnits": 5532,
+            "utf8Bytes": 5532,
+            "sha256": "737dd782062968b2ab76fbd71fdaccfdd0b030ce8eceeaa92ef4d309558f3bc4"
+          },
+          "inputType": {
+            "unicodeCharacters": 5254,
+            "utf16CodeUnits": 5254,
+            "utf8Bytes": 5254,
+            "sha256": "61f8cf91a173f63e09ebd0c335f4c5be23a0ed8c05e0fa098244e4347ee1b465"
+          }
+        },
+        {
+          "name": "mcp__kast__replace_body",
+          "declaration": {
+            "unicodeCharacters": 9337,
+            "utf16CodeUnits": 9337,
+            "utf8Bytes": 9337,
+            "sha256": "f40fe3f74c388ed9605a65048028d5b49fc1ec1671e1af970b3dda9ea7035cd4"
+          },
+          "sample": {
+            "unicodeCharacters": 5004,
+            "utf16CodeUnits": 5004,
+            "utf8Bytes": 5004,
+            "sha256": "0d73fa9e5b5773aaedc8b6533323715db2cedda578d541a0e6d50317d34d0216"
+          },
+          "signature": {
+            "unicodeCharacters": 4662,
+            "utf16CodeUnits": 4662,
+            "utf8Bytes": 4662,
+            "sha256": "161c35a108d7477b11f1ccedb4acb58d50dbaa4266818301a60961c311cb023e"
+          },
+          "inputType": {
+            "unicodeCharacters": 529,
+            "utf16CodeUnits": 529,
+            "utf8Bytes": 529,
+            "sha256": "cc83dd9f4f826166b6152f7eb90e747a84076a8219e33cc1b848452085e6c948"
+          }
+        }
+      ],
+      "allSamples": {
+        "unicodeCharacters": 23004,
+        "utf16CodeUnits": 23004,
+        "utf8Bytes": 23004,
+        "sha256": "314078a375a21024f00d23c762203955d9d068199c54430aaec935140e8ee548"
+      },
+      "allDeclarations": {
+        "unicodeCharacters": 22765,
+        "utf16CodeUnits": 22765,
+        "utf8Bytes": 22765,
+        "sha256": "48edddb36c6250334aad807517c270243043f3abc09c1f0ae76404310772dac2"
+      },
+      "deferredDescription": {
+        "unicodeCharacters": 1234,
+        "utf16CodeUnits": 1234,
+        "utf8Bytes": 1234,
+        "sha256": "eac7fafecba85693dfc2c1db81437b8905ca7f462938487755e5192da8f64f17"
+      },
+      "fullDescriptionDiagnostic": {
+        "unicodeCharacters": 24432,
+        "utf16CodeUnits": 24432,
+        "utf8Bytes": 24432,
+        "sha256": "8ba2016853a3ece2721efe71b2a291e07dbbeea17fe3376cac021f6672d475f7"
+      },
+      "optionalHelpers": [
+        {
+          "name": "codemode",
+          "sample": {
+            "unicodeCharacters": 1380,
+            "utf16CodeUnits": 1380,
+            "utf8Bytes": 1380,
+            "sha256": "e4fea0545ea1e3627bb7a2725958e5c7de703f495edf7d049e320182e1da92ec"
+          }
+        },
+        {
+          "name": "tool_search",
+          "sample": {
+            "unicodeCharacters": 571,
+            "utf16CodeUnits": 571,
+            "utf8Bytes": 571,
+            "sha256": "d442a97387c4b0b80a5c5582df2089dd0cf526f9716d642d0d41e6bd42d12dca"
+          }
+        },
+        {
+          "name": "list_mcp_resources",
+          "sample": {
+            "unicodeCharacters": 810,
+            "utf16CodeUnits": 810,
+            "utf8Bytes": 810,
+            "sha256": "c922eb28ff87ebab8cd6632cfbeabc4c4d2f1f2bb3e0b8dc7f17af88380c12bc"
+          }
+        },
+        {
+          "name": "list_mcp_resource_templates",
+          "sample": {
+            "unicodeCharacters": 937,
+            "utf16CodeUnits": 937,
+            "utf8Bytes": 937,
+            "sha256": "96d62f5ee1d68f58dd71dcca3496c7e0d36751fd9418478bc1bbaa1ebcdcd687"
+          }
+        },
+        {
+          "name": "read_mcp_resource",
+          "sample": {
+            "unicodeCharacters": 580,
+            "utf16CodeUnits": 580,
+            "utf8Bytes": 580,
+            "sha256": "9813b83b50efcff413c37903adc36df92d0b2da58d7367d2e39093279f7bd714"
+          }
+        }
+      ],
+      "rawNameResponses": {
+        "unicodeCharacters": 14888,
+        "utf16CodeUnits": 14888,
+        "utf8Bytes": 14888,
+        "sha256": "3b68fa9651cb0a49798404ab6cb022a1dfcc95c91ede6fcf1509c21e3ccd2405"
+      },
+      "registeredNameResponses": {
+        "unicodeCharacters": 14943,
+        "utf16CodeUnits": 14943,
+        "utf8Bytes": 14943,
+        "sha256": "5d44695b33056422f0649feb5c2be2388821175e90c9f8c3e4c3c6feeaf89b86"
+      }
+    },
+    {
+      "arm": "candidate-complete",
+      "source": "/Users/amichne/.codex-workspaces/worktrees/ios-ce65fd8a-9ce0-4ea3-9e2b-1bac0a5b7518/kast/experiments/host-observation/agent-payload/candidate-complete/tools-list.json.gz",
+      "compressedSha256": "41ad2de2cc76a765248de28f7fa16572c72c9f3cf9a478fe6b7124d3714542e3",
+      "offeredToolCount": 5,
+      "entries": [
+        {
+          "name": "mcp__kast__add_declaration",
+          "declaration": {
+            "unicodeCharacters": 9528,
+            "utf16CodeUnits": 9528,
+            "utf8Bytes": 9528,
+            "sha256": "7a031f23dcbc09e25ac9666c9f62ef351cb8b4e344b746abc08aa53a579d06c4"
+          },
+          "sample": {
+            "unicodeCharacters": 5188,
+            "utf16CodeUnits": 5188,
+            "utf8Bytes": 5188,
+            "sha256": "ced2cc34b3c55ad24c98f456897fdad201f1141ed59fab828cecba4ab2ee30f3"
+          },
+          "signature": {
+            "unicodeCharacters": 4695,
+            "utf16CodeUnits": 4695,
+            "utf8Bytes": 4695,
+            "sha256": "c2482ffe4453d0b5437f240ed5f9e34e0806a1679806f310665708137accbaba"
+          },
+          "inputType": {
+            "unicodeCharacters": 559,
+            "utf16CodeUnits": 559,
+            "utf8Bytes": 559,
+            "sha256": "51b4b2266fb6591df7836b8192ce71fa1f6f3516aa5f1b20338a4929c5b36ae8"
+          }
+        },
+        {
+          "name": "mcp__kast__check_diagnostics",
+          "declaration": {
+            "unicodeCharacters": 36824,
+            "utf16CodeUnits": 36824,
+            "utf8Bytes": 36824,
+            "sha256": "1922621a3f782109747f30a63fdf72d8ab8253528be0418399b84b6f0198220a"
+          },
+          "sample": {
+            "unicodeCharacters": 2649,
+            "utf16CodeUnits": 2649,
+            "utf8Bytes": 2649,
+            "sha256": "7bcd83ccde4f90409817d37eb5122810bf5a615fc86639a294a23caf04cb079d"
+          },
+          "signature": {
+            "unicodeCharacters": 2225,
+            "utf16CodeUnits": 2225,
+            "utf8Bytes": 2225,
+            "sha256": "a500d862649f873f6d51f3107a0dc4bf667319ec13235756549b0db45107a0cd"
+          },
+          "inputType": {
+            "unicodeCharacters": 1943,
+            "utf16CodeUnits": 1943,
+            "utf8Bytes": 1943,
+            "sha256": "a0b409be2dceb5fb5244b2af7cb4066240d5ae3250fc1321306026d5f0cb3f17"
+          }
+        },
+        {
+          "name": "mcp__kast__health_check",
+          "declaration": {
+            "unicodeCharacters": 8567,
+            "utf16CodeUnits": 8567,
+            "utf8Bytes": 8567,
+            "sha256": "3dc0d5ede74fb2c843e510d7c37a5524c6e21a590519dd8596fd6e67cf831638"
+          },
+          "sample": {
+            "unicodeCharacters": 4241,
+            "utf16CodeUnits": 4241,
+            "utf8Bytes": 4241,
+            "sha256": "b9908ca4f45fe1ab4c5ae92c5dfa96d4f64dd33296cfe8771c528d316f57b807"
+          },
+          "signature": {
+            "unicodeCharacters": 4061,
+            "utf16CodeUnits": 4061,
+            "utf8Bytes": 4061,
+            "sha256": "1401baa51bddc60db620954aa251a57076856aca3e3a3bfaca4b5e627305fb20"
+          },
+          "inputType": {
+            "unicodeCharacters": 22,
+            "utf16CodeUnits": 22,
+            "utf8Bytes": 22,
+            "sha256": "7ec7f6b36a3464c9c87ed5d1b55b72a7493f001c06ae76f6305b369266574a7b"
+          }
+        },
+        {
+          "name": "mcp__kast__query_symbols",
+          "declaration": {
+            "unicodeCharacters": 901876,
+            "utf16CodeUnits": 901876,
+            "utf8Bytes": 901876,
+            "sha256": "acba6d88ec1574addd2ed42905ceb3571cf9995261741762e4e8f6f53dd901b8"
+          },
+          "sample": {
+            "unicodeCharacters": 3132,
+            "utf16CodeUnits": 3132,
+            "utf8Bytes": 3132,
+            "sha256": "a2073f16018656a830eb8a3c61c00ba9fdc34d0ee74320caf0155bef5cf7382f"
+          },
+          "signature": {
+            "unicodeCharacters": 614,
+            "utf16CodeUnits": 614,
+            "utf8Bytes": 614,
+            "sha256": "cc5a73043fc7d97e552bddbea77bcb5453a7129d2f651092142af1a6f57e9250"
+          },
+          "inputType": {
+            "unicodeCharacters": 336,
+            "utf16CodeUnits": 336,
+            "utf8Bytes": 336,
+            "sha256": "5d663ecea0c7dbc9830fb187493dd3e3d44b8bf2a8fe9d063fc2b58071b16fbb"
+          }
+        },
+        {
+          "name": "mcp__kast__replace_body",
+          "declaration": {
+            "unicodeCharacters": 9337,
+            "utf16CodeUnits": 9337,
+            "utf8Bytes": 9337,
+            "sha256": "f40fe3f74c388ed9605a65048028d5b49fc1ec1671e1af970b3dda9ea7035cd4"
+          },
+          "sample": {
+            "unicodeCharacters": 5004,
+            "utf16CodeUnits": 5004,
+            "utf8Bytes": 5004,
+            "sha256": "0d73fa9e5b5773aaedc8b6533323715db2cedda578d541a0e6d50317d34d0216"
+          },
+          "signature": {
+            "unicodeCharacters": 4662,
+            "utf16CodeUnits": 4662,
+            "utf8Bytes": 4662,
+            "sha256": "161c35a108d7477b11f1ccedb4acb58d50dbaa4266818301a60961c311cb023e"
+          },
+          "inputType": {
+            "unicodeCharacters": 529,
+            "utf16CodeUnits": 529,
+            "utf8Bytes": 529,
+            "sha256": "cc83dd9f4f826166b6152f7eb90e747a84076a8219e33cc1b848452085e6c948"
+          }
+        }
+      ],
+      "allSamples": {
+        "unicodeCharacters": 20218,
+        "utf16CodeUnits": 20218,
+        "utf8Bytes": 20218,
+        "sha256": "e609fc5b116472daf2e25f2322d5b3ee05db2cf0c1fda7622bdefd11513f8b9c"
+      },
+      "allDeclarations": {
+        "unicodeCharacters": 19979,
+        "utf16CodeUnits": 19979,
+        "utf8Bytes": 19979,
+        "sha256": "6ee3323e42fb9ad3be3f718b487f794351970ce739a2e889ed1159e6138caba2"
+      },
+      "deferredDescription": {
+        "unicodeCharacters": 1234,
+        "utf16CodeUnits": 1234,
+        "utf8Bytes": 1234,
+        "sha256": "eac7fafecba85693dfc2c1db81437b8905ca7f462938487755e5192da8f64f17"
+      },
+      "fullDescriptionDiagnostic": {
+        "unicodeCharacters": 21646,
+        "utf16CodeUnits": 21646,
+        "utf8Bytes": 21646,
+        "sha256": "5af68acf7b66e65f44dc30d0ac70e24d2567b3786c7fcf4f64928bcce7eb2f46"
+      },
+      "optionalHelpers": [
+        {
+          "name": "codemode",
+          "sample": {
+            "unicodeCharacters": 1380,
+            "utf16CodeUnits": 1380,
+            "utf8Bytes": 1380,
+            "sha256": "e4fea0545ea1e3627bb7a2725958e5c7de703f495edf7d049e320182e1da92ec"
+          }
+        },
+        {
+          "name": "tool_search",
+          "sample": {
+            "unicodeCharacters": 571,
+            "utf16CodeUnits": 571,
+            "utf8Bytes": 571,
+            "sha256": "d442a97387c4b0b80a5c5582df2089dd0cf526f9716d642d0d41e6bd42d12dca"
+          }
+        },
+        {
+          "name": "list_mcp_resources",
+          "sample": {
+            "unicodeCharacters": 810,
+            "utf16CodeUnits": 810,
+            "utf8Bytes": 810,
+            "sha256": "c922eb28ff87ebab8cd6632cfbeabc4c4d2f1f2bb3e0b8dc7f17af88380c12bc"
+          }
+        },
+        {
+          "name": "list_mcp_resource_templates",
+          "sample": {
+            "unicodeCharacters": 937,
+            "utf16CodeUnits": 937,
+            "utf8Bytes": 937,
+            "sha256": "96d62f5ee1d68f58dd71dcca3496c7e0d36751fd9418478bc1bbaa1ebcdcd687"
+          }
+        },
+        {
+          "name": "read_mcp_resource",
+          "sample": {
+            "unicodeCharacters": 580,
+            "utf16CodeUnits": 580,
+            "utf8Bytes": 580,
+            "sha256": "9813b83b50efcff413c37903adc36df92d0b2da58d7367d2e39093279f7bd714"
+          }
+        }
+      ],
+      "rawNameResponses": {
+        "unicodeCharacters": 60046,
+        "utf16CodeUnits": 60046,
+        "utf8Bytes": 60046,
+        "sha256": "81daeeca2bc854ad41acd2724cebebbe6e1d1623c6c490f28f62595c94aeab9b"
+      },
+      "registeredNameResponses": {
+        "unicodeCharacters": 60101,
+        "utf16CodeUnits": 60101,
+        "utf8Bytes": 60101,
+        "sha256": "f64fecb5d690e56d233eaa05c919b128c3a015ae1a2337a09c63988ed0adc4fb"
+      }
+    }
+  ]
+}
