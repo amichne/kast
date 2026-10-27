@@ -53,7 +53,7 @@ private constructor(
                     when (
                         val identity =
                             CallbackParameterIdentity.fromCompiler(
-                                binding.binding.invocation.callable,
+                                binding.binding.callable,
                                 binding.binding.position,
                                 binding.binding.parameter,
                             )

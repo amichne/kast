@@ -2,6 +2,8 @@ package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueCallbackCallRoute
 import io.github.amichne.kast.relation.contract.ValueCaptureInvocation
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -22,20 +24,12 @@ internal fun nativeCallbackSourceReturn(
             is Refinement.Refined -> value.value
             is Refinement.Rejected -> return value
         }
-    val supplied = invocation.supply.invocation
-    val rebound =
-        when (
-            val value = ValueInvocation.fromCompiler(supplied.enclosing, supplied.range, supplied.callable, supplier)
-        ) {
-            is Refinement.Refined -> value.value
-            is Refinement.Rejected -> return callbackReturnRejected()
-        }
-    val callee = ValueExecutionOwner.declaration(rebound.callable)
     val frame =
-        when (val value = ValueCallFrame.direct(rebound, callee)) {
+        when (val value = callbackReturnFrame(source, invocation, supplier)) {
             is Refinement.Refined -> value.value
-            is Refinement.Rejected -> return callbackReturnRejected()
+            is Refinement.Rejected -> return value
         }
+    val callee = frame.callee
     val stack =
         if (source.callStack.frames.lastOrNull() == frame) source.callStack
         else
@@ -60,11 +54,62 @@ internal fun nativeCallbackSourceReturn(
             is Refinement.Rejected -> return callbackReturnRejected()
         }
     return sourceTransfer(
-        source,
-        target,
-        ValueTransferKind.SOURCE_CALL_RETURN,
-        ValueSourceOperation.CallbackReturn(invocation, frame),
+        source = source,
+        target = target,
+        kind = ValueTransferKind.SOURCE_CALL_RETURN,
+        operation = ValueSourceOperation.CallbackReturn(invocation, frame),
     )
+}
+
+private fun callbackReturnFrame(
+    source: ValueSite,
+    invocation: ValueCaptureInvocation,
+    supplier: ValueExecutionOwner,
+): Refinement<ValueCallFrame, ValueFlowUnsupportedCause> =
+    when (val route = ValueCallbackCallRoute.fromActiveStack(invocation, source.callStack)) {
+        is Refinement.Refined ->
+            if (route.value.supplierFrame.invocation.executionOwner == supplier)
+                Refinement.Refined(route.value.invocationFrame)
+            else callbackReturnRejected()
+        is Refinement.Rejected ->
+            if (invocation.invocation.forwardings.isEmpty()) callbackReturnSupplierFrame(invocation, supplier)
+            else callbackReturnRejected()
+    }
+
+private fun callbackReturnSupplierFrame(
+    invocation: ValueCaptureInvocation,
+    supplier: ValueExecutionOwner,
+): Refinement<ValueCallFrame, ValueFlowUnsupportedCause> {
+    val supplied = invocation.supply.invocation
+    val rebound =
+        when (
+            val value =
+                ValueInvocation.fromCompiler(
+                    enclosing = supplied.enclosing,
+                    range = supplied.range,
+                    callable = supplied.callable,
+                    executionOwner = supplier,
+                )
+        ) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> return callbackReturnRejected()
+        }
+    val frame = invocation.supply.frame
+    val selected =
+        when (val target = frame.target) {
+            ValueCallTarget.Direct -> ValueCallFrame.direct(rebound, frame.callee)
+            is ValueCallTarget.Implementation ->
+                ValueCallFrame.implementation(
+                    invocation = rebound,
+                    dispatch = target.dispatch,
+                    relation = target.relation,
+                    ownership = target.ownership,
+                )
+        }
+    return when (selected) {
+        is Refinement.Refined -> selected
+        is Refinement.Rejected -> callbackReturnRejected()
+    }
 }
 
 private fun callbackReturnRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =

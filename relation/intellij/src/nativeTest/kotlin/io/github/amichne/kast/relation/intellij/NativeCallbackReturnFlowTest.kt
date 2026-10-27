@@ -454,8 +454,14 @@ private suspend fun ReturnFixture.checkExpressionRefusal(
                 model = model,
             )
     org.junit.Assert.assertTrue("Producer must be admitted: $resolved", resolved is ValueSiteResolution.Found)
-    val obligations = traceSteps(project, (resolved as ValueSiteResolution.Found).site).flatMap { it.obligations }
-    org.junit.Assert.assertEquals(listOf(cause), obligations.map { it.cause })
+    val steps = traceSteps(project, (resolved as ValueSiteResolution.Found).site)
+    val obligations = steps.flatMap { it.obligations }
+    val stages =
+        steps.take(16).joinToString { step ->
+            "${step.source.role.javaClass.simpleName}@${step.source.range}: " +
+                step.obligations.joinToString { "${it.cause}@${it.site.range}/${it.evidence.javaClass.simpleName}" }
+        }
+    org.junit.Assert.assertEquals(stages, listOf(cause), obligations.map { it.cause })
     val evidence = obligations.single().evidence
     org.junit.Assert.assertTrue(
         "Expected precise expression evidence, received $evidence",
@@ -586,8 +592,8 @@ private suspend fun ReturnFixture.checkDeepReturn(
             step.obligations.map { it.cause },
         )
         org.junit.Assert.assertEquals(
-            io.github.amichne.kast.relation.contract.ValueModelSiteRead.Unsupported(
-                io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.WORK_LIMIT_REACHED
+            io.github.amichne.kast.relation.contract.ValueModelSiteRead.Limited(
+                io.github.amichne.kast.relation.contract.ValueSiteRevalidationLimit.WORK_LIMIT_REACHED
             ),
             revalidated,
         )

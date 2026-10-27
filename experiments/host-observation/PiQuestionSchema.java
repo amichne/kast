@@ -2,6 +2,7 @@ import io.github.amichne.kast.cli.KotlinxRequestJsonSchemaKt;
 import io.github.amichne.kast.cli.InstalledServerProjectionDocumentsKt;
 import io.github.amichne.kast.cli.CanonicalSchemaReferences;
 import io.github.amichne.kast.protocol.contract.CanonicalOperation;
+import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument;
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument;
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument;
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments;
@@ -36,10 +37,14 @@ public class PiQuestionSchema {
 
     private static JsonObject recursiveSchema(KSerializer<?> serializer) {
         var invocation = ImpactInvocationReferenceDocument.Companion.serializer();
-        var references = CanonicalSchemaReferences.Companion.from(Map.of("impactInvocationReference", invocation));
+        var capture = ImpactCaptureInvocationDocument.Companion.serializer();
+        var references = CanonicalSchemaReferences.Companion.from(Map.of(
+                "impactInvocationReference", invocation,
+                "impactCaptureInvocation", capture));
         var root = new LinkedHashMap<String, JsonElement>(KotlinxRequestJsonSchemaKt.generatedOutputSchema(serializer, references));
         root.put("$defs", new JsonObject(Map.of(
-                "impactInvocationReference", KotlinxRequestJsonSchemaKt.generatedOutputSchema(invocation, references))));
+                "impactInvocationReference", KotlinxRequestJsonSchemaKt.generatedOutputSchema(invocation, references),
+                "impactCaptureInvocation", KotlinxRequestJsonSchemaKt.generatedOutputSchema(capture, references))));
         return new JsonObject(root);
     }
 }

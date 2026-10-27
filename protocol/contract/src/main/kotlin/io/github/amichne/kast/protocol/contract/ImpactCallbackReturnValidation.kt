@@ -35,7 +35,6 @@ private fun ImpactSourceOperationDocument.CallbackReturn.admitsCallbackOwners(
         target.range == invocation.invocation &&
         invocation.invocationOwner.matches(target.enclosing) &&
         frame.callee.executionOwner == ImpactExecutionOwnerDocument.Declaration &&
-        frame.target == ImpactCallTargetDocument.Direct &&
         matchesSupplier(source, context, supplied)
 }
 
@@ -43,21 +42,33 @@ private fun ImpactSourceOperationDocument.CallbackReturn.matchesSupplier(
     source: ImpactValueSiteReferenceDocument,
     context: ImpactExecutionOwnerDocument.Callback,
     supplied: ImpactInvocationReferenceDocument,
+): Boolean {
+    val route = invocation.activeCallRoute(source.callStack)
+    if (route != null) {
+        return frame.hasSameFrameIdentity(route.invocationFrame) &&
+            matchesSupplierExecution(route.supplierFrame.invocation.executionOwner, source, context)
+    }
+    if (invocation.forwardings.values.isNotEmpty()) return false
+    return invocation.matchesSupplyFrame(frame) &&
+        frame.enclosing == source.enclosing &&
+        matchesSupplierExecution(supplied.executionOwner, source, context)
+}
+
+private fun ImpactSourceOperationDocument.CallbackReturn.matchesSupplierExecution(
+    execution: ImpactExecutionOwnerDocument,
+    source: ImpactValueSiteReferenceDocument,
+    context: ImpactExecutionOwnerDocument.Callback,
 ): Boolean =
-    frame.enclosing == source.enclosing &&
-        frame.enclosing == invocation.enclosing &&
-        supplied.range == invocation.supply.range &&
-        supplied.callable == invocation.supply.callable &&
-        when (val execution = supplied.executionOwner) {
-            is ImpactExecutionOwnerDocument.DeclaredCallback -> false
-            is ImpactExecutionOwnerDocument.ReviewedCallback -> false
-            ImpactExecutionOwnerDocument.Declaration -> invocation.supplyOwner.matches(source.enclosing)
-            is ImpactExecutionOwnerDocument.Callback ->
-                execution.body == invocation.supplyOwner &&
-                    execution.invocations == context.invocations &&
-                    execution.invocations.values.count { it.body == execution.body } == 1 &&
-                    execution.admitsSelection()
-        }
+    when (execution) {
+        is ImpactExecutionOwnerDocument.DeclaredCallback -> false
+        is ImpactExecutionOwnerDocument.ReviewedCallback -> false
+        ImpactExecutionOwnerDocument.Declaration -> invocation.supplyOwner.matches(source.enclosing)
+        is ImpactExecutionOwnerDocument.Callback ->
+            execution.body == invocation.supplyOwner &&
+                execution.invocations.hasSameCaptures(context.invocations) &&
+                execution.invocations.values.count { it.body == execution.body } == 1 &&
+                execution.admitsSelection()
+    }
 
 private fun ImpactCapturedBodyDocument.matches(declaration: ImpactDeclarationReferenceDocument): Boolean =
     file == declaration.file && range == declaration.range && compilerIdentity == declaration.compilerIdentity

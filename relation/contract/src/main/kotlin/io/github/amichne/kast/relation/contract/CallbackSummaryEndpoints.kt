@@ -66,7 +66,7 @@ internal class CallbackSummaryEndpoints private constructor() {
     private fun binding(value: CallbackBindingEvidence) {
         when (value) {
             is CallbackBindingEvidence.Bound -> {
-                call(value.binding.invocation)
+                value.binding.frame.stateEndpoints().forEach(::endpoint)
                 files += value.binding.invocationOwner.file
                 files += value.binding.parameter.file
             }

@@ -115,6 +115,8 @@ internal class IntellijCallbackFlowContext(
             is Refinement.Rejected -> null
         }
 
+    fun declaration(endpoint: RelationEndpoint): IntellijRelationSubjectLookup = projection.subject(scope, endpoint)
+
     fun receiverDeclaration(element: com.intellij.psi.PsiNamedElement): CompilerGroundedSymbolEvidence? =
         when (val result = projection.project(element)) {
             is IntellijRelationDeclarationProjection.Projected -> result.evidence

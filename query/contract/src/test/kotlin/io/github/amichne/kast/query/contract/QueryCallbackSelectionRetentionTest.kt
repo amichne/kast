@@ -90,7 +90,10 @@ class QueryCallbackSelectionRetentionTest {
             val retained = graph.site(site)
             assertTrue(retained > QueryImpactRetainedGraph().site(f.producer))
             assertEquals(8L, context.selectedInvocation.storageBytes(graph))
-            for (invocation in context.invocations) assertEquals(8L, invocation.storageBytes(graph))
+            for (invocation in context.invocations) {
+                assertEquals(8L, invocation.storageBytes(graph))
+                assertEquals(8L, invocation.supply.frame.storageBytes(graph))
+            }
             assertFalse(site.hasForeignBasis(f.lease))
             assertTrue(site.hasForeignBasis(QueryImpactLedgerFixture(generation = 2).lease))
         }

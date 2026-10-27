@@ -3,6 +3,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
@@ -45,6 +46,7 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "impactCapturedBody" to ImpactCapturedBodyDocument.serializer(),
                         "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
                         "impactCallFrame" to ImpactCallFrameDocument.serializer(),
+                        "impactCallTarget" to ImpactCallTargetDocument.serializer(),
                         "impactValueRole" to ImpactValueRoleDocument.serializer(),
                         "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                         "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),

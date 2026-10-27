@@ -127,7 +127,13 @@ private constructor(
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             if (body.file != enclosing.file || !enclosing.range.containsValueRange(body.range))
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-            if (graph.edges.any { it !is StaticCallbackEdge.Supply && it !is StaticCallbackEdge.Invoke })
+            if (
+                graph.edges.any { edge ->
+                    edge !is StaticCallbackEdge.Supply &&
+                        edge !is StaticCallbackEdge.Forward &&
+                        edge !is StaticCallbackEdge.Invoke
+                }
+            )
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             // Formal reachability cannot prove an anonymous invocation owner; do not truncate its inventory.
             if (graph.edges.filterIsInstance<StaticCallbackEdge.Invoke>().any { it.owner !is StaticCallbackNode.Named })

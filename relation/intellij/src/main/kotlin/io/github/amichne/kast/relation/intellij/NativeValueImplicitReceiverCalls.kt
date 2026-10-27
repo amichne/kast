@@ -14,8 +14,10 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
+import org.jetbrains.kotlin.analysis.api.resolution.KaSmartCastedReceiverValue
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -111,11 +113,12 @@ internal class NativeValueImplicitReceiverCalls(
     }
 
     private fun KaSession.implicitMatch(receiver: KaReceiverValue?, expected: KaSymbol): NativeReceiverMatch =
-        when (val matched = valueReceiverMatch(receiver, expected)) {
-            NativeReceiverMatch.OTHER,
-            NativeReceiverMatch.UNAVAILABLE -> matched
-            NativeReceiverMatch.EXACT ->
-                if (receiver is KaImplicitReceiverValue) NativeReceiverMatch.EXACT else NativeReceiverMatch.UNAVAILABLE
+        when (receiver) {
+            is KaImplicitReceiverValue -> valueReceiverMatch(receiver, expected)
+            is KaSmartCastedReceiverValue -> implicitMatch(receiver.original, expected)
+            // Explicit receivers enter through their expression reads, including explicit this.
+            is KaExplicitReceiverValue,
+            null -> NativeReceiverMatch.OTHER
         }
 }
 

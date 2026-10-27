@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -56,7 +57,32 @@ data class ImpactCaptureInvocationDocument(
     val position: ProtocolOffset,
     val invocation: ImpactSourceRangeDocument,
     val invocationOwner: ImpactCapturedBodyDocument,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val supplyTarget: ImpactCallTargetDocument = ImpactCallTargetDocument.Direct,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @ProtocolCollectionConstraint(maximumItems = 32)
+    val forwardings: BoundedProtocolList<ImpactCallbackForwardingDocument> = EmptyImpactCallbackForwardings,
 )
+
+/** An ordered formal-to-formal edge retains the exact selected source-call frame. */
+@Serializable
+data class ImpactCallbackForwardingDocument(
+    val sourceParameter: ImpactSourceRangeDocument,
+    val sourcePosition: ProtocolOffset,
+    val argument: ImpactSourceRangeDocument,
+    val targetFrame: ImpactCallFrameDocument,
+    val parameter: ImpactSourceRangeDocument,
+    val position: ProtocolOffset,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @ProtocolCollectionConstraint(maximumItems = 1024)
+    val callableTransfers: BoundedProtocolList<ImpactCompilerTransferDocument> = EmptyImpactCallbackTransfers,
+)
+
+val EmptyImpactCallbackForwardings: BoundedProtocolList<ImpactCallbackForwardingDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactCallbackForwardingDocument>()) as Refinement.Refined).value
+
+val EmptyImpactCallbackTransfers: BoundedProtocolList<ImpactCompilerTransferDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactCompilerTransferDocument>()) as Refinement.Refined).value
 
 @Serializable
 @JsonClassDiscriminator("type")

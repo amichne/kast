@@ -33,6 +33,7 @@ class LocalBindingReferenceScan<C>(
     private val elapsedMillis: () -> Long,
     private val onWork: (RelationWorkCount) -> Unit = {},
     private val additionalWork: () -> Long = { 0L },
+    private val enumerationSuspension: () -> ValueFlowSuspensionCause? = { null },
 ) {
     private val edges = mutableListOf<ValueTransfer>()
     private val obligations = mutableListOf<ValueFlowObligation>()
@@ -49,6 +50,8 @@ class LocalBindingReferenceScan<C>(
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         spend() // role admission, after the adapter's authority/owner unit
         enumerate(::visit)
+        // Native enumeration can expire before it reaches a candidate. Preserve any earlier scan suspension.
+        if (suspension == null) suspension = enumerationSuspension()
         // Replay can consume the time grant before reaching new input; a later grant may still advance it.
         if (
             suspension != null &&

@@ -32,7 +32,7 @@ internal class NativeCallbackArgumentInput(
         if (source.range != binding.argumentRange) return callbackInputRejected()
         val frame = source.callStack.frames.lastOrNull()
         if (frame == null) return callbackInputRejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-        if (frame.callee != source.executionOwner || frame.target != ValueCallTarget.Direct)
+        if (frame.callee != source.executionOwner)
             return callbackInputRejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
         if (
             frame.callee.context != ValueExecutionContext.Declaration ||
@@ -44,14 +44,25 @@ internal class NativeCallbackArgumentInput(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
-        if (formal.formal.callable.valueIdentity != frame.invocation.callable.valueIdentity)
-            return callbackInputRejected()
+        if (formal.formal.callable.valueIdentity != frame.callee.enclosing.valueIdentity) return callbackInputRejected()
         val supplier =
-            when (val admitted = nativeCallbackInputSupplier(frame, formal, context, projection, summaries)) {
+            when (
+                val admitted =
+                    nativeCallbackInputSupplier(
+                        frames = source.callStack.frames,
+                        formal = formal,
+                        context = context,
+                        projection = projection,
+                        summaries = summaries,
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
-        return enter(binding, frame, supplier)
+        val supplierFrame =
+            source.callStack.frames.singleOrNull { it == supplier.binding.frame }
+                ?: return callbackInputRejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+        return enter(binding, supplierFrame, supplier)
     }
 
     private fun formal(
@@ -114,15 +125,24 @@ internal class NativeCallbackArgumentInput(
         val lexical = context.receiverDeclaration(host)
         if (lexical == null) return callbackInputRejected()
         val read =
-            readCallbackInvocationFlow(
-                boundary = literal,
-                lexicalOwner = lexical,
-                scope = scope,
-                projection = projection,
-                admitWork = admitWork,
-                summaries = summaries,
-                callbackExpiry = expiry,
-            )
+            if (source.callStack.frames.any { it.target is ValueCallTarget.Implementation })
+                readSelectedCallbackInputFlow(
+                    supplier = supplier,
+                    frames = source.callStack.frames,
+                    literal = literal,
+                    context = context,
+                    summaries = summaries,
+                )
+            else
+                readCallbackInvocationFlow(
+                    boundary = literal,
+                    lexicalOwner = lexical,
+                    scope = scope,
+                    projection = projection,
+                    admitWork = admitWork,
+                    summaries = summaries,
+                    callbackExpiry = expiry,
+                )
         return when (
             val execution =
                 nativeCallbackInputOwner(

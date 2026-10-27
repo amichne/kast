@@ -10,6 +10,7 @@ import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
@@ -72,6 +73,7 @@ class ImplementationDispatchSchemaReuseTest {
                 "impactCapturedBody" to ImpactCapturedBodyDocument.serializer(),
                 "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
                 "impactCallFrame" to ImpactCallFrameDocument.serializer(),
+                "impactCallTarget" to ImpactCallTargetDocument.serializer(),
                 "impactValueRole" to ImpactValueRoleDocument.serializer(),
                 "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),

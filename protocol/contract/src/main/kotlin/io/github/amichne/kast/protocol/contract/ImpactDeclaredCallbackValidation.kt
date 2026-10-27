@@ -96,9 +96,9 @@ private fun ImpactValueConditionDocument.DeclaredCallbackResult.matchesReturn(
     resultRange: ImpactSourceRangeDocument,
 ): Boolean =
     origin.execution.enclosing == source.enclosing &&
-        origin.execution.executionOwner == source.executionOwner &&
+        origin.execution.executionOwner.hasSameExecutionIdentity(source.executionOwner) &&
         origin.range == source.range &&
-        origin.role == source.role &&
+        origin.role.hasSameRoleIdentity(source.role) &&
         origin.valuePath == source.valuePath &&
         origin.callStack.hasSameCallStackIdentity(source.callStack) &&
         useRange == resultRange

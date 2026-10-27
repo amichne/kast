@@ -5,6 +5,7 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import kotlinx.serialization.KSerializer
@@ -33,12 +34,15 @@ private data class DefinitionSchema(
     @SerialName("\$defs") val definitions: Map<String, JsonElement>,
 )
 
-/** Independent of installed factoring: only the exact recursive invocation descriptor is cut. */
+/** Independent of installed factoring: exact invocation and callback-capture descriptors end recursive expansion. */
 internal fun independentImpactSchema(serializer: KSerializer<*>): JsonObject =
     generatedOutputSchema(
         serializer,
         CanonicalSchemaReferences.from(
-            mapOf("impactInvocationReference" to ImpactInvocationReferenceDocument.serializer())
+            mapOf(
+                "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+                "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
+            )
         ),
     )
 
@@ -48,6 +52,7 @@ internal fun independentImpactSchemaWithDefinitions(serializer: KSerializer<*>):
         mapOf(
             "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
             "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
+            "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
         )
     val references = CanonicalSchemaReferences.from(shared)
     return Json.encodeToJsonElement(

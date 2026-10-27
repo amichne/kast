@@ -58,7 +58,7 @@ internal fun ValueCaptureInvocation.storageBytes(g: QueryImpactRetainedGraph): L
     g.node(this) {
         body
             .storageBytes(g)
-            .saturatedAdd(supply.invocation.storageBytes(g))
+            .saturatedAdd(supply.frame.storageBytes(g))
             .saturatedAdd(supply.invocationOwner.storageBytes(g))
             .saturatedAdd(g.node(supply) { g.node(supply.parameter) { g.text(supply.parameter.file.stableValue) } })
             .saturatedAdd(g.node(invocation) { invocation.retainedBytes })

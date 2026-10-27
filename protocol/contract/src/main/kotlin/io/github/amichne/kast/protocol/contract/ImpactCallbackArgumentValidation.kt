@@ -10,8 +10,10 @@ internal fun ImpactSourceOperationDocument.CallbackArgumentEntry.admitsCallbackA
         source.admitsExecutionOwner() &&
         target.admitsExecutionOwner() &&
         admitsActualArgument(source) &&
-        target.role == ImpactValueRoleDocument.Formal(ImpactFormalPositionDocument.Parameter(parameter)) &&
-        parameter.executionOwner == target.executionOwner &&
+        target.role.hasSameRoleIdentity(
+            ImpactValueRoleDocument.Formal(ImpactFormalPositionDocument.Parameter(parameter))
+        ) &&
+        parameter.executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
         preservesSupplierState(source, target) &&
         matchesCallbackOwners(source, target)
 
@@ -20,7 +22,6 @@ private fun ImpactSourceOperationDocument.CallbackArgumentEntry.admitsActualArgu
 ): Boolean =
     source.range == argumentRange &&
         invocation.invocation.containsExecutionRange(argumentRange) &&
-        source.isIn(supplierFrame.callee) &&
         supplierFrame.admits(source.enclosing.basis)
 
 private fun ImpactSourceOperationDocument.CallbackArgumentEntry.preservesSupplierState(
@@ -29,13 +30,13 @@ private fun ImpactSourceOperationDocument.CallbackArgumentEntry.preservesSupplie
 ): Boolean =
     source.valuePath == target.valuePath &&
         source.conditions.hasSameConditions(target.conditions) &&
-        source.callStack.hasSameCallStackIdentity(target.callStack) &&
-        source.callStack.values.lastOrNull()?.hasSameFrameIdentity(supplierFrame) == true
+        source.callStack.hasSameCallStackIdentity(target.callStack)
 
 private fun ImpactSourceOperationDocument.CallbackArgumentEntry.matchesCallbackOwners(
     source: ImpactValueSiteReferenceDocument,
     target: ImpactValueSiteReferenceDocument,
 ): Boolean {
+    if (!matchesActiveCallRoute(source)) return false
     val callback = target.executionOwner as? ImpactExecutionOwnerDocument.Callback
     val supplied = (supplierFrame.invocation as? ImpactCallOccurrenceDocument.Declared)?.invocation
     return callback != null &&
@@ -44,11 +45,17 @@ private fun ImpactSourceOperationDocument.CallbackArgumentEntry.matchesCallbackO
         callback.selects(invocation) &&
         invocation.invocationOwner.matchesArgumentOwner(source.enclosing) &&
         supplierFrame.callee.executionOwner == ImpactExecutionOwnerDocument.Declaration &&
-        supplierFrame.target == ImpactCallTargetDocument.Direct &&
         supplierFrame.enclosing == target.enclosing &&
         supplierFrame.enclosing == invocation.enclosing &&
-        supplied == invocation.supply &&
+        supplied.hasSameInvocationIdentity(invocation.supply) &&
         matchesSupplierExecution(supplied.executionOwner, target, callback)
+}
+
+private fun ImpactSourceOperationDocument.CallbackArgumentEntry.matchesActiveCallRoute(
+    source: ImpactValueSiteReferenceDocument
+): Boolean {
+    val route = invocation.activeCallRoute(source.callStack) ?: return false
+    return route.supplierFrame.hasSameFrameIdentity(supplierFrame) && source.isIn(route.invocationFrame.callee)
 }
 
 private fun ImpactSourceOperationDocument.CallbackArgumentEntry.matchesSupplierExecution(
@@ -60,7 +67,7 @@ private fun ImpactSourceOperationDocument.CallbackArgumentEntry.matchesSupplierE
         ImpactExecutionOwnerDocument.Declaration -> invocation.supplyOwner.matchesArgumentOwner(target.enclosing)
         is ImpactExecutionOwnerDocument.Callback ->
             execution.body == invocation.supplyOwner &&
-                execution.invocations == callback.invocations &&
+                execution.invocations.hasSameCaptures(callback.invocations) &&
                 execution.invocations.values.count { it.body == execution.body } == 1 &&
                 execution.admitsSelection()
         is ImpactExecutionOwnerDocument.DeclaredCallback -> false

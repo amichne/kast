@@ -28,6 +28,7 @@ import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
@@ -276,9 +277,11 @@ private fun KtNamedDeclaration.hasStoredValueField(projection: IntellijK2Relatio
                 is KtProperty -> declaration.symbol as? KaKotlinPropertySymbol
                 else -> null
             }
+        // Override modality can remain OPEN inside a final class; its declared getter still cannot be overridden.
+        val finalOwner = (property?.containingDeclaration as? KaClassSymbol)?.modality == KaSymbolModality.FINAL
         property != null &&
-            property.modality == KaSymbolModality.FINAL &&
-            property.getter?.modality == KaSymbolModality.FINAL &&
+            (finalOwner ||
+                (property.modality == KaSymbolModality.FINAL && property.getter?.modality == KaSymbolModality.FINAL)) &&
             property.isVal &&
             !property.isDelegated &&
             property.hasBackingField &&

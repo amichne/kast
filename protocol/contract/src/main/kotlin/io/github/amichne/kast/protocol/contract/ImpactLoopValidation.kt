@@ -7,7 +7,7 @@ internal fun ImpactLoopProtocolDocument.admits(): Boolean =
                 it.isOnBasis(enclosing.basis) &&
                 it.executionOwner.admits(enclosing, it.range) &&
                 it.range == iterator.range &&
-                it.executionOwner == iterator.executionOwner
+                it.executionOwner.hasSameExecutionIdentity(iterator.executionOwner)
         } &&
         listOf(iterator.callable, hasNext.callable, next.callable).distinct().size == LOOP_OPERATION_COUNT
 
@@ -17,7 +17,7 @@ internal fun ImpactValueRoleDocument.LoopResult.admits(site: ImpactValueSiteRefe
     result.protocol.admits() &&
         result.protocol.enclosing == site.enclosing &&
         result.invocation.range == site.range &&
-        result.invocation.executionOwner == site.executionOwner
+        result.invocation.executionOwner.hasSameExecutionIdentity(site.executionOwner)
 
 internal fun ImpactTransferEvidenceDocument.LoopAdvance.admits(
     source: ImpactValueSiteReferenceDocument,
@@ -28,8 +28,10 @@ internal fun ImpactTransferEvidenceDocument.LoopAdvance.admits(
         kind == ImpactTransferKindDocument.RECEIVER &&
         source.admitsExecutionOwner() &&
         target.admitsExecutionOwner() &&
-        source.role == ImpactValueRoleDocument.LoopResult(ImpactLoopResultDocument.Iterator(iteration.protocol)) &&
-        target.role == ImpactValueRoleDocument.Receiver(iteration.protocol.next, receiverKind) &&
+        source.role.hasSameRoleIdentity(
+            ImpactValueRoleDocument.LoopResult(ImpactLoopResultDocument.Iterator(iteration.protocol))
+        ) &&
+        target.role.hasSameRoleIdentity(ImpactValueRoleDocument.Receiver(iteration.protocol.next, receiverKind)) &&
         target.range == iteration.protocol.next.range &&
         source.sameLoopState(target)
 
@@ -66,7 +68,7 @@ private fun ImpactValueSiteReferenceDocument.admitsComponentAnchor(
 
 private fun ImpactValueSiteReferenceDocument.sameLoopState(target: ImpactValueSiteReferenceDocument): Boolean =
     enclosing == target.enclosing &&
-        executionOwner == target.executionOwner &&
+        executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
         valuePath == target.valuePath &&
         callStack.hasSameCallStackIdentity(target.callStack) &&
-        conditions == target.conditions
+        conditions.hasSameConditions(target.conditions)

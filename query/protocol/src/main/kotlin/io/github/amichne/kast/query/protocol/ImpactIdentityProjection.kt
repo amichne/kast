@@ -190,6 +190,11 @@ internal fun io.github.amichne.kast.relation.contract.ValueCaptureInvocation.imp
                 owner,
             )
         }
+        .impactZip(supply.frame.target.impactDocument())
+        .impactZip(invocation.forwardings.impactEach { it.impactForwarding() })
+        .impactMap { (capture, forwardings) ->
+            capture.first.copy(supplyTarget = capture.second, forwardings = forwardings)
+        }
 
 internal fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument> =
     when (this) {

@@ -73,7 +73,7 @@ private constructor(
 
 internal fun CallbackArgumentBinding.formalIdentity():
     Refinement<CallbackParameterIdentity, CallbackInvocationFlowFailure> =
-    when (val admitted = CallbackParameterIdentity.fromCompiler(invocation.callable, position, parameter)) {
+    when (val admitted = CallbackParameterIdentity.fromCompiler(callable, position, parameter)) {
         is Refinement.Refined -> admitted
         is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_FORWARDING_PATH)
     }

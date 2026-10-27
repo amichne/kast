@@ -98,12 +98,11 @@ class NativeReceiverBranchParityTest : NativePacketValueFixtureTest() {
     fun testFinalDisjointArmCannotAcquireAnImplicitReceiverCall() {
         val fixture = packetFixture(listOf(CONTROLS))
         val read = step(fixture, formal(fixture, "calledCaller"))
+        val allowed = fixture.markedExpression(owner("called"), "selected")
         val forbidden = fixture.markedExpression(owner("called"), "other")
+        assertTrue(read.transfers.any { it.target.range == allowed.anchor && it.kind == ValueTransferKind.RECEIVER })
         assertTrue(read.transfers.none { it.target.range == forbidden.anchor })
-        assertEquals(
-            setOf(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION),
-            read.obligations.map { it.cause }.toSet(),
-        )
+        assertTrue("Proven implicit receiver retained a frontier: ${read.obligations}", read.obligations.isEmpty())
     }
 
     fun testStarProjectedFinalVariantsPreserveTheirDistinctPayloadFields() =

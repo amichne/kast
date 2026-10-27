@@ -111,11 +111,11 @@ private fun callbackInputParameter(
     val literal = execution.nativeOwner as? KtFunction
     if (literal == null) return callbackInputRejected()
     return observation.observedAnalyze(literal) {
-        callbackInputParameter(literal, execution.owner, position)
+        nativeCallbackInputParameter(literal, execution.owner, position)
     }
 }
 
-private fun KaSession.callbackInputParameter(
+internal fun KaSession.nativeCallbackInputParameter(
     literal: KtFunction,
     owner: ValueExecutionOwner,
     position: ValueArgumentPosition,
@@ -129,9 +129,17 @@ private fun KaSession.callbackInputParameter(
             as? KaFunctionSymbol
     if (symbol == null || symbol.receiverParameter != null || symbol.contextReceivers.isNotEmpty())
         return callbackInputRejected()
-    val selected = symbol.valueParameters.getOrNull(position.value)
-    val parameter = selected?.psi as? KtParameter
-    if (selected == null || parameter == null) return callbackInputRejected()
+    val selected = symbol.valueParameters.getOrNull(position.value) ?: return callbackInputRejected()
+    val range =
+        if (selected.isImplicitLambdaParameter) {
+            if (literal !is KtFunctionLiteral || nativeImplicitLambdaParameter(literal, position) != selected)
+                return callbackInputRejected()
+            // An implicit formal has no parameter declaration; retain its actual compiler-owned callback body.
+            sourceValueRange(literal)
+        } else {
+            val parameter = selected.psi as? KtParameter ?: return callbackInputRejected()
+            sourceValueRange(parameter)
+        }
     val name =
         when (val parsed = SymbolDiscoveryCandidateName.parse(selected.name.asString())) {
             is Refinement.Refined -> parsed.value
@@ -143,7 +151,7 @@ private fun KaSession.callbackInputParameter(
                 callable = owner.enclosing,
                 position = position,
                 name = name,
-                range = sourceValueRange(parameter),
+                range = range,
                 executionOwner = owner,
             )
     ) {
