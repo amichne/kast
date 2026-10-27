@@ -68,3 +68,4 @@ relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij
 relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeContainerMapFlowTest.kt	cd18a6fd6d05e86a54715c5c931c06e7ecf92528abede21a98898d171e0e527e
 runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeContainerQueryFixtureTest.kt	463e1114f77e937c19b1b7b0bfa732268d60690cc731deb06c1c0196554a57be
 runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeContainerMapQueryTest.kt	242b9b7e49f6ba721687853baf3fb26dc262c3b4f963d445b8a7e2a93a259247
+relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackReturnFlowTest.kt	37ab4a27c1a332e24bfecaff2dad1a23cc3a4ba8534df9b5c63ece7c9933b292

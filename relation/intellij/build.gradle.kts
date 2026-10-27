@@ -297,6 +297,8 @@ registerRelationNativeFixtures(
         "*NativeConstructorPropertyStorageTest",
         "*NativeImplicitLambdaParameterTest",
         "*NativeContainerMapFlowTest",
+        "*NativeCallbackReturnFlowTest.testCapturedWithRefusalNamesTheReadRatherThanTheBinding",
+        "*NativeCallbackReturnFlowTest.testRunnerControlledCallbackReturnAndReadmissionExceedLegacyTypeCap",
         "*NativeDependencyCallbackTest",
         "*NativeDeclaredEffectCallbackTest",
         "*NativeCallbackCandidateFilterTest",

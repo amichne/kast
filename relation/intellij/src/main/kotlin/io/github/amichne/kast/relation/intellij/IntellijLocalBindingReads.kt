@@ -13,6 +13,7 @@ import io.github.amichne.kast.relation.contract.LocalReferenceKind
 import io.github.amichne.kast.relation.contract.LocalReferenceResolution
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueConditions
+import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
@@ -255,7 +256,14 @@ internal class IntellijLocalBindingReads(
                         request.budget.resources.workAllowance,
                     )
             ) {
-                is Refinement.Refined -> localReadTarget(expression, request.source.executionOwner, conditions.value)
+                is Refinement.Refined ->
+                    nativeLocalReadTarget(
+                        element = expression,
+                        source = request.source,
+                        execution = request.source.executionOwner,
+                        scope = scope,
+                        conditions = conditions.value,
+                    )
                 is Refinement.Rejected -> LocalReferenceResolution.Unsupported(conditions.failure)
             }
         } else if (admission == NativeValueBranchAdmission.UNPROVEN)
@@ -282,7 +290,17 @@ internal class IntellijLocalBindingReads(
                                 },
                             )
                     ) {
-                        is Refinement.Refined -> captured.value.owner
+                        is Refinement.Refined -> {
+                            if (captured.value.owner.context !is ValueExecutionContext.Callback)
+                                return LocalReferenceResolution.Unresolved(
+                                    nativeValueObligation(
+                                        request.source,
+                                        ValueFlowUnsupportedCause.NESTED_EXECUTION,
+                                        element,
+                                    )
+                                )
+                            captured.value.owner
+                        }
                         is Refinement.Rejected ->
                             return LocalReferenceResolution.Unresolved(
                                 nativeValueObligation(request.source, captured.failure, element)
@@ -294,37 +312,7 @@ internal class IntellijLocalBindingReads(
                     )
                 NativeValueOwnership.ADMITTED -> request.source.executionOwner
             }
-        return localReadTarget(element, execution)
-    }
-
-    private fun localReadTarget(
-        element: PsiElement,
-        execution: ValueExecutionOwner,
-        conditions: ValueConditions = request.source.conditions,
-    ): LocalReferenceResolution {
-        if (!scope.nativeScope.contains(element.containingFile.virtualFile))
-            return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
-        val range =
-            when (val value = nativeRange(element)) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return LocalReferenceResolution.Unsupported(value.failure)
-            }
-        return when (
-            val target =
-                ValueSite.fromCompiler(
-                    enclosing = request.source.enclosing,
-                    range = range,
-                    role = ValueRole.LocalRead,
-                    executionOwner = execution,
-                    valuePath = request.source.valuePath,
-                    callStack = request.source.callStack,
-                    conditions = conditions,
-                )
-        ) {
-            is Refinement.Refined -> LocalReferenceResolution.Transfer(target.value)
-            is Refinement.Rejected ->
-                LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
+        return nativeLocalReadTarget(element = element, source = request.source, execution = execution, scope = scope)
     }
 
     private fun admitCaptureWork(): CallbackWorkAdmission =
@@ -337,6 +325,37 @@ internal class IntellijLocalBindingReads(
                 CallbackWorkAdmission.READY
             }
         }
+}
+
+private fun nativeLocalReadTarget(
+    element: PsiElement,
+    source: ValueSite,
+    execution: ValueExecutionOwner,
+    scope: CompiledRelationScope,
+    conditions: ValueConditions = source.conditions,
+): LocalReferenceResolution {
+    if (!scope.nativeScope.contains(element.containingFile.virtualFile))
+        return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
+    val range =
+        when (val value = nativeRange(element)) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> return LocalReferenceResolution.Unsupported(value.failure)
+        }
+    return when (
+        val target =
+            ValueSite.fromCompiler(
+                enclosing = source.enclosing,
+                range = range,
+                role = ValueRole.LocalRead,
+                executionOwner = execution,
+                valuePath = source.valuePath,
+                callStack = source.callStack,
+                conditions = conditions,
+            )
+    ) {
+        is Refinement.Refined -> LocalReferenceResolution.Transfer(target.value)
+        is Refinement.Rejected -> LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    }
 }
 
 private fun IntellijReadObservation.recordValueRead(read: ValueFlowRead) {
