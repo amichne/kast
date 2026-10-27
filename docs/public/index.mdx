@@ -1,7 +1,7 @@
 ---
-title: "See where your Kotlin changes lead"
+title: "Your agent reads the code. Kast connects the pieces."
 sidebarTitle: "Why Kast?"
-description: "Give your agent the connections between functions, values, and the code that depends on them."
+description: "Follow a customer from a signup into an email draft and a returned list, with the source connections left in."
 icon: "scan-search"
 ---
 
@@ -11,24 +11,24 @@ import { ValueJourney } from "/snippets/value-journey.jsx"
 
 <span id="what-kast-adds" />
 
-Kast connects your coding agent to IntelliJ IDEA. Your agent can trace a value through functions, fields, and callbacks to the code that uses it.
+Kast lets your coding agent follow connections through your Kotlin project—not just match words.
+Trace values across calls and fields, find callers and implementations, inspect problems, and make targeted source changes.
 
 ## Can my agent already do that?
 
 Your agent can search names and read files. Now ask a harder question:
 
-**If I change this value, where does it go?**
+**Where can this customer end up?**
 
-In this example, a helper creates a `Pet`. A `PetListing` holds it, and a callback puts the listing in a list.
-Press **Follow the value** to see the route. Then choose **Return a different value**. The types stay the same, but the route changes.
+A sign-up becomes a customer. A welcome-email draft holds that customer as its recipient.
+The draft can then be part of a returned list, even though the last function never says `Customer`.
 
-This illustration uses authored routes. It does not run Kotlin or query Kast.
+Change one expression, and the same list type can hold a draft for a different customer.
+Names and types alone do not explain that difference.
 
-<ValueJourney />
+This is an authored source illustration. It does not run Kotlin or query Kast.
 
-[Try the other examples](/explanation/value-journey).
-
-Kast gives your agent source locations and evidence for these connections. Names and types alone cannot prove them.
+<ValueJourney preview={true} />
 
 <span id="use-the-agent-you-already-use" />
 

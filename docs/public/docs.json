@@ -27,48 +27,32 @@
     "strict": false
   },
   "navigation": {
-    "tabs": [
+    "groups": [
       {
-        "tab": "Kast",
-        "groups": [
-          {
-            "group": "Kast",
-            "pages": [
-              {
-                "group": "Discover Kast",
-                "icon": "sparkles",
-                "expanded": true,
-                "pages": [
-                  "index",
-                  "explanation/value-journey",
-                  "search"
-                ]
-              },
-              {
-                "group": "Try it on your project",
-                "icon": "rocket",
-                "expanded": false,
-                "pages": [
-                  "start",
-                  "agent-harnesses",
-                  "tutorials/first-query"
-                ]
-              },
-              {
-                "group": "Get unstuck",
-                "icon": "life-buoy",
-                "expanded": false,
-                "pages": [
-                  "troubleshooting"
-                ]
-              }
-            ]
-          }
+        "group": "Discover Kast",
+        "pages": [
+          "index",
+          "explanation/value-journey",
+          "search"
         ]
       },
       {
-        "tab": "Architecture",
-        "groups": [
+        "group": "Try it on your project",
+        "pages": [
+          "start",
+          "agent-harnesses",
+          "tutorials/first-query"
+        ]
+      },
+      {
+        "group": "Get unstuck",
+        "pages": [
+          "troubleshooting"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
           {
             "group": "Understand Kast",
             "pages": [
@@ -97,8 +81,8 @@
         "searchable": true
       },
       {
-        "tab": "Reference",
-        "groups": [
+        "group": "Reference",
+        "pages": [
           {
             "group": "Interface reference",
             "pages": [
@@ -229,6 +213,10 @@
             "href": "/"
           },
           {
+            "label": "Follow a value",
+            "href": "/explanation/value-journey"
+          },
+          {
             "label": "What you can do",
             "href": "/search"
           }
@@ -255,11 +243,15 @@
         "header": "Go deeper",
         "items": [
           {
+            "label": "Example source and evidence",
+            "href": "/explanation/value-journey-evidence"
+          },
+          {
             "label": "How Kast works",
             "href": "/explanation"
           },
           {
-            "label": "Can I trust the answer?",
+            "label": "What an answer proves",
             "href": "/reference/evidence-boundaries"
           },
           {

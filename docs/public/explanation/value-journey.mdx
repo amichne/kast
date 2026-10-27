@@ -1,7 +1,7 @@
 ---
-title: "Where does this value go?"
+title: "Where does this customer go?"
 sidebarTitle: "Follow a value"
-description: "Watch a value move through a helper, an object, and a list. Change the example to see the route change."
+description: "Follow a customer into a welcome-email draft and a returned list. Compare a different customer, a second call, and missing support."
 icon: "route"
 ---
 
@@ -9,27 +9,34 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 
 import { ValueJourney } from "/snippets/value-journey.jsx"
 
-Press **Follow the value**. The highlighted source and route move together.
-Then choose another example to see what changes.
+A sign-up becomes a customer. Follow that customer into a welcome-email draft, then into a possible element of the returned list.
+The full code stays beside the graph. Hover or focus a connection to highlight its source lines; select it to read the explanation.
+Use **Hide source** when you want more room for the graph.
+
+This is an authored source illustration, not a live Kast result or a record of execution.
 
 <ValueJourney />
 
 ## Try three changes
 
-- **Return a different value:** the list contains a separate value. The original route does not reach it.
-- **Use the value twice:** choose either use of the same producer.
-- **Stop at a missing connection:** the route stops where the example lacks evidence.
+- **Change one line:** the list still holds email drafts, but a new expression creates a different customer as the recipient.
+  The separate call inside `draftWelcomeEmail` remains in source; this list no longer uses it.
+- **Find the other use:** one call supplies an email draft's recipient; the other supplies a customer directly to a list.
+  These are separate call contexts, not one runtime object splitting in two.
+- **Remove one rule:** the code stays the same. Without the reviewed rule for `map`, the output-element connection is not established.
+  That does not prove that no connection exists.
 
-A search for `Pet` finds text in all these examples. The connections explain why the answers differ.
+A search for `Customer` finds text in all these examples. The connections explain why the answers differ.
 
 ## Ask the same question on your code
 
-> Use Kast to trace this function's result. Show where it goes and where the route stops.
+> Use Kast to trace this function's result. Show the source connections and where the evidence stops.
 
 [Install Kast](/start) to try it on your project. Then choose an [example question](/search).
 
 <span id="what-the-illustration-means" />
 
-This is an illustration, not a live Kast query. [Read its source and limits](/explanation/value-journey-evidence).
+The illustration does not find every use or prove that an edit is safe.
+[Read its source and limits](/explanation/value-journey-evidence), including why the list connection needs a separate rule.
 
 <DeeperReading />

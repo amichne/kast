@@ -1,4 +1,4 @@
-export const ValueJourney = () => {
+export const ValueJourney = (props) => {
 "use strict";
 var KastValueJourney = (() => {
   var __defProp = Object.defineProperty;
@@ -26,7 +26,7 @@ var KastValueJourney = (() => {
   });
 
   // <define:KAST_SYNTAX>
-  var define_KAST_SYNTAX_default = { E0: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 90, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 91, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 94, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 99, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 105, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 108, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 116, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 117, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 121, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 122, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 127, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 128, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 138, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 139, light: "#D32A61", dark: "#FF678D" }, { text: " pet: ", start: 142, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 148, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 154, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 162, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 163, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 167, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 176, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 177, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 182, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 186, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 189, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 190, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 191, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 192, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 199, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 205, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 213, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 214, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 217, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 227, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 228, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 240, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 244, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 254, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 255, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 256, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 257, light: "#693ACF", dark: "#9D6AFB" }, { text: "(pet ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 272, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 273, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 274, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 279, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 283, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 291, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 292, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 295, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 296, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 311, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 315, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 316, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 325, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 329, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 333, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 334, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 344, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 346, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 347, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 354, light: "#693ACF", dark: "#9D6AFB" }, { text: " { it.", start: 357, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 363, light: "#693ACF", dark: "#9D6AFB" }, { text: "() }", start: 375, light: "#0A0A0A", dark: "#FAFAFA" }], []], E3: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 90, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 91, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 94, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 99, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 105, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 108, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 116, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 117, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 121, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 122, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 127, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 128, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 138, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 139, light: "#D32A61", dark: "#FF678D" }, { text: " pet: ", start: 142, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 148, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 154, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 162, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 163, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 167, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 176, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 177, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 182, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 186, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 189, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 190, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 191, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 192, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 199, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 205, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 213, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 214, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 217, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 227, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 228, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 240, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 244, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 254, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 255, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 256, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 257, light: "#693ACF", dark: "#9D6AFB" }, { text: "(pet ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 272, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 273, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 274, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 279, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 283, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 291, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 292, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 295, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 296, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 311, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 315, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 316, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 325, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 329, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 333, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 334, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 337, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 339, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 340, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 347, light: "#693ACF", dark: "#9D6AFB" }, { text: " { it.", start: 350, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 356, light: "#693ACF", dark: "#9D6AFB" }, { text: "() }", start: 361, light: "#0A0A0A", dark: "#FAFAFA" }], []], E4: [[{ text: "package", start: 0, light: "#D32A61", dark: "#FF678D" }, { text: " kast.repro", start: 7, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 20, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 28, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 29, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 33, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 34, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 39, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 40, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 49, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 50, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 53, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 58, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 64, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 67, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 75, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 76, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 87, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 90, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 91, light: "#D32A61", dark: "#FF678D" }, { text: " id: ", start: 94, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 99, light: "#A631BE", dark: "#D568EA" }, { text: "?)", start: 105, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 108, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 116, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "data", start: 117, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 121, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 122, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 127, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 128, light: "#A631BE", dark: "#D568EA" }, { text: "(", start: 138, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 139, light: "#D32A61", dark: "#FF678D" }, { text: " pet: ", start: 142, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 148, light: "#A631BE", dark: "#D568EA" }, { text: ")", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "internal", start: 154, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 162, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 163, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 167, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 176, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 177, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 182, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 186, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 189, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 190, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 191, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 192, light: "#693ACF", dark: "#9D6AFB" }, { text: "(id ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 199, light: "#08C0EF", dark: "#08C0EF" }, { text: " id)", start: 200, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 205, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 213, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 214, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 217, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 218, light: "#A631BE", dark: "#D568EA" }, { text: ".", start: 227, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPetListing", start: 228, light: "#693ACF", dark: "#9D6AFB" }, { text: "(): ", start: 240, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 244, light: "#A631BE", dark: "#D568EA" }, { text: " ", start: 254, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 255, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 256, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 257, light: "#693ACF", dark: "#9D6AFB" }, { text: "(pet ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 272, light: "#08C0EF", dark: "#08C0EF" }, { text: " ", start: 273, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "toPet", start: 274, light: "#693ACF", dark: "#9D6AFB" }, { text: "())", start: 279, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "internal", start: 283, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 291, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "fun", start: 292, light: "#D32A61", dark: "#FF678D" }, { text: " ", start: 295, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "convert", start: 296, light: "#693ACF", dark: "#9D6AFB" }, { text: "(items: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 311, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 315, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetRecord", start: 316, light: "#A631BE", dark: "#D568EA" }, { text: ">): ", start: 325, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 329, light: "#A631BE", dark: "#D568EA" }, { text: "<", start: 333, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 334, light: "#A631BE", dark: "#D568EA" }, { text: "> ", start: 344, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 346, light: "#08C0EF", dark: "#08C0EF" }, { text: " items.", start: 347, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 354, light: "#693ACF", dark: "#9D6AFB" }, { text: " { ", start: 357, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "PetListing", start: 360, light: "#693ACF", dark: "#9D6AFB" }, { text: "(", start: 370, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Pet", start: 371, light: "#693ACF", dark: "#9D6AFB" }, { text: "(", start: 374, light: "#0A0A0A", dark: "#FAFAFA" }, { text: '"constant"', start: 375, light: "#147d35", dark: "#5ECC71" }, { text: ")) }", start: 385, light: "#0A0A0A", dark: "#FAFAFA" }], []] };
+  var define_KAST_SYNTAX_default = { E0: [[{ text: "data", start: 0, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 4, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 5, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 10, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 11, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 17, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 18, light: "#c12459", dark: "#ff7c9d" }, { text: " name: ", start: 21, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 28, light: "#A631BE", dark: "#de8aef" }, { text: "?)", start: 34, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "data", start: 37, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 41, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 42, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 47, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 48, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 56, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 57, light: "#c12459", dark: "#ff7c9d" }, { text: " name: ", start: 60, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 67, light: "#A631BE", dark: "#de8aef" }, { text: "?)", start: 73, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "data", start: 76, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 87, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 99, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 100, light: "#c12459", dark: "#ff7c9d" }, { text: " recipient: ", start: 103, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 115, light: "#A631BE", dark: "#de8aef" }, { text: ")", start: 123, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "fun", start: 126, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 129, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 130, light: "#A631BE", dark: "#de8aef" }, { text: ".", start: 136, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 137, light: "#693ACF", dark: "#bb99ff" }, { text: "(): ", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 155, light: "#A631BE", dark: "#de8aef" }, { text: " ", start: 163, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 164, light: "#006579", dark: "#08C0EF" }], [{ text: "    ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 170, light: "#693ACF", dark: "#bb99ff" }, { text: "(name ", start: 178, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 184, light: "#006579", dark: "#08C0EF" }, { text: " name)", start: 185, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "fun", start: 192, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 196, light: "#A631BE", dark: "#de8aef" }, { text: ".", start: 202, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "draftWelcomeEmail", start: 203, light: "#693ACF", dark: "#bb99ff" }, { text: "(): ", start: 220, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 224, light: "#A631BE", dark: "#de8aef" }, { text: " ", start: 236, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 237, light: "#006579", dark: "#08C0EF" }], [{ text: "    ", start: 239, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 243, light: "#693ACF", dark: "#bb99ff" }, { text: "(recipient ", start: 255, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 266, light: "#006579", dark: "#08C0EF" }, { text: " ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 268, light: "#693ACF", dark: "#bb99ff" }, { text: "())", start: 282, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "fun", start: 286, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 289, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "prepareEmails", start: 290, light: "#693ACF", dark: "#bb99ff" }, { text: "(signups: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 313, light: "#A631BE", dark: "#de8aef" }, { text: "<", start: 317, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 318, light: "#A631BE", dark: "#de8aef" }, { text: ">): ", start: 324, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 328, light: "#A631BE", dark: "#de8aef" }, { text: "<", start: 332, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 333, light: "#A631BE", dark: "#de8aef" }, { text: "> ", start: 345, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 347, light: "#006579", dark: "#08C0EF" }], [{ text: "    signups.", start: 349, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 361, light: "#693ACF", dark: "#bb99ff" }, { text: " { signup ", start: 364, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "->", start: 374, light: "#A631BE", dark: "#de8aef" }], [{ text: "        signup.", start: 377, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "draftWelcomeEmail", start: 392, light: "#693ACF", dark: "#bb99ff" }, { text: "()", start: 409, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "    }", start: 412, light: "#0A0A0A", dark: "#FAFAFA" }], []], E3: [[{ text: "data", start: 0, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 4, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 5, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 10, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 11, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 17, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 18, light: "#c12459", dark: "#ff7c9d" }, { text: " name: ", start: 21, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 28, light: "#A631BE", dark: "#de8aef" }, { text: "?)", start: 34, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "data", start: 37, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 41, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 42, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 47, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 48, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 56, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 57, light: "#c12459", dark: "#ff7c9d" }, { text: " name: ", start: 60, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 67, light: "#A631BE", dark: "#de8aef" }, { text: "?)", start: 73, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "data", start: 76, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 87, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 99, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 100, light: "#c12459", dark: "#ff7c9d" }, { text: " recipient: ", start: 103, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 115, light: "#A631BE", dark: "#de8aef" }, { text: ")", start: 123, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "fun", start: 126, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 129, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 130, light: "#A631BE", dark: "#de8aef" }, { text: ".", start: 136, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 137, light: "#693ACF", dark: "#bb99ff" }, { text: "(): ", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 155, light: "#A631BE", dark: "#de8aef" }, { text: " ", start: 163, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 164, light: "#006579", dark: "#08C0EF" }], [{ text: "    ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 170, light: "#693ACF", dark: "#bb99ff" }, { text: "(name ", start: 178, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 184, light: "#006579", dark: "#08C0EF" }, { text: " name)", start: 185, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "fun", start: 192, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 196, light: "#A631BE", dark: "#de8aef" }, { text: ".", start: 202, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "draftWelcomeEmail", start: 203, light: "#693ACF", dark: "#bb99ff" }, { text: "(): ", start: 220, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 224, light: "#A631BE", dark: "#de8aef" }, { text: " ", start: 236, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 237, light: "#006579", dark: "#08C0EF" }], [{ text: "    ", start: 239, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 243, light: "#693ACF", dark: "#bb99ff" }, { text: "(recipient ", start: 255, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 266, light: "#006579", dark: "#08C0EF" }, { text: " ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 268, light: "#693ACF", dark: "#bb99ff" }, { text: "())", start: 282, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "fun", start: 286, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 289, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "prepareCustomers", start: 290, light: "#693ACF", dark: "#bb99ff" }, { text: "(signups: ", start: 306, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 316, light: "#A631BE", dark: "#de8aef" }, { text: "<", start: 320, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 321, light: "#A631BE", dark: "#de8aef" }, { text: ">): ", start: 327, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 331, light: "#A631BE", dark: "#de8aef" }, { text: "<", start: 335, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 336, light: "#A631BE", dark: "#de8aef" }, { text: "> ", start: 344, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 346, light: "#006579", dark: "#08C0EF" }], [{ text: "    signups.", start: 348, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 360, light: "#693ACF", dark: "#bb99ff" }, { text: " { signup ", start: 363, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "->", start: 373, light: "#A631BE", dark: "#de8aef" }], [{ text: "        signup.", start: 376, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 391, light: "#693ACF", dark: "#bb99ff" }, { text: "()", start: 405, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "    }", start: 408, light: "#0A0A0A", dark: "#FAFAFA" }], []], E4: [[{ text: "data", start: 0, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 4, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 5, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 10, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 11, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 17, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 18, light: "#c12459", dark: "#ff7c9d" }, { text: " name: ", start: 21, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 28, light: "#A631BE", dark: "#de8aef" }, { text: "?)", start: 34, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "data", start: 37, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 41, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 42, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 47, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 48, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 56, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 57, light: "#c12459", dark: "#ff7c9d" }, { text: " name: ", start: 60, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "String", start: 67, light: "#A631BE", dark: "#de8aef" }, { text: "?)", start: 73, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "data", start: 76, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 80, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "class", start: 81, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 86, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 87, light: "#A631BE", dark: "#de8aef" }, { text: "(", start: 99, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "val", start: 100, light: "#c12459", dark: "#ff7c9d" }, { text: " recipient: ", start: 103, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 115, light: "#A631BE", dark: "#de8aef" }, { text: ")", start: 123, light: "#0A0A0A", dark: "#FAFAFA" }], [], [{ text: "fun", start: 126, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 129, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 130, light: "#A631BE", dark: "#de8aef" }, { text: ".", start: 136, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 137, light: "#693ACF", dark: "#bb99ff" }, { text: "(): ", start: 151, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 155, light: "#A631BE", dark: "#de8aef" }, { text: " ", start: 163, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 164, light: "#006579", dark: "#08C0EF" }], [{ text: "    ", start: 166, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 170, light: "#693ACF", dark: "#bb99ff" }, { text: "(name ", start: 178, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 184, light: "#006579", dark: "#08C0EF" }, { text: " name)", start: 185, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "fun", start: 192, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 195, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 196, light: "#A631BE", dark: "#de8aef" }, { text: ".", start: 202, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "draftWelcomeEmail", start: 203, light: "#693ACF", dark: "#bb99ff" }, { text: "(): ", start: 220, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 224, light: "#A631BE", dark: "#de8aef" }, { text: " ", start: 236, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 237, light: "#006579", dark: "#08C0EF" }], [{ text: "    ", start: 239, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 243, light: "#693ACF", dark: "#bb99ff" }, { text: "(recipient ", start: 255, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 266, light: "#006579", dark: "#08C0EF" }, { text: " ", start: 267, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "createCustomer", start: 268, light: "#693ACF", dark: "#bb99ff" }, { text: "())", start: 282, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "fun", start: 286, light: "#c12459", dark: "#ff7c9d" }, { text: " ", start: 289, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "prepareEmails", start: 290, light: "#693ACF", dark: "#bb99ff" }, { text: "(signups: ", start: 303, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 313, light: "#A631BE", dark: "#de8aef" }, { text: "<", start: 317, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Signup", start: 318, light: "#A631BE", dark: "#de8aef" }, { text: ">): ", start: 324, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "List", start: 328, light: "#A631BE", dark: "#de8aef" }, { text: "<", start: 332, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 333, light: "#A631BE", dark: "#de8aef" }, { text: "> ", start: 345, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "=", start: 347, light: "#006579", dark: "#08C0EF" }], [{ text: "    signups.", start: 349, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "map", start: 361, light: "#693ACF", dark: "#bb99ff" }, { text: " { signup ", start: 364, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "->", start: 374, light: "#A631BE", dark: "#de8aef" }], [{ text: "        ", start: 377, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "WelcomeEmail", start: 385, light: "#693ACF", dark: "#bb99ff" }, { text: "(", start: 397, light: "#0A0A0A", dark: "#FAFAFA" }, { text: "Customer", start: 398, light: "#693ACF", dark: "#bb99ff" }, { text: "(", start: 406, light: "#0A0A0A", dark: "#FAFAFA" }, { text: '"Guest"', start: 407, light: "#147d35", dark: "#5ECC71" }, { text: "))", start: 414, light: "#0A0A0A", dark: "#FAFAFA" }], [{ text: "    }", start: 417, light: "#0A0A0A", dark: "#FAFAFA" }], []] };
 
   // ../../../relation/intellij/testData/r1-value-flow/E0.kt?raw
   var E0_default = "package kast.repro\n\ninternal data class WireValue(val id: String?)\ninternal data class ClientValue(val id: String?)\ninternal data class ClientEnvelope(val payload: ClientValue)\n\ninternal fun WireValue.toClientValue(): ClientValue = ClientValue(id = id)\ninternal fun WireValue.toClientEnvelope(): ClientEnvelope = ClientEnvelope(payload = toClientValue())\ninternal fun convert(items: List<WireValue>): List<ClientEnvelope> = items.map { it.toClientEnvelope() }\n";
@@ -296,29 +296,24 @@ var KastValueJourney = (() => {
     ]
   };
 
-  // src/pet-store.ts
-  function petStoreNames(text) {
+  // src/display-source.ts
+  function displaySource(text, variant) {
+    const names = {
+      WireValue: "Signup",
+      ClientValue: "Customer",
+      ClientEnvelope: "WelcomeEmail",
+      toClientValue: "createCustomer",
+      toClientEnvelope: "draftWelcomeEmail",
+      payload: "recipient",
+      id: "name",
+      items: "signups",
+      it: "signup",
+      convert: variant === "E3" ? "prepareCustomers" : "prepareEmails"
+    };
     return text.replace(
-      /\b(WireValue|ClientValue|ClientEnvelope|toClientValue|toClientEnvelope|payload)\b/g,
-      (name) => {
-        switch (name) {
-          case "WireValue":
-            return "PetRecord";
-          case "ClientValue":
-            return "Pet";
-          case "ClientEnvelope":
-            return "PetListing";
-          case "toClientValue":
-            return "toPet";
-          case "toClientEnvelope":
-            return "toPetListing";
-          case "payload":
-            return "pet";
-          default:
-            return name;
-        }
-      }
-    );
+      /\b(WireValue|ClientValue|ClientEnvelope|toClientValue|toClientEnvelope|payload|id|items|it|convert)\b/g,
+      (name) => names[name] ?? name
+    ).replace("package kast.repro\n\n", "").replaceAll("internal ", "").replaceAll('"constant"', '"Guest"').replaceAll("): Customer = ", "): Customer =\n    ").replaceAll("): WelcomeEmail = ", "): WelcomeEmail =\n    ").replaceAll("> = ", "> =\n    ").replaceAll(".map { ", ".map { signup ->\n        ").replaceAll("() }", "()\n    }").replaceAll(")) }", "))\n    }");
   }
 
   // src/trace.ts
@@ -365,14 +360,14 @@ var KastValueJourney = (() => {
         return { kind: "rejected", code: "SOURCE_CHANGED" };
     }
     const build = (variant, fixtureSource, sha256, fixtureSha256) => {
-      const source = petStoreNames(fixtureSource);
+      const source = displaySource(fixtureSource, variant);
       const anchor = (start, text) => {
         const original = SourceAnchor.admit(fixtureSource, start, text);
         if (original.kind === "rejected") return original;
         return SourceAnchor.admit(
           source,
-          petStoreNames(fixtureSource.slice(0, start)).length,
-          petStoreNames(text)
+          displaySource(fixtureSource.slice(0, start), variant).length,
+          displaySource(text, variant)
         );
       };
       const seed = anchor(232, "ClientValue(id = id)");
@@ -385,9 +380,9 @@ var KastValueJourney = (() => {
       const head = {
         id: "seed.ClientValue.result",
         anchor: seed.value,
-        title: "Start with this value",
-        explanation: "This constructor creates the Pet that we will trace.",
-        value: "Pet",
+        title: "A customer starts here",
+        explanation: "createCustomer builds a customer from the signup\u2019s name. Follow this source origin, marked A, through the calls that use it.",
+        value: "Customer",
         authority: "compiler",
         operation: "PRODUCER",
         importance: "landmark",
@@ -396,8 +391,8 @@ var KastValueJourney = (() => {
       const returned = {
         ...head,
         id: "toClientValue.RETURN",
-        title: "Returned by toPet",
-        explanation: "The helper returns this Pet to its caller.",
+        title: "Returned by createCustomer",
+        explanation: "The function returns the customer to its caller.",
         operation: "SEED_RETURN",
         importance: "detail"
       };
@@ -406,13 +401,13 @@ var KastValueJourney = (() => {
           ...head,
           id: "toClientValue.call.result",
           anchor: call.value,
-          title: "Returned to this exact call",
-          explanation: "This call receives the value from the helper.",
+          title: "This call receives the customer",
+          explanation: "The call inside draftWelcomeEmail receives the customer returned by createCustomer. A matching name alone would not establish this connection.",
           operation: "RETURN",
           importance: "normal",
           context: {
             kind: "call",
-            title: "PetRecord.toPet",
+            title: "Signup.createCustomer",
             anchor: seed.value
           }
         },
@@ -420,8 +415,8 @@ var KastValueJourney = (() => {
           ...head,
           id: "ClientEnvelope.payload.argument",
           anchor: call.value,
-          title: "Passed as pet",
-          explanation: "The constructor receives the value as its pet argument.",
+          title: "Passed as the recipient",
+          explanation: "The WelcomeEmail constructor receives the customer as its recipient argument.",
           operation: "ARGUMENT",
           importance: "detail"
         },
@@ -429,9 +424,9 @@ var KastValueJourney = (() => {
           ...head,
           id: "ClientEnvelope.result.payload",
           anchor: listing.value,
-          title: "Stored in the pet field",
-          explanation: "The object carries our value in its pet field.",
-          value: "PetListing.pet",
+          title: "An email draft holds the customer",
+          explanation: "The recipient field holds the customer, not just the customer\u2019s name. The surrounding email draft is a container; it is not another customer.",
+          value: "WelcomeEmail.recipient",
           operation: "CONSTRUCT_FIELD",
           importance: "landmark"
         },
@@ -439,9 +434,9 @@ var KastValueJourney = (() => {
           ...head,
           id: "toClientEnvelope.RETURN.payload",
           anchor: listing.value,
-          title: "Returned inside a listing",
-          explanation: "toPetListing returns a listing whose pet carries the same Pet.",
-          value: "PetListing.pet",
+          title: "Returned inside an email draft",
+          explanation: "draftWelcomeEmail returns a draft whose recipient carries the customer.",
+          value: "WelcomeEmail.recipient",
           operation: "SEED_RETURN",
           importance: "detail"
         }
@@ -453,11 +448,11 @@ var KastValueJourney = (() => {
       const base = { source, variant, sha256, fixtureSha256, basis };
       const wrapperPath = {
         id: "wrapper",
-        label: "Listing pet",
+        label: "Email recipient",
         steps: [head, returned, ...wrapper],
         ending: {
           kind: "expected-end",
-          explanation: "This example ends at the returned pet."
+          explanation: "This route ends at the returned email\u2019s recipient."
         }
       };
       if (variant === "E4")
@@ -467,14 +462,14 @@ var KastValueJourney = (() => {
             {
               ...base,
               id: "constant",
-              label: "Return a different value",
-              description: "A different value has the same type. Does the original still reach the list?",
+              label: "Change one line",
+              description: "The list now gets a new Guest customer. The original customer still has another use, but not in this list.",
               paths: [
                 {
                   ...wrapperPath,
                   ending: {
                     kind: "excluded",
-                    explanation: 'convert constructs a separate Pet("constant"). The original value does not reach this list.'
+                    explanation: 'prepareEmails constructs a separate Customer("Guest"). The original customer does not reach this list, even though the list\u2019s declared type stays the same.'
                   }
                 }
               ]
@@ -491,27 +486,27 @@ var KastValueJourney = (() => {
       );
       if (callback.kind === "rejected") return callback;
       if (map.kind === "rejected") return map;
-      const pet = variant === "E0" ? "PetListing.pet" : "Pet";
+      const value = variant === "E0" ? "WelcomeEmail.recipient" : "Customer";
       const callbackStep = {
         ...head,
         id: variant === "E0" ? "toClientEnvelope.call.result.payload" : "callback.toClientValue.call.result",
         anchor: callback.value,
-        title: "Returned to the callback",
-        explanation: `The helper returns ${pet} inside the map callback.`,
-        value: pet,
+        title: "The repeated operation receives it",
+        explanation: variant === "E0" ? "The operation inside map calls draftWelcomeEmail for a signup and receives the email draft holding the customer." : "This separate call inside map receives a customer directly. It is a different call context from the email recipient route, not one runtime object splitting in two.",
+        value,
         operation: "RETURN",
         importance: "normal",
         context: {
           kind: "call",
-          title: variant === "E0" ? "PetRecord.toPetListing" : "PetRecord.toPet",
+          title: variant === "E0" ? "Signup.draftWelcomeEmail" : "Signup.createCustomer",
           anchor: variant === "E0" ? listing.value : seed.value
         }
       };
       const callbackReturn = {
         ...callbackStep,
         id: variant === "E0" ? "callback.RETURN.payload" : "callback.RETURN",
-        title: "The callback returns it",
-        explanation: "The callback returns our value inside its result. The next step needs the rule for map.",
+        title: "The operation inside map returns it",
+        explanation: "The operation inside map returns its result. Connecting that result to a list element needs an additional rule about map; the call alone is not enough.",
         operation: "CALLBACK_RETURN",
         importance: "landmark",
         context: { kind: "callback" }
@@ -520,24 +515,24 @@ var KastValueJourney = (() => {
         ...callbackReturn,
         id: variant === "E0" ? "convert.map.result.Element.payload" : "convert.map.result.Element",
         anchor: map.value,
-        title: "Into a list element",
+        title: "The list can hold this result",
         explanation: "The reviewed rule for map connects the callback result to a possible list element.",
-        value: `List.Element<${pet}>`,
+        value: `List.Element<${value}>`,
         authority: "reviewed-library",
         operation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT"
       };
       const final = {
         ...element,
         id: variant === "E0" ? "convert.RETURN.Element.payload" : "convert.RETURN.Element",
-        title: "Returned from convert",
-        explanation: "A returned list element can carry our original value.",
+        title: "The returned list keeps the connection",
+        explanation: "The returned list can carry this source origin. That does not tell us whether this program ran, how many elements it produced, or every other place the value is used.",
         authority: "compiler",
         operation: "SEED_RETURN",
         context: local
       };
       const journey = {
         id: "map",
-        label: variant === "E0" ? "Listing \u2192 map element" : "Direct \u2192 map element",
+        label: variant === "E0" ? "Email drafts in the list" : "Customers in the list",
         steps: [
           head,
           returned,
@@ -559,8 +554,8 @@ var KastValueJourney = (() => {
             {
               ...base,
               id: "fork",
-              label: "Use the value twice",
-              description: "One producer has two uses. Choose a route to see where each leads.",
+              label: "Find the other use",
+              description: "Two separate calls use createCustomer: one makes an email recipient; the other returns customers directly in a list.",
               paths: [journey, wrapperPath]
             }
           ]
@@ -571,15 +566,15 @@ var KastValueJourney = (() => {
           {
             ...base,
             id: "e0",
-            label: "Follow the value",
-            description: "Where does this value go after the helper returns it?",
+            label: "Follow a customer",
+            description: "A signup becomes a customer, an email draft holds that customer, and a list can hold the draft.",
             paths: [journey]
           },
           {
             ...base,
             id: "gap",
-            label: "Stop at a missing connection",
-            description: "The code stays the same. This illustration removes the rule for map.",
+            label: "Remove one rule",
+            description: "The source is unchanged. Withhold the map rule and the list connection can no longer be established.",
             paths: [
               {
                 ...journey,
@@ -595,9 +590,24 @@ var KastValueJourney = (() => {
         ]
       };
     };
-    const positive = build("E0", E0_default, await digest(petStoreNames(E0_default)), digests[0]);
-    const fork = build("E3", E3_default, await digest(petStoreNames(E3_default)), digests[1]);
-    const constant = build("E4", E4_default, await digest(petStoreNames(E4_default)), digests[2]);
+    const positive = build(
+      "E0",
+      E0_default,
+      await digest(displaySource(E0_default, "E0")),
+      digests[0]
+    );
+    const fork = build(
+      "E3",
+      E3_default,
+      await digest(displaySource(E3_default, "E3")),
+      digests[1]
+    );
+    const constant = build(
+      "E4",
+      E4_default,
+      await digest(displaySource(E4_default, "E4")),
+      digests[2]
+    );
     if (positive.kind === "rejected") return positive;
     if (fork.kind === "rejected") return fork;
     if (constant.kind === "rejected") return constant;
@@ -662,24 +672,28 @@ var KastValueJourney = (() => {
   };
 
   // src/ValueJourney.tsx
-  function ValueJourney() {
+  function ValueJourney({
+    preview = false
+  } = {}) {
     const [walkthrough, setWalkthrough] = useState({
       kind: "loading"
     });
-    const [detail, setDetail] = useState("story");
-    const [portal, setPortal] = useState(false);
-    const [proof, setProof] = useState(false);
+    const [focus, setFocus] = useState({ kind: "pinned" });
+    const [sourceVisible, setSourceVisible] = useState(true);
+    const [sourcePane, setSourcePane] = useState(null);
+    const [canvas, setCanvas] = useState(null);
+    const [wires, setWires] = useState({ call: "", batch: "", output: "" });
     useEffect(() => {
       let disposed = false;
       async function load() {
         try {
           const result = await loadExamples();
-          if (disposed) return;
-          setWalkthrough(
-            result.kind === "ready" ? { ...result, cursor: AnalysisCursor.start(result.examples[0]) } : result
-          );
+          if (!disposed)
+            setWalkthrough(
+              result.kind === "ready" ? { ...result, cursor: AnalysisCursor.start(result.examples[0]) } : result
+            );
         } catch {
-          console.error("Kast value journey: snapshot loading failed");
+          console.error("Kast source map: snapshot admission failed");
           if (!disposed)
             setWalkthrough({ kind: "rejected", code: "LOAD_FAILED" });
         }
@@ -689,9 +703,80 @@ var KastValueJourney = (() => {
         disposed = true;
       };
     }, []);
+    useEffect(() => {
+      if (focus.kind !== "preview") return;
+      const dismiss = (event) => {
+        if (event.key === "Escape") setFocus({ kind: "pinned" });
+      };
+      document.addEventListener("keydown", dismiss);
+      return () => document.removeEventListener("keydown", dismiss);
+    }, [focus.kind]);
+    useEffect(() => {
+      if (!sourcePane || !sourceVisible) return;
+      function reveal() {
+        if (!sourcePane) return;
+        const active = sourcePane.querySelector(
+          '.vj-source-line[data-active="true"]'
+        );
+        if (!active) return;
+        const pane = sourcePane.getBoundingClientRect();
+        const line = active.getBoundingClientRect();
+        if (line.top < pane.top || line.bottom > pane.bottom)
+          sourcePane.scrollTop += line.top - pane.top - 24;
+      }
+      reveal();
+      const observer = new ResizeObserver(reveal);
+      observer.observe(sourcePane);
+      return () => observer.disconnect();
+    }, [sourcePane, sourceVisible, walkthrough, focus]);
+    const exampleId = walkthrough.kind === "ready" ? walkthrough.cursor.example.id : "loading";
+    const routeId = walkthrough.kind === "ready" ? walkthrough.cursor.path.id : "loading";
+    useEffect(() => {
+      if (!canvas) return;
+      const producer = canvas.querySelector(
+        '[data-vj-node="producer"]'
+      );
+      const draft = canvas.querySelector('[data-vj-node="draft"]');
+      const batch = canvas.querySelector('[data-vj-node="batch"]');
+      const output = canvas.querySelector('[data-vj-node="output"]');
+      if (!producer || !draft || !batch || !output) return;
+      function draw() {
+        if (!canvas || !producer || !draft || !batch || !output) return;
+        const root = canvas.getBoundingClientRect();
+        const a = producer.getBoundingClientRect();
+        const b = draft.getBoundingClientRect();
+        const c = batch.getBoundingClientRect();
+        const d = output.getBoundingClientRect();
+        const x1 = a.right - root.left;
+        const y1 = a.top + a.height / 2 - root.top;
+        const x2 = b.left - root.left;
+        const y2 = b.top + b.height / 2 - root.top;
+        const direct = exampleId === "fork";
+        const fromX = (direct ? a.left + a.width / 2 : b.left + b.width / 2) - root.left;
+        const fromY = (direct ? a.bottom : b.bottom) - root.top;
+        const toX = c.left + c.width / 2 - root.left;
+        const toY = c.top - root.top;
+        const containerSource = direct && routeId === "wrapper" ? b : c;
+        const right = d.left > containerSource.right;
+        const outputFromX = (right ? containerSource.right : containerSource.left + containerSource.width / 2) - root.left;
+        const outputFromY = (right ? containerSource.top + containerSource.height / 2 : containerSource.bottom) - root.top;
+        const outputToX = (right ? d.left : d.left + d.width / 2) - root.left;
+        const outputToY = (right ? d.top + d.height / 2 : d.top) - root.top;
+        setWires({
+          call: `M${x1},${y1} C${x1 + 28},${y1} ${x2 - 28},${y2} ${x2},${y2}`,
+          batch: `M${fromX},${fromY} C${fromX},${fromY + 20} ${toX},${toY - 20} ${toX},${toY}`,
+          output: right ? `M${outputFromX},${outputFromY} C${outputFromX + 28},${outputFromY} ${outputToX - 28},${outputToY} ${outputToX},${outputToY}` : `M${outputFromX},${outputFromY} C${outputFromX},${outputFromY + 20} ${outputToX},${outputToY - 20} ${outputToX},${outputToY}`
+        });
+      }
+      draw();
+      const observer = new ResizeObserver(draw);
+      for (const node of [canvas, producer, draft, batch, output])
+        observer.observe(node);
+      return () => observer.disconnect();
+    }, [canvas, exampleId, routeId, sourceVisible]);
     if (walkthrough.kind === "loading")
-      return <div className="value-journey vj-loading not-prose">
-        The example loads here…
+      return <div className="value-journey vj-loading not-prose" role="status">
+        Loading the source example…
       </div>;
     if (walkthrough.kind === "rejected")
       return <div className="value-journey vj-loading not-prose" role="alert">
@@ -699,319 +784,521 @@ var KastValueJourney = (() => {
       </div>;
     const { cursor, examples } = walkthrough;
     const { example, path, step } = cursor;
-    const visible = cursor.visible(detail);
-    const line = example.source.slice(0, step.anchor.start).split("\n").length;
-    const stopped = cursor.atEnd && path.ending.kind === "unresolved";
-    const authority = step.authority === "compiler" ? "\u25C6 Compiler" : "\u25C7 Reviewed library";
+    const frames = path.steps.filter(
+      (candidate) => candidate.operation === "PRODUCER" || candidate.id === "toClientValue.call.result" || candidate.operation === "CONSTRUCT_FIELD" || candidate.operation === "CALLBACK_RETURN" || candidate.authority === "reviewed-library"
+    );
+    const position = Math.max(
+      0,
+      frames.findLastIndex(
+        (candidate) => path.steps.indexOf(candidate) <= cursor.index
+      )
+    );
+    const focused = focus.kind === "preview" ? focus.step : step;
+    const lineOf = (anchor) => example.source.slice(0, anchor.start).split("\n").length - 1;
+    const origin = path.steps[0];
+    const producerStart = lineOf(origin.anchor) - 1;
+    const draftStart = producerStart + 2;
+    const batchStart = draftStart + 2;
     const lines = example.source.trimEnd().split("\n");
+    const fork = example.id === "fork";
+    const different = example.id === "constant";
+    const gap = example.id === "gap";
+    const atEnd = position === frames.length - 1;
+    const stopped = atEnd && path.ending.kind === "unresolved";
+    const onEmailRoute = fork && path.id === "wrapper";
+    const draftFrame = frames.find(
+      (candidate) => candidate.operation === "CONSTRUCT_FIELD"
+    );
+    const batchFrame = frames.find(
+      (candidate) => candidate.operation === "CALLBACK_RETURN"
+    );
+    const outputFrame = gap || different ? void 0 : frames.find(
+      (candidate) => candidate.authority === "reviewed-library"
+    ) ?? draftFrame;
     function navigate(next) {
       setWalkthrough({ kind: "ready", examples, cursor: next });
-      setPortal(false);
-      setProof(false);
+      setFocus({ kind: "pinned" });
     }
-    function chooseExample(id, compare = false) {
+    function chooseExample(id) {
       const target = examples.find((candidate) => candidate.id === id);
-      if (!target) return;
-      let next = AnalysisCursor.start(target);
-      if (compare) {
-        for (const candidate of next.path.steps) {
-          if (path.steps.some(
-            (old, index) => index <= cursor.index && old.id === candidate.id
-          ))
-            next = next.seek(candidate);
-        }
-      }
-      navigate(next);
+      if (target) navigate(AnalysisCursor.start(target));
     }
-    function sourceLine(index, highlight = true) {
-      return define_KAST_SYNTAX_default[example.variant][index]?.map((token) => {
-        const from = Math.max(0, step.anchor.start - token.start);
-        const to = Math.min(token.text.length, step.anchor.end - token.start);
-        return <span
+    function pick(candidate) {
+      return {
+        onPointerEnter: () => setFocus({ kind: "preview", step: candidate }),
+        onPointerLeave: () => setFocus({ kind: "pinned" }),
+        onFocus: () => setFocus({ kind: "preview", step: candidate }),
+        onBlur: () => setFocus({ kind: "pinned" }),
+        onClick: () => navigate(cursor.seek(candidate)),
+        onKeyDown: (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            navigate(cursor.seek(candidate));
+          }
+        }
+      };
+    }
+    function sourceLine(index, interactive, indent) {
+      const tokens = define_KAST_SYNTAX_default[example.variant][index] ?? [];
+      const first = tokens[0];
+      if (!first) return [];
+      const start = first.start;
+      const end = start + (lines[index]?.length ?? 0);
+      const signatureTail = lines[index]?.match(/\S+ =$/u)?.[0];
+      const tailStart = end - (signatureTail?.length ?? 0);
+      const boundaries = [
+        .../* @__PURE__ */ new Set([
+          start,
+          start + indent,
+          tailStart,
+          end,
+          ...frames.flatMap((candidate) => [
+            candidate.anchor.start,
+            candidate.anchor.end
+          ]).filter((offset) => offset > start && offset < end)
+        ])
+      ].sort((a, b) => a - b);
+      return boundaries.slice(0, -1).map((from, index2) => {
+        const to = boundaries[index2 + 1] ?? end;
+        const candidate = frames.filter((frame) => frame.anchor.start <= from && frame.anchor.end >= to).sort(
+          (a, b) => a.anchor.end - a.anchor.start - (b.anchor.end - b.anchor.start)
+        )[0];
+        const content = tokens.filter(
+          (token) => token.start < to && token.start + token.text.length > from
+        ).map((token) => <span
           key={token.start}
           style={{ color: `light-dark(${token.light}, ${token.dark})` }}
         >
-          {highlight && from < to ? <>
-              {token.text.slice(0, from)}
-              <mark>{token.text.slice(from, to)}</mark>
-              {token.text.slice(to)}
-            </> : token.text}
+            {token.text.slice(
+          Math.max(0, from - token.start),
+          Math.min(token.text.length, to - token.start)
+        )}
+          </span>);
+        const selected = example.source.slice(from, to).trim().length > 0 && (focused.anchor.start <= from && focused.anchor.end >= to || focused.context.kind === "call" && focused.context.anchor.start <= from && focused.context.anchor.end >= to);
+        return interactive && candidate && /[\p{L}\p{N}]/u.test(example.source.slice(from, to)) ? <span
+          key={from}
+          role="button"
+          tabIndex={0}
+          className="vj-code-pick"
+          data-focused={selected}
+          aria-label={candidate.title}
+          aria-pressed={candidate === step}
+          {...pick(candidate)}
+        >
+          {content}
+        </span> : <span
+          key={from}
+          className={from === start && to === start + indent ? "vj-code-indent" : from === tailStart ? "vj-code-tail" : selected && !preview ? "vj-code-selected" : void 0}
+        >
+          {content}
         </span>;
       });
     }
-    function progressLabel(candidate) {
-      return `Step ${path.steps.indexOf(candidate) + 1}: ${candidate.title}`;
+    function excerpt(from, to, interactive = true) {
+      return <div className="vj-code">
+        {lines.slice(from, to).map((text, index) => {
+        const indent = text.length - text.trimStart().length;
+        const offset = lines.slice(0, from + index).join("\n").length + (from + index > 0 ? 1 : 0);
+        const active = focused.anchor.start < offset + text.length && focused.anchor.end > offset;
+        return <div
+          className="vj-source-line"
+          key={from + index}
+          data-line={from + index + 1}
+          data-active={!preview && active}
+        >
+              <span className="vj-line-number" aria-hidden="true">
+                {from + index + 1}
+              </span>
+              <code
+          style={{
+            paddingInlineStart: `${indent + 2}ch`,
+            textIndent: "-2ch"
+          }}
+        >
+                {text ? sourceLine(from + index, interactive, indent) : <br />}
+              </code>
+            </div>;
+      })}
+      </div>;
     }
+    function customer(other = false) {
+      return <span className={other ? "vj-customer vj-other" : "vj-customer"}>
+        <span className="vj-token" aria-hidden="true">
+          {other ? "B" : "A"}
+        </span>
+        <span>
+          <strong>{other ? "A different customer" : "Customer"}</strong>
+          <small>{other ? 'Customer("Guest")' : "from createCustomer"}</small>
+        </span>
+      </span>;
+    }
+    function containment() {
+      return <div
+        className={gap ? "vj-containment vj-uncertain" : "vj-containment"}
+        data-vj-node="output"
+        role={!preview && outputFrame ? "button" : void 0}
+        tabIndex={!preview && outputFrame ? 0 : void 0}
+        aria-label={!preview && outputFrame ? outputFrame.title : void 0}
+        aria-pressed={!preview && outputFrame ? step === outputFrame : void 0}
+        {...!preview && outputFrame ? pick(outputFrame) : {}}
+      >
+        <div className="vj-container-label">
+          {onEmailRoute ? "Returned email draft" : fork ? "Returned customer list" : "Returned email list"}
+        </div>
+        {gap ? <div className="vj-unknown">
+            <strong>?</strong>
+            <b>Connection not established</b>
+            <p>The source is unchanged. The map rule is missing.</p>
+          </div> : fork && !onEmailRoute ? customer() : <div className="vj-email">
+            <span>WelcomeEmail</span>
+            <div className="vj-recipient">
+              <small>recipient holds</small>
+              {customer(different)}
+            </div>
+          </div>}
+      </div>;
+    }
+    if (preview)
+      return <div className="value-journey vj-overview not-prose">
+        <div className="vj-overview-heading">
+          <span className="vj-kicker">See the connection</span>
+          <h2>A customer. An email draft. A list.</h2>
+          <p>
+            The names change as the customer is wrapped in other objects. The
+            connection does not.
+          </p>
+        </div>
+        <div className="vj-overview-grid">
+          <div>
+            {containment()}
+            <p className="vj-caption">
+              A marks a source origin, not a runtime object ID.
+            </p>
+          </div>
+          <div>{excerpt(producerStart, lines.length, false)}</div>
+        </div>
+        <div className="vj-overview-foot">
+          <p>
+            Change one line. Find another use. See where an explanation must
+            stop.
+          </p>
+          <a href="/explanation/value-journey">
+            Open the source map <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>;
     return <div
-      className="value-journey not-prose"
+      className="value-journey vj-explorer not-prose"
       data-example={example.id}
       data-step={step.id}
+      data-preview={focus.kind === "preview"}
     >
-      <div className="vj-heading">
-        <h2>Follow one value.</h2>
-        <span className="vj-mode">Interactive illustration</span>
+      <div className="vj-cases" role="group" aria-label="Prepared example">
+        {["e0", "constant", "fork", "gap"].map((id) => {
+      const candidate = examples.find((item) => item.id === id);
+      return candidate ? <button
+        key={id}
+        type="button"
+        aria-pressed={example.id === id}
+        onClick={() => chooseExample(id)}
+      >
+              {candidate.label}
+            </button> : null;
+    })}
       </div>
+      <p className="vj-context" role="status">
+        {example.description}
+      </p>
+      {fork && <div
+      className="vj-route-choice"
+      role="group"
+      aria-label="Choose a call context"
+    >
+          <span>Follow a call:</span>
+          {example.paths.map((route) => <button
+      key={route.id}
+      type="button"
+      aria-pressed={path === route}
+      onClick={() => navigate(cursor.select(route))}
+    >
+              {route.label} ↗
+            </button>)}
+        </div>}
 
-      <div className="vj-options">
-        <label>
-          Explore
-          <select
-      value={example.id}
-      onChange={(event) => {
-        const target = examples.find(
-          (candidate) => candidate.id === event.target.value
-        );
-        if (target) chooseExample(target.id);
+      <article className="vj-workbench" aria-label="Connected source map">
+        <div className="vj-bench-head">
+          <strong>WelcomeEmails.kt</strong>
+          <button
+      type="button"
+      aria-expanded={sourceVisible}
+      aria-controls="vj-full-source"
+      onClick={() => setSourceVisible(!sourceVisible)}
+    >
+            {sourceVisible ? "Hide source" : "Show source"}
+          </button>
+        </div>
+        <div className="vj-split" data-source-visible={sourceVisible}>
+          <div
+      id="vj-full-source"
+      className="vj-source-pane"
+      role="region"
+      aria-label="Full Kotlin source"
+      hidden={!sourceVisible}
+      ref={setSourcePane}
+    >
+            {excerpt(0, lines.length)}
+          </div>
+          <div className="vj-graph-pane">
+            <p className="vj-interaction-hint">
+              Hover or Tab to preview · Click or Enter to select · Esc to
+              restore
+            </p>
+            <div
+      className="vj-canvas"
+      ref={setCanvas}
+      data-focus={focused.authority === "reviewed-library" ? "output" : lineOf(focused.anchor) < draftStart ? "producer" : lineOf(focused.anchor) < batchStart ? "draft" : "batch"}
+    >
+              <svg className="vj-wires" aria-hidden="true">
+                <defs>
+                  <marker
+      id="vj-source-arrow"
+      viewBox="0 0 6 6"
+      refX="5"
+      refY="3"
+      markerWidth="5"
+      markerHeight="5"
+      orient="auto"
+    >
+                    <path d="M0 0L6 3L0 6" fill="var(--vj-accent)" />
+                  </marker>
+                  <marker
+      id="vj-library-arrow"
+      viewBox="0 0 6 6"
+      refX="5"
+      refY="3"
+      markerWidth="5"
+      markerHeight="5"
+      orient="auto"
+    >
+                    <path d="M0 0L6 3L0 6" fill="var(--vj-amber)" />
+                  </marker>
+                </defs>
+                <path
+      d={wires.call}
+      className="vj-wire"
+      markerEnd="url(#vj-source-arrow)"
+    />
+                <path
+      d={different ? "" : wires.batch}
+      className="vj-wire"
+      markerEnd="url(#vj-source-arrow)"
+    />
+                <path
+      d={wires.output}
+      className={onEmailRoute ? "vj-wire" : "vj-wire vj-wire-output"}
+      markerEnd={gap ? void 0 : onEmailRoute ? "url(#vj-source-arrow)" : "url(#vj-library-arrow)"}
+    />
+              </svg>
+              <section
+      className="vj-node vj-producer"
+      data-vj-node="producer"
+      role="button"
+      tabIndex={0}
+      aria-label="Create the customer"
+      aria-pressed={step === origin}
+      {...pick(origin)}
+    >
+                <div className="vj-node-head">
+                  <span>Create the customer</span>
+                </div>
+                {excerpt(producerStart + 1, draftStart, false)}
+                <div className="vj-node-foot">
+                  {customer()}
+                  <p>The function returns this customer.</p>
+                </div>
+              </section>
+              <section
+      className="vj-node vj-draft"
+      data-vj-node="draft"
+      role={draftFrame ? "button" : void 0}
+      tabIndex={draftFrame ? 0 : void 0}
+      aria-label="Hold the customer in an email draft"
+      aria-pressed={draftFrame ? step === draftFrame : void 0}
+      {...draftFrame ? pick(draftFrame) : {}}
+    >
+                <div className="vj-node-head">
+                  <span>Set the email recipient</span>
+                </div>
+                {excerpt(draftStart + 1, batchStart, false)}
+                <div className="vj-node-foot">
+                  <span className="vj-mini-email">
+                    WelcomeEmail{" "}
+                    <span>
+                      recipient → <b>A</b>
+                    </span>
+                  </span>
+                  <p>The draft holds a customer, not just a name.</p>
+                </div>
+              </section>
+              <section
+      className="vj-node vj-batch"
+      data-vj-node="batch"
+      role={batchFrame ? "button" : void 0}
+      tabIndex={batchFrame ? 0 : void 0}
+      aria-label={fork ? "Collect the customers" : "Collect the email drafts"}
+      aria-pressed={batchFrame ? step === batchFrame : void 0}
+      {...batchFrame ? pick(batchFrame) : {}}
+    >
+                <div className="vj-node-head">
+                  <span>
+                    {fork ? "Collect the customers" : "Collect the email drafts"}
+                  </span>
+                </div>
+                {excerpt(batchStart + 1, lines.length, false)}
+                <div className="vj-node-foot">
+                  {different ? customer(true) : gap ? <span className="vj-warning">
+                      ? The list connection needs the map rule
+                    </span> : <span className="vj-mini-email">
+                      {fork ? "List element" : "Draft recipient"}
+                      <span>
+                        → <b>A</b>
+                      </span>
+                    </span>}
+                  <p>
+                    {different ? "The same list type. A different source origin." : fork ? "A separate call context, not a runtime split." : "map repeats the operation for each signup."}
+                  </p>
+                </div>
+              </section>
+              <section className="vj-structure" aria-label="Returned value">
+                {containment()}
+                <p>
+                  {different ? 'This list holds drafts addressed to Customer("Guest"), not customer A.' : gap ? "The email\u2019s recipient is connected to A. Its place in the returned list is not established." : onEmailRoute ? "draftWelcomeEmail returns a draft with customer A as its recipient." : fork ? "prepareCustomers can return customer A directly as a list element." : "prepareEmails can return an email draft whose recipient is customer A."}
+                </p>
+                <small className="vj-transfer-basis">
+                  {onEmailRoute ? "Source binding" : gap ? "Missing support: map \u2192 list element" : "List connection: reviewed map rule"}
+                </small>
+              </section>
+            </div>
+          </div>
+        </div>
+        <div className="vj-graph-caption">
+          <span>
+            A marks a source origin, not an object observed at runtime.
+          </span>
+          <span>
+            {focus.kind === "preview" ? `Preview: ${focused.title}` : "Highlights follow your selection, not execution."}
+          </span>
+        </div>
+
+        <section
+      className={stopped ? "vj-inspector vj-inspector-gap" : "vj-inspector"}
+      aria-label="Selected connection"
+    >
+          <div className="vj-explanation">
+            <h3>
+              {stopped ? "The explanation stops before the list." : atEnd && different ? "This list gets a different customer." : step.title}
+            </h3>
+            <p>
+              {atEnd && path.ending.kind !== "expected-end" ? path.ending.explanation : step.explanation}
+            </p>
+            <p className="vj-support">
+              {stopped ? "Missing support: map \u2192 list element." : step.authority === "reviewed-library" ? "Support: reviewed map rule, not the call binding alone." : "Support: source binding, not matching names."}
+            </p>
+          </div>
+          <div className="vj-controls">
+            <button
+      type="button"
+      disabled={position === 0}
+      onClick={() => {
+        const previous = frames[position - 1];
+        if (previous) navigate(cursor.seek(previous));
       }}
     >
-            {examples.map((candidate) => <option key={candidate.id} value={candidate.id}>
-                {candidate.label}
-              </option>)}
-          </select>
-        </label>
-        <div className="vj-detail" role="group" aria-label="Explanation detail">
-          {["story", "normal", "proof"].map((level) => <button
-      key={{ story: "Overview", normal: "Every step", proof: "Evidence" }[level]}
+              ← Back
+            </button>
+            <span>
+              {position + 1} / {frames.length}
+            </span>
+            <button
+      className="vj-next"
       type="button"
-      aria-pressed={detail === level}
-      onClick={() => setDetail(level)}
+      disabled={atEnd}
+      onClick={() => {
+        const next = frames[position + 1];
+        if (next) navigate(cursor.seek(next));
+      }}
     >
-              {{ story: "Overview", normal: "Every step", proof: "Evidence" }[level]}
-            </button>)}
-        </div>
-      </div>
-
-      <p className="vj-question">{example.description}</p>
-      <nav className="vj-route" aria-label="Value route">
-        {cursor.visible("story").map((candidate) => <button
+              {atEnd ? "End" : "Next"} <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </section>
+      </article>
+      <nav className="vj-steps" aria-label="Connections in this route">
+        {frames.map((candidate, index) => <button
+      type="button"
       key={candidate.id}
-      type="button"
       aria-current={candidate === step ? "step" : void 0}
-      data-reached={path.steps.indexOf(candidate) <= cursor.index}
-      onClick={() => navigate(cursor.seek(candidate))}
+      {...pick(candidate)}
     >
-            <span aria-hidden="true">●</span>
-            <span>{candidate.title}</span>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            {candidate.title}
           </button>)}
       </nav>
-      <div className="vj-file">
-        <span>
-          <span aria-hidden="true">Kt</span> {example.variant}.kt
-        </span>
-        <span>Kotlin example</span>
-      </div>
 
-      <section
-      className="vj-source"
-      aria-label="Kotlin source with inline explanation"
-    >
-        {lines.map((text, index) => {
-      return <div key={index}>
-              <div
-        className={index + 1 === line ? "vj-line vj-line-active" : "vj-line"}
-      >
-                <span className="vj-line-number" aria-hidden="true">
-                  {index + 1}
-                </span>
-                <code>{text ? sourceLine(index) : "\xA0"}</code>
-              </div>
-              {index + 1 === line && <div className={stopped ? "vj-inline vj-gap" : "vj-inline"}>
-                  <div className="vj-value">
-                    <span aria-hidden="true">●</span> {step.value}
-                    <span className="vj-value-label">tracked value</span>
-                  </div>
-                  <div className="vj-explanation">
-                    {stopped && <span className="vj-eyebrow">Missing connection</span>}
-                    <div className="vj-step-heading">
-                      <h3>
-                        {stopped ? "The explanation stops here." : step.title}
-                      </h3>
-                      <span className={`vj-authority vj-${step.authority}`}>
-                        {authority} · illustration
-                      </span>
-                    </div>
-                    <p>{step.explanation}</p>
+      <p className="vj-reading-note">
+        {different ? "Changing the returned expression changes which customer the list can hold. The original customer\u2019s email-recipient route still exists elsewhere in this example." : gap ? "The call and field connections remain. Without support for the library step, this illustration stops rather than guessing that the list carries the customer." : fork ? "One function can be called from different places. Each route keeps its own call context; this picture does not show one object being shared between them." : "A call receives a result. A field holds a value. The reviewed map rule connects the operation\u2019s result to a possible list element. Select a connection to see its source lines."}
+      </p>
 
-                    {step.context.kind === "call" && <>
-                        <button
-        className="vj-disclosure"
-        type="button"
-        aria-expanded={portal}
-        onClick={() => setPortal(!portal)}
-      >
-                          {portal ? "\u2212" : "+"} Peek {step.context.title}
-                        </button>
-                        {portal && <div className="vj-portal">
-                            <span className="vj-eyebrow">
-                              Originating function · same source snapshot
-                            </span>
-                            <pre>
-                              <code>
-                                {sourceLine(
-        step.context.anchor.source.slice(0, step.context.anchor.start).split("\n").length - 1,
-        false
-      )}
-                              </code>
-                            </pre>
-                            <p>
-                              Return → exact call on line {line}. The call site
-                              stays in view.
-                            </p>
-                          </div>}
-                      </>}
-
-                    {step.context.kind === "callback" && (proof || detail === "proof") && <div className="vj-callback">
-                          <div>
-                            <span className="vj-eyebrow">Callback frame</span>
-                            <code>map.transform</code>
-                          </div>
-                          {(proof || detail === "proof") && <dl>
-                              <dt>Supplier</dt>
-                              <dd>convert</dd>
-                              <dt>Anonymous owner</dt>
-                              <dd>lambda on line 9</dd>
-                              <dt>Result carries</dt>
-                              <dd>
-                                <code>
-                                  {example.variant === "E3" ? "Pet" : "PetListing.pet"}
-                                </code>
-                              </dd>
-                            </dl>}
-                          <div className="vj-proof-split">
-                            <span>◆ Bind lambda to transform</span>
-                            <span>Compiler · expected</span>
-                          </div>
-                          <div
-        className={stopped ? "vj-proof-split vj-missing" : "vj-proof-split"}
-      >
-                            <span>◇ Callback result → output element</span>
-                            <span>
-                              {stopped ? "Missing proof" : step.authority === "reviewed-library" ? "Reviewed rule \xB7 expected" : "Next expected transfer"}
-                            </span>
-                          </div>
-                        </div>}
-
-                    {cursor.atEnd && <div className="vj-ending">
-                        <strong>
-                          {path.ending.kind === "unresolved" ? "The library connection needs evidence" : path.ending.kind === "excluded" ? "The list gets a different value" : "This route ends here"}
-                        </strong>
-                        <p>{path.ending.explanation}</p>
-                      </div>}
-
-                    {example.paths.length > 1 && cursor.index <= 1 && <div className="vj-fork">
-                        <span className="vj-eyebrow">Choose a route</span>
-                        {example.paths.map((alternative) => <button
-        type="button"
-        key={alternative.id}
-        aria-pressed={path === alternative}
-        onClick={() => navigate(cursor.select(alternative))}
-      >
-                            <span aria-hidden="true">↳</span>{" "}
-                            {alternative.label}
-                          </button>)}
-                        <p>These routes describe possible uses in source.</p>
-                      </div>}
-
-                    {detail !== "proof" && <button
-        className="vj-disclosure"
-        type="button"
-        aria-expanded={proof}
-        onClick={() => setProof(!proof)}
-      >
-                        {proof ? "\u2212" : "+"} Show the evidence
-                      </button>}
-                    {(proof || detail === "proof") && <dl className="vj-proof-details">
-                        <dt>Operation</dt>
-                        <dd>
-                          <code>{step.operation}</code>
-                        </dd>
-                        <dt>Source anchor</dt>
-                        <dd>
-                          UTF-16 [{step.anchor.start}, {step.anchor.end})
-                        </dd>
-                        <dt>Exact expression</dt>
-                        <dd>
-                          <code>{step.anchor.text}</code>
-                        </dd>
-                        <dt>Evidence origin</dt>
-                        <dd>
-                          Authored expected oracle, not a captured Kast response
-                        </dd>
-                        <dt>Compiler identity</dt>
-                        <dd>Not captured</dd>
-                        <dt>Coverage ledger</dt>
-                        <dd>Not captured</dd>
-                        <dt>Displayed source SHA-256</dt>
-                        <dd>
-                          <code>{example.sha256}</code>
-                        </dd>
-                        <dt>Original fixture SHA-256</dt>
-                        <dd>
-                          <code>{example.fixtureSha256}</code>
-                        </dd>
-                      </dl>}
-
-                    {(stopped || example.id === "e0" && (cursor.atEnd || step.authority === "reviewed-library")) && <button
-        type="button"
-        className="vj-compare"
-        onClick={() => chooseExample(stopped ? "e0" : "gap", true)}
-      >
-                        {stopped ? "Restore the connection" : "What if a connection is missing?"}{" "}
-                        <span aria-hidden="true">↗</span>
-                      </button>}
-                  </div>
-                </div>}
-            </div>;
-    })}
-      </section>
-
-      <div className="vj-controls">
-        <div className="vj-position" role="status">
-          <span className="vj-eyebrow">Step</span>
-          {cursor.index + 1} / {path.steps.length}
+      <details className="vj-details">
+        <summary>Inspect the source ranges and evidence limits</summary>
+        <div className="vj-details-grid">
+          <div>
+            <h3>An authored example, not a live result</h3>
+            <p>
+              These readable names and line breaks adapt the frozen{" "}
+              {example.variant} fixture. Every highlighted expression has an
+              admitted source range. The original fixture and route identities
+              stay unchanged.
+            </p>
+            <p>
+              Source connections and reviewed library transfers have different
+              support. The steps below retain that distinction; neither is a
+              captured compiler witness.
+            </p>
+            <ol>
+              {path.steps.map((candidate) => <li key={candidate.id}>
+                  <strong>{candidate.title}</strong>
+                  <span>
+                    {candidate.authority === "compiler" ? "Source binding" : "Reviewed library transfer"}{" "}
+                    · {candidate.operation}
+                  </span>
+                  <code>{candidate.anchor.text}</code>
+                </li>)}
+            </ol>
+            <dl>
+              <dt>Selected range</dt>
+              <dd>
+                UTF-16 [{step.anchor.start}, {step.anchor.end})
+              </dd>
+              <dt>Displayed source SHA-256</dt>
+              <dd>
+                <code>{example.sha256}</code>
+              </dd>
+              <dt>Original fixture SHA-256</dt>
+              <dd>
+                <code>{example.fixtureSha256}</code>
+              </dd>
+              <dt>Compiler identity / coverage ledger</dt>
+              <dd>Not captured</dd>
+            </dl>
+            <a href="/explanation/value-journey-evidence">
+              Read the evidence boundaries →
+            </a>
+          </div>
         </div>
-        <nav className="vj-progress" aria-label="Value journey steps">
-          {path.steps.filter(
-      (candidate) => candidate === step || visible.includes(candidate)
-    ).map((candidate) => <button
-      type="button"
-      key={candidate.id}
-      aria-label={progressLabel(candidate)}
-      aria-current={candidate === step ? "step" : void 0}
-      title={progressLabel(candidate)}
-      onClick={() => navigate(cursor.seek(candidate))}
-    >
-                {String(path.steps.indexOf(candidate) + 1).padStart(2, "0")}
-              </button>)}
-        </nav>
-        <div className="vj-buttons">
-          <button
-      type="button"
-      disabled={cursor.index === 0}
-      onClick={() => navigate(cursor.move("previous", detail))}
-    >
-            <span aria-hidden="true">←</span> Previous
-          </button>
-          <button
-      type="button"
-      className="vj-next"
-      disabled={cursor.atEnd}
-      onClick={() => navigate(cursor.move("next", detail))}
-    >
-            {cursor.index === 0 ? "Follow the value" : "Next step"}{" "}
-            <span aria-hidden="true">→</span>
-          </button>
-        </div>
-      </div>
-      <div className="vj-limits">
-        <span aria-hidden="true">ⓘ</span>
-        <p>
-          Illustration from fixed source. This page does not run Kast or your
-          code.
-        </p>
-      </div>
+      </details>
     </div>;
   }
   return __toCommonJS(ValueJourney_exports);
 })();
-return KastValueJourney.ValueJourney(); };
+return KastValueJourney.ValueJourney(props); };

@@ -1,18 +1,58 @@
 ---
 title: "How the value example works"
-description: "Read the source, expected routes, and limits of the interactive illustration."
+description: "Read the source, display-name adaptations, and evidence limits of the customer and welcome-email illustration."
 icon: "file-check"
 ---
 
-The [interactive example](/explanation/value-journey) traces one `Pet`.
-A `PetListing` can hold it in `pet`. A list can then hold that listing as an element.
-The listing and the list each have their own identity.
+The [interactive example](/explanation/value-journey) follows a `Customer` made from a `Signup`.
+A `WelcomeEmail` draft holds that customer in its `recipient` field.
+A returned list can then hold the draft as an element.
+The customer, the draft, and the list are distinct objects, not three names for the same object.
 
-The compiler identifies the function and callback. A reviewed rule for `map` connects a callback result to a possible list element.
-Select **Evidence** in the example to inspect that distinction and each source location.
+## Why each connection holds
 
-The illustration uses [fixed Kotlin fixtures](https://github.com/amichne/kast/tree/main/relation/intellij/testData/r1-value-flow) and authored expected routes.
-The displayed code uses pet-store names. The original fixtures stay unchanged.
-The illustration does not query Kast or record execution. Its final step does not prove a complete investigation.
+`createCustomer` returns the customer. A call inside `draftWelcomeEmail` supplies that result as the draft's recipient.
+`prepareEmails` uses `map` to build a list of drafts.
+The little function inside `map`, called a callback, returns each draft.
+
+In a real Kast investigation, compiler-resolved source bindings identify calls, arguments, fields, and returned expressions.
+A separate reviewed rule for `map` connects the callback result to a possible output list element.
+Resolving a call alone does not supply that library rule.
+
+Here, the connections and source highlights are authored against fixed fixtures. They are not captured compiler evidence.
+The reason for each connection stays visible in the explorer; its details disclosure contains the source and evidence information.
+
+## What the comparisons mean
+
+- **Different recipient:** a new constructor expression supplies a different customer. The unchanged call inside `draftWelcomeEmail` does not connect that customer to this list.
+- **Two calls:** `draftWelcomeEmail` and `prepareCustomers` call `createCustomer` at different source sites.
+  Each route keeps its call context. They do not depict one runtime object splitting in two.
+- **Missing support:** the source stays the same, but the illustration omits the reviewed `map` rule.
+  The draft's recipient remains known. Its connection to an output list element is not established, rather than proved absent.
+
+## Where the displayed source comes from
+
+The illustration adapts [fixed Kotlin fixtures and authored expected routes](https://github.com/amichne/kast/tree/0a2ae931796be401c9906e9e4796b5f3fc208dc1/relation/intellij/testData/r1-value-flow).
+E0 supplies the email-draft route; E3 supplies the separate call contexts; E4 supplies the different-recipient comparison.
+The missing-support comparison uses E0 without the output-element rule.
+
+The display names make the example about sign-up records and welcome-email drafts:
+
+- `WireValue` becomes `Signup`.
+- `ClientValue` becomes `Customer`.
+- `ClientEnvelope.payload` becomes `WelcomeEmail.recipient`.
+- `toClientValue` becomes `createCustomer`.
+- `toClientEnvelope` becomes `draftWelcomeEmail`.
+- `convert` becomes `prepareEmails` or `prepareCustomers`.
+
+The original fixtures, route identities, and original source hashes stay unchanged.
+The displayed source has its own positions and hash. Those positions refer to the illustration, not to your repository.
+The homepage introduction and README image use the same authored example as the explorer.
+
+## What this illustration does not prove
+
+It does not query Kast, execute Kotlin, or record a running program.
+It does not find every use or prove that an edit is safe.
+Reaching the last illustrated connection does not prove that a real investigation finished.
 
 [What an answer proves](/reference/evidence-boundaries) explains the limits of a real Kast result.

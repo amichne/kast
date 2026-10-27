@@ -1,21 +1,26 @@
 # Kast
 
-**See where your Kotlin changes lead.**
+**Your agent reads the code. Kast connects the pieces.**
 
-Your agent can read a function. Kast lets it trace the connections through your
-Kotlin project: which function a call selects, where a value goes, and which
-code depends on it.
+Kast helps your coding agent understand how your Kotlin project fits together.
+Trace a value through calls, fields, and callbacks. Find callers and
+implementations, inspect diagnostics, and make targeted source changes—with
+source locations and clear limits on what each answer establishes.
 
 ## Can my agent already do that?
 
-Ask it where a value goes after a helper returns it inside an object, through a
-callback, and into a list. Then change the callback to return a different value.
-The names still match. The answer changes.
+Ask where a customer goes after a helper creates it from a sign-up.
+A welcome-email draft holds that customer as its recipient. The draft can then
+be part of a returned list, even though the last function never says `Customer`.
 
-Kast gives your agent compiler-backed connections and source locations for that
-investigation. It also reports where the evidence stops.
+Change one expression, and the same list type can hold a draft for a different
+customer. Names and types alone do not explain that difference.
 
-[![Kast traces one value through a helper, a field, and a list. A separate value does not share the route.](docs/public/images/value-journey.svg)](https://kast.michne.com/explanation/value-journey/)
+[![One list holds a welcome-email draft for the customer from a sign-up. The changed expression makes a draft for a different customer.](docs/public/images/value-journey.svg)](https://kast.michne.com/explanation/value-journey/)
+
+This image is an authored source illustration, not a live Kast result or a
+record of execution. Kast gives your agent source locations and evidence for
+these connections, including where the evidence stops.
 
 [**Try the interactive example →**](https://kast.michne.com/explanation/value-journey/)
 
@@ -27,8 +32,9 @@ investigation. It also reports where the evidence stops.
 
 > Use Kast to inspect the diagnostics in this directory.
 
-Kast connects Codex, Copilot, or Pi to IntelliJ IDEA. Your agent can find exact
-code, trace relationships, inspect problems, and make targeted source changes.
+Kast builds on IntelliJ IDEA's Kotlin analysis. It connects that analysis into
+project queries, value traces, and checked source changes for Codex, Copilot,
+or Pi.
 
 ## Get started
 
