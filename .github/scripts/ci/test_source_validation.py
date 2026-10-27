@@ -92,6 +92,16 @@ class SourceValidationTest(unittest.TestCase):
         matrix = (
             ("cli/src/main/js/query-delivery.mjs", {":app-server:check", ":app-server:test",
               ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
+            ("cli/src/main/js/query-delivery-contract.mjs", {":app-server:check", ":app-server:test",
+              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
+            ("cli/src/main/js/query-presentation.mjs", {":app-server:check", ":app-server:test",
+              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
+            ("cli/src/main/js/query-session.mjs", {":app-server:check", ":app-server:test",
+              ":app-server:verifyPublicQueryGeneration"}, {":runtime:hosted"}),
+            ("cli/src/main/resources/query-delivery.schema.json",
+             {":app-server:check", ":app-server:test", ":app-server:verifyPublicQueryGeneration"}, set()),
+            ("cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
+             {":app-server:check", ":app-server:test", ":app-server:verifyPublicQueryGeneration"}, set()),
             ("cli/src/test/resources/hosted-read-failure-encodings.json",
              {":workspace:intellij-read:check", ":workspace:intellij-read:test"},
              {":symbol:intellij", ":relation:intellij", ":runtime:hosted"}),
@@ -109,8 +119,13 @@ class SourceValidationTest(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as temporary:
                     destination = Path(temporary)
                     source.selected_command(ROOT, destination, plan)
-                    with (destination / "selected-cases.tsv").open() as selected:
-                        actual = list(csv.DictReader(selected, delimiter="\t"))
+                    selected_path = destination / "selected-cases.tsv"
+                    if semantic_owners:
+                        with selected_path.open() as selected:
+                            actual = list(csv.DictReader(selected, delimiter="\t"))
+                    else:
+                        self.assertFalse(selected_path.exists())
+                        actual = []
                 expected = [row for row in full_population
                             if row["verification_owner"] in semantic_owners]
                 self.assertEqual(expected, actual)

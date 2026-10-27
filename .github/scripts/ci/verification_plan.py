@@ -41,8 +41,13 @@ SHARED_INPUTS = {
 # File consumers without a Gradle project-dependency edge. Match exact paths so
 # neighboring inputs keep their existing owner closure.
 FILE_CONSUMERS = {
-    # kast.public-query-contract: verifyPublicQueryGeneration / verifyPublicQueryGeneratorRules.
+    # Public-query generation reads these CLI owners or checks their generated projections.
     "cli/src/main/js/query-delivery.mjs": frozenset({":app-server"}),
+    "cli/src/main/js/query-delivery-contract.mjs": frozenset({":app-server"}),
+    "cli/src/main/js/query-presentation.mjs": frozenset({":app-server"}),
+    "cli/src/main/js/query-session.mjs": frozenset({":app-server"}),
+    "cli/src/main/resources/query-delivery.schema.json": frozenset({":app-server"}),
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt": frozenset({":app-server"}),
     # HostedFailureEncodingFixtureTest compares IntelliJ encoder output with this CLI fixture.
     "cli/src/test/resources/hosted-read-failure-encodings.json": frozenset({":workspace:intellij-read"}),
 }
