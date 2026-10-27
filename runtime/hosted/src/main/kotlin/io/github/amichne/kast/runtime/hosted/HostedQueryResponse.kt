@@ -66,6 +66,13 @@ private fun encodeHostedQueryResponseDocument(
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)?,
     published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
 ): HostedResponse {
+    val detailSelection =
+        when (semantic) {
+            is OperationOutcome.Complete -> semantic.evidence.payload.detailSelection
+            is OperationOutcome.Qualified -> semantic.evidence.payload.detailSelection
+            is OperationOutcome.Rejected -> null
+        }
+    if (detailSelection != null) return fitHostedQueryEntryDetail(semantic, limits, maximumBytes, published)
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, semantic, limits, maximumBytes)
     if (original is HostedResponse.EncodingRejected) return original
@@ -106,8 +113,23 @@ private fun needsAutomaticPresentation(
     maximumBytes: ReturnedByteLimit,
 ): Boolean {
     if (payload.retention == io.github.amichne.kast.protocol.contract.QueryResultRetention.NotRequested) return false
-    return payload.invocation != null || payload.evidenceWindow != null
+    return payload.invocation != null ||
+        payload.evidenceWindow != null ||
+        hasOversizedRow(payload, original, maximumBytes)
 }
+
+private fun hasOversizedRow(
+    payload: QueryRunResult,
+    original: HostedResponse,
+    maximumBytes: ReturnedByteLimit,
+): Boolean =
+    original is HostedResponse.Oversized &&
+        payload.items.values.any {
+            io.github.amichne.kast.protocol.wire.QueryEntryDetailSerialization.row(it)
+                .text
+                .toByteArray(Charsets.UTF_8)
+                .size > maximumBytes.value
+        }
 
 private fun HostedResponse.fitsRows(rows: Int, maximumResults: ResultLimit): Boolean =
     this !is HostedResponse.Oversized && rows <= maximumResults.value

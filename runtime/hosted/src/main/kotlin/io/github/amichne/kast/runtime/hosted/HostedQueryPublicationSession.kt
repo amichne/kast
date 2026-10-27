@@ -161,12 +161,13 @@ internal class HostedQueryPublicationSession(
     }
 }
 
-/** Only the exact encoded page prepared by this owner can preserve rejected policy evidence or progress. */
+/** Rejected previews preserve all original material facts and can defer only exact retained prefix entries. */
 internal fun fittedRejectedQueryPublication(
     prepared: QueryPublishedPage,
     encoded: QueryPublicationPageCharge.Encoded,
 ): HostedReadRejectedPublication {
-    if (encoded.page != prepared) return HostedReadRejectedPublication.Discard
+    if (encoded.page != prepared && !prepared.admitsRejectedPreview(encoded.page))
+        return HostedReadRejectedPublication.Discard
     val rejected =
         encoded.page as? io.github.amichne.kast.kernel.OperationOutcome.Rejected
             ?: return HostedReadRejectedPublication.Discard
@@ -183,6 +184,34 @@ internal fun fittedRejectedQueryPublication(
             if (checkpoint == null) HostedReadRejectedPublication.Discard
             else HostedReadRejectedPublication.RetainedProgress(checkpoint.token)
         }
+    }
+}
+
+private fun QueryPublishedPage.admitsRejectedPreview(encoded: QueryPublishedPage): Boolean {
+    val original =
+        (this as? io.github.amichne.kast.kernel.OperationOutcome.Rejected)?.reason
+            as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven ?: return false
+    val fitted =
+        (encoded as? io.github.amichne.kast.kernel.OperationOutcome.Rejected)?.reason
+            as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven ?: return false
+    val originalEvidence =
+        original.evidence as? io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
+            ?: return false
+    val fittedEvidence =
+        fitted.evidence as? io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
+            ?: return false
+    if (
+        fitted.copy(evidence = original.evidence) != original ||
+            originalEvidence.copy(preview = fittedEvidence.preview) != fittedEvidence ||
+            fittedEvidence.preview.values.size > originalEvidence.preview.values.size
+    )
+        return false
+    return fittedEvidence.preview.values.withIndex().all { (ordinal, row) ->
+        val originalRow = originalEvidence.preview.values[ordinal]
+        row == originalRow ||
+            row is io.github.amichne.kast.protocol.contract.QueryResultItemDocument.DeferredDetail &&
+                originalRow !is io.github.amichne.kast.protocol.contract.QueryResultItemDocument.DeferredDetail &&
+                row == deferredRowSummary(originalRow, originalEvidence.result, ordinal)
     }
 }
 

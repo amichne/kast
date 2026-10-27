@@ -39,7 +39,14 @@ internal fun encodeHostedRejectedQueryResponse(
     published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
 ): HostedResponse {
     val completion = semantic.reason.reason() as? QueryRunRejection.CompletionUnproven
-    return if (completion != null) original.publishEncodedPage(semantic.publicationPage(), published) else original
+    return when {
+        completion == null -> original
+        original is HostedResponse.Oversized -> {
+            val fitted = fitHostedRejectedEntryPreview(semantic, completion, limits, maximumBytes)
+            fitted.second.publishEncodedPage(fitted.first.publicationPage(), published)
+        }
+        else -> original.publishEncodedPage(semantic.publicationPage(), published)
+    }
 }
 
 internal fun HostedQueryOutcome.publicationPage(): io.github.amichne.kast.query.protocol.QueryPublishedPage =
