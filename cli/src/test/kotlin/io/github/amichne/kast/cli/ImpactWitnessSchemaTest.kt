@@ -394,6 +394,10 @@ private fun findingExample(site: ImpactValueSiteReferenceDocument): ImpactWitnes
             representation = ImpactFindingRepresentationDocument.NotModeled,
             terminal = ImpactFindingTerminalDocument.UnresolvedFlow(ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW),
             boundaryObligations = BoundedProtocolList.create(emptyList<ImpactBoundaryObligationDocument>()).value(),
+            classification =
+                io.github.amichne.kast.protocol.contract.ImpactPathClassificationDocument.Established(
+                    io.github.amichne.kast.protocol.contract.ImpactRelationshipDocument.EXACT
+                ),
         )
     )
 
