@@ -472,3 +472,12 @@ This refinement preserves the existing production decision. It supplies no new i
 
 The focused storage cohort then passed 4/4 with zero failures, errors, and skips.
 The command log is `/tmp/kast-native-closure-storage-consumer.log`.
+
+## Native termination review
+
+The unchanged supplier distinctness assertion fails with 28 causes and 23 termination labels.
+Five supplier-stage causes collapse into the older argument-mapping label.
+The workspace owner now declares five distinct bounded termination codes. The relation adapter maps each matching cause explicitly.
+The original distinctness assertion remains. A new assertion also preserves each of the five exact code names.
+The focused supplier assertion passes 1/1. The workspace suite passes 316/316, with zero failures, errors, and skips.
+No source payload or new semantic effect enters this diagnostic change.

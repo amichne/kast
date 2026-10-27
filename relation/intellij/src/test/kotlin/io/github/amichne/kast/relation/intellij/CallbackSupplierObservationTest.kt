@@ -24,6 +24,16 @@ class CallbackSupplierObservationTest {
             IntellijReadTermination.CALLBACK_SUPPLIER_OUTSIDE_DOMAIN,
             CallbackInvocationFlowCause.OUTSIDE_DOMAIN.supplierTermination(),
         )
+        for (cause in
+            listOf(
+                CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH,
+                CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE,
+                CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH,
+                CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED,
+                CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE,
+            )) {
+            assertEquals("CALLBACK_${cause.name}", cause.supplierTermination().name)
+        }
         assertEquals(
             CallbackInvocationFlowCause.entries.size,
             CallbackInvocationFlowCause.entries.map { it.supplierTermination() }.toSet().size,

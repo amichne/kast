@@ -132,6 +132,7 @@ These gaps block incident closure. They do not authorize speculative repairs or 
 - I4–I6: Callback input/result owners keep actual/formal positions, supplier proof, occurrences, and body evidence. Subject endpoints keep their admitted owner binding.
 - I7–I8: Matched returns keep their proven implementation dispatch after compiler/caller readmission. Direct dispatch keeps its existing guard.
 - Diagnostic construction: The incomplete-implementation variant has a private constructor. Its finite admission rejects an exhausted inventory and keeps incomplete coverage and basis.
+- Native diagnostics: `IntellijReadTermination` keeps five distinct supplier failures instead of collapsing them into argument-mapping refusal.
 - Diagnostic preservation: Producer rejection keeps `INITIAL_EXECUTION`, the original finite cause, and bounded enclosing/site evidence. `OWNER_MISMATCH` no longer substitutes for every failed acquisition.
 - String content: `NativeStringContent`, `ValueStringContent`, and typed non-null conditions consume the established embedded result. Descendants do not bypass a call or getter.
 - Null construction: `ValueStringConstruction` keeps the exact null-only construction without an upstream content edge or another result count. Storage and byte accounting include its evidence.

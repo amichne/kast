@@ -14,11 +14,16 @@ internal fun CallbackInvocationFlowCause.supplierTermination(): IntellijReadTerm
             IntellijReadTermination.CALLBACK_SUPPLIER_UNSUPPORTED_CALLBACK_SUPPLY
         CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE ->
             IntellijReadTermination.CALLBACK_SUPPLIER_ANONYMOUS_IDENTITY_UNAVAILABLE
-        CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH,
-        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE,
-        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH,
-        CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED,
-        CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE,
+        CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH ->
+            IntellijReadTermination.CALLBACK_SUPPLIER_TARGET_MISMATCH
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE ->
+            IntellijReadTermination.CALLBACK_SUPPLIER_INVOCATION_UNAVAILABLE
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH ->
+            IntellijReadTermination.CALLBACK_SUPPLIER_INVOCATION_MISMATCH
+        CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED ->
+            IntellijReadTermination.CALLBACK_SUPPLIER_BINDING_REJECTED
+        CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE ->
+            IntellijReadTermination.CALLBACK_SUPPLIER_ARGUMENT_UNAVAILABLE
         CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING ->
             IntellijReadTermination.CALLBACK_SUPPLIER_UNRESOLVED_ARGUMENT_MAPPING
         CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE ->
