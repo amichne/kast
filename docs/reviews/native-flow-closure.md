@@ -275,7 +275,7 @@ No synthetic pass, green PR, or qualified-library result closes these unmet crit
 
 The final implementation commit is `a0f02d69e5767aab69f3e2501a4be9610bd38cbf`.
 Its tree is `57e3aec819939313ef47450f91bf0f8bd2244bf4`. The source gate examined a clean tree at that identity.
-The later evidence commit changes this report only. The push receipt and PR checks identify the final delivery commit separately.
+The later evidence commits change this report only. The push receipt and PR checks identify the final delivery commit separately.
 
 The complete source command passed:
 
@@ -296,7 +296,7 @@ The current native execution accountant passes 454/454 distinct manifest identit
 Its freshly executed populations contain 322 relation cases, 125 hosted cases, and seven symbol cases.
 The 37 closure cases and three hosted string cases pass within those populations.
 The CLI suite passes 492/492 and the workspace suite passes 316/316 through compatible up-to-date results.
-The standalone Node cohorts report 56/56 and 96/97 passes. The latter keeps one platform skip, with zero failures.
+The standalone Node cohorts report 56/56 and 96/97 passes. The latter keeps one optional Pi SDK skip because `KAST_PI_PACKAGE` is absent, with zero failures.
 Nested Node assertions remain separate from their JUnit wrapper counts.
 The host-observation process passes 332/332. Other Python cohorts pass 7, 10, 33, 8, 6, and 5 cases.
 These process counts do not enlarge the 454-case semantic claim.
@@ -314,8 +314,23 @@ No unexpected semantic outcome delta remains in that frozen synthetic population
 The D1 decision remains the pre-approved qualified-library fallback. D3 records zero more in-route operations.
 The implementation adds typed evidence and focused controls within the declared owners. It adds no generic model registry.
 
-At this evidence commit, the pre-push product gate and remote PR checks have no result yet.
-Their later receipts must name the actual delivery commit. Neither supplies the missing private incident mapping.
+The mandatory pre-push product gate passed on `8fb58f8fafd80c098902bf2b89116c4ee5ccb85d` with version `0.50.2`.
+Its tree is `f64d3c5e4f26155bf840f7c5e10672996599628c`.
+The exact command is:
+
+```sh
+GRADLE_OPTS=-Dorg.gradle.daemon=false mise exec -- git push --set-upstream origin codex/native-flow-closure-rev3
+```
+
+The hook runs `python3 distribution/release/run_product_gate.py`. It selects the current stable version and runs `productBuildGate`.
+Gradle reports 601 actionable tasks: 233 executed, 18 from cache, and 350 up-to-date. The push exits 0.
+Native compilation, staging, and `installedProductTest` pass under an owned HOME.
+The installed-product assertion covers artifact identity, persistent staging, and native Host/SQLite/full cleanup.
+It supplies no enterprise-host proof. Its command log and delivery receipt remain under `build/reports/native-flow-closure/product-final/`.
+[PR #1116](https://github.com/amichne/kast/pull/1116) carries the delivery.
+The current report correction changes no production source. The next push repeats the necessary hook on its actual commit.
+Remote checks remain pending at this record. Their later receipt must name the final delivery commit.
+Neither receipt supplies the missing private incident mapping.
 The milestone remains OPEN and the selected profile remains a target.
 A green delivery does not establish the complete original-token header route or enterprise replay.
 
