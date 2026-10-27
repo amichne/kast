@@ -18,6 +18,7 @@ import io.github.amichne.kast.cli.mcp.McpInvestigationTools
 import io.github.amichne.kast.cli.mcp.McpSingleChangeTool
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import java.nio.file.Path
@@ -34,6 +35,7 @@ internal class KastDirectToolSession(
         error("No support tool binding")
     },
     val admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
+    val queryCatalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
 ) {
     /** Invocation admission uses compiled registrations; schema projection is only a discovery effect. */
     val catalog: List<DirectToolDocument>
@@ -48,6 +50,7 @@ internal class KastDirectToolSession(
         invokePublic: (AdmittedPublicTool) -> CliExit,
         invokeSupport: (SupportToolIdentity, JsonObject) -> CliExit = { _, _ -> error("No support tool binding") },
         admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
+        queryCatalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
     ) : this(
         DirectToolRegistration.fromDocuments(catalog),
         root,
@@ -55,6 +58,7 @@ internal class KastDirectToolSession(
         invokePublic,
         invokeSupport,
         admission,
+        queryCatalog,
     )
 
     val start: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure> = { selected ->
@@ -75,15 +79,22 @@ internal class KastDirectToolSession(
             boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
         else
             SupportToolIdentity.entries.singleOrNull { it.toolName == name }?.let { invokeSupport(it, arguments) }
-                ?: admitAndInvokePublic(name, arguments, invokePublic)
+                ?: admitAndInvokePublic(name, arguments, queryCatalog, invokePublic)
 
     fun invokeAdmitted(request: AdmittedPublicTool): CliExit =
-        if (admission() == InstalledToolAdmission.AVAILABLE) invokePublic(request)
+        if (request.catalog != queryCatalog)
+            CliExit.PublicInputRejected(io.github.amichne.kast.appserver.query.PublicToolInputFailure.SchemaMismatch)
+        else if (admission() == InstalledToolAdmission.AVAILABLE) invokePublic(request)
         else boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
 
     companion object {
         @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
-        fun installed(directory: Path, home: Path, environment: Map<String, String>): KastDirectToolSession? {
+        fun installed(
+            directory: Path,
+            home: Path,
+            environment: Map<String, String>,
+            queryCatalog: PublicToolCatalog = PublicToolCatalog.COMMON,
+        ): KastDirectToolSession? {
             val code =
                 Path.of(KastDirectToolSession::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
             val installation = code.parent.takeIf { it.fileName.toString() == "lib" }?.parent ?: return null
@@ -144,7 +155,17 @@ internal class KastDirectToolSession(
                                 installedHostedBootstrap().tools.associateBy { it.name }
                             }
                         observeDirectToolStage(DirectToolStage.DIRECT_CATALOG_PROJECTION) {
-                            selected.map { catalog.getValue(it.name.value).directToolDocument() } + directSupportTools()
+                            selected.map {
+                                val identity =
+                                    PublicToolIdentity.entries.single { identity -> identity.toolName == it.name.value }
+                                catalog
+                                    .getValue(it.name.value)
+                                    .directToolDocument()
+                                    .copy(
+                                        inputSchema = PublicToolContract.parameters(identity, queryCatalog),
+                                        description = identity.descriptionFor(queryCatalog),
+                                    )
+                            } + directSupportTools()
                         }
                     },
                 root = root,
@@ -152,6 +173,7 @@ internal class KastDirectToolSession(
                 start = read::start,
                 invokePublic = invokePublic,
                 invokeSupport = investigation::invoke,
+                queryCatalog = queryCatalog,
             )
         }
     }
@@ -160,12 +182,13 @@ internal class KastDirectToolSession(
 private fun admitAndInvokePublic(
     name: String,
     arguments: JsonObject,
+    catalog: PublicToolCatalog,
     invoke: (AdmittedPublicTool) -> CliExit,
 ): CliExit {
     val identity =
         PublicToolIdentity.entries.singleOrNull { it.toolName == name }
             ?: return boundaryExit(CliBoundaryExitStatus.USAGE, "direct-tool-unsupported")
-    return when (val admitted = PublicToolContract.admit(identity, arguments)) {
+    return when (val admitted = PublicToolContract.admit(identity, arguments, catalog)) {
         is Refinement.Refined -> invoke(admitted.value)
         is Refinement.Rejected -> CliExit.PublicInputRejected(admitted.failure)
     }

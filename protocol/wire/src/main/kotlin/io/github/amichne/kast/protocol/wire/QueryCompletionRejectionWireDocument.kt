@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
+import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryOriginalFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
@@ -43,11 +44,19 @@ internal sealed interface QueryCompletionEvidenceWireDocument {
         val result: QueryResultReference,
         @ProtocolCollectionConstraint(maximumItems = MAX_PROTOCOL_ITEMS) val preview: List<QueryResultItemWireDocument>,
         val question: QueryQuestionDocument,
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("original_evidence_summary_state")
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
     ) : QueryCompletionEvidenceWireDocument
 
     @Serializable
     @SerialName("UNAVAILABLE")
-    data class Unavailable(val cause: QueryCompletionRetentionFailure) : QueryCompletionEvidenceWireDocument
+    data class Unavailable(
+        val cause: QueryCompletionRetentionFailure,
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("original_evidence_summary_state")
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
+    ) : QueryCompletionEvidenceWireDocument
 }
 
 internal fun QueryRunRejection.CompletionUnproven.toCompletionWire() =
@@ -62,9 +71,10 @@ internal fun QueryRunRejection.CompletionUnproven.toCompletionWire() =
                     retained.result,
                     retained.preview.values.map { it.toWire() },
                     retained.question,
+                    retained.originalEvidenceSummary,
                 )
             is QueryCompletionEvidenceDocument.Unavailable ->
-                QueryCompletionEvidenceWireDocument.Unavailable(retained.cause)
+                QueryCompletionEvidenceWireDocument.Unavailable(retained.cause, retained.originalEvidenceSummary)
         },
         policyProgress,
         originalFailure,
@@ -89,13 +99,15 @@ internal fun QueryCompletionRejectionWireDocument.toContract():
 private fun QueryCompletionEvidenceWireDocument.toContract(): WireDocumentConversion<QueryCompletionEvidenceDocument> =
     when (this) {
         is QueryCompletionEvidenceWireDocument.Unavailable ->
-            WireDocumentConversion.Converted(QueryCompletionEvidenceDocument.Unavailable(cause))
+            WireDocumentConversion.Converted(
+                QueryCompletionEvidenceDocument.Unavailable(cause, originalEvidenceSummary)
+            )
         is QueryCompletionEvidenceWireDocument.Retained ->
             preview
                 .convertEach { it.toContract() }
                 .flatMapConverted { rows ->
                     BoundedProtocolList.create(rows).toWireDocumentConversion().mapConverted {
-                        QueryCompletionEvidenceDocument.Retained(result, it, question)
+                        QueryCompletionEvidenceDocument.Retained(result, it, question, originalEvidenceSummary)
                     }
                 }
     }

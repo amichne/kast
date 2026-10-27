@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
+import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -12,6 +13,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 internal fun completionQueryEvidence(
     retained: Refinement<QueryResultIssuance, QueryRunRejection>,
     question: QueryQuestionDocument,
+    originalEvidenceSummary: QueryEvidenceSummaryState,
     preview:
         (QueryResultIssuance.Issued) -> Refinement<BoundedProtocolList<QueryResultItemDocument>, QueryRunRejection>,
 ): Refinement<QueryCompletionEvidenceDocument, QueryRunRejection> =
@@ -24,16 +26,27 @@ internal fun completionQueryEvidence(
                         is Refinement.Rejected -> selected
                         is Refinement.Refined ->
                             Refinement.Refined(
-                                QueryCompletionEvidenceDocument.Retained(issued.reference, selected.value, question)
+                                QueryCompletionEvidenceDocument.Retained(
+                                    issued.reference,
+                                    selected.value,
+                                    question,
+                                    originalEvidenceSummary,
+                                )
                             )
                     }
                 QueryResultIssuance.Unavailable ->
                     Refinement.Refined(
-                        QueryCompletionEvidenceDocument.Unavailable(QueryCompletionRetentionFailure.UNAVAILABLE)
+                        QueryCompletionEvidenceDocument.Unavailable(
+                            QueryCompletionRetentionFailure.UNAVAILABLE,
+                            originalEvidenceSummary,
+                        )
                     )
                 QueryResultIssuance.CapacityExceeded ->
                     Refinement.Refined(
-                        QueryCompletionEvidenceDocument.Unavailable(QueryCompletionRetentionFailure.CAPACITY_EXCEEDED)
+                        QueryCompletionEvidenceDocument.Unavailable(
+                            QueryCompletionRetentionFailure.CAPACITY_EXCEEDED,
+                            originalEvidenceSummary,
+                        )
                     )
             }
     }

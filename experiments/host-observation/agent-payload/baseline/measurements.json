@@ -1,0 +1,137 @@
+{
+  "qualification": "ACTUAL_INSTALLED_PI_CONVERTER_ON_ACTUAL_MCP_CATALOG_NOT_TASK_REPLAY",
+  "pi": {
+    "version": "1.4.0",
+    "root": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent"
+  },
+  "ai": {
+    "version": "1.4.0",
+    "converter": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-ai/dist/api/openai-responses-shared.js",
+    "sha256": "eed025a4821b1e017dd024b930caf8fa11c7fe053a81efe11bd7d846fdc641d3"
+  },
+  "conversionOptions": {
+    "strict": false,
+    "supportsStrictMode": true,
+    "supportsOpenAIGrammarTools": false
+  },
+  "serialization": "JSON.stringify, no whitespace, UTF-8",
+  "catalog": {
+    "unicodeCharacters": 935645,
+    "utf8Bytes": 935645,
+    "sha256": "032bd14908333b81e819494352dab347e1e463f1b52c68796b36fad074cf7069"
+  },
+  "allProviderDeclarations": {
+    "unicodeCharacters": 59212,
+    "utf8Bytes": 59212,
+    "sha256": "b3c0d05956026ca9de7f79897a783f5178b45949553f33187f0e9617253d79c3"
+  },
+  "tools": [
+    {
+      "name": "add_declaration",
+      "inputSchema": {
+        "unicodeCharacters": 707,
+        "utf8Bytes": 707,
+        "sha256": "f59ff3376313f0a4800df11f977e06a0603fcf0c562a1cd09b0a154bd4e3f848"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 1856,
+        "utf8Bytes": 1856,
+        "sha256": "201e7ed7378ea282489b72e9c3338aae7db40a9d1c7c674976351b0d4f6844ea"
+      },
+      "converted": {
+        "unicodeCharacters": 1225,
+        "utf8Bytes": 1225,
+        "sha256": "e8f0d05679abffe2c0d5c20ae6b69c27836c6268b57f6909c8d3f5e139452e2c"
+      }
+    },
+    {
+      "name": "check_diagnostics",
+      "inputSchema": {
+        "unicodeCharacters": 2469,
+        "utf8Bytes": 2469,
+        "sha256": "6e8b81c37abb896ab421f3c336e10b346be50e511bc2c0452aa12335607e88b5"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 26388,
+        "utf8Bytes": 26388,
+        "sha256": "e7a1b494c642cec8a1de0658a8837fa06343a562b8458c22dd9d826d6d011184"
+      },
+      "converted": {
+        "unicodeCharacters": 2920,
+        "utf8Bytes": 2920,
+        "sha256": "64df752f003d7b4c930115f4286a34131eb4f14fb69af88f6757c97857714226"
+      }
+    },
+    {
+      "name": "health_check",
+      "inputSchema": {
+        "unicodeCharacters": 104,
+        "utf8Bytes": 104,
+        "sha256": "e33890085a6600a91a4b24bae27490f40005c63609ec907443384ab591332298"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 1814,
+        "utf8Bytes": 1814,
+        "sha256": "5d0849042c2634de19031778a9d7f33aa1396dd096fd242fb65ae6384930e598"
+      },
+      "converted": {
+        "unicodeCharacters": 306,
+        "utf8Bytes": 306,
+        "sha256": "bf376bac8c2ec0943b94ae1f48957cedbff990ab043f077957d4552841c382b2"
+      }
+    },
+    {
+      "name": "query_symbols",
+      "inputSchema": {
+        "unicodeCharacters": 51134,
+        "utf8Bytes": 51134,
+        "sha256": "80a90c8fabf3f8c4b5d65075cd79513d01c9cf2b0026aa059228c835107db418"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 843990,
+        "utf8Bytes": 843990,
+        "sha256": "b4a9a41c9f1ad4196b0203d07b14ac686e2c8e3a2b1279c6f9b8dd1a9b0db461"
+      },
+      "converted": {
+        "unicodeCharacters": 53721,
+        "utf8Bytes": 53721,
+        "sha256": "d8684eaa9f6f4cf53a8372692caa157794873074280c66dba205a1646f4043b4"
+      }
+    },
+    {
+      "name": "replace_body",
+      "inputSchema": {
+        "unicodeCharacters": 670,
+        "utf8Bytes": 670,
+        "sha256": "c9ef48d40682121721ae010b6fdc0d9bb787c07e22aa3a1005348253461b47d8"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 1856,
+        "utf8Bytes": 1856,
+        "sha256": "201e7ed7378ea282489b72e9c3338aae7db40a9d1c7c674976351b0d4f6844ea"
+      },
+      "converted": {
+        "unicodeCharacters": 1034,
+        "utf8Bytes": 1034,
+        "sha256": "eb140a21f25ee4bb270fe53ab5535e737c38a2f4119d5bfd4a5e4a5bd7add981"
+      }
+    }
+  ],
+  "taskInputTokens": null,
+  "cacheAccounting": null,
+  "discoveryCalls": null,
+  "recoveryCalls": null,
+  "semanticInvocations": 0,
+  "modelFacingResults": null,
+  "nativeCodemodeReplay": "NOT_RUN",
+  "expandingAdapterReplay": "BLOCKED_ADAPTER_IDENTITY_UNAVAILABLE",
+  "kast": {
+    "productVersion": "0.0.3719",
+    "installedManifestSha256": "d8c977d1028aad719009c57a6a7b92cbd463feafb1365d916d4c3f8709c313e5"
+  },
+  "baselineSource": {
+    "revision": "d280e9fb04cfb3d266c84371fe97e103b99ccb59",
+    "inputSchemaEqual": true,
+    "installedRuntimeSourceRevision": "UNAVAILABLE"
+  }
+}

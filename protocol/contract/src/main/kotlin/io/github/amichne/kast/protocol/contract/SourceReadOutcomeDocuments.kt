@@ -12,6 +12,7 @@ data class SourceReadResult(
     val referenceAcquisitions: ReadReferenceAcquisitions? = null,
 ) : OperationResult
 
+@kotlinx.serialization.Serializable
 enum class SourceReadLimitationDocument {
     ENTITY_LIMIT_REACHED,
     TEXT_BYTE_LIMIT_REACHED,

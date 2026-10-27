@@ -15,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -29,7 +30,12 @@ import kotlinx.serialization.json.decodeFromJsonElement
 internal const val MAXIMUM_QUERY_SESSION_REQUESTS = 64
 
 /** One initial read, then only presentation of query authority issued by its preceding reply. */
-internal class KastToolRpcQuerySession(private val invoke: (AdmittedPublicTool) -> ToolRpcReply) {
+internal class KastToolRpcQuerySession(
+    private val catalog: PublicToolCatalog,
+    private val invoke: (AdmittedPublicTool) -> ToolRpcReply,
+) {
+    constructor(invoke: (AdmittedPublicTool) -> ToolRpcReply) : this(PublicToolCatalog.COMPLETE, invoke)
+
     fun run(input: InputStream, emit: (ToolRpcReply) -> Unit) {
         val records = BufferedInputStream(input)
         var state: QuerySessionState = QuerySessionState.First
@@ -44,7 +50,7 @@ internal class KastToolRpcQuerySession(private val invoke: (AdmittedPublicTool) 
                     is QuerySessionFrame.Record -> frame.bytes
                 }
             val admitted =
-                when (val request = admitQuerySessionInput(bytes)) {
+                when (val request = admitQuerySessionInput(bytes, catalog)) {
                     is Refinement.Refined -> request.value
                     is Refinement.Rejected -> {
                         emit(request.failure)
@@ -113,7 +119,10 @@ private sealed interface QuerySessionInput {
     data class Source(override val tool: AdmittedPublicTool) : QuerySessionInput
 }
 
-private fun admitQuerySessionInput(bytes: ByteArray): Refinement<QuerySessionInput, ToolRpcReply.Rejected> {
+private fun admitQuerySessionInput(
+    bytes: ByteArray,
+    catalog: PublicToolCatalog,
+): Refinement<QuerySessionInput, ToolRpcReply.Rejected> {
     val input =
         when (val decoded = decodeToolRpcInput(bytes)) {
             is Refinement.Refined -> decoded.value
@@ -128,7 +137,7 @@ private fun admitQuerySessionInput(bytes: ByteArray): Refinement<QuerySessionInp
     return when (
         val admitted =
             observeDirectToolStage(DirectToolStage.REQUEST_ADMISSION) {
-                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, arguments)
+                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, arguments, catalog)
             }
     ) {
         is Refinement.Refined ->

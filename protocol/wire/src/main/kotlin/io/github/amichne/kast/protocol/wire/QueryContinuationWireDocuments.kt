@@ -7,6 +7,16 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class QueryRunResultWireDocument(
+    @SerialName("original_evidence_summary_state")
+    val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("deferred_evidence")
+    val deferredEvidence: List<io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument> = emptyList(),
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val detail: io.github.amichne.kast.protocol.contract.QueryEntryDetailDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("detail_selection")
+    val detailSelection: io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
         io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,

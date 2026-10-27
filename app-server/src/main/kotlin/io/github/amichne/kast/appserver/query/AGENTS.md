@@ -9,6 +9,7 @@ source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDetailMapping.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolSourceMapping.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt
   - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
@@ -20,6 +21,15 @@ code_sources:
 ---
 
 # Public query interface
+
+`PublicToolCatalog` selects `COMMON` or `COMPLETE` once per direct session.
+The generator projects `COMMON` from canonical schema paths in `catalogs.COMMON`.
+Admit with the selected catalog and preserve it in `AdmittedPublicTool`.
+Reject unsupported variants before native work.
+`COMPLETE` keeps the advanced grammar.
+
+Public query output budgets need at least `PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES` bytes.
+Smaller requests return `OUTPUT_ALLOWANCE_REJECTED` with the supported allowance before native work.
 
 Follow the root Engineering Dictum and `openwiki/contracts/public-tools.md`.
 The authored schema owns parameter metadata and defaults; generated files are not
@@ -36,6 +46,11 @@ request admits exactly one of four actions:
 - `RESUME` accepts a typed retained-output continuation and an optional presentation budget.
 - `READ_RESULT` accepts a retained-result reference and a distinct presentation cursor.
 - `READ_SOURCE` accepts an issued candidate, exact symbol, or source selector, with separate structural and text choices.
+
+`READ_RESULT.detail` accepts an issued selector for one retained row or evidence entry.
+The selector keeps its original result, target, ordinal, kind, digest, section, and offset.
+Reject a result mismatch, a target-kind mismatch, or explicit presentation cursors beside a detail selector before native work.
+Detail reads use the retained-result owner and do not repeat semantic work.
 
 Public contract 17 requires `terminalStep.type` to be `EMIT` or `TRACE`.
 `EMIT.output` accepts the existing output union. `TRACE.output` accepts only `SYMBOLS`.

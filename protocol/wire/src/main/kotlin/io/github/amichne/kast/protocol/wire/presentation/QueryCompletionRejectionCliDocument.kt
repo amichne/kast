@@ -11,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
+import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
@@ -52,32 +53,62 @@ internal sealed interface QueryCompletionEvidenceCliDocument {
         val question: QueryQuestionDocument,
         val nextQuery: QueryCompletionPublicReadQuery,
         @EncodeDefault(EncodeDefault.Mode.NEVER) val seedQuery: QueryCompletionPublicSeedQuery? = null,
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("original_evidence_summary_state")
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
     ) : QueryCompletionEvidenceCliDocument
 
     @Serializable
     @SerialName("UNAVAILABLE")
-    data class Unavailable(val cause: QueryCompletionRetentionFailure) : QueryCompletionEvidenceCliDocument
+    data class Unavailable(
+        val cause: QueryCompletionRetentionFailure,
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("original_evidence_summary_state")
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
+    ) : QueryCompletionEvidenceCliDocument
 }
 
 /** Copyable query_symbols arguments, encoded from retained result identity and its original output. */
-@Serializable internal data class QueryCompletionPublicReadQuery(val request: QueryCompletionPublicReadRequest)
+@Serializable data class QueryCompletionPublicReadQuery(val request: QueryCompletionPublicReadRequest)
 
 @Serializable
-internal enum class QueryCompletionPublicReadAction {
+enum class QueryCompletionPublicReadAction {
     READ_RESULT
 }
 
 @Serializable
-internal data class QueryCompletionPublicReadRequest(
+@ConsistentCopyVisibility
+data class QueryCompletionPublicReadRequest
+private constructor(
     val result: QueryResultReference,
     val output: QueryCompletionPublicReadOutput,
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val type: QueryCompletionPublicReadAction = QueryCompletionPublicReadAction.READ_RESULT,
-    @EncodeDefault(EncodeDefault.Mode.ALWAYS) val cursor: QueryResultCursor = QueryResultCursor.Start,
-)
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val cursor: QueryResultCursor? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_cursor")
+    val evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val detail: io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument? = null,
+) {
+    companion object {
+        fun rows(
+            result: QueryResultReference,
+            output: QueryCompletionPublicReadOutput,
+            cursor: QueryResultCursor = QueryResultCursor.Start,
+            evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null,
+        ) = QueryCompletionPublicReadRequest(result, output, cursor = cursor, evidenceCursor = evidenceCursor)
+
+        fun detail(
+            result: QueryResultReference,
+            output: QueryCompletionPublicReadOutput,
+            selector: io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument,
+        ) = QueryCompletionPublicReadRequest(result, output, detail = selector)
+    }
+}
 
 @Serializable
-internal enum class QueryCompletionPublicSymbolField {
+enum class QueryCompletionPublicSymbolField {
     NAME,
     LOCATION,
     SIGNATURE,
@@ -85,7 +116,7 @@ internal enum class QueryCompletionPublicSymbolField {
 }
 
 @Serializable
-internal sealed interface QueryCompletionPublicReadOutput {
+sealed interface QueryCompletionPublicReadOutput {
     @Serializable
     @SerialName("SYMBOLS")
     data class Symbols(
@@ -119,22 +150,23 @@ internal fun QueryRunRejection.CompletionUnproven.toCompletionCli() =
                     retained.preview.values.map { it.toCliDocument() },
                     retained.question,
                     QueryCompletionPublicReadQuery(
-                        QueryCompletionPublicReadRequest(
+                        QueryCompletionPublicReadRequest.rows(
                             retained.result,
                             retained.question.output.toCompletionPublicOutput(),
                         )
                     ),
                     completionSeedQuery(retained),
+                    retained.originalEvidenceSummary,
                 )
             is QueryCompletionEvidenceDocument.Unavailable ->
-                QueryCompletionEvidenceCliDocument.Unavailable(retained.cause)
+                QueryCompletionEvidenceCliDocument.Unavailable(retained.cause, retained.originalEvidenceSummary)
         },
         policyProgress,
         originalFailure,
         diagnosticReadId,
     )
 
-internal fun QueryOutputDocument.toCompletionPublicOutput(): QueryCompletionPublicReadOutput =
+fun QueryOutputDocument.toCompletionPublicOutput(): QueryCompletionPublicReadOutput =
     when (this) {
         is QueryOutputDocument.Symbols ->
             QueryCompletionPublicReadOutput.Symbols(

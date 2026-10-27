@@ -1,0 +1,52 @@
+{
+  "type": "report",
+  "report": {
+    "version": 1,
+    "outcome": "COMPLETED",
+    "wallSeconds": 35.410981584,
+    "setupSeconds": 0.889612917,
+    "provider": "openai-codex",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "arm": "treatment",
+    "requests": 6,
+    "toolCalls": 6,
+    "retries": 0,
+    "compactions": 0,
+    "inputTokens": 10516,
+    "outputTokens": 517,
+    "cacheReadTokens": 22144,
+    "cacheWriteTokens": 0,
+    "totalTokens": 33177,
+    "payloadBytes": 167974,
+    "toolOutputBytes": 15547,
+    "catalogCostUsd": 0.028416399999999998,
+    "billedCostUsd": null,
+    "costQualification": "CATALOG_ESTIMATE_NOT_BILLED",
+    "usageQualification": "FINALIZED_PROVIDER_USAGE",
+    "outputCapQualification": "REQUESTED_BACKEND_ENFORCEMENT_UNPROVEN",
+    "planSha256": "eb378f29f1939284c8d2cade37b4bbab003c700e696480a863a029982bdfc336",
+    "piPackageSha256": "df6883685382d6a914e5797232744c26579fe7db5576ea0e9c859d018ca2d54e",
+    "mcpExecutableSha256": "f32fb165e72a01575681f5b95056b6676b3339354ea77ceafa5c5438cbfce61a",
+    "onboardingSha256": "202b5d92ab23831fba02dfa9cb8c42d70ba1418988f06dcef71f4c6d8087a245"
+  },
+  "resultDelivery": {
+    "stage": "PARENT_IPC_MESSAGE",
+    "outcome": "REPORT_RECEIVED"
+  },
+  "exitCode": 0,
+  "signal": null,
+  "ownedChildReaped": true,
+  "cancellationRequested": false,
+  "stderrBytes": 0,
+  "parentWallSeconds": 35.531792709,
+  "workflowAcceptance": {
+    "status": "BLOCKED",
+    "stage": "overload discovery",
+    "failure": "daemon-operation-lifecycle-import-failed",
+    "nativeCodemodeUsed": true,
+    "semanticQueryToolCalls": 1,
+    "successfulSemanticQueries": 0,
+    "completionClaimsEstablished": false
+  }
+}

@@ -4,6 +4,14 @@ package io.github.amichne.kast.protocol.registry
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
 const val PUBLIC_TOOL_CONTRACT_VERSION = 17
+enum class PublicToolCatalog { COMMON, COMPLETE }
+
+const val PUBLIC_COMMON_QUERY_DESCRIPTION =
+    "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload befor" +
+            "e relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve origi" +
+            "nal authority and freshness. This session exposes the common query grammar. Start a COMPLETE sessi" +
+            "on for advanced operations."
+
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -63,4 +71,9 @@ enum class PublicToolIdentity(
             "ilure with recovery evidence. The signature and surrounding source are preserved.",
         HostedToolLoading.DEFERRED,
     ),
+    ;
+
+    fun descriptionFor(catalog: PublicToolCatalog): String =
+        if (this == QUERY_SYMBOLS && catalog == PublicToolCatalog.COMMON) PUBLIC_COMMON_QUERY_DESCRIPTION
+        else description
 }

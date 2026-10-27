@@ -2,26 +2,21 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
 import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
+import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
-import io.github.amichne.kast.protocol.contract.QueryInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryPreviewDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
-import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRetention
-import io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindow
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -61,6 +56,14 @@ internal class QueryInvocationProjection(
         private val owner: QueryExecutionClaim,
     ) {
         private val execution = accumulated.execution
+        private val originalEvidenceSummary =
+            when (val result = execution) {
+                is QueryExecutionResult.Complete ->
+                    QueryEvidenceSummaryState.Captured(result.result.originalEvidenceSummary())
+                is QueryExecutionResult.Qualified ->
+                    QueryEvidenceSummaryState.Captured(result.result.originalEvidenceSummary())
+                is QueryExecutionResult.Rejection -> QueryEvidenceSummaryState.Uncaptured
+            }
         private val witnessOutput = request.output as? QueryOutputDocument.ImpactWitness
         private val count =
             witnessOutput?.let { output ->
@@ -148,7 +151,7 @@ internal class QueryInvocationProjection(
         }
 
         private fun completionEvidence(): Refinement<QueryCompletionEvidenceDocument, QueryRunRejection> =
-            completionQueryEvidence(retain(), QueryQuestionDocument.from(request)) { issued ->
+            completionQueryEvidence(retain(), QueryQuestionDocument.from(request), originalEvidenceSummary) { issued ->
                 when (val selected = preview(issued)) {
                     is Refinement.Refined -> Refinement.Refined(selected.value.items)
                     is Refinement.Rejected -> selected
@@ -183,7 +186,11 @@ internal class QueryInvocationProjection(
                                 ),
                                 accumulated.copy(stop = QueryInvocationStop.RETENTION_FAILED),
                             ) {
-                                completionQueryEvidence(retained, QueryQuestionDocument.from(request)) { issued ->
+                                completionQueryEvidence(
+                                    retained,
+                                    QueryQuestionDocument.from(request),
+                                    originalEvidenceSummary,
+                                ) { issued ->
                                     when (val selected = preview(issued)) {
                                         is Refinement.Refined -> Refinement.Refined(selected.value.items)
                                         is Refinement.Rejected -> selected
@@ -225,7 +232,12 @@ internal class QueryInvocationProjection(
                 )
             return OperationOutcome.Complete(
                 envelope.copy(
-                    payload = envelope.payload.copy(invocation = preview.summary, evidenceWindow = evidenceWindow)
+                    payload =
+                        envelope.payload.copy(
+                            invocation = preview.summary,
+                            evidenceWindow = evidenceWindow,
+                            originalEvidenceSummary = originalEvidenceSummary,
+                        )
                 )
             )
         }
@@ -309,7 +321,9 @@ internal class QueryInvocationProjection(
             }
         }
 
-        private fun preview(issuance: QueryResultIssuance.Issued?): Refinement<InvocationPreview, QueryRunRejection> {
+        private fun preview(
+            issuance: QueryResultIssuance.Issued?
+        ): Refinement<QueryInvocationPreview, QueryRunRejection> {
             val originalFailure =
                 when (val admitted = optionalOriginalFailure(accumulated.failure)) {
                     is Refinement.Refined -> admitted.value
@@ -321,51 +335,15 @@ internal class QueryInvocationProjection(
                     is Refinement.Refined -> identified.value
                     is Refinement.Rejected -> return identified
                 }
-            var end = 0
-            while (
-                end < candidates.size && policy.previewBytes(candidates.take(end + 1)) <= policy.previewBytesLimit.value
-            ) end++
-            val rows = candidates.take(end)
-            val bytes = policy.previewBytes(rows)
-            if (bytes !in 2..policy.previewBytesLimit.value) return contractFailure()
-            val retention =
-                issuance?.let { QueryResultRetention.Retained(it.reference) } ?: QueryResultRetention.NotRequested
-            val window = retained?.let { issued ->
-                QueryRetainedPresentationWindow.create(
-                        issued.reference,
-                        QueryResultCursor.Start,
-                        QueryResultCursor.parse(end).required(),
-                        QueryResultCursor.parse(count).required(),
-                    )
-                    .required()
-            }
-            val summary =
-                QueryInvocationDocument.create(
-                        count = count,
-                        preview =
-                            if (end == count) QueryPreviewDocument.Inline(end, bytes)
-                            else QueryPreviewDocument.Prefix(end, bytes),
-                        stop = accumulated.stop,
-                        failure = originalFailure,
-                    )
-                    .required()
-            return Refinement.Refined(
-                InvocationPreview(
-                    BoundedProtocolList.create<QueryResultItemDocument>(rows).required(),
-                    retention,
-                    window,
-                    summary,
-                )
+            return policy.fitPreview(
+                candidates = candidates,
+                issuance = issuance,
+                count = count,
+                stop = accumulated.stop,
+                failure = originalFailure,
             )
         }
     }
-
-    private data class InvocationPreview(
-        val items: BoundedProtocolList<QueryResultItemDocument>,
-        val retention: QueryResultRetention,
-        val window: QueryRetainedPresentationWindow?,
-        val summary: QueryInvocationDocument,
-    )
 
     private fun contractFailure() =
         Refinement.Rejected(

@@ -203,7 +203,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference.",
+            "description": "Copy the issued exact-symbol reference unchanged.",
             "minLength": 1,
             "maxLength": 1048576
           },
@@ -669,7 +669,7 @@
           "maximum": 2147483647
         },
         "maxReturnedBytes": {
-          "description": "Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
+          "description": "Query minimum: {PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES} UTF-8 bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
           "type": [
             "integer",
             "null"
@@ -802,7 +802,7 @@
       "minimum": 0,
       "maximum": 1000000,
       "x-kotlin-type": "QueryEvidenceCursor",
-      "description": "Optional offset in the retained result's evidence. It is independent of the row presentation cursor and performs no semantic execution. Omission or null preserves the existing evidence presentation.",
+      "description": "Presentation offset in retained evidence, including deferred summaries. DEFERRED_DETAIL does not mean detail delivery. READ_RESULT.detail reads selected fragments without semantic replay.",
       "examples": [
         0,
         25
@@ -947,6 +947,9 @@
         },
         "evidence_cursor": {
           "$ref": "#/$defs/EvidenceCursor"
+        },
+        "detail": {
+          "$ref": "#/$defs/DetailSelector"
         }
       },
       "required": [
@@ -3396,6 +3399,80 @@
       "default": null,
       "x-kotlin-type": "QueryExecutionModeDocument",
       "description": "RUNNER_CONTROLLED is the default. It runs until completion, caller cancellation, or an explicit maxElapsedMs timeout, without semantic work quotas. BOUNDED is an explicit legacy opt-in."
+    },
+    "DetailSection": {
+      "type": "string",
+      "enum": [
+        "CANONICAL_ENTRY_JSON"
+      ],
+      "default": "CANONICAL_ENTRY_JSON",
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryEntryDetailSection"
+    },
+    "DetailSelector": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/ResultReference"
+        },
+        "section": {
+          "$ref": "#/$defs/DetailSection"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "ROW",
+            "EVIDENCE"
+          ]
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "EXACT_SYMBOL",
+            "OCCURRENCE",
+            "REFERENCE_OCCURRENCE",
+            "TRAVERSAL_RECORD",
+            "BINDING_ROW",
+            "VALUE_PATH",
+            "IMPACT_WITNESS",
+            "FAILURE",
+            "OMISSION",
+            "WALK_OBSERVATION",
+            "REFERENCE_OBSERVATION",
+            "DISCOVERY_OBSERVATION",
+            "RELATION_OBSERVATION"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "result",
+        "section",
+        "target",
+        "ordinal",
+        "kind",
+        "sha256",
+        "offset"
+      ],
+      "additionalProperties": false,
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument"
     }
   },
   "tools": [
@@ -3595,14 +3672,14 @@
           }
         },
         "referenceOccurrences": {
-          "summary": "Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.",
+          "summary": "Copy an issued exact reference instead of the non-issued example token. Return individual compiler-confirmed references.",
           "value": {
             "request": {
               "type": "RUN",
               "source": {
                 "type": "SYMBOL_REFS",
                 "symbolRefs": [
-                  "<exact-ref-returned-by-Kast>"
+                  "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
                 ]
               },
               "steps": [
@@ -4165,14 +4242,14 @@
           }
         },
         "traceAffectedUses": {
-          "summary": "Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.",
+          "summary": "Copy an issued exact reference instead of the non-issued example token. Trace affected uses with original completion and qualifications.",
           "value": {
             "request": {
               "type": "RUN",
               "source": {
                 "type": "SYMBOL_REFS",
                 "symbolRefs": [
-                  "<exact-ref-returned-by-Kast>"
+                  "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
                 ]
               },
               "steps": [],
@@ -4192,7 +4269,7 @@
               },
               "retention": "RETAIN",
               "executionBudget": {
-                "maxElapsedMs": 30000
+                "maxResults": 20
               }
             }
           }
@@ -4256,6 +4333,24 @@
               "type": "READ_SOURCE",
               "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
               "region": "CALLABLE_BODY"
+            }
+          }
+        },
+        "readRetainedDetail": {
+          "summary": "Copy an issued detail selector. This non-issued example grants no authority. Detail reads perform no semantic replay.",
+          "value": {
+            "request": {
+              "type": "READ_RESULT",
+              "result": "result:v1:00000000-0000-0000-0000-000000000000",
+              "detail": {
+                "result": "result:v1:00000000-0000-0000-0000-000000000000",
+                "section": "CANONICAL_ENTRY_JSON",
+                "target": "ROW",
+                "ordinal": 0,
+                "kind": "EXACT_SYMBOL",
+                "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+                "offset": 0
+              }
             }
           }
         }
@@ -4925,13 +5020,80 @@
     }
   ],
   "rowCompatibility": [
-    { "operation": "WHERE, DISTINCT_SYMBOLS", "input": "Symbols", "result": "Symbols" },
-    { "operation": "EXPAND_RELATION, WALK", "input": "Symbols", "result": "Symbols with relation or traversal evidence" },
-    { "operation": "JOIN INNER", "input": "Symbols and one retained symbol operand", "result": "Named binding rows" },
-    { "operation": "JOIN SEMI, JOIN ANTI", "input": "Symbols and one retained symbol operand", "result": "Symbols; ANTI needs complete right coverage" },
-    { "operation": "PROJECT_BINDING", "input": "Binding rows and one declared binding name", "result": "Symbols" },
-    { "operation": "TRACE", "input": "Symbols", "result": "Grouped symbols with proven connections and occurrences" },
-    { "operation": "EMIT", "input": "Rows compatible with the selected output", "result": "The existing typed result projection" }
+    {
+      "operation": "WHERE, DISTINCT_SYMBOLS",
+      "input": "Symbols",
+      "result": "Symbols"
+    },
+    {
+      "operation": "EXPAND_RELATION, WALK",
+      "input": "Symbols",
+      "result": "Symbols with relation or traversal evidence"
+    },
+    {
+      "operation": "JOIN INNER",
+      "input": "Symbols and one retained symbol operand",
+      "result": "Named binding rows"
+    },
+    {
+      "operation": "JOIN SEMI, JOIN ANTI",
+      "input": "Symbols and one retained symbol operand",
+      "result": "Symbols; ANTI needs complete right coverage"
+    },
+    {
+      "operation": "PROJECT_BINDING",
+      "input": "Binding rows and one declared binding name",
+      "result": "Symbols"
+    },
+    {
+      "operation": "TRACE",
+      "input": "Symbols",
+      "result": "Grouped symbols with proven connections and occurrences"
+    },
+    {
+      "operation": "EMIT",
+      "input": "Rows compatible with the selected output",
+      "result": "The existing typed result projection"
+    }
   ],
-  "contractVersion": 17
+  "contractVersion": 17,
+  "catalogs": {
+    "COMMON": {
+      "description": "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload before relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve original authority and freshness. This session exposes the common query grammar. Start a COMPLETE session for advanced operations.",
+      "variants": {
+        "Source": [
+          "SearchSource",
+          "LocationSource",
+          "ReferenceSource"
+        ],
+        "Step": [
+          "ExpandRelation"
+        ],
+        "Output": [
+          "SymbolsOutput",
+          "OccurrencesOutput"
+        ],
+        "ReadResultOutput": [
+          "SymbolsOutput",
+          "OccurrencesOutput"
+        ]
+      },
+      "outputControls": [
+        "maxResults",
+        "maxReturnedBytes"
+      ],
+      "examples": [
+        "scopedInterfaceDeclaration",
+        "containingDeclaration",
+        "referenceOccurrences",
+        "traceAffectedUses",
+        "readRetained",
+        "readSourceExactSymbol",
+        "readRetainedDetail"
+      ]
+    },
+    "COMPLETE": {
+      "description": "Complete canonical public query grammar."
+    }
+  }
 }

@@ -36,15 +36,26 @@ internal fun encodeHostedQueryResponse(
         ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
     published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)? = null,
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)? = null,
-): HostedResponse =
-    encodeHostedQueryResponseDocument(semantic, limits, observation, maximumResults, maximumBytes, retain, published)
-        .withReadBudget(
-            when (semantic) {
-                is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
-                is OperationOutcome.Qualified -> semantic.evidence.payload.executionBudget.presence()
-                is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
-            }
+): HostedResponse {
+    val fitted =
+        encodeHostedQueryResponseDocument(
+            semantic,
+            limits,
+            observation,
+            maximumResults,
+            maximumBytes,
+            retain,
+            published,
         )
+    val response = fitHostedQueryPresentationHeader(semantic, fitted, limits, maximumBytes, published)
+    return response.withReadBudget(
+        when (semantic) {
+            is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
+            is OperationOutcome.Qualified -> semantic.evidence.payload.executionBudget.presence()
+            is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
+        }
+    )
+}
 
 private fun encodeHostedQueryResponseDocument(
     semantic: HostedQueryOutcome,
@@ -55,6 +66,13 @@ private fun encodeHostedQueryResponseDocument(
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)?,
     published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
 ): HostedResponse {
+    val detailSelection =
+        when (semantic) {
+            is OperationOutcome.Complete -> semantic.evidence.payload.detailSelection
+            is OperationOutcome.Qualified -> semantic.evidence.payload.detailSelection
+            is OperationOutcome.Rejected -> null
+        }
+    if (detailSelection != null) return fitHostedQueryEntryDetail(semantic, limits, maximumBytes, published)
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, semantic, limits, maximumBytes)
     if (original is HostedResponse.EncodingRejected) return original
@@ -74,28 +92,44 @@ private fun encodeHostedQueryResponseDocument(
             limitations = semantic.qualification.limitations
             minimum = semantic.qualification.knownMinimum
         }
-        is OperationOutcome.Rejected -> {
-            val completion =
-                semantic.reason.reason()
-                    as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
-            return if (completion != null) original.publishEncodedPage(semantic.publicationPage(), published)
-            else original
-        }
+        is OperationOutcome.Rejected ->
+            return encodeHostedRejectedQueryResponse(semantic, original, limits, maximumBytes, published)
     }
     val rows = evidence.payload.items.values.size
     if (original.fitsRows(rows, maximumResults)) {
         return original.publishEncodedPage(semantic, published)
     }
-    if (
-        (evidence.payload.invocation != null || evidence.payload.evidenceWindow != null) &&
-            evidence.payload.retention != io.github.amichne.kast.protocol.contract.QueryResultRetention.NotRequested
-    )
+    if (needsAutomaticPresentation(evidence.payload, original, maximumBytes))
         return fitHostedAutomaticQueryPreview(semantic, limits, maximumResults, maximumBytes, published)
     if (original is HostedResponse.Oversized) observation.terminated(IntellijReadTermination.RESPONSE_BYTE_LIMIT)
     val exhausted = queryPageLimitations(limitations, original, rows, maximumResults)
     return QueryPageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
         .fit(semantic, original, retain, published, observation, maximumResults)
 }
+
+private fun needsAutomaticPresentation(
+    payload: QueryRunResult,
+    original: HostedResponse,
+    maximumBytes: ReturnedByteLimit,
+): Boolean {
+    if (payload.retention == io.github.amichne.kast.protocol.contract.QueryResultRetention.NotRequested) return false
+    return payload.invocation != null ||
+        payload.evidenceWindow != null ||
+        hasOversizedRow(payload, original, maximumBytes)
+}
+
+private fun hasOversizedRow(
+    payload: QueryRunResult,
+    original: HostedResponse,
+    maximumBytes: ReturnedByteLimit,
+): Boolean =
+    original is HostedResponse.Oversized &&
+        payload.items.values.any {
+            io.github.amichne.kast.protocol.wire.QueryEntryDetailSerialization.row(it)
+                .text
+                .toByteArray(Charsets.UTF_8)
+                .size > maximumBytes.value
+        }
 
 private fun HostedResponse.fitsRows(rows: Int, maximumResults: ResultLimit): Boolean =
     this !is HostedResponse.Oversized && rows <= maximumResults.value
@@ -362,35 +396,3 @@ internal fun HostedQueryOutcome.withQueryBudget(
     }
 
 /** This projection preserves the closed semantic reason while per-call budget reports stay at presentation. */
-internal fun HostedQueryOutcome.publicationPage(): io.github.amichne.kast.query.protocol.QueryPublishedPage =
-    when (this) {
-        is OperationOutcome.Complete ->
-            OperationOutcome.Complete(evidence.copy(payload = evidence.payload.copy(executionBudget = null)))
-        is OperationOutcome.Qualified ->
-            OperationOutcome.Qualified(
-                evidence.copy(payload = evidence.payload.copy(executionBudget = null)),
-                qualification,
-            )
-        is OperationOutcome.Rejected -> OperationOutcome.Rejected(reason.reason())
-    }
-
-/** Carries the successful encoding bound into the existing publication owner without encoding again. */
-internal fun encodedPublication(
-    page: io.github.amichne.kast.query.protocol.QueryPublishedPage,
-    response: HostedResponse.Canonical<*, *, *>,
-): io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded =
-    io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded.fromEncoding(
-        page.publicationPage(),
-        io.github.amichne.kast.query.protocol.QueryRetentionByteCount.parse(
-                response.document.toByteArray(Charsets.UTF_8).size.toLong()
-            )
-            .proven(),
-    )
-
-private fun HostedResponse.publishEncodedPage(
-    page: io.github.amichne.kast.query.protocol.QueryPublishedPage,
-    published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
-): HostedResponse {
-    if (this is HostedResponse.Canonical<*, *, *>) published?.invoke(encodedPublication(page, this))
-    return this
-}

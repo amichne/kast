@@ -225,7 +225,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference."
+            "description": "Copy the issued exact-symbol reference unchanged."
           },
           "minItems": 1,
           "maxItems": 1000
@@ -692,7 +692,7 @@
           "maximum": 2147483647
         },
         "maxReturnedBytes": {
-          "description": "Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
+          "description": "Query minimum: 4096 UTF-8 bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
           "type": [
             "integer",
             "null"
@@ -816,7 +816,7 @@
       ],
       "minimum": 0,
       "maximum": 1000000,
-      "description": "Optional offset in the retained result's evidence. It is independent of the row presentation cursor and performs no semantic execution. Omission or null preserves the existing evidence presentation."
+      "description": "Presentation offset in retained evidence, including deferred summaries. DEFERRED_DETAIL does not mean detail delivery. READ_RESULT.detail reads selected fragments without semantic replay."
     },
     "ResultSource": {
       "type": "object",
@@ -1006,6 +1006,16 @@
               "type": "null"
             }
           ]
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DetailSelector"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1014,7 +1024,8 @@
         "cursor",
         "output",
         "executionBudget",
-        "evidence_cursor"
+        "evidence_cursor",
+        "detail"
       ],
       "additionalProperties": false,
       "description": "Present an immutable retained result, starting at the supplied result cursor; this performs no query evaluation."
@@ -3244,6 +3255,75 @@
         null
       ],
       "description": "RUNNER_CONTROLLED is the default. It runs until completion, caller cancellation, or an explicit maxElapsedMs timeout, without semantic work quotas. BOUNDED is an explicit legacy opt-in."
+    },
+    "DetailSection": {
+      "type": "string",
+      "enum": [
+        "CANONICAL_ENTRY_JSON"
+      ]
+    },
+    "DetailSelector": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/ResultReference"
+        },
+        "section": {
+          "$ref": "#/$defs/DetailSection"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "ROW",
+            "EVIDENCE"
+          ]
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "EXACT_SYMBOL",
+            "OCCURRENCE",
+            "REFERENCE_OCCURRENCE",
+            "TRAVERSAL_RECORD",
+            "BINDING_ROW",
+            "VALUE_PATH",
+            "IMPACT_WITNESS",
+            "FAILURE",
+            "OMISSION",
+            "WALK_OBSERVATION",
+            "REFERENCE_OBSERVATION",
+            "DISCOVERY_OBSERVATION",
+            "RELATION_OBSERVATION"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "result",
+        "section",
+        "target",
+        "ordinal",
+        "kind",
+        "sha256",
+        "offset"
+      ],
+      "additionalProperties": false
     }
   }
 }

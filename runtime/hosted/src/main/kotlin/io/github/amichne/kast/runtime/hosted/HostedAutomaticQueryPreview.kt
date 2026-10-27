@@ -7,7 +7,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.QueryPreviewDocument
-import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.presentationPrefix
 import io.github.amichne.kast.protocol.contract.presentationUnitCount
@@ -46,7 +45,7 @@ private class HostedAutomaticQueryPreview(
     private val maximumBytes: ReturnedByteLimit,
     private val published: ((QueryPublicationPageCharge.Encoded) -> Unit)?,
 ) {
-    private val original = boundedRows(evidence.payload)
+    private var original = boundedRows(evidence.payload)
     private val invocation = original.invocation
 
     private fun boundedRows(payload: QueryRunResult): QueryRunResult =
@@ -68,20 +67,12 @@ private class HostedAutomaticQueryPreview(
                     return semantic to HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
             }
         val rows = window.items.values
-        val bytes =
-            CanonicalQueryCliDocuments.symbolPreviewBytes(rows.filterIsInstance<QueryResultItemDocument.ExactSymbol>())
+        val bytes = CanonicalQueryCliDocuments.previewBytes(rows)
         val preview = invocation?.let {
             if (rows.size == it.accumulatedRowCount) QueryPreviewDocument.Inline(rows.size, bytes)
             else QueryPreviewDocument.Prefix(rows.size, bytes)
         }
-        val evidenceWindow =
-            original.evidenceWindow?.let {
-                when (val selected = it.prefix(window.presentationUnitCount - rows.size)) {
-                    is Refinement.Refined -> selected.value
-                    is Refinement.Rejected ->
-                        return semantic to HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
-                }
-            }
+        val evidenceWindow = window.evidenceWindow
         val payload =
             window.copy(
                 evidenceWindow = evidenceWindow,
@@ -104,7 +95,47 @@ private class HostedAutomaticQueryPreview(
             HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, page, limits, maximumBytes)
     }
 
+    private fun prepareDeferrals() {
+        if (original.retention !is io.github.amichne.kast.protocol.contract.QueryResultRetention.Retained) return
+        deferOversizedRows()
+        deferOversizedEvidence()
+        if (original.presentationUnitCount > 0 && encode(1).second is HostedResponse.Oversized) deferFirstUnit()
+    }
+
+    private fun deferOversizedRows() {
+        for (index in original.items.values.indices) {
+            if (
+                io.github.amichne.kast.protocol.wire.QueryEntryDetailSerialization.row(original.items.values[index])
+                    .text
+                    .toByteArray(Charsets.UTF_8)
+                    .size > maximumBytes.value
+            )
+                original = original.deferredRow(index)
+        }
+    }
+
+    private fun deferOversizedEvidence() {
+        val count = original.presentationUnitCount - original.items.values.size
+        for (index in count - 1 downTo 0) {
+            val entry = io.github.amichne.kast.protocol.wire.QueryEntryDetailSerialization.evidence(original, index)
+            if (entry is Refinement.Refined && entry.value.text.toByteArray(Charsets.UTF_8).size > maximumBytes.value)
+                original = original.deferredEvidence(index, entry.value)
+        }
+    }
+
+    private fun deferFirstUnit() {
+        if (original.items.values.isNotEmpty()) {
+            original = original.deferredRow(0)
+            return
+        }
+        val start = original.evidenceWindow?.start?.value ?: 0
+        if (original.deferredEvidence.values.any { it.selector.ordinal.value == start }) return
+        val first = io.github.amichne.kast.protocol.wire.QueryEntryDetailSerialization.evidence(original, 0)
+        if (first is Refinement.Refined) original = original.deferredEvidence(0, first.value)
+    }
+
     fun fit(): HostedResponse {
+        prepareDeferrals()
         // A retained read must advance a cursor; an initial invocation may return an empty preview.
         val minimumPrefix = if (invocation == null && original.presentationUnitCount > 0) 1 else 0
         var lower = minimumPrefix

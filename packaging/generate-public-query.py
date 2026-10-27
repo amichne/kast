@@ -7,10 +7,12 @@ It does not generate semantic admission or compiler authority.
 """
 from __future__ import annotations
 import argparse
+import copy
+from collections import Counter
 import json
 import re
 from pathlib import Path
-from query_delivery_contract import MODULE as DELIVERY_MODULE, SCHEMA as DELIVERY_SCHEMA, embed_contract, render_contract
+from query_delivery_contract import MODULE as DELIVERY_MODULE, SCHEMA as DELIVERY_SCHEMA, SEMANTIC_KOTLIN, PRESENTATION_SCHEMA, embed_contract, render_contract, render_semantic_kotlin, render_presentation_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query'
@@ -219,6 +221,108 @@ def referenced_schema(root: dict, definitions: dict) -> dict:
                 visit(value)
     visit(root)
     return dict(root, **({'$defs': {name: schema for name, schema in definitions.items() if name in reached}} if reached else {}))
+
+
+def inline_single_use_schema_leaves(schema: dict) -> dict:
+    """Substitute exact finite single-use nodes without duplicate expansion or changed constraints."""
+    definitions = schema.get('$defs', {})
+
+    def references(node):
+        counts = Counter()
+        def visit(value):
+            if isinstance(value, list):
+                for child in value:
+                    visit(child)
+            elif isinstance(value, dict):
+                if '$ref' in value:
+                    counts[value['$ref']] += 1
+                for child in value.values():
+                    visit(child)
+        visit(node)
+        return counts
+
+    inbound = references(schema)
+    selected = {name for name, definition in definitions.items()
+                if not references(definition) and inbound['#/$defs/' + name] == 1}
+
+    def rewrite(node):
+        if isinstance(node, list):
+            return [rewrite(child) for child in node]
+        if isinstance(node, dict):
+            reference = node.get('$ref')
+            name = reference[8:] if isinstance(reference, str) and reference.startswith('#/$defs/') else None
+            if name in selected:
+                if set(node) != {'$ref'}:
+                    raise ValueError('Single-use schema reference has unsupported sibling constraints')
+                return copy.deepcopy(definitions[name])
+            return {key: rewrite(child) for key, child in node.items()}
+        return node
+
+    result = rewrite(schema)
+    remaining = references(result)
+    for name in selected:
+        if remaining['#/$defs/' + name] == 0:
+            del result['$defs'][name]
+    return result
+
+
+def common_query_schema(authority: dict, *, strict: bool, minimum_bytes: int) -> dict:
+    """Select a closed canonical subset before reference collection and projection."""
+    policy = authority['catalogs']['COMMON']
+    definitions = copy.deepcopy(authority['$defs'])
+    for owner, variants in policy['variants'].items():
+        available = {branch.get('$ref', '').split('/')[-1] for branch in definitions[owner]['anyOf']}
+        if not variants or len(variants) != len(set(variants)) or not set(variants) <= available:
+            raise ValueError(f'Unknown or duplicate common catalog variant: {owner}')
+        definitions[owner]['anyOf'] = [
+            branch for branch in definitions[owner]['anyOf']
+            if branch.get('$ref', '').split('/')[-1] in variants or branch.get('type') == 'null'
+        ]
+    budget = definitions['ExecutionBudget']
+    budget['properties'] = {name: value for name, value in budget['properties'].items()
+                            if name in policy['outputControls']}
+    definitions['ExecutionMode']['enum'] = ['RUNNER_CONTROLLED', None]
+    # A syntactically recognized family is necessary, but issued authority stays with the native owner.
+    definitions['ReferenceSource']['properties']['symbolRefs']['items']['pattern'] = r'^exact:v[1-9][0-9]*:'
+    query = next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
+    schema = referenced_schema(query['schema'], definitions)
+    def compact(node):
+        if isinstance(node, list):
+            return [compact(child) for child in node]
+        if isinstance(node, dict):
+            return {key: compact(child) for key, child in node.items() if key not in {'description', 'title', 'default'}}
+        return node
+    projected = project(compact(schema), strict=strict)
+    projected['$defs']['ExecutionBudget']['properties']['maxReturnedBytes']['description'] = (
+        f'Query minimum: {minimum_bytes} UTF-8 bytes.'
+    )
+    # Local definition names carry no wire meaning. Keep concise semantic names in eager declarations.
+    names = {
+        'SearchSource': 'Search', 'LocationSource': 'Location', 'ReferenceSource': 'ExactRefs',
+        'RunAction': 'Run', 'ResumeAction': 'Resume', 'ReadSourceAction': 'ReadSource',
+        'ReadResultOutput': 'ReadOutput', 'SymbolsOutput': 'Symbols', 'OccurrencesOutput': 'Occurrences',
+        'ExpandRelation': 'Relation', 'DirectoryScope': 'Directory', 'PackageScope': 'Package',
+        'ResultReference': 'ResultRef', 'ResultCursor': 'RowCursor', 'ExecutionContinuation': 'OutputRef',
+        'SourceCandidateReference': 'SourceRef', 'SourceText': 'Text', 'SourceTextComplete': 'FullText',
+        'SourceTextNone': 'NoText', 'SourceTextWindow': 'TextWindow', 'SourceTextExcerpt': 'TextExcerpt',
+        'DetailSelector': 'Detail', 'DetailSection': 'Section', 'TerminalStep': 'Terminal',
+        'ExpansionScope': 'Expansion',
+    }
+    if len(set(names.get(name, name) for name in projected['$defs'])) != len(projected['$defs']):
+        raise ValueError('Common schema definition aliases collide')
+    def rename(node):
+        if isinstance(node, list):
+            return [rename(child) for child in node]
+        if isinstance(node, dict):
+            result = {key: rename(child) for key, child in node.items()}
+            if '$ref' in result:
+                original = result['$ref'].split('/')[-1]
+                result['$ref'] = '#/$defs/' + names.get(original, original)
+            return result
+        return node
+    result = rename(projected)
+    result['$defs'] = {names.get(name, name): value for name, value in result['$defs'].items()}
+    return inline_single_use_schema_leaves(result)
 
 
 def render_tools(authority: dict) -> dict[Path, str]:
@@ -436,6 +540,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
                       'package io.github.amichne.kast.protocol.registry\n\n',
                       'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
                       f'const val PUBLIC_TOOL_CONTRACT_VERSION = {authority["contractVersion"]}\n',
+                      'enum class PublicToolCatalog { COMMON, COMPLETE }\n\n',
+                      'const val PUBLIC_COMMON_QUERY_DESCRIPTION =\n    ' + kotlin_description_literals(authority['catalogs']['COMMON']['description']) + '\n\n',
                       'const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = ' + json.dumps(authority['namespaceDescription']) + '\n\n',
                       '/** Closed presentation identities; canonical operations retain effect and budget ownership. */\n',
                       'enum class PublicToolIdentity(\n'
@@ -453,7 +559,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
             f'        HostedToolLoading.{"DEFERRED" if tool["deferLoading"] else "EAGER"},\n'
             '    ),\n'
         )
-    identity_lines.append('}\n')
+    identity_lines.append('''    ;
+
+    fun descriptionFor(catalog: PublicToolCatalog): String =
+        if (this == QUERY_SYMBOLS && catalog == PublicToolCatalog.COMMON) PUBLIC_COMMON_QUERY_DESCRIPTION
+        else description
+}
+''')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt'] = ''.join(identity_lines)
     support_lines = [
         '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
@@ -487,8 +599,21 @@ def render_tools(authority: dict) -> dict[Path, str]:
     failures = [entry.strip() for entry in failure_match.group(1).split(',') if entry.strip()]
     if not failures or len(failures) != len(set(failures)):
         raise ValueError('ToolRpcFailure must have unique finite entries')
+    minimum_owner = ROOT / 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/PublicQueryOutputMinimum.kt'
+    minimum_match = re.search(r'const val PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES = ([0-9]+)L', minimum_owner.read_text())
+    if minimum_match is None:
+        raise ValueError('Public output minimum must have one numeric protocol owner')
+    minimum_bytes = int(minimum_match.group(1))
+    definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'] = (
+        definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description']
+        .replace('{PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES}', str(minimum_bytes))
+    )
     contract = render_contract(json.loads(DELIVERY_SCHEMA.read_text()))
     outputs[DELIVERY_MODULE] = contract + 'export { admitQueryDeliveryEnvelope, createQueryDeliveryEnvelope, encodeQueryDeliveryEnvelope };\n'
+    outputs[SEMANTIC_KOTLIN] = render_semantic_kotlin(json.loads(DELIVERY_SCHEMA.read_text()))
+    outputs[PRESENTATION_SCHEMA] = render_presentation_schema(json.loads(DELIVERY_SCHEMA.read_text()), referenced_schema(
+        {'type': 'object', 'required': ['request'], 'additionalProperties': False,
+         'properties': {'request': {'$ref': '#/$defs/ReadResultAction'}}}, definitions))
     delivery_owner = ROOT / 'cli/src/main/js/query-delivery.mjs'
     delivery = embed_contract(delivery_owner.read_text(), contract).rstrip()
     outputs[delivery_owner] = delivery + '\n'
@@ -537,6 +662,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
     if (keys(value, ["type", "failure"])) return true;
     if (!keys(value, ["type", "failure", "detail"]) || !object(value.detail) || typeof value.detail.type !== "string") return false;
     const detail = value.detail;
+    if (detail.type === "OUTPUT_ALLOWANCE_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
+      keys(detail, ["type", "minimumBytes"]) && detail.minimumBytes === PUBLIC_OUTPUT_MINIMUM;
+    if (detail.type === "DETAIL_SELECTOR_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
+      keys(detail, ["type", "rule"]) && ["SAME_RETAINED_RESULT", "DETAIL_TARGET_KIND", "DETAIL_CURSOR_CONTROL"].includes(detail.rule);
     if (detail.type === "REQUEST_CONSTRAINT_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
       keys(detail, ["type", "parameters", "rule", "remedies"]) && detail.rule === "RUNNER_CONTROLLED_WORK_LIMIT" &&
       Array.isArray(detail.parameters) && detail.parameters.length === 2 &&
@@ -559,6 +688,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
   // The canonical document stays opaque here. The Kotlin RPC admits its owning schema.
   return keys(value, ["type", "document"]) && ["complete", "qualified", "rejected_document"].includes(value.type) && object(value.document);
 }'''
+        admission = admission.replace('PUBLIC_OUTPUT_MINIMUM', str(minimum_bytes))
         if relative == 'pi/extension.ts':
             admission = admission.replace('function isToolResult(value) {',
                                           'function isToolResult(value: unknown): value is ToolRpcResult {')
@@ -573,6 +703,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
             result_type = '''type ToolRpcResult =
   | { type: "complete" | "qualified" | "rejected_document"; document: Record<string, unknown> }
   | { type: "rejected"; failure: (typeof TOOL_RPC_FAILURES)[number]; detail?: never }
+  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: { type: "OUTPUT_ALLOWANCE_REJECTED"; minimumBytes: number } }
+  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: { type: "DETAIL_SELECTOR_REJECTED"; rule: "SAME_RETAINED_RESULT" | "DETAIL_TARGET_KIND" | "DETAIL_CURSOR_CONTROL" } }
   | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: {
       type: "REQUEST_CONSTRAINT_REJECTED";
       parameters: ["executionMode", "executionBudget.maxWorkUnits"] | ["executionBudget.maxWorkUnits", "executionMode"];
@@ -633,6 +765,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
             ], indent=2) + '\n'
             outputs[reference / 'onboarding.md'] = render_onboarding(authority)
             outputs[reference / 'query-row-compatibility.md'] = render_row_compatibility(authority)
+            outputs.update(render_query_topics(authority, minimum_bytes))
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
     outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(
@@ -640,6 +773,93 @@ def render_tools(authority: dict) -> dict[Path, str]:
         indent=2,
     ) + '\n'
     outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'
+    common = common_query_schema(authority, strict=False, minimum_bytes=minimum_bytes)
+    common_strict = common_query_schema(authority, strict=True, minimum_bytes=minimum_bytes)
+    outputs[RESOURCES / 'query_symbols.common.parameters.json'] = json.dumps(common, indent=2) + '\n'
+    outputs[RESOURCES / 'query_symbols.common.openai-parameters.json'] = json.dumps(common_strict, indent=2) + '\n'
+    query = next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
+    outputs[RESOURCES / 'query_symbols.common.examples.json'] = json.dumps({
+        'examples': {name: query['examples'][name] for name in authority['catalogs']['COMMON']['examples']},
+        'invalidExamples': {},
+    }, indent=2) + '\n'
+    common_registrations = copy.deepcopy(registrations)
+    common_responses = copy.deepcopy(responses)
+    for tool in common_registrations:
+        if tool['name'] == 'query_symbols':
+            tool.update(inputSchema=common, description=authority['catalogs']['COMMON']['description'])
+    for tool in common_responses:
+        if tool['name'] == 'kast_query_symbols':
+            tool.update(parameters=common_strict, description=authority['catalogs']['COMMON']['description'])
+    outputs[RESOURCES / 'tools.common.app-server.json'] = json.dumps(
+        dict(type='namespace', name='kast', description=authority['namespaceDescription'], tools=common_registrations), indent=2) + '\n'
+    outputs[RESOURCES / 'tools.common.responses.json'] = json.dumps(common_responses, indent=2) + '\n'
+    outputs[ROOT / 'agent-tools/references/query-common-schema.json'] = json.dumps(common, separators=(',', ':')) + '\n'
+    return outputs
+
+
+def render_query_topics(authority: dict, minimum_bytes: int) -> dict[Path, str]:
+    """Project focused help from canonical examples and metadata, without expanding refs."""
+    query = next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
+    definitions = authority['$defs']
+    root = ROOT / 'agent-tools/references'
+    topics = {
+        'declarations': ('scopedInterfaceDeclaration', ['SearchSource', 'SymbolsOutput'], 'None', 'Exact symbols', 'Select the exact owner, file, and signature. Read exact-selection.md.'),
+        'exact-selection': ('containingDeclaration', ['LocationSource'], 'None for AT_LOCATION. SYMBOL_REFS needs issued exact symbols', 'Exact symbols with identity and location', 'Reuse the issued exact ref unchanged. Read relations.md.'),
+        'relations': ('referenceOccurrences', ['ExpandRelation', 'OccurrencesOutput'], 'Issued exact symbols in SYMBOL_REFS', 'Occurrences and source selectors', 'Read selected source. Keep the result with `retention=RETAIN`.'),
+        'trace': ('traceAffectedUses', ['Trace', 'SymbolsOutput'], 'Issued exact symbols in SYMBOL_REFS', 'Grouped symbols, connections, and occurrences', 'Preserve completion and omissions. Read retained-evidence.md.'),
+        'retained-evidence': ('readRetained', ['ReadResultAction'], 'Issued result reference and its cursors', 'Presentation pages on the original basis', 'Use returned cursors with the same result. Never replay RUN to recover evidence.'),
+        'source-reads': ('readSourceExactSymbol', ['ReadSourceAction'], 'Issued candidate, exact symbol, or source selector', 'Source text and region identity', 'Preserve freshness failures. A window does not prove complete source.'),
+    }
+    outputs = {}
+    index = ['# Query topics', '', 'Read one named topic before its operation.', '',
+             'Examples contain illustrative references. Only issued references grant authority.', '',
+             'COMMON exposes one subset of the query grammar. Select COMPLETE explicitly for advanced operations.',
+             'A session keeps its catalog. Deferred clients can select COMPLETE.', '']
+    index.extend([f'Public output budgets need at least {minimum_bytes} UTF-8 bytes.', ''])
+    for name, (example, owners, references, capabilities, next_actions) in topics.items():
+        lines = ['# ' + name, '', query['examples'][example]['summary'], '',
+                 '```json', json.dumps(query['examples'][example]['value'], separators=(',', ':')), '```', '',
+                 'Accepted references: ' + references + '.',
+                 'Returned capabilities: ' + capabilities + '.',
+                 'Legal next actions: ' + next_actions, '', 'Canonical choices and defaults:']
+        if name == 'retained-evidence':
+            lines[lines.index('Canonical choices and defaults:'):lines.index('Canonical choices and defaults:')] = [
+                'The evidence cursor advances over presentation positions, including summaries.',
+                'A deferred summary does not deliver its evidence.',
+                '`DEFERRED_DETAIL` means that detail remains unread after presentation ends.',
+                'Copy the issued selector into `READ_RESULT.detail`.', '',
+                'Detail offsets, ends, and totals count UTF-16 code units in the canonical entry.',
+                'SHA-256 covers the complete serialized entry as UTF-8 bytes.', '',
+                '```json', json.dumps(query['examples']['readRetainedDetail']['value'], separators=(',', ':')), '```', '',
+            ]
+        for owner in owners:
+            node = definitions[owner]
+            for field, prop in node.get('properties', {}).items():
+                choices = prop.get('items', prop).get('enum')
+                if choices is not None or 'default' in prop:
+                    facts = []
+                    if choices is not None:
+                        facts.append('choices: `' + json.dumps(choices, separators=(',', ':')) + '`')
+                    if 'default' in prop:
+                        facts.append('default: `' + json.dumps(prop['default']) + '`')
+                    lines.append('- `' + owner + '.' + field + '`: ' + ', '.join(facts) + '.')
+        lines.extend(['', 'COMMON outputs: `SYMBOLS`, `OCCURRENCES`. TRACE accepts `SYMBOLS` only.', '',
+                      'Read `../query-schema.json` for complete shapes and constraints.'])
+        content = '\n'.join(lines) + '\n'
+        if len(content.encode('utf-8')) > 4096:
+            raise ValueError(f'Query topic exceeds 4096 UTF-8 bytes: {name}')
+        outputs[root / 'query-topics' / (name + '.md')] = content
+        index.append(f'- [{name}](query-topics/{name}.md)')
+    index.extend(['', 'Advanced example addresses:'])
+    for name, example in query['examples'].items():
+        if name not in {item[0] for item in topics.values()}:
+            relative = 'query-topics/advanced/' + name + '.md'
+            content = '# `' + name + '`\n\n' + example['summary'] + '\n\n```json\n' + json.dumps(example['value'], separators=(',', ':')) + '\n```\n'
+            if len(content.encode('utf-8')) > 4096:
+                raise ValueError(f'Advanced query topic needs named semantic sections: {name}')
+            outputs[root / relative] = content
+            index.append(f'- [`{name}`]({relative})')
+    outputs[root / 'query-topics.md'] = '\n'.join(index) + '\n'
     return outputs
 
 

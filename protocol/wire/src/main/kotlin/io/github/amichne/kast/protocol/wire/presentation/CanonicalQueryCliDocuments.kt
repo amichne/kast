@@ -5,13 +5,10 @@ package io.github.amichne.kast.protocol.wire.presentation
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
-import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ImpactPresentationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
-import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
-import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRowWindowDocument
@@ -20,9 +17,9 @@ import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
-import io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions
 import io.github.amichne.kast.protocol.contract.budgetPresence
 import io.github.amichne.kast.protocol.contract.continuationToken
+import io.github.amichne.kast.protocol.contract.originalEvidenceSummaryDocument
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.contract.terminalReason
@@ -122,6 +119,9 @@ object CanonicalQueryCliDocuments {
 private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?): CanonicalJsonDocument =
     completeFactory.create(
         QueryCompleteCliDocument(
+            originalEvidenceSummary = result.originalEvidenceSummaryDocument,
+            deferredEvidence = result.deferredEvidence.values,
+            detail = result.detail,
             interpretation = result.interpretation,
             question = result.question,
             impactAccounting = result.impactAccounting,
@@ -156,6 +156,9 @@ private fun projectQualified(
 ): CanonicalJsonDocument =
     qualifiedFactory.create(
         QueryQualifiedCliDocument(
+            originalEvidenceSummary = result.originalEvidenceSummaryDocument,
+            deferredEvidence = result.deferredEvidence.values,
+            detail = result.detail,
             interpretation = result.interpretation,
             question = result.question,
             impactAccounting = result.impactAccounting,
@@ -191,119 +194,6 @@ private fun projectQualified(
         )
     )
 
-@Serializable
-private data class QueryCompleteCliDocument(
-    @kotlinx.serialization.Transient val originalItems: List<QueryResultItemDocument> = emptyList(),
-    @kotlinx.serialization.Transient
-    val presentationOutput: io.github.amichne.kast.protocol.contract.QueryOutputDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("relation_graph")
-    val relationGraph: QueryRelationGraphCliDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
-        io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("evidence_window")
-    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
-    val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
-    @SerialName("impact_accounting")
-    val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
-    val operation: QueryCliOperation,
-    val status: QueryCompleteCliStatus,
-    val items: List<QueryResultItemCliDocument>,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val failures: List<QueryItemFailureCliDocument>? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val omissions: List<QueryRelationOmissionCliDocument>? = null,
-    @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
-    @SerialName("reference_observations") val referenceObservations: List<RelationReferenceOccurrenceWireDocument>,
-    @SerialName("discovery_observations") val discoveryObservations: List<QueryDiscoveryObservationCliDocument>,
-    @SerialName("relation_observations")
-    val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
-    val retention: QueryResultRetention,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("row_window")
-    val rowWindow: QueryRowWindowDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("next_cursor")
-    val nextCursor: QueryResultCursor? = null,
-    val coverage: QueryCoverageCliDocument,
-    @SerialName("page_progress") val pageProgress: QueryPageProgressCliDocument,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("execution_budget")
-    val executionBudget: ExecutionBudgetReport? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @kotlinx.serialization.SerialName("reference_acquisitions")
-    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val live: LiveReadCliEvidence? = null,
-)
-
-@Serializable
-private data class QueryQualifiedCliDocument(
-    @kotlinx.serialization.Transient val originalItems: List<QueryResultItemDocument> = emptyList(),
-    @kotlinx.serialization.Transient
-    val presentationOutput: io.github.amichne.kast.protocol.contract.QueryOutputDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("relation_graph")
-    val relationGraph: QueryRelationGraphCliDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
-        io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val invocation: io.github.amichne.kast.protocol.contract.QueryInvocationDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("evidence_window")
-    val evidenceWindow: io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument? = null,
-    val question: io.github.amichne.kast.protocol.contract.QueryQuestionDocument,
-    @SerialName("impact_accounting")
-    val impactAccounting: io.github.amichne.kast.protocol.contract.ImpactAccountingDocument,
-    val operation: QueryCliOperation,
-    val status: QueryQualifiedCliStatus,
-    val items: List<QueryResultItemCliDocument>,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val failures: List<QueryItemFailureCliDocument>? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val omissions: List<QueryRelationOmissionCliDocument>? = null,
-    @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
-    @SerialName("reference_observations") val referenceObservations: List<RelationReferenceOccurrenceWireDocument>,
-    @SerialName("discovery_observations") val discoveryObservations: List<QueryDiscoveryObservationCliDocument>,
-    @SerialName("relation_observations")
-    val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
-    val retention: QueryResultRetention,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("row_window")
-    val rowWindow: QueryRowWindowDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("next_cursor")
-    val nextCursor: QueryResultCursor? = null,
-    val coverage: QueryCoverageCliDocument,
-    @SerialName("page_progress") val pageProgress: QueryPageProgressCliDocument,
-    val qualification: QueryQualificationCliDocument,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(
-        minimumLength = 1,
-        maximumLength = MAXIMUM_QUERY_CLI_TEXT_LENGTH,
-    )
-    val continuation: String? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("terminal_reason")
-    val terminalReason:
-        @Serializable(with = QueryTerminalReasonCliSerializer::class)
-        io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument? =
-        null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("execution_budget")
-    val executionBudget: ExecutionBudgetReport? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @kotlinx.serialization.SerialName("reference_acquisitions")
-    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val live: LiveReadCliEvidence? = null,
-)
-
 @Serializable data class QueryCoverageCliDocument(val exhaustive: Boolean)
 
 @Serializable
@@ -315,17 +205,6 @@ private data class QueryRejectedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
-)
-
-@Serializable
-private data class QueryQualificationCliDocument(
-    val knownMinimum: Int,
-    val limitations:
-        List<
-            @Serializable(with = QueryLimitationCliSerializer::class)
-            io.github.amichne.kast.protocol.contract.QueryLimitationDocument
-        >,
-    val progress: QueryQualifiedProgressDocument,
 )
 
 private val completeFactory =
@@ -352,8 +231,6 @@ private val qualifiedFactory =
             )
     }
 private val rejectedFactory = CanonicalJsonDocument.generated(QueryRejectedCliDocument.serializer())
-
-private const val MAXIMUM_QUERY_CLI_TEXT_LENGTH = 1_048_576
 
 private fun QueryCompleteCliDocument.compactGraph(): QueryCompleteCliDocument {
     val retained = retention as? QueryResultRetention.Retained ?: return this

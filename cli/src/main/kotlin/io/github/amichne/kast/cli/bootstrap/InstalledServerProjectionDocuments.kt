@@ -225,6 +225,16 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                     io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
                         .callableObservationSerializer
                 ),
+            "queryQuestion" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.QueryQuestionDocument.serializer()),
+            "queryOriginalEvidenceSummary" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument.serializer()
+                ),
+            "queryEntryDetailSelector" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument.serializer()
+                ),
             "queryResultItem" to queryResultItemSchema(),
             "localDeclarationAddress" to
                 generatedOutputSchema(
@@ -363,6 +373,9 @@ internal fun changeFilePreviewsSchema(): JsonObject =
 
 private val queryRunDocumentSchema: JsonObject by lazy {
     unionSchema(
+        generatedOutputSchema(
+            io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument.serializer()
+        ),
         generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.completeSerializer
         ),

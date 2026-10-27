@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.schema.*
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -42,6 +43,10 @@ enum class PublicToolParameter(val path: String) {
     TERMINAL_STEP("terminalStep"),
     EXECUTION_MODE("executionMode"),
     EXECUTION_BUDGET_MAX_WORK_UNITS("executionBudget.maxWorkUnits"),
+    EXECUTION_BUDGET_MAX_RETURNED_BYTES("executionBudget.maxReturnedBytes"),
+    DETAIL_RESULT("detail.result"),
+    DETAIL_KIND("detail.kind"),
+    DETAIL_CURSOR("detail.ordinal"),
 }
 
 @Serializable
@@ -56,6 +61,13 @@ enum class PublicToolRule(val correction: String) {
     RUNNER_CONTROLLED_WORK_LIMIT(
         "RUNNER_CONTROLLED does not accept maxWorkUnits; remove executionBudget.maxWorkUnits or select BOUNDED."
     ),
+    OUTPUT_CONTROL_ALLOWANCE(
+        "maxReturnedBytes must be at least $PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES bytes. " +
+            "Smaller requests use the protocol control allowance."
+    ),
+    SAME_RETAINED_RESULT("Use the detail selector with its original retained result."),
+    DETAIL_TARGET_KIND("Use a row kind for ROW or an evidence kind for EVIDENCE."),
+    DETAIL_CURSOR_CONTROL("Use detail.ordinal for detail reads. Omit cursor and evidence_cursor."),
 }
 
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */
@@ -73,6 +85,7 @@ sealed interface PublicToolCanonical {
 class AdmittedPublicTool
 private constructor(
     val identity: PublicToolIdentity,
+    val catalog: PublicToolCatalog,
     val canonical: PublicToolCanonical,
     internal val syntax: PublicToolDocument,
 ) : OperationRequest {
@@ -82,8 +95,9 @@ private constructor(
         internal fun admit(
             identity: PublicToolIdentity,
             raw: ValidatedJsonValue,
+            catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
         ): Refinement<AdmittedPublicTool, PublicToolInputFailure> {
-            if (raw.schemaDigest != PublicToolContract.schema(identity).digest) {
+            if (raw.schemaDigest != PublicToolContract.schema(identity, catalog).digest) {
                 return Refinement.Rejected(PublicToolInputFailure.SchemaMismatch)
             }
             val syntax =
@@ -92,6 +106,8 @@ private constructor(
                 } catch (_: SerializationException) {
                     return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
                 }
+            val outputAllowance = syntax.admitOutputAllowance()
+            if (outputAllowance is Refinement.Rejected) return outputAllowance
             return when (val lowered = syntax.lower()) {
                 is Refinement.Rejected -> lowered
                 is Refinement.Refined -> {
@@ -121,11 +137,36 @@ private constructor(
                     } catch (_: SerializationException) {
                         return Refinement.Rejected(PublicToolInputFailure.SyntaxRejected)
                     }
-                    Refinement.Refined(AdmittedPublicTool(identity, lowered.value, syntax))
+                    Refinement.Refined(AdmittedPublicTool(identity, catalog, lowered.value, syntax))
                 }
             }
         }
     }
+}
+
+private fun PublicToolDocument.admitOutputAllowance(): Refinement<Unit, PublicToolInputFailure> {
+    val budget =
+        when (this) {
+            is PublicToolQuerySymbols ->
+                when (val action = request) {
+                    is PublicToolRunAction -> action.executionBudget
+                    is PublicToolResumeAction -> action.executionBudget
+                    is PublicToolReadResultAction -> action.executionBudget
+                    is PublicToolReadSourceAction -> action.executionBudget
+                }
+            is PublicToolCheckDiagnostics,
+            is PublicToolAddDeclaration,
+            is PublicToolReplaceBody -> null
+        }
+    val bytes = budget?.maxReturnedBytes
+    return if (bytes != null && bytes < PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES)
+        Refinement.Rejected(
+            PublicToolInputFailure.Parameter(
+                PublicToolParameter.EXECUTION_BUDGET_MAX_RETURNED_BYTES,
+                PublicToolRule.OUTPUT_CONTROL_ALLOWANCE,
+            )
+        )
+    else Refinement.Refined(Unit)
 }
 
 object PublicToolContract {
@@ -135,6 +176,11 @@ object PublicToolContract {
         explicitNulls = true
         encodeDefaults = true
     }
+    private val commonEncodingJson =
+        Json(json) {
+            explicitNulls = false
+            encodeDefaults = false
+        }
 
     private val parametersByIdentity by lazy {
         PublicToolIdentity.entries.associateWith { identity ->
@@ -151,6 +197,20 @@ object PublicToolContract {
         }
     }
 
+    private val commonParameters by lazy { readQuerySchema("query_symbols.common.parameters.json") }
+    private val commonGenerationParameters by lazy { readQuerySchema("query_symbols.common.openai-parameters.json") }
+    private val commonSchema by lazy {
+        when (val compiled = NetworkntJsonSchemaCompiler.compile(commonParameters)) {
+            is Refinement.Refined -> compiled.value
+            is Refinement.Rejected -> error("Invalid packaged common query schema")
+        }
+    }
+
+    private fun readQuerySchema(resource: String): JsonObject =
+        requireNotNull(javaClass.getResourceAsStream(resource)).bufferedReader(Charsets.UTF_8).use {
+            Json.parseToJsonElement(it.readText()).jsonObject
+        }
+
     private val examplesByIdentity by lazy {
         PublicToolIdentity.entries.associateWith { identity ->
             requireNotNull(javaClass.getResourceAsStream(identity.toolName + ".examples.json"))
@@ -159,9 +219,26 @@ object PublicToolContract {
         }
     }
 
-    fun examples(identity: PublicToolIdentity): PublicToolExamples = examplesByIdentity.getValue(identity)
+    private val commonExamples by lazy {
+        requireNotNull(javaClass.getResourceAsStream("query_symbols.common.examples.json"))
+            .bufferedReader(Charsets.UTF_8)
+            .use { json.decodeFromString(PublicToolExamples.serializer(), it.readText()) }
+    }
 
-    fun generationParameters(identity: PublicToolIdentity): JsonObject = generationByIdentity.getValue(identity)
+    fun examples(
+        identity: PublicToolIdentity,
+        catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    ): PublicToolExamples =
+        if (identity == PublicToolIdentity.QUERY_SYMBOLS && catalog == PublicToolCatalog.COMMON) commonExamples
+        else examplesByIdentity.getValue(identity)
+
+    fun generationParameters(
+        identity: PublicToolIdentity,
+        catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    ): JsonObject =
+        if (identity == PublicToolIdentity.QUERY_SYMBOLS && catalog == PublicToolCatalog.COMMON)
+            commonGenerationParameters
+        else generationByIdentity.getValue(identity)
 
     private val schemas by lazy {
         parametersByIdentity.mapValues { (_, parameters) ->
@@ -172,22 +249,38 @@ object PublicToolContract {
         }
     }
 
-    fun parameters(identity: PublicToolIdentity): JsonObject = parametersByIdentity.getValue(identity)
+    fun parameters(
+        identity: PublicToolIdentity,
+        catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    ): JsonObject =
+        if (identity == PublicToolIdentity.QUERY_SYMBOLS && catalog == PublicToolCatalog.COMMON) commonParameters
+        else parametersByIdentity.getValue(identity)
 
-    internal fun schema(identity: PublicToolIdentity): CompiledJsonSchema = schemas.getValue(identity)
+    internal fun schema(
+        identity: PublicToolIdentity,
+        catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    ): CompiledJsonSchema =
+        if (identity == PublicToolIdentity.QUERY_SYMBOLS && catalog == PublicToolCatalog.COMMON) commonSchema
+        else schemas.getValue(identity)
 
-    fun admit(identity: PublicToolIdentity, raw: JsonElement): Refinement<AdmittedPublicTool, PublicToolInputFailure> =
-        when (val admitted = schema(identity).admit(raw)) {
+    fun admit(
+        identity: PublicToolIdentity,
+        raw: JsonElement,
+        catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    ): Refinement<AdmittedPublicTool, PublicToolInputFailure> =
+        when (val admitted = schema(identity, catalog).admit(raw)) {
             is Validation.Rejected -> Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
-            is Validation.Validated -> admit(identity, admitted.value)
+            is Validation.Validated -> admit(identity, admitted.value, catalog)
         }
 
     internal fun admit(
         identity: PublicToolIdentity,
         raw: ValidatedJsonValue,
-    ): Refinement<AdmittedPublicTool, PublicToolInputFailure> = AdmittedPublicTool.admit(identity, raw)
+        catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    ): Refinement<AdmittedPublicTool, PublicToolInputFailure> = AdmittedPublicTool.admit(identity, raw, catalog)
 
-    fun encode(request: AdmittedPublicTool): JsonElement = encodePublicTool(request.syntax, json)
+    fun encode(request: AdmittedPublicTool): JsonElement =
+        encodePublicTool(request.syntax, if (request.catalog == PublicToolCatalog.COMMON) commonEncodingJson else json)
 }
 
 /** Example values are the exact authored argument documents, not a second input grammar. */

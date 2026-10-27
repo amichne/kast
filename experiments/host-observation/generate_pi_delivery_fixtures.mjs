@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
-const [clientFile,canonicalFile,outputFile]=process.argv.slice(2);
+const [clientFile,canonicalFile,outputFile,mode]=process.argv.slice(2);
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const source=fs.readFileSync(clientFile,'utf8'),canonicalBytes=fs.readFileSync(canonicalFile);
-assert.equal(sha(source),'681d1291a6afabe9614efbdc8d0f12095a421f0ade72fb8e18d7a54fd3b366fd');
-assert.equal(sha(canonicalBytes),'868a92ac907a860b35ea08dee088f25661aa1535c011467786fc2000231705ad');
+if(mode!=='--candidate')assert.equal(sha(source),'681d1291a6afabe9614efbdc8d0f12095a421f0ade72fb8e18d7a54fd3b366fd');
+if(mode!=='--candidate')assert.equal(sha(canonicalBytes),'868a92ac907a860b35ea08dee088f25661aa1535c011467786fc2000231705ad');
 const fixture=JSON.parse(canonicalBytes);
 // Same export-only exposure used by #995's production adapter test; the shared
 // source bytes and owning rules are unchanged. There are no external imports.
@@ -19,7 +19,8 @@ const policy={callTimeoutMillis:100,maxResponseBytes:4194304};
 const cases={};
 async function produce(name,sequence,{cancelAt,loseAt,elapsedPerCall=0}={}) {
   const controller=new AbortController(),requestTypes=[];let time=0,index=0;
-  const result=await client.awaitQueryDelivery(params,async arguments_=>{
+  const requestParams=name==='deadline'?{request:{...params.request,executionMode:'BOUNDED'}}:params;
+  const result=await client.awaitQueryDelivery(requestParams,async arguments_=>{
     const number=index++;
     requestTypes.push(arguments_.request.type);
     if(number>0)assert.ok(['READ_RESULT','RESUME'].includes(arguments_.request.type),'No semantic resubmission');
@@ -46,4 +47,4 @@ await produce('deadline',[fixture.prefix,fixture.rows],{elapsedPerCall:50});
 // The envelope is still produced by the real client, never assembled here.
 const oversized=structuredClone(fixture.prefix);oversized.document.items[0].name='x'.repeat(262145);
 await produce('byteLimitWithoutInitial',[oversized]);
-fs.writeFileSync(outputFile,JSON.stringify({sourceRevision:'36a2e6d256d620cf37a4e7e622ee643d4c38c178',clientSha256:sha(source),canonicalSha256:sha(canonicalBytes),cases})+'\n');
+fs.writeFileSync(outputFile,JSON.stringify({sourceRevision:mode==='--candidate'?'candidate-shared-client-see-clientSha256':'36a2e6d256d620cf37a4e7e622ee643d4c38c178',clientSha256:sha(source),canonicalSha256:sha(canonicalBytes),cases})+'\n');

@@ -262,7 +262,7 @@ class HostedQueryRetainedPresentationTest {
             )
         }
 
-    private data class RetainedFixture(
+    internal data class RetainedFixture(
         val owner: RelationPagingFixture,
         val protocol: CanonicalQueryProtocol,
         val request: QueryRunRequest.Run,
@@ -272,13 +272,18 @@ class HostedQueryRetainedPresentationTest {
         val providerCalls: () -> Int,
     )
 
-    private fun retainedFixture(): RetainedFixture {
-        val owner = RelationPagingFixture.live()
+    internal fun retainedFixture(
+        clock: () -> Long = { 0L },
+        ttlMillis: Long = 60_000,
+        owner: RelationPagingFixture = RelationPagingFixture.live(),
+        connections: List<io.github.amichne.kast.relation.contract.RelationFact> = emptyList(),
+        rowCount: Int = 150,
+    ): RetainedFixture {
         val symbols =
-            List(150) {
-                QuerySymbol(SymbolDescription.from(owner.selector), emptyList())
+            List(rowCount) {
+                QuerySymbol(SymbolDescription.from(owner.selector), connections)
             }
-        val store = QueryStateStore(clock = { 0L })
+        val store = QueryStateStore(clock = clock, ttlMillis = ttlMillis)
         var providerCalls = 0
         val protocol =
             CanonicalQueryProtocol(
@@ -286,7 +291,7 @@ class HostedQueryRetainedPresentationTest {
                     providerCalls++
                     QueryExecutionResult.Complete.create(
                             QueryResult(QueryRows.Symbols.of(symbols), emptyList()),
-                            QueryCoverage.Complete(QueryCount.parse(150).refined()),
+                            QueryCoverage.Complete(QueryCount.parse(rowCount).refined()),
                         )
                         .observedWork(QueryWorkCount.parse(1).refined())
                 },
@@ -324,11 +329,11 @@ class HostedQueryRetainedPresentationTest {
             QueryByteLimit.parse(100_000).refined(),
         )
 
-    private fun retainedPolicy() =
+    internal fun retainedPolicy(retainedBytes: Long = 10_000_000) =
         QueryInvocationPolicy(
             previewRows = ResultLimit.parse(200).refined(),
             previewBytesLimit = QueryByteLimit.parse(100_000).refined(),
-            retainedBytes = QueryByteLimit.parse(10_000_000).refined(),
+            retainedBytes = QueryByteLimit.parse(retainedBytes).refined(),
             previewBytes = CanonicalQueryCliDocuments::previewBytes,
             nanoTime = { 0L },
         )

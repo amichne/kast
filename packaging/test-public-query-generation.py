@@ -7,6 +7,7 @@ import importlib.util
 import json
 import re
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,103 @@ module_spec.loader.exec_module(generator)
 class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
+
+    def test_detail_selector_reuses_typed_authority_in_both_catalogs(self):
+        outputs = generator.render_tools(self.authority)
+        for name in ('query_symbols.parameters.json', 'query_symbols.common.parameters.json'):
+            definitions = json.loads(outputs[generator.RESOURCES / name])['$defs']
+            detail = definitions['ReadResultAction']['properties']['detail']
+            selector = definitions[detail['anyOf'][0]['$ref'].split('/')[-1]]
+            self.assertEqual({'result', 'section', 'target', 'ordinal', 'kind', 'sha256', 'offset'}, set(selector['required']))
+            result = definitions[selector['properties']['result']['$ref'].split('/')[-1]]
+            self.assertEqual(46, result['minLength'])
+            self.assertEqual('^[0-9a-f]{64}$', selector['properties']['sha256']['pattern'])
+
+    def test_common_catalog_is_one_closed_generated_query_projection(self):
+        outputs = generator.render_tools(self.authority)
+        schema = json.loads(outputs[generator.RESOURCES / 'query_symbols.common.parameters.json'])
+        definitions = schema['$defs']
+        self.assertEqual(['SEARCH_DECLARATIONS', 'AT_LOCATION', 'SYMBOL_REFS'],
+                         [definitions.get(value.get('$ref', '').split('/')[-1], value)['properties']['type']['enum'][0]
+                          for value in definitions['Source']['anyOf']])
+        self.assertEqual(['EXPAND_RELATION'], [definitions[value['$ref'].split('/')[-1]]['properties']['type']['enum'][0]
+                         for value in definitions['Step']['anyOf']])
+        self.assertEqual({'maxResults', 'maxReturnedBytes'}, set(definitions['ExecutionBudget']['properties']))
+        self.assertEqual('Query minimum: 4096 UTF-8 bytes.',
+                         definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'])
+        self.assertEqual(['RUNNER_CONTROLLED', None],
+                         definitions['Run']['properties']['executionMode']['anyOf'][0]['enum'])
+        self.assertNotIn('ImpactDeclarationReference', definitions)
+        self.assertNotIn('AllSource', definitions)
+        self.assertLessEqual(len(json.dumps(schema, separators=(',', ':')).encode()), 10_000)
+        catalog = json.loads(outputs[generator.RESOURCES / 'tools.common.app-server.json'])
+        self.assertEqual(1, sum(tool['name'] == 'query_symbols' for tool in catalog['tools']))
+        self.assertEqual(schema, catalog['tools'][0]['inputSchema'])
+
+    def test_single_use_leaf_substitution_preserves_exact_constraints_and_shared_nodes(self):
+        source = {
+            'type': 'object', 'properties': {'one': {'$ref': '#/$defs/Only'},
+                'first': {'$ref': '#/$defs/Shared'}, 'second': {'$ref': '#/$defs/Shared'}},
+            'required': ['one'], 'additionalProperties': False,
+            '$defs': {'Only': {'type': 'string', 'minLength': 2, 'maxLength': 4, 'pattern': '^[a-z]+$'},
+                      'Shared': {'type': 'integer', 'minimum': 1, 'maximum': 3}},
+        }
+        expected = copy.deepcopy(source)
+        expected['properties']['one'] = {'type': 'string', 'minLength': 2, 'maxLength': 4, 'pattern': '^[a-z]+$'}
+        del expected['$defs']['Only']
+        self.assertEqual(expected, generator.inline_single_use_schema_leaves(source))
+        self.assertIn('Only', source['$defs'], 'The generator must not mutate its authority')
+
+    def test_single_use_leaf_substitution_rejects_sibling_constraints(self):
+        source = {'properties': {'value': {'$ref': '#/$defs/Only', 'maxLength': 1}},
+                  '$defs': {'Only': {'type': 'string', 'minLength': 2}}}
+        with self.assertRaisesRegex(ValueError, 'sibling constraints'):
+            generator.inline_single_use_schema_leaves(source)
+
+    def test_common_single_use_leaves_preserve_the_entire_expanded_contract(self):
+        for strict in (False, True):
+            with self.subTest(strict=strict):
+                with patch.object(generator, 'inline_single_use_schema_leaves', side_effect=copy.deepcopy):
+                    before = generator.common_query_schema(self.authority, strict=strict, minimum_bytes=4096)
+                after = generator.common_query_schema(self.authority, strict=strict, minimum_bytes=4096)
+                def expand(node, definitions):
+                    if isinstance(node, list):
+                        return [expand(child, definitions) for child in node]
+                    if isinstance(node, dict):
+                        if '$ref' in node:
+                            self.assertEqual({'$ref'}, set(node), 'No sibling constraints can disappear')
+                            return expand(definitions[node['$ref'][8:]], definitions)
+                        return {key: expand(child, definitions) for key, child in node.items() if key != '$defs'}
+                    return node
+                self.assertEqual(expand(before, before['$defs']), expand(after, after['$defs']))
+                self.assertLess(len(json.dumps(after)), len(json.dumps(before)))
+                self.assertLessEqual(len(json.dumps(after, separators=(',', ':')).encode()), 10_000)
+                self.assertEqual({'Directory', 'Package', 'ExactRefs', 'RowCursor', 'EvidenceCursor', 'OutputRef',
+                                  'Location', 'ImpactWorkspaceDomain', 'ImpactRetainedDomain', 'ImpactSourceDomain',
+                                  'SourceRef', 'FullText', 'NoText', 'TextWindow', 'TextExcerpt', 'ExecutionMode', 'Section'},
+                                 before['$defs'].keys() - after['$defs'].keys())
+
+    def test_focused_topics_are_bounded_and_use_authored_examples(self):
+        outputs = generator.render_tools(self.authority)
+        root = ROOT / 'agent-tools/references/query-topics'
+        for name in ('declarations', 'exact-selection', 'relations', 'trace', 'retained-evidence', 'source-reads'):
+            topic = outputs[root / (name + '.md')]
+            self.assertLessEqual(len(topic.encode('utf-8')), 4096, name)
+            self.assertIn('Legal next actions:', topic)
+            self.assertIn('Accepted references:', topic)
+            self.assertIn('Returned capabilities:', topic)
+            for request in re.findall(r'```json\n(.*?)\n```', topic, re.DOTALL):
+                self.assertIn(json.loads(request), [example['value'] for example in self.authority['tools'][0]['examples'].values()])
+        index = outputs[ROOT / 'agent-tools/references/query-topics.md']
+        self.assertLessEqual(len(index.encode('utf-8')), 4096)
+        self.assertIn('advanced/', index)
+
+    def test_focused_topics_follow_canonical_enums_and_defaults(self):
+        self.authority['$defs']['SearchSource']['properties']['nameMatch']['enum'] = ['EXACT', 'NEW_MATCH', None]
+        self.authority['$defs']['SearchSource']['properties']['nameMatch']['default'] = 'NEW_MATCH'
+        topic = generator.render_tools(self.authority)[ROOT / 'agent-tools/references/query-topics/declarations.md']
+        self.assertIn('NEW_MATCH', topic)
+        self.assertIn('default: `"NEW_MATCH"`', topic)
 
     def test_onboarding_reference_preserves_schema_and_interface_query(self):
         generated = generator.render_tools(self.authority)
@@ -75,6 +173,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
         # Contract 17 adds required terminal variants and their output applicability to contract 16.
         self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 52_000)
         definitions = parameters["$defs"]
+        self.assertIn('Query minimum: 4096 UTF-8 bytes.',
+                      definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'])
         self.assertEqual(
             {"$ref": "#/$defs/ImpactDeclarationReference"},
             definitions["ImpactDeclaration"]["properties"]["declaration"],
@@ -105,6 +205,22 @@ class PublicQueryGenerationTest(unittest.TestCase):
         for name, digest in expected.items():
             schema = json.loads(generated[generator.RESOURCES / name])
             definitions = schema["$defs"]
+            # Optional detail syntax and three source-backed descriptions form the intentional delta.
+            # Remove that exact delta to keep the prior complete grammar pinned byte-for-byte.
+            definitions['ReadResultAction']['properties'].pop('detail')
+            if 'openai' in name:
+                definitions['ReadResultAction']['required'].remove('detail')
+            definitions['ReferenceSource']['properties']['symbolRefs']['items']['description'] = (
+                'Opaque exact-symbol reference returned by Kast. Copy the token verbatim; '
+                'do not construct, edit, or substitute a candidate reference.'
+            )
+            definitions['EvidenceCursor']['description'] = (
+                "Optional offset in the retained result's evidence. It is independent of the row presentation cursor "
+                "and performs no semantic execution. Omission or null preserves the existing evidence presentation."
+            )
+            definitions['ExecutionBudget']['properties']['maxReturnedBytes']['description'] = (
+                'Encoded response allowance in bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.'
+            )
 
             def expand(node):
                 if isinstance(node, list):

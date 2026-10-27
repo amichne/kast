@@ -20,9 +20,10 @@ class QueryDeliveryContractTest(unittest.TestCase):
         self.validator = Draft202012Validator(self.schema)
         captured = json.loads((ROOT / 'experiments/host-observation/pi-fixtures/query-delivery-cases.json').read_text())
         self.initial = captured['cases']['complete']['result']['initial']
+        self.semantic = captured['cases']['complete']['result']['semantic']
 
     def envelope(self, stop):
-        return {'type': 'query_delivery', 'initial': self.initial, 'pages': [],
+        return {'type': 'query_delivery', 'initial': self.initial, 'pages': [], 'semantic': self.semantic,
                 'delivery': {'stop': stop, 'rpc_count': 1, 'request_bytes': 7, 'response_bytes': 11, 'result': None}}
 
     def test_every_stop_and_null_initial_alternative(self):

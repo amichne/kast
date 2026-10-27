@@ -64,6 +64,7 @@ internal fun identifyRows(
     return QueryProjection.Projected(
         items.mapIndexed { index, item ->
             when (item) {
+                is QueryResultItemDocument.DeferredDetail -> item.copy(rowId = rowIds[index])
                 is QueryResultItemDocument.ExactSymbol -> item.copy(rowId = rowIds[index])
                 is QueryResultItemDocument.ImpactWitness -> item
                 is QueryResultItemDocument.ValuePath -> item.copy(rowId = rowIds[index])
