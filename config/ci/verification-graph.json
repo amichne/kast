@@ -402,7 +402,7 @@
         },
         {
             "path": "distribution/cli/build.gradle.kts",
-            "sha256": "fb3f18b23bd3b422f6c8261b12a69447b81379b0b0ad6c8c86f1dc49c1dd6ce8"
+            "sha256": "5096f9bfb6b4c2eb913f5be491aa03d9765b10159adc022dfd3e3c84da62432a"
         },
         {
             "path": "distribution/contract/build.gradle.kts",

@@ -62,6 +62,13 @@ graalvmNative {
             fallback.set(false)
             buildArgs.add("--no-fallback")
             buildArgs.add("-H:IncludeResources=management/bootstrap-install.sh")
+            if (providers.systemProperty("os.name").get().startsWith("Mac")) {
+                buildArgs.addAll(
+                    "-H:+UnlockExperimentalVMOptions",
+                    "-H:NativeLinkerOption=-mmacosx-version-min=15.0",
+                    "-H:-UnlockExperimentalVMOptions",
+                )
+            }
             if (providers.gradleProperty("kastNativeBuildMetrics").orNull == "true") {
                 val metrics = providers.provider { repositoryRoot.file("build/reports/native/build-output.json") }
                 tasks.named("nativeCompile") {
