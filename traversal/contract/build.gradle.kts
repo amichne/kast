@@ -3,7 +3,7 @@ plugins {
     id("kast.role.contract")
 }
 
-group = "${rootProject.group}.traversal"
+group = "${providers.gradleProperty("GROUP").get()}.traversal"
 
 base {
     archivesName.set("traversal-contract")

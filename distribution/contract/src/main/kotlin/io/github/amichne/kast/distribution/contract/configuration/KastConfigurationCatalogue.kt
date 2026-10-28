@@ -317,6 +317,14 @@ enum class ConfigurationParameter(
         disclosure = ConfigurationDisclosure.SECRET_PRESENCE,
         mutability = ConfigurationMutability.DERIVED,
     ),
+    SEMANTIC_FIXTURES(
+        "KAST_SEMANTIC_FIXTURES",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.BUILD,
+        ":build-logic",
+        defaultValue = "false",
+        mutability = ConfigurationMutability.BUILD_SETTING,
+    ),
     LOCAL_COMPONENT(
         "KAST_LOCAL_COMPONENT",
         ConfigurationSyntax.OWNER_INPUT,

@@ -4,7 +4,9 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.topology"
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
+group = "${providers.gradleProperty("GROUP").get()}.topology"
 
 base {
     archivesName.set("topology-build")
@@ -20,5 +22,8 @@ dependencies {
 }
 
 tasks.test {
-    systemProperty("kast.historical.gitAdapter", rootProject.file("packaging/topology/git_attribution.py").absolutePath)
+    systemProperty(
+        "kast.historical.gitAdapter",
+        File(repositoryRoot.asFile, "packaging/topology/git_attribution.py").absolutePath,
+    )
 }

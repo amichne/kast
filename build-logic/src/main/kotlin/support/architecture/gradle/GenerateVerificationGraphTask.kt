@@ -4,13 +4,10 @@ import java.nio.file.Files
 import java.security.MessageDigest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.ListProperty
-import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -43,10 +40,7 @@ internal data class VerificationGraphDocument(
 
 /** Serializes the existing module-closure proof with every declared configuration, including test fixtures. */
 @DisableCachingByDefault(because = "The small report binds current authored build inputs to collected consumers.")
-abstract class GenerateVerificationGraphTask : DefaultTask() {
-    @get:Input abstract val observedProjectPaths: ListProperty<String>
-    @get:Input abstract val observedProjectDependencies: ListProperty<String>
-    @get:Input abstract val observedSourceRoots: ListProperty<String>
+abstract class GenerateVerificationGraphTask : ModuleBuildFactsConsumer() {
     @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val graphInputs: ConfigurableFileCollection
     @get:Internal abstract val rootDirectory: DirectoryProperty
@@ -54,6 +48,7 @@ abstract class GenerateVerificationGraphTask : DefaultTask() {
 
     @TaskAction
     fun generate() {
+        val facts = moduleFacts()
         val destination = reportFile.get().asFile.toPath()
         Files.deleteIfExists(destination)
         val policy = when (val result = canonicalArchitecturePolicy()) {
@@ -61,7 +56,7 @@ abstract class GenerateVerificationGraphTask : DefaultTask() {
             is ArchitecturePolicyValidation.Invalid -> throw GradleException("Verification graph policy: ${result.failures}")
         }
         val graph = when (val result = ArchitectureObservationParser.parse(
-            policy, observedProjectPaths.get(), observedProjectDependencies.get(),
+            policy, facts.map { it.projectPath }, facts.flatMap { it.verificationDependencies },
         )) {
             is ArchitectureObservationValidation.Valid -> result.graph
             is ArchitectureObservationValidation.Invalid -> throw GradleException("Verification graph input: ${result.failures}")
@@ -71,7 +66,7 @@ abstract class GenerateVerificationGraphTask : DefaultTask() {
                 is ModuleImpactAdmission.Accepted -> VerificationConsumers(
                     owner.projectPath,
                     (listOf(owner.projectPath) + admitted.impact.dependencyPaths().map { it.first().projectPath }).sorted(),
-                    observedSourceRoots.get().filter { it.startsWith(owner.projectPath + "|") }
+                    facts.flatMap { it.sourceRoots }.filter { it.startsWith(owner.projectPath + "|") }
                         .map { it.substringAfter('|') }.distinct().sorted(),
                 )
                 is ModuleImpactAdmission.Rejected -> throw GradleException("Verification graph closure: ${admitted.failure}")

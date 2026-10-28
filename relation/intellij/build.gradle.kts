@@ -9,7 +9,9 @@ plugins {
     id("kast.role.intellij-read")
 }
 
-group = "${rootProject.group}.relation"
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
+group = "${providers.gradleProperty("GROUP").get()}.relation"
 
 base {
     archivesName.set("relation-intellij")
@@ -94,20 +96,52 @@ dependencies {
 // The native call oracle must compile with the repository's compiler before IDE acceptance.
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     // Compile the independently authored immutable-callback oracle through the production Kotlin compiler.
-    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/invocation/src/main/kotlin"))
-    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/forwarding/src/main/kotlin"))
-    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/suppliers/src/main/kotlin"))
-    source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt"))
-    source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt"))
-    source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))
     source(
-        rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt")
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/immutable-callback-fixture/invocation/src/main/kotlin",
+        )
     )
-    source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferences.kt"))
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/immutable-callback-fixture/forwarding/src/main/kotlin",
+        )
+    )
+    source(
+        File(repositoryRoot.asFile, "experiments/host-observation/immutable-callback-fixture/suppliers/src/main/kotlin")
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt",
+        )
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt",
+        )
+    )
+    source(
+        File(repositoryRoot.asFile, "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt")
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt",
+        )
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferences.kt",
+        )
+    )
 }
 
 tasks.named("test") {
-    inputs.file(rootProject.file("cli/src/test/resources/stabilization/Fixture.kt"))
+    inputs.file(File(repositoryRoot.asFile, "cli/src/test/resources/stabilization/Fixture.kt"))
 }
 
 // Indexed Platform fixtures own a separate process and task; parser/pure tests stay fast.
@@ -197,7 +231,7 @@ val compileDeclaredEffectFixture =
     tasks.register<CompileDependencyFixture>("compileDeclaredEffectFixture") {
         sourceFile.set(layout.projectDirectory.file("src/nativeTest/resources/semantic-effects/DependencyEffects.kt"))
         equivalentSources.from(
-            rootProject.file("runtime/hosted/src/nativeTest/resources/semantic-effects/DependencyEffects.kt")
+            File(repositoryRoot.asFile, "runtime/hosted/src/nativeTest/resources/semantic-effects/DependencyEffects.kt")
         )
         compilerClasspath.from(
             nativeIdeaHome.map { home ->

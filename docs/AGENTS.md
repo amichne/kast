@@ -63,7 +63,7 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - Public diagrams use `docs/public/images/architecture/*.mmd` as source. Run `npm run render --prefix docs/tooling/diagrams`. Then run `npm run check --prefix docs/tooling/diagrams`.
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
 - The value explorer and README preview share `docs/tooling/value-journey` as their source. Run `npm run build --prefix docs/tooling/value-journey`. Commit both generated files.
-- Keep core menus focused on reader goals. Keep Architecture and Reference hidden from menus but searchable.
+- Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.

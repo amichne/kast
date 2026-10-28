@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.relation"
+group = "${providers.gradleProperty("GROUP").get()}.relation"
 
 base {
     archivesName.set("relation-service")

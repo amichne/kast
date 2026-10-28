@@ -9,6 +9,17 @@ import org.junit.jupiter.api.Test
 
 class KastConfigurationResolutionTest {
     @Test
+    fun `semantic fixtures default off and remain a build setting without runtime children`() {
+        val setting = KastConfigurationCatalogue.declarations.single { it.key == "KAST_SEMANTIC_FIXTURES" }
+        assertEquals(ConfigurationScope.BUILD, setting.scope)
+        assertEquals(ConfigurationMutability.BUILD_SETTING, setting.mutability)
+        assertEquals(":build-logic", setting.owner)
+        assertEquals("false", setting.defaultValue)
+        assertEquals(ConfigurationSyntax.OWNER_INPUT, setting.syntax)
+        assertTrue(setting.children.isEmpty())
+    }
+
+    @Test
     fun `Java home keeps canonical authority and explicit source precedence`() {
         val resolved =
             admitted(

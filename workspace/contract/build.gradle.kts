@@ -6,7 +6,7 @@ plugins {
     id("kast.role.contract")
 }
 
-group = "${rootProject.group}.workspace"
+group = "${providers.gradleProperty("GROUP").get()}.workspace"
 
 base {
     archivesName.set("workspace-contract")

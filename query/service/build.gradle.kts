@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.query"
+group = "${providers.gradleProperty("GROUP").get()}.query"
 
 base {
     archivesName.set("query-service")

@@ -2,6 +2,7 @@
 Kast
 Kast's
 Gradle
+Develocity
 worktree
 walkthrough
 diagnostic's

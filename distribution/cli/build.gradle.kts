@@ -6,6 +6,8 @@ plugins {
     id("org.graalvm.buildtools.native") version "1.1.14"
 }
 
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
 application {
     applicationName = "kast"
     mainClass = "io.github.amichne.kast.distribution.cli.KastManagementMainKt"
@@ -60,8 +62,15 @@ graalvmNative {
             fallback.set(false)
             buildArgs.add("--no-fallback")
             buildArgs.add("-H:IncludeResources=management/bootstrap-install.sh")
+            if (providers.systemProperty("os.name").get().startsWith("Mac")) {
+                buildArgs.addAll(
+                    "-H:+UnlockExperimentalVMOptions",
+                    "-H:NativeLinkerOption=-mmacosx-version-min=15.0",
+                    "-H:-UnlockExperimentalVMOptions",
+                )
+            }
             if (providers.gradleProperty("kastNativeBuildMetrics").orNull == "true") {
-                val metrics = rootProject.layout.buildDirectory.file("reports/native/build-output.json")
+                val metrics = providers.provider { repositoryRoot.file("build/reports/native/build-output.json") }
                 tasks.named("nativeCompile") {
                     outputs.file(metrics).withPropertyName("nativeBuildMetrics")
                 }
@@ -75,8 +84,14 @@ graalvmNative {
 
 // Recovery never executes an unqualified script from the installation being erased.
 tasks.named<ProcessResources>("processResources") {
-    from(rootProject.layout.projectDirectory.file("install.sh")) {
+    from(repositoryRoot.file("install.sh")) {
         into("management")
         rename { "bootstrap-install.sh" }
+    }
+}
+
+configurations.consumable("managementExecutableElements") {
+    outgoing.artifact(layout.buildDirectory.file("native/nativeCompile/kast")) {
+        builtBy(tasks.named("nativeCompile"))
     }
 }

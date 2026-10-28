@@ -143,6 +143,7 @@ This guide owns repository rules and routes source investigation.
 
 ## Testing
 
+- Semantic fixture suites are off by default in local builds and CI. For compiler behavior evidence, set `KAST_SEMANTIC_FIXTURES=true`. Read [the switch guide](.github/scripts/ci/README.md#temporary-semantic-fixture-switch) for scope and skipped evidence.
 - Start with one named behavior and the smallest execution boundary that can prove it. Virtualize only its external dependencies; run the real production rule with existing domain types, fixtures and test runners. This is the default across the repository.
 - Declare the case's minimum starting facts, permitted effects and independent expected result. Keep pure parsing, resolution and policy checks in the owning contract/service tests with explicit values and no filesystem, process, socket or clock dependency. Build and runner provisioning are separate from this behavior budget.
 - Enlarge the boundary only for an assertion that needs it: a private filesystem for path/lock/identity facts, a real child for process-adapter binding, compiler/platform fixtures for semantic authority, and explicitly authorized disposable native composition for OS/IDE integration. Scripted observations do not establish native behavior.

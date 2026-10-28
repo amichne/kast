@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 611.2885 419.70000000000005" width="611.2885" height="419.70000000000005" style="--bg:#F1F2EF;--fg:#303A34;--line:#88968B;--accent:#405d4d;--muted:#58635B;--surface:#E8ECE5;--border:#A2AEA3;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 611.2885 419.70000000000005" width="611.2885" height="419.70000000000005" style="--bg:#FBFBF9;--fg:#20231F;--line:#9CA59A;--accent:#3154C7;--muted:#52594E;--surface:#F2F3EE;--border:#B9C1B4;background:var(--bg)">
 <style>
 
   text { font-family: 'SUSE', system-ui, sans-serif; }
@@ -59,13 +59,13 @@
 </g>
 <g class="node" data-id="Running" data-label="Claim token
 reserve replay space" data-shape="rectangle">
-  <rect x="261.2609166666667" y="96.9" width="170.88399999999996" height="53.800000000000004" rx="0" ry="0" fill="#E0EAE0" stroke="#405d4d" stroke-width="0.75" />
-  <text x="346.7029166666666" y="123.80000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="346.7029166666666" dy="-3.9000000000000012">Claim token</tspan><tspan x="346.7029166666666" dy="16.900000000000002">reserve replay space</tspan></text>
+  <rect x="261.2609166666667" y="96.9" width="170.88399999999996" height="53.800000000000004" rx="0" ry="0" fill="#EAF0FF" stroke="#3154C7" stroke-width="0.75" />
+  <text x="346.7029166666666" y="123.80000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="346.7029166666666" dy="-3.9000000000000012">Claim token</tspan><tspan x="346.7029166666666" dy="16.900000000000002">reserve replay space</tspan></text>
 </g>
 <g class="node" data-id="Busy" data-label="InUse
 existing claim stays owned" data-shape="rectangle">
   <rect x="24" y="243.00000000000003" width="195.33699999999996" height="53.800000000000004" rx="0" ry="0" fill="#FAE8E5" stroke="#BC6258" stroke-width="0.75" />
-  <text x="121.66849999999998" y="269.90000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="121.66849999999998" dy="-3.9000000000000012">InUse</tspan><tspan x="121.66849999999998" dy="16.900000000000002">existing claim stays owned</tspan></text>
+  <text x="121.66849999999998" y="269.90000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="121.66849999999998" dy="-3.9000000000000012">InUse</tspan><tspan x="121.66849999999998" dy="16.900000000000002">existing claim stays owned</tspan></text>
 </g>
 <g class="node" data-id="PrivatePage" data-label="Private page
 staged successor" data-shape="rectangle">
@@ -75,11 +75,11 @@ staged successor" data-shape="rectangle">
 <g class="node" data-id="Published" data-label="Published page
 reachable successor" data-shape="stadium">
   <rect x="199.26549999999997" y="332.80000000000007" width="170.14299999999997" height="53.800000000000004" rx="26.900000000000002" ry="26.900000000000002" fill="#E5F5EE" stroke="#278160" stroke-width="0.75" />
-  <text x="284.337" y="359.70000000000005" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="284.337" dy="-3.9000000000000012">Published page</tspan><tspan x="284.337" dy="16.900000000000002">reachable successor</tspan></text>
+  <text x="284.337" y="359.70000000000005" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="284.337" dy="-3.9000000000000012">Published page</tspan><tspan x="284.337" dy="16.900000000000002">reachable successor</tspan></text>
 </g>
 <g class="node" data-id="Cleanup" data-label="Release claim and
 try-owned allocations" data-shape="rectangle">
   <rect x="397.40849999999995" y="332.80000000000007" width="166.43800000000005" height="53.800000000000004" rx="0" ry="0" fill="#FAE8E5" stroke="#BC6258" stroke-width="0.75" />
-  <text x="480.62749999999994" y="359.70000000000005" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="480.62749999999994" dy="-3.9000000000000012">Release claim and</tspan><tspan x="480.62749999999994" dy="16.900000000000002">try-owned allocations</tspan></text>
+  <text x="480.62749999999994" y="359.70000000000005" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="480.62749999999994" dy="-3.9000000000000012">Release claim and</tspan><tspan x="480.62749999999994" dy="16.900000000000002">try-owned allocations</tspan></text>
 </g>
 </svg>
