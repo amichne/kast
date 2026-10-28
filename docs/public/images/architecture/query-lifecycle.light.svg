@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370.34400000000005 924.8199999999998" width="370.34400000000005" height="924.8199999999998" style="--bg:#F1F2EF;--fg:#303A34;--line:#88968B;--accent:#405d4d;--muted:#58635B;--surface:#E8ECE5;--border:#A2AEA3;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370.34400000000005 924.8199999999998" width="370.34400000000005" height="924.8199999999998" style="--bg:#FBFBF9;--fg:#20231F;--line:#9CA59A;--accent:#3154C7;--muted:#52594E;--surface:#F2F3EE;--border:#B9C1B4;background:var(--bg)">
 <style>
 
   text { font-family: 'SUSE', system-ui, sans-serif; }
@@ -55,8 +55,8 @@ join its current operation" data-shape="rectangle">
 </g>
 <g class="node" data-id="L" data-label="Acquire semantic lane
 bind current read authority" data-shape="rectangle">
-  <rect x="83.42800000000004" y="203.60000000000002" width="198.30099999999996" height="53.800000000000004" rx="0" ry="0" fill="#E0EAE0" stroke="#405d4d" stroke-width="0.75" />
-  <text x="182.57850000000002" y="230.50000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="182.57850000000002" dy="-3.9000000000000012">Acquire semantic lane</tspan><tspan x="182.57850000000002" dy="16.900000000000002">bind current read authority</tspan></text>
+  <rect x="83.42800000000004" y="203.60000000000002" width="198.30099999999996" height="53.800000000000004" rx="0" ry="0" fill="#EAF0FF" stroke="#3154C7" stroke-width="0.75" />
+  <text x="182.57850000000002" y="230.50000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="182.57850000000002" dy="-3.9000000000000012">Acquire semantic lane</tspan><tspan x="182.57850000000002" dy="16.900000000000002">bind current read authority</tspan></text>
 </g>
 <g class="node" data-id="S" data-label="Resolve exact source
 advance semantic tasks" data-shape="rectangle">
@@ -69,12 +69,12 @@ advance semantic tasks" data-shape="rectangle">
 </g>
 <g class="node" data-id="A" data-label="Complete answer" data-shape="stadium">
   <rect x="24" y="675.8699999999999" width="141.985" height="36.900000000000006" rx="18.450000000000003" ry="18.450000000000003" fill="#E5F5EE" stroke="#278160" stroke-width="0.75" />
-  <text x="94.9925" y="694.3199999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34" dy="4.55">Complete answer</text>
+  <text x="94.9925" y="694.3199999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F" dy="4.55">Complete answer</text>
 </g>
 <g class="node" data-id="R" data-label="Typed rejection
 available evidence" data-shape="rectangle">
   <rect x="193.985" y="675.8699999999999" width="152.359" height="53.800000000000004" rx="0" ry="0" fill="#FAE8E5" stroke="#BC6258" stroke-width="0.75" />
-  <text x="270.16450000000003" y="702.7699999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#303A34"><tspan x="270.16450000000003" dy="-3.9000000000000012">Typed rejection</tspan><tspan x="270.16450000000003" dy="16.900000000000002">available evidence</tspan></text>
+  <text x="270.16450000000003" y="702.7699999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="270.16450000000003" dy="-3.9000000000000012">Typed rejection</tspan><tspan x="270.16450000000003" dy="16.900000000000002">available evidence</tspan></text>
 </g>
 <g class="node" data-id="D" data-label="Fit and publish
 produced output" data-shape="rectangle">
