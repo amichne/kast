@@ -1,0 +1,37 @@
+- name: approved spellings pass
+  input: Use ExampleService with GitHub and Vale.
+  want: ''
+- name: approved case is enforced
+  input: Use exampleservice with github.
+  contains: Vale.Terms
+- name: aliases receive a replacement
+  input: Configure ExampleSvc.
+  contains: Terminology.PreferredTerms
+- name: prose mechanics belong to the other profile
+  input: The the service starts,, then stops.
+  want: ''
+- name: code remains literal
+  input: '# Code examples
+
+
+    Run `the the,, ExampleSvc github`.
+
+
+    ```text
+
+    the the,, ExampleSvc github
+
+    ```
+
+    '
+  want: ''
+- name: MDX code and attributes are excluded
+  format: mdx
+  input: "import Example from './the the,, github';\n\n<Aside title=\"the the,, ExampleSvc github\"\
+    >\n  Configure ExampleService in GitHub.\n</Aside>\n\nThe value is {\"the the,, ExampleSvc\
+    \ github\"}.\n"
+  want: ''
+- name: MDX child terminology is checked
+  format: mdx
+  input: <Aside>Configure ExampleSvc.</Aside>
+  contains: Terminology.PreferredTerms

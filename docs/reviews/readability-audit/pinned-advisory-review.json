@@ -1,0 +1,1488 @@
+{
+  "scope": "Same frozen 105-file corpus. Page audit coverage is recorded in coverage-summary.json. This simulated review does not establish human comprehension.",
+  "rules": [
+    {
+      "rule": "Slopsentral.Grade",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The page audit examines purpose, concept order, and exact terminology separately. Technical names and necessary distinctions remain even when the grade exceeds 8. This warning does not establish reader confusion.",
+      "findings": [
+        {
+          "file": ".agents/marketplaces.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": ".github/scripts/ci/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "SECURITY.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "agent-tools/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "agent-tools/onboarding.template.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/public-query-contract.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "cli/docs/query-summary.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "config/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "config/json-contracts/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "config/kotlin-semantic-coverage/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "config/vale/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "distribution/cli/AGENTS.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/installation-recovery.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/public/explanation.mdx",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/public/explanation/value-journey-evidence.mdx",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/public/reference/AGENTS.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/public/reference/limits.mdx",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/public/reference/responses.mdx",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/public/reference/search.mdx",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/recovery-plan.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/tool-rpc.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/tooling/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/topology-impact.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/AGENT_EFFICIENCY.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/EVALUATION_CHECKLIST.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_QUERY.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/LOG_VISIBILITY.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/agent-efficiency-configs/reference-chain-private-onboarding.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/agent-efficiency-configs/reference-chain-scoped-onboarding.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/agent-efficiency-configs/token-poc-onboarding.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/agent-payload/evidence.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/developer-trace-delivery/REPLAY.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/k2-common-metadata-fixture/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/pi-fixtures/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/NOTICE.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/ORACLE.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/try-local-qualification.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/representation-impact/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/task-access/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/task-access/SKILL.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "packaging/cloud/README.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "relation/intellij/NATIVE_FIXTURES.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/NATIVE_FIXTURES.md",
+          "line": 1,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "rule": "Slopsentral.LongSentence",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The page audit preserves exact conditions, identities, and finite alternatives. These sentences remain advisory where separation does not improve the reader task. The count alone does not justify removing qualifications.",
+      "findings": [
+        {
+          "file": "AGENTS.md",
+          "line": 138,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 149,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 151,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 199,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 78,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 105,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 158,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 193,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 255,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 259,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 312,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 350,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 37,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 46,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 60,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 101,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 113,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 133,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 198,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 212,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 220,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 229,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 281,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 350,
+          "severity": "warning"
+        },
+        {
+          "file": "config/README.md",
+          "line": 4,
+          "severity": "warning"
+        },
+        {
+          "file": "config/json-contracts/README.md",
+          "line": 24,
+          "severity": "warning"
+        },
+        {
+          "file": "config/json-contracts/README.md",
+          "line": 54,
+          "severity": "warning"
+        },
+        {
+          "file": "distribution/cli/AGENTS.md",
+          "line": 24,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 33,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 191,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 319,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 423,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 19,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 73,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 134,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 267,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 310,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/recovery-plan.md",
+          "line": 87,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 84,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 175,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 196,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 221,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 231,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 290,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 318,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 323,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 332,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 338,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/tool-rpc.md",
+          "line": 142,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 5,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 24,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 54,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 76,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 83,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 91,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+          "line": 65,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_QUERY.md",
+          "line": 51,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_QUERY.md",
+          "line": 81,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_QUERY.md",
+          "line": 100,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_QUERY.md",
+          "line": 137,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_QUERY.md",
+          "line": 159,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md",
+          "line": 113,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 7,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 14,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 46,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 148,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 166,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 170,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 261,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 268,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 314,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 317,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 348,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 360,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 406,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 456,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 488,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/README.md",
+          "line": 18,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/README.md",
+          "line": 95,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 5,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 57,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 78,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 177,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 210,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 267,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 285,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 295,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/pi-fixtures/README.md",
+          "line": 162,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/pi-fixtures/README.md",
+          "line": 234,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/pi-fixtures/README.md",
+          "line": 251,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/NOTICE.md",
+          "line": 11,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/ORACLE.md",
+          "line": 3,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/README.md",
+          "line": 73,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/try-local-qualification.md",
+          "line": 28,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/try-local-qualification.md",
+          "line": 86,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/representation-impact/README.md",
+          "line": 29,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/representation-impact/README.md",
+          "line": 31,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/representation-impact/README.md",
+          "line": 33,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 6,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 18,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 42,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 47,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 60,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 65,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/native/README.md",
+          "line": 69,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "rule": "Slopsentral.Diction",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The review preserves contract terminology and unchanged qualified descriptions during focused structural edits. A generic replacement is not automatic evidence of improved understanding. The requested audit does not impose widespread cosmetic substitutions.",
+      "findings": [
+        {
+          "file": ".agents/marketplaces.md",
+          "line": 21,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 87,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 153,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 153,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 162,
+          "severity": "warning"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 190,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 6,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 12,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 98,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 124,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 132,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 138,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 176,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 215,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 294,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/README.md",
+          "line": 351,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 5,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 118,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 164,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 179,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 207,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 212,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 215,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 237,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 243,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 268,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 320,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 323,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 355,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/public-query-contract.md",
+          "line": 116,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/public-query-contract.md",
+          "line": 116,
+          "severity": "warning"
+        },
+        {
+          "file": "app-server/docs/public-query-contract.md",
+          "line": 141,
+          "severity": "warning"
+        },
+        {
+          "file": "config/README.md",
+          "line": 24,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 91,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 215,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 264,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 292,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 296,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 306,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 25,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 155,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 178,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 199,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 206,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 209,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 217,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 229,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 230,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 233,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 241,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/hosted-read-configuration.md",
+          "line": 297,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/recovery-plan.md",
+          "line": 58,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/recovery-plan.md",
+          "line": 70,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 28,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 32,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 61,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 62,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 88,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 89,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 102,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 157,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 161,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 179,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 182,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 187,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 188,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 191,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 198,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 220,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 236,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 254,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 263,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 285,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 302,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 305,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 308,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 326,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 326,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/static-query-execution.md",
+          "line": 376,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/tool-rpc.md",
+          "line": 27,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/tool-rpc.md",
+          "line": 197,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 58,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 68,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+          "line": 83,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+          "line": 130,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+          "line": 157,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 11,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 85,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 163,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 356,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 365,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 365,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 380,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 397,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 399,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 476,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/README.md",
+          "line": 95,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/README.md",
+          "line": 122,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 42,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 164,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 212,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 238,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 262,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 263,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 268,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 290,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 292,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+          "line": 312,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/agent-efficiency-configs/token-poc-onboarding.md",
+          "line": 39,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/trace-completeness/README.md",
+          "line": 77,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/try-local-qualification.md",
+          "line": 25,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/try-local-qualification.md",
+          "line": 47,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/try-local-qualification.md",
+          "line": 106,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/representation-impact/README.md",
+          "line": 33,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/representation-impact/README.md",
+          "line": 33,
+          "severity": "warning"
+        },
+        {
+          "file": "relation/intellij/NATIVE_FIXTURES.md",
+          "line": 26,
+          "severity": "warning"
+        },
+        {
+          "file": "relation/intellij/NATIVE_FIXTURES.md",
+          "line": 62,
+          "severity": "warning"
+        },
+        {
+          "file": "relation/intellij/NATIVE_FIXTURES.md",
+          "line": 82,
+          "severity": "warning"
+        },
+        {
+          "file": "runtime/hosted/NATIVE_FIXTURES.md",
+          "line": 46,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "rule": "Slopsentral.Claims",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The surrounding passages deny an unconditional guarantee or assign a conditional obligation. In recovery-plan.md:70 the word states an accepted design requirement, not demonstrated current behavior.",
+      "findings": [
+        {
+          "file": "app-server/docs/compatibility.md",
+          "line": 119,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 454,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/development.md",
+          "line": 455,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/recovery-plan.md",
+          "line": 21,
+          "severity": "warning"
+        },
+        {
+          "file": "docs/recovery-plan.md",
+          "line": 70,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 64,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 154,
+          "severity": "warning"
+        },
+        {
+          "file": "experiments/host-observation/PI_EVALUATION.md",
+          "line": 279,
+          "severity": "warning"
+        }
+      ]
+    }
+  ]
+}

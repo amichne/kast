@@ -65,7 +65,8 @@
         "retention-preserves-the-original-answer",
         "source-evidence",
         "state-determines-whether-reuse-remains-legal"
-      ]
+      ],
+      "introduction": "This page explains internal query stages and stored evidence. [How to understand a Kast answer](/explanation) introduces the reader concepts.\n\nFor public requests, use [Query forms](/reference/api). Contract 17 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar."
     },
     {
       "route": "reference/callbacks",
@@ -104,7 +105,8 @@
         "joins-and-row-kinds",
         "row-compatibility",
         "set-operations"
-      ]
+      ],
+      "introduction": "Use this page to understand internal row transitions and why some set operations need complete inputs. [Combine query results](/reference/query-pipelines) gives executable request forms.\n\nPublic contract 17 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar."
     },
     {
       "route": "reference/evidence-boundaries",
@@ -124,7 +126,8 @@
         "exact-facts-are-not-the-same-as-exhaustive-coverage",
         "read-relationship-and-edit-evidence",
         "the-original-state-constrains-reuse"
-      ]
+      ],
+      "introduction": "Start with [How to understand a Kast answer](/explanation) for declarations, source relationships, and completion.\n\nThis page explains internal evidence and outcome types. [Results](/reference/responses) defines the current public completion, presentation, and recovery fields. Use the installed tool schema for your release."
     },
     {
       "route": "reference/internals/architecture",
@@ -212,7 +215,8 @@
         "local-declarations",
         "output-selection-example",
         "public-fields"
-      ]
+      ],
+      "introduction": "This page explains declaration identity and the source contracts that use it. The shared contracts include source APIs other than `query_symbols`.\n\nFor `query_symbols`, `READ_SOURCE.candidateRef` checks the issued snapshot. It does not reacquire a stale exact reference. A fresh `RUN` can reacquire an exact reference after current compiler identity checks. It does not refresh retained rows or source snapshots. [Query forms](/reference/api#actions) defines the current public actions."
     }
   ],
   "authored": [

@@ -1,0 +1,126 @@
+{
+  "checks": [
+    {
+      "name": "documentation",
+      "command": "mise exec -- python3 .github/scripts/ci/verify_documentation.py",
+      "cwd": ".",
+      "outcome": "PASSED",
+      "exitCode": 0,
+      "logPath": "/tmp/kast-documentation-final.log",
+      "logSha256": "891a893e7f8b09adb9cf8dda68a8fe4bc5a478568c0181bb3b8062ddccd63200"
+    },
+    {
+      "name": "mint-validate",
+      "command": "mint validate",
+      "cwd": "docs/public",
+      "outcome": "PASSED",
+      "exitCode": 0,
+      "logPath": "/tmp/kast-mint-final-validate.log",
+      "logSha256": "efb07a491d765db373847c0e0b68a2c9f42c895601f40ce7f2ed4162249bc053"
+    },
+    {
+      "name": "mint-links",
+      "command": "mint broken-links",
+      "cwd": "docs/public",
+      "outcome": "PASSED",
+      "exitCode": 0,
+      "logPath": "/tmp/kast-mint-final-links.log",
+      "logSha256": "8a6ba23db48f4cd3d67c01359a59f1dd91040d522715315840ceb84a7bb12d59"
+    },
+    {
+      "name": "repository-documentation-guards",
+      "command": "mise exec -- ./gradlew knowledgeImpact verifyKnowledgeBase verifyJsonContracts :cli:verifyMintlifyCallableReference --console=plain",
+      "cwd": ".",
+      "outcome": "PASSED",
+      "exitCode": 0,
+      "logPath": "/tmp/kast-docs-guards.log",
+      "logSha256": "2960fe3e2dc9955fe4f030e7729ff823a3d7c919aa4ad257b4ae9a26d3af01fd"
+    },
+    {
+      "name": "product-gate",
+      "command": "mise exec -- python3 distribution/release/run_product_gate.py",
+      "cwd": ".",
+      "outcome": "PASSED",
+      "exitCode": 0,
+      "logPath": "/tmp/kast-product-gate.log",
+      "logSha256": "dd2cde820615427f9e0855be924dadd57f85ec70cd5759f3362e0a885d408d21",
+      "tasks": {
+        "executed": 284,
+        "fromCache": 168,
+        "upToDate": 186
+      },
+      "semanticFixtures": "SKIPPED; KAST_SEMANTIC_FIXTURES not enabled"
+    },
+    {
+      "name": "current-head-installed-tutorial",
+      "command": "mise exec -- uv run --project docs/tooling --frozen python /tmp/kast-postinstall-tutorial.py",
+      "outcome": "PASSED",
+      "exitCode": 0,
+      "evidence": "tutorial-current-head.json",
+      "logPath": "/tmp/kast-postinstall-tutorial.log",
+      "logSha256": "206aad41b10e55a97aa2f81116bc0ee68b23bbd1a02b0dcdb18a7494557ce4fe"
+    }
+  ],
+  "documentationEvidence": {
+    "pythonCasesPassed": 378,
+    "valueJourneyCasesPassed": 6,
+    "markdownParser": "PASSED",
+    "publicProjection": "PASSED",
+    "glossary": "PASSED",
+    "knowledgeLinks": "PASSED"
+  },
+  "limits": [
+    "Source-only claims do not establish runtime execution.",
+    "No deployment performed."
+  ],
+  "knowledgeImpact": {
+    "changedFilesAtExecution": 109,
+    "impactedConcepts": [
+      "openwiki/contracts/operation-outcomes.md",
+      "openwiki/development/testing-and-native-qualification.md",
+      "openwiki/flows/host-observation.md",
+      "openwiki/flows/hosted-query.md"
+    ],
+    "review": "Changed documentation inputs preserve implementation contracts. The public projection retains recorded evidence qualifications. No new runtime claims were added to canonical concepts."
+  },
+  "guardEvidence": {
+    "knowledgeConcepts": 65,
+    "knowledgeIssues": 0,
+    "jsonContractFingerprints": 628,
+    "jsonContractViolations": 0,
+    "callableProjection": "UNCHANGED"
+  },
+  "queryProtocolCases": {
+    "CompleteOnlyQueryTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "TraceSourceRelationshipCompletionTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "task": ":query:protocol:test",
+    "taskOutcome": "executed"
+  },
+  "whitespace": {
+    "authoredChanges": "PASSED",
+    "importedStarter": "Eleven copied starter files preserve their supplied trailing empty line for byte-exact provenance. Raw git diff --check reports these lines.",
+    "retainedFindings": [
+      "config/vale/readability/prose.ini:8: new blank line at EOF.",
+      "config/vale/readability/starter-compatibility/styles/Terminology/PreferredTerms.yml:22: new blank line at EOF.",
+      "config/vale/readability/starter-compatibility/styles/config/vocabularies/Docs/accept.txt:6: new blank line at EOF.",
+      "config/vale/readability/starter-compatibility/styles/config/vocabularies/Docs/reject.txt:3: new blank line at EOF.",
+      "config/vale/readability/starter-compatibility/terminology.ini:11: new blank line at EOF.",
+      "config/vale/readability/styles/Prose/Complexity.yml:8: new blank line at EOF.",
+      "config/vale/readability/styles/Prose/DuplicatePunctuation.yml:22: new blank line at EOF.",
+      "config/vale/readability/styles/Prose/ParagraphLength.yml:7: new blank line at EOF.",
+      "config/vale/readability/styles/Prose/RepeatedWords.yml:29: new blank line at EOF.",
+      "config/vale/readability/styles/Prose/SectionLength.yml:11: new blank line at EOF.",
+      "config/vale/readability/styles/Prose/SentenceLength.yml:7: new blank line at EOF."
+    ]
+  }
+}

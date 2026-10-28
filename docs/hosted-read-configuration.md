@@ -133,6 +133,8 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 
 The IDE's `idea.log` receives a `kast_semantic_read` JSON record by default after each admitted request drains, including rejected requests. No diagnostic enable switch is required. Each record includes the host/epoch correlation when available, stage durations, remaining outer deadline at semantic entry, bounded counters, exact native termination reasons, the final hosted outcome, and effective limit values with their sources. Early endpoint/transport failures emit `kast_hosted` records with a stage and closed failure code.
 
+### Callback storage
+
 Callback proof retention records up to six bounded gauges in `kast_semantic_read`.
 `CALLBACK_PROOF_BYTE_ALLOWANCE`, `CALLBACK_PROOF_RETAINED_BYTES` and
 `CALLBACK_PROOF_REQUIRED_BYTES` describe the latest actual retention attempt:
@@ -153,6 +155,8 @@ response bytes. The final response has its own encoded-byte guard. Public query
 results retain the finite callback cause, scan state and obligations; these numeric
 receipts belong to the diagnostic log, not the public semantic result.
 
+### Freshness and discovery
+
 When retained results or continuations become unavailable, inspect
 `kast_project_read_epoch` records with the same `host`. A `MOVED` outcome names
 the changed signals: `PSI`, `VFS`, `WORKSPACE_MODEL`, `ROOT_MODEL`, `INDEXING`,
@@ -168,6 +172,8 @@ Declaration inventory records `DISCOVERY_PARTITIONS_OBSERVED` and
 invalid, noncanonical or wrong-kind partition, exhausted partition capacity,
 and unavailable source. These explain a public `partition-unavailable` or
 `provider-failure` without weakening its incomplete coverage.
+
+### Failures and completion
 
 Unexpected native exceptions retain only the exception class and bounded Kast adapter class/method/line frames. Exception messages, causes, source payloads, file paths and opaque references are excluded. Counter and exception collection capacities are configurable too. A hosted `completed` outcome means execution returned; inspect the canonical response and termination reasons for semantic completeness. For example, `NAME_CAP` and `CANDIDATE_CAP` can both produce public `work-limit-reached`, while the log preserves the actual cause.
 
@@ -185,8 +191,10 @@ It reserves the smaller of 250 ms or one eighth of the host limit for completion
 The reserve is at least 1 ms. Semantic and diagnostic-scope allowances are each capped by the
 remaining time after that reserve. A nonpositive allowance rejects before the
 evaluator runs. Configured equal limits remain supported through this runtime
-refinement. The hard timer still cancels and drains work that overruns; cooperative
-compiler work is not guaranteed to respond within the completion reserve.
+refinement.
+
+The hard timer still cancels and drains work that overruns.
+Cooperative compiler work does not promise a response within the completion reserve.
 
 Schema-4 `kast_semantic_read` receipts retain configured limits and an explicit
 `semanticBudget`: `not-admitted`, `admitted` with remaining host time, reserve and
@@ -243,14 +251,18 @@ The `READ_SOURCE` action uses the source profile and its separate work and entit
 }
 ```
 
+### Grant admission
+
 This fragment explicitly selects query execution defaults. Response defaults remain unchanged.
 Supplied numbers must be positive integers. In `BOUNDED` mode, omitted controls select configured
 defaults. Intent tools also normalize null controls to defaults. The IDE admits each dimension against the corresponding
 `KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
+
 These ceilings and transport byte capacities default to 2,147,483,646, leaving
 one unit of headroom for signed JVM count APIs and overflow probes. A caller's
 512 KiB or 1.5 MiB byte grant therefore requires no transport overrides. The
 49,152-byte semantic/source defaults still apply when the caller omits a grant.
+
 Explicitly lowered transport capacities still clamp grants and reject oversized
 frames. The broker also uses the representation ceiling for semantic messages,
 process I/O and client messages; tool payloads reserve 4,096 bytes within it for
@@ -266,6 +278,8 @@ This necessary bound is derived by the wire owner; passing it does not promise t
 the response body, report, or continuation will fit. Final encoding still measures
 the complete envelope and returns its existing finite outcome when publication cannot fit.
 
+### Result units and output recovery
+
 Read result metadata reports the selected default or caller value, operator
 ceiling, effective value, and finite clamping reasons. Relation work units are examined
 semantic relation items; cheap exclusions and replay verification are bounded by
@@ -274,18 +288,27 @@ so two distinct call sites remain two results. A page-result allowance does not
 change relationship or scope semantics. Byte fitting measures the complete
 canonical response, including this metadata and any cursor.
 
+
 Public query RUN requires complete execution. Public RESUME accepts only issued
 `query-output:v1` tokens and presents already-produced output; an optional page
 budget changes its presentation allowance, never the original semantic grant.
 Internal pipeline checkpoints are not admitted public RESUME tokens. READ_RESULT
 uses one immutable retained result with independent row and evidence cursors,
 without running semantic providers. Storage capacity and expiry retain their
-operator limits. Query result units are emitted symbol, occurrence, or traversal
+operator limits.
+
+Query result units are emitted symbol, occurrence, or traversal
 record rows; work units include candidate refinement and child relation or walk
 reads. Output replay preserves the original query identity and evidence and does
 not renew retention expiry. A lost output suffix or unavailable checkpoint remains
 an explicit delivery blocker; a tokenless qualified prefix is not a complete answer.
 
-Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds original token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement. The store retains no source text or PSI. Replay and deduplication preserve the original creation time. Each output page also requires every referenced dependency to remain within its original age bound, so a younger page cannot extend an older cursor's validity. An active claim preserves physical storage until release; it does not permit fresh admission or publication after expiry. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.
+### Source continuation lifetime
+
+Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds original token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement.
+
+The store retains no source text or PSI. Replay and deduplication preserve the original creation time. Each output page also requires every referenced dependency to remain within its original age bound, so a younger page cannot extend an older cursor's validity.
+
+An active claim preserves physical storage until release. It does not permit fresh admission or publication after expiry. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.
 
 Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. The query walk consumes relation records and attenuates each one-hop read under its aggregate work and time grant. Its semantic depth and strategy remain fixed across internal semantic checkpoints. The source output cap and query's final encoded-byte guard measure their respective responses.

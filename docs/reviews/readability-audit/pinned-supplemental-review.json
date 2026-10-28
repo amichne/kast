@@ -1,0 +1,44 @@
+{
+  "findings": [
+    {
+      "file": "docs/public/reference/evidence-boundaries.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "decision": "KEEP_WITH_REASON",
+      "reason": "The page or evidence report needs exact compiler, schema, measurement, and source names. Short paragraphs and page-purpose reviews supply the comprehension assessment. The grade advisory alone does not justify removing precision."
+    },
+    {
+      "file": "docs/reviews/readability-audit/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "decision": "KEEP_WITH_REASON",
+      "reason": "The page or evidence report needs exact compiler, schema, measurement, and source names. Short paragraphs and page-purpose reviews supply the comprehension assessment. The grade advisory alone does not justify removing precision."
+    },
+    {
+      "file": "docs/reviews/readability-audit/concept-evidence.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "decision": "KEEP_WITH_REASON",
+      "reason": "The page or evidence report needs exact compiler, schema, measurement, and source names. Short paragraphs and page-purpose reviews supply the comprehension assessment. The grade advisory alone does not justify removing precision."
+    },
+    {
+      "file": "docs/reviews/readability-audit/independent-reader-review.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "decision": "KEEP_WITH_REASON",
+      "reason": "The page or evidence report needs exact compiler, schema, measurement, and source names. Short paragraphs and page-purpose reviews supply the comprehension assessment. The grade advisory alone does not justify removing precision."
+    },
+    {
+      "file": "docs/reviews/readability-audit/reader-review.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "decision": "KEEP_WITH_REASON",
+      "reason": "The page or evidence report needs exact compiler, schema, measurement, and source names. Short paragraphs and page-purpose reviews supply the comprehension assessment. The grade advisory alone does not justify removing precision."
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+extends: metric
+message: "This paragraph has %s words. Look for a change of topic or a useful list."
+level: suggestion
+scope: paragraph
+formula: words
+condition: '> 120.0'
+

@@ -6,6 +6,9 @@ icon: "graduation-cap"
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
+Find one function, identify its caller, and distinguish a completed empty search from an unfinished query.
+The source in this exercise supplies the expected answers. You do not need to understand compiler internals.
+
 [Install Kast](/start) and [connect your agent](/agent-harnesses).
 Use an imported Kotlin/JVM Gradle project with a `main` source set.
 Select that project in IDEA and your agent.
@@ -27,17 +30,23 @@ Select that project in IDEA and your agent.
     fun kastTutorialCaller(): String {
         return kastTutorialMessage()
     }
+
+    fun kastTutorialUnrelated(): String {
+        return "Ready"
+    }
     ```
 
     Save the file and wait for IDEA to finish its import.
+    Give your agent the file's path relative to the repository root, including the module directory.
   </Step>
   <Step title="Find the function">
     <span id="2-find-the-target" />
 
-    > Use Kast to find kastTutorialMessage in package tutorial, in main only. Show its signature and source location.
+    > Use Kast to find kastTutorialMessage in the directory containing the example file, in main only. Show its signature, source location, and completion status.
 
     The result must identify `tutorial.kastTutorialMessage` in your file.
     Open the location and compare the source.
+    Keep the exact reference that Kast issued. A matching name alone does not select one declaration.
   </Step>
   <Step title="Find its caller">
     <span id="3-find-the-caller" />
@@ -45,14 +54,15 @@ Select that project in IDEA and your agent.
     > Use Kast to find the callers of that exact function. Show each call location and report whether the query completed.
 
     The answer must include `kastTutorialCaller` and its call to `kastTutorialMessage()`.
+    It must not identify `kastTutorialUnrelated` as a caller merely because both functions return `"Ready"`.
     This proves a connection in source. It does not mean that the function ran.
   </Step>
   <Step title="Search for an absent name">
     <span id="4-inspect-an-absent-name" />
 
-    > Use Kast to find kastTutorialMissing in package tutorial, in main only. Report whether the search completed.
+    > Use Kast to find kastTutorialMissing in the same example directory, in main only. Report whether the search completed.
 
-    Your example has no function with that name. If that package contains no other match, the completed search returns no matches.
+    Your example has no function with that name. If that directory contains no other match, the completed search returns no matches.
     An unfinished search does not prove that the name is absent.
   </Step>
   <Step title="Remove your example">
@@ -63,6 +73,16 @@ Select that project in IDEA and your agent.
 </Steps>
 
 If a query stops, resolve the reported cause with [Troubleshoot Kast](/troubleshooting).
-For your next task, choose an [example question](/search).
+
+## Compare the result with the source
+
+| Question | Expected source evidence | Limit |
+| --- | --- | --- |
+| Which declaration matches? | `kastTutorialMessage` in the file you created. | The name alone does not select an overload in another project. |
+| Which function calls it? | The call inside `kastTutorialCaller`. | The unrelated function has the same return text but no call. |
+| Does the missing name exist? | No matches after a completed search of the stated directory and source set. | An unfinished query cannot establish absence. |
+
+These are expected facts for this exercise, not a captured response or an exact JSON response shape.
+Read [how an answer works](/explanation), then choose an [example question](/search) for your own code.
 
 <DeeperReading />

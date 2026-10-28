@@ -19,6 +19,10 @@ In a real Kast investigation, compiler-resolved source bindings identify calls, 
 A separate reviewed rule for `map` connects the callback result to a possible output list element.
 Resolving a call alone does not supply that library rule.
 
+The rule describes value correspondence when the callback result supplies an element. It does not prove that the callback ran.
+Compiler evidence and a reviewed library rule keep their distinct authority in a real result.
+[Value-path classifications](/reference/responses#value-path-relationships) distinguish exact correspondence, derived content, and correspondence that remains unestablished.
+
 Here, the connections and source highlights are authored against fixed fixtures. They are not captured compiler evidence.
 The reason for each connection stays visible in the explorer; its details disclosure contains the source and evidence information.
 

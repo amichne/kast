@@ -1,0 +1,154 @@
+{
+  "pages": [
+    {
+      "path": "AGENTS.md",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "README.md",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "State product value and lead to one installation path.",
+      "finding": "Slogan and value example preceded a concrete statement of compiler evidence.",
+      "action": "Lead with a change question, distinguish text from resolved relationships, and state the source-only limit.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "agent-tools/AGENTS.md",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/agent-harnesses.mdx",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/explanation.mdx",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand an answer before compiler architecture.",
+      "finding": "The page was a route list without definitions of declarations, relationships, completion, or source state.",
+      "action": "Add one source example and a progressive conceptual explanation, then preserve deeper links.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/how-to.mdx",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/index.mdx",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Explain the product and choose a next step.",
+      "finding": "The opening emphasized connections without a clear account of evidence authority or scope.",
+      "action": "Explain compiler resolution and result limits alongside the illustrated value path.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/reference.mdx",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Find exact inputs and outputs.",
+      "finding": "The opening repeated product positioning and did not route the first request/result lookup.",
+      "action": "Lead with query and result references plus installed-schema authority.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/reference/AGENTS.md",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/search.mdx",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose an investigation question.",
+      "finding": "Several prompts did not explain the decision after the returned evidence.",
+      "action": "Add classification, scope, diagnostics, and narrowed-question consequences.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/snippets/deeper-reading.mdx",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/start.mdx",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Install and establish one semantic connection.",
+      "finding": "An arbitrary function made success difficult to compare with known source.",
+      "action": "Choose a known name and explain completion, ambiguity, and the first result.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/troubleshooting.mdx",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/tutorials.mdx",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Route the reader to the declared task and preserve exact contracts.",
+      "finding": "No material comprehension defect selected.",
+      "action": "Keep the existing focused page.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    },
+    {
+      "path": "docs/public/tutorials/first-query.mdx",
+      "category": "Tutorial",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Find a known function and caller with a negative control.",
+      "finding": "The exercise lacked an unrelated same-text control and a compact result interpretation.",
+      "action": "Add the unrelated function, explicit scope, completion evidence, and expected-fact table.",
+      "review": "SIMULATED_READER_REVIEW",
+      "limits": "Source-backed editorial review, not a human study. Live tutorial proof has a separate report."
+    }
+  ]
+}

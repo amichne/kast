@@ -1,0 +1,3840 @@
+{
+  ".github/scripts/ci/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.94 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "app-server/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 12.74 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        57,
+        62
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 6
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        22,
+        27
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 12
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        37,
+        40
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "Stop",
+      "Line": 78
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        31,
+        33
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 86
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        40,
+        45
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 98
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        55,
+        57
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 105
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        49,
+        51
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 120
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        64,
+        69
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 124
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        36,
+        41
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 132
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        54,
+        59
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 138
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        34,
+        42
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Installed",
+      "Line": 158
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        29,
+        34
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 176
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        51,
+        53
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 30 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 193
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        32,
+        37
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 215
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        69,
+        70
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "It",
+      "Line": 255
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        32,
+        35
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 32 words.",
+      "Severity": "warning",
+      "Match": "When",
+      "Line": 259
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        33,
+        42
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 294
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 48 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 312
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        64,
+        68
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "Apply",
+      "Line": 350
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        1,
+        6
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 351
+    }
+  ],
+  "app-server/docs/public-query-contract.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.48 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        247,
+        252
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 116
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        338,
+        343
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 116
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        436,
+        438
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 116
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        107,
+        112
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 141
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        263,
+        265
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 141
+    }
+  ],
+  "docs/development.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.36 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        67,
+        68
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "If",
+      "Line": 33
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        29,
+        31
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 86
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        1,
+        6
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'Retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "Retain",
+      "Line": 91
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 191
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        48,
+        53
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 215
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        9,
+        14
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 264
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        26,
+        31
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 292
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        36,
+        41
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 296
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        21,
+        26
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 306
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "IDE",
+      "Line": 319
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 423
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        19,
+        28
+      ],
+      "Check": "Slopsentral.Claims",
+      "Description": "",
+      "Link": "https://developers.google.com/style/excessive-claims",
+      "Message": "Avoid the unverifiable claim 'guarantees'.",
+      "Severity": "warning",
+      "Match": "guarantees",
+      "Line": 454
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        7,
+        16
+      ],
+      "Check": "Slopsentral.Claims",
+      "Description": "",
+      "Link": "https://developers.google.com/style/excessive-claims",
+      "Message": "Avoid the unverifiable claim 'guarantees'.",
+      "Severity": "warning",
+      "Match": "guarantees",
+      "Line": 455
+    }
+  ],
+  "docs/hosted-read-configuration.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.39 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        142,
+        144
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "For",
+      "Line": 19
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "start"
+        ]
+      },
+      "Suggestions": [
+        "start"
+      ],
+      "Span": [
+        20,
+        27
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'start' instead of 'activate'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "activate",
+      "Line": 25
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        131,
+        136
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "Counts",
+      "Line": 73
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        183,
+        186
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 34 words.",
+      "Severity": "warning",
+      "Match": "Each",
+      "Line": 134
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        63,
+        67
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'would' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "would",
+      "Line": 143
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        9,
+        14
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 155
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        30,
+        35
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 178
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        40,
+        45
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 199
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        49,
+        54
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 206
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        76,
+        81
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 209
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        73,
+        78
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 217
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        9,
+        14
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 229
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "necessary"
+        ]
+      },
+      "Suggestions": [
+        "necessary"
+      ],
+      "Span": [
+        69,
+        77
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'necessary' instead of 'mandatory'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "mandatory",
+      "Line": 230
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        21,
+        26
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 233
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        76,
+        81
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 241
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        9,
+        11
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 267
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        65,
+        70
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 297
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        104,
+        107
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Each",
+      "Line": 310
+    }
+  ],
+  "docs/public/explanation.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 8.97 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/public/explanation/value-journey-evidence.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 8.26 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/public/reference/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.07 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Reference.Examples",
+      "Description": "",
+      "Link": "https://diataxis.fr/reference/#provide-examples",
+      "Message": "Reference provides examples. There is no code block on this page.",
+      "Severity": "suggestion",
+      "Match": "---",
+      "Line": 1
+    }
+  ],
+  "docs/public/reference/composition.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Reference.Examples",
+      "Description": "",
+      "Link": "https://diataxis.fr/reference/#provide-examples",
+      "Message": "Reference provides examples. There is no code block on this page.",
+      "Severity": "suggestion",
+      "Match": "---",
+      "Line": 1
+    }
+  ],
+  "docs/public/reference/evidence-boundaries.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 8.25 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/public/reference/responses.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 8.09 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/public/reference/symbols.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Reference.Examples",
+      "Description": "",
+      "Link": "https://diataxis.fr/reference/#provide-examples",
+      "Message": "Reference provides examples. There is no code block on this page.",
+      "Severity": "suggestion",
+      "Match": "---",
+      "Line": 1
+    }
+  ],
+  "docs/public/start.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "HowTo.Steps",
+      "Description": "",
+      "Link": "https://diataxis.fr/how-to-guides/",
+      "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/public/tutorials/first-query.mdx": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Tutorial.Steps",
+      "Description": "",
+      "Link": "https://diataxis.fr/tutorials/",
+      "Message": "A tutorial walks the learner through numbered steps; there is no numbered list here.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/reviews/readability-audit/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 10.50 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/reviews/readability-audit/concept-evidence.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.95 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/reviews/readability-audit/independent-reader-review.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.40 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/reviews/readability-audit/reader-review.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.70 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/static-query-execution.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 13.32 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        48,
+        53
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 28
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        73,
+        78
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 32
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        75,
+        77
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 48
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        19,
+        24
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 61
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        47,
+        52
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 62
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        10
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 30 words.",
+      "Severity": "warning",
+      "Match": "Forwarding",
+      "Line": 84
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        9,
+        14
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 88
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        27,
+        32
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 89
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        9,
+        11
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 96
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        52,
+        57
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 102
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        10,
+        12
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 117
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        32,
+        41
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 157
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        1,
+        6
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 161
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        48,
+        49
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 32 words.",
+      "Severity": "warning",
+      "Match": "It",
+      "Line": 175
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        26,
+        31
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 179
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        13,
+        18
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 182
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        13,
+        18
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 187
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        73,
+        78
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 188
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        63,
+        68
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 191
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        2
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "An",
+      "Line": 196
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        50,
+        55
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 198
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        27,
+        32
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 220
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        69,
+        71
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 31 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 221
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 30 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 231
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        1,
+        10
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 236
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        58,
+        63
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 254
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        52,
+        57
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 263
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        29,
+        38
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 285
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        70,
+        72
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 33 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 290
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        53,
+        58
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 302
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        37,
+        42
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 305
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        17,
+        22
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 308
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 318
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        13,
+        15
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 28 words.",
+      "Severity": "warning",
+      "Match": "Its",
+      "Line": 323
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        16,
+        21
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 326
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        76,
+        81
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 326
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        69,
+        70
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 28 words.",
+      "Severity": "warning",
+      "Match": "It",
+      "Line": 332
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "A",
+      "Line": 338
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        68,
+        77
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 376
+    }
+  ],
+  "experiments/host-observation/EVALUATION_CHECKLIST.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.00 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "experiments/host-observation/HOSTED_ENDPOINT.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.48 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "For",
+      "Line": 65
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        62,
+        66
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'would' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "would",
+      "Line": 103
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        70,
+        75
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 130
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        11,
+        13
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 157
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        15,
+        20
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 157
+    }
+  ],
+  "experiments/host-observation/PI_EVALUATION.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.99 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 42 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 7
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        25,
+        29
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'could' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "could",
+      "Line": 9
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        29,
+        38
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 11
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        46,
+        49
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 33 words.",
+      "Severity": "warning",
+      "Match": "This",
+      "Line": 14
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        44,
+        51
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Optional",
+      "Line": 46
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        21,
+        29
+      ],
+      "Check": "Slopsentral.Claims",
+      "Description": "",
+      "Link": "https://developers.google.com/style/excessive-claims",
+      "Message": "Avoid the unverifiable claim 'guarantee'.",
+      "Severity": "warning",
+      "Match": "guarantee",
+      "Line": 64
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        6,
+        15
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 85
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        9,
+        11
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 125
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        65,
+        67
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 28 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 148
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        58,
+        67
+      ],
+      "Check": "Slopsentral.Claims",
+      "Description": "",
+      "Link": "https://developers.google.com/style/excessive-claims",
+      "Message": "Avoid the unverifiable claim 'guarantees'.",
+      "Severity": "warning",
+      "Match": "guarantees",
+      "Line": 154
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        34,
+        39
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 163
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        29,
+        32
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "Only",
+      "Line": 166
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        6
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Public",
+      "Line": 170
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        8,
+        10
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 182
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        38,
+        40
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 261
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 268
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        35,
+        43
+      ],
+      "Check": "Slopsentral.Claims",
+      "Description": "",
+      "Link": "https://developers.google.com/style/excessive-claims",
+      "Message": "Avoid the unverifiable claim 'guarantee'.",
+      "Severity": "warning",
+      "Match": "guarantee",
+      "Line": 279
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 34 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 314
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        8
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 30 words.",
+      "Severity": "warning",
+      "Match": "Relevant",
+      "Line": 317
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        4
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Real",
+      "Line": 348
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        34,
+        39
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 356
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        5
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "After",
+      "Line": 360
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        1,
+        6
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 365
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        44,
+        53
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 365
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        33,
+        38
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 380
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        35,
+        37
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 382
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        6,
+        11
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 397
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        20,
+        25
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 399
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 406
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        10
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 44 words.",
+      "Severity": "warning",
+      "Match": "Validation",
+      "Line": 456
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        22,
+        27
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 476
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        11,
+        13
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 481
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        14,
+        21
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "Recovery",
+      "Line": 488
+    }
+  ],
+  "experiments/host-observation/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.44 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        133,
+        135
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 18
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        288,
+        289
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "If",
+      "Line": 18
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        3
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 31 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 95
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "get"
+        ]
+      },
+      "Suggestions": [
+        "get"
+      ],
+      "Span": [
+        404,
+        409
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'get' instead of 'obtain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "obtain",
+      "Line": 95
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        194,
+        199
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'should' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "should",
+      "Line": 104
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        302,
+        307
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 122
+    }
+  ],
+  "experiments/host-observation/SEMANTIC_REPRODUCTION.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.89 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        144,
+        146
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 39 words.",
+      "Severity": "warning",
+      "Match": "Use",
+      "Line": 5
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        32,
+        37
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 42
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        91,
+        93
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 32 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 57
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        225,
+        227
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 76
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        226,
+        227
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 28 words.",
+      "Severity": "warning",
+      "Match": "It",
+      "Line": 78
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        537,
+        539
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 78
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        53,
+        58
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 164
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        69,
+        69
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "A",
+      "Line": 177
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        55,
+        59
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "First",
+      "Line": 210
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "enough"
+        ]
+      },
+      "Suggestions": [
+        "enough"
+      ],
+      "Span": [
+        15,
+        24
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'enough' instead of 'sufficient'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "sufficient",
+      "Line": 212
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        50,
+        55
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 238
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        44,
+        49
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 262
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        77,
+        82
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 263
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 29 words.",
+      "Severity": "warning",
+      "Match": "A",
+      "Line": 267
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "enough"
+        ]
+      },
+      "Suggestions": [
+        "enough"
+      ],
+      "Span": [
+        36,
+        45
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'enough' instead of 'sufficient'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "sufficient",
+      "Line": 268
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        12
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 32 words.",
+      "Severity": "warning",
+      "Match": "Measurements",
+      "Line": 285
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        29,
+        34
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 290
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        22,
+        27
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 292
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        30,
+        34
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 33 words.",
+      "Severity": "warning",
+      "Match": "There",
+      "Line": 295
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "enough"
+        ]
+      },
+      "Suggestions": [
+        "enough"
+      ],
+      "Span": [
+        32,
+        41
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'enough' instead of 'sufficient'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "sufficient",
+      "Line": 312
+    }
+  ],
+  "experiments/representation-impact/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 12.30 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        405,
+        407
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 10
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        329,
+        331
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 27
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        255,
+        257
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 29
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        88,
+        92
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 28 words.",
+      "Severity": "warning",
+      "Match": "Frame",
+      "Line": 31
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        934,
+        941
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Ordinary",
+      "Line": 33
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        958,
+        963
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 33
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "more"
+        ]
+      },
+      "Suggestions": [
+        "more"
+      ],
+      "Span": [
+        1104,
+        1113
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "additional",
+      "Line": 33
+    }
+  ]
+}

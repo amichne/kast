@@ -1,0 +1,1732 @@
+{
+  "findings": [
+    {
+      "file": ".github/scripts/ci/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# CI validation and cache policy",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Persistent Kast App Server",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 6,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Semantic contracts and IntelliJ runtime implementations retain their own modules.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 12,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "schema qualification retain their existing owners.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 78,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "cleanup cause and ownership record. Stop and disablement recover the exact",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 86,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "the daemon, and CLI discovery may fall back to its embedded server.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 98,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "CLI process. Private enable and repair retain their installation responsibilities.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 105,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Codex handshake and does not admit the optional host. The client first verifies",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 120,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "Repeated preparation retains its request ID and may seal only after those owners",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 124,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "idempotent and cannot reopen admission. Lost upstream requests retain uncertainty.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 132,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "enrollment and controller failures retain their finite codes through service control.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 138,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "control by asserting a different connection ID. They retain passive legacy status.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 158,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "requires fresh native admission. Installed semantic demand shares this operation",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 176,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "effects. Workspace blockers retain their typed cause and operation identity.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 193,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "entry point remain readable for exact retirement. The per-user login agent",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 215,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "events. Native server requests retain their responsible client and an explicit",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 255,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The first open migrates an owned legacy journal under a store lock. It validates",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 259,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "staging evidence for recovery. When safe ownership recovery cannot converge,",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 294,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "duration, original content, and additional upstream fields are retained. Failed",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 312,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The raw shape passed schema checks from Codex CLI 0.154.0, 0.156.0, and the desktop-bundled Codex 0.153.4. Codex 0.156.0 omits the legacy",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 350,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "prepare the selected IDEA project before one native operation. Apply and recover",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 351,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "retain the exact stored plan identity through the existing local endpoint; the",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/docs/public-query-contract.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Public tool and query contracts",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "app-server/docs/public-query-contract.md",
+      "line": 116,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Query binding rows carry two named cells and preserve each matching pair. Query symbol rows carry exact-symbol references. Occurrence rows carry an exact reference and a structured relation fact; traversal-record rows add depth. Result omissions retain the exact subject, relation kind, and provider omission evidence. Walk observations retain strategy, progress, partial expansions, and incomplete coverage. Separate candidate lookup may return candidate references; these are not query output. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors have different owners and cannot substitute for each other.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/docs/public-query-contract.md",
+      "line": 116,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Query binding rows carry two named cells and preserve each matching pair. Query symbol rows carry exact-symbol references. Occurrence rows carry an exact reference and a structured relation fact; traversal-record rows add depth. Result omissions retain the exact subject, relation kind, and provider omission evidence. Walk observations retain strategy, progress, partial expansions, and incomplete coverage. Separate candidate lookup may return candidate references; these are not query output. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors have different owners and cannot substitute for each other.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/docs/public-query-contract.md",
+      "line": 116,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "Query binding rows carry two named cells and preserve each matching pair. Query symbol rows carry exact-symbol references. Occurrence rows carry an exact reference and a structured relation fact; traversal-record rows add depth. Result omissions retain the exact subject, relation kind, and provider omission evidence. Walk observations retain strategy, progress, partial expansions, and incomplete coverage. Separate candidate lookup may return candidate references; these are not query output. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors have different owners and cannot substitute for each other.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "app-server/docs/public-query-contract.md",
+      "line": 141,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Omitted or explicit null controls normalize once through the generated defaults. Invalid and empty values retain their own meaning. Unknown fields, duplicate sets, unsupported stages and lexical errors reject before effects. The provider's generation projection may omit validation keywords, but server admission enforces the full schema.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "app-server/docs/public-query-contract.md",
+      "line": 141,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "Omitted or explicit null controls normalize once through the generated defaults. Invalid and empty values retain their own meaning. Unknown fields, duplicate sets, unsupported stages and lexical errors reject before effects. The provider's generation projection may omit validation keywords, but server admission enforces the full schema.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Develop and validate Kast",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 33,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "`GRAALVM_HOME` is also registered as a toolchain discovery input. If an older",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 86,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "state. A rejected operation may legitimately write observation or transition",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 91,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Retain already-small tests. When a coupled case needs revision, split its starting",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 191,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The runner mounts the checkout read-only, disables network access, and gives each",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 215,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "items per page. Follow the returned cursor and retain the original impact closure;",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 264,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Retries retain that version and record the producer attempt separately.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 292,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "An existing release must retain the same source and exact file digests.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 296,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Stable full and component releases retain their explicit semantic versions.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 306,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Native-image builds retain structured analysis and resource metrics in `build/reports/native/build-output.json`.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 319,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "IDE source and Javadoc attachments are trusted by artifact name so IDEA can import and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 423,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The IntelliJ query adapter validates the selected open, initialized project,",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 454,
+      "rule": "Slopsentral.Claims",
+      "severity": "warning",
+      "sourceLine": "native settlement guarantees. Pure tests establish the decisions conditional on",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The surrounding passage denies a guarantee or makes a conditional guarantee explicit. It does not assert unqualified success. Keep the limiting statement."
+    },
+    {
+      "file": "docs/development.md",
+      "line": 455,
+      "rule": "Slopsentral.Claims",
+      "severity": "warning",
+      "sourceLine": "those guarantees; synthetic observations do not qualify IntelliJ behavior.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The surrounding passage denies a guarantee or makes a conditional guarantee explicit. It does not assert unqualified success. Keep the limiting statement."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Configure semantic reads and diagnose limits",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 19,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Every row below has an environment key `KAST_READ_<NAME>` and an IDE JVM property `kast.read.<name with lowercase words separated by dots>`. For example, the per-module source-root capacity can be set with `KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE=512` in the IDE launch environment, or this line in the IDE's custom VM options:",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 25,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Restart the IDE to activate changed JVM settings. Explicit plugin reactivation also creates fresh project services; the native regression check uses this route. Editing settings during a query cannot change that query's admitted policy or its epoch authority. IDEA module counts include source-set modules and can exceed Gradle project counts. Module counts have no artificial capacity limit. Remove the obsolete `KAST_READ_MODEL_MODULES` setting and `kast.read.model.modules` JVM property; unknown reserved settings reject configuration.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 73,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "All values are positive decimal integers, up to 2,147,483,646. Transport and process byte capacities have a minimum of 256 bytes. Counts, identities and protocol grammar remain distinct: these parameters tune operational capacities; they do not change compiler identity rules, canonical token formats, or OS socket-path constraints.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 134,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The IDE's `idea.log` receives a `kast_semantic_read` JSON record by default after each admitted request drains, including rejected requests. No diagnostic enable switch is required. Each record includes the host/epoch correlation when available, stage durations, remaining outer deadline at semantic entry, bounded counters, exact native termination reasons, the final hosted outcome, and effective limit values with their sources. Early endpoint/transport failures emit `kast_hosted` records with a stage and closed failure code.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 143,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "Required accounting saturates at `Long.MAX_VALUE` if addition would overflow.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 155,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "results retain the finite callback cause, scan state and obligations; these numeric",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 178,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Unexpected native exceptions retain only the exception class and bounded Kast adapter class/method/line frames. Exception messages, causes, source payloads, file paths and opaque references are excluded. Counter and exception collection capacities are configurable too. A hosted `completed` outcome means execution returned; inspect the canonical response and termination reasons for semantic completeness. For example, `NAME_CAP` and `CANDIDATE_CAP` can both produce public `work-limit-reached`, while the log preserves the actual cause.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 199,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Schema-4 `kast_semantic_read` receipts retain configured limits and an explicit",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 206,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "families before candidate capacity; exact names retain direct short-name indexes.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 209,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "traversed for eligible members. Library-inclusive fuzzy and filename reads retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 217,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "authority and freshness checks. Source snapshot and continuation tokens retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 229,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "results retain a qualified prefix, the original proven minimum, every item",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 230,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "failure, and existing limitations plus `BYTE_LIMIT_REACHED`. If the mandatory",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 233,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Query continuations retain detached pipeline state and encoded-output suffixes in bounded project-owned stores. Each store applies the continuation entry, byte, and TTL limits. A checkpoint must fit `QUERY_CHECKPOINT_BYTES`, which cannot exceed `QUERY_CONTINUATION_BYTES`. Epoch movement and project disposal clear retained state; expired or evicted handles return `continuation-unavailable`. Returned-byte authority covers final items and failures, independently of bounded child-read bytes.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 241,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Output pages, retention, configuration admission and workspace preparation retain their separate constraints.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 267,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "frames. The broker also uses the representation ceiling for semantic messages,",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 297,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "without running semantic providers. Storage capacity and expiry retain their",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/hosted-read-configuration.md",
+      "line": 310,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The store retains no source text or PSI. Replay and deduplication preserve the original creation time. Each output page also requires every referenced dependency to remain within its original age bound, so a younger page cannot extend an older cursor's validity.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/public/explanation.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/public/explanation/value-journey-evidence.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/public/reference/AGENTS.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/public/reference/AGENTS.md",
+      "line": 1,
+      "rule": "Reference.Examples",
+      "severity": "suggestion",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This file is an engineering ownership guide or a generated shell with imported canonical material. Preserve its specific purpose and imported content rather than add a redundant code block."
+    },
+    {
+      "file": "docs/public/reference/composition.mdx",
+      "line": 1,
+      "rule": "Reference.Examples",
+      "severity": "suggestion",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This file is an engineering ownership guide or a generated shell with imported canonical material. Preserve its specific purpose and imported content rather than add a redundant code block."
+    },
+    {
+      "file": "docs/public/reference/evidence-boundaries.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/public/reference/responses.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/public/reference/symbols.mdx",
+      "line": 1,
+      "rule": "Reference.Examples",
+      "severity": "suggestion",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This file is an engineering ownership guide or a generated shell with imported canonical material. Preserve its specific purpose and imported content rather than add a redundant code block."
+    },
+    {
+      "file": "docs/public/start.mdx",
+      "line": 1,
+      "rule": "HowTo.Steps",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The page uses Mintlify Steps and Step components for the ordered procedure. This source-text heuristic does not recognize the rendered numbered structure."
+    },
+    {
+      "file": "docs/public/tutorials/first-query.mdx",
+      "line": 1,
+      "rule": "Tutorial.Steps",
+      "severity": "warning",
+      "sourceLine": "---",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The tutorial uses Mintlify Steps and Step components. The rendered tutorial retains ordered actions and expected outcomes despite this source-text heuristic."
+    },
+    {
+      "file": "docs/reviews/readability-audit/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Documentation readability evidence",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/reviews/readability-audit/concept-evidence.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Explanation and reference audit",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/reviews/readability-audit/independent-reader-review.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Independent simulated-reader review",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/reviews/readability-audit/reader-review.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Kast reader review",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Static query execution",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 28,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "the declared expansion domain. Resource grants retain an unfinished frontier;",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 32,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "default to workspace expansion, while explicit depth-bound public walks retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 48,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "Presentation size is separate from SEMANTIC COMPLETION. A bounded preview may",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 61,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Rejected prefixes retain their full evidence when bounded storage admits them;",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 62,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "storage rejection is explicit. Evidence reads retain the policy verdict and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 84,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Forwarding through local",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 88,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "aliases retain their escape obligation. Each formal body is scanned once. The enclosing query must separately exhaust its observation inventory.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 89,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Existing flow projections retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 96,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "request may reuse an exhaustive summary for several supplied callbacks. Each",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 102,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "external transfers, and unresolved callback routes retain their typed obligations. An exhausted closed",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 117,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "identity may have several location-distinct candidates; the index preserves all",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 157,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "semantic responses. Changed or additional Kotlin sources reject the fixture.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 161,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "retain that supplier's own body and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 175,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "model pin, and an explicitly selected fixture. It runs semantic result allowances",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 179,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "The recursive cases must retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 182,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "routes must retain their typed rejection and original evidence. The legacy formal-rooted parameter invocation has a mutable supplier route and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 187,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "inventories retain evidence in addition to lexical callback observations. A cold",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 188,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "host's eight-result control must reject with `RESULT_LIMIT_REACHED` and retain its",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 191,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "fit the smaller grant. The separate one-result control cannot retain the alpha",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 196,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "An optional summary shares immutable records only when the same request's",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 198,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "containers and references. Independent summaries retain their full storage",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 220,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Named callable references retain a separate callable-value observation. The",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 221,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "reference site does not become a named `CALLERS` or `CALLEES` edge. The native",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 231,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The native receipt records actual formal-body scans, inventoried formal and edge",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 236,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "additional formal scans or graph inventory work.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 254,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Forward use enumeration and backward supplier resolution retain each branch's",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 263,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "finally body. Abrupt callback factory alternatives retain `ABRUPT_COMPLETION`;",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 285,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "implicit operator calls are additional unsupported-body controls. These are acceptance expectations;",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 290,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "with only direct named-call rows cannot establish a callback answer. The reader",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 302,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "alpha/beta captured targets. Captured local aliases retain both binding and read",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 305,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "`body_calls` inventory. Named calls retain exact source occurrences and compiler",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 308,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "alpha value and retain the body's beta call. A missing body inventory cannot qualify",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 318,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The selected-supply reader requires every declared",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 323,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "public MCP. Its receipt names the selected cases and the narrower",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 326,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Positive cases retain correlated semantic-fact counters; rejected controls retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 326,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Positive cases retain correlated semantic-fact counters; rejected controls retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 332,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The mutation matrix starts from the original fixture for each case. It changes a",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 338,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "A changed answer is not necessary for invalidation: adding an override must",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 376,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "inventories depend on the full workspace, including the absence of additional",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/EVALUATION_CHECKLIST.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Kast evaluation checklist across real codebases",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Existing IDEA index endpoint",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "line": 65,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "For the Python client, exit 0 means a schema-validated answer, 2 means a typed host or semantic",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "line": 103,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "requests. Reconstructing an equal-looking policy per request would lose the",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "line": 130,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "class counts, index authority, and confirmed cleanup. Failed queries retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "line": 157,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "processes may retain open archive mappings even after plugin unload. Use atomic",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "line": 157,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "processes may retain open archive mappings even after plugin unload. Use atomic",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Bounded Pi agent evaluation",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 7,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The 2026-10-10 public synthetic pilot exposed two controller defects: a terminal",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 9,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "negative-control target could not cover both requests with roughly 17,000 input",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 11,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "used 17,905 tokens and zero additional semantic calls. Sanitized numeric/shaped",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 14,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "WebSocket sends before observing that abort. This change uses isolated SSE and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 46,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "  and tool-text limits remain independent. Optional full-request calibration is",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 64,
+      "rule": "Slopsentral.Claims",
+      "severity": "warning",
+      "sourceLine": "  provides no spend guarantee. A serialized assistant response is capped at",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The surrounding passage denies a guarantee or makes a conditional guarantee explicit. It does not assert unqualified success. Keep the limiting statement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 85,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "  no additional tool. `HARNESS_BUDGET_LIMIT` remains a harness outcome even when",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 125,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "refresh may debit an unobserved case allowance.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 148,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Use `mode: \"fresh\"` with the fixed public question in `prompt`. The parent",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 154,
+      "rule": "Slopsentral.Claims",
+      "severity": "warning",
+      "sourceLine": "post-response thresholds into pre-request token or spend guarantees.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The surrounding passage denies a guarantee or makes a conditional guarantee explicit. It does not assert unqualified success. Keep the limiting statement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 163,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "descriptor and the pathname must retain the same identity, size and nanosecond",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 166,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "opening it through the SDK. Only authenticated bytes are copied to an exclusive",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 170,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Public `SessionManager.open` opens a private owned copy, and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 182,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "A case may supply at most 64 `inputCalibrations`, each an exact object:",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 261,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "most 1,024 input items and 64 tools. The installed declaration schema requires",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 268,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The report records exact whole-file and input-projection hashes, applied request",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 279,
+      "rule": "Slopsentral.Claims",
+      "severity": "warning",
+      "sourceLine": "a guaranteed upper bound, a spend guarantee or an admission decision.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The surrounding passage denies a guarantee or makes a conditional guarantee explicit. It does not assert unqualified success. Keep the limiting statement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 314,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The checked coding-agent package is 1.0.2, but its resolved pi-ai and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 317,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Relevant installed source is `pi-ai/dist/api/openai-codex-responses.js`:",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 348,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Real owned-child tests include a delayed 1,200 ms callback within the overall 5 s",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 356,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Callback-error and timeout cases retain finite failures and reap owned children.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 360,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "After explicit authorization and matched installation/native admission, run one",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 365,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "retain the exact transcript and prove zero additional semantic calls. Compare",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 365,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "retain the exact transcript and prove zero additional semantic calls. Compare",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 380,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "and private transcript; reports retain structured summaries of each outcome.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 382,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "evidence-only interpretation mode may interpret already delivered proof under",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 397,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "must retain the original question, result identity, coverage interpretation and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 399,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "received page must retain a row cursor or a `MORE` evidence window. A page with",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 406,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The report's nullable `partialEvidence` records unique received rows, duplicate",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 456,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Validation starts with the named failing policy case, then exercises production",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 476,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "null row IDs/cursors retain their owning DTO meaning. The synthetic prefix uses",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 481,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "selection may additionally add `result-limit-reached` while a row cursor remains, as",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 488,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "reconstruct. Recovery action, optional exact-name seed, incomplete completion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Manual IntelliJ host observation",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 18,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "The controller never launches an IDE. The separate, explicit host acceptance runner uses IDEA's native `ideScript` command, which **may launch IDEA**. A launcher exit code of zero does not establish that a script evaluated successfully; the checker requires correlated carrier receipts. If an engine exception exposes an out-of-memory cause, the bootstrap records `RESOURCE_EXHAUSTED` with the request ID and artifact digest; the controller reports an unmet precondition. Other engine failures remain `EXECUTION_UNCONFIRMED`. Neither command restarts a process for recovery.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 18,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The controller never launches an IDE. The separate, explicit host acceptance runner uses IDEA's native `ideScript` command, which **may launch IDEA**. A launcher exit code of zero does not establish that a script evaluated successfully; the checker requires correlated carrier receipts. If an engine exception exposes an out-of-memory cause, the bootstrap records `RESOURCE_EXHAUSTED` with the request ID and artifact digest; the controller reports an unmet precondition. Other engine failures remain `EXECUTION_UNCONFIRMED`. Neither command restarts a process for recovery.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 95,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "The opt-in acceptance command opens and trusts only its freshly created disposable fixture projects, edits fixture Java files, runs scoped fixture refreshes, tests the actual carrier, and closes its fixtures. It does not close the user's projects. A private evidence directory records requests, receipts, fixture stages, and the passed cases. Timeouts remain failures; the runner never restarts IDEA to obtain success.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 95,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "The opt-in acceptance command opens and trusts only its freshly created disposable fixture projects, edits fixture Java files, runs scoped fixture refreshes, tests the actual carrier, and closes its fixtures. It does not close the user's projects. A private evidence directory records requests, receipts, fixture stages, and the passed cases. Timeouts remain failures; the runner never restarts IDEA to obtain success.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 104,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "The implementation uses JDK threads and synchronous pure checks, with no suspend functions or coroutine scheduler. `runTest` is therefore not needed in this slice. Any later coroutine consumer should use the repository's injected test dispatcher and `runTest` conventions.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/README.md",
+      "line": 122,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Each call also records `observationCaptureNanos`. Workload wall and first-usable times exclude previous calls' capture intervals. This keeps the bounded wait for log records from inflating continuation timing. Other replay driver work remains included in workload wall time. Process and native clocks retain their original values.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Native semantic-query reproduction",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 5,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Use Python 3.11+ with the existing `requirements-test.txt` (`jsonschema`), JDK 25, and `kotlinc` for the optional production-provider harness. Use the packaged v0.38.0 control CLI and its checksum-verified hosted plugin for IDEA build 262.10315.125. Install/load the plugin explicitly using the existing [endpoint workflow](HOSTED_ENDPOINT.md); do not replace a running user's installation implicitly.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 42,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "older version 6 and 7 profiles retain their separate requirements. Match loaded",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 57,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Use `--surface cli` to exercise direct CLI behavior. Each output directory must be fresh. The provider harness compiles against the selected distribution's actual App Server jar and delegates to its production process executor, recording the underlying command, stdin, stdout, stderr, exit, elapsed time and envelope. Its process startup/qualification time is separate from native semantic-stage duration. `pin.json` records executable/JAR hashes, loaded plugin class hashes, IDEA/Kotlin/JBR versions, imported Gradle projects/source sets, IDEA modules/roots, and effective limits. Source checkout hashes are labelled unproven correspondence until matched to an actual build/release receipt. The runner does not equate a CLI version with a plugin version.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 76,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "For diagnosis **after** capturing unchanged-release behavior, build the instrumented plugin with `:runtime:hosted:hostedPlugin -PhostedIdeaHome=...`, explicitly load it, and pin it into a new evidence directory. Its version may equal the release version; its hashes do not. Current builds log diagnostics by default; earlier opt-in diagnostic builds require their historical enable property. Add `--idea-log /path/to/idea.log` during replay. Restore temporary experiment settings and the selected plugin after the experiment, unless the task explicitly calls for installing the corrected build.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 78,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "One `kast_semantic_read` JSON record is emitted after the read drains. Finite enums identify stages, contributors, counters and termination reasons; counts saturate. The record has no names, source text, paths or references. It records remaining outer time at semantic entry, module/root admission, name/candidate caps, filtering, K2 refinement, relation facts, native unsupported targets, and time/work/result/byte limits. The collector reads only a bounded appended log segment and reports rotation/overflow gaps. Name/candidate caps may map to public `work-limit-reached`; the diagnostic reason preserves the narrower cause. Host-only correlation before authority admission never invents an epoch. A diagnostic `completed` outcome means the hosted boundary returned; it does not assert complete semantic coverage. Contributor-specific completion can coexist with another contributor's cap. Current execution logs by default. The effective policy and bounded unexpected-failure frames accompany the request receipt; see [configuration](../../docs/hosted-read-configuration.md).",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 78,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "One `kast_semantic_read` JSON record is emitted after the read drains. Finite enums identify stages, contributors, counters and termination reasons; counts saturate. The record has no names, source text, paths or references. It records remaining outer time at semantic entry, module/root admission, name/candidate caps, filtering, K2 refinement, relation facts, native unsupported targets, and time/work/result/byte limits. The collector reads only a bounded appended log segment and reports rotation/overflow gaps. Name/candidate caps may map to public `work-limit-reached`; the diagnostic reason preserves the narrower cause. Host-only correlation before authority admission never invents an epoch. A diagnostic `completed` outcome means the hosted boundary returned; it does not assert complete semantic coverage. Contributor-specific completion can coexist with another contributor's cap. Current execution logs by default. The effective policy and bounded unexpected-failure frames accompany the request receipt; see [configuration](../../docs/hosted-read-configuration.md).",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 164,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "driver work. Process, native-phase and stage clocks retain their own values and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 177,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "fixture, and `--idea-contents`. Keep pins and raw receipts private. A pin records",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 210,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "default. Setup, pinning and import time are excluded. First usable result means",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 212,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "separate from sufficient evidence for the complete answer. Completion time runs",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 238,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "is not correspondence proof. Native pin failures retain a bounded `PIN_CAPTURE_REJECTED` stage receipt rather",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 262,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "or missing receipts. Native manifests must retain IDE/JBR/Kotlin versions and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 263,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "nonempty CLI/plugin JAR and loaded-class hash evidence; parsed trial states retain",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 267,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "A suite can report `lessWork` when at least one measured trial reduces work and",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 268,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "every measured pair has equivalent sufficient evidence with no work increase",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 285,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Measurements keep public calls, actual UTF-8 stdout bytes (including the RPC",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 290,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Unused counters in this set retain explicit zero observations; other absent",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 292,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "that produce no page retain explicit zero counters. Completed page observations",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 295,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "counters remain unavailable. There must be exactly one bound native receipt in",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 312,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "`lessWork` requires equivalent sufficient evidence, every required measurement,",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "severity": "warning",
+      "sourceLine": "# Installed representation-impact capture",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed against the page purpose and concept sequence. Exact API, compiler, protocol, and evidence names affect the grade estimate. No grade score establishes comprehension."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 10,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "The selected IDEA must already be running with the candidate plugin. The adapter checks its exact PID/executable using `ps` without process arguments. It never launches, restarts, stops, installs, or cleans up an IDE. A new output directory must be beneath the explicitly owned root, whose `home` already contains the selected installation. The supplied IDE log must also be beneath that root. A fixture may be an independently owned existing workspace; no fixture files are modified.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 27,
+      "rule": "Slopsentral.Modals",
+      "severity": "warning",
+      "sourceLine": "The child's environment is constructed explicitly: `HOME`, all five XDG paths, `JAVA_HOME`, `JAVA_OPTS`, `KAST_INSTALL_IDEA_HOME`, `PATH`, `TMPDIR`, locale, and timezone. It does not inherit ambient credentials or Java option variables. The environment is retained in the typed invocation receipt. Owned scratch/XDG directories may be created; existing installation and source files remain untouched.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The finding remains in qualified source or historical prose. Preserve its conditional or uncertainty meaning. The user requested no automatic modal or voice replacement."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 29,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Every request is validated against the current generated `app-server/.../query_symbols.parameters.json` before any child process runs. Duplicate JSON fields, unknown variants, missing fields, and schema incompatibility reject with a finite harness code. The receipt retains the schema digest from the exact validated bytes, the request digest, executable digest, exact argv, cwd, elapsed nanoseconds, exit status, and stream byte counts. Files contain the original request, RPC stdout, stderr, and a typed `capture.json`. Request and RPC response fields are existing contract payloads, not new harness semantic models.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 31,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Existing-IDE response admission emits bounded private JSON activity records to stderr. Frame records distinguish nonpositive, over-limit, and admitted sizes; body records distinguish complete drainage from truncation; decoder records preserve finite schema, operation, completion, and live-basis rejection causes. These records contain no response payload, path, source anchor, or retained handle. They identify the rejecting transport stage; they do not establish semantic coverage or strengthen a qualified result.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 33,
+      "rule": "Slopsentral.LongSentence",
+      "severity": "warning",
+      "sourceLine": "Only bounded appended `kast_semantic_read` schema-version-6 documents are retained from the selected log; IDE line prefixes and unrelated log text are discarded. The append limit is the existing host-observation limit of 2 MiB, and selection reads that append once after RPC completion. Rotation, malformed records, foreign PIDs, missing receipts, multiple receipts, response-basis absence/mismatch, absent counters, and saturation are explicit uncertainty. Receipt counts are separate from native counters. Expected authority comes only from the emitted `document.impact_accounting` `INVESTIGATED` seeds: every `seeds[n].enclosing.basis` must be the same exact supported `LIVE` basis, including root, host, epoch, content view, and reference version. Missing, conflicting, or unknown seed bases fail closed. Bases in request models, returned model witnesses, or foreign boundary destinations do not establish the capture authority. Ordinary symbol results retain explicit harness basis uncertainty because this correlation rule admits only `INVESTIGATED` seed bases, even when a verbose lookup carries additional live-basis fields. Counters are reported only for one receipt matching the supplied PID and that uniquely emitted seed host/epoch; absent measurements never become zero. `CAPTURED` means capture succeeded, while `rejected_document` remains a product rejection and `rejected` remains an RPC rejection. `HARNESS_REJECTED` is a distinct finite failure and exits 2. Capture exits 0 without asserting a native semantic success.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed as a complete sentence in its page context. Keep necessary identities, dependent conditions, or finite alternatives together. The 25-word advisory is not proof of poor comprehension."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 33,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Only bounded appended `kast_semantic_read` schema-version-6 documents are retained from the selected log; IDE line prefixes and unrelated log text are discarded. The append limit is the existing host-observation limit of 2 MiB, and selection reads that append once after RPC completion. Rotation, malformed records, foreign PIDs, missing receipts, multiple receipts, response-basis absence/mismatch, absent counters, and saturation are explicit uncertainty. Receipt counts are separate from native counters. Expected authority comes only from the emitted `document.impact_accounting` `INVESTIGATED` seeds: every `seeds[n].enclosing.basis` must be the same exact supported `LIVE` basis, including root, host, epoch, content view, and reference version. Missing, conflicting, or unknown seed bases fail closed. Bases in request models, returned model witnesses, or foreign boundary destinations do not establish the capture authority. Ordinary symbol results retain explicit harness basis uncertainty because this correlation rule admits only `INVESTIGATED` seed bases, even when a verbose lookup carries additional live-basis fields. Counters are reported only for one receipt matching the supplied PID and that uniquely emitted seed host/epoch; absent measurements never become zero. `CAPTURED` means capture succeeded, while `rejected_document` remains a product rejection and `rejected` remains an RPC rejection. `HARNESS_REJECTED` is a distinct finite failure and exits 2. Capture exits 0 without asserting a native semantic success.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 33,
+      "rule": "Slopsentral.Diction",
+      "severity": "warning",
+      "sourceLine": "Only bounded appended `kast_semantic_read` schema-version-6 documents are retained from the selected log; IDE line prefixes and unrelated log text are discarded. The append limit is the existing host-observation limit of 2 MiB, and selection reads that append once after RPC completion. Rotation, malformed records, foreign PIDs, missing receipts, multiple receipts, response-basis absence/mismatch, absent counters, and saturation are explicit uncertainty. Receipt counts are separate from native counters. Expected authority comes only from the emitted `document.impact_accounting` `INVESTIGATED` seeds: every `seeds[n].enclosing.basis` must be the same exact supported `LIVE` basis, including root, host, epoch, content view, and reference version. Missing, conflicting, or unknown seed bases fail closed. Bases in request models, returned model witnesses, or foreign boundary destinations do not establish the capture authority. Ordinary symbol results retain explicit harness basis uncertainty because this correlation rule admits only `INVESTIGATED` seed bases, even when a verbose lookup carries additional live-basis fields. Counters are reported only for one receipt matching the supplied PID and that uniquely emitted seed host/epoch; absent measurements never become zero. `CAPTURED` means capture succeeded, while `rejected_document` remains a product rejection and `rejected` remains an RPC rejection. `HARNESS_REJECTED` is a distinct finite failure and exits 2. Capture exits 0 without asserting a native semantic success.",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Reviewed in the page audit. Preserve precise contract terms and unchanged qualified source descriptions. The focused edit does not replace every generic diction suggestion or change a term only for a score."
+    }
+  ]
+}

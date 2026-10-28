@@ -1,0 +1,11 @@
+extends: metric
+message: "This section has %s words. Consider a subheading at a change of topic."
+level: suggestion
+# Select leaf sections to avoid repeated alerts on every parent section.
+# The body selector covers documents with no headings.
+scope:
+  - 'doc(section:not(:has(section)))'
+  - 'doc(body:not(:has(section)))'
+formula: words
+condition: '> 600.0'
+

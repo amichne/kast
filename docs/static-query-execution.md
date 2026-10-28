@@ -1,5 +1,12 @@
 # Static query execution
 
+This contributor reference explains query execution, callback proof, and their qualification procedures.
+For a first explanation of the results, read [how Kast works](public/explanation.mdx).
+The implementation rules and acceptance targets here serve different purposes.
+Only a named test or captured native receipt establishes its stated behavior.
+
+## Scale acceptance target
+
 The target workload is a current semantic index for 500–750 modules and roughly
 30 million Kotlin lines. The acceptance ceiling is 60 seconds for a complete
 query, including its RETAINED RESULT and completion evidence. Compilation,
@@ -68,9 +75,13 @@ direct and bound argument flows. Typed nodes distinguish named callables,
 anonymous bodies, and supplier-specific formals. Typed edges distinguish supply,
 forwarding, invocation, and a body's call to a named target. Graph admission
 checks exhaustive scans, exact owners, the original workspace basis, and absence
-of unresolved obligations. A bound argument's `EXHAUSTED_GRAPH` forwarding
+of unresolved obligations.
+
+A bound argument's `EXHAUSTED_GRAPH` forwarding
 witness inventories every reachable exact formal and compiler-confirmed edge,
-including edges that close a recursive component. Forwarding through local
+including edges that close a recursive component.
+
+Forwarding through local
 immutable aliases retains the ordered compiler transfer chain on the forwarding
 edge: each local binding and read carries its exact owner, source site, destination
 site, and role. Direct forwarding carries an explicit empty transfer list. Mutable
@@ -133,6 +144,8 @@ basis or parameter, and exercise retention limits. Snapshot relation tests compa
 independent expected edges at several page grants with unrelated and wrong-kind
 negative controls.
 
+### Static callback fixture
+
 The opt-in native acceptance fixture is
 `experiments/host-observation/static-callback-fixture`. Its three modules separate
 lambda suppliers, the forwarding component, and a terminal parameter invocation.
@@ -142,23 +155,28 @@ This preserves acyclic Gradle module dependencies while exercising recursive
 formal edges. `static_callback_oracle.py` authors exact declarations, UTF-16 source
 sites, supplier bindings, forwarding sites, and invocation sites independently of
 semantic responses. Changed or additional Kotlin sources reject the fixture.
+
 Alpha and the self-recursive invocation case each supply two distinct lambda
 bodies at two wrapper call sites in one relation request. Each summary reuse must
 retain that supplier's own body and
-binding; beta checks a separate root and target. The alias-forwarding case routes a
+binding; beta checks a separate root and target.
+The alias-forwarding case routes a
 formal through two local immutable bindings before passing it to the invocation
 module. Its oracle requires all four binding/read transfers, including exact
 compiler owner and source ranges. A mutable alias is the rejection control.
 These additions require a new source-matched native receipt; earlier receipts
 cannot qualify them.
 
+### Candidate admission and rejection controls
+
 `qualify_callback_tracing.py --static-cross-module` reuses the existing installed
 schema admission, public MCP session, and retained-result drainer. It requires an
 exact candidate build receipt, loaded-class and artifact hashes, a current native
 model pin, and an explicitly selected fixture. It runs semantic result allowances
-of 8 and 32 and retained presentation grants of 1,
+of 32 and 128 and retained presentation grants of 1,
 checks the complete supplier-rooted `CALLEES` derivations, and checks that callback
-body calls do not become named `CALLERS` edges. The recursive cases must retain
+body calls do not become named `CALLERS` edges.
+The recursive cases must retain
 their exhaustive formal and edge inventories, including closing edges. The
 closed self cycle must have no terminal invocation evidence. External escape
 routes must retain their typed rejection and original evidence. The legacy formal-rooted parameter invocation has a mutable supplier route and
@@ -179,12 +197,14 @@ An optional summary shares immutable records only when the same request's
 retention owner already admitted those exact objects; it then charges the new
 containers and references. Independent summaries retain their full storage
 charge. Encoded response fitting applies separately under the configured
-transport ceiling, which defaults to 65,536 bytes. Alias forwarding retains four
-additional transfer witnesses and can exceed that default. Native qualification
-may explicitly configure a larger `KAST_READ_HOST_RESPONSE_BYTES` envelope on
-both the owned IDE and MCP client; the outer `KAST_READ_PROVIDER_OUTPUT_BYTES`
-envelope must also admit that value. Its pin retains the exact configuration. Preserve the
-default-budget rejection alongside the larger-envelope result.
+transport ceiling. The current [configuration reference](hosted-read-configuration.md#default-values)
+owns its defaults, including `KAST_READ_HOST_RESPONSE_BYTES` at 2,147,483,646 bytes.
+This representation ceiling does not promise enough memory for a response of that size.
+Alias forwarding keeps four more transfer witnesses and can exceed a smaller configured envelope.
+For native qualification, set matching envelope limits on the owned IDE and MCP client.
+The outer `KAST_READ_PROVIDER_OUTPUT_BYTES` envelope must also admit that value.
+Keep the exact configuration in the pin.
+Preserve the smaller-envelope rejection alongside the larger-envelope result.
 
 `--static-max-elapsed-ms` and `--static-max-work-units` declare the same time and
 work allowance for both complete runs and retained presentation. The default is
@@ -206,17 +226,21 @@ receipts that checked only named-call exclusion do not establish this transfer
 proof; the expanded suite requires a new source-matched receipt. It also does not qualify an unrestricted
 walk, runtime activation, or topology activation.
 
+### Native work and reuse evidence
+
 The native receipt records actual formal-body scans, inventoried formal and edge
 counts, completed and rejected fixed-point scans, and supplier-specific summary
 hits, misses, instantiation rejections, and retention outcomes. Every cold complete
 supplier-rooted case must scan each authored formal once. An admitted cross-query
 summary reuse must report admitted project-summary use, no extraction, and zero
-additional formal scans or graph inventory work. Each supplier still requires a
+additional formal scans or graph inventory work.
+Each supplier still requires a
 successful binding check. Source observations and selected-supply observations can
 instantiate the same partition separately; the reuse counter counts admitted uses,
 not distinct cache entries. The second alpha query must establish project reuse;
 an entirely cold run cannot qualify that claim. A completed scan
 means the native PSI inventory drained, not that callback activation was proven.
+
 Missing counters reject qualification; they are never interpreted as zero.
 Retained row and evidence reads must report zero callback work. Semantic witnesses
 and verdicts must remain equal across the two grants before interpreting work or
@@ -245,12 +269,17 @@ independently authored alpha/beta inventory and exact source-anchored branch
 witnesses. Fixture, runtime control, and receipt-reader checks do not establish
 native K2 or public-tool qualification.
 
+### Immutable callback fixture
+
 `immutable-callback-fixture` is a separate four-module input corpus for the next
 qualification boundary. Its independent module has no callback-module dependency.
-The authored oracle distinguishes named references, bound and unbound receivers,
-local immutable aliases, anonymous functions, default omission and override,
-generic forwarding, factory captures, transparent returns, captured local aliases,
-finite branch alternatives, and a supplied value that is never invoked. Mutable
+The authored oracle separates several cases:
+
+- Named references, bound and unbound receivers, local immutable aliases, and anonymous functions.
+- Default omission and override, generic forwarding, factory captures, transparent returns, and captured local aliases.
+- Finite branch alternatives and a supplied value that is never invoked.
+
+Mutable
 storage, mutable captures, external transfer, forwarded captures, and receiver
 factories are exact typed rejection controls. Returned nonlocal getters and
 implicit operator calls are additional unsupported-body controls. These are acceptance expectations;
@@ -265,6 +294,8 @@ the exact empty or two-supplier inventory for the isolated formal fixtures. Thes
 checks supplement the existing exact source-site and graph oracle; they are not a
 standalone qualification of the wider native model.
 
+### Factory results and capture evidence
+
 `immutable_factory_qualification.py` independently anchors the factory producer,
 call site, formal, selected argument, returned value, and captured invocation to
 the authored source. Two calls to the same factory must preserve their distinct
@@ -275,14 +306,16 @@ forward, or cyclic references. Every returned anonymous body requires an exhaust
 targets; captured invocations must match their capture formal and closure owner.
 Changing `{ block() }` to `{ betaTarget() }` must remove activation of the supplied
 alpha value and retain the body's beta call. A missing body inventory cannot qualify
-a complete result. Native returned-body proof inventories immediate explicit call
+a complete result.
+ Native returned-body proof inventories immediate explicit call
 expressions, exact captured-formal invocations, and named compiler targets.
 Compiler-backed capture checks reject unmodeled nonlocal properties and getters.
 Operations, subjectful `when` equality, array access, interpolated templates, loops,
 destructuring, delegates,
 and object or class declarations reject with `UNSUPPORTED_CALLBACK_SUPPLY` until
 their implicit execution has an owned proof. Constant strings and simple explicit
-calls remain supported. The selected-supply reader requires every declared
+calls remain supported.
+The selected-supply reader requires every declared
 function formal and counts a supplied target only when its summary proves an
 invocation; supplying a value alone does not establish activation.
 
@@ -293,6 +326,8 @@ hashes, and checks the native host, fixture, model, and limits again at the end.
 Positive cases retain correlated semantic-fact counters; rejected controls retain
 their exact completion failure and evidence handle. A selected subset never
 stands in for the full matrix or the mutation and reuse qualification.
+
+### Source changes and reuse
 
 The mutation matrix starts from the original fixture for each case. It changes a
 body, changes a returned closure, adds an overload or override, changes an empty
@@ -313,6 +348,8 @@ compiler identities and qualifications remain part of equality. Its work gates
 require explicit positive store activity; they do not themselves run a mutation
 or establish native reuse.
 
+### Owned document edits
+
 `immutable_document_edit.py` creates a new owned copy and prepares a native
 ideScript without launching a host. The script requires the selected host PID,
 creator token, exact fixture source path, and document preimage before applying
@@ -332,6 +369,8 @@ project documents before semantic execution, even with IDE autosave disabled. An
 `APPLIED_UNSAVED` edit receipt alone therefore cannot qualify dirty-document cache
 rejection: the trial must also prove the document remained dirty at capture. Saved and unsaved trials each restore their exact preimages.
 
+### Fact eligibility
+
 Three fact families have separate eligibility boundaries. Complete formal
 summaries depend on their module dependency closure. Exhaustive reverse supplier
 inventories depend on the full workspace, including the absence of additional
@@ -349,6 +388,8 @@ must require positive expected store activity, one admitted current generation,
 independently equal answers, and zero semantic work for retained reads. An
 unwired counter or fixture-only success cannot satisfy cross-query or cross-edit
 reuse acceptance.
+
+### Enterprise acceptance
 
 Run the same query
 and exact model on the representative enterprise corpus. Record hardware,

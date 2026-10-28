@@ -6,6 +6,16 @@ icon: "list-checks"
 
 A query result contains semantic facts and their coverage. It also reports producer progress and how much output was shown. Each field answers a distinct part of the source question.
 
+Read these facts in order before a conclusion:
+
+1. Read the tool-call outcome and the semantic status.
+2. Read the searched scope and completion interpretation.
+3. Examine the returned facts with their source evidence and stated limits.
+4. Use the issued handles if more rows or evidence remain.
+
+A full page can belong to an incomplete answer. A short preview can belong to a complete answer.
+Page size alone proves neither case.
+
 <a id="interpret-coverage-before-making-a-claim" />
 
 <a id="read-coverage-before-a-claim" />
@@ -37,6 +47,16 @@ This interpretation permits source filters and deduplication before `TRACE`. An 
 Unresolved compiler mappings, missing source membership, stale dependency evidence, and exhausted grants still prevent completion.
 
 Impact investigations also keep their original ledgers intact and meet all proof rules. The model does not prove that code ran or that a path can run.
+
+### Two different meanings of missing output
+
+Suppose a complete query produces five rows, but its preview shows two.
+The remaining three rows are output to read through the issued handle. They are not unfinished search work.
+
+Now suppose a query stops before it proves completion and keeps two rows as rejection evidence.
+Those rows remain useful facts with their original limits. The last evidence page does not turn the rejected answer into a complete answer.
+
+These numbers illustrate the distinction. They are not a captured Kast response.
 
 <a id="read-evidence-from-a-completion-rejection" />
 

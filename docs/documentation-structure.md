@@ -8,7 +8,8 @@ The [Diátaxis framework](https://diataxis.fr/) groups pages by what the reader 
 This policy applies to the public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
 
 Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts.
-Architecture and Reference stay outside the main menus, with search access and links at the bottom of core pages.
+Guides, Architecture, and Reference remain visible as navigation tabs.
+Links at the bottom of core pages also connect these reader tracks.
 These content types keep the four Diátaxis page purposes below.
 
 ## Choose the page's purpose
@@ -53,7 +54,9 @@ Do not move a page just to match a directory name. Keep its routes and heading a
 
 `openwiki/` owns shared explanations in tracked OKF documents with recorded Claims.
 Public pages listed in `docs/okf-public.json` consume those documents through generated snippets.
-The manifest owns their routes, titles, diagrams, and legacy anchors. It does not own another copy of their prose.
+The manifest owns their routes, titles, diagrams, and legacy anchors.
+Its optional `introduction` supplies reader orientation before the shared content.
+Use that introduction to distinguish current public syntax from internal contracts, without duplicating the canonical explanation.
 
 `docs/tooling/okf_public.py` produces the snippets, page shells, and `snippets/okf/provenance.json`.
 The report keeps each source digest and each recorded evidence version.
@@ -154,6 +157,24 @@ The parser rejects unknown variants and clashing labels. It rejects missing evid
 The root `.vale.ini` applies these rules to the same authored scope. The glossary view shows rejected forms as literals.
 
 ## Local Vale integration
+
+### Reader audit: separate prose and terminology
+
+The [reader audit](reviews/readability-audit/README.md) records the maintained corpus and the supplied Vale starter.
+Its two stages use Vale `3.25.1`, with separate configurations and compatibility tests.
+The prose stage has no vocabulary. The terminology stage uses Kast's glossary and product names.
+Terminology exceptions cannot change prose metrics.
+
+From the repository root, save a new report directory:
+
+```shell
+mise exec vale@3.25.1 -- uv run --locked --script config/vale/readability/audit.py --output build/reports/documentation/reader-audit
+```
+
+The runner rejects an existing output directory. Keep the baseline before edits and the final report after edits.
+Review advisory findings against each page's reader purpose. A lower score does not prove better comprehension.
+
+### Repository policy and shared assessment
 
 Vale `3.24.0` runs locally with checked-in rules and licenses. Normal lint needs no style download, hosted service, or installed plugin.
 

@@ -22,6 +22,8 @@ code_sources:
   `docs/tooling/okf_public.py` owns those page shells and `snippets/okf/`.
   Change shared prose through OpenWiki, then regenerate the public projection.
   Keep routes and legacy anchors in the manifest. Run `verifyPublicKnowledge` to reject drift.
+- The manifest's optional `introduction` owns reader orientation before shared content.
+  Use it for current public syntax and next-page links. Keep canonical explanations and their qualifications in OpenWiki.
 - `callables.openapi.json` is generated from the canonical CLI command graph and installed hosted
   schemas plus direct MCP and tool RPC result types. Never edit it directly.
 - Update the callable artifact with `./gradlew :cli:generateMintlifyCallableReference` from the

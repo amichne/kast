@@ -1,0 +1,7 @@
+{
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "strict",
+  "include": ["audit.py", "test_audit.py"],
+  "reportMatchNotExhaustive": "error",
+  "reportUnnecessaryTypeIgnoreComment": "error"
+}

@@ -1,0 +1,7 @@
+extends: metric
+message: "This sentence has %s words. Check whether it contains distinct ideas that could be separated."
+level: suggestion
+scope: sentence & ~heading & ~table
+formula: words
+condition: '> 35.0'
+
