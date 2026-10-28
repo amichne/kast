@@ -13,6 +13,7 @@ import pytest
 
 from okf_public import (
     ROOT,
+    Authored,
     Code,
     EvidenceStatus,
     Failure,
@@ -67,7 +68,7 @@ class ClaimsDocument:
 @dataclass(frozen=True)
 class ManifestDocument:
     views: tuple[View, ...]
-    authored: tuple[object, ...] = ()
+    authored: tuple[Authored, ...] = ()
     schemaVersion: int = 1
 
 
@@ -270,26 +271,11 @@ def test_cli_write_then_check_rejects_an_independent_output_edit(tmp_path: Path)
 def test_public_inventory_needs_a_deliberate_owner_for_new_pages(
     tmp_path: Path, suffix: str
 ) -> None:
-    fixture(tmp_path)
+    manifest, _tracked = fixture(tmp_path)
     (tmp_path / "docs/public").mkdir(parents=True)
     (tmp_path / f"docs/public/unowned.{suffix}").write_text("No declared owner.\n")
     (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(
-            {
-                "schemaVersion": 1,
-                "views": [
-                    {
-                        "route": "reference/example",
-                        "frontmatter": "title: Example",
-                        "concepts": [PAGE],
-                        "imports": [],
-                        "diagrams": [],
-                        "anchors": [],
-                    }
-                ],
-                "authored": [],
-            }
-        )
+        json.dumps(asdict(ManifestDocument(manifest.views)))
     )
     git = shutil.which("git")
     assert git is not None
