@@ -522,13 +522,19 @@ def run(root: Path, write: bool) -> Report | Failure:
         tracked = frozenset(result.stdout.decode("utf-8").rstrip("\0").split("\0"))
     except UnicodeError:
         return Failure(Code.TRACKING, ".")
-    routes = {view.route for view in manifest.views} | {item.route for item in manifest.authored}
+    generated_routes = {view.route for view in manifest.views}
+    authored_routes = {item.route for item in manifest.authored}
+    routes = generated_routes | authored_routes
     actual = _public_routes(root)
     if isinstance(actual, Failure):
         return actual
-    if set(actual) != routes or len(set(actual)) != len(actual):
+    missing = routes - set(actual)
+    unexpected = set(actual) - routes
+    # Write mode can restore declared generated shells. Authored pages have no generator.
+    invalid_missing = missing & authored_routes if write else missing
+    if invalid_missing or unexpected or len(set(actual)) != len(actual):
         return Failure(
-            Code.INPUT, "public route inventory: " + ", ".join(sorted(set(actual) ^ routes))
+            Code.INPUT, "public route inventory: " + ", ".join(sorted(invalid_missing | unexpected))
         )
     projection = project(root, manifest, tracked)
     if isinstance(projection, Failure):
