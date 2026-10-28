@@ -1,10 +1,6 @@
 import conventions.GenerateKnowledgeDocsTask
 import conventions.jsoncontracts.KnowledgeDocsRequest
-import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.Sync
-import support.architecture.ArchitectureObservationParser
-import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
 import support.architecture.gradle.GenerateVerificationGraphTask
 import support.architecture.gradle.TopologyImpactTask
@@ -15,19 +11,30 @@ plugins {
     base
 }
 
-val declaredProjectPaths = objects.listProperty<String>().convention(emptyList())
-val declaredProjectDependencies = objects.listProperty<String>().convention(emptyList())
-val declaredVerificationDependencies = objects.listProperty<String>().convention(emptyList())
-val declaredVerificationSourceRoots = objects.listProperty<String>().convention(emptyList())
+val moduleProjects = subprojects.filter { it.buildFile.isFile }
+val modulePaths = moduleProjects.map { it.path }
+val moduleBuildFiles = moduleProjects.map { it.buildFile }
+fun moduleArtifacts(variant: String): FileCollection = files(modulePaths.map { module ->
+    val configurationName = "${module.trim(':').replace(':', '_')}$variant"
+    val scope = configurations.dependencyScope("${configurationName}Dependencies") {
+        dependencies.add(project.dependencies.project(mapOf("path" to module, "configuration" to variant)))
+    }
+    configurations.resolvable(configurationName) {
+        isTransitive = false
+        extendsFrom(scope.get())
+    }
+})
+val moduleFacts = moduleArtifacts("kastModuleFacts")
+val productionClasses = moduleArtifacts("kastProductionClasses")
+val productionSources = moduleArtifacts("kastProductionSources")
 
 val generateVerificationGraph = tasks.register<GenerateVerificationGraphTask>("generateVerificationGraph") {
     group = "verification"
     description = "Records consumers through production, test, fixture, and generated-contract project dependencies."
-    observedProjectPaths.set(declaredProjectPaths)
-    observedProjectDependencies.set(declaredVerificationDependencies)
-    observedSourceRoots.set(declaredVerificationSourceRoots)
+    moduleReports.from(moduleFacts)
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/ci/verification-graph.json"))
+    graphInputs.from(moduleBuildFiles)
     graphInputs.from(buildFile, "settings.gradle.kts", "settings.gradle", "gradle.properties", "mise.toml", "gradle/libs.versions.toml")
     graphInputs.from(fileTree("build-logic") {
         include("*.gradle.kts", "src/main/**")
@@ -37,21 +44,21 @@ val generateVerificationGraph = tasks.register<GenerateVerificationGraphTask>("g
 val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyKastArchitecture") {
     group = "verification"
     description = "Verifies module dependencies, exports, roles, and permitted effect owners."
+    compiledClassDirectories.from(productionClasses)
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/kast-architecture/verifyKastArchitecture.json"))
-    observedProjectPaths.set(declaredProjectPaths)
-    observedProjectDependencies.set(declaredProjectDependencies)
+    moduleReports.from(moduleFacts)
 }
 
 tasks.register<TopologyImpactTask>("topologyImpact") {
     group = "help"
     description = "Reports consumers of selected Kast modules through declared production project dependencies."
-    observedProjectPaths.set(declaredProjectPaths)
-    observedProjectDependencies.set(declaredProjectDependencies)
+    val enabled = providers.gradleProperty("kastTopologyEnabled").orElse("true")
+    if (enabled.get() == "true") moduleReports.from(moduleFacts)
     selectedModules.set(providers.gradleProperty("kastTopologyModules").map { raw ->
         if (raw.isBlank()) emptyList() else raw.split(',').map(String::trim)
     }.orElse(emptyList()))
-    enabledSetting.set(providers.gradleProperty("kastTopologyEnabled").orElse("true"))
+    enabledSetting.set(enabled)
     reportFile.set(layout.buildDirectory.file("reports/topology/topology-impact.json"))
 }
 
@@ -75,6 +82,7 @@ val generateKastDocumentation = tasks.register<GenerateKnowledgeDocsTask>("gener
     group = "distribution"
     description = "Extracts detached public Kotlin declarations and KDoc with isolated PSI syntax evidence."
     repositoryDirectory.set(layout.projectDirectory)
+    sourceFiles.from(files(productionSources).asFileTree.matching { include("**/*.kt") })
     outputFile.set(layout.buildDirectory.file("generated/knowledge/kotlin-docs.json"))
 }
 
@@ -100,24 +108,8 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     description = "Serializes the verified module architecture and scoped AGENTS.md knowledge."
     productVersion.set(providers.gradleProperty("controlVersion").orElse(providers.provider { project.version.toString() }))
     sourceRevision.set(providers.gradleProperty("kastSourceRevision"))
-    observedProjectPaths.set(
-        verifyKastArchitecture.flatMap { it.observedProjectPaths },
-    )
-    observedProjectDependencies.set(
-        verifyKastArchitecture.flatMap { it.observedProjectDependencies },
-    )
-    observedExportedProjectDependencies.set(
-        verifyKastArchitecture.flatMap { it.observedExportedProjectDependencies },
-    )
-    observedModuleRoleConventions.set(
-        verifyKastArchitecture.flatMap { it.observedModuleRoleConventions },
-    )
-    classDirectoryOwners.set(
-        verifyKastArchitecture.flatMap { it.classDirectoryOwners },
-    )
-    compiledClassDirectories.from(
-        verifyKastArchitecture.map { it.compiledClassDirectories },
-    )
+    moduleReports.from(moduleFacts)
+    compiledClassDirectories.from(productionClasses)
     architectureVerificationReport.set(verifyKastArchitecture.flatMap { it.reportFile })
     agentGuidePaths.set(trackedAgentGuidePaths)
     agentGuideFiles.from(trackedAgentGuidePaths)
@@ -131,7 +123,7 @@ val generateInstalledKnowledgeBundle = tasks.register<GenerateInstalledKnowledge
     description = "Joins verified module guidance with detached public Kotlin declaration documentation."
     productVersion.set(providers.gradleProperty("controlVersion").orElse(providers.provider { project.version.toString() }))
     sourceRevision.set(currentSourceRevision)
-    moduleProjectPaths.set(verifyKastArchitecture.flatMap { it.observedProjectPaths })
+    moduleProjectPaths.set(modulePaths)
     agentGuidePaths.set(trackedAgentGuidePaths)
     agentGuideFiles.from(trackedAgentGuidePaths)
     repositoryDirectory.set(layout.projectDirectory)
@@ -148,91 +140,3 @@ tasks.withType<Sync>().matching { it.name == "stageKastControlProduct" }.configu
         into("share/kast/knowledge")
     }
 }
-
-subprojects {
-    val modulePath = path
-    pluginManager.withPlugin("java") {
-        declaredProjectPaths.add(modulePath)
-        // The separate Gradle-daemon payload remains production code owned by its adapter module.
-        extensions.getByType<SourceSetContainer>()
-            .matching { it.name == "main" || it.name == "gradleTooling" }
-            .configureEach {
-                val sourceSet = this
-                val sourceSetProvider = providers.provider { sourceSet }
-                verifyKastArchitecture.configure {
-                    compiledClassDirectories.from(sourceSetProvider.map { it.output.classesDirs })
-                    classDirectoryOwners.addAll(
-                        sourceSetProvider.map { production ->
-                            production.output.classesDirs.files.map { directory ->
-                                val relative = rootProject.projectDir.toPath().relativize(directory.toPath())
-                                "$modulePath${VerifyKastArchitectureTask.CLASS_DIRECTORY_SEPARATOR}" +
-                                    relative.joinToString("/")
-                            }
-                        },
-                    )
-                    dependsOn(tasks.named(sourceSet.classesTaskName))
-                }
-                generateKastDocumentation.configure {
-                    sourceFiles.from(
-                        sourceSetProvider.map { production ->
-                            production.allSource.matching { include("**/*.kt") }
-                        }
-                    )
-                }
-            }
-    }
-
-    afterEvaluate {
-        generateVerificationGraph.configure { graphInputs.from(this@subprojects.buildFile) }
-        val verificationDependencies = configurations.flatMap { configuration ->
-            configuration.dependencies.withType(ProjectDependency::class.java)
-                .filter { dependency -> dependency.path != path }
-                .map { dependency -> "$path${ArchitectureObservationParser.EDGE_SEPARATOR}${dependency.path}" }
-        }.distinct().sorted()
-        declaredVerificationDependencies.addAll(verificationDependencies)
-        declaredVerificationSourceRoots.addAll(
-            extensions.findByType(SourceSetContainer::class.java)?.flatMap { sourceSet ->
-                sourceSet.allSource.srcDirs.filter { directory ->
-                    directory.toPath().startsWith(rootProject.projectDir.toPath()) &&
-                        !directory.toPath().startsWith(layout.buildDirectory.get().asFile.toPath())
-                }.map { directory ->
-                    "$path|${rootProject.projectDir.toPath().relativize(directory.toPath()).joinToString("/")}"
-                }
-            }.orEmpty().distinct().sorted(),
-        )
-        val dependencies = configurations
-            .filter { configuration -> configuration.name.isProductionDependencyConfiguration() }
-            .flatMap { configuration ->
-                configuration.dependencies.withType(ProjectDependency::class.java)
-                    .filter { dependency -> dependency.path != path }
-                    .map { dependency ->
-                    "$path${ArchitectureObservationParser.EDGE_SEPARATOR}${dependency.path}"
-                }
-            }
-            .distinct()
-            .sorted()
-        val exportedDependencies = configurations
-            .filter { configuration -> configuration.name == "api" }
-            .flatMap { configuration ->
-                configuration.dependencies.withType(ProjectDependency::class.java).map { dependency ->
-                    "$path${ArchitectureObservationParser.EDGE_SEPARATOR}${dependency.path}"
-                }
-            }
-            .distinct()
-            .sorted()
-        val roleConventions = ModuleRoleConvention.entries
-            .filter { convention -> pluginManager.hasPlugin(convention.pluginId) }
-            .map { convention ->
-                "$path${ArchitectureObservationParser.ROLE_SEPARATOR}${convention.pluginId}"
-            }
-        declaredProjectDependencies.addAll(dependencies)
-        verifyKastArchitecture.configure {
-            observedExportedProjectDependencies.addAll(exportedDependencies)
-            observedModuleRoleConventions.addAll(roleConventions)
-        }
-    }
-}
-
-private fun String.isProductionDependencyConfiguration(): Boolean =
-    !contains("test", ignoreCase = true) &&
-    !contains("fixture", ignoreCase = true)

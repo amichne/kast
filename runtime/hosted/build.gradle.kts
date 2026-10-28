@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import support.consumeProjectOutput
 import support.tasks.idea.selectedIdeaProductInfo
 import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
@@ -8,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("kast.role.ide-host")
 }
+
+val repositoryRoot = project.isolated.rootProject.projectDirectory
 
 base { archivesName.set("kast-ide-hosted") }
 
@@ -43,15 +46,15 @@ val ideBuild =
     } else pinnedBuild
 val ideReleaseLine = ideBuild.substringBefore('.')
 
+val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
+
 tasks.processResources {
-    val schema = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
-    val registry = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
+    val schema = File(repositoryRoot.asFile, "protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
+    val registry =
+        File(repositoryRoot.asFile, "protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
     fun digest(file: File) =
         "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
-    val contract =
-        project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json")
-    dependsOn(":protocol:wire:generateHostedContract")
-    from(contract)
+    from(hostedContractFiles)
     val values =
         mapOf(
             "ideBuild" to ideBuild,
@@ -118,9 +121,9 @@ val hostedPlugin =
         isReproducibleFileOrder = true
         into("kast-ide-hosted/lib") {
             from(tasks.jar)
-            from(project(":workspace:intellij-read").tasks.named("jar"))
             from(configurations.runtimeClasspath) {
                 include(
+                    "workspace-intellij-read-*.jar",
                     "kernel-*.jar",
                     "workspace-contract-*.jar",
                     "symbol-contract-*.jar",
@@ -169,7 +172,7 @@ val hostedPlugin =
 // The actual encoder is compared with the exact bytes also validated by CLI schema tests.
 tasks.named("test") {
     inputs
-        .file(rootProject.layout.projectDirectory.file("cli/src/test/resources/hosted-endpoint-failure-encodings.json"))
+        .file(repositoryRoot.file("cli/src/test/resources/hosted-endpoint-failure-encodings.json"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
@@ -188,7 +191,7 @@ dependencies {
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
     from(reviewedCallbackSources) { into("reviewed-libraries") }
-    from(rootProject.file("relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
+    from(File(repositoryRoot.asFile, "relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
 }
 
 configurations[nativeTest.implementationConfigurationName].apply {
@@ -213,7 +216,7 @@ val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
 val nativeIdeaHome =
     objects.directoryProperty().apply {
         if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
-        else set(project(":relation:intellij").layout.buildDirectory.dir("native-test/idea"))
+        else set(providers.provider { repositoryRoot.dir("relation/intellij/build/native-test/idea") })
     }
 val nativeIdeaLibraries =
     files(
@@ -277,7 +280,7 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
         classpath = nativeTest.runtimeClasspath
         inputs
             .files(
-                rootProject.fileTree("experiments/host-observation/nested-callback-fixture") {
+                fileTree(repositoryRoot.dir("experiments/host-observation/nested-callback-fixture")) {
                     include("*/src/main/kotlin/**/*.kt")
                 }
             )
@@ -340,3 +343,7 @@ registerHostedNativeFixtures(
         "*NativeCompilerCoverageControlsTest",
     ),
 )
+
+configurations.consumable("hostedPluginElements") {
+    outgoing.artifact(hostedPlugin.flatMap { it.archiveFile })
+}

@@ -3,7 +3,7 @@ plugins {
     id("kast.role.contract")
 }
 
-group = "${rootProject.group}.symbol"
+group = "${providers.gradleProperty("GROUP").get()}.symbol"
 
 base {
     archivesName.set("symbol-contract")

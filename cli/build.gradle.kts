@@ -6,6 +6,8 @@ plugins {
     id("kast.role.cli")
 }
 
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
 application {
     applicationName = "kast"
     mainClass = "io.github.amichne.kast.cli.KastCliMainKt"
@@ -36,9 +38,9 @@ dependencies {
 
 tasks.named<Test>("test") {
     inputs
-        .files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
+        .files(File(repositoryRoot.asFile, "copilot/extension.mjs"), File(repositoryRoot.asFile, "pi/extension.ts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.file(rootProject.file("pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(File(repositoryRoot.asFile, "pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-session.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
@@ -46,9 +48,9 @@ tasks.named<Test>("test") {
     inputs.file("src/main/resources/query-delivery.schema.json").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs
         .files(
-            rootProject.file("experiments/host-observation/pi-fixtures/query-question.schema.json"),
-            rootProject.file("experiments/host-observation/pi-fixtures/query-qualification.schema.json"),
-            rootProject.file("experiments/host-observation/pi-fixtures/query-result.schema.json"),
+            File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-question.schema.json"),
+            File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-qualification.schema.json"),
+            File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-result.schema.json"),
         )
         .withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
@@ -76,9 +78,9 @@ val queryDeliveryContractTest =
         group = "verification"
         description = "Verifies the portable outer delivery contract independently of RPC effects."
         inputs.files("src/main/js/query-delivery-contract.mjs", "src/test/js/query-delivery-contract.test.mjs")
-        inputs.file(rootProject.file("experiments/host-observation/pi_evaluation_delivery.mjs"))
-        inputs.file(rootProject.file("experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
-        workingDir(rootProject.projectDir)
+        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi_evaluation_delivery.mjs"))
+        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
+        workingDir(repositoryRoot.asFile)
         commandLine("node", "--test", "cli/src/test/js/query-delivery-contract.test.mjs")
     }
 
@@ -90,16 +92,16 @@ val queryDeliverySchemaTest =
     tasks.register<Exec>("queryDeliverySchemaTest") {
         group = "verification"
         description = "Verifies the outer delivery authority with an independent JSON Schema validator."
-        dependsOn(rootProject.tasks.named("preparePythonTestEnvironment"))
+        dependsOn(":preparePythonTestEnvironment")
         inputs.files("src/main/resources/query-delivery.schema.json")
         inputs.files(
-            rootProject.file("packaging/query_delivery_contract.py"),
-            rootProject.file("packaging/test-query-delivery-contract.py"),
+            File(repositoryRoot.asFile, "packaging/query_delivery_contract.py"),
+            File(repositoryRoot.asFile, "packaging/test-query-delivery-contract.py"),
         )
-        inputs.file(rootProject.file("experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
-        workingDir(rootProject.projectDir)
+        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
+        workingDir(repositoryRoot.asFile)
         commandLine(
-            rootProject.layout.buildDirectory.file("python-tests/env/bin/python3").get().asFile,
+            repositoryRoot.file("build/python-tests/env/bin/python3").asFile,
             "packaging/test-query-delivery-contract.py",
         )
     }
@@ -184,10 +186,10 @@ distributions.main {
             exclude("*.bat")
             filePermissions { unix("755") }
         }
-        from(rootProject.layout.projectDirectory.file("copilot/extension.mjs")) {
+        from(repositoryRoot.file("copilot/extension.mjs")) {
             into("share/kast/adapters/copilot")
         }
-        from(rootProject.layout.projectDirectory.file("pi/mcp-extension.ts")) {
+        from(repositoryRoot.file("pi/mcp-extension.ts")) {
             into("share/kast/adapters/pi")
             rename { "extension.ts" }
         }
@@ -205,8 +207,7 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateConfigurationC
 }
 
 val projectedMintlifyCallableReference = layout.buildDirectory.file("generated/documentation/callables.openapi.json")
-val publishedMintlifyCallableReference =
-    rootProject.layout.projectDirectory.file("docs/public/reference/callables.openapi.json")
+val publishedMintlifyCallableReference = repositoryRoot.file("docs/public/reference/callables.openapi.json")
 
 val projectMintlifyCallableReference =
     tasks.register<support.tasks.WriteJavaProcessOutputTask>("projectMintlifyCallableReference") {
@@ -264,12 +265,12 @@ val queryPresentationTest =
         inputs.files("src/main/js/query-delivery.mjs", "src/test/js/query-presentation.test.mjs")
         inputs.files("src/main/js/query-session.mjs", "src/test/js/query-session.test.mjs")
         inputs.file("src/test/js/tool-rpc-rejection.test.mjs")
-        inputs.file(rootProject.file("copilot/extension.mjs"))
+        inputs.file(File(repositoryRoot.asFile, "copilot/extension.mjs"))
         inputs.file("src/test/resources/query-presentation-native.json")
         inputs.file("src/test/resources/query-compact-graph-pages.json")
         inputs.file("src/test/resources/query-compact-symbol-graph-pages.json")
-        inputs.file(rootProject.file("experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
-        workingDir(rootProject.projectDir)
+        inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
+        workingDir(repositoryRoot.asFile)
         commandLine(
             "node",
             "--experimental-vm-modules",
@@ -282,4 +283,22 @@ val queryPresentationTest =
 
 tasks.named("check") {
     dependsOn(queryPresentationTest)
+}
+
+configurations.consumable("configurationCatalogueElements") {
+    outgoing.artifact(
+        tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateConfigurationCatalogue").flatMap {
+            it.outputFile
+        }
+    )
+}
+
+configurations.consumable("providerCatalogueElements") {
+    outgoing.artifact(
+        tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateProviderCatalog").flatMap { it.outputFile }
+    )
+}
+
+configurations.consumable("cliInstallationElements") {
+    outgoing.artifact(tasks.named<Sync>("installDist").map { it.destinationDir })
 }

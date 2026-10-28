@@ -2,11 +2,11 @@
     "inputs": [
         {
             "path": "app-server/build.gradle.kts",
-            "sha256": "728f2e60eafc16b0786dc0b04bd0d2f4740beeb7ffda1cf30c50535ef8646892"
+            "sha256": "4d857d1b5b5267894402ae8fe4cc3be082d220d1f0efdce5748570ac9f4c62b0"
         },
         {
             "path": "build-logic/build.gradle.kts",
-            "sha256": "5ff1f57c2e6616c8190492de1056bb4d61bf10dce9f69bda68e7597ea47ad4af"
+            "sha256": "70035ecc79902ec20c2a86b20d477d563f961d8c088befee666e4d3236d1db2e"
         },
         {
             "path": "build-logic/settings.gradle.kts",
@@ -26,7 +26,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/KotlinFileLengthTask.kt",
-            "sha256": "ef647b06c8051d3ace3e5053a83cab7f16b7b8f10bfe32a3c185cbe19fbda5f4"
+            "sha256": "28ff8c5aabddb01934c508388f56342eeeb09d822ada6c0c350f739493f9fea5"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt",
@@ -74,23 +74,27 @@
         },
         {
             "path": "build-logic/src/main/kotlin/kast.architecture.gradle.kts",
-            "sha256": "a947f988ad61a212e06e792bba24e843adbdf926813d5295e36cc5198f386025"
+            "sha256": "ff3da876574ceac304bed6caf26c3541f996136e041c3d05dbed197dff229e19"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts",
-            "sha256": "672c977abeefada462f3890dd8254edbff73666884923f24ec2ffc1efed6e16c"
+            "sha256": "e0bcb3c28d42d54cd5c14fcb1d8a628333377fc5c8e09dee3d018c35b87e3998"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts",
-            "sha256": "d398fd3cbdd8a0fd91358b0015e569f92e42267f4ec72ca615fa016b830241aa"
+            "sha256": "d50b0724a8be0f66b857d99e819cbd77c70a6889579e888edbebda2eb94ce5fd"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/kast.module-facts.gradle.kts",
+            "sha256": "851c23ef3e4e8eb1a20fab5ba1290eb16b3c479edd968acd8d68ce1f62c59070"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
-            "sha256": "bb2dc381fce95b9896ed7410f9ad183fbc1b72338f8ad90e82af2c663ab9a16b"
+            "sha256": "1d54a1123da47b31f8feef85b2f1dcadb4a67743f9db79ed529af9fe593682ed"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.runtime-app.gradle.kts",
-            "sha256": "9cf78f5103694034f926e29ad493d3fe67f8745f4ba525c594457f29884796ac"
+            "sha256": "e2fc75b4b8cc5047be32de38f5a6d362e427487ea06ff9dc06ba3abc28947848"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.runtime-serialization-app.gradle.kts",
@@ -165,6 +169,10 @@
             "sha256": "36b7943aec91316d0fe0ca2c1d826c229d756587b37d1e1e49db4663a93b9bca"
         },
         {
+            "path": "build-logic/src/main/kotlin/support/ProjectOutput.kt",
+            "sha256": "15684fce1006dcb4465d4ac51b78761bb57a30418acf29238460854720c7619b"
+        },
+        {
             "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureAdmission.kt",
             "sha256": "0b129ee6ebdc1a3a71869834ba60ad3f681a935e23d73e11503d72f18ccd226b"
         },
@@ -186,15 +194,19 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt",
-            "sha256": "bdcb263f90300d0568505d69bc8f8a0028f3fbc80d60bc463ed8b681925fe5f9"
+            "sha256": "86f539f39a1c11910e854f942c8715c00c53ea76c9d2dbf97c41ba667c9d8da1"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/gradle/GenerateVerificationGraphTask.kt",
-            "sha256": "cfb49d836c2442321e7c00094176d0bd15690ae25fbb44f87dc665b127188301"
+            "sha256": "e2ab379414b2193ac3b2fbc6f593fd140dd5f5255b9c372f5eecdf83e4ca5fba"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/gradle/HostedReadClassInputs.kt",
             "sha256": "1575cfaf9906f6366bfbde5de4464627a198bfd2f90d7cb19737d65cddadacdf"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/architecture/gradle/ModuleBuildFacts.kt",
+            "sha256": "8cf6030594c07fdc9092e5fa41fe47e468f614d94ddaa527a766c793ca1102f9"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactDocument.kt",
@@ -202,7 +214,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt",
-            "sha256": "c4dfbd07c94aeae7895cb157a4fc412552dfdbcb81bbfa9c2eba95fa1ac69ff6"
+            "sha256": "7af65b95ee88f4c2b7cf70a08dd3807468f12a50332a3395ffb80f1f652e93f6"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt",
@@ -334,7 +346,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/nativefixtures/SharedNativeFixtureIdea.kt",
-            "sha256": "29f05b15e683b7d8ce7aac04c3f93cfbefbc2f7c7fa6ed3c18682f78debf5259"
+            "sha256": "e09fcd47642dafbda4c0c2bed61272193d81c9eb62e5d12945068bc86c8233ae"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
@@ -342,79 +354,79 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "df8872770494d893da0b288a19fc0904d52ebb4579219e56e30cc97fdbbbc089"
+            "sha256": "f99460c4ed8b3f27fe043f0f620171a3bd87d436bd3cc4dff12200551650cc4a"
         },
         {
             "path": "change/apply/build.gradle.kts",
-            "sha256": "99a1d83994b289c44db7abbaf396f9ed5c630f50c3d309aee36f740e49e5781e"
+            "sha256": "a2d706f4dccc9eb6be7fcc8243ae1d353bac73776ce71869f9c80098ba77ac8d"
         },
         {
             "path": "change/contract/build.gradle.kts",
-            "sha256": "b6caaf6992737b4da9556ad472006d8636c9bb237c070d2962069331d0437a7b"
+            "sha256": "9fdcde457acf24de517056fe857bf06c6619296e8fb829ef8c28c4044e8d82ef"
         },
         {
             "path": "change/intellij/build.gradle.kts",
-            "sha256": "32405ab69962d92dbe9a9c5e4ee053a8fbc8cf4bf326fd56ae63be10404f2ea9"
+            "sha256": "bec3dc07eef6d176160966f6b070f1796c1dc26035290ae9dd84a2e502d069eb"
         },
         {
             "path": "change/plan/build.gradle.kts",
-            "sha256": "f411c442f3a6bc5df1a5733fb11a78b77c5d44736d036405a6f9b6b625b6e724"
+            "sha256": "133907432569a44fe2a6672853fdc337aaa8d8b2519d47e46bc5da3ced98b2cd"
         },
         {
             "path": "change/protocol/build.gradle.kts",
-            "sha256": "5452f83c2bc253d6883d2c4c1d1c9afd05b37310d39b5c66a96b309393bec35f"
+            "sha256": "2b3efb2cfb9112d6291b35bac7f5207cd2fd0e9669dde71622c76e5006dc0121"
         },
         {
             "path": "change/recovery/build.gradle.kts",
-            "sha256": "efde14d5a2f3c0200db90a8e445c90e592d75843272bc1f5f6a0fc63fa3b4b03"
+            "sha256": "a02d7c647e51b26522c9ae79119284b3d27321facdb8aa6c0ae527c3b79a45d0"
         },
         {
             "path": "change/verify/build.gradle.kts",
-            "sha256": "c8eec355105886a58300ca71df4f041ebd3a3c115440e7ce46c75744d52fc2e0"
+            "sha256": "e137978d7f67ce4a2c7d2b5d67647e3d3d39e76316da2e9b42c52337182c7beb"
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "ee38548cc514ac551052343c504cd93e75163d1c0952e1e88c90000c714f28c5"
+            "sha256": "850cb20cc0bfe5c56e2048fdcb9633a8c47e27c5d3770db2c5801d516686d3a5"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",
-            "sha256": "46d8496d20e9979e4a1a4900863512d043cc0bf02f4c95f1d4e82e4818f1d690"
+            "sha256": "e01010199e2cf24dc5f2c4c6d371831c8a502a3fa224f837a115e6a119a040f6"
         },
         {
             "path": "diagnostic/intellij/build.gradle.kts",
-            "sha256": "0633f76953579ef18b862965e02113d1831a590985a23268b25c6a2afd567e09"
+            "sha256": "49d3a972764c42e84463ee1d5dcda10f5d8792470a0a6ac3b1502ec296b89442"
         },
         {
             "path": "diagnostic/service/build.gradle.kts",
-            "sha256": "632a41ab1dd1d689756e51e2bf5c3f2912cc33ec955bc174df5a912205379159"
+            "sha256": "e0bd2f4242bc84dbbb127c54daa62742b1f5b901e9897b6297fe1b6c44851459"
         },
         {
             "path": "distribution/cli/build.gradle.kts",
-            "sha256": "6e060da332c5b4f1bdaaa7b529b99b9b261c542ee524c1eaebf44bd3f7830d07"
+            "sha256": "fb3f18b23bd3b422f6c8261b12a69447b81379b0b0ad6c8c86f1dc49c1dd6ce8"
         },
         {
             "path": "distribution/contract/build.gradle.kts",
-            "sha256": "481ace82f70a04fda6dbc7ab992405e09c2608fab1c339bbf13354deccca94f8"
+            "sha256": "f389dbf41bad170b58f20bc12147636c7c14aa0edb9ca38c174f360218d93294"
         },
         {
             "path": "distribution/managed/build.gradle.kts",
-            "sha256": "cc24d6ec406df940cd854f6d0480f26799f197e1c6d8c159fb1288d0ac50f100"
+            "sha256": "306b80ab3f761a5964277537f70f08b5cdf0f7769e33102dae44a71d1f87da08"
         },
         {
             "path": "evidence/contract/build.gradle.kts",
-            "sha256": "b047021e11960e805528bfcea56b721cb6e7291613400ffc897d527c738b39fe"
+            "sha256": "6f90634cc3822332baee48c5151e270557f62db75acfe88a8d5c1b04cd54e149"
         },
         {
             "path": "evidence/sqlite/build.gradle.kts",
-            "sha256": "fe51350d425819ac1e28b7367730fc73579b7440b3702d145f58e58e2eefad3f"
+            "sha256": "3f4e921f950b1852f75ad09f1e7412a901474f83ee4a3291a57f3301a5447b38"
         },
         {
             "path": "evidence/topology-sqlite/build.gradle.kts",
-            "sha256": "5fc3a305fbcfbb99ed8c45e9c9062410c9414fe7207dfeacd921f45a5931de92"
+            "sha256": "d5a12eb79abbbdf13ac649837c10804e29c283cb95b48c41ecebed3c3e7fc5c4"
         },
         {
             "path": "gradle.properties",
-            "sha256": "0e522ceeb9c061c79572534ff797f71144dd14c46bf0545ee02a90e9b0c4e322"
+            "sha256": "68dde84bb069af4e3729c2bc45eb8612bf5d2cd791bc3400fbc75edbce7dcdf8"
         },
         {
             "path": "gradle/libs.versions.toml",
@@ -438,95 +450,95 @@
         },
         {
             "path": "protocol/wire/build.gradle.kts",
-            "sha256": "bb80d0740158afb8fe275ddf9f0f48c15af917b963f17263aa79d9baeea5f912"
+            "sha256": "f1373f2ef8079c9a07c1e8f16fcf20b69be8c963ff670f9e9e6b55f13f29f375"
         },
         {
             "path": "query/contract/build.gradle.kts",
-            "sha256": "bd25b8ae519812e80983f8470ba4e334e2aa0a0b0c8f9b02bc05c4777736dae4"
+            "sha256": "8d4b1fea110e0ea56d660a5aa26d9ae9ab0e98d33e322ec5a0326f1c19e3ef8b"
         },
         {
             "path": "query/protocol/build.gradle.kts",
-            "sha256": "956c6fdd66e47bb20c23448a2b9cc033c29d61dc507b1cbeca76f1d300cdb0d0"
+            "sha256": "bc0236815005b22806b1a4080d97d1b7d75e0c7308090f632977a99dd99fec0e"
         },
         {
             "path": "query/service/build.gradle.kts",
-            "sha256": "3620fe6959a2e352fb92271c966df277929bbd0a1f6824ee42dced614db79a6c"
+            "sha256": "9958b87cb26c0d0261d4950b7dab4283d00902c04aafb225b3cdd06104b1acc7"
         },
         {
             "path": "relation/contract/build.gradle.kts",
-            "sha256": "84035c2022b363c10a2e12290a7c5d988cfdd219e37f21e00ffe58bebaa8bf4f"
+            "sha256": "81be153c828356bce7e342aaa1c0158d94c337aeb4b7229aff28af2a674a33c7"
         },
         {
             "path": "relation/intellij/build.gradle.kts",
-            "sha256": "56d82ab183474c4dab6816da917af12620aae519afbe4e9d03cf38de9ebe23ac"
+            "sha256": "d9dabd51f3b9cc6f062013c6763b1d35747b64e40ed5bda383ff4f3b4d823de6"
         },
         {
             "path": "relation/service/build.gradle.kts",
-            "sha256": "d00a7bba1589521b3228d5ab177483c41a876dcea1aa9df6ccd22153893befd4"
+            "sha256": "ea968277e6888bf02d5d176b64da3f29fa9af6e805c636e275f19f9400348502"
         },
         {
             "path": "runtime/hosted/build.gradle.kts",
-            "sha256": "b9c1f9ace98fc135d69cecb8d88e3f23840a2ce5f622843f9558f86f9f700ce1"
+            "sha256": "b9b371f9187e3a199a092ab58be0c36868572675800432f5d6a39287ca3d0588"
         },
         {
             "path": "settings.gradle.kts",
-            "sha256": "66bb4ba1e1c7730a0106924aa55cf08732f4e6a498ca7f490239cddae7125474"
+            "sha256": "674a0c9eba35819ab0b7d80b0a184e47388a10b45375ae724afd12abac6bc381"
         },
         {
             "path": "source/contract/build.gradle.kts",
-            "sha256": "d9b11a1c1fec4c1fa783631a7f1b7680bed82098b93d82c26e54b6c9af4b566d"
+            "sha256": "7501169aac446a9c9824f9eb0be035c0a2f7a35b0d13ec62625cdce3962f7ffc"
         },
         {
             "path": "source/intellij/build.gradle.kts",
-            "sha256": "41d68f0df8414ca5d6d1d0e62a48f3050289b227a401c4561a60bc7ee2dc0268"
+            "sha256": "ede5210124f4c320944f0ef31c94eb83bfb946a4f00ee0f5cf6076b6e41748a8"
         },
         {
             "path": "source/service/build.gradle.kts",
-            "sha256": "cc396283cd58f5ea5fca177fbecbafc2e237180b539df810f23e6eb00b3e6da0"
+            "sha256": "f14295f5589203bf869c400e9af2787cc1ae75a24ec69368885fba6f69263f80"
         },
         {
             "path": "symbol/contract/build.gradle.kts",
-            "sha256": "46a46f75cb20b7f9caabf06bf6e2b0b45637bd4ceebb6c510678a5ed5421e564"
+            "sha256": "f312e5c0ddeca3475c3c536010c6bfa13007726483d3e1173a897e1a4be2119c"
         },
         {
             "path": "symbol/intellij/build.gradle.kts",
-            "sha256": "f7e4b852c13a7542986b7ee843e497733e6474ba0d651f84c53bbef5fe5152c4"
+            "sha256": "e139ebbba75c8d25ec23a439f98da5a8dd5495a5c1b5eae22cc59500c59ddf9c"
         },
         {
             "path": "symbol/service/build.gradle.kts",
-            "sha256": "f920d6ccb5e220ef7ec1a165fddabf8b4101091f12772f437b1ab9280dfec15e"
+            "sha256": "eee32442e023b37d1e7db2489f48a73ccae6b71ea6c71c82726b322e1c1b141c"
         },
         {
             "path": "topology/build/build.gradle.kts",
-            "sha256": "5cc3894dda2bde0bf3280383d9c4985dc9cdf5a6d3cd5230e5325d88d65d4097"
+            "sha256": "fcf7cc0a701aed338143d30076df73c41ccf5d0df0359c5c1a7c85861884fb3c"
         },
         {
             "path": "topology/contract/build.gradle.kts",
-            "sha256": "f5878b6f36a737ffb36b30b856cfc4569120e36884d461c7ea3ded99528a9511"
+            "sha256": "28dc35faca2a69afa705fa18bb51c42881388a0d0ebdde8cc86ce3542d256abb"
         },
         {
             "path": "topology/intellij/build.gradle.kts",
-            "sha256": "ce08563dd978e59b927828438308acfc01ce08b26b781d398c60662b75c51369"
+            "sha256": "5e3650659575154a2707c4dcddc4886cd2940828613960e8e2fa95141ec5759f"
         },
         {
             "path": "topology/service/build.gradle.kts",
-            "sha256": "cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+            "sha256": "a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
         },
         {
             "path": "traversal/contract/build.gradle.kts",
-            "sha256": "dded07245c9aad383d958bc41bee45c3008a17461e4a71e961c06e5e48041b14"
+            "sha256": "cf80e189f100a70c56fb01a253d382d5eb4941963589930f1ca2aa0889361373"
         },
         {
             "path": "traversal/service/build.gradle.kts",
-            "sha256": "d0a4f63e7b97265905965cf51278961d8f929f906f07433e6201fc59921f2959"
+            "sha256": "aed8108147176a9a66ac2e519dc2441ba68a536982a87eda6f85acdb565d0413"
         },
         {
             "path": "workspace/contract/build.gradle.kts",
-            "sha256": "b8d4a543497c3baefbc46d04bf2565019a9cdf72f67c7ad8b79ed22a8b0facdf"
+            "sha256": "65e801c6f0546b2d2be1a2ca825bebcbe74ffe240764bfee717b1bd6377fe1db"
         },
         {
             "path": "workspace/intellij-read/build.gradle.kts",
-            "sha256": "5332e7a62d4bd0955c4a2bcdddccf4ded67e70c39c5594167a340b2facb24d1e"
+            "sha256": "560fb67110596d30cf4ceb9edb9e3ad8e9e671e62762ace2cf01ca3055391561"
         }
     ],
     "consumers": [

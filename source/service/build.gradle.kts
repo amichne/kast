@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.source"
+group = "${providers.gradleProperty("GROUP").get()}.source"
 
 base {
     archivesName.set("source-service")

@@ -4,6 +4,8 @@ plugins {
     id("kast.role.service")
 }
 
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
 base.archivesName.set("query-protocol")
 
 dependencies {
@@ -27,18 +29,19 @@ dependencies {
 
 tasks.test {
     inputs.files(
-        rootProject.files(
-            "experiments/host-observation/verify_partial_prefix_producer.mjs",
-            "experiments/host-observation/pi_evaluation_policy.mjs",
-            "experiments/host-observation/pi_evaluation_delivery.mjs",
-            "experiments/host-observation/pi_evaluation_payload.mjs",
-            "experiments/host-observation/pi_evaluation_question.mjs",
-            "experiments/host-observation/pi-fixtures/query-question.schema.json",
-            "experiments/host-observation/pi-fixtures/query-qualification.schema.json",
-            "experiments/host-observation/pi-fixtures/query-result.schema.json",
-            "experiments/host-observation/pi-fixtures/query-original-limitations.json",
-            "cli/src/main/js/query-delivery.mjs",
-            "cli/src/main/js/query-delivery-contract.mjs",
-        )
+        listOf(
+                "experiments/host-observation/verify_partial_prefix_producer.mjs",
+                "experiments/host-observation/pi_evaluation_policy.mjs",
+                "experiments/host-observation/pi_evaluation_delivery.mjs",
+                "experiments/host-observation/pi_evaluation_payload.mjs",
+                "experiments/host-observation/pi_evaluation_question.mjs",
+                "experiments/host-observation/pi-fixtures/query-question.schema.json",
+                "experiments/host-observation/pi-fixtures/query-qualification.schema.json",
+                "experiments/host-observation/pi-fixtures/query-result.schema.json",
+                "experiments/host-observation/pi-fixtures/query-original-limitations.json",
+                "cli/src/main/js/query-delivery.mjs",
+                "cli/src/main/js/query-delivery-contract.mjs",
+            )
+            .map { repositoryRoot.file(it) }
     )
 }

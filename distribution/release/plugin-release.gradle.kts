@@ -7,7 +7,7 @@ val controlVersion = rootProject.extra["controlVersion"].toString()
 val hostVersion = rootProject.extra["hostedPluginVersion"].toString()
 val releaseDirectory = layout.buildDirectory.dir("release/v$controlVersion")
 val controlArchive = tasks.named<Tar>("assembleKastControlDist")
-val pluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin")
+val pluginArchive = configurations.named("hostedPluginFiles")
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 
 val agentPluginArchive = tasks.register<Zip>("assembleKastAgentPlugin") {
@@ -47,7 +47,7 @@ tasks.register<Sync>("assembleHostRelease") {
     description = "Assembles a hosted plugin release without producing control."
     dependsOn(hostRecord)
     into(layout.buildDirectory.dir("release/host-v$hostVersion"))
-    from(pluginArchive.flatMap(Zip::getArchiveFile))
+    from(pluginArchive)
     from(layout.projectDirectory.file("packaging/host-installation.py"))
     from(layout.buildDirectory.dir("generated/host-release"))
 }
@@ -59,7 +59,7 @@ val assembleRelease = tasks.register<Sync>("assembleRelease") {
     dependsOn(controlArchive, pluginArchive, agentPluginArchive, marketplaceArchive, hostRecord, "verifyDistributionContent")
     into(releaseDirectory)
     from(controlArchive.flatMap(Tar::getArchiveFile))
-    from(pluginArchive.flatMap(Zip::getArchiveFile))
+    from(pluginArchive)
     from(agentPluginArchive.flatMap(Zip::getArchiveFile))
     from(marketplaceArchive.flatMap(Zip::getArchiveFile))
     from(layout.buildDirectory.dir("generated/host-release"))

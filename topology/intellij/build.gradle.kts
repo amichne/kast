@@ -5,7 +5,7 @@ plugins {
     id("kast.role.intellij-read")
 }
 
-group = "${rootProject.group}.topology"
+group = "${providers.gradleProperty("GROUP").get()}.topology"
 
 base {
     archivesName.set("topology-intellij")
