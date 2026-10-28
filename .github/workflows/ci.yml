@@ -161,7 +161,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.product == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     name: Kotlin product
-    runs-on: macos-15
+    runs-on: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.KAST_SELF_HOSTED_RUNNER == 'true' && fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') || 'macos-15' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -188,12 +188,25 @@ jobs:
           java-version: 25.0.2
 
       - name: Set up Python
-        if: steps.reuse.outputs.candidate != 'REUSED'
+        if: steps.reuse.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
           cache: pip
           cache-dependency-path: experiments/host-observation/requirements-test.txt
+
+      - name: Set up local Python
+        if: steps.reuse.outputs.candidate != 'REUSED' && runner.environment == 'self-hosted'
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
+        run: |
+          python_version="$(cat .python-version)"
+          uv python install "$python_version"
+          python_executable="$(uv python find --managed-python --system "$python_version")"
+          python_environment="$RUNNER_TOOL_CACHE/kast-python-$python_version"
+          uv venv --allow-existing --seed --python "$python_executable" "$python_environment"
+          echo "$python_environment/bin" >> "$GITHUB_PATH"
+          "$python_environment/bin/python3" --version
 
       - name: Install host protocol and semantic test tools
         if: steps.reuse.outputs.candidate != 'REUSED'
@@ -210,6 +223,8 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           validate-wrappers: true
+          # The local runner keeps its Gradle User Home between jobs.
+          cache-disabled: ${{ runner.environment == 'self-hosted' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
           # A main workflow_dispatch performs a full build to seed/refresh these entries.
@@ -237,6 +252,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
         run: bash .github/scripts/ci/verify.sh --version "0.0.$GITHUB_RUN_NUMBER"
+
+      - name: Examine native macOS target
+        if: steps.reuse.outputs.candidate != 'REUSED'
+        run: |
+          xcrun vtool -show-build distribution/cli/build/native/nativeCompile/kast \
+            | tee build/reports/native/macos-build.txt \
+            | awk '$1 == "minos" { if ($2 != "15.0") exit 1; found = 1 } END { if (!found) exit 1 }'
 
       - name: Seal tested candidate identity
         if: steps.reuse.outputs.candidate != 'REUSED'

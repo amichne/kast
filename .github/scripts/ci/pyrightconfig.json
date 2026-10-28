@@ -7,6 +7,7 @@
     "validation_outcome.py",
     "verify_documentation.py",
     "source_validation.py",
+    "self_hosted_guard.py",
     "verification_plan.py",
     "rollout.py"
   ],

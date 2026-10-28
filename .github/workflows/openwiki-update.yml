@@ -53,8 +53,9 @@ jobs:
           LANGCHAIN_TRACING_V2: "false"
           LANGSMITH_TRACING: "false"
 
-      - name: Project the completed OKF update into the public site
-        if: ${{ steps.openwiki.outcome == 'success' }}
+      - name: Project completed OKF pages into the public site
+        id: projection
+        if: ${{ !cancelled() && (steps.openwiki.outcome == 'success' || steps.openwiki.outcome == 'failure') }}
         run: |
           git add -- openwiki
           uv run --locked --project docs/tooling python docs/tooling/okf_public.py --write
@@ -75,7 +76,7 @@ jobs:
 
       - name: Create OpenWiki update pull request
         id: create-pr
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.projection.outcome == 'success' }}
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           add-paths: ${{ steps.paths.outputs.list }}
@@ -88,7 +89,8 @@ jobs:
             OpenWiki result: ${{ steps.openwiki.outcome }}
 
             When the result is `failure`, this PR intentionally preserves only the
-            pages completed before the failure. Merge it to make that progress the
+            pages completed before the failure, with their public projections.
+            A rejected projection prevents this PR. Merge it to make that progress the
             baseline for the next scheduled run.
 
       - name: Annotate OpenWiki update pull request
