@@ -161,7 +161,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.product == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     name: Kotlin product
-    runs-on: macos-15
+    runs-on: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.KAST_SELF_HOSTED_RUNNER == 'true' && fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') || 'macos-15' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -210,6 +210,8 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           validate-wrappers: true
+          # The local runner keeps its Gradle User Home between jobs.
+          cache-disabled: ${{ runner.environment == 'self-hosted' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
           # A main workflow_dispatch performs a full build to seed/refresh these entries.

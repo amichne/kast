@@ -85,6 +85,21 @@ Other values reject the Gradle invocation.
 Gradle logs the disabled state, and source execution reports list `skippedTasks` under schema version 2.
 The switch does not remove fixture sources or their case manifest.
 
+## Main self-hosted runner
+
+The repository variable `KAST_SELF_HOSTED_RUNNER=true` routes the main Kotlin product job to `kast-main` on macOS ARM64.
+Only main push and manual main runs use this route.
+Pull requests and merge groups keep `macos-15`.
+Set the variable to `false` to restore hosted execution for main.
+
+The runner service keeps its checkout under its own work directory.
+Its Gradle User Home persists between jobs, so `setup-gradle` disables cache transport on that runner.
+The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
+It rejects other repositories, refs, events, workflows, and jobs.
+Install the hook outside the runner application directory, then set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
+Restart the service after a hook change.
+Keep the installed hook synchronized with its reviewed source.
+
 Run the focused checks from the repository root:
 
 ```sh
