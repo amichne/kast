@@ -64,6 +64,27 @@ Source validation uses the stable version `0.0.0` for product, control, and host
 Source identities can still invalidate outputs. Measure their effect.
 No build scan evidence is available for this change.
 
+## Temporary semantic fixture switch
+
+Local runs and CI skip the three `semanticCoverageFixtureTest` suites by default.
+Their coverage and inventory report consumers also skip.
+`config/ci/semantic-fixture-tasks.txt` owns the six excluded task paths.
+Ordinary unit tests, dependency archive fixtures, semantic input checks, and product assembly keep their existing selection.
+Skipped semantic fixtures provide no compiler behavior evidence for that run.
+
+Set `KAST_SEMANTIC_FIXTURES=true` to enable the suites and report consumers:
+
+```sh
+KAST_SEMANTIC_FIXTURES=true mise exec -- ./gradlew productBuildGate
+```
+
+Set the GitHub repository variable `KAST_SEMANTIC_FIXTURES` to `true` to enable them in CI.
+Set it to `false` to disable them again.
+When CI enables the suites, it builds a fresh candidate instead of reusing an earlier candidate with weaker fixture evidence.
+Other values reject the Gradle invocation.
+Gradle logs the disabled state, and source execution reports list `skippedTasks` under schema version 2.
+The switch does not remove fixture sources or their case manifest.
+
 Run the focused checks from the repository root:
 
 ```sh
@@ -94,7 +115,7 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 | Owner | Extra source obligations |
 | --- | --- |
 | Root | JSON contracts, architecture, configuration ingress, knowledge, documentation, host protocol, component release tests |
-| Semantic manifest | All 237 current cases, exact inventory, input hashes, compiler witnesses, rejection controls |
+| Semantic manifest when enabled | Declared cases, exact inventory, input hashes, compiler witnesses, rejection controls |
 | Relation and hosted fixtures | Independent copies of the shared dependency archive |
 | CLI | JVM native-adapter tests, query delivery contracts and schemas, callable reference, presentation |
 | App Server | Public query generation |

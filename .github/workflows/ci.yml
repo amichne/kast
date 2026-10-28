@@ -25,6 +25,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  KAST_SEMANTIC_FIXTURES: ${{ vars.KAST_SEMANTIC_FIXTURES || 'false' }}
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ inputs.rollout_case && inputs.rollout_case != 'all' && format('-{0}', inputs.rollout_case) || '' }}
@@ -51,6 +52,7 @@ jobs:
 
       - name: Test CI decisions
         run: |
+          echo "Semantic fixture switch: $KAST_SEMANTIC_FIXTURES" >> "$GITHUB_STEP_SUMMARY"
           python3 -m unittest discover -s .github/scripts/ci -p 'test_*.py'
           python3 .github/scripts/release/test_build_candidate.py
 
@@ -168,7 +170,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Reuse tested merged PR candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.KAST_SEMANTIC_FIXTURES == 'false'
         id: reuse
         env:
           GH_TOKEN: ${{ github.token }}

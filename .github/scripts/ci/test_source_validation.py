@@ -44,6 +44,73 @@ def graph_output(tasks):
 
 
 class SourceValidationTest(unittest.TestCase):
+    def setUp(self):
+        enabled = patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "true"})
+        enabled.start()
+        self.addCleanup(enabled.stop)
+
+    def test_semantic_fixtures_default_to_disabled_and_accept_explicit_opt_in(self):
+        expected = (
+            ":relation:intellij:semanticCoverageFixtureTest",
+            ":runtime:hosted:semanticCoverageFixtureTest",
+            ":symbol:intellij:semanticCoverageFixtureTest",
+            ":verifyKotlinSemanticCoverage",
+            ":verifyKotlinSemanticInventory",
+            ":verifySelectedKotlinSemanticCoverage",
+        )
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(expected, source.skipped_semantic_tasks(ROOT))
+        with patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "false"}):
+            self.assertEqual(expected, source.skipped_semantic_tasks(ROOT))
+        self.assertEqual((), source.skipped_semantic_tasks(ROOT))
+        for value in ("", "False", "TRUE", "0", "typo"):
+            with self.subTest(value=value), patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": value}):
+                with self.assertRaisesRegex(ValueError, "must be true or false"):
+                    source.skipped_semantic_tasks(ROOT)
+
+    def test_disabled_fixtures_keep_other_obligations_and_record_skips(self):
+        with patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "false"}):
+            skipped = source.skipped_semantic_tasks(ROOT)
+            required = expected_obligations() - set(skipped)
+            with (
+                tempfile.TemporaryDirectory() as temporary,
+                patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
+                patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
+                patch.object(source.subprocess, "run", side_effect=[
+                    subprocess.CompletedProcess([], 0, graph_output(required)),
+                    subprocess.CompletedProcess([], 0, "preflight passed"),
+                ]),
+                patch.object(source.subprocess, "Popen") as executed,
+                redirect_stdout(io.StringIO()),
+            ):
+                executed.return_value.stdout = io.StringIO("")
+                executed.return_value.wait.return_value = 0
+                destination = Path(temporary)
+                evidence = source.run(ROOT, destination)
+                report = json.loads((destination / "source-execution.json").read_text())
+            self.assertEqual(source.Outcome.SOURCE_VALIDATED, evidence.outcome)
+            self.assertEqual(list(skipped), report["skippedTasks"])
+            self.assertEqual(2, report["schemaVersion"])
+            self.assertIn(":verifyKotlinSemanticInputs", evidence.graph.tasks)
+            self.assertIn(":relation:intellij:dependencyFixtureTest", evidence.graph.tasks)
+            for task in skipped:
+                with self.subTest(unexpected=task):
+                    self.assertFalse(inspect_graph(graph_output(required | {task}), frozenset(required), skipped).accepted)
+            for task in required:
+                with self.subTest(missing=task):
+                    self.assertFalse(inspect_graph(graph_output(required - {task}), frozenset(required)).accepted)
+
+    def test_disabled_task_inventory_rejects_empty_duplicate_and_invalid_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inventory = root / "config/ci/semantic-fixture-tasks.txt"
+            inventory.parent.mkdir(parents=True)
+            for text in ("", ":owner:task\n:owner:task\n", "--exclude-task :owner:task\n"):
+                with self.subTest(text=text), patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "false"}):
+                    inventory.write_text(text)
+                    with self.assertRaisesRegex(ValueError, "Invalid semantic fixture task inventory"):
+                        source.skipped_semantic_tasks(root)
+
     def test_affected_entry_point_keeps_the_full_fallback_for_every_workflow_event(self):
         for event in ("pull_request", "push", "merge_group", "workflow_dispatch"):
             with (

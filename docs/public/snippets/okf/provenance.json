@@ -296,7 +296,7 @@
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
           "resource": "repo://settings.gradle.kts#L21-L67",
           "recordedVersion": "repo-lines-v1:sha256:844bd7a78acaa6abfd1d40e709bbeb1cfff7b3bd71a3c632f7efaabc16600d15:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyODgzMmZhZDlmOWExZmY5NTEwOGYyMTVlYmJhZTZiNmE0ODFmNDVhMDE5NWUxZDU5ZDNjNDI1YjM2M2I1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMDMxN2JhZWIzNjU5Y2I0N2EzMWMwZjI5NTg4MzRlMzRkOWFiNDkzOTM4MzhhY2U1NzFjZWMzMTJiYzc1ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ",
-          "currentVersion": "repo-file-v1:sha256:674a0c9eba35819ab0b7d80b0a184e47388a10b45375ae724afd12abac6bc381",
+          "currentVersion": "repo-file-v1:sha256:451efb90975ea5e1e2c2a27609066b1324412e0d2722e3141e255d417c62fdac",
           "status": "NOT_ASSESSED"
         },
         {

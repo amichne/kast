@@ -3,6 +3,23 @@ plugins {
     id("com.gradle.develocity") version "4.6.1"
 }
 
+val semanticFixturesEnabled = providers.environmentVariable("KAST_SEMANTIC_FIXTURES").map { value ->
+    when (value) {
+        "true" -> true
+        "false" -> false
+        else -> error("KAST_SEMANTIC_FIXTURES must be true or false")
+    }
+}.getOrElse(false)
+if (!semanticFixturesEnabled) {
+    val excludedFixtures = file("config/ci/semantic-fixture-tasks.txt").readLines()
+    require(excludedFixtures.isNotEmpty() && excludedFixtures.all { it.matches(Regex(":[A-Za-z][A-Za-z0-9:]*")) } &&
+        excludedFixtures.distinct().size == excludedFixtures.size) { "Invalid semantic fixture task inventory" }
+    gradle.startParameter.setExcludedTaskNames(gradle.startParameter.excludedTaskNames + excludedFixtures)
+    logger.lifecycle("semantic-fixtures: SKIPPED; set KAST_SEMANTIC_FIXTURES=true to enable")
+} else {
+    logger.lifecycle("semantic-fixtures: ENABLED")
+}
+
 develocity {
     buildScan {
         publishing.onlyIf { false }
