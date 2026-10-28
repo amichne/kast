@@ -16,6 +16,8 @@ import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
+import io.github.amichne.kast.runtime.hosted.ProjectDocumentPreparation
+import io.github.amichne.kast.runtime.hosted.prepareProjectDocuments
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
@@ -149,12 +151,7 @@ internal class IntellijWorkspaceRefreshPort(
         queue.refresh(
             true,
             true,
-            {
-                val outcome =
-                    if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
-                    else WorkspaceRefreshEffectResult.SUCCEEDED
-                complete(outcome)
-            },
+            { completeFileRefresh(complete) },
             directory,
         )
     }
@@ -192,14 +189,26 @@ internal class IntellijWorkspaceRefreshPort(
         queue.refresh(
             true,
             true,
-            {
-                complete(
-                    if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
-                    else WorkspaceRefreshEffectResult.SUCCEEDED
-                )
-            },
+            { completeFileRefresh(complete) },
             directory,
         )
+    }
+
+    private fun completeFileRefresh(complete: (WorkspaceRefreshEffectResult) -> Unit) {
+        // Refresh callbacks can hold write access. Commit PSI in a separate EDT turn before completion.
+        ApplicationManager.getApplication().invokeLater {
+            WorkspaceRefreshStartBoundary().run(::startFailure, complete, ::observeUnsettledStart) {
+                complete(
+                    if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
+                    else
+                        when (prepareProjectDocuments(project, root)) {
+                            ProjectDocumentPreparation.READY -> WorkspaceRefreshEffectResult.SUCCEEDED
+                            ProjectDocumentPreparation.UNSAVED_DOCUMENTS ->
+                                WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
+                        }
+                )
+            }
+        }
     }
 
     private fun observeForcedRefresh(outcome: WorkspaceRefreshEffectResult) {
