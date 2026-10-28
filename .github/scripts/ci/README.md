@@ -121,8 +121,9 @@ Hosted CI must validate the final pull-request head before review completes.
 
 ## Source obligations and qualification
 
-`source_validation.py` admits a clean source tree, examines the Gradle graph, and runs `sourceValidationGate`.
-The runner also keeps the existing offline preflight suites.
+`source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
+A failed offline preflight stops before Gradle starts, including its dry-run.
+The failure report lists no graph tasks and keeps every source obligation as missing.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
 A changed source tree or failed process cannot produce `SOURCE_VALIDATED`.
 This local execution record grants no publication authority.

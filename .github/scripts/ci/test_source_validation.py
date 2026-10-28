@@ -77,8 +77,8 @@ class SourceValidationTest(unittest.TestCase):
                 patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
                 patch.object(source.subprocess, "run", side_effect=[
-                    subprocess.CompletedProcess([], 0, graph_output(required)),
                     subprocess.CompletedProcess([], 0, "preflight passed"),
+                    subprocess.CompletedProcess([], 0, graph_output(required)),
                 ]),
                 patch.object(source.subprocess, "Popen") as executed,
                 redirect_stdout(io.StringIO()),
@@ -213,8 +213,8 @@ class SourceValidationTest(unittest.TestCase):
                     patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                     patch.object(source, "source_identity", side_effect=[identity, after]) as admitted,
                     patch.object(source.subprocess, "run", side_effect=[
-                        subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
                         subprocess.CompletedProcess([], 0, "preflight passed"),
+                        subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
                     ]) as planned,
                     patch.object(source.subprocess, "Popen", return_value=process) as executed,
                     redirect_stdout(io.StringIO()),
@@ -225,7 +225,8 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertEqual(expected is source.Outcome.SOURCE_VALIDATED, evidence.exitCode == 0)
                 self.assertEqual(2, admitted.call_count)
                 self.assertEqual(2, planned.call_count)
-                self.assertEqual(source.PREFLIGHT, planned.call_args.args[0])
+                self.assertEqual([source.PREFLIGHT, [*COMMAND, "--dry-run"]],
+                                 [call.args[0] for call in planned.call_args_list])
                 executed.assert_called_once_with(COMMAND, cwd=ROOT, text=True,
                                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 process.wait.assert_called_once_with()
@@ -233,6 +234,7 @@ class SourceValidationTest(unittest.TestCase):
 
     def test_rejected_graph_never_starts_source_execution(self):
         with (
+            patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             tempfile.TemporaryDirectory() as temporary,
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
             patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "BUILD SUCCESSFUL")),
@@ -244,18 +246,34 @@ class SourceValidationTest(unittest.TestCase):
         self.assertNotEqual(0, evidence.exitCode)
 
     def test_failed_offline_preflight_never_starts_gradle_execution(self):
+        def run(command, **_):
+            if command == source.PREFLIGHT:
+                return subprocess.CompletedProcess(command, 2, "offline suite failed")
+            self.assertEqual([*COMMAND, "--dry-run"], command)
+            return subprocess.CompletedProcess(command, 0, graph_output(expected_obligations()))
+
         with (
             tempfile.TemporaryDirectory() as temporary,
             patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-            patch.object(source.subprocess, "run", side_effect=[
-                subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
-                subprocess.CompletedProcess([], 2, "offline suite failed"),
-            ]),
+            patch.object(source.subprocess, "run", side_effect=run) as commands,
             patch.object(source.subprocess, "Popen") as executed,
         ):
-            evidence = source.run(ROOT, Path(temporary))
+            destination = Path(temporary)
+            (destination / "task-graph.log").write_text("previous successful graph")
+            (destination / "gradle.log").write_text("previous successful execution")
+            (destination / "unrelated.log").write_text("keep this file")
+            evidence = source.run(ROOT, destination)
+            self.assertEqual("offline suite failed", (destination / "preflight.log").read_text())
+            self.assertFalse((destination / "task-graph.log").exists())
+            self.assertFalse((destination / "gradle.log").exists())
+            self.assertEqual("keep this file", (destination / "unrelated.log").read_text())
+            report = json.loads((destination / "source-execution.json").read_text())
+        self.assertEqual("PROCESS_FAILED", report["outcome"])
+        self.assertEqual([], report["graph"]["tasks"])
+        self.assertEqual(sorted(expected_obligations()), report["graph"]["missing"])
         executed.assert_not_called()
+        self.assertEqual([source.PREFLIGHT], [call.args[0] for call in commands.call_args_list])
         self.assertEqual(source.Outcome.PROCESS_FAILED, evidence.outcome)
         self.assertEqual(2, evidence.exitCode)
 
