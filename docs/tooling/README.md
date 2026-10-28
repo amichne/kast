@@ -1,6 +1,7 @@
 # Kast glossary tool
 
 This directory owns the local grammar and projections for `docs/glossary.json`.
+It also projects tracked OpenWiki OKF into the public site.
 It does not depend on a shared glossary service or installed plugin files.
 The [documentation policy](../documentation-structure.md#glossary-ownership) defines its consumer commands.
 
@@ -88,6 +89,35 @@ Gradle reuses unchanged reports and reruns consumers after an input change or a 
 The shared prose assessor remains a separate consumer.
 Its report v2 omits glossary fields and does not accept `--glossary`.
 Keep historical reports under `docs/reviews` unchanged at their recorded revision.
+
+## Shared OKF projection
+
+`okf_public.py` reads `docs/okf-public.json`, tracked OKF pages, their Claim sidecars, and cited source files.
+`markdown/project-okf.ts` changes actual CommonMark link destinations and adds scoped heading anchors.
+Code literals keep their original text. Shared concepts use one generated snippet across public routes.
+Presentation metadata and existing diagrams remain in the route manifest.
+
+From the repository root, regenerate the public views:
+
+For new OKF pages, stage the canonical pages and their Claim sidecars before this command.
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/okf_public.py --write
+```
+
+Use `--check` to reject changed outputs without a write.
+The provenance report keeps page and sidecar digests, Claim identities, resources, recorded versions, and current file digests.
+`MATCHED` means that a whole-file evidence digest matches current bytes.
+`CHANGED` means that those bytes differ. `NOT_ASSESSED` keeps opaque or range versions without a freshness claim.
+The public view qualifies changed and unassessed evidence.
+No digest comparison proves semantic truth.
+
+Missing source files, untracked evidence, unreconciled page edits, parser failures, and undeclared public pages reject the projection.
+The projector does not change OpenWiki pages, Claims, indexes, or run state.
+Use the native OpenWiki lifecycle for shared prose changes.
+
+`verifyPublicKnowledge` examines current Git state and cited source bytes on each run.
+The documentation CI lane runs the same parity procedure.
 
 ## Provenance
 

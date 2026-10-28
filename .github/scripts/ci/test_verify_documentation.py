@@ -11,6 +11,13 @@ from verify_documentation import commands
 
 
 class DocumentationProofTest(unittest.TestCase):
+    def test_documentation_lane_rejects_public_okf_projection_drift(self):
+        self.assertIn(
+            ("uv", "run", "--locked", "--project", "docs/tooling", "python",
+             "docs/tooling/okf_public.py", "--check"),
+            commands(()),
+        )
+
     def test_navigation_exposes_reader_sections_and_legacy_example(self):
         config = json.loads(Path("docs/public/docs.json").read_text())
         tabs = config["navigation"]["tabs"]
