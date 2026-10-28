@@ -228,6 +228,8 @@ def run(
     )
     skipped = skipped_semantic_tasks(root)
     required = (SOURCE_REQUIRED if plan is None else obligations(plan)) - frozenset(skipped)
+    for log_name in ("task-graph.log", "gradle.log"):
+        (destination / log_name).unlink(missing_ok=True)
     environment = os.environ.copy()
     environment["KAST_RELEASE_JDK_25"] = (
         environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]

@@ -260,9 +260,14 @@ class SourceValidationTest(unittest.TestCase):
             patch.object(source.subprocess, "Popen") as executed,
         ):
             destination = Path(temporary)
+            (destination / "task-graph.log").write_text("previous successful graph")
+            (destination / "gradle.log").write_text("previous successful execution")
+            (destination / "unrelated.log").write_text("keep this file")
             evidence = source.run(ROOT, destination)
             self.assertEqual("offline suite failed", (destination / "preflight.log").read_text())
             self.assertFalse((destination / "task-graph.log").exists())
+            self.assertFalse((destination / "gradle.log").exists())
+            self.assertEqual("keep this file", (destination / "unrelated.log").read_text())
             report = json.loads((destination / "source-execution.json").read_text())
         self.assertEqual("PROCESS_FAILED", report["outcome"])
         self.assertEqual([], report["graph"]["tasks"])
