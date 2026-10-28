@@ -5,7 +5,7 @@ Kast has one Mintlify site. Its main path shows what Kast does, how to try it, a
 
 The [Diátaxis framework](https://diataxis.fr/) groups pages by what the reader needs. Its four groups are tutorials, how-to guides, reference, and explanation.
 
-This policy applies to the authored public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
+This policy applies to the public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
 
 Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts.
 Architecture and Reference stay outside the main menus, with search access and links at the bottom of core pages.
@@ -50,6 +50,38 @@ The Architecture track covers authority, query lifecycle, query reuse, retention
 Do not move a page just to match a directory name. Keep its routes and heading anchors when their meaning stays the same.
 
 ## Source evidence and OpenWiki
+
+`openwiki/` owns shared explanations in tracked OKF documents with recorded Claims.
+Public pages listed in `docs/okf-public.json` consume those documents through generated snippets.
+The manifest owns their routes, titles, diagrams, and legacy anchors. It does not own another copy of their prose.
+
+`docs/tooling/okf_public.py` produces the snippets, page shells, and `snippets/okf/provenance.json`.
+The report keeps each source digest and each recorded evidence version.
+The projector rejects missing or untracked source files, missing Claim sidecars, and a page digest that differs from its sidecar.
+It qualifies source drift and evidence versions that it does not assess.
+A matching file digest does not prove current behavior.
+
+Reader-specific tutorials, procedures, schema bindings, and illustrations keep their distinct owners.
+The manifest lists every public page and names the pages whose fuller content still needs canonical reconciliation.
+Keep those pages until the OKF preserves their facts and qualifications.
+The [audit](reviews/shared-okf-audit.md) records that limit at its examined revision.
+
+After the OpenWiki lifecycle completes, regenerate the public projection:
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/okf_public.py --write
+```
+
+Before acceptance, examine projection parity:
+
+```shell
+mise exec -- ./gradlew verifyPublicKnowledge
+```
+
+This task also belongs to `check` and `productBuildGate`. The documentation CI lane uses the same projector.
+The OpenWiki update workflow regenerates the public projection after a successful update.
+It includes those outputs in its pull request.
+Edit shared prose through OpenWiki. Keep generated public files under their projector.
 
 Before a key claim, read its contract owner. Check its callers, encoded schema, and focused tests. Trace a flow through one real source path.
 

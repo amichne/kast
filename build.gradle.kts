@@ -464,6 +464,15 @@ val documentationToolingTest = tasks.register<VerificationReportTask>("documenta
     arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"))
 }
 
+val verifyPublicKnowledge = tasks.register<VerificationReportTask>("verifyPublicKnowledge") {
+    group = "verification"
+    description = "Rejects public OKF projection drift and missing tracked attribution."
+    dependsOn(documentationMarkdownDependencies, documentationPythonDependencies)
+    doNotTrackState("Attribution examines current Git tracking and the source bytes cited by OpenWiki Claims.")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/okf_public.py", "--check"))
+}
+
 val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verifyDocumentationGlossary") {
     group = "verification"
     description = "Rejects glossary projection drift and rejected forms in current prose."
@@ -482,7 +491,7 @@ val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verify
 }
 
 tasks.withType<VerificationReportTask>().configureEach {
-    if (name in setOf("verifyDocumentationMarkdown", "documentationToolingTest", "verifyDocumentationGlossary")) {
+    if (name in setOf("verifyDocumentationMarkdown", "documentationToolingTest", "verifyDocumentationGlossary", "verifyPublicKnowledge")) {
         runtimeFiles.from(validationExecutable("node"), validationExecutable("uv"), validationExecutable("npm"))
         runtimeFiles.from("docs/tooling/markdown/node_modules")
         if (name != "verifyDocumentationMarkdown") {
@@ -514,7 +523,7 @@ tasks.register<VerificationReportTask>("verifyScopedProse") {
     sourceFiles.from(selectedProse, ".vale.ini", "config/vale")
 }
 
-tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest) }
+tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest, verifyPublicKnowledge) }
 
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
