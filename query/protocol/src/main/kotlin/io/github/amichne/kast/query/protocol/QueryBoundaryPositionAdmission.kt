@@ -72,6 +72,8 @@ private fun ImpactValueRoleDocument.nativeClaim(
     current: List<SymbolSelector>
 ): Refinement<ValueSiteRoleClaim, QueryImpactSourceFailureCode> =
     when (this) {
+        is ImpactValueRoleDocument.StringConversionResult ->
+            Refinement.Rejected(QueryImpactSourceFailureCode.UNSUPPORTED_BOUNDARY_SITE)
         ImpactValueRoleDocument.ExpressionResult -> Refinement.Refined(ValueSiteRoleClaim.ExpressionResult)
         is ImpactValueRoleDocument.LoopResult -> loopClaim(current)
         ImpactValueRoleDocument.LocalBinding -> Refinement.Refined(ValueSiteRoleClaim.LocalBinding)

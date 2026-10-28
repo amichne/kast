@@ -52,7 +52,7 @@ The selector keeps its original result, target, ordinal, kind, digest, section, 
 Reject a result mismatch, a target-kind mismatch, or explicit presentation cursors beside a detail selector before native work.
 Detail reads use the retained-result owner and do not repeat semantic work.
 
-Public contract 17 requires `terminalStep.type` to be `EMIT` or `TRACE`.
+Public contract 18 requires `terminalStep.type` to be `EMIT` or `TRACE`.
 `EMIT.output` accepts the existing output union. `TRACE.output` accepts only `SYMBOLS`.
 `TRACE.expansionScope` belongs directly on the terminal and defaults to workspace expansion when omitted or null.
 Reject `TRACE` inside `steps`, sibling `RUN.output`, and `traceOptions`.

@@ -61,6 +61,12 @@ internal fun StringBuilder.valueState(site: ValueSite) {
                 field(condition.originalType.value)
                 field(condition.refinedType.value)
             }
+            is ValueCondition.StringContentNonNull -> {
+                field("STRING_CONTENT_NON_NULL")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                range(condition.entryRange)
+            }
             is ValueCondition.CastSuccess -> {
                 field("CAST_SUCCESS")
                 conditionOrigin(condition.origin)

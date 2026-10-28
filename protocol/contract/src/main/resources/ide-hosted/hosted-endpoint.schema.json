@@ -71,7 +71,7 @@
           "$ref": "#/$defs/hostLifetime"
         },
         "querySchema": {
-          "const": "kast.query.run.v8"
+          "const": "kast.query.run.v9"
         }
       }
     },
@@ -113,7 +113,7 @@
           "$ref": "#/$defs/hostLifetime"
         },
         "querySchema": {
-          "const": "kast.query.run.v8"
+          "const": "kast.query.run.v9"
         },
         "readiness": {
           "$ref": "#/$defs/readiness"

@@ -40,8 +40,9 @@ internal fun ValueCallTarget.impactDocument(): ImpactProjected<ImpactCallTargetD
 internal fun ValueFlowObligationEvidence.impactDocument(): ImpactProjected<ImpactFlowObligationEvidenceDocument> =
     when (this) {
         ValueFlowObligationEvidence.None -> Refinement.Refined(ImpactFlowObligationEvidenceDocument.None)
+        is ValueFlowObligationEvidence.StringConversion -> impactStringConversion()
         is ValueFlowObligationEvidence.CallbackInput ->
-            Refinement.Refined(ImpactFlowObligationEvidenceDocument.CallbackInput(failure.impactDocument()))
+            failure.impactDocument().impactMap(ImpactFlowObligationEvidenceDocument::CallbackInput)
         is ValueFlowObligationEvidence.Expression ->
             kind.value.impactText().impactZip(range.impactDocument()).impactMap { (kind, range) ->
                 ImpactFlowObligationEvidenceDocument.Expression(kind, range)

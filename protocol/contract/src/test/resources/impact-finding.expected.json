@@ -210,7 +210,12 @@
           ]
         }
       ],
-      "reviewedRelations": []
+      "reviewedRelations": [],
+      "classification": {
+        "type": "NOT_ESTABLISHED",
+        "step": 0,
+        "cause": "BOUNDARY_MODEL_ONLY"
+      }
     }
   }
 }

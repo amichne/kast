@@ -90,6 +90,10 @@ sealed interface ImpactValueRoleDocument {
     @Serializable @SerialName("EXPRESSION_RESULT") data object ExpressionResult : ImpactValueRoleDocument
 
     @Serializable
+    @SerialName("STRING_CONVERSION_RESULT")
+    data class StringConversionResult(val invocation: ImpactInvocationReferenceDocument) : ImpactValueRoleDocument
+
+    @Serializable
     @SerialName("LOOP_RESULT")
     data class LoopResult(val result: ImpactLoopResultDocument) : ImpactValueRoleDocument
 

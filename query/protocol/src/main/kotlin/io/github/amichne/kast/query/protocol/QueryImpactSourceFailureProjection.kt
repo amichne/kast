@@ -23,6 +23,21 @@ internal fun ValueProducerSeedRejection.impactFailure(): QueryImpactSourceFailur
         ValueProducerSeedRejection.ANCHOR_MISMATCH -> QueryImpactSourceFailureCode.ANCHOR_MISMATCH
         ValueProducerSeedRejection.CALLABLE_MISMATCH -> QueryImpactSourceFailureCode.CALLABLE_MISMATCH
         ValueProducerSeedRejection.OWNER_MISMATCH -> QueryImpactSourceFailureCode.OWNER_MISMATCH
+        ValueProducerSeedRejection.OWNER_UNAVAILABLE -> QueryImpactSourceFailureCode.OWNER_UNAVAILABLE
+        ValueProducerSeedRejection.NESTED_EXECUTION -> QueryImpactSourceFailureCode.NESTED_EXECUTION
+        ValueProducerSeedRejection.FINALLY_UNSUPPORTED -> QueryImpactSourceFailureCode.FINALLY_UNSUPPORTED
+        ValueProducerSeedRejection.ABRUPT_COMPLETION -> QueryImpactSourceFailureCode.ABRUPT_COMPLETION
+        ValueProducerSeedRejection.EXTERNAL_CALL -> QueryImpactSourceFailureCode.EXTERNAL_CALL
+        ValueProducerSeedRejection.UNMODELED_CALL -> QueryImpactSourceFailureCode.UNMODELED_CALL
+        ValueProducerSeedRejection.MUTABLE_CONTROL_FLOW -> QueryImpactSourceFailureCode.MUTABLE_CONTROL_FLOW
+        ValueProducerSeedRejection.UNSUPPORTED_EXPRESSION -> QueryImpactSourceFailureCode.UNSUPPORTED_EXPRESSION
+        ValueProducerSeedRejection.UNRESOLVED_REFERENCE -> QueryImpactSourceFailureCode.UNRESOLVED_REFERENCE
+        ValueProducerSeedRejection.UNSUPPORTED_PROPERTY -> QueryImpactSourceFailureCode.UNSUPPORTED_PROPERTY
+        ValueProducerSeedRejection.UNSUPPORTED_RETURN -> QueryImpactSourceFailureCode.UNSUPPORTED_RETURN
+        ValueProducerSeedRejection.ACCESS_PATH_DEPTH_EXCEEDED -> QueryImpactSourceFailureCode.ACCESS_PATH_DEPTH_EXCEEDED
+        ValueProducerSeedRejection.CALL_CONTEXT_DEPTH_EXCEEDED ->
+            QueryImpactSourceFailureCode.CALL_CONTEXT_DEPTH_EXCEEDED
+        ValueProducerSeedRejection.RECURSIVE_SOURCE_CALL -> QueryImpactSourceFailureCode.RECURSIVE_SOURCE_CALL
         ValueProducerSeedRejection.AUTHORITY_MOVED -> QueryImpactSourceFailureCode.AUTHORITY_MOVED
         ValueProducerSeedRejection.NATIVE_UNAVAILABLE -> QueryImpactSourceFailureCode.NATIVE_UNAVAILABLE
         ValueProducerSeedRejection.GRANT_TOO_SMALL -> QueryImpactSourceFailureCode.GRANT_TOO_SMALL

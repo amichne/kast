@@ -35,7 +35,9 @@ internal fun QueryImpactFinding.findingDocument(
                 .distinct()
                 .impactEach { it.impactDocument() }
         )
-        .impactMap { (fields, reviewed) ->
+        .impactZip(path.classificationDocument())
+        .impactMap { (values, classification) ->
+            val (fields, reviewed) = values
             val (finding, obligations) = fields
             ImpactFindingDocument(
                 ImpactFindingEvidenceReferenceDocument(finding.first.first.first.first, rowId),
@@ -44,6 +46,7 @@ internal fun QueryImpactFinding.findingDocument(
                 finding.first.second,
                 finding.second,
                 obligations,
+                classification,
                 reviewed,
             )
         }

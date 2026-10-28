@@ -185,6 +185,7 @@ internal fun QueryImpactSourceDocument.admitSiteClaims(
         val claims =
             listOf(declared.enclosing) +
                 when (val role = declared.role) {
+                    is ImpactValueRoleDocument.StringConversionResult -> listOf(role.invocation.callable)
                     is ImpactValueRoleDocument.LoopResult ->
                         role.result.protocol.let {
                             listOf(it.enclosing, it.iterator.callable, it.hasNext.callable, it.next.callable)

@@ -11,6 +11,7 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
 import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallbackInputFailureDocument
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
@@ -78,6 +79,8 @@ class ImplementationDispatchSchemaReuseTest {
                 "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
                 "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
+                "impactCallbackInputFailure" to ImpactCallbackInputFailureDocument.serializer(),
+                "impactFlowDomain" to ImpactFlowDomainDocument.serializer(),
                 "impactDeclaredCallbackValueBinding" to ImpactDeclaredCallbackValueBindingDocument.serializer(),
             )
         for ((name, serializer) in serializers) {
@@ -93,7 +96,7 @@ class ImplementationDispatchSchemaReuseTest {
         val assertions = LocalSchemaAssertions(schema)
         assertions.assertLocalReferences()
         assertions.assertDefinitionEquivalent("impactImplementationDispatch", independent)
-        assertEquals(4, referenceCount(schema, "impactImplementationDispatch"))
+        assertEquals(5, referenceCount(schema, "impactImplementationDispatch"))
     }
 
     @Test

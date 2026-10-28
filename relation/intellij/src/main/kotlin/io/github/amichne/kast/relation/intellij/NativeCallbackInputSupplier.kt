@@ -58,7 +58,6 @@ internal fun nativeCallbackInputSupplier(
 
 private fun ValueCallFrame.admitsCallbackFormal(formal: NativeCallbackSupplierFormal.Found): Boolean =
     callee.context == ValueExecutionContext.Declaration &&
-        invocation.executionOwner.context == ValueExecutionContext.Declaration &&
         callee.enclosing.valueIdentity == formal.formal.callable.valueIdentity
 
 private fun callbackSupplierUpstream(

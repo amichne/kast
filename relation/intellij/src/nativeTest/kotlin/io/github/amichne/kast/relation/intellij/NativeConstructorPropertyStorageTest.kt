@@ -73,8 +73,25 @@ class NativeConstructorPropertyStorageTest : NativeReferenceFixtureTest() {
         val fixture = fixture()
         for (name in listOf("openRead", "abstractRead", "mutableRead", "computedRead", "inheritedOpenRead")) {
             val prepared = prepare(fixture, name, PropertySource.RECEIVER)
-            assertUnsupported(name, step(prepared, prepared.request.source))
+            if (name == "computedRead") assertComputedGetterDiscardsReceiver(prepared)
+            else assertUnsupported(name, step(prepared, prepared.request.source))
         }
+    }
+
+    private fun assertComputedGetterDiscardsReceiver(prepared: PropertyStorageCase) {
+        val receiver = next(prepared, prepared.request.source, ValueTransferKind.RECEIVER)
+        val role = receiver.role as ValueRole.Receiver
+        assertTrue(role.call.operation is io.github.amichne.kast.relation.contract.ValueInvocationOperation.Getter)
+        val signature =
+            role.call.callable.signature as io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.Property
+        assertEquals("fixture.ComputedValue.value", signature.qualifiedIdentity.value)
+        val formal = next(prepared, receiver, ValueTransferKind.SOURCE_CALL_ENTRY)
+        val entry = formal.callStack.frames.last()
+        assertEquals(role.call, entry.invocation)
+        val discarded = step(prepared, formal)
+        assertTrue(discarded.transfers.isEmpty())
+        assertTrue(discarded.obligations.isEmpty())
+        assertEquals(ValueFlowTerminal.SupportedDomainExhausted, discarded.terminal)
     }
 
     private fun assertModality(file: KtFile, name: String, expected: KaSymbolModality) {

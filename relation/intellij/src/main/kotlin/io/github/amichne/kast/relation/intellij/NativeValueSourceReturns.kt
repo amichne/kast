@@ -66,8 +66,12 @@ internal class NativeValueSourceReturns(
                 is Refinement.Rejected -> return consume(NativeValueReturnEffect.Transfer(value))
             }
         if (invocation != expected.invocation) return consume(unsupported())
+        val retained = expected.target as? io.github.amichne.kast.relation.contract.ValueCallTarget.Implementation
+        val selected =
+            if (retained == null) target(invocation.callable)
+            else Refinement.Refined(NativeValueCallerTarget.Implementation(invocation.callable, retained.dispatch))
         val target =
-            when (val value = target(invocation.callable)) {
+            when (val value = selected) {
                 is Refinement.Refined -> value.value
                 is Refinement.Rejected -> return consume(value.failure)
             }
@@ -87,7 +91,7 @@ internal class NativeValueSourceReturns(
                 is IntellijRelationSubjectLookup.Found -> native.declaration as? KtNamedFunction
                 is IntellijRelationSubjectLookup.Rejected -> null
             }
-        val call = expression.nativeValueCallSyntax(function) ?: return returnRejected()
+        val call = expression.nativeSelectedValueCallSyntax(function, projection) ?: return returnRejected()
         return frames.invocation(
             call = call,
             host = host,

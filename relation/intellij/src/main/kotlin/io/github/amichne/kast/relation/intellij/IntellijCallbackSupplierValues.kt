@@ -19,7 +19,6 @@ internal class IntellijCallbackSupplierValues(
     private val context: IntellijCallbackFlowContext,
     private val summaries: CallbackParameterSummaries,
 ) {
-    private val values = IntellijImmutableCallbackValueResolver(context, summaries)
 
     fun read(
         call: NativeCallbackSupplierCall,
@@ -31,6 +30,13 @@ internal class IntellijCallbackSupplierValues(
                 NativeCallbackSupplierSelection.DEFAULT ->
                     (formal.callable as? RelationEndpoint.Resolved)?.evidence ?: return unresolved()
             }
+        val execution =
+            when (call.selection) {
+                NativeCallbackSupplierSelection.EXPLICIT ->
+                    NativeCallbackValueExecution.Proven(call.binding.invocation.executionOwner)
+                NativeCallbackSupplierSelection.DEFAULT -> NativeCallbackValueExecution.Lexical
+            }
+        val values = IntellijImmutableCallbackValueResolver(context, summaries, execution)
         val resolved =
             when (val result = values.resolve(call.value, lexical)) {
                 is Refinement.Refined -> result.value
@@ -76,9 +82,10 @@ internal class IntellijCallbackSupplierValues(
     ): Refinement<CallbackParameterSupplier, CallbackInvocationFlowCause> {
         val argument =
             context.site(
-                call.value,
-                call.binding.invocation.enclosing,
-                ValueRole.Argument(call.binding.invocation, call.binding.position),
+                element = call.value,
+                target = call.binding.invocation.enclosing,
+                role = ValueRole.Argument(call.binding.invocation, call.binding.position),
+                executionOwner = call.binding.invocation.executionOwner,
             ) ?: return unresolved()
         val transfer =
             when (val admitted = ValueTransfer.fromCompiler(origin.destination, argument, ValueTransferKind.ARGUMENT)) {

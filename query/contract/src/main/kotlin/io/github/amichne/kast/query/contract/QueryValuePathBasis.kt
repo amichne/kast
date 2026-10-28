@@ -87,6 +87,7 @@ internal fun ValueSite.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
         callStack.frames.any { it.hasForeignBasis(lease) } ||
         conditions.hasForeignBasis(lease) ||
         when (val current = role) {
+            is ValueRole.StringConversionResult -> current.invocation.hasForeignBasis(lease)
             is ValueRole.LoopResult -> current.result.protocol.hasForeignBasis(lease)
             is ValueRole.Argument -> current.call.hasForeignBasis(lease)
             is ValueRole.Receiver -> current.call.hasForeignBasis(lease)
@@ -243,6 +244,7 @@ private fun ValueTransferEvidence.hasForeignBasis(lease: SemanticReadAuthority):
     when (val proof = this) {
         is ValueLoopTransfer -> proof.iteration.protocol.hasForeignBasis(lease)
         ValueTransferEvidence.Direct,
+        is io.github.amichne.kast.relation.contract.ValueStringContent,
         is ValueTransferEvidence.NormalBranchResult -> false
         is ValueSourceTransfer ->
             when (val operation = proof.operation) {

@@ -23,6 +23,7 @@ data class ImpactCompilerTransferDocument(
             when (val proof = evidence) {
                 ImpactTransferEvidenceDocument.Direct ->
                     source.admitsDirectLoop(target, kind) && kind.admitsDirectState(source, target)
+                is ImpactTransferEvidenceDocument.StringContent -> proof.admitsContent(source, target, kind)
                 is ImpactTransferEvidenceDocument.LoopAdvance -> proof.admits(source, target, kind)
                 is ImpactTransferEvidenceDocument.Source -> proof.operation.admits(source, target, kind)
                 is ImpactTransferEvidenceDocument.NormalBranchResult -> proof.admitsNormalBranch(source, target, kind)
@@ -50,6 +51,7 @@ private fun ImpactTransferKindDocument.admitsDirectState(
 ): Boolean =
     when (this) {
         ImpactTransferKindDocument.CAST_RESULT -> source.admitsCastResult(target)
+        ImpactTransferKindDocument.STRING_CONTENT,
         ImpactTransferKindDocument.SOURCE_CALL_ENTRY,
         ImpactTransferKindDocument.SOURCE_CALL_RETURN,
         ImpactTransferKindDocument.FIELD_READ,

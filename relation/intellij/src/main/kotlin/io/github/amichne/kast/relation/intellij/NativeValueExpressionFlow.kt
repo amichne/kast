@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateEntryWithExpression
 import org.jetbrains.kotlin.psi.KtThrowExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtWhenEntry
@@ -85,6 +86,8 @@ internal class NativeValueExpressionFlow(
                     retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
             is KtProperty -> propertyDestination(expression, parent)
             is KtDestructuringDeclaration -> destructuringDestination(expression, parent)
+            is KtStringTemplateEntryWithExpression ->
+                NativeStringContent(request.source, scope, projection, retained).read(expression, parent)
             is KtValueArgument -> argument(expression, parent)
             is KtQualifiedExpression -> receiver(expression, parent)
             is KtReturnExpression -> returnDestination(expression, parent)
@@ -172,7 +175,9 @@ internal class NativeValueExpressionFlow(
     }
 
     private fun assignmentDestination(expression: KtExpression, assignment: KtBinaryExpression) {
-        if (assignment.right === expression) localVersionDestination(assignment)
+        if (nativeExternalInfixCall(assignment, observation))
+            retained.unresolvedAt(ValueFlowUnsupportedCause.EXTERNAL_CALL, assignment)
+        else if (assignment.right === expression) localVersionDestination(assignment)
         else retained.unresolvedAt(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW, assignment)
     }
 

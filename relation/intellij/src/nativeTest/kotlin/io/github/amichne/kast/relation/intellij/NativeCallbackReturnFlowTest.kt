@@ -205,24 +205,14 @@ class NativeCallbackReturnFlowTest : NativeReferenceFixtureTest() {
 
     private fun checkDisconnectedProducer(caller: String) = runBlocking {
         val fixture = fixture(caller)
-        assertEquals(
-            io.github.amichne.kast.relation.contract.ValueProducerSeedRead.Rejected(
-                io.github.amichne.kast.relation.contract.ValueProducerSeedRejection.OWNER_MISMATCH
-            ),
-            producerRead(fixture),
-        )
+        assertDisconnectedProducer(producerRead(fixture))
         assertTrue(resolve(fixture, fixture.seeds.single()) is ValueSiteResolution.Rejected)
     }
 
     fun testReturnedUninvokedCallbackRemainsRejected() = runBlocking {
         val fixture = fixture("fun target(): () -> String = { decode() }")
         assertTrue(resolve(fixture, fixture.seeds.single()) is ValueSiteResolution.Rejected)
-        assertEquals(
-            io.github.amichne.kast.relation.contract.ValueProducerSeedRead.Rejected(
-                io.github.amichne.kast.relation.contract.ValueProducerSeedRejection.OWNER_MISMATCH
-            ),
-            producerRead(fixture),
-        )
+        assertDisconnectedProducer(producerRead(fixture))
     }
 
     fun testPublicProducerSeedsTheExactInvokedDecodeResult() = runBlocking {
@@ -716,4 +706,16 @@ private data class ReturnFixture(
     val decoder: SymbolSelector,
 ) {
     fun ownerEndpoint() = io.github.amichne.kast.relation.contract.RelationEndpoint.subject(owner)
+}
+
+private fun assertDisconnectedProducer(read: io.github.amichne.kast.relation.contract.ValueProducerSeedRead) {
+    junit.framework.Assert.assertTrue(read is io.github.amichne.kast.relation.contract.ValueProducerSeedRead.Rejected)
+    read as io.github.amichne.kast.relation.contract.ValueProducerSeedRead.Rejected
+    junit.framework.Assert.assertEquals(
+        io.github.amichne.kast.relation.contract.ValueProducerSeedRejection.NESTED_EXECUTION,
+        read.cause,
+    )
+    junit.framework.Assert.assertTrue(
+        read.diagnostic is io.github.amichne.kast.relation.contract.ValueProducerSeedDiagnostic.InitialExecution
+    )
 }

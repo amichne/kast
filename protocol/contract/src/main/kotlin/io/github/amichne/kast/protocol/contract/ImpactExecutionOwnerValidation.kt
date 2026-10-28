@@ -5,6 +5,8 @@ fun ImpactValueSiteReferenceDocument.admitsExecutionOwner(): Boolean =
     executionOwner.admits(enclosing, range) &&
         admitsValueState() &&
         when (val position = role) {
+            is ImpactValueRoleDocument.StringConversionResult ->
+                position.invocation.admitsOwner(enclosing, executionOwner) && position.invocation.range == range
             is ImpactValueRoleDocument.LoopResult -> position.admits(this)
             is ImpactValueRoleDocument.Argument -> position.invocation.admitsOwner(enclosing, executionOwner)
             is ImpactValueRoleDocument.Receiver -> position.invocation.admitsOwner(enclosing, executionOwner)

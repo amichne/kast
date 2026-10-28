@@ -24,6 +24,7 @@ import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.admitsExecutionOwner
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
@@ -72,8 +73,12 @@ internal class NativePacketQueryCapture(
         val retained = retained(outcome, outgoing)
         check(services.nativeFlowReads > 0) { "No real K2 value-flow read ran" }
         val reads = services.nativeFlowReads
+        val proofs = services.nativeProofReads
+        val semantic = services.observation.snapshot()
         val read = execute(QueryRunRequest.ReadResult.valuePaths(retained.reference))
         check(services.nativeFlowReads == reads) { "Retained presentation repeated native semantic work" }
+        check(services.nativeProofReads == proofs) { "Retained presentation reacquired a producer proof" }
+        check(services.observation.snapshot() == semantic) { "Retained presentation repeated compiler acquisition" }
         val result =
             when (read) {
                 is OperationOutcome.Complete -> {
@@ -116,7 +121,11 @@ internal class NativePacketQueryCapture(
                         maximumResults = budget.outputResults,
                         maximumBytes = ReturnedByteLimit.parse(budget.returnedBytes.value).packetQueryRefined(),
                     )
-                check(response is HostedResponse.Canonical<*, *, *>) { "Hosted query response did not fit" }
+                if (response is HostedResponse.EncodingRejected) recordEncodingFailure(outcome)
+                check(response is HostedResponse.Canonical<*, *, *>) {
+                    "Hosted query response did not fit: " +
+                        if (response is HostedResponse.EncodingRejected) response.failure else response
+                }
                 check(response.semantic == outcome) { "Hosted encoding changed the semantic outcome" }
                 val bytes = response.document.toByteArray(Charsets.UTF_8).size
                 check(bytes <= budget.returnedBytes.value) { "Hosted response exceeded the byte grant" }
@@ -124,6 +133,40 @@ internal class NativePacketQueryCapture(
                 outcome
             },
         )
+
+    private fun recordEncodingFailure(semantic: QueryPublishedPage) {
+        val payload =
+            when (semantic) {
+                is OperationOutcome.Complete -> semantic.evidence.payload
+                is OperationOutcome.Qualified -> semantic.evidence.payload
+                is OperationOutcome.Rejected -> return
+            }
+        println(
+            "PACKET_ACCOUNTING=" +
+                kotlinx.serialization.json.Json.encodeToString(
+                    io.github.amichne.kast.protocol.contract.ImpactAccountingDocument.serializer(),
+                    payload.impactAccounting,
+                )
+        )
+        payload.items.values.forEach { item ->
+            if (item is QueryResultItemDocument.ValuePath)
+                println(
+                    "PACKET_PATH=" +
+                        kotlinx.serialization.json.Json.encodeToString(ImpactPathDocument.serializer(), item.path)
+                )
+        }
+        payload.items.values.filterIsInstance<QueryResultItemDocument.ValuePath>().forEach { item ->
+            item.path.steps.values
+                .filterIsInstance<io.github.amichne.kast.protocol.contract.ImpactPathStepDocument.Compiler>()
+                .forEachIndexed { index, step ->
+                    val transfer = step.transfer
+                    val valid = transfer.admitsEvidence()
+                    val source = transfer.source.admitsExecutionOwner()
+                    val target = transfer.target.admitsExecutionOwner()
+                    println("ADMIT $index ${transfer.kind} $valid $source $target")
+                }
+        }
+    }
 
     private fun recordCapture(outgoing: Boolean, reads: Int, paths: Int) {
         println(

@@ -109,10 +109,14 @@ private data class ContainerQueryFiles(val base: VirtualFile, val source: Virtua
 
 /** Retained row and evidence windows advance independently; replay must perform no additional semantic reads. */
 internal class NativeContainerQueryCapture(private val services: NativePacketQueryServices) {
-    suspend fun capture(producer: QueryImpactProducerDocument): NativePacketQueryResult {
+    suspend fun capture(
+        producer: QueryImpactProducerDocument,
+        targets: List<ImpactValueSiteReferenceDocument> = emptyList(),
+        declarations: List<io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument> = emptyList(),
+    ): NativePacketQueryResult {
         val reader = NativePacketQueryCapture(services)
         val captured =
-            reader.capture(producer = producer, targets = emptyList(), outgoing = false, declarations = emptyList())
+            reader.capture(producer = producer, targets = targets, outgoing = false, declarations = declarations)
         val complete = captured.outcome is OperationOutcome.Complete
         val diagnostics = if (complete) null else ContainerQueryDiagnostics()
         val drained = drain(reader = reader, captured = captured, complete = complete, diagnostics = diagnostics)
@@ -195,7 +199,12 @@ internal class NativeContainerQueryCapture(private val services: NativePacketQue
         complete: Boolean,
     ): QueryRunResult {
         val reads = services.nativeFlowReads
+        val proofs = services.nativeProofReads
+        val compilerCalls = services.observation.snapshot()
         val outcome = reader.execute(request)
+        check(services.nativeProofReads == proofs && services.observation.snapshot() == compilerCalls) {
+            "Retained pagination acquired compiler evidence"
+        }
         check(services.nativeFlowReads == reads) { "Retained pagination repeated native semantic work" }
         return when (outcome) {
             is OperationOutcome.Complete -> {
@@ -322,5 +331,29 @@ private val CONTAINER_QUERY_SOURCE =
         val mapped = initial.map { forbidden(it); it }
         consume(mapped.payload())
     }
+    fun <T> invokeNow(block: () -> T): T = block()
+    fun anonymousCase() = invokeNow /*<anonymous-body>*/{
+        val initial = Good(origin())
+        val mapped = initial.map { it }
+        consume(/*<anonymous-use>*/mapped.value/*</anonymous-use>*/)
+    }/*</anonymous-body>*/
+
+    fun stringOrigin(): String = "content"
+    fun nullOrigin(): Nothing? = null
+    fun consumeString(value: String) = Unit
+    class TextToken(val raw: String) { override fun toString(): String = raw }
+    fun stringCase() {
+        val value = stringOrigin()
+        consumeString(/*<string-use>*/"${'$'}value:${'$'}value"/*</string-use>*/)
+    }
+    fun objectCase() {
+        val value = TextToken(stringOrigin())
+        consumeString(/*<object-use>*/"${'$'}value"/*</object-use>*/)
+    }
+    fun nullCase() {
+        val value = nullOrigin()
+        consumeString("${'$'}value")
+    }
+
     """
         .trimIndent()

@@ -83,3 +83,11 @@ private fun List<ImpactCompilerTransferDocument>.hasSameCallableTransfers(
                 left.source.hasSameValueIdentity(right.source) &&
                 left.target.hasSameValueIdentity(right.target)
         }
+
+/** A proven caller keeps its own graph. Older reconstructed suppliers keep the complete child graph. */
+internal fun ImpactExecutionOwnerDocument.Callback.matchesSupplierProof(
+    supplied: ImpactExecutionOwnerDocument,
+    callback: ImpactExecutionOwnerDocument.Callback,
+): Boolean =
+    hasSameExecutionIdentity(supplied) ||
+        invocations.hasSameCaptures(callback.invocations) && invocations.values.count { it.body == body } == 1

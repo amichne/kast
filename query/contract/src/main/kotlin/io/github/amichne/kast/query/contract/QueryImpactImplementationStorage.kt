@@ -31,6 +31,11 @@ private fun ValueFlowObligationEvidence.storageBytes(g: QueryImpactRetainedGraph
     g.node(this) {
         when (this) {
             ValueFlowObligationEvidence.None -> 0L
+            is ValueFlowObligationEvidence.StringConversion ->
+                g.text(selection.signature.canonicalEncoding().value)
+                    .saturatedAdd(g.text(selection.compilerIdentity.value))
+                    .saturatedAdd(g.node(entryRange) { 0L })
+                    .saturatedAdd(g.node(inputRange) { 0L })
             is ValueFlowObligationEvidence.CallbackInput -> g.node(failure) { failure.retainedBytes }
             is ValueFlowObligationEvidence.Expression -> g.text(kind.value).saturatedAdd(g.node(range) { 0L })
             is ValueFlowObligationEvidence.ImplementationDispatch -> dispatch.storageBytes(g)

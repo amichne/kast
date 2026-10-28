@@ -109,7 +109,7 @@ internal class NativePacketQueryServices(
                 }
         }
     }
-    val observation = io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None
+    val observation = NativeTraceCounters()
     val symbols =
         ProjectBoundIntellijSymbolPorts.create(
             project = project,
@@ -122,6 +122,9 @@ internal class NativePacketQueryServices(
     val references = CanonicalQueryReferences(model)
     private val compiler = IntellijValueFlowCompilerAdapter(observation)
     private val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
+    var nativeProofReads = 0
+        private set
+
     var nativeFlowReads = 0
         private set
 
@@ -138,20 +141,28 @@ internal class NativePacketQueryServices(
     }
     private val producers =
         object : ValueProducerSeedCompilerPort {
-            override suspend fun seed(request: ValueProducerSeedRequest) =
-                compiler.seed(project = project, current = lease, request = request, model = compiledModel)
+            override suspend fun seed(
+                request: ValueProducerSeedRequest
+            ): io.github.amichne.kast.relation.contract.ValueProducerSeedRead {
+                nativeProofReads++
+                return compiler.seed(project = project, current = lease, request = request, model = compiledModel)
+            }
 
             override suspend fun revalidate(selector: SymbolSelector, budget: RelationBudget) =
-                compiler.revalidate(
-                    project = project,
-                    current = lease,
-                    selector = selector,
-                    budget = budget,
-                    model = compiledModel,
-                )
+                compiler
+                    .revalidate(
+                        project = project,
+                        current = lease,
+                        selector = selector,
+                        budget = budget,
+                        model = compiledModel,
+                    )
+                    .also { nativeProofReads++ }
 
             override suspend fun revalidateSite(request: ValueSiteRevalidationRequest) =
-                compiler.revalidateSite(project = project, current = lease, request = request, model = compiledModel)
+                compiler
+                    .revalidateSite(project = project, current = lease, request = request, model = compiledModel)
+                    .also { nativeProofReads++ }
         }
     private val relations =
         RelationService(

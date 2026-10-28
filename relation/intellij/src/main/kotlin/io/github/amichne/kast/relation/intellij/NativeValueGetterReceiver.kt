@@ -16,11 +16,7 @@ internal fun IntellijRelationAllowance.nativeGetterReceiverFormal(
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueFormalPosition.Receiver, ValueFlowUnsupportedCause> {
     val role = source.role as? ValueRole.Receiver ?: return getterReceiverRejected()
-    if (
-        role.call.operation !is ValueInvocationOperation.Getter ||
-            role.kind != ValueReceiverKind.DISPATCH ||
-            source.range != role.call.range
-    )
+    if (role.call.operation !is ValueInvocationOperation.Getter || role.kind != ValueReceiverKind.DISPATCH)
         return getterReceiverRejected()
     val property =
         when (val value = projection.subject(scope, role.call.callable)) {
@@ -32,9 +28,19 @@ internal fun IntellijRelationAllowance.nativeGetterReceiverFormal(
             is IntellijRelationSubjectLookup.Found -> value.declaration
             is IntellijRelationSubjectLookup.Rejected -> return getterReceiverRejected()
         }
-    val syntax =
-        host.exactValueElement(role.call.range)?.nativeValueCallSyntax() as? NativeValueCallSyntax.Component
-            ?: return getterReceiverRejected()
+    val syntax = host.exactValueElement(role.call.range)?.nativeValueCallSyntax() ?: return getterReceiverRejected()
+    if (syntax is NativeValueCallSyntax.PropertyRead) return namedGetterFormal(source, syntax, property, projection)
+    if (syntax !is NativeValueCallSyntax.Component || source.range != role.call.range) return getterReceiverRejected()
+    return componentGetterFormal(syntax, role, property, scope, projection)
+}
+
+private fun IntellijRelationAllowance.componentGetterFormal(
+    syntax: NativeValueCallSyntax.Component,
+    role: ValueRole.Receiver,
+    property: KtProperty,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+): Refinement<ValueFormalPosition.Receiver, ValueFlowUnsupportedCause> {
     val admission =
         when (val value = syntax.admit(role.call.enclosing, scope, projection) { permitDestructuring(scope) }) {
             is Refinement.Refined -> value.value
@@ -51,3 +57,19 @@ internal fun IntellijRelationAllowance.nativeGetterReceiverFormal(
 
 private fun getterReceiverRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
     Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+
+private fun namedGetterFormal(
+    source: ValueSite,
+    syntax: NativeValueCallSyntax.PropertyRead,
+    property: KtProperty,
+    projection: IntellijK2RelationProjection,
+): Refinement<ValueFormalPosition.Receiver, ValueFlowUnsupportedCause> {
+    if (source.range != sourceValueRange(syntax.expression.receiverExpression)) return getterReceiverRejected()
+    return when (val selected = nativeNamedGetter(syntax, projection)) {
+        is Refinement.Refined ->
+            if (selected.value.originalElement == property.originalElement)
+                Refinement.Refined(ValueFormalPosition.Receiver(ValueReceiverKind.DISPATCH))
+            else getterReceiverRejected()
+        is Refinement.Rejected -> selected
+    }
+}

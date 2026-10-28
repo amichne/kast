@@ -100,6 +100,7 @@ private fun QueryImpactSourceFailureDocument.recoveryAction(): ReadRecoveryActio
         is QueryImpactSourceFailureDocument.PeerProof -> cause.recoveryAction
         is QueryImpactSourceFailureDocument.Reference -> reason.recoveryAction()
         is QueryImpactSourceFailureDocument.Admission -> cause.recoveryAction
+        is QueryImpactSourceFailureDocument.ProducerExecution -> cause.recoveryAction
     }
 
 private fun SourceReferenceFailure.recoveryAction(): ReadRecoveryAction =

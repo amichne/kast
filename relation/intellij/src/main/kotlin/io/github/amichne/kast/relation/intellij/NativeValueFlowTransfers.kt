@@ -29,6 +29,7 @@ internal class NativeValueFlowTransfers(
     private val scope: CompiledRelationScope,
     private val observation: IntellijReadObservation,
 ) {
+    val stringConstructions = mutableListOf<io.github.amichne.kast.relation.contract.ValueStringConstruction>()
     private val emitted = mutableListOf<ValueTransfer>()
     private val reviewed = mutableListOf<ReviewedValueTransfer>()
     val reviewedEdges: List<ReviewedValueTransfer>
@@ -170,6 +171,33 @@ internal class NativeValueFlowTransfers(
         when (recordEvidence(nativeValueObligation(request.source, cause, element))) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+        }
+    }
+
+    fun unresolvedStringConversion(
+        failure: NativeStringConversionFailure,
+        expression: org.jetbrains.kotlin.psi.KtExpression,
+    ) {
+        when (failure) {
+            is NativeStringConversionFailure.Unavailable -> unresolvedAt(failure.cause, expression.parent)
+            is NativeStringConversionFailure.Selected ->
+                when (
+                    val obligation =
+                        ValueFlowObligation.fromStringConversion(
+                            request.source,
+                            failure.cause,
+                            failure.selection,
+                            sourceValueRange(expression.parent),
+                            sourceValueRange(expression),
+                        )
+                ) {
+                    is Refinement.Refined ->
+                        when (recordEvidence(obligation.value)) {
+                            is Refinement.Refined -> Unit
+                            is Refinement.Rejected -> unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+                        }
+                    is Refinement.Rejected -> unresolvedAt(failure.cause, expression.parent)
+                }
         }
     }
 

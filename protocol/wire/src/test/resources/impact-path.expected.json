@@ -67,6 +67,10 @@
       "evidence": {
         "type": "NONE"
       }
+    },
+    "classification": {
+      "type": "ESTABLISHED",
+      "relationship": "EXACT"
     }
   }
 }

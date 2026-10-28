@@ -79,7 +79,7 @@ internal class IntellijCallbackSupplierCalls(
                 is Refinement.Rejected -> return restored
             }
         if (selected != frame.callee.enclosing || formal.callable != selected)
-            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+            return Refinement.Rejected(CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH)
         if (
             function.valueParameters.getOrNull(formal.position.value) != parameter ||
                 context.occurrence(parameter) != formal.parameter
@@ -201,7 +201,7 @@ internal class IntellijCallbackSupplierCalls(
         when (argument) {
             NativeSupplierArgument.Different -> return Refinement.Refined(NativeSupplierMapping.Different)
             NativeSupplierArgument.Unavailable ->
-                return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                return Refinement.Rejected(CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE)
             is NativeSupplierArgument.Selected -> Unit
         }
         if (
@@ -276,10 +276,10 @@ internal class IntellijCallbackSupplierCalls(
             ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
-                    return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    return Refinement.Rejected(CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE)
             }
         if (frame != null && invocation != frame.invocation)
-            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+            return Refinement.Rejected(CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH)
         return when (
             val admitted =
                 if (frame == null)
@@ -298,7 +298,7 @@ internal class IntellijCallbackSupplierCalls(
                     )
         ) {
             is Refinement.Refined -> admitted
-            is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+            is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED)
         }
     }
 }

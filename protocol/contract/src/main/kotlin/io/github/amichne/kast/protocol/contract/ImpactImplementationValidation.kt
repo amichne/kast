@@ -27,6 +27,7 @@ internal fun ImpactFlowObligationEvidenceDocument.admitsObligation(
 ): Boolean =
     when (this) {
         ImpactFlowObligationEvidenceDocument.None -> true
+        is ImpactFlowObligationEvidenceDocument.StringConversion -> admitsConversion(site)
         is ImpactFlowObligationEvidenceDocument.CallbackInput -> true
         is ImpactFlowObligationEvidenceDocument.Expression ->
             kind.value.matches(Regex("^[A-Z][A-Za-z0-9_]{0,127}$")) &&
@@ -39,6 +40,7 @@ internal fun ImpactFlowObligationEvidenceDocument.admitsObligation(
                     is ImpactValueRoleDocument.Argument -> position.invocation.callable == dispatch.question.subject
                     is ImpactValueRoleDocument.Receiver -> position.invocation.callable == dispatch.question.subject
                     ImpactValueRoleDocument.Return -> true
+                    is ImpactValueRoleDocument.StringConversionResult,
                     is ImpactValueRoleDocument.Formal,
                     is ImpactValueRoleDocument.LoopResult,
                     ImpactValueRoleDocument.ExpressionResult,

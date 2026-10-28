@@ -18,6 +18,7 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
         .addBytes(origin.callStack.frames.fold(0L) { sum, frame -> sum.addBytes(valueFrameStorageBytes(frame)) })
         .addBytes(
             when (condition) {
+                is ValueCondition.StringContentNonNull -> STRING_CONTENT_CONDITION_BYTES
                 is ValueCondition.DeclaredCallbackResult -> condition.binding.retainedBytes
                 is ValueCondition.StableLocal ->
                     VALUE_CALL_PROOF_BYTES.addBytes(
@@ -99,3 +100,5 @@ internal fun ValueRole.hasReferenceReads(): Boolean =
 
 private const val VALUE_FIELD_PROOF_BYTES = 2048L
 private const val VALUE_CALL_PROOF_BYTES = 4096L
+
+private const val STRING_CONTENT_CONDITION_BYTES = 256L

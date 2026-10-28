@@ -10,7 +10,10 @@ internal fun ImpactWitnessDocument.hasSourceBasis(basis: ImpactSemanticBasisDocu
         is ImpactWitnessDocument.RepresentationModel -> rule.isOnBasis(basis)
         is ImpactWitnessDocument.BoundaryModel -> rule.isOnBasis(basis)
         is ImpactWitnessDocument.NativeRead ->
-            source.isOnBasis(basis) && domain.subject.basis == basis && receipts.hasSourceBasis(basis)
+            source.isOnBasis(basis) &&
+                domain.subject.basis == basis &&
+                receipts.hasSourceBasis(basis) &&
+                stringConstructions.admitsConstructions(source)
         is ImpactWitnessDocument.CompilerTransfer ->
             transfer.admitsEvidence() && transfer.source.isOnBasis(basis) && transfer.target.isOnBasis(basis)
         is ImpactWitnessDocument.ReviewedTransfer -> transfer.admitsEvidence() && transfer.binding.basis == basis
@@ -69,7 +72,9 @@ private fun ImpactFindingTerminalDocument.hasSourceBasis(
         is ImpactFindingTerminalDocument.UnresolvedBoundary ->
             source.site.isOnBasis(basis) && obligation.position.site.isOnBasis(basis)
         is ImpactFindingTerminalDocument.SupportedDomainEnd ->
-            observation.source.isOnBasis(basis) && observation.domain.subject.basis == basis
+            observation.source.isOnBasis(basis) &&
+                observation.domain.subject.basis == basis &&
+                observation.stringConstructions.admitsConstructions(observation.source)
     }
 
 private fun ImpactReadRejectionDocument.hasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =

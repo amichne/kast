@@ -15,13 +15,12 @@ private fun ImpactValueConditionDocument.hasSameCondition(other: ImpactValueCond
 
 private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueConditionDocument): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.StringContentNonNull ->
+            other is ImpactValueConditionDocument.StringContentNonNull && entryRange == other.entryRange
         is ImpactValueConditionDocument.DeclaredCallbackResult ->
             other is ImpactValueConditionDocument.DeclaredCallbackResult && binding == other.binding
         is ImpactValueConditionDocument.StableLocal ->
-            other is ImpactValueConditionDocument.StableLocal &&
-                originalType == other.originalType &&
-                version == other.version &&
-                refinedType == other.refinedType
+            other is ImpactValueConditionDocument.StableLocal && sameLocalRefinement(other)
         is ImpactValueConditionDocument.StableReceiver ->
             other is ImpactValueConditionDocument.StableReceiver &&
                 originalType == other.originalType &&
@@ -48,6 +47,8 @@ private fun ImpactValueConditionDocument.admits(basis: ImpactSemanticBasisDocume
 
 private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.StringContentNonNull ->
+            useRange.containsExecutionRange(entryRange) && entryRange.containsExecutionRange(origin.range)
         is ImpactValueConditionDocument.DeclaredCallbackResult -> admitsResult()
         is ImpactValueConditionDocument.StableLocal ->
             sourceSite().admitsLocalVersion() &&
@@ -88,6 +89,7 @@ internal fun ImpactValueSiteReferenceDocument.conservesConditions(
 
 private fun ImpactValueConditionDocument.matchesTransferKind(kind: ImpactTransferKindDocument): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.StringContentNonNull -> kind == ImpactTransferKindDocument.STRING_CONTENT
         is ImpactValueConditionDocument.DeclaredCallbackResult -> kind == ImpactTransferKindDocument.SOURCE_CALL_RETURN
         is ImpactValueConditionDocument.StableLocal -> kind == ImpactTransferKindDocument.LOCAL_READ
         is ImpactValueConditionDocument.StableReceiver -> kind == ImpactTransferKindDocument.FIELD_READ
@@ -105,8 +107,13 @@ private fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReferenceD
         localVersion =
             when (this) {
                 is ImpactValueConditionDocument.StableLocal -> version
+                is ImpactValueConditionDocument.StringContentNonNull,
                 is ImpactValueConditionDocument.DeclaredCallbackResult,
                 is ImpactValueConditionDocument.StableReceiver,
                 is ImpactValueConditionDocument.CastSuccess -> ImpactLocalVersionDocument.Unversioned
             },
     )
+
+private fun ImpactValueConditionDocument.StableLocal.sameLocalRefinement(
+    other: ImpactValueConditionDocument.StableLocal
+): Boolean = originalType == other.originalType && version == other.version && refinedType == other.refinedType

@@ -28,6 +28,7 @@ class ImpactReviewedFindingTest {
                 "representation",
                 "terminal",
                 "boundaryObligations",
+                "classification",
                 "reviewedRelations",
             ),
             encoded.keys,

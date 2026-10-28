@@ -26,6 +26,10 @@ internal fun valueCallTargetStorageBytes(target: ValueCallTarget): Long =
 internal fun valueObligationEvidenceStorageBytes(evidence: ValueFlowObligationEvidence): Long =
     when (evidence) {
         ValueFlowObligationEvidence.None -> 0L
+        is ValueFlowObligationEvidence.StringConversion ->
+            IMPLEMENTATION_RECORD_BYTES.addBytes(
+                evidence.selection.signature.canonicalEncoding().value.length.toLong().multiplyBytes(2)
+            )
         is ValueFlowObligationEvidence.CallbackInput -> evidence.failure.retainedBytes
         is ValueFlowObligationEvidence.Expression -> 256L.addBytes(evidence.kind.value.length.toLong().multiplyBytes(2))
         is ValueFlowObligationEvidence.ImplementationDispatch -> implementationStorageBytes(evidence.dispatch)

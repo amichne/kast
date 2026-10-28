@@ -167,6 +167,7 @@ internal fun ValueSite.storageBytes(g: QueryImpactRetainedGraph): Long =
 internal fun ValueRole.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         when (this) {
+            is ValueRole.StringConversionResult -> invocation.storageBytes(g)
             is ValueRole.LoopResult -> result.storageBytes(g)
             is ValueRole.Argument -> call.storageBytes(g)
             is ValueRole.Receiver -> call.storageBytes(g).saturatedAdd(g.node(kind) { 0L })
@@ -266,6 +267,7 @@ internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
                             proof.iteration.storageBytes(g).saturatedAdd(g.node(proof.receiverKind) { 0L })
                         is ValueSourceTransfer -> proof.operation.storageBytes(g)
                         ValueTransferEvidence.Direct,
+                        is io.github.amichne.kast.relation.contract.ValueStringContent,
                         is ValueTransferEvidence.NormalBranchResult -> proof.retainedBytes
                     }
                 }
@@ -299,6 +301,17 @@ internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.collection(transfers) { it.storageBytes(g) })
             .saturatedAdd(g.collection(reviewedTransfers) { it.storageBytes(g) })
             .saturatedAdd(g.collection(obligations) { it.storageBytes(g) })
+            .saturatedAdd(
+                g.collection(stringConstructions) { record ->
+                    g.node(record) {
+                        record.source
+                            .storageBytes(g)
+                            .saturatedAdd(g.node(record.templateRange) { 0L })
+                            .saturatedAdd(g.node(record.entryRange) { 0L })
+                            .saturatedAdd(g.node(record.inputRange) { 0L })
+                    }
+                }
+            )
     }
 
 internal fun RelationRequest.storageBytes(g: QueryImpactRetainedGraph): Long =

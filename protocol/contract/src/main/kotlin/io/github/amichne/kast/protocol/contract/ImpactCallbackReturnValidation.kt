@@ -65,8 +65,7 @@ private fun ImpactSourceOperationDocument.CallbackReturn.matchesSupplierExecutio
         ImpactExecutionOwnerDocument.Declaration -> invocation.supplyOwner.matches(source.enclosing)
         is ImpactExecutionOwnerDocument.Callback ->
             execution.body == invocation.supplyOwner &&
-                execution.invocations.hasSameCaptures(context.invocations) &&
-                execution.invocations.values.count { it.body == execution.body } == 1 &&
+                execution.matchesSupplierProof(invocation.supply.executionOwner, context) &&
                 execution.admitsSelection()
     }
 
