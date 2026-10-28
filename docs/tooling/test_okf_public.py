@@ -6,6 +6,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -289,3 +290,60 @@ def test_public_inventory_needs_a_deliberate_owner_for_new_pages(
 def test_repository_public_projection_matches_its_canonical_sources() -> None:
     result = run(ROOT, write=False)
     assert not isinstance(result, Failure), result
+
+
+@pytest.mark.parametrize("previously_generated", [False, True])
+def test_write_creates_or_restores_declared_generated_route(
+    tmp_path: Path, previously_generated: bool
+) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    (tmp_path / "docs/public").mkdir(parents=True)
+    (tmp_path / "docs/okf-public.json").write_text(
+        json.dumps(asdict(ManifestDocument(manifest.views)))
+    )
+    git = shutil.which("git")
+    assert git is not None
+    subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
+    subprocess.run([git, "add", "."], cwd=tmp_path, check=True)
+    route = tmp_path / "docs/public/reference/example.mdx"
+    if previously_generated:
+        route.parent.mkdir(parents=True, exist_ok=True)
+        route.write_text("Old public prose.\n")
+        assert not isinstance(run(tmp_path, write=True), Failure)
+        route.unlink()
+    assert isinstance(run(tmp_path, write=False), Failure)
+    assert not route.exists()
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "docs/tooling/okf_public.py"),
+            "--write",
+            "--repo",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert process.returncode == 0, process.stdout + process.stderr
+    assert json.loads(process.stdout)["views"] == ["reference/example"]
+    assert "<OkfConcept0 />" in route.read_text()
+    assert not isinstance(run(tmp_path, write=False), Failure)
+
+
+def test_write_does_not_invent_a_missing_authored_page(tmp_path: Path) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    (tmp_path / "docs/public").mkdir(parents=True)
+    (tmp_path / "docs/okf-public.json").write_text(
+        json.dumps(
+            asdict(ManifestDocument(manifest.views, (Authored("start", "reader-navigation"),)))
+        )
+    )
+    git = shutil.which("git")
+    assert git is not None
+    subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
+    subprocess.run([git, "add", "."], cwd=tmp_path, check=True)
+    result = run(tmp_path, write=True)
+    assert isinstance(result, Failure)
+    assert result.code is Code.INPUT
+    assert list((tmp_path / "docs/public").iterdir()) == []
