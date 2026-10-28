@@ -328,8 +328,37 @@ private data class LifecycleObservation(
     val stage: IdeLifecycleStage?,
 )
 
-class IdeLifecycleStartup : AppLifecycleListener {
+class IdeLifecycleStartup : AppLifecycleListener, com.intellij.ide.plugins.DynamicPluginListener {
     override fun appStarted() {
         ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java)
+    }
+
+    override fun pluginLoaded(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
+        if (pluginDescriptor.pluginId.idString == PLUGIN_ID) appStarted()
+    }
+
+    override fun checkUnloadPlugin(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
+        if (pluginDescriptor.pluginId.idString != PLUGIN_ID) return
+        val processing =
+            com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager.getInstance()
+        for (project in ProjectManager.getInstance().openProjects) {
+            if (
+                processing.hasTaskOfTypeInProgress(
+                    com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType.RESOLVE_PROJECT,
+                    project,
+                ) ||
+                    project
+                        .getServiceIfCreated(io.github.amichne.kast.runtime.hosted.HostedEndpointService::class.java)
+                        ?.lifecycleHasWork() == true
+            ) {
+                throw com.intellij.ide.plugins.CannotUnloadPluginException(
+                    "Kast workspace preparation must finish before plugin reload"
+                )
+            }
+        }
+    }
+
+    private companion object {
+        const val PLUGIN_ID = "io.github.amichne.kast.ide-hosted"
     }
 }

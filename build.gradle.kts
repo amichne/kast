@@ -325,6 +325,15 @@ tasks.withType<VerificationReportTask>().configureEach {
     }
 }
 
+val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginReloadTest") {
+    group = "verification"
+    description = "Examines local plugin replacement admission and atomic directory exchange."
+    inputs.files("packaging/reload_hosted.py", "packaging/reload_hosted.py.lock", "packaging/test_reload_hosted.py")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--script", layout.projectDirectory.file("packaging/reload_hosted.py").asFile.absolutePath, "--self-test"))
+}
+tasks.named("check") { dependsOn(localPluginReloadTest) }
+
 val testCheckoutInstaller = tasks.register<VerificationReportTask>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout and release bootstrap boundaries without touching machine state."
