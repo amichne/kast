@@ -308,6 +308,7 @@ val taskAccessTest =
     }
 
 tasks.named("check") { dependsOn(taskAccessTest) }
+
 configurations.consumable("configurationCatalogueElements") {
     outgoing.artifact(
         tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateConfigurationCatalogue").flatMap {
