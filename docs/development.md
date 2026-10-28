@@ -103,6 +103,37 @@ then run the repository-required guards for changed contracts, architecture and
 documentation. Full build/release gates remain separate evidence; these focused
 checks do not replace them.
 
+### Gradle configuration and Build Scans
+
+The build enables Isolated Projects, the configuration cache, and the local build cache.
+Each module publishes its own architecture facts and generated outputs.
+Root tasks consume those artifacts without access to another project's mutable Gradle model.
+An ordinary `help` command does not collect module facts or compile module sources.
+
+Use `--no-isolated-projects` to compare behavior during a Gradle plugin investigation.
+Keep the task selection and cache state identical for timing comparisons.
+
+Build Scan publication is opt-in.
+After you accept the public service terms, request a scan with:
+
+```shell
+mise exec -- ./gradlew help --scan -PkastBuildScanTerms=yes
+```
+
+The public service receives build metadata, dependency details, and console output.
+The settings redact the username, host names, and IP addresses.
+The scan records the source revision and supplied GitHub run identifiers.
+An uncommitted edit still needs a separate diff record for exact source identity.
+
+For build-logic edits, select the needed test class:
+
+```shell
+mise exec -- ./gradlew -p build-logic test --tests '*VerificationGraphTaskTest'
+```
+
+The `test` task excludes the separate JSON parser suite.
+The build-logic `check` task still includes both suites.
+
 ### Use the scoped edit loop
 
 Run the module's `scopedCheck` task with `--continue` to collect independent failures:

@@ -3,7 +3,7 @@ plugins {
     id("kast.role.contract")
 }
 
-group = "${rootProject.group}.change"
+group = "${providers.gradleProperty("GROUP").get()}.change"
 
 base {
     archivesName.set("change-contract")

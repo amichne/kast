@@ -17,7 +17,7 @@ abstract class KotlinFileLengthTask : DefaultTask() {
     @get:Internal abstract val repositoryDirectory: DirectoryProperty
 
     init {
-        repositoryDirectory.convention(project.rootProject.layout.projectDirectory)
+        repositoryDirectory.convention(project.isolated.rootProject.projectDirectory)
     }
 
     @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val sourceFiles: ConfigurableFileCollection

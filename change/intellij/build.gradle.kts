@@ -6,7 +6,7 @@ plugins {
     id("kast.role.intellij-write")
 }
 
-group = "${rootProject.group}.change"
+group = "${providers.gradleProperty("GROUP").get()}.change"
 
 base {
     archivesName.set("change-intellij")

@@ -1,7 +1,6 @@
 package support.architecture.gradle
 
 import java.nio.file.Files
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
@@ -18,16 +17,12 @@ import support.architecture.ModuleImpactAdmission
 
 /** An explicit build report. This task accepts no source, bytecode, compiler, or dependency-resolution capability. */
 @DisableCachingByDefault(because = "An explicit local report is inexpensive and must report rejected invocations.")
-abstract class TopologyImpactTask : DefaultTask() {
-    @get:Input abstract val observedProjectPaths: ListProperty<String>
-    @get:Input abstract val observedProjectDependencies: ListProperty<String>
+abstract class TopologyImpactTask : ModuleBuildFactsConsumer() {
     @get:Input abstract val selectedModules: ListProperty<String>
     @get:Input abstract val enabledSetting: Property<String>
     @get:OutputFile abstract val reportFile: RegularFileProperty
 
     init {
-        observedProjectPaths.convention(emptyList())
-        observedProjectDependencies.convention(emptyList())
         selectedModules.convention(emptyList())
         enabledSetting.convention("true")
     }
@@ -61,6 +56,7 @@ abstract class TopologyImpactTask : DefaultTask() {
                 TopologyImpactRejection.INVALID_SWITCH, listOf("kastTopologyEnabled"),
             )
         }
+        val facts = moduleFacts()
         val policy = when (val result = canonicalArchitecturePolicy()) {
             is ArchitecturePolicyValidation.Valid -> result.architecture
             is ArchitecturePolicyValidation.Invalid -> return TopologyImpactDocument.Rejected(
@@ -68,7 +64,7 @@ abstract class TopologyImpactTask : DefaultTask() {
             )
         }
         val graph = when (val result = ArchitectureObservationParser.parse(
-            policy, observedProjectPaths.get(), observedProjectDependencies.get(),
+            policy, facts.map { it.projectPath }, facts.flatMap { it.productionDependencies },
         )) {
             is ArchitectureObservationValidation.Valid -> result.graph
             is ArchitectureObservationValidation.Invalid -> return TopologyImpactDocument.Rejected(

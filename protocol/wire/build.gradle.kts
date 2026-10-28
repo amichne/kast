@@ -30,3 +30,15 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateHostedContract
     mainClass.set("io.github.amichne.kast.protocol.wire.CanonicalHostedContract")
     outputFile.set(layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json"))
 }
+
+configurations.consumable("operationRegistryElements") {
+    outgoing.artifact(
+        tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateOperationRegistry").flatMap { it.outputFile }
+    )
+}
+
+configurations.consumable("hostedContractElements") {
+    outgoing.artifact(
+        tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateHostedContract").flatMap { it.outputFile }
+    )
+}

@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.change"
+group = "${providers.gradleProperty("GROUP").get()}.change"
 
 base {
     archivesName.set("change-apply")
