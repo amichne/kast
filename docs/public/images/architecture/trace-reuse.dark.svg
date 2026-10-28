@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 435.552 500.1" width="435.552" height="500.1" style="--bg:#242925;--fg:#E1E6DE;--line:#879589;--accent:#b1c4b4;--muted:#ADB7AD;--surface:#2D342E;--border:#68776A;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 435.552 500.1" width="435.552" height="500.1" style="--bg:#171816;--fg:#F0F1EB;--line:#697265;--accent:#8FA7FF;--muted:#B3B9AC;--surface:#22251F;--border:#515B4B;background:var(--bg)">
 <style>
 
   text { font-family: 'SUSE', system-ui, sans-serif; }
@@ -51,8 +51,8 @@
 </g>
 <g class="node" data-id="G" data-label="Group matching exact
 callable capabilities" data-shape="rectangle">
-  <rect x="148.26549999999997" y="242.70000000000002" width="167.92" height="53.800000000000004" rx="0" ry="0" fill="#35493B" stroke="#b1c4b4" stroke-width="0.75" />
-  <text x="232.22549999999995" y="269.6" text-anchor="middle" font-size="13" font-weight="500" fill="#E1E6DE"><tspan x="232.22549999999995" dy="-3.9000000000000012">Group matching exact</tspan><tspan x="232.22549999999995" dy="16.900000000000002">callable capabilities</tspan></text>
+  <rect x="148.26549999999997" y="242.70000000000002" width="167.92" height="53.800000000000004" rx="0" ry="0" fill="#232F50" stroke="#8FA7FF" stroke-width="0.75" />
+  <text x="232.22549999999995" y="269.6" text-anchor="middle" font-size="13" font-weight="500" fill="#F0F1EB"><tspan x="232.22549999999995" dy="-3.9000000000000012">Group matching exact</tspan><tspan x="232.22549999999995" dy="16.900000000000002">callable capabilities</tspan></text>
 </g>
 <g class="node" data-id="C" data-label="One further CALLERS
 read per group" data-shape="rectangle">
@@ -62,6 +62,6 @@ read per group" data-shape="rectangle">
 <g class="node" data-id="O" data-label="Final declarations
 all arrival evidence" data-shape="stadium">
   <rect x="154.9345" y="422.30000000000007" width="154.582" height="53.800000000000004" rx="26.900000000000002" ry="26.900000000000002" fill="#19382E" stroke="#8CD2B6" stroke-width="0.75" />
-  <text x="232.2255" y="449.20000000000005" text-anchor="middle" font-size="13" font-weight="500" fill="#E1E6DE"><tspan x="232.2255" dy="-3.9000000000000012">Final declarations</tspan><tspan x="232.2255" dy="16.900000000000002">all arrival evidence</tspan></text>
+  <text x="232.2255" y="449.20000000000005" text-anchor="middle" font-size="13" font-weight="500" fill="#F0F1EB"><tspan x="232.2255" dy="-3.9000000000000012">Final declarations</tspan><tspan x="232.2255" dy="16.900000000000002">all arrival evidence</tspan></text>
 </g>
 </svg>

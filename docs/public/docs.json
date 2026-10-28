@@ -4,25 +4,22 @@
   "name": "Kast",
   "description": "See where your Kotlin changes lead. Give your agent connections through functions, fields, and callbacks.",
   "colors": {
-    "primary": "#405d4d",
-    "light": "#b1c4b4",
-    "dark": "#405d4d"
+    "primary": "#3154C7",
+    "light": "#8FA7FF",
+    "dark": "#607BDB"
   },
   "fonts": {
     "family": "SUSE"
   },
-  "logo": {
-    "light": "/images/kast-folded-light.svg",
-    "dark": "/images/kast-folded-dark.svg"
-  },
-  "favicon": "/images/kast-folded-light.svg",
+  "logo": "/images/kast-mark.svg",
+  "favicon": "/images/kast-mark.svg",
   "icons": {
     "library": "lucide"
   },
   "background": {
     "color": {
-      "light": "#F1F2EF",
-      "dark": "#242925"
+      "light": "#FBFBF9",
+      "dark": "#171816"
     }
   },
   "appearance": {
