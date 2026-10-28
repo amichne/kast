@@ -188,12 +188,25 @@ jobs:
           java-version: 25.0.2
 
       - name: Set up Python
-        if: steps.reuse.outputs.candidate != 'REUSED'
+        if: steps.reuse.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
           cache: pip
           cache-dependency-path: experiments/host-observation/requirements-test.txt
+
+      - name: Set up local Python
+        if: steps.reuse.outputs.candidate != 'REUSED' && runner.environment == 'self-hosted'
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
+        run: |
+          python_version="$(cat .python-version)"
+          uv python install "$python_version"
+          python_executable="$(uv python find --managed-python --system "$python_version")"
+          python_environment="$RUNNER_TOOL_CACHE/kast-python-$python_version"
+          uv venv --allow-existing --seed --python "$python_executable" "$python_environment"
+          echo "$python_environment/bin" >> "$GITHUB_PATH"
+          "$python_environment/bin/python3" --version
 
       - name: Install host protocol and semantic test tools
         if: steps.reuse.outputs.candidate != 'REUSED'

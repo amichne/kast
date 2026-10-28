@@ -94,6 +94,8 @@ Set the variable to `false` to restore hosted execution for main.
 
 The runner service keeps its checkout under its own work directory.
 Its Gradle User Home persists between jobs, so `setup-gradle` disables cache transport on that runner.
+Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.
+This avoids the macOS `setup-python` installer's fixed `/Users/runner` prefix.
 The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
 It rejects other repositories, refs, events, workflows, and jobs.
 Install the hook outside the runner application directory.
