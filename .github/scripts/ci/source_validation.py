@@ -228,36 +228,37 @@ def run(
     )
     skipped = skipped_semantic_tasks(root)
     required = (SOURCE_REQUIRED if plan is None else obligations(plan)) - frozenset(skipped)
-    planned = subprocess.run(
-        [*command, "--dry-run"],
+    environment = os.environ.copy()
+    environment["KAST_RELEASE_JDK_25"] = (
+        environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]
+    )
+    preflight = subprocess.run(
+        PREFLIGHT,
         cwd=root,
+        env=environment,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         check=False,
     )
-    (destination / "task-graph.log").write_text(planned.stdout)
-    graph = inspect_graph(planned.stdout, required, skipped)
-    code = planned.returncode
-    outcome = Outcome.GRAPH_REJECTED
+    (destination / "preflight.log").write_text(preflight.stdout)
+    graph = Graph((), tuple(sorted(required)), ())
+    code = preflight.returncode
+    outcome = Outcome.PROCESS_FAILED
     invocations = 0
-    if code == 0 and graph.accepted:
-        environment = os.environ.copy()
-        environment["KAST_RELEASE_JDK_25"] = (
-            environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]
-        )
-        preflight = subprocess.run(
-            PREFLIGHT,
+    if code == 0:
+        planned = subprocess.run(
+            [*command, "--dry-run"],
             cwd=root,
-            env=environment,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
         )
-        (destination / "preflight.log").write_text(preflight.stdout)
-        code = preflight.returncode
-        outcome = Outcome.PROCESS_FAILED
+        (destination / "task-graph.log").write_text(planned.stdout)
+        graph = inspect_graph(planned.stdout, required, skipped)
+        code = planned.returncode
+        outcome = Outcome.GRAPH_REJECTED
     if code == 0 and graph.accepted:
         with (destination / "gradle.log").open("w") as log:
             process = subprocess.Popen(
