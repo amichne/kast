@@ -9,5 +9,5 @@
     "erasableSyntaxOnly": true,
     "skipLibCheck": true
   },
-  "include": ["parse.ts"]
+  "include": ["parse.ts", "project-okf.ts"]
 }
