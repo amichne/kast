@@ -46,6 +46,8 @@ async function fixture(t, brief = 'Kast shared context\n') {
   const workspace = join(home, 'workspace $ literal');
   mkdirSync(references, { recursive: true });
   mkdirSync(workspace);
+  mkdirSync(join(references, "../skills/kast"), { recursive: true });
+  writeFileSync(join(references, "../skills/kast/SKILL.md"), "Kast skill");
   writeFileSync(join(references, 'onboarding.md'), brief);
   writeFileSync(join(references, 'query-schema.json'), '{}\n');
   writeFileSync(join(references, 'query-examples.json'), '[]\n');
@@ -99,11 +101,9 @@ test('Pi delivers the generated semantic routing policy without probing readines
     'Discard cached source evidence after a source change or freshness rejection',
     'Read only the needed section or named example for unfamiliar shapes',
     'Compact and canonical rows can differ',
-    'one non-null `terminalStep` object tagged `EMIT` or `TRACE`',
-    'Use `terminalStep.output`, not `RUN.output`',
-    'Never put `TRACE` in `steps` or add `traceOptions`',
-    'Allow at most 1000 steps for EMIT, 999 before TRACE',
-    'with `[]` for identity and kind only',
+    'Use `find` with a simple `name`',
+    'Use `source` with its default `ANCHOR`',
+    'Read the bundled Kast skill',
   ]) assert.ok(prompt.includes(clause), clause);
   assert.ok(Buffer.byteLength(prompt.slice('base\n\n'.length) + '\n') <= 8192);
   assert.deepEqual(f.notifications, []);
@@ -181,13 +181,14 @@ function assertContinuesWithoutContext(f, reason) {
 test('Pi registers native MCP and reads shared context without a child process', async t => {
   const f = await fixture(t);
   assert.deepEqual(f.servers, [['kast', {
-    command: join(f.installation, 'bin/kast-mcp-complete'), args: ['--catalog=COMPLETE'], timeout: 180,
+    command: 'uv', args: ['run', '--locked', '--script', join(f.installation, 'share/kast/agent-tools/plugins/kast/skills/kast/scripts/server.py')], timeout: 180,
   }]]);
   assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }), undefined);
   await f.handlers.get('session_start')({}, f.ctx);
   const expected = 'Other extension context\n\nKast shared context' +
     '\nWorkspace: ' + JSON.stringify(f.workspace) +
-    '\nQuery schema: ' + JSON.stringify(join(f.references, 'query-schema.json')) +
+    '\nKast skill: ' + JSON.stringify(join(f.references, '../skills/kast/SKILL.md')) +
+    '\nAdvanced query schema: ' + JSON.stringify(join(f.references, 'query-schema.json')) +
     '\nQuery examples: ' + JSON.stringify(join(f.references, 'query-examples.json'));
   unlinkSync(join(f.references, 'onboarding.md'));
   for (let turn = 0; turn < 2; turn++) {
@@ -224,7 +225,8 @@ test('Pi rejects oversized resources and oversized UTF-8 context without partial
 test('Pi admits exactly 8192 context bytes and rejects the next byte', async t => {
   const f = await fixture(t);
   const suffix = '\nWorkspace: ' + JSON.stringify(f.workspace) +
-    '\nQuery schema: ' + JSON.stringify(join(f.references, 'query-schema.json')) +
+    '\nKast skill: ' + JSON.stringify(join(f.references, '../skills/kast/SKILL.md')) +
+    '\nAdvanced query schema: ' + JSON.stringify(join(f.references, 'query-schema.json')) +
     '\nQuery examples: ' + JSON.stringify(join(f.references, 'query-examples.json')) + '\n';
   const brief = 'x'.repeat(8192 - Buffer.byteLength(suffix));
   writeFileSync(join(f.references, 'onboarding.md'), brief);
@@ -265,4 +267,14 @@ test('Pi rejects a linked references directory and an invalid workspace', async 
   const f = await fixture(t);
   await f.handlers.get('session_start')({}, { ...f.ctx, cwd: 'relative' });
   assertContinuesWithoutContext(f, 'INVALID_WORKSPACE');
+});
+
+// Default delivery must expose the task service, never the raw query grammar.
+test('all plugin MCP entries select the bundled task server and skill', () => {
+  const root = new URL('../../../../agent-tools/', import.meta.url);
+  const mcp = JSON.parse(readFileSync(new URL('.mcp.json', root), 'utf8'));
+  assert.deepEqual(Object.keys(mcp.mcpServers), ['kast']);
+  assert.match(mcp.mcpServers.kast.args.join(' '), /skills\/kast\/scripts\/server.py/);
+  assert.doesNotMatch(mcp.mcpServers.kast.args.join(' '), /kast-mcp-complete/);
+  assert.match(readFileSync(new URL('skills/kast/SKILL.md', root), 'utf8'), /name: kast/);
 });

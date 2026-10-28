@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --locked --script
 # /// script
 # requires-python = ">=3.12,<3.14"
-# dependencies = ["pydantic==2.12.3", "jsonschema==4.25.1"]
+# dependencies = ["pydantic==2.12.3", "jsonschema==4.25.1", "anyio==4.12.1"]
 # [tool.uv]
 # no-build = true
 # required-version = ">=0.12.9"
@@ -535,6 +535,7 @@ def prepare(arguments: list[str]) -> Prepared:
 
 
 def main() -> int:
+    sys.dont_write_bytecode = True
     from transport import run
 
     return run(sys.argv[1:])

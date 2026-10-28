@@ -19,8 +19,8 @@ function readContext(installation: string, cwd: string): ContextResult {
     const plugin = realpathSync(join(installation, "share/kast/agent-tools/plugins/kast"));
     const references = join(plugin, "references");
     if (!lstatSync(references).isDirectory()) return { type: "rejected", reason: "RESOURCE_REJECTED" };
-    for (const name of RESOURCE_NAMES) {
-      const resource = lstatSync(join(references, name));
+    for (const path of [...RESOURCE_NAMES.map(name => join(references, name)), join(plugin, "skills/kast/SKILL.md")]) {
+      const resource = lstatSync(path);
       if (!resource.isFile() || resource.size > MAX_RESOURCE_BYTES) {
         return { type: "rejected", reason: "RESOURCE_REJECTED" };
       }
@@ -48,7 +48,8 @@ function readContext(installation: string, cwd: string): ContextResult {
     }
     if (!brief.trim() || brief.includes("{{")) return { type: "rejected", reason: "RESOURCE_REJECTED" };
     const text = brief + "\nWorkspace: " + JSON.stringify(workspace) +
-      "\nQuery schema: " + JSON.stringify(join(references, "query-schema.json")) +
+      "\nKast skill: " + JSON.stringify(join(plugin, "skills/kast/SKILL.md")) +
+      "\nAdvanced query schema: " + JSON.stringify(join(references, "query-schema.json")) +
       "\nQuery examples: " + JSON.stringify(join(references, "query-examples.json"));
     if (Buffer.byteLength(text + "\n") > MAX_CONTEXT_BYTES) return { type: "rejected", reason: "CONTEXT_TOO_LARGE" };
     return { type: "ready", text };
@@ -62,11 +63,9 @@ function readContext(installation: string, cwd: string): ContextResult {
 export default function (pi: ExtensionAPI) {
   const installation = join(homedir(), ".local/share/kast/installation");
   pi.registerMcpServer("kast", {
-    command: join(installation, "bin/kast-mcp-complete"),
-    args: ["--catalog=COMPLETE"],
-    // Pi 1.1.0 accepts positive server-wide timeouts, with no ExtensionAPI override per call.
-    // A user mcp.json entry named kast overrides this registration. The direct adapter in
-    // extension.ts supports RUNNER_CONTROLLED without a subprocess deadline.
+    command: "uv",
+    args: ["run", "--locked", "--script", join(installation, "share/kast/agent-tools/plugins/kast/skills/kast/scripts/server.py")],
+    // A user mcp.json entry named kast can override this registration.
     timeout: 180,
   });
   let context: ContextResult | { type: "not_started" } = { type: "not_started" };

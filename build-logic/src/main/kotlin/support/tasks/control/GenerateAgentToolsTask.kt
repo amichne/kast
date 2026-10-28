@@ -46,15 +46,15 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         )
         val mcp = agentToolsJson.decodeFromString<AgentMcpDocument>(source.resolve(".mcp.json").readText())
         val marketplace = agentToolsJson.decodeFromString<AgentMarketplace>(marketplaceFile.get().asFile.readText())
-        check(manifest.name == "kast" && manifest.hooks == "./hooks/hooks.json" && manifest.mcpServers == "./.mcp.json") {
+        check(manifest.name == "kast" && manifest.hooks == "./hooks/hooks.json" && manifest.mcpServers == "./.mcp.json" && manifest.skills == "./skills/") {
             "Kast plugin must compose the session hook and MCP entry"
         }
         val copilot = agentToolsJson.decodeFromString<CopilotPluginManifest>(source.resolve(".github/plugin/plugin.json").readText())
-        check(copilot.name == "kast" && copilot.hooks == "./hooks/copilot.json" && copilot.mcpServers == "./.mcp.json") {
+        check(copilot.name == "kast" && copilot.hooks == "./hooks/copilot.json" && copilot.mcpServers == "./.mcp.json" && copilot.skills == "./skills/") {
             "Copilot must compose the shared context and MCP entry"
         }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
-            "-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\"",
+            "-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/plugins/kast}}/skills/kast/scripts/server.py\"",
         )) { "Kast plugin must use the installed repository-bound MCP launcher" }
         check(marketplace.name == "kast" && marketplace.plugins.size == 1) { "expected one Kast marketplace entry" }
         val entry = marketplace.plugins.single()
@@ -69,9 +69,11 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/session_start.py", "hooks/session_start.py.lock",
-            "references/onboarding.md", "references/query-schema.json", "references/query-examples.json")
+            "references/onboarding.md", "references/query-schema.json", "references/query-examples.json",
+            "skills/kast/SKILL.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
+            "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py",
+            "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock", "skills/kast/scripts/transport.py")
         check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
-        check(!source.resolve("skills").exists()) { "Kast onboarding must not publish a discoverable skill" }
         check(source.resolve("references/query-examples.json").readBytes()
             .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "examples must match the canonical query projection" }
 
@@ -108,6 +110,7 @@ internal data class AgentPluginManifest(
     val license: String,
     val hooks: String,
     val mcpServers: String,
+    val skills: String,
     @SerialName("interface") val display: AgentPluginDisplay,
 )
 
@@ -118,6 +121,7 @@ internal data class CopilotPluginManifest(
     val description: String,
     val hooks: String,
     val mcpServers: String,
+    val skills: String,
 )
 
 @Serializable

@@ -13,9 +13,11 @@ You need:
 - An Apple silicon Mac.
 - A Kotlin Gradle project.
 - IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-- Codex CLI and Python 3.9 or later on `PATH`.
+- Codex CLI and uv 0.12.9 or later on `PATH`.
+- Python 3.12 or 3.13 for the task service.
 
-Run `codex --version` and `python3 --version` to see their installed versions.
+Run `codex --version` and `uv --version` to see their installed versions.
+The locked task script can download Python and pinned dependencies on its first run.
 For Copilot or Pi, use the [agent guide](/agent-harnesses) after installation.
 
 <Steps>

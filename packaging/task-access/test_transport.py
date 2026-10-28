@@ -2,9 +2,9 @@ import json
 import sys
 from pathlib import Path
 
-from pydantic import BaseModel
-
+import anyio
 from access import prepare
+from pydantic import BaseModel
 from transport import Catalog, CatalogReply, Envelope, Reason, Rejected, Reply, Tool, admit, execute
 
 
@@ -92,7 +92,7 @@ def test_real_child_binding_preserves_rejection_bytes_and_does_not_retry(tmp_pat
     )
     rpc = fixture_process(tmp_path, original)
     prepared = prepare(["find", "Thing", "--rpc", str(rpc), "--workspace", str(tmp_path)])
-    result = execute(prepared)
+    result = anyio.run(execute, prepared)
     assert isinstance(result, Reply)
     assert result.stdout == original
     assert (tmp_path / "input.json").read_bytes() == prepared.arguments.model_dump_json(
@@ -106,7 +106,7 @@ def test_real_child_binding_preserves_rejection_bytes_and_does_not_retry(tmp_pat
 
 def test_emit_request_never_calls_semantic_child(tmp_path: Path) -> None:
     rpc = fixture_process(tmp_path, b"SHOULD NOT BE READ")
-    result = execute(prepare(["find", "Thing", "--rpc", str(rpc), "--emit-request"]))
+    result = anyio.run(execute, prepare(["find", "Thing", "--rpc", str(rpc), "--emit-request"]))
     assert isinstance(result, Reply)
     assert not (tmp_path / "input.json").exists()
     assert len((tmp_path / "calls.jsonl").read_text().splitlines()) == 1
@@ -114,7 +114,6 @@ def test_emit_request_never_calls_semantic_child(tmp_path: Path) -> None:
 
 def test_offline_catalog_cannot_authorize_execution(tmp_path: Path) -> None:
     import pytest
-
     from access import InputError
 
     with pytest.raises(InputError):

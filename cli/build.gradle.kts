@@ -184,8 +184,9 @@ distributions.main {
             exclude("*.bat")
             filePermissions { unix("755") }
         }
-        from(rootProject.layout.projectDirectory.file("copilot/extension.mjs")) {
+        from(rootProject.layout.projectDirectory.file("copilot/task-extension.mjs")) {
             into("share/kast/adapters/copilot")
+            rename { "extension.mjs" }
         }
         from(rootProject.layout.projectDirectory.file("pi/mcp-extension.ts")) {
             into("share/kast/adapters/pi")
@@ -283,3 +284,26 @@ val queryPresentationTest =
 tasks.named("check") {
     dependsOn(queryPresentationTest)
 }
+
+// The packaged host adapters share this Python task service over unchanged tool RPC.
+val taskAccessTest =
+    tasks.register<Exec>("taskAccessTest") {
+        group = "verification"
+        description = "Exercises task admission, MCP sessions, cancellation, and Copilot registration."
+        inputs
+            .files(
+                rootProject.fileTree("packaging/task-access") {
+                    include("*.py", "*.mjs", "*.toml", "*.lock", ".python-version")
+                }
+            )
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.dir(rootProject.file("agent-tools/skills/kast/scripts")).withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs
+            .file(rootProject.file("agent-tools/references/query-schema.json"))
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.file(rootProject.file("copilot/task-extension.mjs")).withPathSensitivity(PathSensitivity.RELATIVE)
+        workingDir(rootProject.file("packaging/task-access"))
+        commandLine("uv", "run", "--locked", "pytest")
+    }
+
+tasks.named("check") { dependsOn(taskAccessTest) }

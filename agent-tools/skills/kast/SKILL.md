@@ -1,15 +1,27 @@
 ---
-name: kast-task-access
+name: kast
 description: Use for Kotlin declaration discovery, exact callers, reference occurrences, implementations, affected-use traces, source reads, and compiler diagnostics with the installed Kast runtime. Offers task commands instead of hand-written MCP queries. Use ordinary source tools for non-Kotlin files.
 ---
 
-# Kast task access candidate
+# Kast
 
-Use `uv run --locked --script <skill-directory>/access.py COMMAND` from the target Kotlin repository.
+Use the Kast task tools for supported Kotlin semantic work in the exact workspace.
+The plugin exposes these task tools through MCP in Codex, Copilot, and Pi.
+The Copilot SDK extension uses the same task catalog and service.
+Read the host's exposed schema before a new task shape.
+For Pi discovery, obey `mcp_servers` and use its native discovery tools.
+
+The CLI fallback uses the same request constructors and installed RPC:
+
+```sh
+uv run --locked --script <skill-directory>/scripts/access.py COMMAND
+```
+
 Replace `<skill-directory>` with this file's directory.
 Use `--workspace PATH` when the current directory differs from the target repository.
-The command uses the installed Kast tool RPC and its COMPLETE catalog.
-It does not install, upgrade, or change the Kast plugin.
+The service needs uv and Python 3.12 or 3.13.
+The locked script can download pinned dependencies on its first run.
+The installed Kast binary and IntelliJ plugin keep semantic authority.
 
 ## Find before relationships
 
@@ -18,11 +30,16 @@ It does not install, upgrade, or change the Kast plugin.
 3. Copy the exact reference for the intended declaration.
 4. Use a relationship command with that reference.
 
-```sh
-uv run --locked --script <skill-directory>/access.py find QueryCompletionDocument --kind interface --directory protocol --source-set main
-uv run --locked --script <skill-directory>/access.py callers --ref '<issued exact reference>'
-uv run --locked --script <skill-directory>/access.py references --ref '<issued exact reference>' --directory cli --source-set main
+For example, call `find` with these arguments:
+
+```json
+{"name":"QueryCompletionDocument","kind":"interface","directory":"protocol","source_sets":["main"]}
 ```
+
+Pass the selected issued `ref` to `callers`, `references`, or another relationship tool.
+For MCP, use JSON fields such as `directory`, `source_sets`, and `page_size`.
+For the CLI fallback, use `--directory`, repeated `--source-set`, and `--page-size`.
+
 
 Examples contain placeholders, not issued references. Never execute those placeholders.
 `find` searches descendants unless you explicitly select `--shallow`.
@@ -46,19 +63,19 @@ If the evidence cannot distinguish overloads, report the ambiguity.
 | `callers`, `callees`, `implementations`, `inheritors`, `overrides` | One-hop declaration relationships |
 | `references`, `type_uses` | Individual occurrence evidence |
 | `trace` | Fixed affected-use topology, without an arbitrary depth |
-| `walk callers --depth 3` | Every established hop through depth three, with traversal records |
-| `source --ref REF --context 10` | The declaration anchor, with a bounded source window |
-| `source --ref REF --region CALLABLE_BODY` | Callable body under the issued authority |
-| `source --ref REF --region CALLABLE_BODY --context 10` | A bounded window, not complete source |
+| `walk` with `relation:"CALLERS",depth:3` | Every established hop through depth three, with traversal records |
+| `source` with `ref:REF,context:10` | The declaration anchor, with a bounded source window |
+| `source` with `ref:REF,region:"CALLABLE_BODY",context:null` | Callable body under the issued authority |
+| `source` with `ref:REF,region:"CALLABLE_BODY",context:10` | A bounded window, not complete source |
 | `diagnostics path` | Compiler diagnostics for a relative file or directory |
 
-Every relationship command needs `--ref`.
+Every relationship task needs an issued `ref`.
 Destination scope uses `--directory` and `--source-set`. It is separate from the discovery scope.
 An omitted destination scope covers the workspace.
 Use `--production-only` or `--exclude-generated` only when the task excludes those destinations.
 Three consecutive relation expansions return the third frontier, not all three hop levels. Use `walk` instead.
 
-Start source reads with `source --ref REF --context 10`. Its default region is `ANCHOR`.
+Start source reads with `source` with `ref:REF,context:10`. Its default region is `ANCHOR`.
 Examine that source before you select `CLASS_BODY` or `CALLABLE_BODY`.
 A data class can have constructor properties without a class body.
 `ENCLOSING_DECLARATION` selects a strict outer declaration. It does not mean the current declaration.
@@ -67,7 +84,7 @@ State the changed selector and preserve the first rejection.
 
 ## Keep evidence and recover
 
-The command returns the original RPC reply without a semantic summary.
+MCP returns the original RPC text and its structured value. The CLI returns the original RPC reply.
 Read both its outer outcome and the document's qualifications.
 Location ranges contain UTF-16 offsets, not line numbers.
 Use a line number only when source text or explicit line metadata establishes it.
@@ -77,8 +94,8 @@ An empty incomplete result does not prove absence.
 Use `--save FILE` to keep the unchanged reply in a new file. Existing files reject before execution.
 
 ```sh
-uv run --locked --script <skill-directory>/access.py result --ref '<issued result reference>' --output occurrences --cursor 20 --evidence-cursor 3
-uv run --locked --script <skill-directory>/access.py resume --token '<issued output continuation>'
+uv run --locked --script <skill-directory>/scripts/access.py result --ref '<issued result reference>' --output occurrences --cursor 20 --evidence-cursor 3
+uv run --locked --script <skill-directory>/scripts/access.py resume --token '<issued output continuation>'
 ```
 
 Copy both issued cursors and the original output kind for a retained result.
@@ -90,6 +107,13 @@ Cancellation or timeout can leave submission or effects uncertain. Never retry a
 
 ## Advanced existing operations
 
+Use MCP `schema` before an advanced operation.
+Use MCP `raw` with `tool`, `arguments`, and `write:true` for an authorized source change.
+The task service admits those arguments against the installed catalog before a call.
+The original raw tool names are not separate exposed MCP tools.
+The CLI fallback provides these matching commands:
+
+
 Use `schema --definition NAME` to read one installed query definition.
 Use `schema --tool TOOL` to read another tool's complete input schema.
 For value flow, retained joins, detail selectors, or source changes, put the existing arguments in a JSON file.
@@ -98,5 +122,5 @@ Remove `--emit-request` to invoke the existing operation.
 Catalog-declared writes also need `--write` and a user-requested source change.
 Keep the original mutation receipt or failure. A missing response does not prove that no write occurred.
 
-This candidate does not enforce issued-reference authority locally. Kast owns that decision.
+Kast owns issued-reference authority. Local shape admission does not establish that authority.
 Schema admission and request construction do not prove live semantic readiness or answer correctness.

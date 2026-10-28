@@ -25,14 +25,14 @@ class GenerateAgentToolsTaskTest {
         val manifest = Json.parseToJsonElement(Files.readString(plugin.resolve(".codex-plugin/plugin.json"))).jsonObject
         assertEquals("1.2.3", manifest.getValue("version").jsonPrimitive.content)
         assertEquals("./hooks/hooks.json", manifest.getValue("hooks").jsonPrimitive.content)
-        assertTrue(!manifest.containsKey("skills"))
-        assertTrue(Files.notExists(plugin.resolve("skills")))
+        assertEquals("./skills/", manifest.getValue("skills").jsonPrimitive.content)
+        assertTrue(Files.exists(plugin.resolve("skills/kast/SKILL.md")))
         assertEquals("./.mcp.json", manifest.getValue("mcpServers").jsonPrimitive.content)
         val marketplace = Json.parseToJsonElement(Files.readString(output.resolve(".agents/plugins/marketplace.json"))).jsonObject
         val entry = marketplace.getValue("plugins").jsonArray.single().jsonObject
         assertEquals("kast", marketplace.getValue("name").jsonPrimitive.content)
         assertEquals("./plugins/kast", entry.getValue("source").jsonObject.getValue("path").jsonPrimitive.content)
-        for (name in listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/session_start.py", "references/query-examples.json", "references/onboarding.md")) {
+        for (name in listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/session_start.py", "references/query-examples.json", "references/onboarding.md", "skills/kast/SKILL.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock")) {
             assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(name)),
                 Files.readAllBytes(plugin.resolve(name)))
         }
@@ -43,7 +43,7 @@ class GenerateAgentToolsTaskTest {
                 Files.readAllBytes(plugin.resolve("hooks/$name")))
         }
         val mcp = Json.parseToJsonElement(Files.readString(plugin.resolve(".mcp.json"))).jsonObject
-        assertEquals(listOf("-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\""),
+        assertEquals(listOf("-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/plugins/kast}}/skills/kast/scripts/server.py\""),
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
                 it.jsonPrimitive.content
             })

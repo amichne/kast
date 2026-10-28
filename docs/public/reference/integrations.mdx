@@ -19,7 +19,7 @@ Make sure that your terminal can run your agent's command. Replace `/path/to/kot
 
 <Tabs>
   <Tab title="Codex">
-    The bundled plugin supplies MCP tools. It also gives the agent a short brief at session start. The brief includes absolute paths to the schema and examples.
+    The bundled plugin supplies the Kast skill and task MCP tools. The session brief includes absolute paths to the skill and advanced references.
 
 
     ```shell
@@ -54,9 +54,15 @@ Make sure that your terminal can run your agent's command. Replace `/path/to/kot
   </Tab>
 </Tabs>
 
-Codex and Copilot context hooks use Python 3.9 or later with the standard library. Pi reads bundled context directly with Node. Startup needs no uv process, dependency download, or Python environment. If Pi cannot read context, it reports one warning and keeps native MCP registered.
+Codex and Copilot context hooks use Python 3.9 or later. They need only the standard library. Pi reads bundled context directly with Node. Context delivery needs no uv process or dependency download. If Pi cannot read context, it reports one warning and keeps native MCP registered.
 
-The MCP session starts [IntelliJ preparation](/reference/internals/background-startup) for the exact Kotlin Gradle project. Semantic calls wait for that preparation. You need no separate setup hook or workspace-open step.
+The task server needs uv 0.12.9 or later. It uses Python 3.12 or 3.13. Its locked script can download pinned dependencies on the first run.
+
+All default integrations expose `find`, relationship tasks, `source`, `result`, `resume`, and `diagnostics`. Use `schema` and `raw` for advanced existing operations. Source changes need explicit `write:true`.
+
+The task service uses the existing Tool RPC for [IntelliJ preparation](/reference/internals/background-startup) and semantic work. The installed binary and wire shapes stay unchanged.
+
+The optional `kast connect copilot` SDK extension uses the same task catalog. Use either the plugin or the SDK extension.
 
 <a id="check-that-the-tools-work" />
 
@@ -144,7 +150,7 @@ For the bundled Codex plugin, repeat `kast plugin codex`. Disconnection does not
 ## Plugin archives and custom clients
 
 <Accordion title="Release archives and custom clients">
-  Control releases supply a plugin archive and a marketplace archive with SHA-256 checksums. The plugin includes session context, the schema, and a JSON array of named query examples. Replace example references with handles from your current workspace.
+  Control releases supply a plugin archive and a marketplace archive with SHA-256 checksums. The plugin includes the Kast skill, task service, session context, advanced schema, and named query examples. Replace example references with handles from your current workspace.
 
   Check the checksums, then extract the marketplace. To install it, use:
 

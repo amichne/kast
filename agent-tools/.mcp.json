@@ -4,7 +4,7 @@
       "command": "/bin/bash",
       "args": [
         "-c",
-        "exec \"${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\""
+        "PATH=\"${HOME}/.local/bin:${PATH}\" exec uv run --locked --script \"${PLUGIN_ROOT:-${COPILOT_PLUGIN_ROOT:-${HOME}/.local/share/kast/installation/share/kast/agent-tools/plugins/kast}}/skills/kast/scripts/server.py\""
       ]
     }
   }

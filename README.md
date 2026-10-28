@@ -40,7 +40,8 @@ or Pi.
 
 You need an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA
 `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-For Codex setup, you also need `codex` and Python 3.9 or later on `PATH`.
+Agent integrations need uv 0.12.9 or later and Python 3.12 or 3.13.
+Codex setup also needs `codex` on `PATH`.
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
