@@ -3,7 +3,7 @@ plugins {
     id("kast.role.sqlite")
 }
 
-group = "${rootProject.group}.evidence"
+group = "${providers.gradleProperty("GROUP").get()}.evidence"
 
 base {
     archivesName.set("evidence-sqlite")

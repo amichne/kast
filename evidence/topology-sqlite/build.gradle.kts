@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-group = "${rootProject.group}.evidence"
+group = "${providers.gradleProperty("GROUP").get()}.evidence"
 
 base {
     archivesName.set("evidence-topology-sqlite")

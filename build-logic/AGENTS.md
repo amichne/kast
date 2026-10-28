@@ -36,6 +36,8 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 
 ## Key Files
 
+- [Module facts convention](src/main/kotlin/kast.module-facts.gradle.kts) - lazy artifacts for module facts, production classes, and source roots.
+- [ProjectOutput.kt](src/main/kotlin/support/ProjectOutput.kt) - generated output dependencies between isolated projects.
 - [Architecture convention](src/main/kotlin/kast.architecture.gradle.kts) - module architecture and installed guide wiring.
 - [ModuleImpact.kt](src/main/kotlin/support/architecture/ModuleImpact.kt) - selection and shortest dependency paths over the declared production graph.
 - [TopologyImpactTask.kt](src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt) - opt-in report without source compilation or compiler authority.
@@ -62,6 +64,10 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 ## Entry Points
 
 - Root `settings.gradle.kts` includes this separate Gradle build.
+- Keep each project's mutable Gradle model inside its own convention. Share outputs through consumable configurations.
+- Resolve module inventories separately because distinct project paths can share Maven coordinates.
+- Run `./gradlew -p build-logic test --tests '*VerificationGraphTaskTest'` for the isolated graph tests.
+- The build-logic `check` task includes the separate JSON parser suite. A focused `test` invocation excludes that suite.
 - Run `./gradlew verifyJsonContracts` from the repository root for the JSON syntax gate.
 - Run `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue` for one module's quality guards and unit tests. Keep product assembly in the full gate.
 - Run `./gradlew topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.

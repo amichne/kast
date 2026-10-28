@@ -64,6 +64,47 @@ Source validation uses the stable version `0.0.0` for product, control, and host
 Source identities can still invalidate outputs. Measure their effect.
 No build scan evidence is available for this change.
 
+## Temporary semantic fixture switch
+
+Local runs and CI skip the three `semanticCoverageFixtureTest` suites by default.
+Their coverage and inventory report consumers also skip.
+`config/ci/semantic-fixture-tasks.txt` owns the six excluded task paths.
+Ordinary unit tests, dependency archive fixtures, semantic input checks, and product assembly keep their existing selection.
+Skipped semantic fixtures provide no compiler behavior evidence for that run.
+
+Set `KAST_SEMANTIC_FIXTURES=true` to enable the suites and report consumers:
+
+```sh
+KAST_SEMANTIC_FIXTURES=true mise exec -- ./gradlew productBuildGate
+```
+
+Set the GitHub repository variable `KAST_SEMANTIC_FIXTURES` to `true` to enable them in CI.
+Set it to `false` to disable them again.
+When CI enables the suites, it builds a fresh candidate instead of reusing an earlier candidate with weaker fixture evidence.
+Other values reject the Gradle invocation.
+Gradle logs the disabled state, and source execution reports list `skippedTasks` under schema version 2.
+The switch does not remove fixture sources or their case manifest.
+
+## Main self-hosted runner
+
+The repository variable `KAST_SELF_HOSTED_RUNNER=true` routes the main Kotlin product job to `kast-main` on macOS ARM64.
+Only main push and manual main runs use this route.
+Pull requests and merge groups keep `macos-15`.
+Set the variable to `false` to restore hosted execution for main.
+
+The runner service keeps its checkout under its own work directory.
+Its Gradle User Home persists between jobs, so `setup-gradle` disables cache transport on that runner.
+Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.
+This avoids the macOS `setup-python` installer's fixed `/Users/runner` prefix.
+The native Gradle task passes `-mmacosx-version-min=15.0` to the macOS linker.
+Before candidate sealing, it rejects a native binary whose deployment target differs from macOS 15.0.
+The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
+It rejects other repositories, refs, events, workflows, and jobs.
+Install the hook outside the runner application directory.
+Set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
+Restart the service after a hook change.
+Keep the installed hook synchronized with its reviewed source.
+
 Run the focused checks from the repository root:
 
 ```sh
@@ -80,8 +121,9 @@ Hosted CI must validate the final pull-request head before review completes.
 
 ## Source obligations and qualification
 
-`source_validation.py` admits a clean source tree, examines the Gradle graph, and runs `sourceValidationGate`.
-The runner also keeps the existing offline preflight suites.
+`source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
+A failed offline preflight stops before Gradle starts, including its dry-run.
+The failure report lists no graph tasks and keeps every source obligation as missing.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
 A changed source tree or failed process cannot produce `SOURCE_VALIDATED`.
 This local execution record grants no publication authority.
@@ -94,7 +136,7 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 | Owner | Extra source obligations |
 | --- | --- |
 | Root | JSON contracts, architecture, configuration ingress, knowledge, documentation, host protocol, component release tests |
-| Semantic manifest | All 237 current cases, exact inventory, input hashes, compiler witnesses, rejection controls |
+| Semantic manifest when enabled | Declared cases, exact inventory, input hashes, compiler witnesses, rejection controls |
 | Relation and hosted fixtures | Independent copies of the shared dependency archive |
 | CLI | JVM native-adapter tests, query delivery contracts and schemas, callable reference, presentation |
 | App Server | Public query generation |

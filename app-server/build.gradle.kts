@@ -17,6 +17,8 @@ plugins {
     id("kast.public-query-contract")
 }
 
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
 dependencies {
     testImplementation(libs.jimfs)
     implementation(libs.coroutines.core)
@@ -47,7 +49,7 @@ val generateKastObserverSnapshotManifest =
         group = "documentation"
         classpath = sourceSets.test.get().runtimeClasspath
         mainClass = "io.github.amichne.kast.appserver.provider.KastObserverSnapshotMain"
-        workingDir = rootProject.projectDir
+        workingDir = repositoryRoot.asFile
         dependsOn(tasks.named("testClasses"))
         argumentProviders.add(
             objects.newInstance<KastObserverSnapshotArguments>().apply {
@@ -56,9 +58,9 @@ val generateKastObserverSnapshotManifest =
         )
     }
 
-val kastObserverSnapshotScript = rootProject.layout.projectDirectory.file("docs/render_kast_observer_snapshots.py")
-val kastObserverSnapshotStyles = rootProject.layout.projectDirectory.file("docs/kast-observer-snapshots.css")
-val kastObserverSnapshotOutput = rootProject.layout.projectDirectory.dir("docs/public/images")
+val kastObserverSnapshotScript = repositoryRoot.file("docs/render_kast_observer_snapshots.py")
+val kastObserverSnapshotStyles = repositoryRoot.file("docs/kast-observer-snapshots.css")
+val kastObserverSnapshotOutput = repositoryRoot.dir("docs/public/images")
 
 tasks.register<Exec>("renderKastObserverScreenshots") {
     description = "Renders offline Kast observer PNGs from deterministic projected fixtures."
@@ -105,10 +107,10 @@ tasks.register("writeInstalledWorkspaceHarnessClasspath") {
 val verifyReleaseRuntimeAdmission =
     tasks.register<JavaExec>("verifyReleaseRuntimeAdmission") {
         group = "verification"
-        dependsOn(tasks.named("testClasses"), rootProject.tasks.named("stageKastControlProduct"))
+        dependsOn(tasks.named("testClasses"), ":stageKastControlProduct")
         classpath = sourceSets.test.get().runtimeClasspath
         mainClass = "io.github.amichne.kast.appserver.ControlDistributionAdmissionMain"
-        val product = rootProject.layout.buildDirectory.dir("control-product")
+        val product = providers.provider { repositoryRoot.dir("build/control-product") }
         inputs.dir(product)
         args(product.get().asFile.absolutePath)
     }

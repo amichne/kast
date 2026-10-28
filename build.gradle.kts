@@ -1,3 +1,5 @@
+import support.consumeProjectOutput
+import org.gradle.process.CommandLineArgumentProvider
 import support.tasks.idea.selectedIdeaProductInfo
 import conventions.registerJsonContractVerification
 import conventions.jsoncontracts.JsonContractScanRequest
@@ -37,62 +39,38 @@ registerJsonContractVerification(
     )
 )
 
-group = providers.gradleProperty("GROUP").get()
-val gitDescribeVersion: Provider<String> = providers.exec {
-    commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
-    workingDir(rootDir)
-    isIgnoreExitValue = true
-}.standardOutput.asText.map { raw ->
-    val trimmed = raw.trim()
-    val regex = Regex("""^v?(\d+\.\d+\.\d+)-(\d+)-g([0-9a-f]+)$""")
-    regex.matchEntire(trimmed)?.let { m ->
-        val base = m.groupValues[1]
-        val distance = m.groupValues[2].toInt()
-        val sha = m.groupValues[3]
-        if (distance == 0) base else "$base-${m.groupValues[2]}-g$sha"
-    } ?: trimmed.removePrefix("v").ifEmpty { "0.0.0-unknown" }
-}
-version = providers.gradleProperty("version")
-    .orElse(providers.gradleProperty("VERSION"))
-    .orElse(gitDescribeVersion)
-    .get()
-
 // Shared libraries retain the source version: a control rebuild cannot rename host dependencies.
 val controlVersion = providers.gradleProperty("controlVersion").orElse(provider { version.toString() })
 val hostedPluginVersion = providers.gradleProperty("hostedPluginVersion").orElse(provider { version.toString() })
 extra["controlVersion"] = controlVersion.get()
 extra["hostedPluginVersion"] = hostedPluginVersion.get()
-subprojects {
-    group = rootProject.group
-    version = when (path) {
-        ":cli", ":app-server", ":distribution:cli" -> controlVersion.get()
-        ":runtime:hosted" -> hostedPluginVersion.get()
-        else -> rootProject.version
-    }
-}
-
-evaluationDependsOn(":runtime:hosted")
-val hostedPluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
+val modulePaths = subprojects.filter { it.buildFile.isFile }.map { it.path }
+val hostedPluginFiles = consumeProjectOutput("hostedPluginFiles", ":runtime:hosted", "hostedPluginElements")
+val hostedPluginArchive = layout.file(hostedPluginFiles.flatMap { it.elements }.map { it.single().asFile })
+val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
+val contractFile = layout.file(hostedContractFiles.flatMap { it.elements }.map { it.single().asFile })
+val registryFiles = consumeProjectOutput("operationRegistryFiles", ":protocol:wire", "operationRegistryElements")
+val generatedOperationRegistry = layout.file(registryFiles.flatMap { it.elements }.map { it.single().asFile })
+val catalogueFiles = consumeProjectOutput("configurationCatalogueFiles", ":cli", "configurationCatalogueElements")
+val generatedConfigurationCatalogue = layout.file(catalogueFiles.flatMap { it.elements }.map { it.single().asFile })
+val providerFiles = consumeProjectOutput("providerCatalogueFiles", ":cli", "providerCatalogueElements")
+val generatedProviderCatalogue = layout.file(providerFiles.flatMap { it.elements }.map { it.single().asFile })
+val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "cliInstallationElements")
+val managementExecutable = consumeProjectOutput("managementExecutable", ":distribution:cli", "managementExecutableElements")
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
 tasks.named("generateKastDocumentation") {
     dependsOn(":distribution:cli:generateManagementVersion")
 }
-val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
-    "generated/operation-registry/operation-registry.json",
-)
-val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file(
-    "generated/configuration/configuration-schema.json",
-)
 val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("generateKastControlMetadata") {
     group = "distribution"
     description = "Generates the control required hosted contract and public schemas."
     dependsOn(":protocol:wire:generateHostedContract", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue", ":cli:generateProviderCatalog")
-    hostedContractFile.set(project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json"))
+    hostedContractFile.set(contractFile)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
     configurationCatalogueFile.set(generatedConfigurationCatalogue)
-    providerCatalogueFile.set(project(":cli").layout.buildDirectory.file("generated/provider/provider-catalog.json"))
+    providerCatalogueFile.set(generatedProviderCatalogue)
     productVersion.set(controlVersion)
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
@@ -118,7 +96,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     description = "Stages the Kast control installation for the existing IDE."
     dependsOn(":cli:installDist", ":distribution:cli:nativeCompile", generateKastControlMetadata, generateKastAgentTools)
     into(controlProductDirectory)
-    from(project(":cli").layout.buildDirectory.dir("install/kast")) {
+    from(cliInstallation) {
         exclude("bin/cli", "bin/kast.bat")
     }
     from(generatedControlMetadata) {
@@ -127,7 +105,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(agentToolsDirectory) {
         into("share/kast/agent-tools")
     }
-    from(project(":distribution:cli").layout.buildDirectory.file("native/nativeCompile/kast")) {
+    from(managementExecutable) {
         into("share/kast/libexec")
         rename { "kast-management" }
     }
@@ -193,7 +171,6 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     maximumInstalledBytes.set(128L * 1024L * 1024L)
 }
 
-val contractFile = project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json")
 val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
     commandLine("git", "rev-parse", "HEAD")
     workingDir(rootDir)
@@ -300,7 +277,8 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
-    environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
+    val archive = hostedPluginArchive
+    doFirst { environment("KAST_HOSTED_PLUGIN_ARCHIVE", archive.get().asFile.absolutePath) }
     environment("KAST_HOST_RELEASE_RECORD", hostRecord.get().asFile.absolutePath)
     environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("python3", layout.projectDirectory.file("packaging/run-installed-product.py"))
@@ -486,6 +464,15 @@ val documentationToolingTest = tasks.register<VerificationReportTask>("documenta
     arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"))
 }
 
+val verifyPublicKnowledge = tasks.register<VerificationReportTask>("verifyPublicKnowledge") {
+    group = "verification"
+    description = "Rejects public OKF projection drift and missing tracked attribution."
+    dependsOn(documentationMarkdownDependencies, documentationPythonDependencies)
+    doNotTrackState("Attribution examines current Git tracking and the source bytes cited by OpenWiki Claims.")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/okf_public.py", "--check"))
+}
+
 val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verifyDocumentationGlossary") {
     group = "verification"
     description = "Rejects glossary projection drift and rejected forms in current prose."
@@ -504,7 +491,7 @@ val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verify
 }
 
 tasks.withType<VerificationReportTask>().configureEach {
-    if (name in setOf("verifyDocumentationMarkdown", "documentationToolingTest", "verifyDocumentationGlossary")) {
+    if (name in setOf("verifyDocumentationMarkdown", "documentationToolingTest", "verifyDocumentationGlossary", "verifyPublicKnowledge")) {
         runtimeFiles.from(validationExecutable("node"), validationExecutable("uv"), validationExecutable("npm"))
         runtimeFiles.from("docs/tooling/markdown/node_modules")
         if (name != "verifyDocumentationMarkdown") {
@@ -536,7 +523,7 @@ tasks.register<VerificationReportTask>("verifyScopedProse") {
     sourceFiles.from(selectedProse, ".vale.ini", "config/vale")
 }
 
-tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest) }
+tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest, verifyPublicKnowledge) }
 
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
@@ -560,11 +547,7 @@ val productBuildGate = tasks.register("productBuildGate") {
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
-subprojects.forEach { owner ->
-    owner.plugins.withId("base") {
-        productBuildGate.configure { dependsOn(owner.tasks.named("check")) }
-    }
-}
+productBuildGate.configure { dependsOn(modulePaths.map { "$it:check" }) }
 
 val sourceValidationGate = tasks.register("sourceValidationGate") {
     group = "verification"
@@ -597,13 +580,8 @@ val verifyVerificationGraph = tasks.register<Exec>("verifyVerificationGraph") {
 }
 tasks.named("check") { dependsOn(verifyVerificationGraph) }
 
-subprojects.forEach { owner ->
-    owner.plugins.withId("kast.kotlin-quality") {
-        sourceValidationGate.configure {
-            // check preserves type-resolved analysis and each owner's extra source obligations.
-            dependsOn(owner.tasks.named("scopedCheck"), owner.tasks.named("check"))
-        }
-    }
+sourceValidationGate.configure {
+    dependsOn(modulePaths.flatMap { listOf("$it:scopedCheck", "$it:check") })
 }
 
 val configurationIngressTest = tasks.register<Exec>("configurationIngressTest") {
@@ -623,10 +601,15 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
             "**/src/main/scripts/**", "*.kts", "install.sh", "packaging/*.sh", "packaging/*.py")
         exclude("**/build/**", "**/.gradle/**", "**/node_modules/**")
     })
-    commandLine("python3", layout.projectDirectory.file("packaging/configuration_ingress.py"),
-        "--root", layout.projectDirectory, "--schema", generatedConfigurationCatalogue.get().asFile,
-        "--policy", layout.projectDirectory.file("build-policy/configuration-ingress.json"),
-        "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
+    val root = layout.projectDirectory
+    val catalogue = generatedConfigurationCatalogue
+    executable("python3")
+    argumentProviders.add(CommandLineArgumentProvider {
+        listOf(root.file("packaging/configuration_ingress.py").asFile.absolutePath,
+            "--root", root.asFile.absolutePath, "--schema", catalogue.get().asFile.absolutePath,
+            "--policy", root.file("build-policy/configuration-ingress.json").asFile.absolutePath,
+            "--snapshot", root.file("packaging/configuration-schema.json").asFile.absolutePath)
+    })
 }
 
 val pythonTestEnvironment = layout.buildDirectory.dir("python-tests/env")

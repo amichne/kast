@@ -44,6 +44,73 @@ def graph_output(tasks):
 
 
 class SourceValidationTest(unittest.TestCase):
+    def setUp(self):
+        enabled = patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "true"})
+        enabled.start()
+        self.addCleanup(enabled.stop)
+
+    def test_semantic_fixtures_default_to_disabled_and_accept_explicit_opt_in(self):
+        expected = (
+            ":relation:intellij:semanticCoverageFixtureTest",
+            ":runtime:hosted:semanticCoverageFixtureTest",
+            ":symbol:intellij:semanticCoverageFixtureTest",
+            ":verifyKotlinSemanticCoverage",
+            ":verifyKotlinSemanticInventory",
+            ":verifySelectedKotlinSemanticCoverage",
+        )
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(expected, source.skipped_semantic_tasks(ROOT))
+        with patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "false"}):
+            self.assertEqual(expected, source.skipped_semantic_tasks(ROOT))
+        self.assertEqual((), source.skipped_semantic_tasks(ROOT))
+        for value in ("", "False", "TRUE", "0", "typo"):
+            with self.subTest(value=value), patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": value}):
+                with self.assertRaisesRegex(ValueError, "must be true or false"):
+                    source.skipped_semantic_tasks(ROOT)
+
+    def test_disabled_fixtures_keep_other_obligations_and_record_skips(self):
+        with patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "false"}):
+            skipped = source.skipped_semantic_tasks(ROOT)
+            required = expected_obligations() - set(skipped)
+            with (
+                tempfile.TemporaryDirectory() as temporary,
+                patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
+                patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
+                patch.object(source.subprocess, "run", side_effect=[
+                    subprocess.CompletedProcess([], 0, "preflight passed"),
+                    subprocess.CompletedProcess([], 0, graph_output(required)),
+                ]),
+                patch.object(source.subprocess, "Popen") as executed,
+                redirect_stdout(io.StringIO()),
+            ):
+                executed.return_value.stdout = io.StringIO("")
+                executed.return_value.wait.return_value = 0
+                destination = Path(temporary)
+                evidence = source.run(ROOT, destination)
+                report = json.loads((destination / "source-execution.json").read_text())
+            self.assertEqual(source.Outcome.SOURCE_VALIDATED, evidence.outcome)
+            self.assertEqual(list(skipped), report["skippedTasks"])
+            self.assertEqual(2, report["schemaVersion"])
+            self.assertIn(":verifyKotlinSemanticInputs", evidence.graph.tasks)
+            self.assertIn(":relation:intellij:dependencyFixtureTest", evidence.graph.tasks)
+            for task in skipped:
+                with self.subTest(unexpected=task):
+                    self.assertFalse(inspect_graph(graph_output(required | {task}), frozenset(required), skipped).accepted)
+            for task in required:
+                with self.subTest(missing=task):
+                    self.assertFalse(inspect_graph(graph_output(required - {task}), frozenset(required)).accepted)
+
+    def test_disabled_task_inventory_rejects_empty_duplicate_and_invalid_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inventory = root / "config/ci/semantic-fixture-tasks.txt"
+            inventory.parent.mkdir(parents=True)
+            for text in ("", ":owner:task\n:owner:task\n", "--exclude-task :owner:task\n"):
+                with self.subTest(text=text), patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "false"}):
+                    inventory.write_text(text)
+                    with self.assertRaisesRegex(ValueError, "Invalid semantic fixture task inventory"):
+                        source.skipped_semantic_tasks(root)
+
     def test_affected_entry_point_keeps_the_full_fallback_for_every_workflow_event(self):
         for event in ("pull_request", "push", "merge_group", "workflow_dispatch"):
             with (
@@ -146,8 +213,8 @@ class SourceValidationTest(unittest.TestCase):
                     patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                     patch.object(source, "source_identity", side_effect=[identity, after]) as admitted,
                     patch.object(source.subprocess, "run", side_effect=[
-                        subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
                         subprocess.CompletedProcess([], 0, "preflight passed"),
+                        subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
                     ]) as planned,
                     patch.object(source.subprocess, "Popen", return_value=process) as executed,
                     redirect_stdout(io.StringIO()),
@@ -158,7 +225,8 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertEqual(expected is source.Outcome.SOURCE_VALIDATED, evidence.exitCode == 0)
                 self.assertEqual(2, admitted.call_count)
                 self.assertEqual(2, planned.call_count)
-                self.assertEqual(source.PREFLIGHT, planned.call_args.args[0])
+                self.assertEqual([source.PREFLIGHT, [*COMMAND, "--dry-run"]],
+                                 [call.args[0] for call in planned.call_args_list])
                 executed.assert_called_once_with(COMMAND, cwd=ROOT, text=True,
                                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 process.wait.assert_called_once_with()
@@ -166,6 +234,7 @@ class SourceValidationTest(unittest.TestCase):
 
     def test_rejected_graph_never_starts_source_execution(self):
         with (
+            patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             tempfile.TemporaryDirectory() as temporary,
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
             patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "BUILD SUCCESSFUL")),
@@ -177,18 +246,34 @@ class SourceValidationTest(unittest.TestCase):
         self.assertNotEqual(0, evidence.exitCode)
 
     def test_failed_offline_preflight_never_starts_gradle_execution(self):
+        def run(command, **_):
+            if command == source.PREFLIGHT:
+                return subprocess.CompletedProcess(command, 2, "offline suite failed")
+            self.assertEqual([*COMMAND, "--dry-run"], command)
+            return subprocess.CompletedProcess(command, 0, graph_output(expected_obligations()))
+
         with (
             tempfile.TemporaryDirectory() as temporary,
             patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-            patch.object(source.subprocess, "run", side_effect=[
-                subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
-                subprocess.CompletedProcess([], 2, "offline suite failed"),
-            ]),
+            patch.object(source.subprocess, "run", side_effect=run) as commands,
             patch.object(source.subprocess, "Popen") as executed,
         ):
-            evidence = source.run(ROOT, Path(temporary))
+            destination = Path(temporary)
+            (destination / "task-graph.log").write_text("previous successful graph")
+            (destination / "gradle.log").write_text("previous successful execution")
+            (destination / "unrelated.log").write_text("keep this file")
+            evidence = source.run(ROOT, destination)
+            self.assertEqual("offline suite failed", (destination / "preflight.log").read_text())
+            self.assertFalse((destination / "task-graph.log").exists())
+            self.assertFalse((destination / "gradle.log").exists())
+            self.assertEqual("keep this file", (destination / "unrelated.log").read_text())
+            report = json.loads((destination / "source-execution.json").read_text())
+        self.assertEqual("PROCESS_FAILED", report["outcome"])
+        self.assertEqual([], report["graph"]["tasks"])
+        self.assertEqual(sorted(expected_obligations()), report["graph"]["missing"])
         executed.assert_not_called()
+        self.assertEqual([source.PREFLIGHT], [call.args[0] for call in commands.call_args_list])
         self.assertEqual(source.Outcome.PROCESS_FAILED, evidence.outcome)
         self.assertEqual(2, evidence.exitCode)
 

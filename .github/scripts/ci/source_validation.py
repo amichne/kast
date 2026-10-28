@@ -124,11 +124,28 @@ class Evidence:
     graph: Graph
     compilerInvocations: int
     selection: verification_plan.Plan | None
+    skippedTasks: tuple[str, ...]
 
 
-def inspect_graph(output: str, required: frozenset[str] = SOURCE_REQUIRED) -> Graph:
+def skipped_semantic_tasks(root: Path) -> tuple[str, ...]:
+    value = os.environ.get("KAST_SEMANTIC_FIXTURES", "false")
+    if value == "true":
+        return ()
+    if value != "false":
+        raise ValueError("KAST_SEMANTIC_FIXTURES must be true or false")
+    tasks = tuple((root / "config/ci/semantic-fixture-tasks.txt").read_text().splitlines())
+    if not tasks or len(set(tasks)) != len(tasks) or not all(
+        re.fullmatch(r":[A-Za-z][A-Za-z0-9:]*", task) for task in tasks
+    ):
+        raise ValueError("Invalid semantic fixture task inventory")
+    return tasks
+
+
+def inspect_graph(
+    output: str, required: frozenset[str] = SOURCE_REQUIRED, skipped: tuple[str, ...] = ()
+) -> Graph:
     tasks = frozenset(re.findall(r"^(:\S+) SKIPPED$", output, re.MULTILINE))
-    forbidden = tuple(sorted(task for task in tasks if forbidden_task(task)))
+    forbidden = tuple(sorted(task for task in tasks if forbidden_task(task) or task in skipped))
     return Graph(tuple(sorted(tasks)), tuple(sorted(required - tasks)), forbidden)
 
 
@@ -209,37 +226,41 @@ def run(
         *(COMMAND if plan is None else selected_command(root, destination, plan)),
         *gradle_arguments,
     )
-    required = SOURCE_REQUIRED if plan is None else obligations(plan)
-    planned = subprocess.run(
-        [*command, "--dry-run"],
+    skipped = skipped_semantic_tasks(root)
+    required = (SOURCE_REQUIRED if plan is None else obligations(plan)) - frozenset(skipped)
+    for log_name in ("task-graph.log", "gradle.log"):
+        (destination / log_name).unlink(missing_ok=True)
+    environment = os.environ.copy()
+    environment["KAST_RELEASE_JDK_25"] = (
+        environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]
+    )
+    preflight = subprocess.run(
+        PREFLIGHT,
         cwd=root,
+        env=environment,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         check=False,
     )
-    (destination / "task-graph.log").write_text(planned.stdout)
-    graph = inspect_graph(planned.stdout, required)
-    code = planned.returncode
-    outcome = Outcome.GRAPH_REJECTED
+    (destination / "preflight.log").write_text(preflight.stdout)
+    graph = Graph((), tuple(sorted(required)), ())
+    code = preflight.returncode
+    outcome = Outcome.PROCESS_FAILED
     invocations = 0
-    if code == 0 and graph.accepted:
-        environment = os.environ.copy()
-        environment["KAST_RELEASE_JDK_25"] = (
-            environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]
-        )
-        preflight = subprocess.run(
-            PREFLIGHT,
+    if code == 0:
+        planned = subprocess.run(
+            [*command, "--dry-run"],
             cwd=root,
-            env=environment,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
         )
-        (destination / "preflight.log").write_text(preflight.stdout)
-        code = preflight.returncode
-        outcome = Outcome.PROCESS_FAILED
+        (destination / "task-graph.log").write_text(planned.stdout)
+        graph = inspect_graph(planned.stdout, required, skipped)
+        code = planned.returncode
+        outcome = Outcome.GRAPH_REJECTED
     if code == 0 and graph.accepted:
         with (destination / "gradle.log").open("w") as log:
             process = subprocess.Popen(
@@ -261,7 +282,7 @@ def run(
     else:
         code = code or 1
     evidence = Evidence(
-        1,
+        2,
         outcome,
         revision,
         tree,
@@ -271,6 +292,7 @@ def run(
         graph,
         invocations,
         plan,
+        skipped,
     )
     (destination / "source-execution.json").write_text(
         json.dumps(asdict(evidence), indent=2) + "\n"

@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.traversal"
+group = "${providers.gradleProperty("GROUP").get()}.traversal"
 
 base {
     archivesName.set("traversal-service")

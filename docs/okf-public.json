@@ -1,0 +1,400 @@
+{
+  "schemaVersion": 1,
+  "views": [
+    {
+      "route": "architecture/change-lifecycle",
+      "frontmatter": "title: \"Change lifecycle\"\ndescription: \"Follow an exact change from planning and preimage admission to verification or recovery.\"\nicon: \"file-pen-line\"",
+      "concepts": [
+        "openwiki/changes/planning-and-write-admission.md",
+        "openwiki/changes/receipts-and-recovery.md"
+      ],
+      "imports": [
+        "import { ChangeLifecycleDiagram } from \"/snippets/diagrams/change-lifecycle.jsx\""
+      ],
+      "diagrams": [
+        "<ChangeLifecycleDiagram />"
+      ],
+      "anchors": [
+        "from-intent-to-source-effect",
+        "source-evidence",
+        "what-verification-establishes",
+        "what-verification-proves",
+        "which-fact-permits-the-next-phase"
+      ]
+    },
+    {
+      "route": "architecture/topology",
+      "frontmatter": "title: \"Topology and ownership\"\ndescription: \"Locate the agent adapters, IDEA Host, and stored evidence.\"\nicon: \"network\"",
+      "concepts": [
+        "openwiki/modules/architecture.md",
+        "openwiki/runtime/hosted-composition-and-publication.md"
+      ],
+      "imports": [
+        "import { TopologyDiagram } from \"/snippets/diagrams/topology.jsx\""
+      ],
+      "diagrams": [
+        "<TopologyDiagram />"
+      ],
+      "anchors": [
+        "find-the-source-owner",
+        "follow-one-request",
+        "source-evidence",
+        "state-owners-and-lifetimes"
+      ]
+    },
+    {
+      "route": "explanation/query-lifecycle",
+      "frontmatter": "title: \"Query execution and evidence delivery\"\nsidebarTitle: \"Query lifecycle\"\ndescription: \"Follow a question through admission, bounded execution, completion proof, atomic publication, and evidence delivery.\"\nicon: \"workflow\"",
+      "concepts": [
+        "openwiki/queries/execution-and-composition.md",
+        "openwiki/queries/retention-and-presentation.md"
+      ],
+      "imports": [
+        "import { QueryLifecycleDiagram } from \"/snippets/diagrams/query-lifecycle.jsx\"",
+        "import { QueryPublicationDiagram } from \"/snippets/diagrams/query-publication.jsx\""
+      ],
+      "diagrams": [
+        "<QueryLifecycleDiagram />",
+        "<QueryPublicationDiagram />"
+      ],
+      "anchors": [
+        "a-preview-describes-delivery",
+        "one-question-and-one-execution-grant",
+        "publish-a-page-and-its-successor-together",
+        "retention-keeps-the-original-answer",
+        "retention-preserves-the-original-answer",
+        "source-evidence",
+        "state-determines-whether-reuse-remains-legal"
+      ]
+    },
+    {
+      "route": "reference/callbacks",
+      "frontmatter": "title: \"Callback evidence\"\ndescription: \"Interpret anonymous callable ownership, static bindings, and the limits of caller tracing.\"\nicon: \"route\"",
+      "concepts": [
+        "openwiki/semantics/relation/callback-supply-and-binding.md",
+        "openwiki/semantics/relation/callback-reuse-and-completion.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [
+        "anonymous-source-selectors",
+        "continue-output-delivery",
+        "follow-one-callback",
+        "named-callers-and-lexical-ownership",
+        "output-delivery",
+        "read-the-exact-anonymous-source",
+        "reviewed-dependency-models",
+        "static-bindings-and-unfinished-proof",
+        "symbolic-callees-and-known-boundaries",
+        "symbolic-callees-and-source-exclusions"
+      ]
+    },
+    {
+      "route": "reference/composition",
+      "frontmatter": "title: \"Composition contracts\"\ndescription: \"Compare canonical identities, keep row kinds and qualifications, and reject unproven absence.\"\nicon: \"git-merge\"",
+      "concepts": [
+        "openwiki/queries/execution-and-composition.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [
+        "absence-and-rejection",
+        "examples-and-source-evidence",
+        "input-example",
+        "joins-and-row-kinds",
+        "row-compatibility",
+        "set-operations"
+      ]
+    },
+    {
+      "route": "reference/evidence-boundaries",
+      "frontmatter": "title: \"What an answer proves\"\ndescription: \"Read coverage, identify evidence limits, and decide when to reuse a reference.\"\nicon: \"shield-check\"",
+      "concepts": [
+        "openwiki/glossary/evidence-authority.md",
+        "openwiki/contracts/operation-outcomes.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [
+        "can-i-reuse-this-result-later",
+        "check-relationship-and-verification-claims",
+        "choose-the-claim",
+        "decide-whether-to-continue",
+        "evidence-delivery-cannot-strengthen-a-proof",
+        "exact-facts-are-not-the-same-as-exhaustive-coverage",
+        "read-relationship-and-edit-evidence",
+        "the-original-state-constrains-reuse"
+      ]
+    },
+    {
+      "route": "reference/internals/architecture",
+      "frontmatter": "title: \"How Kast works\"\nsidebarTitle: \"Authority boundaries\"\ndescription: \"See how Kast answers queries through IDEA and decides whether retained results remain usable.\"\nicon: \"workflow\"\nkeywords:\n  - \"architecture\"\n  - \"IntelliJ IDEA\"\n  - \"query\"\n  - \"evidence\"\nmode: \"wide\"",
+      "concepts": [
+        "openwiki/semantics/workspace/read-authority.md",
+        "openwiki/modules/architecture.md"
+      ],
+      "imports": [
+        "import { AuthorityDiagram } from \"/snippets/diagrams/authority.jsx\""
+      ],
+      "diagrams": [
+        "<AuthorityDiagram />"
+      ],
+      "anchors": [
+        "authority-stays-with-the-program",
+        "bounded-execution-keeps-progress",
+        "execution-and-presentation-have-separate-limits",
+        "limits-on-work-and-output",
+        "read-state-constrains-reuse",
+        "runtime-ownership",
+        "state-needed-for-reuse",
+        "tracing-code",
+        "tracing-within-and-between-functions",
+        "who-owns-runtime-state",
+        "who-proves-each-fact"
+      ]
+    },
+    {
+      "route": "reference/internals/background-startup",
+      "frontmatter": "title: \"Prepare IntelliJ in the background\"\nsidebarTitle: \"Background preparation\"\ndescription: \"Know what Kast starts, what it waits for, and which blockers need your attention.\"\nicon: \"monitor-cog\"",
+      "concepts": [
+        "openwiki/transport/coordinator-and-workspace-preparation.md",
+        "openwiki/runtime/idea-lifecycle-and-refresh.md"
+      ],
+      "imports": [
+        "import { BackgroundPreparationDiagram } from \"/snippets/diagrams/background-preparation.jsx\""
+      ],
+      "diagrams": [
+        "<BackgroundPreparationDiagram />"
+      ],
+      "anchors": [
+        "connection-state-and-project-readiness-differ",
+        "control-when-an-agent-uses-kast",
+        "readiness-and-blockers",
+        "what-happens-on-the-first-question"
+      ]
+    },
+    {
+      "route": "reference/staleness",
+      "frontmatter": "title: \"Staleness and reference reuse\"\nsidebarTitle: \"Retention and invalidation\"\ndescription: \"Understand read epochs, content admission, exact-reference reacquisition, and retained-state rejection.\"\nicon: \"history\"",
+      "concepts": [
+        "openwiki/semantics/workspace/model-and-freshness.md",
+        "openwiki/topology/live-dependencies-and-reuse.md"
+      ],
+      "imports": [
+        "import { RetentionDiagram } from \"/snippets/diagrams/retention.jsx\"",
+        "import { IncrementalFactsDiagram } from \"/snippets/diagrams/incremental-facts.jsx\""
+      ],
+      "diagrams": [
+        "<RetentionDiagram />",
+        "<IncrementalFactsDiagram />"
+      ],
+      "anchors": [
+        "after-a-source-change",
+        "exact-references-can-get-fresh-authority",
+        "incremental-facts-need-new-authority",
+        "rejection-and-recovery",
+        "retained-evidence-needs-its-original-state",
+        "source-evidence",
+        "what-can-change-the-read-state"
+      ]
+    },
+    {
+      "route": "reference/symbols",
+      "frontmatter": "title: \"Symbol identity and source fields\"\ndescription: \"Use exact compiler references, locations, and signatures without guessing identity.\"\nicon: \"braces\"",
+      "concepts": [
+        "openwiki/semantics/symbol/discovery-and-identity.md",
+        "openwiki/contracts/source-identity.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [
+        "evidence-limits",
+        "local-declarations",
+        "output-selection-example",
+        "public-fields"
+      ]
+    }
+  ],
+  "authored": [
+    {
+      "route": "agent-harnesses",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "architecture/query-reuse",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "explanation/value-journey-evidence",
+      "purpose": "recorded-illustration"
+    },
+    {
+      "route": "explanation/value-journey",
+      "purpose": "recorded-illustration"
+    },
+    {
+      "route": "explanation",
+      "purpose": "reader-navigation"
+    },
+    {
+      "route": "glossary",
+      "purpose": "generated-glossary"
+    },
+    {
+      "route": "how-to/complete-engineering-task",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "how-to/inspect-diagnostics",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "how-to/read-retained-evidence",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "how-to",
+      "purpose": "reader-navigation"
+    },
+    {
+      "route": "index",
+      "purpose": "reader-navigation"
+    },
+    {
+      "route": "reference/api",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "reference/callback-observations",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "reference/change",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/compatibility",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/installation",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/integrations",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/lifecycles",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "reference/limits",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "reference/management",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/mcp-catalog",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/models/diagnostic",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/live-evidence",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/mcp-change-result",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/mcp-investigation-result",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/mcp-read-result",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/mcp-tool-call-result",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/query-item",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/relation-fact",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/models/tool-rpc-reply",
+      "purpose": "schema-binding"
+    },
+    {
+      "route": "reference/program-tracing",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "reference/query-pipelines",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/responses",
+      "purpose": "canonical-coverage-gap"
+    },
+    {
+      "route": "reference/rpc-catalog",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/schemas",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/search",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/source-map",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/troubleshooting",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/walkthrough",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference",
+      "purpose": "reader-navigation"
+    },
+    {
+      "route": "search",
+      "purpose": "reader-navigation"
+    },
+    {
+      "route": "start",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "troubleshooting",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "tutorials/first-query",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "tutorials",
+      "purpose": "reader-navigation"
+    }
+  ]
+}
