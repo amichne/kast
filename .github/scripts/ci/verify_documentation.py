@@ -19,6 +19,8 @@ def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
          "docs/public/images/value-journey.svg"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "python", ".github/scripts/code_kb.py",
          "check-documentation-inputs", "--repo", ".", "--docs", "openwiki", "--strict", "--format", "json"),
+        ("uv", "run", "--locked", "--project", "docs/tooling", "python",
+         "docs/tooling/okf_public.py", "--check"),
         (
             "uv",
             "run",

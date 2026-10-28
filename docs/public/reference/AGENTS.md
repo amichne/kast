@@ -16,6 +16,10 @@ code_sources:
 # Public reference boundaries
 
 - The MCP and tool RPC contract pages and transport model pages are authored content.
+- `docs/okf-public.json` selects public views of shared OpenWiki OKF concepts.
+  `docs/tooling/okf_public.py` owns those page shells and `snippets/okf/`.
+  Change shared prose through OpenWiki, then regenerate the public projection.
+  Keep routes and legacy anchors in the manifest. Run `verifyPublicKnowledge` to reject drift.
 - `callables.openapi.json` is generated from the canonical CLI command graph and installed hosted
   schemas plus direct MCP and tool RPC result types. Never edit it directly.
 - Update the callable artifact with `./gradlew :cli:generateMintlifyCallableReference` from the
