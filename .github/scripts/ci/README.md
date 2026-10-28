@@ -96,7 +96,8 @@ The runner service keeps its checkout under its own work directory.
 Its Gradle User Home persists between jobs, so `setup-gradle` disables cache transport on that runner.
 The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
 It rejects other repositories, refs, events, workflows, and jobs.
-Install the hook outside the runner application directory, then set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
+Install the hook outside the runner application directory.
+Set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
 Restart the service after a hook change.
 Keep the installed hook synchronized with its reviewed source.
 

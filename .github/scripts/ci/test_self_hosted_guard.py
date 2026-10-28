@@ -1,4 +1,4 @@
-"""Trusted main runs pass; pull requests and incomplete job identities reject."""
+"""Trusted main runs pass. Pull requests and incomplete job identities reject."""
 
 import unittest
 
