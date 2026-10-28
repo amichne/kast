@@ -106,6 +106,9 @@ mise exec -- uv run --locked --project docs/tooling python docs/tooling/okf_publ
 ```
 
 Use `--check` to reject changed outputs without a write.
+Write mode creates missing generated routes from the manifest. Missing authored pages still reject the projection.
+After a partial OpenWiki failure, the update workflow projects completed pages before it creates a pull request.
+If projection fails, the workflow does not create that pull request.
 The provenance report keeps page and sidecar digests, Claim identities, resources, recorded versions, and current file digests.
 `MATCHED` means that a whole-file evidence digest matches current bytes.
 `CHANGED` means that those bytes differ. `NOT_ASSESSED` keeps opaque or range versions without a freshness claim.
