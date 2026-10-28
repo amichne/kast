@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The docs lane retains the parser, terminology tests, scope and generated-view checks."""
 
+import json
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +11,25 @@ from verify_documentation import commands
 
 
 class DocumentationProofTest(unittest.TestCase):
+    def test_navigation_exposes_reader_sections_and_legacy_example(self):
+        config = json.loads(Path("docs/public/docs.json").read_text())
+        tabs = config["navigation"]["tabs"]
+        self.assertEqual(["Guides", "Architecture", "Reference"], [tab["tab"] for tab in tabs])
+
+        def visit(node):
+            self.assertFalse(node.get("hidden", False))
+            for child in node.get("groups", []) + node.get("pages", []):
+                if isinstance(child, dict):
+                    visit(child)
+
+        for tab in tabs:
+            visit(tab)
+        redirects = {item["source"]: item["destination"] for item in config["redirects"]}
+        self.assertEqual(
+            "https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/examples/query-walkthrough.json",
+            redirects["/examples/query-walkthrough.json"],
+        )
+
     def test_stale_preview_rejects_when_the_interactive_view_matches(self):
         parity = next(command for command in commands(()) if command[:2] == ("git", "diff"))
         with tempfile.TemporaryDirectory() as directory:

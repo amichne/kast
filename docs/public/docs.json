@@ -27,32 +27,52 @@
     "strict": false
   },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Discover Kast",
-        "pages": [
-          "index",
-          "explanation/value-journey",
-          "search"
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Discover Kast",
+            "pages": [
+              "index",
+              "explanation/value-journey",
+              "search"
+            ]
+          },
+          {
+            "group": "Try it on your project",
+            "pages": [
+              "start",
+              "agent-harnesses",
+              "tutorials/first-query"
+            ]
+          },
+          {
+            "group": "Get unstuck",
+            "pages": [
+              "troubleshooting"
+            ]
+          },
+          {
+            "group": "Task details",
+            "pages": [
+              "how-to",
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "reference/change",
+              "how-to/complete-engineering-task",
+              "reference/troubleshooting",
+              "reference/management",
+              "tutorials"
+            ]
+          }
         ]
       },
       {
-        "group": "Try it on your project",
-        "pages": [
-          "start",
-          "agent-harnesses",
-          "tutorials/first-query"
-        ]
-      },
-      {
-        "group": "Get unstuck",
-        "pages": [
-          "troubleshooting"
-        ]
-      },
-      {
-        "group": "Architecture",
-        "pages": [
+        "tab": "Architecture",
+        "groups": [
           {
             "group": "Understand Kast",
             "pages": [
@@ -76,33 +96,16 @@
               "explanation/value-journey-evidence"
             ]
           }
-        ],
-        "hidden": true,
-        "searchable": true
+        ]
       },
       {
-        "group": "Reference",
-        "pages": [
+        "tab": "Reference",
+        "groups": [
           {
             "group": "Interface reference",
             "pages": [
               "reference",
               "glossary"
-            ]
-          },
-          {
-            "group": "Task details",
-            "pages": [
-              "how-to",
-              "reference/search",
-              "how-to/inspect-diagnostics",
-              "how-to/read-retained-evidence",
-              "reference/query-pipelines",
-              "reference/change",
-              "how-to/complete-engineering-task",
-              "reference/troubleshooting",
-              "reference/management",
-              "tutorials"
             ]
           },
           {
@@ -181,9 +184,7 @@
               "reference/source-map"
             ]
           }
-        ],
-        "hidden": true,
-        "searchable": true
+        ]
       }
     ]
   },
@@ -330,7 +331,7 @@
     },
     {
       "source": "/examples/query-walkthrough.json",
-      "destination": "/reference/examples/query-walkthrough.json",
+      "destination": "https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/examples/query-walkthrough.json",
       "permanent": true
     },
     {
