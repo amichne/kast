@@ -96,6 +96,8 @@ The runner service keeps its checkout under its own work directory.
 Its Gradle User Home persists between jobs, so `setup-gradle` disables cache transport on that runner.
 Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.
 This avoids the macOS `setup-python` installer's fixed `/Users/runner` prefix.
+The Kotlin job sets `MACOSX_DEPLOYMENT_TARGET=15.0` for native compilation.
+Before candidate sealing, it rejects a native binary whose deployment target differs from macOS 15.0.
 The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
 It rejects other repositories, refs, events, workflows, and jobs.
 Install the hook outside the runner application directory.

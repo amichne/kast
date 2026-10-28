@@ -163,6 +163,8 @@ jobs:
     name: Kotlin product
     runs-on: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.KAST_SELF_HOSTED_RUNNER == 'true' && fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') || 'macos-15' }}
     timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -252,6 +254,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
         run: bash .github/scripts/ci/verify.sh --version "0.0.$GITHUB_RUN_NUMBER"
+
+      - name: Examine native macOS target
+        if: steps.reuse.outputs.candidate != 'REUSED'
+        run: |
+          xcrun vtool -show-build distribution/cli/build/native/nativeCompile/kast \
+            | tee build/reports/native/macos-build.txt \
+            | awk '$1 == "minos" { if ($2 != "15.0") exit 1; found = 1 } END { if (!found) exit 1 }'
 
       - name: Seal tested candidate identity
         if: steps.reuse.outputs.candidate != 'REUSED'
