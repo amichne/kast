@@ -169,7 +169,7 @@ def test_cli_distinguishes_real_nested_mdx_prose_from_code(
     text = (ROOT / "docs/public/reference/integrations.mdx").read_text()
     match placement:
         case "prose":
-            original = "    The bundled plugin supplies MCP tools"
+            original = "    The bundled plugin supplies the Kast skill and task MCP tools"
             replacement = "    A saved result supplies MCP tools"
         case "fence":
             original = "    kast plugin codex"
