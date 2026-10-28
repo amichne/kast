@@ -12,6 +12,7 @@ from anyio.abc import SocketAttribute, SocketStream
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.types import TextContent
+from pydantic import ValidationError
 from service import call, catalog
 from tasks import TASKS, Context, prepare_task
 from transport import Stage, invoke
@@ -212,3 +213,38 @@ def test_malformed_child_reply_keeps_invocation_stage_without_retry(tmp_path: Pa
     assert result.structuredContent["reason"] == "INVALID_REPLY"
     assert result.structuredContent["stage"] == "INVOCATION"
     assert len((tmp_path / "calls.jsonl").read_text().splitlines()) == 2
+
+
+def test_native_bridge_keeps_large_canonical_text_once(tmp_path: Path) -> None:
+    import subprocess
+
+    original = json.dumps({"type": "complete", "document": {"text": '"' * 600_000, "ref": EXACT}})
+    rpc = fixture_process(tmp_path, original.encode())
+    command = [sys.executable, str(SERVER), "--rpc", str(rpc), "--workspace", str(tmp_path)]
+    inventory = subprocess.run([*command, "catalog"], capture_output=True, check=True, timeout=10)
+    assert {tool["name"] for tool in json.loads(inventory.stdout)["tools"]} == EXPECTED_NAMES
+    reply = subprocess.run(
+        [*command, "call", "find"],
+        input=b'{"name":"Thing"}',
+        capture_output=True,
+        check=True,
+        timeout=10,
+    )
+    bridge = json.loads(reply.stdout)
+    assert bridge["content"] == [{"type": "text", "text": original}]
+    assert bridge["isError"] is False
+    assert "structuredContent" not in bridge
+    assert len(reply.stdout) <= 6 * 4_194_304 + 1024
+
+
+def test_static_host_deadlines_cover_every_admitted_catalog() -> None:
+    from transport import HOST_TIMEOUT_SECONDS, Policy
+
+    config = json.loads((ROOT / "agent-tools/.mcp.json").read_text())["mcpServers"]["kast"]
+    assert HOST_TIMEOUT_SECONDS == 3780
+    assert config["tool_timeout_sec"] == HOST_TIMEOUT_SECONDS
+    assert config["timeout"] == HOST_TIMEOUT_SECONDS * 1000
+    assert f"timeout: {HOST_TIMEOUT_SECONDS}," in (ROOT / "pi/mcp-extension.ts").read_text()
+    Policy(callTimeoutMillis=3_600_000, maxResponseBytes=2_147_483_646)
+    with pytest.raises(ValidationError):
+        Policy(callTimeoutMillis=3_600_001, maxResponseBytes=2_147_483_646)

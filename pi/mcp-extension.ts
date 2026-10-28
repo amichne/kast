@@ -66,7 +66,8 @@ export default function (pi: ExtensionAPI) {
     command: "uv",
     args: ["run", "--locked", "--script", join(installation, "share/kast/agent-tools/plugins/kast/skills/kast/scripts/server.py")],
     // A user mcp.json entry named kast can override this registration.
-    timeout: 180,
+    // Covers catalog discovery, the admitted RPC deadline, and reply delivery.
+    timeout: 3780,
   });
   let context: ContextResult | { type: "not_started" } = { type: "not_started" };
   pi.on("session_start", (_event, ctx) => {

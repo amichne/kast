@@ -56,6 +56,9 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
             "-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/plugins/kast}}/skills/kast/scripts/server.py\"",
         )) { "Kast plugin must use the installed repository-bound MCP launcher" }
+        check(mcp.mcpServers.kast.toolTimeoutSeconds == 3780 && mcp.mcpServers.kast.timeoutMillis == 3_780_000) {
+            "MCP host deadlines must cover the admitted task service allowance"
+        }
         check(marketplace.name == "kast" && marketplace.plugins.size == 1) { "expected one Kast marketplace entry" }
         val entry = marketplace.plugins.single()
         check(entry.name == "kast" && entry.source.path == "./agent-tools") { "marketplace source identity changed" }
@@ -148,7 +151,12 @@ internal data class AgentMcpDocument(val mcpServers: AgentMcpServers)
 internal data class AgentMcpServers(val kast: AgentMcpServer)
 
 @Serializable
-internal data class AgentMcpServer(val command: String, val args: List<String>)
+internal data class AgentMcpServer(
+    val command: String,
+    val args: List<String>,
+    @SerialName("tool_timeout_sec") val toolTimeoutSeconds: Int,
+    @SerialName("timeout") val timeoutMillis: Int,
+)
 
 @Serializable
 internal data class AgentMarketplace(

@@ -173,7 +173,7 @@ class Options(Model):
     emit_request: bool = False
     catalog_file: Path | None = None
     save: Path | None = None
-    timeout: float = Field(default=120, gt=0)
+    timeout: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     write: bool = False
     verbose: bool = False
     page_size: int = Field(default=20, ge=1)
@@ -228,7 +228,7 @@ def parser() -> Parser:
         help="Use a saved catalog for offline request construction only.",
     )
     common.add_argument("--save", type=Path, help="Save the unchanged reply to a new file.")
-    common.add_argument("--timeout", type=float, default=120)
+    common.add_argument("--timeout", type=float, help="Explicit invocation timeout in seconds.")
     common.add_argument(
         "--page-size",
         type=int,

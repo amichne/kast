@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import anyio
+import pytest
 from access import prepare
 from pydantic import BaseModel
 from transport import Catalog, CatalogReply, Envelope, Reason, Rejected, Reply, Tool, admit, execute
@@ -28,7 +29,15 @@ def catalog(effect: str = "READ") -> bytes:
         }
     )
     return (
-        CatalogReply(type="catalog", catalog=Catalog(schemaVersion=17, tools=(tool,)))
+        CatalogReply(
+            type="catalog",
+            catalog=Catalog(
+                schemaVersion=17,
+                tools=(tool,),
+                callTimeoutMillis=1_800_000,
+                maxResponseBytes=4_194_304,
+            ),
+        )
         .model_dump_json()
         .encode()
     )
@@ -46,7 +55,11 @@ def test_catalog_rejects_write_without_explicit_selection(tmp_path: Path) -> Non
 def test_unknown_contract_and_bad_request_are_local_failures(tmp_path: Path) -> None:
     prepared = prepare(["find", "Thing"])
     wrong = CatalogReply.model_validate_json(catalog()).model_copy(
-        update={"catalog": Catalog(schemaVersion=999, tools=())}
+        update={
+            "catalog": Catalog(
+                schemaVersion=999, tools=(), callTimeoutMillis=1_800_000, maxResponseBytes=4_194_304
+            )
+        }
     )
     outcome = admit(prepared, wrong.model_dump_json().encode())
     assert isinstance(outcome, Rejected)
@@ -112,6 +125,38 @@ def test_emit_request_never_calls_semantic_child(tmp_path: Path) -> None:
     assert len((tmp_path / "calls.jsonl").read_text().splitlines()) == 1
 
 
+@pytest.mark.parametrize("arguments,expected", [([], 1800), (["--timeout", "42"], 42)])
+def test_installed_deadline_reaches_the_invocation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, arguments: list[str], expected: float
+) -> None:
+    import transport
+
+    rpc = fixture_process(tmp_path, b'{"type":"complete","document":{}}')
+    allowances: list[float | None] = []
+    original = anyio.fail_after
+
+    def record(delay: float | None, shield: bool = False):
+        allowances.append(delay)
+        return original(delay, shield=shield)
+
+    monkeypatch.setattr(transport.anyio, "fail_after", record)
+    result = anyio.run(execute, prepare(["find", "Thing", "--rpc", str(rpc), *arguments]))
+    assert isinstance(result, Reply)
+    assert allowances == [120, expected]
+
+
+@pytest.mark.parametrize("value", [None, 0, -1, True, "1800000", 3_600_001])
+def test_invalid_installed_deadline_rejects_before_call(tmp_path: Path, value: object) -> None:
+    rpc = fixture_process(tmp_path, b"must not execute")
+    raw = json.loads((tmp_path / "catalog.json").read_bytes())
+    raw["catalog"]["callTimeoutMillis"] = value
+    (tmp_path / "catalog.json").write_text(json.dumps(raw))
+    result = anyio.run(execute, prepare(["find", "Thing", "--rpc", str(rpc)]))
+    assert isinstance(result, Rejected)
+    assert result.reason == Reason.INVALID_REPLY
+    assert not (tmp_path / "input.json").exists()
+
+
 def test_offline_catalog_cannot_authorize_execution(tmp_path: Path) -> None:
     import pytest
     from access import InputError
@@ -145,3 +190,27 @@ def test_all_task_requests_match_repository_contract() -> None:
     for arguments in commands:
         request = prepare(arguments).arguments.model_dump(mode="json", exclude_none=True)
         validate(request, schema, cls=Draft202012Validator)
+
+
+@pytest.mark.parametrize("field", ["callTimeoutMillis", "maxResponseBytes"])
+def test_missing_installed_policy_rejects(tmp_path: Path, field: str) -> None:
+    rpc = fixture_process(tmp_path, b"must not execute")
+    raw = json.loads((tmp_path / "catalog.json").read_bytes())
+    del raw["catalog"][field]
+    (tmp_path / "catalog.json").write_text(json.dumps(raw))
+    result = anyio.run(execute, prepare(["find", "Thing", "--rpc", str(rpc)]))
+    assert isinstance(result, Rejected)
+    assert result.reason == Reason.INVALID_REPLY
+    assert not (tmp_path / "input.json").exists()
+
+
+@pytest.mark.parametrize("value", [None, 0, -1, True, "4194304", 2_147_483_648])
+def test_invalid_response_allowance_rejects(tmp_path: Path, value: object) -> None:
+    rpc = fixture_process(tmp_path, b"must not execute")
+    raw = json.loads((tmp_path / "catalog.json").read_bytes())
+    raw["catalog"]["maxResponseBytes"] = value
+    (tmp_path / "catalog.json").write_text(json.dumps(raw))
+    result = anyio.run(execute, prepare(["find", "Thing", "--rpc", str(rpc)]))
+    assert isinstance(result, Rejected)
+    assert result.reason == Reason.INVALID_REPLY
+    assert not (tmp_path / "input.json").exists()

@@ -43,10 +43,28 @@ class GenerateAgentToolsTaskTest {
                 Files.readAllBytes(plugin.resolve("hooks/$name")))
         }
         val mcp = Json.parseToJsonElement(Files.readString(plugin.resolve(".mcp.json"))).jsonObject
+        val server = mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject
+        assertEquals("3780", server.getValue("tool_timeout_sec").jsonPrimitive.content)
+        assertEquals("3780000", server.getValue("timeout").jsonPrimitive.content)
         assertEquals(listOf("-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/plugins/kast}}/skills/kast/scripts/server.py\""),
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
                 it.jsonPrimitive.content
             })
+    }
+
+    @Test
+    fun `short host deadlines reject before replacing admitted output`() {
+        val task = task()
+        task.generate()
+        val source = task.sourceDirectory.get().asFile.resolve(".mcp.json")
+        val original = source.readText()
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/.mcp.json")
+        val protected = output.readBytes()
+        for (shortened in listOf(original.replace("3780000", "180000"), original.replace("3780,", "180,"))) {
+            source.writeText(shortened)
+            assertThrows(IllegalStateException::class.java) { task.generate() }
+            assertArrayEquals(protected, output.readBytes())
+        }
     }
 
     @Test

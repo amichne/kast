@@ -129,7 +129,8 @@ def main() -> int:
                 result = rejected(Reason.INVALID_INPUT, "Task arguments must be a JSON object.")
             else:
                 result = anyio.run(call, str(args.name or ""), arguments, context)
-        print(result.model_dump_json(exclude_none=True))
+        # The native consumer uses canonical text. MCP keeps both evidence representations.
+        print(result.model_dump_json(exclude_none=True, exclude={"structuredContent"}))
         return 0
     anyio.run(stdio, context)
     return 0

@@ -9,7 +9,12 @@ const script = join(homedir(), ".local/share/kast/installation/share/kast/agent-
 function run(args, input = "", signal) {
   return new Promise((resolve, reject) => {
     const controller = new AbortController();
-    const signals = [controller.signal, AbortSignal.timeout(180_000)];
+    // Covers every admitted policy, including an installation change after discovery.
+    // The service applies the current catalog deadline to each RPC invocation.
+    const deadline = args[0] === "call" ? 3_780_000 : 180_000;
+    const signals = [controller.signal, AbortSignal.timeout(deadline)];
+    // JSON string escaping can expand one RPC byte to six bytes. The bridge omits structuredContent.
+    const maxBytes = args[0] === "call" ? 6 * 2_147_483_647 + 1024 : 1_048_576;
     if (signal) signals.push(signal);
     const child = spawn("uv", ["run", "--locked", "--script", script, ...args], {
       cwd: process.cwd(), stdio: ["pipe", "pipe", "pipe"],
@@ -26,7 +31,7 @@ function run(args, input = "", signal) {
     };
     child.stdout.on("data", chunk => {
       size += chunk.length;
-      if (size > 1_048_576) return fail("OUTPUT_LIMIT");
+      if (size > maxBytes) return fail("OUTPUT_LIMIT");
       chunks.push(chunk);
     });
     child.stderr.on("data", () => {}); // Drain diagnostics without mixing them with the canonical reply.

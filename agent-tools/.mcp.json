@@ -2,6 +2,8 @@
   "mcpServers": {
     "kast": {
       "command": "/bin/bash",
+      "tool_timeout_sec": 3780,
+      "timeout": 3780000,
       "args": [
         "-c",
         "PATH=\"${HOME}/.local/bin:${PATH}\" exec uv run --locked --script \"${PLUGIN_ROOT:-${COPILOT_PLUGIN_ROOT:-${HOME}/.local/share/kast/installation/share/kast/agent-tools/plugins/kast}}/skills/kast/scripts/server.py\""

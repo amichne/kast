@@ -9,8 +9,14 @@ import { SourceTextModule, SyntheticModule } from 'node:vm';
 const source = readFileSync(new URL('../../copilot/task-extension.mjs', import.meta.url), 'utf8');
 const catalog = JSON.parse(readFileSync(process.env.KAST_TASK_TEST_CATALOG, 'utf8'));
 
-test('Copilot registers the shared catalog and delegates exact task arguments and outcomes', async () => {
+test('Copilot registers the shared catalog and delegates exact task arguments and outcomes', async t => {
+  const deadlines = [];
+  t.mock.method(AbortSignal, 'timeout', milliseconds => {
+    deadlines.push(milliseconds);
+    return new AbortController().signal;
+  });
   let registered;
+  const large = JSON.stringify({ type: 'complete', document: { text: '\"'.repeat(600_000), ref: 'result:v1:kept' } });
   const pending = [
     { args: ['catalog'], input: '', result: catalog },
     { args: ['call', 'find'], input: JSON.stringify({ name: 'Thing', source_sets: ['main'] }),
@@ -18,6 +24,8 @@ test('Copilot registers the shared catalog and delegates exact task arguments an
     { args: ['call', 'source'], input: JSON.stringify({ ref: 'exact:v5:AAAAAAAAAAAAAAAAAAAAAA' }),
       result: { content: [{ type: 'text', text: '{"type":"complete","document":{}}\n' }], isError: false } },
     { args: ['call', 'find'], input: '{}', result: { content: [], isError: 'false' } },
+    { args: ['call', 'source'], input: '{}', result: { content: [{ type: 'text', text: large }], isError: false } },
+    { args: ['call', 'source'], input: '{}', overflow: 6 * 2_147_483_647 + 1025 },
   ];
   const failures = [];
   const spawn = (command, args, options) => {
@@ -38,7 +46,8 @@ test('Copilot registers the shared catalog and delegates exact task arguments an
     child.stdin.on('finish', () => {
       try { assert.equal(Buffer.concat(parts).toString(), expected.input); }
       catch (error) { failures.push(error); }
-      child.stdout.end(JSON.stringify(expected.result));
+      if (expected.overflow) child.stdout.emit('data', { length: expected.overflow });
+      else child.stdout.end(JSON.stringify(expected.result));
       child.emit('close', 0);
     });
     return child;
@@ -66,6 +75,9 @@ test('Copilot registers the shared catalog and delegates exact task arguments an
   assert.deepEqual(await sourceTool.handler({ ref: 'exact:v5:AAAAAAAAAAAAAAAAAAAAAA' }),
     { resultType: 'success', textResultForLlm: '{"type":"complete","document":{}}\n' });
   await assert.rejects(find.handler({}), /KAST_TASK_INVALID_REPLY/);
+  assert.deepEqual(await sourceTool.handler({}), { resultType: 'success', textResultForLlm: large });
+  await assert.rejects(sourceTool.handler({}), /KAST_TASK_OUTPUT_LIMIT/);
+  assert.deepEqual(deadlines, [180_000, ...Array(5).fill(3_780_000)]);
   assert.deepEqual(failures, []);
   assert.deepEqual(pending, [], 'unconsumed child calls');
 });
