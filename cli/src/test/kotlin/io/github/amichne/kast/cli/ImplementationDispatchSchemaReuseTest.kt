@@ -58,7 +58,7 @@ class ImplementationDispatchSchemaReuseTest {
     private val json = Json { encodeDefaults = true }
     private val schema by lazy { installedPublicToolOutputSchema(PublicToolIdentity.QUERY_SYMBOLS) }
     private val independent by lazy {
-        independentImpactSchema(ImpactImplementationDispatchDocument.serializer())
+        independentFactoredImpactSchema(ImpactImplementationDispatchDocument.serializer())
     }
 
     @Test
@@ -86,7 +86,7 @@ class ImplementationDispatchSchemaReuseTest {
         for ((name, serializer) in serializers) {
             assertions.assertDefinitionEquivalent(
                 name,
-                independentImpactSchema(serializer),
+                independentFactoredImpactSchema(serializer),
             )
         }
     }

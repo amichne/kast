@@ -59,7 +59,13 @@ class ImpactReviewedComponentProjectionTest {
         assertTrue(document.admitsEvidence())
         val encoded = Json.parseToJsonElement(Json.encodeToString(document)).jsonObject
         val authority = encoded.getValue("binding").jsonObject.getValue("authority").jsonObject
-        assertEquals(setOf("type", "rule", "basis", "enclosing", "invocation", "selected", "artifacts"), authority.keys)
+        assertEquals(
+            setOf("type", "rule", "basis", "enclosing", "invocation", "selected", "artifacts", "entryReadOrder"),
+            authority.keys,
+        )
+        val readOrder = authority.getValue("entryReadOrder").jsonObject
+        assertEquals(setOf("type"), readOrder.keys)
+        assertEquals("DIRECT", readOrder.getValue("type").jsonPrimitive.content)
         assertEquals("CALL", authority.getValue("type").jsonPrimitive.content)
         assertEquals("FUNCTION", authority.getValue("selected").jsonObject.getValue("type").jsonPrimitive.content)
         assertEquals(document.source.valuePath.values, document.target.valuePath.values.drop(1))
