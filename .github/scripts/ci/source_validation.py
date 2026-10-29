@@ -28,6 +28,7 @@ COMMAND = (
     "sourceValidationGate",
     "--console=plain",
     "--profile",
+    "--info",
 )
 PREFLIGHT = (
     "python3",

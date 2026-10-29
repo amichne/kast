@@ -82,26 +82,64 @@ class ValidationScopeTest(unittest.TestCase):
     def test_audited_independent_pages_select_only_documentation(self):
         self.assertEqual(DOCS, classify_paths((PAGE, "docs/public/explanation/query-lifecycle.mdx")))
 
+    def test_reader_journey_inputs_keep_their_documentation_consumers_without_a_product(self):
+        paths = (
+            ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
+            "app-server/docs/public-query-contract.md", "docs/development.md",
+            "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+            "docs/static-query-execution.md", "docs/okf-public.json",
+            "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+            "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
+            "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
+            "docs/public/explanation/value-journey-evidence.mdx",
+            "config/vale/readability/audit.py", "config/vale/readability/audit.py.lock",
+            "config/vale/readability/test_audit.py", "config/vale/readability/pytest.ini",
+            "config/vale/readability/pyrightconfig.json", "config/vale/readability/prose.ini",
+            "config/vale/readability/styles/Prose/Complexity.yml",
+            "config/vale/readability/starter-compatibility/styles/config/vocabularies/Docs/accept.txt",
+            "config/vale/styles/config/vocabularies/Kast/accept.txt",
+            "config/vale/styles/config/vocabularies/KastNames/accept.txt",
+            "docs/reviews/readability-audit/README.md",
+            "docs/reviews/readability-audit/after/prose.json",
+            "docs/reviews/readability-audit/after/prose.stderr.txt",
+            "experiments/host-observation/README.md",
+            "experiments/host-observation/EVALUATION_CHECKLIST.md",
+            "experiments/host-observation/HOSTED_ENDPOINT.md",
+            "experiments/host-observation/PI_EVALUATION.md",
+            "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+            "experiments/representation-impact/README.md",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertEqual(DOCS, classify_paths((path,)))
+        self.assertEqual(DOCS, classify_paths(paths + (PAGE,)))
+
+    def test_documentation_neighbors_cannot_inherit_reviewed_ownership(self):
+        for path in (
+            ".github/scripts/ci/new.py", "docs/tooling/new.py",
+            "config/vale/readability/new.py", "config/vale/readability/src/main/kotlin/Probe.kt",
+            "docs/reviews/readability-audit/build.gradle.kts",
+            "experiments/host-observation/protocol.py", "experiments/host-observation/new.md",
+            "config/vale/styles/Kast/Terminology.yml",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(ALL_CHECKS, classify_paths((path,)))
+
     def test_openwiki_inputs_retain_knowledge_base_validation(self):
         for path in (
             "docs/public/reference/change.mdx",
-            "docs/public/reference/responses.mdx",
-            "docs/public/reference/symbols.mdx",
-            "docs/public/search.mdx",
         ):
             with self.subTest(path=path):
                 self.assertEqual(ALL_CHECKS, classify_paths((path,)))
 
     def test_documentation_consumers_cover_navigation_and_generated_examples(self):
         for path in ("docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
+                     "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx", "docs/public/search.mdx",
                      "docs/public/snippets/value-journey.jsx", "docs/tooling/value-journey/src/trace.ts"):
             self.assertEqual(DOCS, classify_paths((path,)))
 
-    def test_product_linked_docs_keep_product_and_portable_checks(self):
+    def test_generated_callable_schema_keeps_product_and_portable_checks(self):
         for path in (
-            "docs/public/start.mdx",
-            "docs/public/reference/installation.mdx",
-            "docs/public/reference/compatibility.mdx",
             "docs/public/reference/callables.openapi.json",
         ):
             with self.subTest(path=path):
@@ -148,7 +186,6 @@ class ValidationScopeTest(unittest.TestCase):
             "docs/public/images/observer.png",
             "new-config.json",
             "docs/public/reference/new-page.mdx",
-            "README.md",
             "install.sh",
             "packaging/test-install-local.py",
             "packaging/portable.Dockerfile",
@@ -278,8 +315,31 @@ class ExactDiffTest(unittest.TestCase):
         stale = self.commit("stale graph")
         result = select("pull_request", head, stale, self.root, affected=True)
         self.assertEqual(ALL_CHECKS, result.checks)
-        self.assertEqual(Reason.PLAN_REJECTED, result.reason)
+        self.assertEqual(verification_plan.Failure.STALE_GRAPH, result.reason)
         self.assertIsNone(result.plan)
+
+    def test_plan_rejection_preserves_the_finite_failure_in_scope_diagnostics(self):
+        self.write(SOURCE, "class Management\n")
+        head = self.commit("product source")
+        for failure in verification_plan.Failure:
+            with self.subTest(failure=failure), patch("verification_plan.plan", return_value=failure):
+                self.assertEqual(
+                    Selection(ALL_CHECKS, failure),
+                    select("pull_request", self.base, head, self.root, affected=True),
+                )
+
+    def test_readme_and_documentation_tooling_bypass_module_planning_for_prs_and_pushes(self):
+        self.write("README.md", "# Reader journey\n")
+        self.write("docs/tooling/okf_public.py", "# documentation projector\n")
+        self.write("config/vale/readability/test_audit.py", "# audit contract\n")
+        head = self.commit("documentation consumers")
+        for event in ("pull_request", "push"):
+            with self.subTest(event=event):
+                result = select(event, self.base, head, self.root, affected=True)
+                self.assertEqual(Selection(DOCS, Reason.CHANGED_INPUTS), result)
+        self.write("install.sh", "# installation effect\n")
+        mixed = self.commit("installer change")
+        self.assertEqual(ALL_CHECKS, select("pull_request", self.base, mixed, self.root, affected=True).checks)
 
     def test_docs_only_push_uses_the_whole_range(self):
         self.write(PAGE, "# Revised API\n")
@@ -350,6 +410,21 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_frozen_pr1130_diff_selects_documentation_without_qualification(self):
+        # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).
+        inventory = Path(__file__).parent / "fixtures/pr1130-paths.txt"
+        paths = tuple(inventory.read_text().splitlines())
+        self.assertEqual(113, len(paths))
+        self.assertEqual(113, len(set(paths)))
+        self.assertFalse(any(path.endswith((".kt", ".kts")) for path in paths))
+        self.assertEqual(DOCS, classify_paths(paths))
+        raw = b"".join(
+            f":100644 100644 {'a' * 40} {'b' * 40} M\0{path}\0".encode() for path in paths
+        )
+        self.assertEqual(DOCS, classify_diff(raw))
+        for unexpected in (SOURCE, "install.sh", "settings.gradle.kts", ".github/workflows/ci.yml"):
+            self.assertEqual(ALL_CHECKS, classify_paths(paths + (unexpected,)))
+
     def test_documentation_allowlist_excludes_every_openwiki_referenced_path(self):
         root = Path(__file__).resolve().parents[3]
         self.assert_openwiki_dependencies_excluded(root)
