@@ -1,0 +1,226 @@
+[
+  {
+    "file": "docs/development.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 191,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/development.md",
+    "rule": "Prose.SectionLength",
+    "line": 242,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "docs/development.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 426,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/hosted-read-configuration.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 189,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/hosted-read-configuration.md",
+    "rule": "Prose.SectionLength",
+    "line": 227,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "docs/hosted-read-configuration.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 261,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/hosted-read-configuration.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 287,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/hosted-read-configuration.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 289,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 80,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.SectionLength",
+    "line": 115,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 153,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 166,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 225,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.SectionLength",
+    "line": 227,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.SentenceLength",
+    "line": 250,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated source evidence from native evidence, or expressed independent fixture cases as a list. Technical distinctions remain."
+  },
+  {
+    "file": "docs/static-query-execution.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 287,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "app-server/README.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 80,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "app-server/README.md",
+    "rule": "Prose.SectionLength",
+    "line": 91,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "app-server/README.md",
+    "rule": "Prose.SectionLength",
+    "line": 254,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "app-server/README.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 276,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "app-server/README.md",
+    "rule": "Prose.SentenceLength",
+    "line": 296,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated source evidence from native evidence, or expressed independent fixture cases as a list. Technical distinctions remain."
+  },
+  {
+    "file": "app-server/README.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 314,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": ".github/scripts/ci/README.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 34,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": ".github/scripts/ci/README.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 65,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": ".github/scripts/ci/README.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 209,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "app-server/docs/public-query-contract.md",
+    "rule": "Prose.SectionLength",
+    "line": 5,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Added headings at changes of reader task or evidence owner. All protocol constraints and proof limits remain."
+  },
+  {
+    "file": "app-server/docs/public-query-contract.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 88,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  },
+  {
+    "file": "app-server/docs/public-query-contract.md",
+    "rule": "Prose.ParagraphLength",
+    "line": 101,
+    "severity": "suggestion",
+    "decision": "REVISED",
+    "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split."
+  }
+]

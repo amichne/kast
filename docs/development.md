@@ -1,5 +1,17 @@
 # Develop and validate Kast
 
+Use this guide to change Kast itself, select tests, and prepare a reviewable commit.
+For a first query in your Kotlin project, use [the first-query tutorial](public/tutorials/first-query.mdx).
+
+Choose the route that matches your change:
+
+- For code, start with [one behavior](#test-one-behavior-at-a-time), then use [the scoped edit loop](#use-the-scoped-edit-loop).
+- For prose, use [the documentation policy](documentation-structure.md) and its separate prose and terminology procedures.
+- For a local product, read [build and installation](#build-and-install-the-checkout) before changes to your existing installation.
+- For release evidence, read [CI candidates and developer publication](#ci-candidates-and-developer-publication).
+
+## Prepare the toolchain
+
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
 The project [mise configuration](../mise.toml) pins GraalVM 25.0.2 and sets
 `JAVA_HOME` and `GRAALVM_HOME` to that installation. With mise shell activation,
@@ -186,6 +198,7 @@ unexpected skips and reports the expected platform skip count (currently 15 on
 Linux, zero on macOS arm64).
 CI runs this container suite on a disposable Ubuntu runner for every pull request
 and main push, alongside the macOS product checks.
+
 Run the same offline inventory without Docker using
 `python3 packaging/run-portable-tests.py`. A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
@@ -241,7 +254,12 @@ explicitly.
 
 ## CI candidates and developer publication
 
-Every PR builds and tests one complete Control/Host pair, including documentation-only PRs.
+CI selects its plan from the exact diff.
+Reviewed documentation paths can use the `DOCUMENTATION` plan without a product candidate.
+Installer examples, new paths, and unclassified changes keep full validation.
+The [CI policy](../.github/scripts/ci/README.md#ci-validation-and-cache-policy) owns the complete plan table and selection rules.
+
+The `PRODUCT` and `FULL` plans build and qualify a complete Control/Host pair.
 CI fixes the candidate version to `0.0.<CI run number>` before compilation.
 Retries retain that version and record the producer attempt separately.
 The identity record retains the full run ID; the version uses an installer-compatible integer.
@@ -255,8 +273,10 @@ The candidate retains its original commit and version.
 Missing or expired candidates, changed trees, and fork producers require a fresh main build.
 Malformed records, damaged payloads, and incomplete observations reject reuse.
 
-Successful main CI triggers developer publication automatically.
-Publication downloads the retained candidate and runs no Gradle or native-image build.
+Successful main CI triggers the developer publication workflow automatically.
+A `DOCS_VALIDATED` result leaves the developer product pointer unchanged and publishes no candidate.
+Product publication needs the exact run's `PRODUCT_VALIDATED` record.
+It downloads the retained candidate and runs no Gradle or native-image build.
 A separate promotion record binds the build commit to the merged commit and successful main run.
 The immutable developer release contains both records.
 If main advances before publication, the publisher retains the existing latest pointer.
@@ -277,6 +297,8 @@ Stable full and component releases retain their explicit semantic versions.
 Those versions currently change compiled Kotlin, the native executable, and plugin metadata.
 A different release version therefore requires a separate build.
 Developer promotion never renames or edits a tested payload.
+
+### Build evidence and dependency trust
 
 CI pins GraalVM 25.0.2 and retains Gradle task outputs plus the native reachability-metadata repository.
 The repository secret `GRADLE_ENCRYPTION_KEY` enables encrypted configuration-cache storage.
@@ -303,6 +325,7 @@ dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
 A successful CLI build does not establish that IDEA imported the Gradle model.
 
+### Install a local build
 For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
 
 Install the working tree into the existing user installation from the repository root:
@@ -421,6 +444,7 @@ retaining outstanding invocation observations until their native work terminates
 Preparation reports pending native work with the retained model observation and
 active operation identities. A retired endpoint incarnation remains blocked and
 requires a newly attached host; it does not imply the live project was disposed.
+
 The query owner retains its last successful preparation observation for the same
 native project identity. If refresh or observation cancellation makes current
 model checks unavailable, inspection still shows the earlier observed model and
@@ -436,6 +460,31 @@ oracle tracks fixture state and rejects deliberate stale-snapshot, retirement,
 and incarnation-bypass mutations. `HostedWorkspaceReadinessTest` exercises the
 production adapter projection with detached epoch sources and no native project,
 filesystem, Git, import, or registration fixture.
+
+## Compare complete engineering tasks
+
+Use this procedure for a controlled budget comparison, after the ordinary [engineering task](public/how-to/complete-engineering-task.mdx) succeeds.
+It defines a comparison, without a claim of measured time, heap use, or a completed native trial.
+
+Keep source revisions, requests, fixtures, and host conditions fixed.
+Restore only the disposable fixture between runs.
+Keep response limits equal across profiles.
+
+Record each measure for the whole task:
+
+| Measure | Record |
+| --- | --- |
+| Share of tasks that complete | Tasks with the expected answer and passing project tests, divided by all trials. |
+| Whole-task time | Time from discovery through the final test, with retries and recovery. |
+| Extra steps | Extra calls, manual budget changes, and unresolved decisions. |
+| Response size | Actual encoded bytes across all calls and pages. |
+| Memory | Host heap use and charged checkpoint bytes as distinct measures. |
+| Editor response | Editor responsiveness and cancellation settlement during the task. |
+| Coverage and current state | Original completion verdicts, identity evidence, and stale-state rejection outcomes. |
+
+Include controls for a smaller work grant, a stale reference, and caller cancellation.
+Keep a typed rejection distinct from a completed task.
+Do not raise retention quotas without memory evidence.
 
 ## OpenWiki upkeep
 

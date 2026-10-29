@@ -17,6 +17,8 @@ The installed catalog governs the tools and schemas for the installed release.
 | `add_declaration` | `change` | `tool add_declaration` | deferred |
 | `replace_body` | `change` | `tool replace_body` | deferred |
 
+### Query actions and terminal output
+
 All routes read one JSON document from stdin. `query_symbols` takes one required `request` object with exactly one action:
 
 | Action | Required input | Meaning |
@@ -53,6 +55,8 @@ A selected result keeps its original qualification and omissions. A subset canno
 Example handles are illustrative. Schema admission proves syntax, not issued authority.
 Use unchanged handles from preceding responses in the current workspace.
 
+### Filters, sets, and joins
+
 The `WHERE` step carries one structured predicate.
 A `VISIBILITY` predicate has a nonempty unique `values` list drawn from compiler-established visibility states.
 A `PRIMITIVE` predicate selects `NAME`, `KIND`, or `FILE` and one operator: `EQUALS`, `NOT_EQUALS`, `STARTS_WITH`, or `ENDS_WITH`.
@@ -85,7 +89,16 @@ Binding rows cannot serve as the right operand of a symbol join. The public gram
 The [generated row compatibility table](../../agent-tools/references/query-row-compatibility.md) records the existing `QueryRowAdmission` transitions.
 Terminal selection does not prove row compatibility. Impact witness output keeps its protocol route through value paths before presentation.
 
-`WALK` takes a relation and defaults to exhaustive breadth-first traversal within the workspace expansion domain. Omitted or null `maximumDepth` selects the canonical `EXHAUSTIVE` extent. An explicit `maximumDepth` from 1 to 1000 selects `THROUGH_DEPTH` and remains subject to the hosted bounded-depth ceiling; its omitted expansion policy retains the seed domain. An explicit `expansionScope` is preserved in either case. Resource limits preserve the original extent and reject when requested completeness is unproven. Optional bounded-fan-out exploration preserves its qualifications. The stage composes the existing traversal domain operation under the query execution budget. Query results carry depth-bearing records and walk observations with frontier, progress, strategy, partial expansions, and coverage. Public RUN requires complete semantic execution within the admitted bounded grant. Public RESUME only delivers already-produced output; it cannot continue an unfinished walk or increase its semantic grant.
+### Traversal and completeness
+
+`WALK` takes a relation and defaults to exhaustive breadth-first traversal within the workspace expansion domain. Omitted or null `maximumDepth` selects the canonical `EXHAUSTIVE` extent. An explicit `maximumDepth` from 1 to 1000 selects `THROUGH_DEPTH` and remains subject to the hosted bounded-depth ceiling; its omitted expansion policy retains the seed domain. An explicit `expansionScope` is preserved in either case. Resource limits preserve the original extent and reject when requested completeness is unproven. Optional bounded-fan-out exploration preserves its qualifications. The stage composes the existing traversal domain operation under the query execution budget.
+
+Query results keep depth-bearing records and walk observations with frontier, progress, strategy, partial expansions, and coverage.
+Public RUN needs complete semantic execution under its admitted execution mode and grant.
+Public RESUME only delivers already-produced output.
+It cannot continue an unfinished walk or increase its semantic grant.
+
+### Admission and public identities
 
 `PublicToolContract` validates the full schema, decodes generated syntax, and performs pure lowering. `AdmittedPublicTool` has a private constructor and keeps tool identity, typed syntax, and a closed query, source, diagnostic, or change request. The provider and CLI share this admission boundary. Re-encoding uses retained typed syntax; a request admitted for one tool cannot be reused under another tool's schema merely because both own `query.run`.
 
@@ -98,7 +111,11 @@ Installed server and CLI invocation projections carry the current bindings. Old 
 The query `OCCURRENCES` output presents individual relation facts after `EXPAND_RELATION`.
 `TRAVERSAL_RECORDS` presents bounded multi-step reachability after `WALK`. Retired standalone routes are absent from the catalog and reject at dispatch.
 
-Query binding rows carry two named cells and preserve each matching pair. Query symbol rows carry exact-symbol references. Occurrence rows carry an exact reference and a structured relation fact; traversal-record rows add depth. Result omissions retain the exact subject, relation kind, and provider omission evidence. Walk observations retain strategy, progress, partial expansions, and incomplete coverage. Separate candidate lookup may return candidate references; these are not query output. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors have different owners and cannot substitute for each other. Runtime restoration owns authenticity, workspace, lifetime, epoch and scope. Input schema acceptance proves syntax only. Complete/qualified/rejected outcomes, item failures, signatures, occurrence facts, and traversal evidence remain intact; a qualified empty result is not proof of absence.
+### Result evidence and tests
+
+Query binding rows carry two named cells and preserve each matching pair. Query symbol rows carry exact-symbol references. Occurrence rows carry an exact reference and a structured relation fact; traversal-record rows add depth. Result omissions retain the exact subject, relation kind, and provider omission evidence. Walk observations retain strategy, progress, partial expansions, and incomplete coverage. Separate candidate lookup may return candidate references; these are not query output. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors have different owners and cannot substitute for each other.
+
+Runtime restoration owns authenticity, workspace, lifetime, epoch and scope. Input schema acceptance proves syntax only. Complete/qualified/rejected outcomes, item failures, signatures, occurrence facts, and traversal evidence remain intact; a qualified empty result is not proof of absence.
 
 Executable checks are `PublicToolContractTest`, `PublicToolSchemaTest`, `KastPublicQueryProviderTest`, `PublicToolCommandTest`, `InstalledServerProjectionTest`, `CanonicalAgentToolDefinitionsTest`, and `GeneratedCliProjectionTest`. Run `:app-server:verifyPublicQueryGeneration`, the relevant module checks, `verifyKastArchitecture`, and the existing native replay for native semantic evidence. The [search guide](../../docs/public/reference/search.mdx) contains current examples.
 

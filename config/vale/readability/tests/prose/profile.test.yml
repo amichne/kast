@@ -1,0 +1,43 @@
+- name: clean documentation
+  input: '# Configure
+
+
+    Connect to the server.'
+  want: ''
+- name: prose rules reach project content
+  input: The the service starts,, then stops.
+  contains:
+  - Prose.RepeatedWords
+  - Prose.DuplicatePunctuation
+- name: terminology has no influence on prose
+  input: Configure exampleservice in github using ExampleSvc.
+  want: ''
+- name: code remains literal
+  input: '# Code examples
+
+
+    Run `the the,, ExampleSvc github`.
+
+
+    ```text
+
+    the the,, ExampleSvc github
+
+    ```
+
+    '
+  want: ''
+- name: MDX code and attributes are excluded
+  format: mdx
+  input: "import Example from './the the,, github';\n\n<Aside title=\"the the,, ExampleSvc github\"\
+    >\n  Configure ExampleService in GitHub.\n</Aside>\n\nThe value is {\"the the,, ExampleSvc\
+    \ github\"}.\n"
+  want: ''
+- name: MDX children are checked
+  format: mdx
+  input: <Aside>The the service starts.</Aside>
+  contains: Prose.RepeatedWords
+- name: plain text is checked
+  format: txt
+  input: The the service starts.
+  contains: Prose.RepeatedWords

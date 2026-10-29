@@ -1,0 +1,8 @@
+extends: metric
+message: "Estimated Flesch-Kincaid grade is %s. Review sentence structure; preserve precise technical terms."
+level: suggestion
+# Default summary scope; do not score headings or individual list fragments.
+# The sample-size guard avoids grading short pages.
+formula: round(flesch_kincaid, 1)
+condition: '> 14.0 && words >= 100 && sentences >= 5'
+

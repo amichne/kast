@@ -13,7 +13,6 @@ You need a ready workspace and a supported target. Define the expected result fr
 3. [Check the affected calls.](#3-explain-the-affected-relationships)
 4. [Make the change.](#4-make-the-exact-change)
 5. [Prove the result.](#5-establish-the-result)
-6. [Compare whole tasks.](#6-compare-complete-tasks)
 
 ## 1. Define the expected behavior
 
@@ -49,20 +48,10 @@ Check the diff against the permitted source scope. Use [diagnostics](/how-to/ins
 
 Clean diagnostics do not prove every compiler identity. A larger grant cannot repair `compiler-identity-unavailable`, stale references, or missing retained state.
 
-## 6. Compare complete tasks
+<span id="6-compare-complete-tasks" />
 
-For a budget trial, repeat the same task. Keep source revisions, requests, fixtures, and host conditions fixed. Restore only the disposable fixture between runs. Keep response limits equal across profiles.
+## Compare execution profiles
 
-Record these measures for each whole task:
-
-- **Share of tasks that complete:** Count tasks with the expected answer and passing project tests. Divide by all trials.
-- **Whole-task time:** Measure from discovery through the final test. Include retries and recovery.
-- **Extra steps:** Count extra calls, manual budget changes, and unresolved decisions.
-- **Response size:** Actual encoded bytes across all calls and pages.
-- **Memory:** Report host heap use and charged checkpoint bytes as distinct measures.
-- **Editor response:** Record how the editor responds and how cancellation ends during the task.
-- **Coverage and current state:** Keep original completion verdicts, identity evidence, and stale-state rejection outcomes.
-
-Include controls for a smaller work grant, a stale reference, and caller cancellation. Keep a typed rejection distinct from a completed task. Do not raise retention quotas without memory evidence.
-
-These steps define a comparison. They do not report measured time, heap use, or a completed native trial.
+The source-change task ends with the scoped diff, receipt, and project-test result.
+To compare execution profiles, use the contributor procedure for [complete engineering tasks](https://github.com/amichne/kast/blob/main/docs/development.md#compare-complete-engineering-tasks).
+That separate experiment keeps requests, fixtures, host conditions, and measurements comparable.

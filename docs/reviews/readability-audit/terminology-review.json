@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "file": "experiments/host-observation/EVALUATION_CHECKLIST.md",
+      "baselineLine": 279,
+      "rule": "Kast.Terminology",
+      "severity": "error",
+      "decision": "REVISED_WITH_DISTINCT_CONCEPT",
+      "reason": "The context describes a previously received reply with captured bytes. Replaced saved result with previously received reply. The text does not claim a live retained-result capability."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "baselineLine": 364,
+      "rule": "Kast.Terminology",
+      "severity": "error",
+      "decision": "REVISED_WITH_DISTINCT_CONCEPT",
+      "reason": "The context describes a previously received reply with captured bytes. Replaced saved result with previously received reply. The text does not claim a live retained-result capability."
+    }
+  ]
+}

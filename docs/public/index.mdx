@@ -1,7 +1,7 @@
 ---
-title: "Your agent reads the code. Kast connects the pieces."
+title: "Understand a Kotlin change before you make it"
 sidebarTitle: "Why Kast?"
-description: "Follow a customer from a signup into an email draft and a returned list, with the source connections left in."
+description: "Give your coding agent compiler-resolved callers, implementations, and supported value paths, with source locations and explicit evidence limits."
 icon: "scan-search"
 ---
 
@@ -11,14 +11,15 @@ import { ValueJourney } from "/snippets/value-journey.jsx"
 
 <span id="what-kast-adds" />
 
-Kast lets your coding agent follow connections through your Kotlin project—not just match words.
-Trace values across calls and fields, find callers and implementations, inspect problems, and make targeted source changes.
+**Which callers and values does this change affect?**
 
-## Can my agent already do that?
+Kast gives your coding agent Kotlin source relationships from IntelliJ IDEA's compiler analysis.
+It finds callers and implementations, traces supported value transfers, inspects diagnostics, and makes targeted source changes.
+Your agent can request source locations and inspect evidence that states what the answer covers.
 
-Your agent can search names and read files. Now ask a harder question:
+## A name match does not explain a value path
 
-**Where can this customer end up?**
+Consider this question: **Where can this customer end up?**
 
 A sign-up becomes a customer. A welcome-email draft holds that customer as its recipient.
 The draft can then be part of a returned list, even though the last function never says `Customer`.
@@ -26,13 +27,17 @@ The draft can then be part of a returned list, even though the last function nev
 Change one expression, and the same list type can hold a draft for a different customer.
 Names and types alone do not explain that difference.
 
+Text search helps an agent find candidate code. Compiler analysis resolves which declaration each call uses, including its overload and receiver.
+Kast combines supported relationships and keeps the evidence behind them.
+
 This is an authored source illustration. It does not run Kotlin or query Kast.
+The list connection needs a reviewed library rule as well as compiler-resolved calls.
 
 <ValueJourney preview={true} />
 
 <span id="use-the-agent-you-already-use" />
 
-## Ask a better question before the edit
+## Use the evidence for your next decision
 
 > Use Kast to trace this function's result. Show where it goes and where the evidence stops.
 
@@ -40,7 +45,11 @@ This is an authored source illustration. It does not run Kotlin or query Kast.
 
 > Use Kast to inspect the diagnostics in the code we changed.
 
-If Kast cannot finish, it reports what needs attention.
+Compare the returned locations with your source before an edit.
+A complete result applies to its stated scope and source-analysis model. It does not prove that a path executed or can execute.
+If Kast cannot establish completion, it reports the cause. An unfinished search with no matches does not prove absence.
+
+Read [how an answer works](/explanation) for the concepts behind these distinctions.
 
 <span id="is-kast-for-you" />
 

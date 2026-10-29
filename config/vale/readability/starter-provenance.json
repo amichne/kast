@@ -1,0 +1,6 @@
+{
+  "archive": "vale-readability-starter.zip",
+  "archiveSha256": "2ddbc2ec70ac507d0b3bcfdf177eee0a87f86bf2b928440d034495dffc9da4c1",
+  "valeVersion": "3.25.1",
+  "rules": "Unchanged supplied Prose rules and native tests. Fictional terminology remains only in starter-compatibility tests. Kast terminology consumes existing canonical rules and vocabulary."
+}

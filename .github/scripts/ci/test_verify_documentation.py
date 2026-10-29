@@ -11,6 +11,33 @@ from verify_documentation import commands
 
 
 class DocumentationProofTest(unittest.TestCase):
+    def test_installer_examples_keep_their_offline_consumer_without_gradle(self):
+        self.assertIn(("python3", "packaging/test-installer-entrypoint.py"), commands(()))
+        self.assertFalse(any("gradlew" in part for command in commands(()) for part in command))
+
+    def test_readability_tooling_keeps_its_tests_when_present(self):
+        from verify_documentation import readability_commands
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual((), readability_commands(root))
+            tooling = root / "config/vale/readability"
+            tooling.mkdir(parents=True)
+            (tooling / "audit.py").write_text("# owned audit runner\n")
+            selected = readability_commands(root)
+            self.assertIn(
+                ("uv", "run", "--locked", "--project", "docs/tooling", "pytest",
+                 "-c", "config/vale/readability/pytest.ini", "config/vale/readability"), selected,
+            )
+            self.assertIn(
+                ("uv", "run", "--locked", "--project", "docs/tooling", "pyright",
+                 "--project", "config/vale/readability/pyrightconfig.json"), selected,
+            )
+            # A surviving test/config must not disappear from the plan when the runner is deleted.
+            (tooling / "audit.py").unlink()
+            (tooling / "test_audit.py").write_text("# runner contract\n")
+            self.assertEqual(selected, readability_commands(root))
+
     def test_documentation_lane_rejects_public_okf_projection_drift(self):
         self.assertIn(
             ("uv", "run", "--locked", "--project", "docs/tooling", "python",

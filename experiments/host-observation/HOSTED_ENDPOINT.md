@@ -1,5 +1,10 @@
 # Existing IDEA index endpoint
 
+This page records the September 2026 hosted-index prototype and its qualification.
+Its `kast index` commands describe that development interface, not the current public management CLI.
+For current installation and a first query, use [Get started](../../docs/public/start.mdx).
+The commands and results that follow keep their original experimental scope.
+
 The `runtime:hosted` plugin serves bounded semantic reads from an already open
 IDEA project over a local Unix socket. The regular executable's `kast index`
 command is the primary client for class indexing. Normal requests use the

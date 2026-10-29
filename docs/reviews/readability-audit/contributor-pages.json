@@ -1,0 +1,584 @@
+{
+  "baseRevision": "dac99b39a0b7b497d5c0e0d5c2a604f5817e5397",
+  "pages": [
+    {
+      "path": ".agents/marketplaces.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Repository contributor: find source owners for agent instructions and marketplace delivery.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": ".github/scripts/ci/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "CI maintainer: choose and interpret exact-diff validation, cache ownership, candidate evidence, and rollout controls.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Distinct plan selection, sealed records, caches, and rollout measurement needed searchable sections. Added sections without changing rules."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "SECURITY.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Reporter: send a private vulnerability report and distinguish provenance from semantic correctness.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "agent-tools/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Integration maintainer: install shared context and MCP tools, distinguish native Pi MCP from optional RPC adapters.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "app-server/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Transport maintainer: understand coordinator, legacy broker, preparation, durable ownership, and projection evidence.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "The 846-word daemon section mixed registration, update admission, preparation, and lifecycle. Added ownership-specific subheadings.",
+        "Projection semantics, schema evidence, and runtime status lacked separate lookup points. Added sections and preserved UI qualification."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "app-server/docs/compatibility.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Integration maintainer: identify version-specific qualification and migration limits.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "app-server/docs/public-query-contract.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contract maintainer: find exact action, terminal, row, scope, admission, and recovery rules.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "The 1,281-word intent-surface section mixed input grammar, traversal, admission, and results. Added lookup sections.",
+        "The blanket bounded-grant statement hid RUNNER_CONTROLLED. Wording now preserves admitted execution mode and grant."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "cli/docs/query-summary.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Client maintainer: interpret received counts, canonical details, and unavailable delivery without semantic replay.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "config/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contributor: maintain explicit quality baselines without admitting new debt.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "config/json-contracts/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contributor: use the JSON syntax guard and understand exact allowances and evidence limits.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic maintainer: reproduce source correspondence and case accounting without treating inventory as execution.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "config/vale/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Documentation maintainer: identify pinned local rule sources, vocabulary, and assessment limits.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/demo/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Presentation maintainer: reproduce a historical replay without claiming a fresh semantic run.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/development.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contributor: prepare tools, choose tests, install a checkout, and interpret CI and release evidence.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "No initial task chooser separated contributor work from first product use. Added reader routes.",
+        "Every PR candidate claim contradicted current DOCUMENTATION plan. Corrected from validation_scope.py and validation_outcome.py.",
+        "Developer publication paragraph omitted DOCS_VALIDATED no-publication path. Corrected from build_candidate.py.",
+        "Moved whole-task benchmark controls from the ordinary public task guide without deleting measures or negative controls."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/documentation-structure.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Documentation maintainer: choose reader purpose, source owner, prose procedure, and public projection workflow.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Claim that Architecture and Reference stay outside menus contradicted docs.json and live published tabs. Corrected."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/hosted-read-configuration.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Operator: set read capacities and interpret admitted grants, diagnostics, and continuation lifetimes.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Diagnostic fields, admitted grants, output recovery, and source lifetime lacked separate lookup points. Added subheadings and topic paragraphs."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/installation-recovery.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Operator: detach a damaged owned installation and preserve unresolved state.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/recovery-plan.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contributor: read accepted but unimplemented requirements for service restoration and user-approved IDEA restart.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/static-query-execution.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic contributor: distinguish execution rules, native qualification, and unproved scale targets.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Opening scale target displaced explanation of page purpose. Added contributor orientation and explicit target section.",
+        "65,536-byte host response default contradicted ReadLimits.kt. Corrected to 2,147,483,646 and linked authoritative defaults.",
+        "Long qualification sections mixed fixture, admission, native counters, factory/capture, mutation, document edits, reuse, and enterprise gates. Added topic headings."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/tool-rpc.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Adapter author: invoke catalog and tools, distinguish native MCP from RPC, and interpret delivery evidence.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/tooling/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Documentation tooling contributor: maintain glossary parsing and canonical OpenWiki projections.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/tooling/diagrams/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Diagram author: regenerate and inspect source-owned SVG and JSX assets.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/tooling/value-journey/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Illustration maintainer: reproduce fixture-bound static views without compiler-result claims.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "docs/topology-impact.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contributor: select declared Gradle consumers without claiming complete semantic or test impact.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment operator: attach an owned observation carrier and interpret logs without semantic authority.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Producer-checkpoint RESUME description implied semantic continuation. Corrected current public output-only meaning."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/AGENT_EFFICIENCY.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment operator: run paired sessions under a fixed corpus, model, and evidence policy.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/ENTERPRISE_CACHE.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic investigator: qualify reported mechanisms with portable controls before installed native evidence.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/EVALUATION_CHECKLIST.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Evaluator: select named coverage cases and distinguish completed evidence tiers from unrun gates.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "saved result was ambiguous between a recorded reply and a live retained result. Changed to previously received reply; zero new semantic calls remains explicit."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/HOSTED_QUERY.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment operator: reproduce a limited direct-supertype feasibility endpoint, separate from product query.run.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/LOG_VISIBILITY.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Operator: capture bounded private logs and restore script-owned DEBUG settings.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Harness maintainer: admit historical received prefixes without replacing native rejection or authorizing replay.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/PI_EVALUATION.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Harness maintainer: run bounded Pi evaluations with separate provider, semantic, and received-reply evidence.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Same received-reply distinction corrected.",
+        "Joined numeric prose tokens (most64, mode0400, overall5s) impaired mechanical readability. Restored spacing without changing values."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic investigator: pin exact native artifacts and compare matching workloads; historical and current modes differ.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Historical v0.38.0 replay commands and current contract-17 comparison lacked an explicit transition. Added one."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/developer-trace-delivery/REPLAY.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Contributor: select existing fixture and projection tests while preserving unavailable installed evidence.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/k2-common-metadata-fixture/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic investigator: compare JVM and common metadata with independent known-call controls.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/pi-fixtures/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Harness maintainer: regenerate typed fixtures while preserving current versus historical producer identities.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Selected sections and transitions",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/NOTICE.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Fixture user: preserve upstream revisions, adaptations, and licenses.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/ORACLE.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic evaluator: apply independent exact TRACE sets and explicit forbidden caller/control outcomes.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment operator: prepare, pin, run, and clean a private TRACE qualification fixture.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/host-observation/try-local-qualification.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment operator: select exact historical contract slices and preserve separate native source and model evidence.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/representation-impact/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment operator: capture one schema-admitted investigation and reacquire current references after freshness changes.",
+      "review": "SOURCE_AND_READER_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Public execution RESUME advice contradicted contract 17. Preserved historical checkpoint facts and replaced current recovery instructions with output-only and retained reads."
+      ],
+      "status": "CHANGED",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/task-access/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Experiment user: invoke the contract-17 task candidate and interpret narrowly scoped Pi session results.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "experiments/task-access/SKILL.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Agent: select exact declarations before relationships, preserve source scopes and issued recovery authority.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "packaging/cloud/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Evaluation maintainer: provision isolated Linux tools and distinguish setup from native/product qualification.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "relation/intellij/NATIVE_FIXTURES.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Semantic contributor: run headless compiler/platform fixtures and understand their exact assertion scope.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "runtime/hosted/NATIVE_FIXTURES.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Host contributor: run controlled native smart-mode, cancellation, connection, and read-identity fixtures.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    },
+    {
+      "path": "runtime/hosted/native/README.md",
+      "category": "Contributor documentation",
+      "readerAndPurpose": "Release evaluator: reproduce explicit mixed-version installation acceptance and exact restoration limits.",
+      "review": "READER_PURPOSE_REVIEW",
+      "coverage": "Page prose and structure",
+      "finding": [
+        "Purpose, prerequisites, evidence limits, and next action are explicit. No demonstrated comprehension defect selected for an edit."
+      ],
+      "status": "KEEP",
+      "limit": "This is a simulated engineering-reader review, not a human comprehension study or a fresh execution of all commands."
+    }
+  ],
+  "claimEvidence": {
+    "CI plan": " .github/scripts/ci/validation_scope.py:23-66,143-160 and test_validation_scope.py; validation_outcome.py:70-71,160-162; .github/scripts/release/build_candidate.py:533-534",
+    "transport default": "kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt:4,53; kernel/src/test/kotlin/io/github/amichne/kast/kernel/ReadLimitsTest.kt larger semantic byte defaults case",
+    "RESUME": "app-server/docs/public-query-contract.md action table; authored tools.schema.json contract 17; no new native run claimed",
+    "navigation": "docs/public/docs.json tabs; sidebar-toggle.js toggles sidebar only; parent live rendered inspection"
+  },
+  "semanticTool": "ReadLimitParameter lookup rejected REQUEST_ADMISSION/BUSY, wait_for_capacity. Exact source read supplied fallback evidence."
+}

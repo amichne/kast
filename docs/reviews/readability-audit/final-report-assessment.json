@@ -1,0 +1,232 @@
+{
+  "type": "ASSESSED",
+  "scope": "Four audit reports after installation evidence was added",
+  "rootVale": {
+    "counts": {
+      "warning": 4
+    },
+    "exitCode": 0,
+    "findings": {
+      "docs/reviews/readability-audit/README.md": [
+        {
+          "Action": {
+            "Name": "",
+            "Params": null
+          },
+          "Suggestions": [],
+          "Span": [
+            1,
+            1
+          ],
+          "Check": "Slopsentral.Grade",
+          "Description": "",
+          "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+          "Message": "Estimated Flesch-Kincaid grade 10.50 exceeds the shared advisory target of 8.",
+          "Severity": "warning",
+          "Match": "",
+          "Line": 1
+        }
+      ],
+      "docs/reviews/readability-audit/concept-evidence.md": [
+        {
+          "Action": {
+            "Name": "",
+            "Params": null
+          },
+          "Suggestions": [],
+          "Span": [
+            1,
+            1
+          ],
+          "Check": "Slopsentral.Grade",
+          "Description": "",
+          "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+          "Message": "Estimated Flesch-Kincaid grade 9.73 exceeds the shared advisory target of 8.",
+          "Severity": "warning",
+          "Match": "",
+          "Line": 1
+        }
+      ],
+      "docs/reviews/readability-audit/independent-reader-review.md": [
+        {
+          "Action": {
+            "Name": "",
+            "Params": null
+          },
+          "Suggestions": [],
+          "Span": [
+            1,
+            1
+          ],
+          "Check": "Slopsentral.Grade",
+          "Description": "",
+          "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+          "Message": "Estimated Flesch-Kincaid grade 11.40 exceeds the shared advisory target of 8.",
+          "Severity": "warning",
+          "Match": "",
+          "Line": 1
+        }
+      ],
+      "docs/reviews/readability-audit/reader-review.md": [
+        {
+          "Action": {
+            "Name": "",
+            "Params": null
+          },
+          "Suggestions": [],
+          "Span": [
+            1,
+            1
+          ],
+          "Check": "Slopsentral.Grade",
+          "Description": "",
+          "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+          "Message": "Estimated Flesch-Kincaid grade 11.18 exceeds the shared advisory target of 8.",
+          "Severity": "warning",
+          "Match": "",
+          "Line": 1
+        }
+      ]
+    }
+  },
+  "pinned": {
+    "comprehension": {
+      "type": "NOT_ASSESSED"
+    },
+    "documents": [
+      {
+        "findings": [
+          {
+            "category": "READABILITY",
+            "line": 1,
+            "message": "Estimated Flesch-Kincaid grade 10.50 exceeds the shared advisory target of 8.",
+            "rule": "Slopsentral.Grade",
+            "severity": "warning",
+            "span": [
+              1,
+              1
+            ],
+            "type": "FINDING"
+          }
+        ],
+        "metrics": {
+          "estimatedSyllables": 1494,
+          "fleschKincaidGrade": 10.5,
+          "sentences": 73,
+          "words": 810,
+          "wordsPerSentence": 11.1
+        },
+        "path": "docs/reviews/readability-audit/README.md",
+        "sourceSha256": "cce5fcfbf2879515e3d0a9d8ab5c2c66d22009223a80e776b0c39e3315294968",
+        "terminology": {
+          "type": "OUT_OF_SCOPE"
+        },
+        "type": "DOCUMENT_ASSESSMENT"
+      },
+      {
+        "findings": [
+          {
+            "category": "READABILITY",
+            "line": 1,
+            "message": "Estimated Flesch-Kincaid grade 9.73 exceeds the shared advisory target of 8.",
+            "rule": "Slopsentral.Grade",
+            "severity": "warning",
+            "span": [
+              1,
+              1
+            ],
+            "type": "FINDING"
+          }
+        ],
+        "metrics": {
+          "estimatedSyllables": 1141,
+          "fleschKincaidGrade": 9.73,
+          "sentences": 70,
+          "words": 615,
+          "wordsPerSentence": 8.79
+        },
+        "path": "docs/reviews/readability-audit/concept-evidence.md",
+        "sourceSha256": "fce9ec665b032741f88b7c3cf2aa3e8d0fb6e01955f0fb3bab41689f1cf7e935",
+        "terminology": {
+          "type": "OUT_OF_SCOPE"
+        },
+        "type": "DOCUMENT_ASSESSMENT"
+      },
+      {
+        "findings": [
+          {
+            "category": "READABILITY",
+            "line": 1,
+            "message": "Estimated Flesch-Kincaid grade 11.40 exceeds the shared advisory target of 8.",
+            "rule": "Slopsentral.Grade",
+            "severity": "warning",
+            "span": [
+              1,
+              1
+            ],
+            "type": "FINDING"
+          }
+        ],
+        "metrics": {
+          "estimatedSyllables": 466,
+          "fleschKincaidGrade": 11.4,
+          "sentences": 21,
+          "words": 245,
+          "wordsPerSentence": 11.67
+        },
+        "path": "docs/reviews/readability-audit/independent-reader-review.md",
+        "sourceSha256": "ddf06381c9c2dddb02dd8f6e7323aaf3a0464addc7198ba4abdebb9e0e62515d",
+        "terminology": {
+          "type": "OUT_OF_SCOPE"
+        },
+        "type": "DOCUMENT_ASSESSMENT"
+      },
+      {
+        "findings": [
+          {
+            "category": "READABILITY",
+            "line": 1,
+            "message": "Estimated Flesch-Kincaid grade 11.18 exceeds the shared advisory target of 8.",
+            "rule": "Slopsentral.Grade",
+            "severity": "warning",
+            "span": [
+              1,
+              1
+            ],
+            "type": "FINDING"
+          }
+        ],
+        "metrics": {
+          "estimatedSyllables": 1853,
+          "fleschKincaidGrade": 11.18,
+          "sentences": 91,
+          "words": 966,
+          "wordsPerSentence": 10.62
+        },
+        "path": "docs/reviews/readability-audit/reader-review.md",
+        "sourceSha256": "da2074e1a6e9751bf742de12d5a2c1437a8f68e716e3a5dec125f52d547c34c6",
+        "terminology": {
+          "type": "OUT_OF_SCOPE"
+        },
+        "type": "DOCUMENT_ASSESSMENT"
+      }
+    ],
+    "engine": {
+      "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+      "type": "VALE",
+      "version": "3.24.0"
+    },
+    "glossary": {
+      "entries": 23,
+      "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+      "type": "CHECKED"
+    },
+    "schemaVersion": 1,
+    "type": "ASSESSED"
+  },
+  "pinnedExitCode": 1,
+  "review": {
+    "decision": "Keep four grade advisories.",
+    "reason": "The report preserves exact contract names, source paths, provenance, and evidence limits. Shorter substitutions erase distinctions. No mechanical or terminology errors remain in this scope."
+  }
+}

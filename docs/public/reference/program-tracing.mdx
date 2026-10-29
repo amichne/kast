@@ -11,6 +11,10 @@ Each answer keeps source sites and exact compiler identities. The path also stat
 
 A trace can cross functions or show steps inside one body.
 For a callback, the evidence connects the body to the code that supplies and invokes it.
+These are source relationships. They do not show that a particular execution reached the code or that every branch can run.
+
+For an introduction through ordinary Kotlin code, read [Follow a value](/explanation/value-journey).
+This reference defines the supported routes and their limits.
 
 ## Three tracing contracts
 
@@ -43,16 +47,18 @@ fun checkout() {
 
 The compiler maps the supplied lambda to `submit.block`. The alias through `action` keeps that value. Its binding cannot change.
 
-Forwarding evidence connects that formal to `forward.next`. The call of `next()` keeps its actual owner. The anonymous body keeps `charge()`.
+A *formal* is the parameter in the called function's declaration, here `block` or `next`.
+Forwarding evidence connects `submit.block` to `forward.next`. The invocation `next()` belongs to `forward`.
+The call to `charge()` belongs to the lambda body, even though that body appears inside `checkout`.
 
 <CallbackRouteDiagram />
 
-1. The lambda body contains the call to charge.
-2. The caller supplies that lambda to submit.block.
-3. The immutable action alias keeps the supplied value.
-4. Forwarding sends the value to forward.next.
-5. The call to next invokes that value.
-6. The evidence keeps the anonymous body and its charge call.
+1. The lambda body contains the call to `charge`.
+2. `checkout` supplies that lambda to `submit.block`.
+3. The immutable `action` alias keeps the supplied value.
+4. The argument to `forward` supplies that value to `forward.next`.
+5. The call `next()` invokes that value.
+6. The evidence keeps the anonymous body and its `charge` call.
 
 An admitted graph keeps proof for each hop. Unsupported transfers prevent a complete graph. So does an incomplete scan.
 
@@ -62,17 +68,19 @@ An admitted graph keeps proof for each hop. Unsupported transfers prevent a comp
 
 Kast keeps five roles distinct:
 
-- The named lexical container holds the code.
-- The anonymous body contains its calls.
-- The supplier passes the callback.
-- The formal accepts it.
-- The actual call owner invokes it.
+- The named lexical container holds the source text, here `checkout`.
+- The anonymous body contains its calls, here the lambda with `charge()`.
+- The supplier passes the callback, here the `submit` call in `checkout`.
+- The formal accepts it, here `submit.block`.
+- The actual call owner contains the invocation, here `forward` with `next()`.
 
 An unused default keeps its formal and expression. Kast does not invent a call. A nested body needs proof for its own invocation route.
 
 Kast connects anonymous owners through exact supplier bindings and source summaries. It also uses direct calls and admitted library contracts. Each owner keeps its own proof. Lexical containment alone does not complete a route.
 
 Reviewed calls-in-place contracts keep their declared call kind. Missing effects or effects that conflict cannot become `UNKNOWN`. That value cannot stand in for missing proof.
+
+### Library calls need their own evidence
 
 The `inline` modifier alone does not prove a callback route. Standard-library `with`, `apply`, and `let` declare `callsInPlace` effects.
 Collection `map` and `forEach` do not declare those effects. Their inline modifier supplies no such proof. Missing dependency effects remain explicit proof gaps.
@@ -85,6 +93,8 @@ The reviewed `kotlin.lazy` model records the initializer supplied for later use.
 
 `IMPACT` starts from exact producer calls. Native reads prove source identity and supported Kotlin transfers.
 
+Here, a producer is the selected constructor or function call whose result the investigation tracks.
+
 Plain request and response paths trace constructor results, arguments, and receivers. They also trace proven immutable field storage and reads. Returns connect to the matching call. Supported nested calls and named locals keep that route. Different fields keep separate provenance. So do separate calls to the same mapper.
 
 Interface calls can enter eligible source implementations within the declared domain. Each alternative keeps proof of its implementation and source owner. A complete static target set does not show which target ran.
@@ -92,6 +102,8 @@ Interface calls can enter eligible source implementations within the declared do
 An opaque call needs proof to connect a request argument to its response. Source evidence or a reviewed model must supply that proof.
 
 Supplied reviewed models define how values change form. They also define how modeled callables behave. Each path records where it used a model. It keeps the native evidence too.
+
+### Branches and fields keep separate proof
 
 When a try or catch body completes normally, its final value can supply the try expression. Each catch alternative keeps its own producer identity.
 
@@ -111,11 +123,15 @@ Supported immutable captures keep their exact binding. They also keep their anon
 
 A callback result can enter the exact formal invocation. It can then return through the matching wrapper call. Each `CALLBACK_RETURN` keeps the supplier occurrence and invocation owner. It also keeps the source-call frame. Separate wrapper calls keep separate result identities.
 
+### A callback result can be discarded
+
 A wrapper can discard the result and return a constant. That constant has no transfer from the discarded result.
 
 Unit coercion discards the expression's value. It does not return that value. Results of type `Unit?` remain values, not Unit coercion.
 
 Immutable constructor fields and normal try branches keep this result provenance. A successful `Attempt.Value.value` path supplies no value to the exceptional `Attempt.Failure` branch. This does not prove that the code ran. It also does not connect a decoder's argument to its result.
+
+### Unsupported invocation owners remain explicit
 
 Value flow needs source proof for supply and invocation. Both must connect to the named root. Each anonymous body needs one invocation context. Formal invocations need named owners.
 

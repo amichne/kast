@@ -6,21 +6,27 @@ Pull requests use the merge base. Pushes use the entire before/head range.
 
 | Plan | Required work | Product publication |
 | --- | --- | --- |
-| `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, and example consumers | None |
+| `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, installer examples, and documentation tooling | None |
 | `SOURCE` | Affected owners and consumers, their semantic families, shared guards, offline preflight and portable packaging | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
-The documentation plan admits the reviewed pages, navigation, styles, and value-journey example inputs.
+The documentation plan admits reviewed pages, navigation, styles, generated views, and their documentation tooling.
+It also admits the reader-journey audit reports and Vale profiles from PR #1130.
+The frozen path inventory in `fixtures/pr1130-paths.txt` covers all 113 changed files at `d02373e8`.
+Tests reject broader validation skips when an installer script, Kotlin source, build file, or workflow joins that inventory.
 Before adding a path, inspect its consumers in Gradle, packaging, generators and tests.
-Installer examples in README, start, installation and compatibility keep full validation.
+README, start, installation and compatibility examples run `packaging/test-installer-entrypoint.py` without Gradle.
+When the readability runner or its test exists, the documentation job also runs its pytest, Pyright and Ruff checks.
 Most OpenWiki source inputs keep full validation.
 Reviewed documentation inputs instead run `check-documentation-inputs` for source paths and links.
 That mode emits `DOCUMENTATION_INPUTS` evidence and makes no Kotlin declaration claim.
 Full source validation keeps `verifyKnowledgeBase` and its declaration evidence.
 A source-inventory test checks the current literal source paths and inline links.
 New references to listed pages and unsupported reference forms require review before CI can pass.
-Generated schemas, scripts, build configuration, new paths and mixed documentation/product changes also select full validation.
+Generated callable schemas, product scripts, build configuration, unknown paths and mixed documentation/product changes select full validation.
+A reviewed documentation script keeps its direct tests instead of selecting Kotlin product qualification.
+Rejected affected plans report their finite failure code, such as `UNKNOWN_OWNER` or `STALE_GRAPH`.
 Regular file edits, additions and deletions keep both endpoints of the diff.
 Renames are read as deletion plus addition, so an excluded endpoint keeps full validation.
 Symlinks, executable modes, type changes and malformed observations select full validation.
@@ -33,10 +39,13 @@ Main pushes with source changes select product validation before automatic devel
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
 
+## Validation records and publication
+
 `required_checks.py` admits only an exact plan whose selected jobs succeeded and whose excluded jobs were skipped.
 After that aggregate passes, `validation_outcome.py` repeats source selection and seals `validation.json`.
 The record retains the repository, source revision, source tree, comparison base, workflow event and run identities.
 CI retains it as `ci-validation-outcome-<source>-<attempt>` for 30 days.
+
 
 Developer promotion requires that record from the exact successful main push run.
 A missing, malformed, contradictory or mismatched record rejects promotion.
@@ -46,6 +55,8 @@ A missing, malformed, contradictory or mismatched record rejects promotion.
 It never labels an earlier binary with the documentation revision.
 The documentation job runs parser and glossary checks directly; the full product gate also retains those proofs.
 That duplication adds unmeasured work to full runs.
+
+## Cache ownership
 
 Gradle cache transport remains owned by the pinned `setup-gradle` action.
 Only main push and main workflow-dispatch runs can write entries.
@@ -57,11 +68,22 @@ A successful main candidate reuse skips Gradle setup and retains the existing fa
 When main has no useful Gradle cache, an authorized CI workflow dispatch on an accepted main revision can seed it.
 That dispatch runs full validation and does not trigger automatic developer publication.
 Do not change candidate reuse merely to refresh a cache.
+
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
 Candidate versions keep the workflow run number.
 Source validation uses the stable version `0.0.0` for product, control, and hosted-plugin resources.
 Source identities can still invalidate outputs. Measure their effect.
+Source and candidate invocations use `--info` to keep configuration-cache rejection reasons and task input changes.
+Source logs stay in the existing source reports; candidate logs stay in the Actions build step.
+Keep ordinary source validation at `0.0.0`; do not substitute a run number to improve candidate reuse.
+Candidate qualification retains its actual release version and exact source identity.
+
+A local CLI compilation probe reused configuration and left compilation up-to-date on an identical second invocation.
+Changing `version` invalidated configuration reuse and changed the included-build JAR output name.
+With that version fixed, changing `controlVersion` invalidated configuration reuse and regenerated `ManagementVersion.kt`.
+Gradle then identified that generated source as the changed compilation input.
+These observations explain version-driven work; they do not measure a CI improvement or explain every hosted cache miss.
 No build scan evidence is available for this change.
 
 ## Temporary semantic fixture switch
@@ -148,15 +170,25 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 The graph rejects native compilation, installed-product composition, release runtime admission, hosted-plugin assembly, and release assembly.
 Candidate qualification keeps those tasks, actual release versions, acceptance, sealing, and exact identity admission.
 Source feedback waits for the selected source, documentation, and portable jobs.
-The final required gate also waits for candidate qualification.
+The source result has exactly one producer: standalone affected validation or successful candidate qualification.
+When a candidate is selected, `productBuildGate` includes `sourceValidationGate` in the same Gradle invocation.
+The standalone `source-work` job skips, and the stable `Source validation` check requires candidate success.
+For source-only changes, that check instead requires the standalone job and a skipped candidate job.
+Failed, cancelled, missing, duplicate, and unexpected producer results reject the source result.
+Source feedback therefore waits for qualification only when qualification owns the source proofs.
+The final required gate still checks candidate success and exact candidate identity.
 A successful source-feedback aggregate cannot seal a qualified-candidate outcome.
 
 Qualification remains necessary for packaging, installation, native inputs, toolchains, and release policy before merge.
 Unknown ownership and unavailable history select the full plan.
 Repository branch-protection settings remain unchanged.
 
-Source and candidate jobs overlap on release-sensitive changes during this split.
-That overlap is measured runner work, not a performance reduction.
+Source and candidate checks share one Gradle invocation on release-sensitive changes.
+The resolved product graph must include the source gate and every module's `check` and `scopedCheck` tasks.
+Candidate preflight checks that membership; it does not replace task execution.
+Standalone source changes keep stable versions and their existing affected validation.
+The source-result job adds one small aggregation step to that path.
+No matched hosted timing comparison establishes the size of the improvement yet.
 The six-minute criterion remains open until the frozen hosted corpus passes.
 
 ## Affected obligations and rollout
@@ -209,7 +241,10 @@ If selection misses an obligation, remove `--affected` from the scope, source, a
 Remove `CI_VERIFICATION_PLAN` from the source step at the same time.
 That rollback restores the complete source path and keeps the independent fixture optimization.
 
+### Interpret rollout measurements
+
 Each measurement records its source identities, exact patch, selected cases, task graph, compiler count, timestamps, and process outcome.
 Workflow and job timestamps supply setup, artifact, aggregate, queue, and total runner durations.
 The process timer alone cannot establish the six-minute feedback criterion.
+
 The criterion remains open until all four changed-output runs pass within 360 seconds through their required aggregate.

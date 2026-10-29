@@ -1,13 +1,13 @@
 # Kast
 
-**Your agent reads the code. Kast connects the pieces.**
+**Which callers and values does this Kotlin change affect?**
 
-Kast helps your coding agent understand how your Kotlin project fits together.
-Trace a value through calls, fields, and callbacks. Find callers and
-implementations, inspect diagnostics, and make targeted source changes—with
-source locations and clear limits on what each answer establishes.
+Kast gives coding agents Kotlin source relationships from IntelliJ IDEA's compiler analysis.
+Use it to find callers and implementations, trace supported value transfers,
+inspect diagnostics, and make targeted source changes.
+The agent can request source locations and inspect the answer's scope and evidence limits.
 
-## Can my agent already do that?
+## Why source relationships matter
 
 Ask where a customer goes after a helper creates it from a sign-up.
 A welcome-email draft holds that customer as its recipient. The draft can then
@@ -18,9 +18,13 @@ customer. Names and types alone do not explain that difference.
 
 [![One list holds a welcome-email draft for the customer from a sign-up. The changed expression makes a draft for a different customer.](docs/public/images/value-journey.svg)](https://kast.michne.com/explanation/value-journey/)
 
+Text search finds names. Compiler analysis resolves which declaration a call uses,
+including its overload and receiver. Kast connects supported relationships into a query
+and keeps the evidence for each connection.
+
 This image is an authored source illustration, not a live Kast result or a
-record of execution. Kast gives your agent source locations and evidence for
-these connections, including where the evidence stops.
+record of execution. Its list connection also needs a reviewed library rule.
+Unsupported transfers do not become claims that no connection exists.
 
 [**Try the interactive example →**](https://kast.michne.com/explanation/value-journey/)
 
@@ -32,9 +36,8 @@ these connections, including where the evidence stops.
 
 > Use Kast to inspect the diagnostics in this directory.
 
-Kast builds on IntelliJ IDEA's Kotlin analysis. It connects that analysis into
-project queries, value traces, and checked source changes for Codex, Copilot,
-or Pi.
+Kast connects to Codex, Copilot, or Pi. It uses the saved, imported project in IDEA.
+A source path does not prove that the application executed that path.
 
 ## Get started
 
@@ -48,9 +51,13 @@ Codex setup also needs `codex` on `PATH`.
 ```
 
 Accept the default Codex connection. Restart IDEA and Codex.
-Select your Kotlin repository or worktree, then ask:
+Select your Kotlin repository or worktree in Codex, then ask:
 
 > Use Kast to find a Kotlin function in this workspace. Show its signature and source location.
+
+Open the returned location and compare it with the source.
+If setup reports a trust or import problem, resolve that cause before another query.
+The [first-query exercise](https://kast.michne.com/tutorials/first-query/) supplies a known caller and an absent-name comparison.
 
 [Installation guide](https://kast.michne.com/start/) ·
 [Copilot and Pi](https://kast.michne.com/agent-harnesses/) ·

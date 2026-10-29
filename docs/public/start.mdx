@@ -6,6 +6,9 @@ icon: "download"
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
+Connect Kast to Codex, then find a function in your own Kotlin project.
+Success means that a completed query identifies the function and its source location in the selected worktree.
+
 ## Before you install
 
 You need:
@@ -16,8 +19,9 @@ You need:
 - Codex CLI and uv 0.12.9 or later on `PATH`.
 - Python 3.12 or 3.13 for the task service.
 
-Run `codex --version` and `uv --version` to see their installed versions.
-The locked task script can download Python and pinned dependencies on its first run.
+Run `codex --version` and `python3 --version` to see their installed versions.
+The IDEA runtime is separate from your project's JDK.
+Use the [platform inspection commands](/reference/installation#before-you-install) if you do not know your IDEA build or runtime.
 For Copilot or Pi, use the [agent guide](/agent-harnesses) after installation.
 
 <Steps>
@@ -31,6 +35,7 @@ For Copilot or Pi, use the [agent guide](/agent-harnesses) after installation.
     ```
 
     Accept the default Codex plugin installation.
+    Keep the command path that the installer prints. The installer does not change your shell profile.
   </Step>
   <Step title="Restart IDEA and Codex">
     <span id="2-restart-intellij-idea" />
@@ -43,14 +48,23 @@ For Copilot or Pi, use the [agent guide](/agent-harnesses) after installation.
     <span id="3-ask-your-agent" />
     <span id="4-establish-readiness" />
 
-    > Use Kast to find a Kotlin function in this workspace. Show its signature and source location.
+    Choose a function name from your source, then replace `yourFunction` in this prompt:
+
+    > Use Kast to find the function yourFunction in this workspace. Show its signature, source location, and completion status. If several declarations match, show each one.
 
     Kast prepares the project in IDEA. If trust or import needs your attention, the result tells you what went wrong.
     Open the returned source location and compare the function with the answer.
+    If several declarations match, select the intended signature and owner before another query.
   </Step>
 </Steps>
 
-Use [the first-query exercise](/tutorials/first-query) for a small example with a known caller.
+## What your first result establishes
+
+A matching declaration with a completed query shows that Kast reached semantic analysis for this source question in this worktree.
+Installation status alone does not establish that fact.
+This result does not prove that your project builds or that a function ran.
+
+Use [the first-query exercise](/tutorials/first-query) for a known caller, an unrelated function, and an absent name.
 If setup stops, use [Troubleshoot Kast](/troubleshooting).
 
 [Installation options](/reference/installation) · [Connect another agent](/agent-harnesses)

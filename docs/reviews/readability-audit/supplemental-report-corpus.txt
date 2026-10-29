@@ -1,0 +1,8 @@
+docs/public/explanation/query-lifecycle.mdx
+docs/public/reference/composition.mdx
+docs/public/reference/symbols.mdx
+docs/public/reference/evidence-boundaries.mdx
+docs/reviews/readability-audit/README.md
+docs/reviews/readability-audit/concept-evidence.md
+docs/reviews/readability-audit/independent-reader-review.md
+docs/reviews/readability-audit/reader-review.md

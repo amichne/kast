@@ -10,6 +10,10 @@ import OkfConcept0 from "/snippets/okf/semantics/symbol/discovery-and-identity.m
 
 import OkfConcept1 from "/snippets/okf/contracts/source-identity.mdx"
 
+This page explains declaration identity and the source contracts that use it. The shared contracts include source APIs other than `query_symbols`.
+
+For `query_symbols`, `READ_SOURCE.candidateRef` checks the issued snapshot. It does not reacquire a stale exact reference. A fresh `RUN` can reacquire an exact reference after current compiler identity checks. It does not refresh retained rows or source snapshots. [Query forms](/reference/api#actions) defines the current public actions.
+
 <a id="evidence-limits" />
 
 <a id="local-declarations" />

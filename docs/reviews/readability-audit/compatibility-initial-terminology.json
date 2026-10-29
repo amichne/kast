@@ -1,0 +1,264 @@
+{
+  "AGENTS.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        19,
+        22
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 5
+    }
+  ],
+  "app-server/docs/compatibility.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keyless"
+        ]
+      },
+      "Suggestions": [
+        "keyless"
+      ],
+      "Span": [
+        5,
+        11
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keyless' instead of 'Keyless'.",
+      "Severity": "error",
+      "Match": "Keyless",
+      "Line": 251
+    }
+  ],
+  "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        64,
+        67
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 5
+    }
+  ],
+  "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        64,
+        67
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 5
+    }
+  ],
+  "experiments/host-observation/AGENT_EFFICIENCY_REFERENCES.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        18,
+        21
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 5
+    }
+  ],
+  "experiments/host-observation/EVALUATION_CHECKLIST.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "retained result"
+        ]
+      },
+      "Suggestions": [
+        "retained result"
+      ],
+      "Span": [
+        68,
+        79
+      ],
+      "Check": "Kast.Terminology",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'retained result' instead of the recorded incorrect form 'saved result'. Examine its scope.",
+      "Severity": "error",
+      "Match": "saved result",
+      "Line": 279
+    }
+  ],
+  "experiments/host-observation/PI_EVALUATION.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "retained result"
+        ]
+      },
+      "Suggestions": [
+        "retained result"
+      ],
+      "Span": [
+        6,
+        17
+      ],
+      "Check": "Kast.Terminology",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'retained result' instead of the recorded incorrect form 'saved result'. Examine its scope.",
+      "Severity": "error",
+      "Match": "saved result",
+      "Line": 364
+    }
+  ],
+  "experiments/host-observation/TRACE_COMPLETENESS_PLAN.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "callees"
+        ]
+      },
+      "Suggestions": [
+        "callees"
+      ],
+      "Span": [
+        30,
+        36
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'callees' instead of 'CALLEES'.",
+      "Severity": "error",
+      "Match": "CALLEES",
+      "Line": 98
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "callees"
+        ]
+      },
+      "Suggestions": [
+        "callees"
+      ],
+      "Span": [
+        37,
+        43
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'callees' instead of 'CALLEES'.",
+      "Severity": "error",
+      "Match": "CALLEES",
+      "Line": 113
+    }
+  ],
+  "experiments/host-observation/agent-efficiency-configs/token-poc-onboarding.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "callees"
+        ]
+      },
+      "Suggestions": [
+        "callees"
+      ],
+      "Span": [
+        78,
+        84
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'callees' instead of 'CALLEES'.",
+      "Severity": "error",
+      "Match": "CALLEES",
+      "Line": 34
+    }
+  ],
+  "experiments/task-access/SKILL.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        7,
+        10
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 2
+    }
+  ]
+}

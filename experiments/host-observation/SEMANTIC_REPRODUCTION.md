@@ -90,6 +90,11 @@ The fake-clock deadline test proves ordering and owner recovery only. Native rec
 
 ## Compare complete workloads locally
 
+The commands before this section preserve the historical v0.38.0 reproduction.
+For current work, select the exact candidate and its declared qualification slice.
+Public contract 17 keeps semantic execution within `RUN`.
+Its issued output continuations and retained-result cursors present existing evidence without more semantic work.
+
 The `replay-workloads` and `compare` modes extend this runner's pins, process
 captures, source fixtures and native receipts. They use the installed public
 Tool RPC path, without a model or API call. Both profiles include four workloads.

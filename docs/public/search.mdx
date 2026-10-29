@@ -14,6 +14,8 @@ Use these prompts with your [connected agent](/agent-harnesses). Replace the exa
 > Use Kast to trace the result of submitOrder. Show the source connections through helpers, fields, and callbacks. Report where the evidence stops.
 
 A value can move through several functions and take different names. Kast can trace those connections and distinguish another value of the same type.
+Inspect each path's classification and the first unsupported transfer.
+An admitted model alone does not establish that the same value reaches the destination.
 
 [Explore a value journey](/explanation/value-journey).
 
@@ -22,6 +24,7 @@ A value can move through several functions and take different names. Kast can tr
 > Use Kast to find submitOrder. If several functions match, show their signatures so I can choose one. Then find its callers.
 
 Use the returned locations to review the callers of your selected function.
+Keep the search scope and completion status with that list. A partial list does not identify every affected caller.
 
 ## Which implementation matters?
 
@@ -34,6 +37,7 @@ The list describes source code. It does not show which implementation a live app
 > Use Kast to inspect the diagnostics in this directory before we change it.
 
 Kast returns the problems that IDEA reports for the selected code.
+An empty diagnostic list does not replace a project build or its tests.
 
 ## Can we change this body?
 
@@ -47,6 +51,7 @@ Review the diff and run your project's tests after a change.
 
 Read the reason in the result. Ask your agent to narrow the question or resolve the problem.
 An unfinished search does not prove that no matches exist.
+If you narrow the scope, the new answer covers that smaller question.
 
 [Troubleshoot Kast](/troubleshooting) to return to your task.
 

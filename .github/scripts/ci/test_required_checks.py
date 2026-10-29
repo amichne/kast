@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from copy import deepcopy
 from unittest.mock import patch
 
-from required_checks import CompletedSourceChecks, Gate, Verdict, admit_checks, inspect, main
+from required_checks import CompletedSourceChecks, Gate, Verdict, admit_checks, inspect, main, source_proof
 
 
 def docs_only_results():
@@ -33,6 +33,27 @@ def docs_only_results():
 
 
 class RequiredChecksTest(unittest.TestCase):
+    def test_source_proof_uses_exactly_one_selected_producer(self):
+        for qualified in (False, True):
+            needs = docs_only_results()
+            needs["scope"]["outputs"].update(
+                source="run", product="run" if qualified else "skip", portable="run",
+                documentation="skip", scope="PRODUCT" if qualified else "SOURCE",
+            )
+            needs["source-work"] = {"result": "skipped" if qualified else "success"}
+            needs["kotlin"]["result"] = "success" if qualified else "skipped"
+            self.assertEqual(Verdict.COMPLETE, source_proof(needs))
+            for producer in ("source-work", "kotlin"):
+                for result in ("failure", "cancelled", "", "skipped" if needs[producer]["result"] == "success" else "success"):
+                    rejected = deepcopy(needs)
+                    rejected[producer]["result"] = result
+                    with self.subTest(qualified=qualified, producer=producer, result=result):
+                        self.assertEqual(Verdict.CHECK_FAILED, source_proof(rejected))
+            missing = deepcopy(needs)
+            del missing["source-work"]
+            self.assertEqual(Verdict.CHECK_FAILED, source_proof(missing))
+        self.assertEqual(Verdict.INVALID_SELECTION, source_proof(docs_only_results()))
+
     def test_source_feedback_cannot_complete_candidate_qualification(self):
         needs = docs_only_results()
         needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")

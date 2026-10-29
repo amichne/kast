@@ -1,0 +1,22 @@
+extends: substitution
+message: "Use '%s' instead of '%s'."
+level: error
+ignorecase: true
+vocab: false
+# EXAMPLE ONLY: replace this fictional product's aliases with your decisions.
+# Use context-specific rules when two terms can have different meanings.
+swap:
+  'Example Service|ExampleSvc': ExampleService
+tests:
+  - name: explains the approved replacement
+    input: Configure Example Service before starting ExampleSvc.
+    contains:
+      - "Use 'ExampleService' instead of 'Example Service'."
+      - "Use 'ExampleService' instead of 'ExampleSvc'."
+  - name: accepts the canonical term
+    input: Configure ExampleService.
+    want: ''
+  - name: ignores literal identifiers
+    input: 'The old identifier is `ExampleSvc`.'
+    want: ''
+

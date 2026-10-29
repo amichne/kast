@@ -1,0 +1,35 @@
+{
+  "type": "ASSESSED",
+  "schemaVersion": 1,
+  "documents": 8,
+  "exitCode": 1,
+  "counts": {
+    "warning": 5
+  },
+  "reportPath": "build/reports/documentation/readability-supplemental-pinned.json",
+  "reportSha256": "2dfedc68757bc8627e11c9c1b24e460c2ea3437258d50a800031d469aa26b53d",
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "command": [
+    "uv",
+    "run",
+    "--locked",
+    "--script",
+    "/Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/4.0.5/skills/controlled-technical-writing/scripts/assess_text.py",
+    "--vale-bin",
+    "/Users/amichne/.local/share/mise/installs/vale/3.24.0/vale",
+    "--glossary",
+    "docs/glossary.json",
+    "docs/public/explanation/query-lifecycle.mdx",
+    "docs/public/reference/composition.mdx",
+    "docs/public/reference/symbols.mdx",
+    "docs/public/reference/evidence-boundaries.mdx",
+    "docs/reviews/readability-audit/README.md",
+    "docs/reviews/readability-audit/concept-evidence.md",
+    "docs/reviews/readability-audit/independent-reader-review.md",
+    "docs/reviews/readability-audit/reader-review.md"
+  ]
+}

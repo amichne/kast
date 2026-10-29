@@ -1,0 +1,29 @@
+extends: existence
+message: "Remove the accidental repetition in '%s'."
+level: error
+ignorecase: true
+nonword: true
+vocab: false
+# A deliberately small set of function words. Broad repetition checks flag
+# grammatical constructions such as "had had", "that that", and "it is is".
+tokens:
+  - '\b(the|and|or|of|to|for|with|from)\s+\1\b'
+tests:
+  - name: catches sentence-initial repetition
+    input: The the server runs.
+    contains: Prose.RepeatedWords
+  - name: permits grammatical repetition
+    input: She had had enough evidence that that path was safe. What it is is clear.
+    want: ''
+  - name: ignores literal code
+    input: 'Run `the the` first.'
+    want: ''
+  - name: ignores nonadjacent words and partial words
+    input: The service checks whether the connection is ready for the next request.
+    want: ''
+  - name: finds repetition across a soft wrap
+    input: |
+      Connect to
+      to the server.
+    contains: Prose.RepeatedWords
+
