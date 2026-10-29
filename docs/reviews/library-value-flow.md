@@ -295,7 +295,7 @@ mise exec -- python3 .github/scripts/ci/source_validation.py --report-directory 
 Fresh XML records 2,382 executed passes, zero failures, zero errors, and zero skipped cases.
 The count includes 498 CLI cases and 479 relation-contract cases.
 Another 795 historical suites contain 3,196 cases and contribute zero fresh assertions.
-Separate non-XML tasks report 401 Python passes and 152 Node passes with one Node skip.
+Separate non-XML tasks report 458 Python passes and 152 Node passes with one Node skip.
 Six disabled semantic-fixture or coverage tasks do not establish native evidence.
 The final focused corrections passed five overload cases and thirteen schema cases, with zero failures or skips.
 These corrections changed test oracles only. They preserve exact rejection codes and malformed-schema controls.
