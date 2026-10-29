@@ -1,54 +1,72 @@
 ---
 title: "MCP contract"
-description: "Discover Kast tools, call one by name, and decode the direct MCP result."
+description: "Discover Kast task tools and preserve their RPC evidence."
 icon: "plug"
-keywords:
-  - "MCP"
-  - "tools/list"
-  - "tools/call"
-  - "structuredContent"
+keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
 ---
 
-Direct MCP carries Kast tool calls over stdio. The client starts the process in the intended repository directory. After negotiation, it admits the catalog.
+The bundled plugin exposes one task MCP server over stdio.
+Codex, Copilot, and Pi use the same task catalog.
+The client starts the process in the exact repository or worktree.
+The server uses the installed Tool RPC without changes to its binary or wire shapes.
 
 ## Catalog
 
-`tools/list` supplies each tool's name, `inputSchema`, and `outputSchema`. Those installed schemas govern the session.
+`tools/list` supplies each task's name, description, input schema, and effect annotations.
+The installed task schema governs the session.
 
-| Tool | Purpose |
+| Task | Purpose |
 | --- | --- |
-| `query_symbols` | Declarations, source, relationships, and composition. |
-| `check_diagnostics` | IDEA diagnostics for a path. |
-| `health_check` | Workspace binding and readiness. |
-| `add_declaration`, `replace_body` | Targeted source changes. |
+| `find` | Discover declarations with known name, kind, directory or package, and source sets. |
+| `callers`, `callees`, `implementations`, `inheritors`, `overrides` | Read one-hop declaration relationships. |
+| `references`, `type_uses` | Read individual occurrence evidence. |
+| `trace` | Trace the fixed affected-use topology. |
+| `walk` | Keep traversal records through an explicit depth. |
+| `source` | Read source under an issued reference. The default region is `ANCHOR`. |
+| `result`, `resume` | Recover retained results or produced output. |
+| `diagnostics` | Read compiler diagnostics for a relative path. |
+| `schema`, `raw` | Inspect and call advanced existing operations. |
 
-Direct MCP omits `workspace_lifecycle`. Hosted App Server supplies that distinct tool to control projects.
+Raw tool names are not separate tools in this catalog.
+For source changes through `raw`, supply `write:true` and preserve the user's authorization.
+The installed catalog still admits the underlying request and effect.
 
-Tool discovery shows which tools are available. It does not prove that the IDEA project is ready. It does not prove that a semantic query is complete.
+Discovery does not prove IDEA readiness or semantic completion.
+Use the first useful task instead of a readiness probe.
+Read the bundled Kast skill for exact selection, destination scope, source regions, and recovery rules.
 
 ## Call and result
 
-`tools/call` selects a catalog tool and its input object. This example asks whether the workspace is ready. It does not ask for declaration evidence.
+`tools/call` selects a task and its input object.
+This example finds a declaration in the selected source sets:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 2,
   "method": "tools/call",
-  "params": {"name": "health_check", "arguments": {}}
+  "params": {
+    "name": "find",
+    "arguments": {"name": "OrderRepository", "kind": "interface", "directory": "src", "source_sets": ["main"]}
+  }
 }
 ```
 
-The reply puts display text in `content[]`. It puts the checked tool document in `structuredContent`. `isError` reports a failed tool call.
+The interface kind searches the CLASS family. Examine the returned declaration before an interface claim.
+Select the exact owner, signature, receiver, and location before a relationship call.
 
-For semantic tools, `structuredContent` is the canonical tool document. It has its own status: complete, qualified, or rejected.
+The reply keeps the original RPC JSON in `content[].text` and its decoded value in `structuredContent`.
+The outer RPC `type` remains intact. The document keeps its status, evidence, and recovery fields.
+A qualified or rejected RPC outcome sets `isError:true` without removing the document.
+Local input, catalog, or process failures use `ACCESS_REJECTED` with their stage and reason.
 
-A failed tool call can omit the document. `health_check` uses a distinct readiness shape with its own schema.
+Decode both the MCP wrapper and the RPC outcome.
+A successful exchange does not prove that the semantic answer is complete.
+Cancellation stops the child, but submission or effects can remain uncertain. Never retry automatically.
 
-Decode both the wrapper and the selected tool document. A successful JSON-RPC exchange does not make an incomplete semantic answer complete.
+## Source and integration
 
-## Source owner and integration procedure
-
-[Transport owners](/reference/source-map#installation-and-transport) names the code that maps results and checks schemas. [Lifecycles](/reference/lifecycles#connection-lifecycle) describes the session lifetime.
-
-[Connect your agent](/reference/integrations) gives setup steps. [Schemas](/reference/schemas) links the generated documents and names their owners.
+The plugin owns `skills/kast/scripts/tasks.py` and `service.py`.
+The Copilot SDK adapter consumes the same catalog and service.
+The [integration guide](/reference/integrations) describes setup and dependencies.
+The [Tool RPC reference](/reference/rpc-catalog) describes the unchanged underlying transport.

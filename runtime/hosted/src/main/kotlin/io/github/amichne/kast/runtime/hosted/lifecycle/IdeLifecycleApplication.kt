@@ -59,6 +59,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         action: suspend (Project, CanonicalWorkspaceRoot) -> HostedSemanticReadResult<Value>,
     ): HostedSemanticReadResult<Value> = native.withRegisteredPeer(expected, action)
 
+    internal fun hasActivePreparation(): Boolean = native.hasActivePreparation()
+
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =
@@ -328,8 +330,27 @@ private data class LifecycleObservation(
     val stage: IdeLifecycleStage?,
 )
 
-class IdeLifecycleStartup : AppLifecycleListener {
+class IdeLifecycleStartup : AppLifecycleListener, com.intellij.ide.plugins.DynamicPluginListener {
     override fun appStarted() {
         ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java)
+    }
+
+    override fun pluginLoaded(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
+        if (pluginDescriptor.pluginId.idString == PLUGIN_ID) appStarted()
+    }
+
+    override fun checkUnloadPlugin(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
+        if (pluginDescriptor.pluginId.idString != PLUGIN_ID) return
+        if (
+            ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java).hasActivePreparation()
+        ) {
+            throw com.intellij.ide.plugins.CannotUnloadPluginException(
+                "Kast workspace preparation must finish before plugin reload"
+            )
+        }
+    }
+
+    private companion object {
+        const val PLUGIN_ID = "io.github.amichne.kast.ide-hosted"
     }
 }

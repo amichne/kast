@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from enum import StrEnum
 from typing import Literal
 
+import anyio
+from access import InputError, Model, Prepared, prepare
 from jsonschema import Draft202012Validator, validate
 from jsonschema.exceptions import SchemaError
 from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import BaseModel, ConfigDict, JsonValue, RootModel, ValidationError
-
-from access import InputError, Model, Prepared, prepare
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, RootModel, ValidationError
 
 
 class Stage(StrEnum):
@@ -49,10 +48,27 @@ class Tool(Model):
     inputSchema: dict[str, JsonValue]
 
 
-class Catalog(BaseModel):
-    model_config = ConfigDict(extra="ignore", frozen=True)
+# Static MCP host configurations allow 3780 seconds: discovery, invocation, delivery.
+CATALOG_TIMEOUT_SECONDS = 120
+MAX_INVOCATION_SECONDS = 3600
+DELIVERY_ALLOWANCE_SECONDS = 60
+HOST_TIMEOUT_SECONDS = CATALOG_TIMEOUT_SECONDS + MAX_INVOCATION_SECONDS + DELIVERY_ALLOWANCE_SECONDS
+
+
+class Policy(BaseModel):
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
+    callTimeoutMillis: int = Field(gt=0, le=MAX_INVOCATION_SECONDS * 1000)
+    maxResponseBytes: int = Field(gt=0, le=2_147_483_647)
+
+
+class Catalog(Policy):
     schemaVersion: int
     tools: tuple[Tool, ...]
+
+
+class AdmittedTool(Model):
+    tool: Tool
+    policy: Policy
 
 
 class CatalogReply(Model):
@@ -74,41 +90,34 @@ class Reply(Model):
     returncode: int
 
 
-def invoke(
-    prepared: Prepared, command: tuple[str, ...], body: bytes, stage: Stage
+async def invoke(
+    prepared: Prepared,
+    command: tuple[str, ...],
+    body: bytes,
+    stage: Stage,
+    timeout: float = CATALOG_TIMEOUT_SECONDS,
 ) -> Reply | Rejected:
     options = prepared.options
     try:
-        with subprocess.Popen(
-            [str(options.rpc), "--catalog=COMPLETE", *command],
-            cwd=options.workspace,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        ) as child:
-            try:
-                stdout, stderr = child.communicate(body, timeout=options.timeout)
-            except (subprocess.TimeoutExpired, KeyboardInterrupt) as error:
-                child.terminate()
-                try:
-                    child.communicate(timeout=2)
-                except subprocess.TimeoutExpired:
-                    child.kill()
-                    child.communicate()
-                return Rejected(
-                    stage=stage,
-                    reason=Reason.TIMEOUT
-                    if isinstance(error, subprocess.TimeoutExpired)
-                    else Reason.CANCELLED,
-                    detail="The child stopped. Submission or effects can be uncertain. "
-                    "Do not retry the request automatically.",
-                )
-            return Reply(stdout=stdout, stderr=stderr, returncode=child.returncode)
+        with anyio.fail_after(timeout):
+            child = await anyio.run_process(
+                [str(options.rpc), "--catalog=COMPLETE", *command],
+                cwd=options.workspace,
+                input=body,
+                check=False,
+            )
+        return Reply(stdout=child.stdout, stderr=child.stderr, returncode=child.returncode)
+    except TimeoutError:
+        return Rejected(
+            stage=stage,
+            reason=Reason.TIMEOUT,
+            detail="The child stopped. Submission or effects can be uncertain. Do not retry automatically.",
+        )
     except OSError as error:
         return Rejected(stage=stage, reason=Reason.UNAVAILABLE, detail=str(error))
 
 
-def admit(prepared: Prepared, raw_catalog: bytes) -> Tool | Rejected:
+def parse_catalog(raw_catalog: bytes) -> Catalog | Rejected:
     try:
         catalog = CatalogReply.model_validate_json(raw_catalog).catalog
     except ValidationError:
@@ -117,12 +126,19 @@ def admit(prepared: Prepared, raw_catalog: bytes) -> Tool | Rejected:
             reason=Reason.INVALID_REPLY,
             detail="The installed command did not return a tool catalog.",
         )
-    if catalog.schemaVersion != 17:
+    if catalog.schemaVersion not in (17, 18):
         return Rejected(
             stage=Stage.CATALOG,
             reason=Reason.CONTRACT_MISMATCH,
-            detail=f"Candidate needs contract 17. Installed contract is {catalog.schemaVersion}.",
+            detail=f"Task access needs contract 17 or 18. Installed contract is {catalog.schemaVersion}.",
         )
+    return catalog
+
+
+def admit(prepared: Prepared, raw_catalog: bytes) -> AdmittedTool | Rejected:
+    catalog = parse_catalog(raw_catalog)
+    if isinstance(catalog, Rejected):
+        return catalog
     matches = [tool for tool in catalog.tools if tool.name == prepared.tool]
     if len(matches) != 1:
         return Rejected(
@@ -132,7 +148,7 @@ def admit(prepared: Prepared, raw_catalog: bytes) -> Tool | Rejected:
         )
     tool = matches[0]
     if prepared.options.command == "schema":
-        return tool
+        return AdmittedTool(tool=tool, policy=catalog)
     if tool.effect == "WRITE" and not prepared.options.write:
         return Rejected(
             stage=Stage.INPUT,
@@ -158,17 +174,17 @@ def admit(prepared: Prepared, raw_catalog: bytes) -> Tool | Rejected:
             reason=Reason.INVALID_REPLY,
             detail="The installed tool schema is invalid.",
         )
-    return tool
+    return AdmittedTool(tool=tool, policy=catalog)
 
 
-def execute(prepared: Prepared) -> Reply | Rejected:
+async def read_catalog(prepared: Prepared) -> bytes | Rejected:
     if prepared.options.catalog_file:
         try:
             raw_catalog = prepared.options.catalog_file.read_bytes()
         except OSError as error:
             return Rejected(stage=Stage.CATALOG, reason=Reason.UNAVAILABLE, detail=str(error))
     else:
-        result = invoke(prepared, ("catalog",), b"", Stage.CATALOG)
+        result = await invoke(prepared, ("catalog",), b"", Stage.CATALOG)
         if isinstance(result, Rejected):
             return result
         if result.returncode:
@@ -178,13 +194,20 @@ def execute(prepared: Prepared) -> Reply | Rejected:
                 detail=f"Catalog command exited {result.returncode}.",
             )
         raw_catalog = result.stdout
+    return raw_catalog
+
+
+async def execute(prepared: Prepared) -> Reply | Rejected:
+    raw_catalog = await read_catalog(prepared)
+    if isinstance(raw_catalog, Rejected):
+        return raw_catalog
     admitted = admit(prepared, raw_catalog)
     if isinstance(admitted, Rejected):
         return admitted
     if prepared.options.command == "schema":
-        selected: JsonValue = admitted.inputSchema
+        selected: JsonValue = admitted.tool.inputSchema
         if prepared.options.definition:
-            definitions = admitted.inputSchema.get("$defs")
+            definitions = admitted.tool.inputSchema.get("$defs")
             if not isinstance(definitions, dict) or prepared.options.definition not in definitions:
                 return Rejected(
                     stage=Stage.INPUT,
@@ -200,7 +223,10 @@ def execute(prepared: Prepared) -> Reply | Rejected:
     body = prepared.arguments.model_dump_json(exclude_none=True).encode()
     if prepared.options.emit_request:
         return Reply(stdout=body + b"\n", stderr=b"", returncode=0)
-    return invoke(prepared, ("call", admitted.name), body, Stage.INVOCATION)
+    timeout = prepared.options.timeout
+    if timeout is None:
+        timeout = admitted.policy.callTimeoutMillis / 1000
+    return await invoke(prepared, ("call", admitted.tool.name), body, Stage.INVOCATION, timeout)
 
 
 def run(arguments: list[str]) -> int:
@@ -226,7 +252,7 @@ def run(arguments: list[str]) -> int:
         )
         return 2
     try:
-        result = execute(prepared)
+        result = anyio.run(execute, prepared)
         if isinstance(result, Rejected):
             raw = result.model_dump_json().encode() + b"\n"
             status = 2

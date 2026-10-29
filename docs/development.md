@@ -326,6 +326,7 @@ committing the metadata; keep verification enabled for builds and IDE sync.
 A successful CLI build does not establish that IDEA imported the Gradle model.
 
 ### Install a local build
+For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
 
 Install the working tree into the existing user installation from the repository root:
 

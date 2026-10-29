@@ -22,13 +22,28 @@ def main() -> int:
     root = Path(__file__).resolve().parent
     commands = (
         ("lock",),
-        ("lock", "--script", "access.py"),
+        ("lock", "--script", "../../agent-tools/skills/kast/scripts/access.py"),
+        ("lock", "--script", "../../agent-tools/skills/kast/scripts/server.py"),
         ("sync", "--locked"),
-        ("run", "--locked", "ruff", "format", "--check", "."),
-        ("run", "--locked", "ruff", "check", "."),
+        (
+            "run",
+            "--locked",
+            "ruff",
+            "format",
+            "--check",
+            ".",
+            "../../agent-tools/skills/kast/scripts",
+        ),
+        ("run", "--locked", "ruff", "check", ".", "../../agent-tools/skills/kast/scripts"),
         ("run", "--locked", "pyright"),
         ("run", "--locked", "pytest"),
-        ("run", "--locked", "--script", "access.py", "--help"),
+        (
+            "run",
+            "--locked",
+            "--script",
+            "../../agent-tools/skills/kast/scripts/access.py",
+            "--help",
+        ),
     )
     for arguments in commands:
         try:

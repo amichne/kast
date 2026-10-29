@@ -186,8 +186,9 @@ distributions.main {
             exclude("*.bat")
             filePermissions { unix("755") }
         }
-        from(repositoryRoot.file("copilot/extension.mjs")) {
+        from(repositoryRoot.file("copilot/task-extension.mjs")) {
             into("share/kast/adapters/copilot")
+            rename { "extension.mjs" }
         }
         from(repositoryRoot.file("pi/mcp-extension.ts")) {
             into("share/kast/adapters/pi")
@@ -284,6 +285,31 @@ val queryPresentationTest =
 tasks.named("check") {
     dependsOn(queryPresentationTest)
 }
+
+// The packaged host adapters share this Python task service over unchanged tool RPC.
+val taskAccessTest =
+    tasks.register<Exec>("taskAccessTest") {
+        group = "verification"
+        description = "Exercises task admission, MCP sessions, cancellation, and Copilot registration."
+        inputs
+            .files(
+                fileTree(repositoryRoot.dir("packaging/task-access")) {
+                    include("*.py", "*.mjs", "*.toml", "*.lock", ".python-version")
+                }
+            )
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.dir(repositoryRoot.dir("agent-tools/skills/kast/scripts")).withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs
+            .file(repositoryRoot.file("agent-tools/references/query-schema.json"))
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.file(repositoryRoot.file("copilot/task-extension.mjs")).withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.file(repositoryRoot.file("pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.file(repositoryRoot.file("agent-tools/.mcp.json")).withPathSensitivity(PathSensitivity.RELATIVE)
+        workingDir(repositoryRoot.dir("packaging/task-access"))
+        commandLine("uv", "run", "--locked", "pytest")
+    }
+
+tasks.named("check") { dependsOn(taskAccessTest) }
 
 configurations.consumable("configurationCatalogueElements") {
     outgoing.artifact(

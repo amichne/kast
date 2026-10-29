@@ -1,112 +1,73 @@
 # Kast agent tools
 
-This plugin supplies MCP tools and a compact brief at session start.
-Codex and Copilot use hooks. Pi uses an extension with native MCP support.
-Each host gets the same brief, its workspace path, and absolute paths to the schema and examples.
-Kast does not publish a discoverable skill or a standalone skill archive.
+This plugin supplies the Kast skill and task tools for Codex, Copilot, and Pi.
+The only bundled MCP entry exposes the task catalog in `skills/kast/scripts/tasks.py`.
+It does not expose `query_symbols`, `check_diagnostics`, or mutation names as separate MCP tools.
+The installed tool RPC keeps its existing binary and wire contracts.
+
+## Connect an agent
 
 Install Kast and restart IntelliJ IDEA before a semantic query.
 Start your agent from the exact Kotlin repository or worktree.
-Preparation can save editor buffers and refresh the imported project.
 
-The MCP session starts IntelliJ preparation for its exact Kotlin Gradle project.
-Semantic calls wait for that preparation and examine current readiness.
-Other repositories can load the catalog, but semantic calls reject without a Gradle project.
-Codex owns its App Server and control socket.
+For Codex, run `kast plugin codex` and restart Codex.
+Review and trust the plugin hook. Hooks without trust do not deliver the brief.
+For this checkout, use `codex plugin marketplace add .` and `codex plugin add kast@kast`.
 
-## Codex
-
-```sh
-kast plugin codex
-```
-
-Restart Codex after installation. Review and trust the plugin hook in Codex.
-Codex skips hooks without trust. Installation alone does not prove context delivery.
-The hook also restores the brief after compaction.
-
-For this checkout's marketplace, use:
-
-```sh
-codex plugin marketplace add .
-codex plugin add kast@kast
-```
-
-## Copilot
-
-Install the bundled plugin with Copilot's plugin manager:
+For Copilot, install the bundled plugin:
 
 ```sh
 copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
 ```
 
-If `kast connect copilot` installed the RPC extension, remove that registration first with `kast disconnect copilot`.
-Restart Copilot after installation. Copilot owns its plugin cache and removal.
-The plugin supplies MCP tools and a `sessionStart` hook.
+If the RPC extension already occupies the Kast slot, remove it with `kast disconnect copilot` first.
+Restart Copilot after installation.
+The optional `kast connect copilot` SDK extension uses the same task catalog and service.
+Use one Copilot integration at a time.
 
-## Pi
-
-```sh
-kast connect pi
-```
-
-Restart Pi after registration.
-The installed extension registers `kast-mcp-complete` through Pi's native `registerMcpServer` API.
-It reads the shared context at `session_start` and adds it to each model request's system prompt.
-Pi owns MCP discovery, permissions, and the connection lifetime.
+For Pi, run `kast connect pi` and restart Pi.
+The installed extension registers the bundled task server through `registerMcpServer`.
+Pi owns discovery, permissions, and the connection lifetime.
 Use a Pi version with native MCP support.
-An absent or invalid context resource produces one warning. MCP stays registered, and Pi can continue the session.
+The extension supplies the brief and the absolute path to the bundled skill.
 
-## Runtime and references
+## Runtime and task contracts
 
-The Codex and Copilot context hooks use Python 3.9 or later from `PATH` or `~/.local/bin`.
-The context script uses only the Python standard library and runs offline.
-Pi reads the resources directly with Node. It needs no Python or uv process.
-No startup path downloads dependencies or creates a Python environment.
-It reads bundled resources without IDE calls, workspace writes, or model requests.
-An invalid event, absent resource, or oversized brief rejects without partial context.
-The host decides whether a hook failure stops the session.
+The task server needs uv 0.12.9 or later. It uses Python 3.12 or 3.13.
+Its locked script can download pinned dependencies on the first run.
+Codex and Copilot launch that script from the plugin root.
+Pi and the Copilot SDK extension use the installed plugin directory.
 
-`onboarding.template.md` owns the prose.
-`packaging/generate-public-query.py` derives `enum` lists, the query schema, and the named example array from `tools.schema.json`.
-The brief explains that interfaces use `declarationKinds:["CLASS"]`.
-It distinguishes relative directory paths, Kotlin packages, exact source-set names, and issued references.
-The complete schema and examples stay on disk until the agent needs them.
+The context hooks remain passive and offline. They use Python 3.9 or later. They need only the standard library.
+Pi reads context directly with Node.
+Context delivery does not start semantic work. The installed RPC prepares the exact project when a task needs it.
+Preparation can save editor buffers and refresh the imported project.
+An invalid context resource rejects without a partial brief.
 
-## Shared workflow and delivery
+Use `find` before relationship tasks and preserve the selected issued reference.
+Use `source` with its default `ANCHOR` before a body region.
+Use `walk` for an explicit depth and `trace` for the fixed affected-use topology.
+Use `result` and `resume` for existing output.
+The [bundled skill](skills/kast/SKILL.md) explains task choices, scope, qualifiers, recovery, and CLI fallback.
 
-Apply known scope and source-set constraints before discovery or source-read batches.
-Remove duplicate paths and reuse unchanged source reads within the task.
-In hosts with tool composition, chain exact selection and reference expansion inside code.
-Keep successful intermediate results inside that call.
-Return the requested findings with their scope, completion, omissions, and recovery facts.
-Ambiguous or incomplete evidence needs a qualified stop.
+For an advanced existing operation, read `schema` and then use `raw`.
+Catalog-declared writes need `write:true` and a user-requested source change.
+The installed catalog admits requests for contract 17 or 18. Other versions reject.
+Canonical RPC text, structured evidence, references, cursors, and failure tags remain intact.
+Cancellation stops the child. Submission or effects can remain uncertain, so the service never retries automatically.
 
-The shared brief distinguishes compact rows from canonical rows.
-It preserves tool discovery and result shapes under each host's installed contract.
-It also preserves source inspection for unresolved imports, companion qualifiers, and unmatched source sites.
-A complete relation proves its declared semantics and scope.
+`onboarding.template.md` owns the shared brief. `skills/kast/SKILL.md` owns the detailed task workflow.
+`packaging/generate-public-query.py` owns the advanced query references from the canonical schema.
+The service and native adapter consume one task catalog, without separate query constructors.
+The historical direct adapters remain compatibility source and are not the packaged defaults.
 
-| Integration | Shipped guidance source |
-|---|---|
-| Codex plugin | Generated brief through the context hook, plus the MCP tool description |
-| Copilot plugin | Generated brief through the context hook, plus the MCP tool description |
-| Pi native MCP | Generated brief through `pi/mcp-extension.ts`, plus the MCP tool description |
-| Other MCP clients | Tool description from the generated public catalog |
-| Copilot and Pi RPC extensions | The same catalog description, plus shared query-delivery guidance |
-| Codex App Server | Tool description from the generated public registry |
-| Responses tool definitions | Tool description in generated `tools.responses.json` |
+## Development evidence
 
-`tools.schema.json` owns the common tool descriptions.
-The public-query generator projects them into the registry and provider definitions.
-The existing adapters consume that catalog without separate workflow rules.
-The tool identities, schemas, exposure policies, and approval policies stay unchanged.
-
-The [reference experiments](https://github.com/amichne/kast/blob/main/experiments/host-observation/AGENT_EFFICIENCY_REFERENCES.md) support these workflow changes on two Pi tasks.
-The shipped brief adapts those patterns and has no direct agent benchmark.
-They do not establish the same token gain on other hosts.
-Guidance does not enforce private output, and the experiments still expose intermediate seed references.
-Provider rates and other worker time remain separate experiment measurements.
-This source update does not change installed integrations until a normal installation or upgrade delivers it.
+Run the task suite from `packaging/task-access` with `uv run --locked pytest`.
+Run `node --test cli/src/test/js/native-onboarding.test.mjs` for Pi registration and context cases.
+Run `python3 packaging/test-agent-onboarding.py` for Codex and Copilot hook envelopes.
+These tests prove adapter behavior, not a complete live-host or model comparison.
+The [original experiment](../experiments/task-access/README.md) records separate Terra and Luna exercises.
 
 ## Pi inventory example
 
@@ -133,10 +94,4 @@ The example stays outside the startup brief and receives separate executable ass
 
 The source plugin version is `0.0.0`. Release assembly supplies the Control version.
 Tool failures keep their canonical rejection and recovery evidence.
-MCP transport rejections use `MCP_REJECTED` or `BOUNDARY_REJECTED` with `isError:true`.
-
-Host contracts: [Codex plugins](https://developers.openai.com/plugins/build/plugins),
-[Codex hooks](https://learn.chatgpt.com/docs/hooks),
-[Copilot plugins](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference),
-[Copilot hooks](https://docs.github.com/en/copilot/reference/hooks-reference),
-and [Pi MCP](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/mcp.md).
+Local admission failures use `ACCESS_REJECTED` with `isError:true`. Canonical RPC outcomes keep their original tags.

@@ -9,6 +9,8 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 <span id="choose-your-agent" />
 
 [Install Kast](/start), then select your agent.
+The bundled plugin supplies the Kast skill and task tools.
+The task service needs uv 0.12.9 or later and Python 3.12 or 3.13.
 
 <span id="1-connect-your-agent" />
 
@@ -24,12 +26,13 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
     ```
   </Tab>
   <Tab title="Copilot">
-    This command connects the Tool RPC extension. The [integration reference](/reference/integrations#1-choose-the-client-and-transport) also describes the Copilot plugin.
+    The plugin supplies the skill, task MCP tools, and session context.
+    If the RPC extension occupies the Kast slot, first run `kast disconnect copilot`.
 
     Run this command:
 
     ```shell
-    kast connect copilot
+    copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
     ```
 
     Restart Copilot from your Kotlin repository or worktree.
