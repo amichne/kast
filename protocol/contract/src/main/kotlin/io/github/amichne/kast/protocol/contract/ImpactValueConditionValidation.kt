@@ -19,6 +19,8 @@ private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueCon
             other is ImpactValueConditionDocument.StringContentNonNull && entryRange == other.entryRange
         is ImpactValueConditionDocument.DeclaredCallbackResult ->
             other is ImpactValueConditionDocument.DeclaredCallbackResult && binding == other.binding
+        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn ->
+            other is ImpactValueConditionDocument.ReviewedCallbackNormalReturn && binding == other.binding
         is ImpactValueConditionDocument.StableLocal ->
             other is ImpactValueConditionDocument.StableLocal && sameLocalRefinement(other)
         is ImpactValueConditionDocument.StableReceiver ->
@@ -50,6 +52,7 @@ private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
         is ImpactValueConditionDocument.StringContentNonNull ->
             useRange.containsExecutionRange(entryRange) && entryRange.containsExecutionRange(origin.range)
         is ImpactValueConditionDocument.DeclaredCallbackResult -> admitsResult()
+        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn -> admitsNormalReturn()
         is ImpactValueConditionDocument.StableLocal ->
             sourceSite().admitsLocalVersion() &&
                 version.admitsLocalRead(useRange) &&
@@ -66,6 +69,12 @@ private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
                 originalType.isCanonicalType() &&
                 targetType.isCanonicalType()
     }
+
+private fun ImpactValueConditionDocument.ReviewedCallbackNormalReturn.admitsNormalReturn(): Boolean =
+    binding.admits(origin.execution.enclosing) &&
+        binding.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1 &&
+        binding.admitsReceiver(sourceSite()) &&
+        useRange == binding.supplierRange
 
 private fun ProtocolText.isCanonicalType(): Boolean =
     when (val admitted = CanonicalCompilerType.fromCompiler(value)) {
@@ -87,10 +96,26 @@ internal fun ImpactValueSiteReferenceDocument.conservesConditions(
         added.useRange == target.range
 }
 
+internal fun ImpactValueSiteReferenceDocument.conservesReviewedReceiverConditions(
+    target: ImpactValueSiteReferenceDocument,
+    binding: ImpactReviewedValueBindingDocument,
+): Boolean {
+    if (target.conditions.values.size != conditions.values.size + 1) return false
+    if (!conditions.values.hasSameConditions(target.conditions.values.dropLast(1))) return false
+    return when (val added = target.conditions.values.last()) {
+        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn ->
+            added.binding == binding &&
+                added.sourceSite().hasSameValueIdentity(copy(conditions = EmptyImpactConditions)) &&
+                added.useRange == target.range
+        else -> false
+    }
+}
+
 private fun ImpactValueConditionDocument.matchesTransferKind(kind: ImpactTransferKindDocument): Boolean =
     when (this) {
         is ImpactValueConditionDocument.StringContentNonNull -> kind == ImpactTransferKindDocument.STRING_CONTENT
         is ImpactValueConditionDocument.DeclaredCallbackResult -> kind == ImpactTransferKindDocument.SOURCE_CALL_RETURN
+        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn -> false
         is ImpactValueConditionDocument.StableLocal -> kind == ImpactTransferKindDocument.LOCAL_READ
         is ImpactValueConditionDocument.StableReceiver -> kind == ImpactTransferKindDocument.FIELD_READ
         is ImpactValueConditionDocument.CastSuccess -> kind == ImpactTransferKindDocument.CAST_RESULT
@@ -109,6 +134,7 @@ private fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReferenceD
                 is ImpactValueConditionDocument.StableLocal -> version
                 is ImpactValueConditionDocument.StringContentNonNull,
                 is ImpactValueConditionDocument.DeclaredCallbackResult,
+                is ImpactValueConditionDocument.ReviewedCallbackNormalReturn,
                 is ImpactValueConditionDocument.StableReceiver,
                 is ImpactValueConditionDocument.CastSuccess -> ImpactLocalVersionDocument.Unversioned
             },

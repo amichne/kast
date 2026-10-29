@@ -19,6 +19,18 @@ internal class NativeValueCallFlow(
     private val permit: () -> Boolean,
 ) {
     fun read(): Refinement<Unit, ValueFlowRejection> {
+        val receiver = request.source.role as? ValueRole.Receiver
+        if (
+            receiver != null &&
+                receiver.call.callable.file is
+                    io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.External &&
+                (receiver.call.callable.qualifiedIdentity
+                        as? io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available)
+                    ?.value == "kotlin.also"
+        ) {
+            retained.adoptReviewed(nativeReviewedReceiverResult(request, scope, projection, allowance))
+            return Refinement.Refined(Unit)
+        }
         val dispatch =
             NativeValueImplementationDispatch(
                     request = request,

@@ -1,4 +1,7 @@
-@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+@file:OptIn(
+    org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class,
+    org.jetbrains.kotlin.analysis.api.KaNonPublicApi::class,
+)
 
 package io.github.amichne.kast.relation.intellij
 
@@ -82,4 +85,53 @@ internal fun Refinement<NativeCallbackReturnSemantics, ValueFlowUnsupportedCause
             }
         is Refinement.Rejected -> failure(this.failure)
     }
+}
+
+/** Reject explicit abrupt exits; an admitted route still needs its normal-return condition. */
+internal fun nativeCallbackNormalReturn(
+    function: KtFunctionLiteral,
+    observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
+): Refinement<Unit, ValueFlowUnsupportedCause> =
+    observation.observedAnalyze(function) {
+        val statements =
+            function.bodyExpression?.statements
+                ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        if (statements.isEmpty()) return@observedAnalyze Refinement.Refined(Unit)
+        val exits = computeExitPointSnapshot(statements)
+        if (exits.hasJumps) return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+        val types = statements.map {
+            it.expressionType
+                ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        }
+        normalCallbackTypes(types, workAllowance)
+    }
+
+private fun KaSession.normalCallbackTypes(
+    types: List<KaType>,
+    workAllowance: WorkAllowance,
+): Refinement<Unit, ValueFlowUnsupportedCause> =
+    when (nativeCompilerTypeProof(types, workAllowance)) {
+        NativeCompilerTypeProof.ERROR_TYPE,
+        NativeCompilerTypeProof.UNSUPPORTED_TYPE ->
+            Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        NativeCompilerTypeProof.WORK_LIMIT_REACHED -> Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+        NativeCompilerTypeProof.ADMITTED ->
+            if (types.any { it.isNothingType && !it.isNullable })
+                Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+            else Refinement.Refined(Unit)
+    }
+
+/** The compiler binds a labeled return to this callback before its returned expression can carry value. */
+internal fun nativeExplicitCallbackReturn(
+    expression: KtExpression,
+    returned: KtReturnExpression,
+    function: KtFunctionLiteral,
+    observation: IntellijReadObservation,
+    workAllowance: WorkAllowance,
+): Refinement<NativeCallbackReturnSemantics, ValueFlowUnsupportedCause> {
+    val target = observation.observedAnalyze(returned) { returned.resolveSymbol()?.psi }
+    if (target?.originalElement != function.originalElement || returned.returnedExpression !== expression)
+        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    return nativeCallbackReturnSemantics(expression, function, observation, workAllowance)
 }

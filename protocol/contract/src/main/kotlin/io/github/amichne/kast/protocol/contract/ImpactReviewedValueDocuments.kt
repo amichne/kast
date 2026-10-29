@@ -1,15 +1,24 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 enum class ImpactReviewedValueRuleDocument {
-    KOTLIN_2_4_21_ITERABLE_MAP_V1
+    KOTLIN_2_4_21_ITERABLE_MAP_V1,
+    KOTLIN_2_3_0_LET_V1,
+    KOTLIN_2_3_0_ALSO_V1,
 }
 
 @Serializable
 enum class ImpactReviewedValueSemanticsDocument {
-    CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT
+    CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+    CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
+    CONDITIONAL_RECEIVER_TO_CALL_RESULT,
 }
 
 @Serializable
@@ -35,21 +44,47 @@ data class ImpactReviewedFunctionDocument(
 )
 
 @Serializable
-data class ImpactReviewedArtifactsDocument(
+@JsonClassDiscriminator("sourceEntry")
+sealed interface ImpactReviewedArtifactsDocument {
+    val binaryArtifactSha256: ProtocolText
+    val sourceArtifactSha256: ProtocolText
+    val sourceEntrySha256: ProtocolText
+    val facadeSha256: ProtocolText
+    val implementationSha256: ProtocolText
+}
+
+@Serializable
+@SerialName("commonMain/generated/_Collections.kt")
+data class ImpactReviewedMapArtifactsDocument(
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
-    val binaryArtifactSha256: ProtocolText,
+    override val binaryArtifactSha256: ProtocolText,
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
-    val sourceArtifactSha256: ProtocolText,
-    val sourceEntry: ProtocolText,
+    override val sourceArtifactSha256: ProtocolText,
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
-    val sourceEntrySha256: ProtocolText,
+    override val sourceEntrySha256: ProtocolText,
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
-    val facadeSha256: ProtocolText,
+    override val facadeSha256: ProtocolText,
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
-    val implementationSha256: ProtocolText,
+    override val implementationSha256: ProtocolText,
     val mapLines: ImpactReviewedSourceLinesDocument,
     val mapToLines: ImpactReviewedSourceLinesDocument,
-)
+) : ImpactReviewedArtifactsDocument
+
+@Serializable
+@SerialName("commonMain/kotlin/util/Standard.kt")
+data class ImpactReviewedScopeArtifactsDocument(
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val binaryArtifactSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val sourceArtifactSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val sourceEntrySha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val facadeSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val implementationSha256: ProtocolText,
+    val functionLines: ImpactReviewedSourceLinesDocument,
+) : ImpactReviewedArtifactsDocument
 
 /** Inclusive one-based lines in the artifact's exact source entry. */
 @Serializable data class ImpactReviewedSourceLinesDocument(val first: ProtocolOffset, val last: ProtocolOffset)
@@ -67,6 +102,9 @@ data class ImpactReviewedValueBindingDocument(
     val semantics: ImpactReviewedValueSemanticsDocument,
     val actualExecution: ImpactActualExecutionDocument,
     val invocationCount: ImpactInvocationCountKnowledgeDocument,
+    @Required
+    val invocationEvidence: ImpactReviewedInvocationEvidenceDocument =
+        ImpactReviewedInvocationEvidenceDocument.Unestablished,
 )
 
 @Serializable
@@ -75,3 +113,14 @@ data class ImpactReviewedValueTransferDocument(
     val target: ImpactValueSiteReferenceDocument,
     val binding: ImpactReviewedValueBindingDocument,
 )
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactReviewedInvocationEvidenceDocument {
+    @Serializable @SerialName("NOT_ESTABLISHED") data object Unestablished : ImpactReviewedInvocationEvidenceDocument
+
+    @Serializable
+    @SerialName("COMPILER_DECLARED")
+    data class Declared(val binding: ImpactDeclaredCallbackValueBindingDocument) :
+        ImpactReviewedInvocationEvidenceDocument
+}

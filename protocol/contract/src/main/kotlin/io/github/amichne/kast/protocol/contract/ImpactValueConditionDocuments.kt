@@ -45,6 +45,15 @@ sealed interface ImpactValueConditionDocument {
         val binding: ImpactDeclaredCallbackValueBindingDocument,
     ) : ImpactValueConditionDocument
 
+    /** A premise for receiver correspondence, without a claim of actual callback completion. */
+    @Serializable
+    @SerialName("REVIEWED_CALLBACK_NORMAL_RETURN")
+    data class ReviewedCallbackNormalReturn(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+        val binding: ImpactReviewedValueBindingDocument,
+    ) : ImpactValueConditionDocument
+
     @Serializable
     @SerialName("STABLE_LOCAL")
     data class StableLocal(

@@ -41,7 +41,7 @@ internal class NativeValueExpressionFlow(
     private val owner: PsiElement,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
-    allowance: IntellijRelationAllowance,
+    private val allowance: IntellijRelationAllowance,
     private val retained: NativeValueFlowTransfers,
     private val permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ) {
@@ -137,7 +137,17 @@ internal class NativeValueExpressionFlow(
             observation.count(IntellijReadCounter.VALUE_FLOW_FINALLY_REJECTIONS)
             retained.unresolvedAt(ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED, returned)
         } else if (owner is KtFunctionLiteral)
-            retained.unresolvedAt(ValueFlowUnsupportedCause.NESTED_EXECUTION, returned)
+            nativeExplicitCallbackReturn(
+                    expression = expression,
+                    returned = returned,
+                    function = owner,
+                    observation = observation,
+                    workAllowance = request.budget.resources.workAllowance,
+                )
+                .onCallbackReturn(
+                    { emit(expression, ValueRole.Return, ValueTransferKind.RETURN) },
+                    { retained.unresolvedAt(it, returned) },
+                )
         else emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
     }
 
@@ -265,7 +275,8 @@ internal class NativeValueExpressionFlow(
 
     private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) =
         NativeValueQualifiedReceiver(
-                source = request.source,
+                request = request,
+                allowance = allowance,
                 scope = scope,
                 projection = projection,
                 retained = retained,

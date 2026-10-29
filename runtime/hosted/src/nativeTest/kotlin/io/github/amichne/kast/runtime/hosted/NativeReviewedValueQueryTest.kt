@@ -169,10 +169,11 @@ class NativeReviewedValueQueryTest : NativeSmartModeFixtureTest() {
         )
     }
 
-    private fun assertReviewedArtifacts(artifacts: ImpactReviewedArtifactsDocument) {
+    private fun assertReviewedArtifacts(document: ImpactReviewedArtifactsDocument) {
+        assertTrue(document is io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument)
+        val artifacts = document as io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument
         assertEquals(NativeReviewedQueryFixture.BINARY_SHA256, artifacts.binaryArtifactSha256.value)
         assertEquals(NativeReviewedQueryFixture.SOURCES_SHA256, artifacts.sourceArtifactSha256.value)
-        assertEquals("commonMain/generated/_Collections.kt", artifacts.sourceEntry.value)
         assertEquals(
             "aad6a5398189369be27f65952a5f2c935e3bf00d166e2046a0fb4be0d007a85c",
             artifacts.sourceEntrySha256.value,

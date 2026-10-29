@@ -78,8 +78,13 @@ class ImpactReviewedFindingTest {
     @Test
     fun `reviewed source evidence encodes exact artifact spans and rejects changed hashes`() {
         val fixture = ImpactReviewedValueFixture()
-        val artifacts = fixture.binding.artifacts
-        val encoded = Json.parseToJsonElement(Json.encodeToString(artifacts)).jsonObject
+        val artifacts =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                ImpactReviewedMapArtifactsDocument::class.java,
+                fixture.binding.artifacts,
+            )
+        val encoded =
+            Json.parseToJsonElement(Json.encodeToString<ImpactReviewedArtifactsDocument>(artifacts)).jsonObject
         assertEquals(
             setOf(
                 "binaryArtifactSha256",

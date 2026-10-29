@@ -13,8 +13,9 @@ import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueFailure
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapArtifact
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapCallable
+import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
+import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
+import io.github.amichne.kast.relation.contract.ReviewedLibraryOperation
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectLibrarySources
@@ -76,7 +77,7 @@ private fun reviewedBinding(
         context.occurrence(call.valueInvocationExpression())
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
     val artifact =
-        when (val read = reviewedArtifact(call, selected.file, context)) {
+        when (val read = reviewedArtifact(call, selected, context)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
@@ -101,13 +102,15 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.reviewedTarget(
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
     if (
         symbol.origin != KaSymbolOrigin.LIBRARY ||
-            symbol.callableId?.asSingleFqName()?.asString() != "kotlin.collections.map"
+            symbol.callableId?.asSingleFqName()?.asString() !in
+                setOf("kotlin.collections.map", "kotlin.let", "kotlin.also")
     )
         return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
     val formal =
         resolved.valueArgumentMapping[expression]?.symbol
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.FORMAL_MISMATCH)
-    if (formal.name.asString() != "transform") return Refinement.Rejected(ReviewedCallbackValueFailure.FORMAL_MISMATCH)
+    if (formal.name.asString() != symbol.reviewedFormalName())
+        return Refinement.Rejected(ReviewedCallbackValueFailure.FORMAL_MISMATCH)
     val position =
         when (val parsed = ValueArgumentPosition.parse(symbol.valueParameters.indexOf(formal))) {
             is Refinement.Refined -> parsed.value
@@ -121,22 +124,30 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.reviewedTarget(
     val evidence =
         contractTarget(context, symbol, declaration, file)
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
-    return when (val admitted = ReviewedIterableMapCallable.admit(evidence, position)) {
+    return when (val admitted = ReviewedLibraryCallable.admit(evidence, position)) {
         is Refinement.Refined -> Refinement.Refined(NativeReviewedTarget(admitted.value, file))
         is Refinement.Rejected -> admitted
     }
 }
 
+private fun KaNamedFunctionSymbol.reviewedFormalName(): String? =
+    when (callableId?.asSingleFqName()?.asString()) {
+        "kotlin.collections.map" -> "transform"
+        "kotlin.let",
+        "kotlin.also" -> "block"
+        else -> null
+    }
+
 private fun reviewedArtifact(
     call: KtCallExpression,
-    file: VirtualFile,
+    selected: NativeReviewedTarget,
     context: IntellijCallbackFlowContext,
-): Refinement<ReviewedIterableMapArtifact, ReviewedCallbackValueFailure> {
+): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> {
     val binaryFile =
-        VfsUtilCore.getVirtualFileForJar(file)
+        VfsUtilCore.getVirtualFileForJar(selected.file)
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_UNAVAILABLE)
     val sourceRoot =
-        when (val root = reviewedSourceRoot(call, file, context)) {
+        when (val root = reviewedSourceRoot(call, selected, context)) {
             is Refinement.Refined -> root.value
             is Refinement.Rejected -> return root
         }
@@ -153,17 +164,25 @@ private fun reviewedArtifact(
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
-    return ReviewedIterableMapArtifact.admit(binary, source)
+    return ReviewedLibraryArtifact.admit(selected.callable, binary, source)
 }
 
 private fun reviewedSourceRoot(
     call: KtCallExpression,
-    binary: VirtualFile,
+    selected: NativeReviewedTarget,
     context: IntellijCallbackFlowContext,
 ): Refinement<VirtualFile, ReviewedCallbackValueFailure> {
     return when (
         val read =
-            IntellijProjectLibrarySources.sourceRoot(call.project, binary, "commonMain/generated/_Collections.kt") {
+            IntellijProjectLibrarySources.sourceRoot(
+                call.project,
+                selected.file,
+                when (selected.callable.operation) {
+                    ReviewedLibraryOperation.ITERABLE_MAP -> "commonMain/generated/_Collections.kt"
+                    ReviewedLibraryOperation.LET,
+                    ReviewedLibraryOperation.ALSO -> "commonMain/kotlin/util/Standard.kt"
+                },
+            ) {
                 reviewedPermit(context)
             }
     ) {
@@ -258,6 +277,6 @@ private fun ReviewedCallbackValueFailure.termination(): IntellijReadTermination 
 private const val MAX_REVIEWED_ARTIFACT_BYTES = 8_388_608L
 
 private data class NativeReviewedTarget(
-    val callable: ReviewedIterableMapCallable,
+    val callable: ReviewedLibraryCallable,
     val file: VirtualFile,
 )

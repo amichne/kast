@@ -65,6 +65,34 @@ sealed interface ValueCondition {
         }
     }
 
+    /** The receiver result depends on normal callback return, without asserting that return occurs. */
+    @ConsistentCopyVisibility
+    data class ReviewedCallbackNormalReturn
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+        val binding: ReviewedCallbackValueBinding,
+    ) : ValueCondition {
+        companion object {
+            fun fromReviewed(
+                source: ValueSite,
+                binding: ReviewedCallbackValueBinding,
+            ): Refinement<ReviewedCallbackNormalReturn, ValueSiteFailure> =
+                if (
+                    binding.invocationEvidence is ReviewedCallbackInvocationEvidence.Declared &&
+                        binding.admitsReceiver(source)
+                )
+                    Refinement.Refined(
+                        ReviewedCallbackNormalReturn(
+                            ValueConditionOrigin.fromSite(source),
+                            binding.occurrence.range,
+                            binding,
+                        )
+                    )
+                else Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+        }
+    }
+
     /** Conditional result dependence, without asserting invocation or normal completion at runtime. */
     @ConsistentCopyVisibility
     data class DeclaredCallbackResult
@@ -227,6 +255,7 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
         val added = target.conditions.facts.last()
         if (!added.origin.matches(source) || added.useRange != target.range) return false
         return when (added) {
+            is ValueCondition.ReviewedCallbackNormalReturn -> false
             is ValueCondition.DeclaredCallbackResult ->
                 kind == ValueTransferKind.SOURCE_CALL_RETURN &&
                     source.executionOwner == ValueExecutionOwner.declaredCallback(added.binding)

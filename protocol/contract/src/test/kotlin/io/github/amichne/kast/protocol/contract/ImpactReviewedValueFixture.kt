@@ -73,10 +73,9 @@ internal class ImpactReviewedValueFixture {
     }
 
     private fun artifacts() =
-        ImpactReviewedArtifactsDocument(
+        ImpactReviewedMapArtifactsDocument(
             binaryArtifactSha256 = text("bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3"),
             sourceArtifactSha256 = text("1e29c0668b0aa555e7b154e5da2e8094e1b755cfee25737839195bbbdad8a4a2"),
-            sourceEntry = text("commonMain/generated/_Collections.kt"),
             sourceEntrySha256 = text("aad6a5398189369be27f65952a5f2c935e3bf00d166e2046a0fb4be0d007a85c"),
             facadeSha256 = text("7f74e68459e9c8ae6c69510014b6fe0f565b9389ddbe5acb5e181dd773558878"),
             implementationSha256 = text("e5afca255b864c70152adeeecd88367f5477966ab26bd16f8db2b5c56c995296"),

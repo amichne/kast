@@ -39,6 +39,7 @@ internal fun StringBuilder.valueState(site: ValueSite) {
     field(site.conditions.facts.size.toString())
     site.conditions.facts.forEach { condition ->
         when (condition) {
+            is ValueCondition.ReviewedCallbackNormalReturn -> reviewedNormalReturn(condition)
             is ValueCondition.DeclaredCallbackResult -> {
                 field("DECLARED_CALLBACK_RESULT")
                 conditionOrigin(condition.origin)
@@ -117,15 +118,7 @@ private fun StringBuilder.executionContext(context: ValueExecutionContext) {
         }
         is ValueExecutionContext.ReviewedCallback -> {
             field("REVIEWED_CALLBACK_VALUE")
-            field(context.binding.body.compilerIdentity.value)
-            range(context.binding.body.range)
-            range(context.binding.occurrence.range)
-            field(context.binding.target.compilerIdentity.value)
-            field(context.binding.target.file.stableValue)
-            range(context.binding.target.range)
-            field(context.binding.position.value.toString())
-            field(context.binding.artifact.binaryArtifact.value)
-            field(context.binding.artifact.sourceArtifact.value)
+            reviewedCallbackBinding(context.binding)
         }
         is ValueExecutionContext.Callback -> {
             field("CAPTURED_EXECUTION")
@@ -272,4 +265,31 @@ private fun StringBuilder.declaredCallbackBinding(binding: DeclaredCallbackValue
     field(binding.contract.provenance.name)
     field(binding.contract.invocationKind.name)
     field(binding.resultEffect.name)
+}
+
+private fun StringBuilder.reviewedCallbackBinding(binding: ReviewedCallbackValueBinding) {
+    field(binding.body.compilerIdentity.value)
+    range(binding.body.range)
+    range(binding.occurrence.range)
+    field(binding.target.compilerIdentity.value)
+    field(binding.target.file.stableValue)
+    range(binding.target.range)
+    field(binding.position.value.toString())
+    field(binding.artifact.binaryArtifact.value)
+    field(binding.artifact.sourceArtifact.value)
+}
+
+private fun StringBuilder.reviewedNormalReturn(condition: ValueCondition.ReviewedCallbackNormalReturn) {
+    field("REVIEWED_CALLBACK_NORMAL_RETURN")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    reviewedCallbackBinding(condition.binding)
+    field(condition.binding.artifact.rule.name)
+    when (val evidence = condition.binding.invocationEvidence) {
+        ReviewedCallbackInvocationEvidence.Unestablished -> field("NOT_ESTABLISHED")
+        is ReviewedCallbackInvocationEvidence.Declared -> {
+            field("COMPILER_DECLARED")
+            declaredCallbackBinding(evidence.binding)
+        }
+    }
 }

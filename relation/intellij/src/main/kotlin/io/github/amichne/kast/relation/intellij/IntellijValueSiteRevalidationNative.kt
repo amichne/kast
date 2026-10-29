@@ -211,6 +211,14 @@ private fun nativeAdmittedPosition(
                         prepared = prepared,
                         executionOwner = execution.owner,
                         componentPermit = work::permit,
+                        callbackContext =
+                            IntellijCallbackFlowContext(
+                                prepared.scope,
+                                prepared.projection,
+                                work::callbackAdmission,
+                                prepared.projection.observation,
+                                work::callbackExpiry,
+                            ),
                     )
             ) {
                 is Refinement.Refined -> result.value
@@ -269,16 +277,27 @@ private class NativeComponentSiteWork(
         get() = allowance.examined
 
     fun permit(): Refinement<Unit, ValueFlowUnsupportedCause> =
-        when {
-            !resources.hasWorkCapacity(reservedWork + examined) ->
+        when (callbackAdmission()) {
+            CallbackWorkAdmission.READY -> Refinement.Refined(Unit)
+            CallbackWorkAdmission.WORK_LIMIT_REACHED ->
                 Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
-            allowance.elapsedLimitReached(resources) ->
+            CallbackWorkAdmission.TIME_LIMIT_REACHED ->
                 Refinement.Rejected(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
+        }
+
+    fun callbackAdmission(): CallbackWorkAdmission =
+        when {
+            !resources.hasWorkCapacity(reservedWork + examined) -> CallbackWorkAdmission.WORK_LIMIT_REACHED
+            allowance.elapsedLimitReached(resources) -> CallbackWorkAdmission.TIME_LIMIT_REACHED
             else -> {
                 allowance.examine()
-                Refinement.Refined(Unit)
+                CallbackWorkAdmission.READY
             }
         }
+
+    fun callbackExpiry(): CallbackExpiryAdmission =
+        if (allowance.elapsedLimitReached(resources)) CallbackExpiryAdmission.EXPIRED
+        else CallbackExpiryAdmission.CURRENT
 }
 
 private data class NativeValuePosition(

@@ -29,15 +29,15 @@ internal class ReviewedValueFixture(generation: Long = 1) {
             )
             .flowRefined()
     val fieldPath = flowPath(ValuePathSegment.Field(field))
-    val selected = ReviewedIterableMapCallable.admit(target(), position(0)).flowRefined()
-    val artifact = ReviewedIterableMapArtifact.admit(digest(BINARY_HASH), digest(SOURCE_HASH)).flowRefined()
+    val selected = ReviewedLibraryCallable.admit(target(), position(0)).flowRefined()
+    val artifact = ReviewedLibraryArtifact.admit(digest(BINARY_HASH), digest(SOURCE_HASH)).flowRefined()
     val binding = binding().flowRefined()
 
     fun binding(
         body: RelationCallableBody.Anonymous = this.body,
         occurrence: RelationOccurrence = this.occurrence,
         supplier: RelationCallableBody.Named = this.supplier,
-        selected: ReviewedIterableMapCallable = this.selected,
+        selected: ReviewedLibraryCallable = this.selected,
     ) =
         ReviewedCallbackValueBinding.admit(
             enclosing = enclosing,

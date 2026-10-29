@@ -321,7 +321,7 @@ private fun SerialDescriptor.sealedSchema(references: CanonicalSchemaReferences)
             GeneratedSealedUnionSchemaDocument(
                 anyOf =
                     (0 until variants.elementsCount).map { index ->
-                        val tag = variants.getElementName(index).substringAfterLast('.')
+                        val tag = variants.getElementName(index)
                         variants
                             .getElementDescriptor(index)
                             .toJsonSchema(

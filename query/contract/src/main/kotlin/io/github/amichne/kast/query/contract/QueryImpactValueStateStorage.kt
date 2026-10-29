@@ -28,6 +28,7 @@ private fun ValueCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
                 when (this) {
                     is ValueCondition.StringContentNonNull -> g.node(entryRange) { 0L }
                     is ValueCondition.DeclaredCallbackResult -> binding.storageBytes(g)
+                    is ValueCondition.ReviewedCallbackNormalReturn -> binding.storageBytes(g)
                     is ValueCondition.StableLocal ->
                         version
                             .storageBytes(g)

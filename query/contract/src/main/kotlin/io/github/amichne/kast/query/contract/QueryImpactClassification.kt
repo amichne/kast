@@ -48,7 +48,9 @@ private fun QueryImpactStep.classification(): QueryImpactClassification =
         is QueryImpactStep.Compiler -> QueryImpactClassification.Established(transfer.kind.relationship())
         is QueryImpactStep.ReviewedLibrary ->
             when (transfer.semantics) {
-                ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT ->
+                ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+                ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+                ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT ->
                     QueryImpactClassification.Established(QueryImpactRelationship.EXACT)
             }
         is QueryImpactStep.ModeledRepresentation ->

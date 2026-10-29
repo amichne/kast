@@ -36,56 +36,55 @@ internal fun nativeValueSiteRole(
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     executionOwner: ValueExecutionOwner,
     componentPermit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (
-        element is KtForExpression && (claim is ValueSiteRoleClaim.LoopResult || claim is ValueSiteRoleClaim.Receiver)
-    ) {
-        return nativeLoopSiteRole(element, claim, executionOwner, prepared.scope, prepared.projection, componentPermit)
-    }
-    return when (claim) {
-        is ValueSiteRoleClaim.LoopResult -> roleRejected()
-        ValueSiteRoleClaim.ExpressionResult ->
-            if (element is KtDestructuringDeclarationEntry)
-                componentResultRole(
-                    entry = element,
+    callbackContext: IntellijCallbackFlowContext,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    if (element is KtForExpression && (claim is ValueSiteRoleClaim.LoopResult || claim is ValueSiteRoleClaim.Receiver))
+        nativeLoopSiteRole(element, claim, executionOwner, prepared.scope, prepared.projection, componentPermit)
+    else
+        when (claim) {
+            is ValueSiteRoleClaim.LoopResult -> roleRejected()
+            ValueSiteRoleClaim.ExpressionResult ->
+                if (element is KtDestructuringDeclarationEntry)
+                    componentResultRole(
+                        entry = element,
+                        prepared = prepared,
+                        executionOwner = executionOwner,
+                        permit = componentPermit,
+                    )
+                else expressionRole(element, prepared.projection.observation)
+            ValueSiteRoleClaim.LocalBinding ->
+                localBindingRole(
+                    element = element,
                     prepared = prepared,
                     executionOwner = executionOwner,
                     permit = componentPermit,
                 )
-            else expressionRole(element, prepared.projection.observation)
-        ValueSiteRoleClaim.LocalBinding ->
-            localBindingRole(
-                element = element,
-                prepared = prepared,
-                executionOwner = executionOwner,
-                permit = componentPermit,
-            )
-        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, prepared.projection.observation)
-        ValueSiteRoleClaim.LocalRead ->
-            localReadRole(
-                element = element,
-                owner = prepared.owner,
-                observation = prepared.projection.observation,
-                executionOwner = executionOwner,
-                permit = componentPermit,
-            )
-        ValueSiteRoleClaim.Return ->
-            returnRole(
-                element = element,
-                observation = prepared.projection.observation,
-                workAllowance = prepared.scope.request.budget.resources.workAllowance,
-                executionOwner = executionOwner,
-            )
-        is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
-        is ValueSiteRoleClaim.Receiver ->
-            receiverRole(
-                element = element,
-                prepared = prepared,
-                executionOwner = executionOwner,
-                permit = componentPermit,
-            )
-    }
-}
+            ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, prepared.projection.observation)
+            ValueSiteRoleClaim.LocalRead ->
+                localReadRole(
+                    element = element,
+                    owner = prepared.owner,
+                    observation = prepared.projection.observation,
+                    executionOwner = executionOwner,
+                    permit = componentPermit,
+                )
+            ValueSiteRoleClaim.Return ->
+                returnRole(
+                    element = element,
+                    observation = prepared.projection.observation,
+                    workAllowance = prepared.scope.request.budget.resources.workAllowance,
+                    executionOwner = executionOwner,
+                )
+            is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
+            is ValueSiteRoleClaim.Receiver ->
+                receiverRole(
+                    element = element,
+                    prepared = prepared,
+                    executionOwner = executionOwner,
+                    permit = componentPermit,
+                    callbackContext = callbackContext,
+                )
+        }
 
 private fun componentResultRole(
     entry: KtDestructuringDeclarationEntry,
@@ -295,6 +294,7 @@ private fun receiverRole(
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     executionOwner: ValueExecutionOwner,
     permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    callbackContext: IntellijCallbackFlowContext,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     if (element is KtDestructuringDeclarationEntry)
         return when (
@@ -322,13 +322,27 @@ private fun receiverRole(
         }
     val expression = element as? KtExpression ?: return roleRejected()
     val qualified = element.parent as? KtQualifiedExpression ?: return roleRejected()
-    return nativeValueReceiver(
-        expression = expression,
-        qualified = qualified,
-        scope = prepared.scope,
-        projection = prepared.projection,
-        executionOwner = executionOwner,
-    )
+    return when (
+        val receiver =
+            nativeValueReceiver(
+                expression = expression,
+                qualified = qualified,
+                scope = prepared.scope,
+                projection = prepared.projection,
+                executionOwner = executionOwner,
+            )
+    ) {
+        is Refinement.Refined -> receiver
+        is Refinement.Rejected ->
+            if (receiver.failure == ValueFlowUnsupportedCause.EXTERNAL_CALL)
+                nativeReviewedReceiverRole(
+                    receiverRange = sourceValueRange(expression),
+                    executionOwner = executionOwner,
+                    qualified = qualified,
+                    context = callbackContext,
+                )
+            else receiver
+    }
 }
 
 private fun KtExpression.hasNativeType(observation: IntellijReadObservation): Boolean =

@@ -28,6 +28,7 @@ internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolLi
                     .impactMap { (origin, binding) ->
                         ImpactValueConditionDocument.DeclaredCallbackResult(origin.first, origin.second, binding)
                     }
+            is ValueCondition.ReviewedCallbackNormalReturn -> condition.impactDocument()
             is ValueCondition.StableLocal -> condition.impactDocument()
             is ValueCondition.StableReceiver ->
                 condition.origin
@@ -47,6 +48,13 @@ internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolLi
                     }
             is ValueCondition.CastSuccess -> condition.impactDocument()
         }
+    }
+
+private fun ValueCondition.ReviewedCallbackNormalReturn.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedCallbackNormalReturn> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(binding.impactDocument()).impactMap {
+        (origin, binding) ->
+        ImpactValueConditionDocument.ReviewedCallbackNormalReturn(origin.first, origin.second, binding)
     }
 
 private fun ValueCondition.StableLocal.impactDocument(): ImpactProjected<ImpactValueConditionDocument.StableLocal> =

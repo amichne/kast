@@ -57,6 +57,7 @@ class ImpactReviewedValueTest {
                 "semantics",
                 "actualExecution",
                 "invocationCount",
+                "invocationEvidence",
             ),
             binding.keys,
         )
@@ -115,10 +116,20 @@ class ImpactReviewedValueTest {
         val transfer = fixture.transfer
         return listOf(
             transfer.binding.copy(
-                artifacts = transfer.binding.artifacts.copy(binaryArtifactSha256 = fixture.text("f".repeat(64)))
+                artifacts =
+                    org.junit.jupiter.api.Assertions.assertInstanceOf(
+                            ImpactReviewedMapArtifactsDocument::class.java,
+                            transfer.binding.artifacts,
+                        )
+                        .copy(binaryArtifactSha256 = fixture.text("f".repeat(64)))
             ),
             transfer.binding.copy(
-                artifacts = transfer.binding.artifacts.copy(sourceArtifactSha256 = fixture.text("f".repeat(64)))
+                artifacts =
+                    org.junit.jupiter.api.Assertions.assertInstanceOf(
+                            ImpactReviewedMapArtifactsDocument::class.java,
+                            transfer.binding.artifacts,
+                        )
+                        .copy(sourceArtifactSha256 = fixture.text("f".repeat(64)))
             ),
             transfer.binding.copy(
                 body = transfer.binding.body.copy(compilerIdentity = fixture.text("name-only-callback"))

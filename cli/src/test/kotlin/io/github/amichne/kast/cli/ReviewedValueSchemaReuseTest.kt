@@ -42,7 +42,10 @@ class ReviewedValueSchemaReuseTest {
             )
         val admitted =
             json.encodeToString(ImpactReviewedValueTransferDocument.serializer(), reviewedTransferSchemaFixture())
-        validators.forEach { assertTrue(it.validate(admitted, InputFormat.JSON).isEmpty(), admitted) }
+        validators.forEach { validator ->
+            val failures = validator.validate(admitted, InputFormat.JSON)
+            assertTrue(failures.isEmpty(), failures.joinToString("\n"))
+        }
         for ((before, after) in
             listOf(
                 "\"binaryArtifactSha256\":\"bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3\"" to

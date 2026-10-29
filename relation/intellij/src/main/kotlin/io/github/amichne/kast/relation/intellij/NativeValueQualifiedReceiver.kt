@@ -9,11 +9,14 @@ import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** Qualified reads retain ordinary receiver flow unless the compiler proves a stored-field accessor. */
 internal class NativeValueQualifiedReceiver(
-    private val source: ValueSite,
+    private val request: io.github.amichne.kast.relation.contract.ValueFlowRequest,
+    private val allowance: IntellijRelationAllowance,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
     private val retained: NativeValueFlowTransfers,
 ) {
+    private val source: ValueSite = request.source
+
     fun read(expression: KtExpression, qualified: KtQualifiedExpression) {
         val call = qualified.selectorExpression as? KtCallElement
         if (call == null) {
@@ -95,7 +98,13 @@ internal class NativeValueQualifiedReceiver(
                 )
         ) {
             is Refinement.Refined -> retained.emit(expression, role.value, ValueTransferKind.RECEIVER)
-            is Refinement.Rejected -> retained.unresolvedAt(role.failure, qualified)
+            is Refinement.Rejected ->
+                if (role.failure == io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.EXTERNAL_CALL) {
+                    when (val reviewed = nativeReviewedReceiverRole(request, qualified, scope, projection, allowance)) {
+                        is Refinement.Refined -> retained.emit(expression, reviewed.value, ValueTransferKind.RECEIVER)
+                        is Refinement.Rejected -> retained.unresolvedAt(reviewed.failure, qualified)
+                    }
+                } else retained.unresolvedAt(role.failure, qualified)
         }
     }
 

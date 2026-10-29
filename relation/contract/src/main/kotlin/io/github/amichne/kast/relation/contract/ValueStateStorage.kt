@@ -20,6 +20,7 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
             when (condition) {
                 is ValueCondition.StringContentNonNull -> STRING_CONTENT_CONDITION_BYTES
                 is ValueCondition.DeclaredCallbackResult -> condition.binding.retainedBytes
+                is ValueCondition.ReviewedCallbackNormalReturn -> condition.binding.retainedBytes
                 is ValueCondition.StableLocal ->
                     VALUE_CALL_PROOF_BYTES.addBytes(
                             condition.version.execution.enclosing.detachedTextUnits().multiplyBytes(2)

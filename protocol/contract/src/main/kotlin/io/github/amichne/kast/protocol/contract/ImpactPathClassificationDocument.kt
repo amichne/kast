@@ -38,7 +38,9 @@ internal fun BoundedProtocolList<ImpactPathStepDocument>.classifyImpact(): Impac
                     relationship = ImpactRelationshipDocument.DERIVED
             is ImpactPathStepDocument.ReviewedLibrary ->
                 when (step.transfer.binding.semantics) {
-                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT -> Unit
+                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
+                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT -> Unit
                 }
             is ImpactPathStepDocument.ModeledRepresentation ->
                 return notEstablished(index, ImpactCorrespondenceFailureDocument.REPRESENTATION_MODEL_ONLY)

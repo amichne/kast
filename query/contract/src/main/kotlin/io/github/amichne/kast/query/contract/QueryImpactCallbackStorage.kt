@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueCaptureInvocation
@@ -33,6 +34,13 @@ internal fun ReviewedCallbackValueBinding.storageBytes(g: QueryImpactRetainedGra
                 g.node(occurrence) {
                     g.node(occurrence.file) { g.text(occurrence.file.stableValue) }
                         .saturatedAdd(g.node(occurrence.range) { 0L })
+                }
+            )
+            .saturatedAdd(
+                when (val evidence = invocationEvidence) {
+                    ReviewedCallbackInvocationEvidence.Unestablished -> 0L
+                    is ReviewedCallbackInvocationEvidence.Declared ->
+                        g.node(evidence) { evidence.binding.storageBytes(g) }
                 }
             )
             .saturatedAdd(g.node(selected) { target.storageBytes(g) })

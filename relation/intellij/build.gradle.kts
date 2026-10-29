@@ -160,13 +160,23 @@ val contractFixtureStdlib =
         isTransitive = false
     }
 
+val reviewedScopeStdlib =
+    configurations.create("reviewedScopeStdlib") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        isTransitive = false
+    }
+
 dependencies {
     reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
     contractFixtureStdlib(libs.kotlin.stdlib)
+    reviewedScopeStdlib(libs.reviewed.scope.stdlib)
+    reviewedScopeStdlib(variantOf(libs.reviewed.scope.stdlib) { classifier("sources") })
 }
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
     from(reviewedCallbackSources) { into("reviewed-libraries") }
+    from(reviewedScopeStdlib) { into("reviewed-libraries") }
     from(contractFixtureStdlib) {
         into("contract-libraries")
         rename { "kotlin-stdlib.jar" }
