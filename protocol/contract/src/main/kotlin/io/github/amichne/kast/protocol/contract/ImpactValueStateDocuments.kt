@@ -11,6 +11,18 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactValuePathSegmentDocument {
+    @Serializable
+    @SerialName("PAIR_COMPONENT")
+    data class PairComponent(val origin: ImpactReviewedTupleOriginDocument, val slot: ImpactPairSlotDocument) :
+        ImpactValuePathSegmentDocument
+
+    @Serializable
+    @SerialName("MAP_ENTRY_COMPONENT")
+    data class MapEntryComponent(
+        val entry: ImpactReviewedMapEntryOriginDocument,
+        val slot: ImpactMapEntrySlotDocument,
+    ) : ImpactValuePathSegmentDocument
+
     @Serializable @SerialName("ELEMENT") data object Element : ImpactValuePathSegmentDocument
 
     @Serializable

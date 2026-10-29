@@ -681,7 +681,7 @@
           "claim": "claim_904d48e1835d43179ec27ad16a73f1c7",
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
           "recordedVersion": "repo-file-v1:sha256:5caab847365df145809dde3090a37e539780578941d6ead266269e868441f299",
-          "currentVersion": "repo-file-v1:sha256:63f60aa3007b705da3fd217d7c0670c708cdea6c6663f8ccf2dc3d0eee2a3cae",
+          "currentVersion": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7",
           "status": "CHANGED"
         }
       ]

@@ -90,7 +90,7 @@ internal class NativeValueLoopInput(
                 iteration = expected.iteration,
                 permit = permit,
                 consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
-                unsupported = { retained.unresolvedAt(it, declaration) },
+                unsupported = { cause, at -> retained.unresolvedAt(cause, at) },
             )
     }
 

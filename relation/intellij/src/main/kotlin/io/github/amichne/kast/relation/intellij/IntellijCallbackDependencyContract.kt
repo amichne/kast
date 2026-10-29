@@ -321,7 +321,7 @@ private fun updateContractClassDigest(
 
 internal fun org.jetbrains.kotlin.analysis.api.KaSession.contractTarget(
     context: IntellijCallbackFlowContext,
-    symbol: KaNamedFunctionSymbol,
+    symbol: org.jetbrains.kotlin.analysis.api.symbols.KaSymbol,
     declaration: PsiNamedElement,
     file: com.intellij.openapi.vfs.VirtualFile,
 ): CompilerGroundedSymbolEvidence? {

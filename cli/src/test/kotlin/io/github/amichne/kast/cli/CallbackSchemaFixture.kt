@@ -6,7 +6,21 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCallValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCallbackParentDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedDistinctStringKeysDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedEntryComponentInvocationDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedEntryReadOrderDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedInputEntryOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryCorrelationDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryFamilyDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMappedEntryOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedPreservedKeyOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedTupleOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -46,23 +60,44 @@ internal fun independentImpactSchema(serializer: KSerializer<*>): JsonObject =
         ),
     )
 
-/** Validation reuses the exact site descriptor; structural comparisons retain the expanded independent schema. */
+/** Validation resolves independently selected descriptors without expanding repeated proof trees. */
 internal fun independentImpactSchemaWithDefinitions(serializer: KSerializer<*>): JsonObject {
-    val shared =
-        mapOf(
-            "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
-            "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
-            "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
-        )
-    val references = CanonicalSchemaReferences.from(shared)
+    val graph = independentFactoredImpactSchema(serializer)
     return Json.encodeToJsonElement(
             DefinitionSchema.serializer(),
             DefinitionSchema(
                 reference = "#/\$defs/independentRoot",
-                definitions =
-                    mapOf("independentRoot" to generatedOutputSchema(serializer, references)) +
-                        shared.mapValues { (_, definition) -> generatedOutputSchema(definition, references) },
+                definitions = mapOf("independentRoot" to graph.root) + graph.definitions,
             ),
         )
         .jsonObject
+}
+
+/** Independent serializer selection keeps each shared proof definition available for structural comparison. */
+internal fun independentFactoredImpactSchema(serializer: KSerializer<*>): IndependentSchemaGraph {
+    val shared =
+        mapOf(
+            "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+            "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
+            "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
+            "impactExecutionOwner" to ImpactExecutionOwnerDocument.serializer(),
+            "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
+            "impactReviewedCallValueBinding" to ImpactReviewedCallValueBindingDocument.serializer(),
+            "impactReviewedTupleOrigin" to ImpactReviewedTupleOriginDocument.serializer(),
+            "impactReviewedMapEntryCorrelation" to ImpactReviewedMapEntryCorrelationDocument.serializer(),
+            "impactReviewedMapEntryOrigin" to ImpactReviewedMapEntryOriginDocument.serializer(),
+            "impactReviewedMapEntryFamily" to ImpactReviewedMapEntryFamilyDocument.serializer(),
+            "impactReviewedInputEntryOrigin" to ImpactReviewedInputEntryOriginDocument.serializer(),
+            "impactReviewedPreservedKeyOrigin" to ImpactReviewedPreservedKeyOriginDocument.serializer(),
+            "impactReviewedEntryReadOrder" to ImpactReviewedEntryReadOrderDocument.serializer(),
+            "impactReviewedEntryComponentInvocation" to ImpactReviewedEntryComponentInvocationDocument.serializer(),
+            "impactReviewedMappedEntryOrigin" to ImpactReviewedMappedEntryOriginDocument.serializer(),
+            "impactReviewedCallbackParent" to ImpactReviewedCallbackParentDocument.serializer(),
+            "impactReviewedDistinctStringKeys" to ImpactReviewedDistinctStringKeysDocument.serializer(),
+        )
+    val references = CanonicalSchemaReferences.from(shared)
+    return IndependentSchemaGraph(
+        generatedOutputSchema(serializer, references),
+        shared.mapValues { (_, definition) -> generatedOutputSchema(definition, references) },
+    )
 }

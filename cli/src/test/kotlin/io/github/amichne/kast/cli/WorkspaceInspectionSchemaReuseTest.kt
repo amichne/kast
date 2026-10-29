@@ -187,9 +187,17 @@ class WorkspaceInspectionSchemaReuseTest {
 internal class LocalSchemaAssertions(private val schema: JsonObject) {
     private val definitions = schema["\$defs"]?.jsonObject.orEmpty()
 
+    fun assertEquivalent(expected: IndependentSchemaGraph) {
+        LocalSchemaGraphAssertions(schema, expected).assertEquivalent()
+    }
+
     fun assertEquivalent(expected: JsonElement) {
         assertLocalReferences()
         compare(expected, schema, "root", allowDefinitions = true)
+    }
+
+    fun assertDefinitionEquivalent(name: String, expected: IndependentSchemaGraph) {
+        LocalSchemaGraphAssertions(schema, expected).assertDefinitionEquivalent(name)
     }
 
     fun assertDefinitionEquivalent(name: String, expected: JsonElement) {
@@ -244,7 +252,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                 )
                 .filterKeys { it in definitions }
                 .forEach { (definition, serializer) ->
-                    compare(independentImpactSchema(serializer), definitions.getValue(definition), definition)
+                    assertDefinitionEquivalent(definition, independentFactoredImpactSchema(serializer))
                 }
         }
     }

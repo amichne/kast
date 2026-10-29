@@ -1,5 +1,9 @@
 package io.github.amichne.kast.query.contract
 
+import io.github.amichne.kast.relation.contract.ReviewedCallbackResultNonNull
+import io.github.amichne.kast.relation.contract.ReviewedGroupKeyRepresentative
+import io.github.amichne.kast.relation.contract.ReviewedGroupMembership
+import io.github.amichne.kast.relation.contract.ReviewedPredicateAccepts
 import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
@@ -26,8 +30,21 @@ private fun ValueCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.node(useRange) { 0L })
             .saturatedAdd(
                 when (this) {
+                    is ReviewedPredicateAccepts -> binding.storageBytes(g)
+                    is ReviewedCallbackResultNonNull -> binding.storageBytes(g)
+                    is ReviewedGroupMembership -> entry.storageBytes(g)
+                    is ReviewedGroupKeyRepresentative -> entry.storageBytes(g)
                     is ValueCondition.StringContentNonNull -> g.node(entryRange) { 0L }
                     is ValueCondition.DeclaredCallbackResult -> binding.storageBytes(g)
+                    is ValueCondition.ReviewedCallbackNormalReturn -> binding.storageBytes(g)
+                    is ValueCondition.ReviewedCollectionNormalResult -> binding.storageBytes(g)
+                    is ValueCondition.ReviewedMappedKeySurvives -> entry.storageBytes(g)
+                    is ValueCondition.ReviewedPreservedKeySurvives -> entry.storageBytes(g)
+                    is ValueCondition.ReviewedEntryPrefixNormal ->
+                        binding.storageBytes(g).saturatedAdd(entry.storageBytes(g))
+                    is ValueCondition.ReviewedEntryComponentStable ->
+                        binding.storageBytes(g).saturatedAdd(entry.storageBytes(g))
+                    is ValueCondition.ReviewedEntryKeyUnique -> entry.storageBytes(g)
                     is ValueCondition.StableLocal ->
                         version
                             .storageBytes(g)
@@ -51,6 +68,8 @@ internal fun ValueAccessPath.storageBytes(g: QueryImpactRetainedGraph): Long =
             g.node(segment) {
                 when (segment) {
                     ValuePathSegment.Element -> 0L
+                    is ValuePathSegment.PairComponent -> segment.origin.storageBytes(g)
+                    is ValuePathSegment.MapEntryComponent -> segment.entry.storageBytes(g)
                     is ValuePathSegment.Field -> g.node(segment.field) { segment.field.declaration.storageBytes(g) }
                 }
             }

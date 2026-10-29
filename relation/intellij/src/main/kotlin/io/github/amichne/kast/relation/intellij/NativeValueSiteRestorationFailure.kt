@@ -50,10 +50,13 @@ private fun KtExpression.matchesRoleShape(role: ValueSiteRoleClaim): Boolean =
                 this is org.jetbrains.kotlin.psi.KtBinaryExpression &&
                     operationToken == org.jetbrains.kotlin.lexer.KtTokens.EQ
         ValueSiteRoleClaim.PropertyAssignment -> this is KtProperty
-        is ValueSiteRoleClaim.Argument -> (parent as? KtValueArgument)?.getArgumentExpression() === this
+        is ValueSiteRoleClaim.Argument ->
+            (parent as? KtValueArgument)?.getArgumentExpression() === this ||
+                (parent as? org.jetbrains.kotlin.psi.KtBinaryExpression)?.right === this
         is ValueSiteRoleClaim.Receiver ->
             this is KtForExpression ||
                 (parent as? KtQualifiedExpression)?.receiverExpression === this ||
+                (parent as? org.jetbrains.kotlin.psi.KtBinaryExpression)?.left === this ||
                 (this is KtDestructuringDeclarationEntry && isNativeComponent())
         ValueSiteRoleClaim.ExpressionResult ->
             this !is KtNamedDeclaration || (this is KtDestructuringDeclarationEntry && isNativeComponent())

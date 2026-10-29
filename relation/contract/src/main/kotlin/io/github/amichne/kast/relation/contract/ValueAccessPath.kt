@@ -9,6 +9,7 @@ enum class ValueAccessPathFailure {
     NOT_PROPERTY,
     DEPTH_EXCEEDED,
     BASIS_MISMATCH,
+    COMPONENT_MISMATCH,
 }
 
 /** A resolved property declaration, rather than a field name or a rendered type. */
@@ -31,6 +32,10 @@ class ValueField private constructor(val declaration: RelationEndpoint) {
 
 sealed interface ValuePathSegment {
     data class Field(val field: ValueField) : ValuePathSegment
+
+    data class PairComponent(val origin: ReviewedTupleOrigin, val slot: PairSlot) : ValuePathSegment
+
+    data class MapEntryComponent(val entry: ReviewedMapEntryOrigin, val slot: MapEntrySlot) : ValuePathSegment
 
     /** An element position preserves the rest of the path without an index or cardinality assertion. */
     data object Element : ValuePathSegment
@@ -57,8 +62,9 @@ class ValueAccessPath private constructor(val segments: List<ValuePathSegment>) 
             else -> ValuePathSelection.DifferentField
         }
 
-    fun matchesBasis(basis: SemanticReadIdentity): Boolean =
-        segments.filterIsInstance<ValuePathSegment.Field>().all { it.field.basis == basis }
+    fun matchesBasis(basis: SemanticReadIdentity): Boolean = segments.all {
+        it.segmentBasis().all { segmentBasis -> segmentBasis == basis }
+    }
 
     companion object {
         const val MAX_DEPTH = 8
@@ -66,7 +72,9 @@ class ValueAccessPath private constructor(val segments: List<ValuePathSegment>) 
 
         fun fromSegments(segments: List<ValuePathSegment>): Refinement<ValueAccessPath, ValueAccessPathFailure> {
             if (segments.size > MAX_DEPTH) return Refinement.Rejected(ValueAccessPathFailure.DEPTH_EXCEEDED)
-            val bases = segments.filterIsInstance<ValuePathSegment.Field>().map { it.field.basis }.distinct()
+            if (segments.any { !it.admitsEntrySlot() })
+                return Refinement.Rejected(ValueAccessPathFailure.COMPONENT_MISMATCH)
+            val bases = segments.flatMap { it.segmentBasis() }.distinct()
             if (bases.size > 1) return Refinement.Rejected(ValueAccessPathFailure.BASIS_MISMATCH)
             return Refinement.Refined(ValueAccessPath(Collections.unmodifiableList(segments.toList())))
         }
@@ -76,3 +84,24 @@ class ValueAccessPath private constructor(val segments: List<ValuePathSegment>) 
 
     override fun hashCode(): Int = segments.hashCode()
 }
+
+private fun ValuePathSegment.segmentBasis(): List<SemanticReadIdentity> =
+    when (this) {
+        ValuePathSegment.Element -> emptyList()
+        is ValuePathSegment.Field -> listOf(field.basis)
+        is ValuePathSegment.PairComponent -> listOf(origin.basis)
+        is ValuePathSegment.MapEntryComponent -> listOf(entry.basis)
+    }
+
+private fun ValuePathSegment.admitsEntrySlot(): Boolean =
+    when (this) {
+        is ValuePathSegment.MapEntryComponent ->
+            when (entry) {
+                is ReviewedGroupBucket -> slot == entry.slot
+                is ReviewedMappedEntryOrigin -> slot == MapEntrySlot.VALUE
+                is ReviewedPreservedKeyOrigin -> slot == MapEntrySlot.KEY
+                is ReviewedInputEntryOrigin,
+                is ReviewedMapEntryCorrelation -> true
+            }
+        else -> true
+    }

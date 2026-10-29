@@ -14,6 +14,9 @@ import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
  */
 internal class NativeDestructuringAdmission
 private constructor(val components: List<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>) {
+    val unresolvedGetters: List<KtDestructuringDeclarationEntry>
+        get() = components.filter { it.second is NativeComponentTarget.Reviewed }.map { it.first }
+
     fun target(entry: KtDestructuringDeclarationEntry): Refinement<NativeComponentTarget, ValueFlowUnsupportedCause> =
         when (val selected = components.singleOrNull { it.first === entry }) {
             null -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
@@ -27,11 +30,49 @@ private constructor(val components: List<Pair<KtDestructuringDeclarationEntry, N
             scope: CompiledRelationScope,
             projection: IntellijK2RelationProjection,
             permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+        ): Refinement<NativeDestructuringAdmission, ValueFlowUnsupportedCause> =
+            read(
+                declaration,
+                NativeComponentAdmissionContext(
+                    enclosing = enclosing,
+                    scope = scope,
+                    projection = projection,
+                    permit = permit,
+                    reviewed = NativeReviewedComponentScope.Unavailable,
+                ),
+            )
+
+        fun readReviewed(
+            declaration: KtDestructuringDeclaration,
+            scope: CompiledRelationScope,
+            projection: IntellijK2RelationProjection,
+            permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+            reviewed: NativeReviewedComponentScope.Available,
+        ): Refinement<NativeDestructuringAdmission, ValueFlowUnsupportedCause> =
+            read(
+                declaration,
+                NativeComponentAdmissionContext(
+                    enclosing = reviewed.execution.enclosing,
+                    scope = scope,
+                    projection = projection,
+                    permit = permit,
+                    reviewed = reviewed,
+                ),
+            )
+
+        private fun read(
+            declaration: KtDestructuringDeclaration,
+            admission: NativeComponentAdmissionContext,
         ): Refinement<NativeDestructuringAdmission, ValueFlowUnsupportedCause> {
+            val enclosing = admission.enclosing
+            val scope = admission.scope
+            val projection = admission.projection
+            val permit = admission.permit
+            val reviewed = admission.reviewed
             val context = declaration.nativeDestructuringContext()
             if (context == NativeDestructuringContext.Unsupported) return unsupportedComponents()
             val components =
-                when (val selected = selectComponents(declaration, projection, permit)) {
+                when (val selected = selectComponents(declaration, projection, permit, reviewed)) {
                     is Refinement.Refined -> selected.value
                     is Refinement.Rejected -> return selected
                 }
@@ -103,12 +144,15 @@ private fun NativeNormalComponentBody.admitSelected(
         is NativeComponentTarget.Field -> stored(target.parameter)
         is NativeComponentTarget.Source -> if (requireNormalBody) read(entry, target) else Refinement.Refined(Unit)
         is NativeComponentTarget.Getter -> readGetter(entry, target)
+        // Admission keeps the virtual getter unresolved; it does not call this a normal source body.
+        is NativeComponentTarget.Reviewed -> Refinement.Refined(Unit)
     }
 
 private fun selectComponents(
     declaration: KtDestructuringDeclaration,
     projection: IntellijK2RelationProjection,
     permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    reviewed: NativeReviewedComponentScope,
 ): Refinement<List<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>, ValueFlowUnsupportedCause> {
     val components = mutableListOf<Pair<KtDestructuringDeclarationEntry, NativeComponentTarget>>()
     for (entry in declaration.entries) {
@@ -119,11 +163,15 @@ private fun selectComponents(
             is Refinement.Rejected -> return allowed
         }
         when (val target = nativeComponentTarget(entry, projection)) {
-            is Refinement.Refined -> components += entry to target.value
+            is Refinement.Refined ->
+                when (val selected = nativeReviewedComponentTarget(entry, target.value, reviewed)) {
+                    is Refinement.Refined -> components += entry to selected.value
+                    is Refinement.Rejected -> return selected
+                }
             is Refinement.Rejected -> return target
         }
     }
-    return Refinement.Refined(components.toList())
+    return nativeReviewedComponentOrder(components.toList(), sourceValueRange(declaration))
 }
 
 /** Component proof spends the caller's original allowance, including repeated admission at return boundaries. */
@@ -140,3 +188,11 @@ internal fun IntellijRelationAllowance.permitDestructuring(
 
 private fun unsupportedComponents(): Refinement.Rejected<ValueFlowUnsupportedCause> =
     Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+
+private data class NativeComponentAdmissionContext(
+    val enclosing: RelationEndpoint,
+    val scope: CompiledRelationScope,
+    val projection: IntellijK2RelationProjection,
+    val permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    val reviewed: NativeReviewedComponentScope,
+)

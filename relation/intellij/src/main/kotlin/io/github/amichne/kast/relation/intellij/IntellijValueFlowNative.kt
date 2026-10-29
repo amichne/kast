@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtForExpression
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 
@@ -136,12 +136,21 @@ internal class IntellijValueFlowNative(
     private fun formalInput(element: PsiElement) {
         val parameter = element.destructuredValueParameter()
         if (parameter != null) {
-            NativeValueDestructuring(request.source, scope, projection)
+            NativeValueDestructuring(
+                    source = request.source,
+                    scope = scope,
+                    projection = projection,
+                    reviewed =
+                        NativeReviewedComponentScope.Available(
+                            request.source.executionOwner,
+                            receiverContext(request, scope, projection, allowance),
+                        ),
+                )
                 .readParameter(
                     parameter = parameter,
                     permit = ::permitted,
                     consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
-                    unsupported = { retained.unresolvedAt(it, element) },
+                    unsupported = { cause, at -> retained.unresolvedAt(cause, at) },
                 )
         } else receiverFields(element)
     }
@@ -190,7 +199,7 @@ internal class IntellijValueFlowNative(
             return
         }
         val function =
-            element as? KtNamedFunction
+            element as? KtFunction
                 ?: run {
                     unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
                     return

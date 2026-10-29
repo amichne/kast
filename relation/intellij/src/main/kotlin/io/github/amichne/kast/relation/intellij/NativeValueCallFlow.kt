@@ -19,6 +19,7 @@ internal class NativeValueCallFlow(
     private val permit: () -> Boolean,
 ) {
     fun read(): Refinement<Unit, ValueFlowRejection> {
+        if (readReviewedCallIfSelected()) return Refinement.Refined(Unit)
         val dispatch =
             NativeValueImplementationDispatch(
                     request = request,
@@ -44,6 +45,62 @@ internal class NativeValueCallFlow(
             is NativeValueArgumentDispatch.Rejected -> return Refinement.Rejected(dispatch.cause.nativeFlowRejection())
         }
         return Refinement.Refined(Unit)
+    }
+
+    private fun readReviewedCallIfSelected(): Boolean {
+        val invocation =
+            when (val role = request.source.role) {
+                is ValueRole.Receiver -> role.call
+                is ValueRole.Argument -> role.call
+                else -> return false
+            }
+        if (invocation.callable.file !is io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.External)
+            return false
+        val selected =
+            invocation.callable.qualifiedIdentity
+                as? io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available ?: return false
+        when (selected.value) {
+            "kotlin.also",
+            "kotlin.run",
+            "kotlin.apply",
+            "kotlin.collections.map",
+            "kotlin.collections.filter",
+            "kotlin.collections.mapNotNull",
+            "kotlin.collections.groupBy",
+            "kotlin.collections.sortedBy",
+            "kotlin.collections.mapValues",
+            "kotlin.collections.associate" -> {
+                if (request.source.role !is ValueRole.Receiver) return false
+                nativeReviewedReceiverResults(request, scope, projection, allowance, retained)
+            }
+            "kotlin.with" -> return readReviewedWithInput()
+            "kotlin.to",
+            "kotlin.Pair.<init>",
+            "kotlin.Pair.first",
+            "kotlin.Pair.second" ->
+                retained.adoptReviewed(nativeReviewedTupleResult(request, scope, projection, allowance))
+            "kotlin.collections.Map.Entry.key",
+            "kotlin.collections.Map.Entry.value",
+            "kotlin.collections.component1",
+            "kotlin.collections.component2" -> {
+                retained.adoptReviewed(nativeReviewedTupleResult(request, scope, projection, allowance))
+                // Reviewed slot correspondence does not resolve a virtual getter implementation.
+                retained.unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
+            }
+            else -> return false
+        }
+        return true
+    }
+
+    private fun readReviewedWithInput(): Boolean {
+        if (request.source.role !is ValueRole.Argument) return false
+        nativeReviewedWithInput(
+            request = request,
+            context = receiverContext(request, scope, projection, allowance),
+            projection = projection,
+            retained = retained,
+        )
+        return true
     }
 
     private fun implementationCauses(

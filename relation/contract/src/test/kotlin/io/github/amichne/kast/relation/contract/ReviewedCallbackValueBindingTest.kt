@@ -50,7 +50,7 @@ class ReviewedCallbackValueBindingTest {
         for (target in targets) {
             assertEquals(
                 ReviewedCallbackValueFailure.CALLABLE_MISMATCH,
-                ReviewedIterableMapCallable.admit(target, fixture.position(0)).reviewedFailure(),
+                ReviewedLibraryCallable.admit(target, fixture.position(0)).reviewedFailure(),
             )
         }
     }
@@ -60,12 +60,12 @@ class ReviewedCallbackValueBindingTest {
         val fixture = ReviewedValueFixture()
         assertEquals(
             ReviewedCallbackValueFailure.FORMAL_MISMATCH,
-            ReviewedIterableMapCallable.admit(fixture.target(), fixture.position(1)).reviewedFailure(),
+            ReviewedLibraryCallable.admit(fixture.target(), fixture.position(1)).reviewedFailure(),
         )
         for (parameters in listOf(emptyList(), listOf("(T)->T"), listOf("(T)->R", "kotlin/Int"))) {
             assertEquals(
                 ReviewedCallbackValueFailure.FORMAL_MISMATCH,
-                ReviewedIterableMapCallable.admit(fixture.target(parameters = parameters), fixture.position(0))
+                ReviewedLibraryCallable.admit(fixture.target(parameters = parameters), fixture.position(0))
                     .reviewedFailure(),
             )
         }
@@ -77,13 +77,11 @@ class ReviewedCallbackValueBindingTest {
         val changed = fixture.digest("a".repeat(64))
         assertEquals(
             ReviewedCallbackValueFailure.ARTIFACT_MISMATCH,
-            ReviewedIterableMapArtifact.admit(changed, fixture.digest(ReviewedValueFixture.SOURCE_HASH))
-                .reviewedFailure(),
+            ReviewedLibraryArtifact.admit(changed, fixture.digest(ReviewedValueFixture.SOURCE_HASH)).reviewedFailure(),
         )
         assertEquals(
             ReviewedCallbackValueFailure.ARTIFACT_MISMATCH,
-            ReviewedIterableMapArtifact.admit(fixture.digest(ReviewedValueFixture.BINARY_HASH), changed)
-                .reviewedFailure(),
+            ReviewedLibraryArtifact.admit(fixture.digest(ReviewedValueFixture.BINARY_HASH), changed).reviewedFailure(),
         )
     }
 

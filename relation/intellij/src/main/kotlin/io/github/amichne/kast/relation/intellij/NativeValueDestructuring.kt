@@ -18,17 +18,18 @@ internal class NativeValueDestructuring(
     private val source: ValueSite,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
+    private val reviewed: NativeReviewedComponentScope = NativeReviewedComponentScope.Unavailable,
 ) {
     fun read(
         expression: KtExpression,
         declaration: KtDestructuringDeclaration,
         permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
         consume: (ValueTransfer) -> Unit,
-        unsupported: (ValueFlowUnsupportedCause) -> Unit,
+        unsupported: (ValueFlowUnsupportedCause, com.intellij.psi.PsiElement) -> Unit,
     ) {
         val context = declaration.nativeDestructuringContext()
         if (context !is NativeDestructuringContext.Local || context.initializer !== expression) {
-            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, declaration)
             return
         }
         readComponents(declaration, permit, consume, unsupported)
@@ -38,26 +39,35 @@ internal class NativeValueDestructuring(
         parameter: KtParameter,
         permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
         consume: (ValueTransfer) -> Unit,
-        unsupported: (ValueFlowUnsupportedCause) -> Unit,
+        unsupported: (ValueFlowUnsupportedCause, com.intellij.psi.PsiElement) -> Unit,
     ) {
         val declaration = parameter.destructuringDeclaration
         if (declaration == null) {
-            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, parameter)
             return
         }
         val context = declaration.nativeDestructuringContext()
         val formal = (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Parameter
-        val execution = source.executionOwner.context as? ValueExecutionContext.Callback
-        if (context !is NativeDestructuringContext.Parameter || formal == null || execution == null) {
-            unsupported(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+        val body =
+            when (val execution = source.executionOwner.context) {
+                is ValueExecutionContext.Callback -> execution.body
+                is ValueExecutionContext.ReviewedCallback -> execution.binding.body
+                ValueExecutionContext.Declaration,
+                is ValueExecutionContext.DeclaredCallback -> {
+                    unsupported(ValueFlowUnsupportedCause.NESTED_EXECUTION, parameter)
+                    return
+                }
+            }
+        if (context !is NativeDestructuringContext.Parameter || formal == null) {
+            unsupported(ValueFlowUnsupportedCause.NESTED_EXECUTION, parameter)
             return
         }
         if (
             formal.parameter.executionOwner != source.executionOwner ||
                 formal.parameter.range != sourceValueRange(parameter) ||
-                sourceValueRange(context.function) != execution.body.range
+                sourceValueRange(context.function) != body.range
         ) {
-            unsupported(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            unsupported(ValueFlowUnsupportedCause.NESTED_EXECUTION, parameter)
             return
         }
         readComponents(declaration, permit, consume, unsupported)
@@ -68,18 +78,18 @@ internal class NativeValueDestructuring(
         iteration: ValueLoopIteration,
         permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
         consume: (ValueTransfer) -> Unit,
-        unsupported: (ValueFlowUnsupportedCause) -> Unit,
+        unsupported: (ValueFlowUnsupportedCause, com.intellij.psi.PsiElement) -> Unit,
     ) {
         val context = declaration.nativeDestructuringContext()
         if (
             context !is NativeDestructuringContext.Iteration ||
                 source.role != ValueRole.LoopResult(iteration.elementResult)
         ) {
-            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, declaration)
             return
         }
         if (sourceValueRange(context.loop) != iteration.protocol.next.range) {
-            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, declaration)
             return
         }
         readComponents(declaration, permit, consume, unsupported)
@@ -89,21 +99,22 @@ internal class NativeValueDestructuring(
         declaration: KtDestructuringDeclaration,
         permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
         consume: (ValueTransfer) -> Unit,
-        unsupported: (ValueFlowUnsupportedCause) -> Unit,
+        unsupported: (ValueFlowUnsupportedCause, com.intellij.psi.PsiElement) -> Unit,
     ) {
         val components =
             when (val admitted = targets(declaration, permit)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> {
-                    unsupported(admitted.failure)
+                    unsupported(admitted.failure, declaration)
                     return
                 }
             }
+        for (entry in components.unresolvedGetters) unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY, entry)
         val transfers =
             when (val projected = projected(components, permit)) {
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> {
-                    unsupported(projected.failure)
+                    unsupported(projected.failure, declaration)
                     return
                 }
             }
@@ -141,17 +152,23 @@ internal class NativeValueDestructuring(
         entry: KtDestructuringDeclarationEntry,
         permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
         consume: () -> Unit,
-        unsupported: (ValueFlowUnsupportedCause) -> Unit,
+        unsupported: (ValueFlowUnsupportedCause, com.intellij.psi.PsiElement) -> Unit,
     ) {
         if (entry.name == "_") return
         val declaration = entry.parent as? KtDestructuringDeclaration
         if (declaration == null || !entry.isNativeComponent()) {
-            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, entry)
             return
         }
         when (val admitted = targets(declaration, permit)) {
-            is Refinement.Refined -> consume()
-            is Refinement.Rejected -> unsupported(admitted.failure)
+            is Refinement.Refined -> {
+                for (sibling in admitted.value.unresolvedGetters) unsupported(
+                    ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY,
+                    sibling,
+                )
+                consume()
+            }
+            is Refinement.Rejected -> unsupported(admitted.failure, declaration)
         }
     }
 
@@ -159,13 +176,24 @@ internal class NativeValueDestructuring(
         declaration: KtDestructuringDeclaration,
         permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
     ): Refinement<NativeDestructuringAdmission, ValueFlowUnsupportedCause> =
-        NativeDestructuringAdmission.read(
-            declaration = declaration,
-            enclosing = source.enclosing,
-            scope = scope,
-            projection = projection,
-            permit = permit,
-        )
+        when (reviewed) {
+            NativeReviewedComponentScope.Unavailable ->
+                NativeDestructuringAdmission.read(
+                    declaration = declaration,
+                    enclosing = source.enclosing,
+                    scope = scope,
+                    projection = projection,
+                    permit = permit,
+                )
+            is NativeReviewedComponentScope.Available ->
+                NativeDestructuringAdmission.readReviewed(
+                    declaration = declaration,
+                    scope = scope,
+                    projection = projection,
+                    permit = permit,
+                    reviewed = reviewed,
+                )
+        }
 
     private fun project(
         entry: KtDestructuringDeclarationEntry,

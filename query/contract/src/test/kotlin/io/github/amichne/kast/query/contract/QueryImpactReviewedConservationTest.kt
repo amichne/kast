@@ -10,8 +10,8 @@ import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapArtifact
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapCallable
+import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
+import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
@@ -226,7 +226,7 @@ class QueryImpactReviewedConservationTest {
     }
 }
 
-private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "map", occurrenceStart: Int = 20) {
+internal class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "map", occurrenceStart: Int = 20) {
     private val base = QueryImpactLedgerFixture()
     private val lease = SemanticReadLease(base.lease.workspaceRoot, EvidenceGeneration.parse(generation).value())
     private val owner = RelationEndpoint.resolve(lease, base.scope, base.evidence).value()
@@ -276,9 +276,9 @@ private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "
                 body = body,
                 occurrence = RelationOccurrence.fromBoundary(base.file, occurrenceStart, 100).value(),
                 supplier = RelationCallableBody.Named.fromCompiler(owner.evidence).value(),
-                selected = ReviewedIterableMapCallable.admit(target, ValueArgumentPosition.parse(0).value()).value(),
+                selected = ReviewedLibraryCallable.admit(target, ValueArgumentPosition.parse(0).value()).value(),
                 artifact =
-                    ReviewedIterableMapArtifact.admit(
+                    ReviewedLibraryArtifact.admit(
                             DependencyArtifactDigest.parse(
                                     "bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3"
                                 )

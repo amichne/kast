@@ -4,6 +4,7 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
@@ -24,8 +25,9 @@ class ReviewedValueSchemaReuseTest {
             mapOf(
                 "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
                 "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
+                "impactReviewedValueRelationship" to ImpactReviewedValueRelationshipDocument.serializer(),
             )) {
-            assertions.assertDefinitionEquivalent(name, independentImpactSchema(serializer))
+            assertions.assertDefinitionEquivalent(name, independentFactoredImpactSchema(serializer))
             assertTrue(referenceCount(schema, name) > 1, "The repeated schema must share $name")
         }
     }
@@ -42,7 +44,10 @@ class ReviewedValueSchemaReuseTest {
             )
         val admitted =
             json.encodeToString(ImpactReviewedValueTransferDocument.serializer(), reviewedTransferSchemaFixture())
-        validators.forEach { assertTrue(it.validate(admitted, InputFormat.JSON).isEmpty(), admitted) }
+        validators.forEach { validator ->
+            val failures = validator.validate(admitted, InputFormat.JSON)
+            assertTrue(failures.isEmpty(), failures.joinToString("\n"))
+        }
         for ((before, after) in
             listOf(
                 "\"binaryArtifactSha256\":\"bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3\"" to

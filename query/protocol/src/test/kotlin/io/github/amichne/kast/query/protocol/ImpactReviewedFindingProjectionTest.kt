@@ -32,8 +32,8 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapArtifact
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapCallable
+import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
+import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
@@ -86,24 +86,54 @@ class ImpactReviewedFindingProjectionTest {
         assertReviewedClassification(finding)
         assertEquals(ImpactFindingRepresentationDocument.NotModeled, finding.representation)
         val binding = finding.reviewedRelations.values.single()
-        assertEquals(fixture.binding.impactDocument().reviewed(), binding)
+        assertEquals(fixture.transfer.relationshipDocument().reviewed(), binding)
+        assertBinding(binding)
+        assertTrue(ledger.representationModels.isEmpty())
+        assertTrue(ledger.boundaryModels.isEmpty())
+    }
+
+    private fun assertBinding(
+        relationship: io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
+    ) {
+        val binding =
+            relationship.authority as io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
         assertEquals("kotlin.collections.map", binding.selected.qualifiedIdentity.value)
         assertEquals(0, binding.selected.formalIndex.value)
         assertEquals(
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
-            binding.semantics,
+            (relationship.relation
+                    as
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument.CallbackCorrespondence)
+                .semantics,
         )
         assertEquals(ImpactActualExecutionDocument.NOT_ESTABLISHED, binding.actualExecution)
         assertEquals(ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED, binding.invocationCount)
-        assertEquals(1744, binding.artifacts.mapLines.first.value)
-        assertEquals(1823, binding.artifacts.mapToLines.last.value)
-        assertTrue(ledger.representationModels.isEmpty())
-        assertTrue(ledger.boundaryModels.isEmpty())
+        val artifacts =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionArtifactsDocument::class.java,
+                binding.artifacts,
+            )
+        assertEquals(
+            1744,
+            (artifacts.sections
+                    as io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument.Map)
+                .mapLines
+                .first
+                .value,
+        )
+        assertEquals(
+            1823,
+            (artifacts.sections
+                    as io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument.Map)
+                .mapToLines
+                .last
+                .value,
+        )
     }
 }
 
-private class ReviewedProjectionFixture {
-    private val owner = ImpactPathProjectionFixture().owner as RelationEndpoint.Resolved
+internal class ReviewedProjectionFixture {
+    val owner = ImpactPathProjectionFixture().owner as RelationEndpoint.Resolved
     private val bodyRange = range(40, 90)
     private val signature =
         CanonicalCompilerSignature.function(
@@ -122,7 +152,7 @@ private class ReviewedProjectionFixture {
                 RelationOccurrence.fromBoundary(owner.file, 30, 100).reviewed(),
                 RelationCallableBody.Named.fromCompiler(owner.evidence).reviewed(),
                 selected(),
-                ReviewedIterableMapArtifact.admit(
+                ReviewedLibraryArtifact.admit(
                         DependencyArtifactDigest.parse(
                                 "bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3"
                             )
@@ -161,7 +191,7 @@ private class ReviewedProjectionFixture {
     val start = observation(source, listOf(transfer))
     val end = observation(transfer.target, emptyList())
 
-    private fun selected(): ReviewedIterableMapCallable {
+    private fun selected(): ReviewedLibraryCallable {
         val file =
             SymbolDiscoveryFileIdentity.External(
                 DetachedVirtualFileUrl.parse("jar:///library.jar!/kotlin/collections/CollectionsKt.class").reviewed()
@@ -186,10 +216,10 @@ private class ReviewedProjectionFixture {
                     signature,
                 )
                 .reviewed()
-        return ReviewedIterableMapCallable.admit(evidence, ValueArgumentPosition.parse(0).reviewed()).reviewed()
+        return ReviewedLibraryCallable.admit(evidence, ValueArgumentPosition.parse(0).reviewed()).reviewed()
     }
 
-    private fun observation(site: ValueSite, transfers: List<ReviewedValueTransfer>): ValueFlowStep =
+    fun observation(site: ValueSite, transfers: List<ReviewedValueTransfer>): ValueFlowStep =
         ValueFlowStep.fromEvidence(
                 site,
                 emptyList(),
