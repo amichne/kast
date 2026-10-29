@@ -14,3 +14,9 @@ python3 .github/scripts/ci/verify_documentation.py
 # Changed prose
 mise exec -- vale --no-global --config=.vale.ini --output=JSON docs/public-cli.md docs/reviews/public-cli-v1-evidence.md docs/tool-rpc.md agent-tools/skills/kast/public-cli.md agent-tools/skills/kast/SKILL.md distribution/cli/AGENTS.md
 mise exec -- uv run --locked --script /Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/4.0.6/skills/controlled-technical-writing/scripts/assess_text.py --glossary docs/glossary.json docs/public-cli.md docs/reviews/public-cli-v1-evidence.md docs/tool-rpc.md agent-tools/skills/kast/public-cli.md agent-tools/skills/kast/SKILL.md distribution/cli/AGENTS.md
+
+# Blocked stdout repair
+mise exec -- ./gradlew :cli:test --tests '*PublicOutputCancellationTest' --tests '*PublicInvocationOwnerTest' :cli:detekt :cli:spotlessCheck verifyJsonContracts
+
+# Complete source wrapper
+mise exec -- python3 .github/scripts/ci/source_validation.py

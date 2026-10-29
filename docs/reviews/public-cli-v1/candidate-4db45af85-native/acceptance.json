@@ -1,0 +1,47 @@
+{
+  "AC01": "PASS",
+  "AC10": "PASS_NATIVE_PROCESS_REUSE",
+  "endpoint": {
+    "type": "KAST_IDE_ENDPOINT",
+    "protocol": 3,
+    "root": "/private/tmp/kast-public-cli-v1-a3b5uat_/workspace",
+    "socket": "/private/tmp/kcv1f-a3b5uat/.kast/ide-hosted/b00e70b458865193c9bd7d785206e125/host.sock",
+    "hostPid": 31895,
+    "host": "cda95f2e-e6fd-4b11-9155-69b86bc6e83c",
+    "querySchema": "kast.query.run.v9",
+    "operations": [
+      "DESCRIBE",
+      "CLASS_LOOKUP",
+      "DIRECT_SUPERTYPE",
+      "QUERY_RUN",
+      "SOURCE_READ",
+      "DIAGNOSTIC_CHECK",
+      "CHANGE_PLAN",
+      "CHANGE_APPLY",
+      "CHANGE_RECOVER"
+    ]
+  },
+  "candidate": {
+    "sourceStatus": "COMMITTED",
+    "sourceRevision": "4db45af85af8d2529a0c23bf079ec4bfc16c59ae",
+    "controlSha256": "ecca4ee30eb2a36299faad71e7e5983f20e6f0452da06962a24a39f46a2f5606",
+    "hostSha256": "70b73ebbc3161c9cb3a31dbca17c142cd0612a3f4524f4de6e75896382722e98",
+    "ideaBuild": "262.10968.63",
+    "candidateHome": "/private/tmp/kcv1f-a3b5uat",
+    "installArgv": [
+      "/bin/bash",
+      "/Users/amichne/.codex-workspaces/worktrees/ios-7206b34f-8ee4-4eec-9bf7-04613a3651cb/kast/install.sh",
+      "--idea-home",
+      "/Users/amichne/Applications/IntelliJ IDEA.app/Contents",
+      "--stage-only",
+      "--skip-codex-plugin",
+      "--verbose"
+    ],
+    "installStatus": 0
+  },
+  "mcpLaunchersDisabled": [
+    "/private/tmp/kcv1f-a3b5uat/.local/share/kast/installation/bin/kast-mcp",
+    "/private/tmp/kcv1f-a3b5uat/.local/share/kast/installation/bin/kast-mcp-complete"
+  ],
+  "relationOracle": "One exact placeOrder -> submitOrder edge, callers SOURCE_TO_TARGET, source range152..163, k2-authored-source/exact-compiler-confirmed, graph/row/reference identity links preserved"
+}

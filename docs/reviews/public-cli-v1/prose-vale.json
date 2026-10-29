@@ -129,10 +129,72 @@
       "Check": "Slopsentral.Grade",
       "Description": "",
       "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
-      "Message": "Estimated Flesch-Kincaid grade 9.78 exceeds the shared advisory target of 8.",
+      "Message": "Estimated Flesch-Kincaid grade 9.33 exceeds the shared advisory target of 8.",
       "Severity": "warning",
       "Match": "",
       "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        35,
+        47
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'interruptible'?",
+      "Severity": "error",
+      "Match": "interruptible",
+      "Line": 172
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "HOME's"
+        ]
+      },
+      "Suggestions": [
+        "HOME's"
+      ],
+      "Span": [
+        60,
+        65
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'HOME's' instead of 'home's'.",
+      "Severity": "error",
+      "Match": "home's",
+      "Line": 305
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        40,
+        43
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'CPUs'?",
+      "Severity": "error",
+      "Match": "CPUs",
+      "Line": 309
     }
   ],
   "docs/tool-rpc.md": [

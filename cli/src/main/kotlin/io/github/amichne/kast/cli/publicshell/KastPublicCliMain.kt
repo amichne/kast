@@ -49,7 +49,7 @@ object KastPublicCliMain {
                             Path.of("").toAbsolutePath(),
                         )
                     },
-                    FileOutputStream(FileDescriptor.out),
+                    Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel),
                 )
                 .code
         )

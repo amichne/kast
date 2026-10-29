@@ -37,7 +37,7 @@
         {
           "category": "READABILITY",
           "line": 1,
-          "message": "Estimated Flesch-Kincaid grade 9.78 exceeds the shared advisory target of 8.",
+          "message": "Estimated Flesch-Kincaid grade 9.33 exceeds the shared advisory target of 8.",
           "rule": "Slopsentral.Grade",
           "severity": "warning",
           "span": [
@@ -48,14 +48,14 @@
         }
       ],
       "metrics": {
-        "estimatedSyllables": 2733,
-        "fleschKincaidGrade": 9.78,
-        "sentences": 152,
-        "words": 1498,
-        "wordsPerSentence": 9.86
+        "estimatedSyllables": 3649,
+        "fleschKincaidGrade": 9.33,
+        "sentences": 210,
+        "words": 2037,
+        "wordsPerSentence": 9.7
       },
       "path": "docs/reviews/public-cli-v1-evidence.md",
-      "sourceSha256": "876951bca86460d5bf6846688bd4efbd1aba9b1ba4d7227dd71a9734d5f12b17",
+      "sourceSha256": "dc216880605e4d2d3b4d2dd5bec844e5d6c2fd2a78303635f7bf0a5e3c909d93",
       "terminology": {
         "type": "OUT_OF_SCOPE"
       },

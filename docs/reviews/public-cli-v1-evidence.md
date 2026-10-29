@@ -11,10 +11,18 @@ This report covers revision 1 of `kast-cli-specification.md`, dated October 29, 
 - Task branch: `feat/public-query-cli-v1`.
 - Initial detached revision: `a96e7a07d92dbb3c96893a16559b9e35da99a7c5`.
 - Preserved initial reference: `preserve/cli-spec-start-a96e7a07`.
-- Implementation commit: pending.
+- Initial implementation commit: `4db45af85af8d2529a0c23bf079ec4bfc16c59ae`.
+- Test-owner repair: `65541c554b8ca2653b0432d083fcb6e660eeee9a`.
+- Ingress-policy repair: `bea2b0f0696ed91a878977e7e439e88929739361`.
+- Source-gate revision: `f4bcf2ebc5ae07684aefa129da944ea3ae995a01`.
+- Source-gate tree: `cb0fe1cb0cd7ad7b744ec7d9658362934d91c6fe`.
+- Cancellation repair and final candidate: pending.
 
 The PR head did not change from the specification baseline.
-The task branch uses that head, without a change to unrelated `main`.
+The task branch started at that head.
+A local ancestry merge later included PR #1136's squash commit, `ffd8eb410d756414cd87482397bcc0127966744f`.
+The integration owner first established equality between the requested baseline tree and the squash tree.
+That merge changed no task-tree files and did not merge a GitHub PR.
 Reported results from prior work remain inherited evidence and do not count as passes here.
 
 The source refresh used these commands:
@@ -37,7 +45,7 @@ An infrastructure failure does not establish a product failure or a regression t
 
 | Criterion | Independent expectation | Status | Evidence or remaining scope |
 | --- | --- | --- | --- |
-| AC01 | The public candidate returns fixture declarations and relations without MCP. | NOT RUN | Preliminary native declaration and caller queries passed. Final commit-bound candidate evidence remains pending. |
+| AC01 | The public candidate returns fixture declarations and relations without MCP. | PASS | Candidate `4db45af85` returned the exact declaration and caller edge with candidate MCP launchers disabled. |
 | AC02 | Flags and explicit JSON admit equal requests and ordered relations. | PASS | `PublicCliArgumentsTest` covers independent documents, all sources, and reversed relation order. |
 | AC03 | File and stdin agree. Malformed and mixed inputs reject before host work. | PASS | Parser rejection cases and `PublicCliProcessTest` passed, with a forbidden host factory and real input children. |
 | AC04 | The selected catalog stays exact. `COMMON` rejects advanced syntax. | PASS | `PublicCliArgumentsTest` preserves explicit catalog restrictions and the private `COMMON` default. |
@@ -46,12 +54,12 @@ An infrastructure failure does not establish a product failure or a regression t
 | AC07 | Complete `SOURCE_RELATIONSHIPS` preserves legitimate success. | PASS | `PublicShellExitTest` preserves success for the typed source-relationship interpretation. |
 | AC08 | Pages preserve complete proof, distinct progress, and issued identities without producer replay. | PASS | Retained-read controls and the successor exit case passed. The 150-row fixture asserts one provider call. |
 | AC09 | A selected row subset keeps `ROW_SELECTION_INCOMPLETE`. | PASS | `QueryRetainedRowAdmissionTest` passed all 10 cases, including subset qualification and unknown-row rejection. |
-| AC10 | Another process can read an issued handle under the original host authority. Invalid authority rejects. | NOT RUN | Preliminary process reuse and deterministic lifetime controls passed. Final candidate binding remains pending. |
+| AC10 | Another process can read an issued handle under the original host authority. Invalid authority rejects. | PASS | Candidate `4db45af85` preserved issued tokens across processes. Deterministic lifetime controls passed. |
 | AC11 | Metadata and planning need no workspace, host, or network. | PASS | Real metadata and planning children passed. Forbidden session factories and missing-schema cases passed. |
 | AC12 | 4,095 bytes reject. 4,096 bytes admit. Omitted grants use owner defaults. | PASS | Admission limits, forbidden host effects, and both configured-default pairs passed. |
 | AC13 | A successor does not imply missing delivery. A fallback keeps its delivery failure. | PASS | Real output cases preserve complete pagination with exit 0 and delivery failure with exit 11. |
-| AC14 | Signals cancel owned work. The launcher closes its socket and reaps its JVM child. | PASS | Host queue and drainage controls passed. Real launcher/JVM/peer cases assert socket EOF, signal status, and child reaping. |
-| AC15 | The first accepted terminal event controls exit and prevents a second document. | PASS | Both event orders passed. Real pipe closure uses exit 5 and reaps the owned child. |
+| AC14 | Signals cancel owned work. The launcher closes its socket and reaps its JVM child. | PASS | Queue, socket, and child-reaping cases passed. The retained blocked-writer regression now exits 130 without a reader drain. |
+| AC15 | The first accepted terminal event controls exit and prevents a second document. | PASS | Both terminal-event orders, closed-consumer exit 5, and blocked-writer interruption passed. |
 | AC16 | Existing RPC and MCP shapes, catalogs, and exits stay compatible. | PASS | Focused RPC, MCP, catalog, and encoded-output regressions passed. |
 | AC17 | Packaged examples admit, and descriptors match parser defaults and variants. | PASS | Packaged examples, misspelled-example rejection, descriptors, output schemas, and public generation guards passed. |
 | AC18 | Matched direct and public calls preserve semantic facts and record separate costs. | NOT RUN | Final candidate parity and matched measurements remain pending. |
@@ -147,7 +155,26 @@ The controlled execution adapter supplies typed results. It does not simulate co
 The selected-JBR failure case also passed, with structured exit 4 and closed-consumer exit 5.
 
 The [command record](public-cli-v1/verification-commands.txt) preserves the exact final focused commands.
-The source gate still needs a clean implementation commit.
+The complete source gate passed at `f4bcf2eb`. A later adversarial output case exposed the remaining cancellation defect.
+
+## Blocked output regression
+
+The [raw reproduction](public-cli-v1/blocked-stdout-red/report.json) records a JVM child with an open stdout pipe and no reader.
+The input was `describe query --section output`.
+A normal reader received 3,129,373 bytes and exit 0.
+The precondition thread dump placed the worker in native `FileOutputStream.writeBytes` and the main thread in `join`.
+After `SIGINT`, both stacks remained in those states.
+The child exited 130 only after the harness resumed the reader, which then received 68,994 bytes.
+The independent expectation is signal settlement without a stdout drain.
+The actual stack precondition establishes this failure. An elapsed timeout does not define the regression.
+The raw record preserves the exact JVM, classpath, command, and thread dumps.
+`PublicOutputCancellationTest` preserves that stack-based precondition and the normal-reader control.
+The production writer now uses an interruptible channel under the existing invocation owner.
+Both retained cases passed: blocked-writer `SIGINT` exits 130 without a reader drain, and a closed consumer exits 5.
+The same command also passed the invocation-owner cases, static rules, formatting, and JSON guard.
+The log is `/tmp/kast-cli-blocked-output-green.log`.
+The [suite record](public-cli-v1/blocked-output-green.json) preserves the executed assertions.
+A successor candidate and final source gate remain pending.
 
 ## Repository gates
 
@@ -164,7 +191,13 @@ No source OpenWiki pages changed.
 
 The direct source-check script lacked `KAST_RELEASE_JDK25` in its first preflight.
 The next preflight rejected the uncommitted tree.
-Neither preflight establishes a product failure. The source-validation wrapper owns the final environment after commit.
+Neither preflight establishes a product failure.
+The wrapper later returned `SOURCE_VALIDATED` at `f4bcf2eb`, with 604 tasks in 42 seconds.
+The [source record](public-cli-v1/source-execution-f4bcf2eb.json) preserves the exact revision, tree, task selection, and skips.
+The full `--continue` source gate also passed 614 tasks in 6 minutes and 43 seconds.
+Compiler fixture tasks used the repository's default disabled state.
+Three `semanticCoverageFixtureTest` tasks and three semantic inventory or coverage guards were skipped.
+Those skipped tasks do not supply compiler evidence. The disposable IDEA supplies native compiler evidence.
 
 Pinned Vale and the separate prose assessment cover all changed prose paths, including `distribution/cli/AGENTS.md`.
 The assessment status is `ASSESSED`, separate from a clean report.
@@ -254,6 +287,35 @@ The exact startup diagnostic was:
 
 The fixture evidence directory also contains the installer result, IDEA logs, and the process identity record.
 
+## Committed candidate native evidence
+
+The [candidate record](public-cli-v1/candidate-4db45af85-native/candidate.json) binds the native samples to producer `4db45af85`.
+Its Control archive has SHA-256 `ecca4ee30eb2a36299faad71e7e5983f20e6f0452da06962a24a39f46a2f5606`.
+The Host archive kept SHA-256 `70b73ebbc3161c9cb3a31dbca17c142cd0612a3f4524f4de6e75896382722e98`.
+The test and policy successors do not relabel these immutable artifacts.
+
+The first upgrade try rejected the preliminary installation with `REGISTRY_REJECTED` and rolled back.
+The existing installer rejected broker state without a workspace registry.
+The public stop command then rejected its service child. A direct service-disable command with explicit Java and configuration paths succeeded.
+The precise cause of the public stop rejection remains unclassified.
+The old broker socket disappeared, and no JVM from that installation remained.
+No registry ownership rule changed.
+
+A normal clean installation succeeded under `/private/tmp/kcv1f-a3b5uat`.
+The generated Host installer returned `ACTIVATED` for that home's plugin path.
+Only the owned IDEA process restarted.
+Its PID is 31895, and its host identity is `cda95f2e-e6fd-4b11-9155-69b86bc6e83c`.
+The selected runtime is JetBrains JBR `25.0.4+1-508.27-nomod`.
+The machine is an Apple M1 Max with 10 CPUs and macOS 26.5.2.
+
+The [native acceptance record](public-cli-v1/candidate-4db45af85-native/acceptance.json) preserves the exact endpoint and assertion results.
+The declaration query returned only `example.OrderService` at offsets 17–94 with complete compiler proof.
+The caller query returned only `example.placeOrder` and one compiler-confirmed edge to `example.OrderService.submitOrder`.
+The call occurrence spans offsets 152–163.
+A separate process read the issued result and preserved its row, symbol reference, retained reference, and live authority.
+Candidate MCP launchers lacked execute permission during every call. Their original modes were restored afterward.
+These samples describe the first candidate. The repaired candidate still needs native qualification.
+
 ## Measurements
 
 Native measurements are NOT RUN.
@@ -263,6 +325,6 @@ Each sample must keep the same request, workspace, scope, fields, budgets, and h
 
 ## Handoff limits
 
-Candidate artifact identity, exact implementation commit, native execution records, and completed repository gates remain pending.
+The successor candidate, matched measurements, and final source gate remain pending.
 Normal rollback uses a source revert and removal of the owned candidate artifacts.
 No semantic-state migration belongs to this implementation.

@@ -1,0 +1,47 @@
+{
+  "sourceStatus": "COMMITTED",
+  "sourceRevision": "4db45af85af8d2529a0c23bf079ec4bfc16c59ae",
+  "controlSha256": "ecca4ee30eb2a36299faad71e7e5983f20e6f0452da06962a24a39f46a2f5606",
+  "hostSha256": "70b73ebbc3161c9cb3a31dbca17c142cd0612a3f4524f4de6e75896382722e98",
+  "ideaBuild": "262.10968.63",
+  "candidateHome": "/private/tmp/kcv1f-a3b5uat",
+  "installArgv": [
+    "/bin/bash",
+    "/Users/amichne/.codex-workspaces/worktrees/ios-7206b34f-8ee4-4eec-9bf7-04613a3651cb/kast/install.sh",
+    "--idea-home",
+    "/Users/amichne/Applications/IntelliJ IDEA.app/Contents",
+    "--stage-only",
+    "--skip-codex-plugin",
+    "--verbose"
+  ],
+  "installStatus": 0,
+  "machine": {
+    "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "architecture": "arm64",
+    "cpuCount": 10,
+    "hardware": "Apple M1 Max"
+  },
+  "jdkRelease": "JAVA_VERSION=\"25.0.4\"\nMODULES=\"java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.internal.opt jdk.zipfs jdk.compiler jdk.crypto.cryptoki jdk.crypto.ec jdk.dynalink jdk.hotspot.agent jdk.httpserver jdk.internal.ed jdk.internal.le jdk.internal.md jdk.internal.vm.ci jdk.javadoc jdk.jcmd jdk.jdwp.agent jdk.jdi jdk.jfr jdk.localedata jdk.management jdk.management.agent jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom\"\nIMPLEMENTOR=\"JetBrains s.r.o.\"\nIMPLEMENTOR_VERSION=\"JBR-25.0.4+1-508.27-nomod\"\nJAVA_RUNTIME_VERSION=\"25.0.4+1-b508.27\"\nLIBC=\"default\"\nOS_ARCH=\"aarch64\"\nOS_NAME=\"Darwin\"\nSOURCE=\".:git:4af5e1194b7f+\"\n",
+  "hostEndpoint": {
+    "type": "KAST_IDE_ENDPOINT",
+    "protocol": 3,
+    "root": "/private/tmp/kast-public-cli-v1-a3b5uat_/workspace",
+    "socket": "/private/tmp/kcv1f-a3b5uat/.kast/ide-hosted/b00e70b458865193c9bd7d785206e125/host.sock",
+    "hostPid": 31895,
+    "host": "cda95f2e-e6fd-4b11-9155-69b86bc6e83c",
+    "querySchema": "kast.query.run.v9",
+    "operations": [
+      "DESCRIBE",
+      "CLASS_LOOKUP",
+      "DIRECT_SUPERTYPE",
+      "QUERY_RUN",
+      "SOURCE_READ",
+      "DIAGNOSTIC_CHECK",
+      "CHANGE_PLAN",
+      "CHANGE_APPLY",
+      "CHANGE_RECOVER"
+    ]
+  },
+  "limitsFile": "/private/tmp/kcv1f-a3b5uat/.local/share/kast/installation/config/environment",
+  "limitsSha256": "468516909f7e74b3fb6ef0268fda493b992f2c226ca22127501ab2a397b131d8"
+}
