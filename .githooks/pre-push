@@ -22,4 +22,4 @@ done
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || fail "commit or remove working-tree changes before pushing"
 
 echo "kast pre-push: validating ${head} with productBuildGate" >&2
-python3 "${repo_root}/distribution/release/run_product_gate.py"
+exec mise exec -- python3 "${repo_root}/distribution/release/run_product_gate.py"
