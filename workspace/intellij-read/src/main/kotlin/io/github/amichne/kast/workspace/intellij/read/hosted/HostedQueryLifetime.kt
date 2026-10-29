@@ -2,8 +2,13 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.WorkspaceNativeReadSettlement
 import io.github.amichne.kast.workspace.contract.WorkspaceReadOperationIdentity
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 
 /** Identity capability for exactly one in-process endpoint incarnation. Never reconstructed. */
 class HostedQueryEndpoint internal constructor()
@@ -27,6 +32,88 @@ internal sealed interface HostedQueryCompletion {
 internal class HostedQueryLifetime {
     val endpoint = HostedQueryEndpoint()
     private var state: State = State.Active(mutableSetOf())
+
+    private class AdmissionChange
+
+    private class WaitingRead(val identity: WorkspaceReadOperationIdentity)
+
+    private val waiting = linkedSetOf<WaitingRead>()
+    private val changed = MutableStateFlow(AdmissionChange())
+
+    /** Waiters own no native work. The connection grant bounds the FIFO queue. */
+    suspend fun awaitAdmission(
+        requested: HostedQueryEndpoint,
+        limits: ReadLimits,
+        identity: WorkspaceReadOperationIdentity,
+        deadline: HostedReadDeadline,
+    ): HostedQueryAdmission {
+        val waiter =
+            when (val registered = enqueue(requested, limits, identity)) {
+                is Refinement.Refined -> registered.value
+                is Refinement.Rejected -> return HostedQueryAdmission.Rejected(registered.failure)
+            }
+        try {
+            return awaitTurn(waiter, requested, limits, deadline)
+        } finally {
+            synchronized(this) {
+                waiting.remove(waiter)
+                changed.value = AdmissionChange()
+            }
+        }
+    }
+
+    private suspend fun awaitTurn(
+        waiter: WaitingRead,
+        requested: HostedQueryEndpoint,
+        limits: ReadLimits,
+        deadline: HostedReadDeadline,
+    ): HostedQueryAdmission {
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val previous =
+                when (val turn = takeTurn(waiter, requested, limits)) {
+                    is AdmissionTurn.Ready -> return turn.admission
+                    is AdmissionTurn.Wait -> turn.change
+                }
+            when (val wait = deadline.run { changed.first { it !== previous } }) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return HostedQueryAdmission.Rejected(wait.failure)
+            }
+        }
+    }
+
+    @Synchronized
+    private fun enqueue(
+        requested: HostedQueryEndpoint,
+        limits: ReadLimits,
+        identity: WorkspaceReadOperationIdentity,
+    ): Refinement<WaitingRead, HostedQueryFailure> =
+        when {
+            state is State.Retired -> Refinement.Rejected(HostedQueryFailure.RETIRED)
+            requested !== endpoint -> Refinement.Rejected(HostedQueryFailure.WRONG_ENDPOINT)
+            waiting.size >= limits[ReadLimitParameter.HOST_CONNECTIONS].value ->
+                Refinement.Rejected(HostedQueryFailure.BUSY)
+            else -> Refinement.Refined(WaitingRead(identity).also { waiting.add(it) })
+        }
+
+    @Synchronized
+    private fun takeTurn(waiter: WaitingRead, requested: HostedQueryEndpoint, limits: ReadLimits): AdmissionTurn =
+        when (val current = state) {
+            is State.Retired -> AdmissionTurn.Ready(HostedQueryAdmission.Rejected(HostedQueryFailure.RETIRED))
+            is State.Active ->
+                if (
+                    waiting.first() === waiter && current.permits.size < limits[ReadLimitParameter.HOST_READERS].value
+                ) {
+                    waiting.remove(waiter)
+                    AdmissionTurn.Ready(begin(requested, limits, waiter.identity))
+                } else AdmissionTurn.Wait(changed.value)
+        }
+
+    private sealed interface AdmissionTurn {
+        data class Ready(val admission: HostedQueryAdmission) : AdmissionTurn
+
+        data class Wait(val change: AdmissionChange) : AdmissionTurn
+    }
 
     @Synchronized
     fun begin(
@@ -60,7 +147,7 @@ internal class HostedQueryLifetime {
             is State.Active ->
                 if (current.permits.remove(permit)) HostedQueryCompletion.Published
                 else HostedQueryCompletion.Rejected(HostedQueryFailure.STALE_REQUEST)
-        }
+        }.also { changed.value = AdmissionChange() }
 
     @Synchronized
     fun retire() {
@@ -68,6 +155,7 @@ internal class HostedQueryLifetime {
             is State.Active -> state = State.Retired(current.permits)
             is State.Retired -> Unit
         }
+        changed.value = AdmissionChange()
     }
 
     /** Permits remain owned during cancellation drainage, including after endpoint retirement. */
@@ -75,9 +163,13 @@ internal class HostedQueryLifetime {
     fun settlement(): WorkspaceNativeReadSettlement =
         when (val current = state) {
             is State.Active ->
-                if (current.permits.isEmpty()) WorkspaceNativeReadSettlement.Quiescent
-                else WorkspaceNativeReadSettlement.Running(current.permits.map { it.identity })
-            is State.Retired -> WorkspaceNativeReadSettlement.Retired(current.permits.map { it.identity })
+                if (current.permits.isEmpty() && waiting.isEmpty()) WorkspaceNativeReadSettlement.Quiescent
+                else
+                    WorkspaceNativeReadSettlement.Running(
+                        current.permits.map { it.identity } + waiting.map { it.identity }
+                    )
+            is State.Retired ->
+                WorkspaceNativeReadSettlement.Retired(current.permits.map { it.identity } + waiting.map { it.identity })
         }
 
     private sealed interface State {

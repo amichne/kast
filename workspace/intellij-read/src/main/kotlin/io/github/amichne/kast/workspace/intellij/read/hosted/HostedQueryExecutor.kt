@@ -70,7 +70,16 @@ internal class HostedQueryExecutor(
         val permit =
             when (
                 val admission =
-                    lifetime.begin(endpoint, limits, WorkspaceReadOperationIdentity.Traced(diagnostic.identity.value))
+                    try {
+                        lifetime.awaitAdmission(
+                            endpoint,
+                            limits,
+                            WorkspaceReadOperationIdentity.Traced(diagnostic.identity.value),
+                            deadline,
+                        )
+                    } catch (_: CancellationException) {
+                        HostedQueryAdmission.Rejected(HostedQueryFailure.CANCELLED)
+                    }
             ) {
                 is HostedQueryAdmission.Admitted -> admission.permit
                 is HostedQueryAdmission.Rejected -> {

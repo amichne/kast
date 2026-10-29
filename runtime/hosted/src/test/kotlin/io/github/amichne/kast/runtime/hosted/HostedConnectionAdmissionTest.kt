@@ -141,11 +141,11 @@ class HostedConnectionAdmissionTest {
     }
 
     @Test
-    fun `saturated admission returns one complete finite rejection without dispatch`() = runBlocking {
+    fun `saturated connection waits and dispatches after the occupied connection drains`() = runBlocking {
         withTimeout(10_000) {
             fixture { listener, address ->
                 val reading = CompletableDeferred<Unit>()
-                val observations = Collections.synchronizedList(mutableListOf<HostedTransportObservation>())
+                val waiting = CompletableDeferred<Unit>()
                 val limits =
                     (ReadLimits.resolve(environment = mapOf("KAST_READ_HOST_CONNECTIONS" to "1")) as Refinement.Refined)
                         .value
@@ -153,35 +153,22 @@ class HostedConnectionAdmissionTest {
                     launch(Dispatchers.IO) {
                         serveHostedListener(
                             listener,
-                            observer(observations) {
-                                if (
-                                    it.stage == HostedTransportStage.REQUEST_READ &&
-                                        it.outcome == HostedEndpointOutcome.STARTED
-                                )
-                                    reading.complete(Unit)
-                            },
+                            queueObserver(reading, waiting),
                             limits,
-                        ) { _, _ ->
-                            error("Saturated requests must not dispatch")
+                        ) { request, _ ->
+                            HostedResponse.Completed(json.encodeToString(Reply(request.root.value)))
                         }
                     }
                 try {
                     SocketChannel.open(StandardProtocolFamily.UNIX).use { slow ->
                         withContext(Dispatchers.IO) { slow.connect(address) }
                         reading.await()
-                        val response = withContext(Dispatchers.IO) { exchange(address, "/workspace") }
-                        assertEquals(
-                            HostedRequests.rejected(HostedEndpointFailure.ADMISSION_CAPACITY_EXCEEDED),
-                            response,
-                        )
+                        val response = async(Dispatchers.IO) { exchange(address, "/workspace") }
+                        waiting.await()
+                        assertFalse(response.isCompleted, "Connection saturation must apply back pressure")
+                        slow.close()
+                        assertEquals(json.encodeToString(Reply("/workspace")), response.await())
                     }
-                    assertTrue(
-                        synchronized(observations) { observations.toList() }
-                            .any {
-                                it.stage == HostedTransportStage.SEMANTIC_ADMISSION &&
-                                    it.failure == HostedEndpointFailure.ADMISSION_CAPACITY_EXCEEDED
-                            }
-                    )
                 } finally {
                     server.cancelAndJoin()
                 }
@@ -412,3 +399,22 @@ class HostedConnectionAdmissionTest {
 
     @Serializable private data class Reply(val root: String)
 }
+
+private fun queueObserver(reading: CompletableDeferred<Unit>, waiting: CompletableDeferred<Unit>) =
+    object : HostedEndpointObserver {
+        override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) = Unit
+
+        override fun transport(observation: HostedTransportObservation) {
+            if (
+                observation.stage == HostedTransportStage.REQUEST_READ &&
+                    observation.outcome == HostedEndpointOutcome.STARTED
+            )
+                reading.complete(Unit)
+            if (
+                observation.stage == HostedTransportStage.CONNECTION_ADMISSION &&
+                    observation.outcome == HostedEndpointOutcome.STARTED &&
+                    reading.isCompleted
+            )
+                waiting.complete(Unit)
+        }
+    }

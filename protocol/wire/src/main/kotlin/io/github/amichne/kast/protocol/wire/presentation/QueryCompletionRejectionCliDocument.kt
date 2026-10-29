@@ -41,7 +41,9 @@ internal data class QueryCompletionRejectionCliDocument(
     @EncodeDefault(EncodeDefault.Mode.NEVER) val originalFailure: QueryOriginalFailureDocument? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val diagnosticReadId: io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentity? = null,
-)
+) {
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS) val explanation: String = completionExplanation(cause, stop)
+}
 
 @Serializable
 internal sealed interface QueryCompletionEvidenceCliDocument {
@@ -56,7 +58,11 @@ internal sealed interface QueryCompletionEvidenceCliDocument {
         @EncodeDefault(EncodeDefault.Mode.ALWAYS)
         @SerialName("original_evidence_summary_state")
         val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
-    ) : QueryCompletionEvidenceCliDocument
+    ) : QueryCompletionEvidenceCliDocument {
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        val instruction: String =
+            "Retained output is available. Use nextQuery to read it without another semantic read. Keep the original incomplete verdict when you report these rows."
+    }
 
     @Serializable
     @SerialName("UNAVAILABLE")
@@ -65,8 +71,41 @@ internal sealed interface QueryCompletionEvidenceCliDocument {
         @EncodeDefault(EncodeDefault.Mode.ALWAYS)
         @SerialName("original_evidence_summary_state")
         val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
-    ) : QueryCompletionEvidenceCliDocument
+    ) : QueryCompletionEvidenceCliDocument {
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        val instruction: String =
+            "No retained result is available. Inspect cause and the original coverage before you select a new query. Do not retry the same request automatically."
+    }
 }
+
+/** Explain the failed proof without changing coverage, evidence, or recovery authority. */
+private fun completionExplanation(cause: QueryCompletionCauseDocument, stop: QueryInvocationStop): String =
+    when (cause) {
+        QueryCompletionCauseDocument.IncompleteExecution ->
+            when (stop) {
+                QueryInvocationStop.TIME_LIMIT -> "The query reached its time limit before completion."
+                QueryInvocationStop.WORK_LIMIT -> "The query reached its work limit before completion."
+                QueryInvocationStop.RETAINED_BYTES_LIMIT -> "The query reached its retention limit before completion."
+                QueryInvocationStop.RETENTION_FAILED -> "The query did not retain its complete output."
+                QueryInvocationStop.BUDGET_INCREASE_REQUIRED ->
+                    "The query needs a larger execution grant to establish completion."
+                QueryInvocationStop.CANCELLED -> "The query stopped after cancellation."
+                QueryInvocationStop.INVALID_STATE,
+                QueryInvocationStop.NON_ADVANCING -> "The query did not continue from its execution state."
+                QueryInvocationStop.COMPLETED,
+                QueryInvocationStop.TERMINAL_INCOMPLETE ->
+                    "The query did not establish every requested relationship. Inspect the original limitations and omissions."
+            }
+        QueryCompletionCauseDocument.ItemFailure ->
+            "At least one query item failed. Other retained items keep their original evidence."
+        QueryCompletionCauseDocument.OmittedEvidence ->
+            "The query omitted evidence that the complete verdict needs. Inspect the omission reasons."
+        is QueryCompletionCauseDocument.CallbackGraphUnproven ->
+            "The callback graph has an unresolved proof obligation. Inspect graphFailure before you change resource limits."
+        is QueryCompletionCauseDocument.InvestigationUnproven ->
+            "The value investigation has an unresolved proof obligation. Inspect investigationFailure before you change resource limits."
+        is QueryCompletionCauseDocument.RetentionUnavailable -> "The query did not retain its output."
+    } + " This does not establish that the requested data is absent."
 
 /** Copyable query_symbols arguments, encoded from retained result identity and its original output. */
 @Serializable data class QueryCompletionPublicReadQuery(val request: QueryCompletionPublicReadRequest)
