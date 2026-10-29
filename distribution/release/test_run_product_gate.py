@@ -65,7 +65,8 @@ class ProductGateVersionTest(unittest.TestCase):
 
 class PrePushLauncherTest(unittest.TestCase):
     def run_hook(self, *, gate_exit: int = 0, dirty: bool = False,
-                 deletion: bool = False, other_head: bool = False) -> tuple[subprocess.CompletedProcess[str], str]:
+                 deletion: bool = False, other_head: bool = False,
+                 inherited: dict[str, str] | None = None) -> tuple[subprocess.CompletedProcess[str], str]:
         """Exercise the real hook while external launchers record dispatch."""
         with tempfile.TemporaryDirectory(prefix="kast hook parity ") as temporary:
             root = Path(temporary)
@@ -78,6 +79,7 @@ class PrePushLauncherTest(unittest.TestCase):
             _ = self.assertIsNotNone(git)
             environment = {
                 **os.environ,
+                **(inherited or {}),
                 "GIT_CONFIG_GLOBAL": os.devnull,
                 "GIT_CONFIG_NOSYSTEM": "1",
                 "PATH": f"{binary}{os.pathsep}{os.environ['PATH']}",
@@ -86,6 +88,10 @@ class PrePushLauncherTest(unittest.TestCase):
                 "KAST_GATE_EXIT": str(gate_exit),
             }
             _ = environment.pop("KAST_PROJECT_LAUNCHER", None)
+            local_names = subprocess.check_output([str(git), "rev-parse", "--local-env-vars"],
+                                                  env=environment, text=True).splitlines()
+            for name in local_names:
+                _ = environment.pop(name, None)
             _ = subprocess.run([str(git), "init", "-q", str(checkout)], check=True, env=environment)
             release_path = checkout / "distribution" / "release"
             release_path.mkdir(parents=True)
@@ -143,9 +149,9 @@ class PrePushLauncherTest(unittest.TestCase):
         self.assertEqual("mise", json.loads(report)["projectLauncher"])
 
     def test_rejected_pushes_do_not_start_the_gate(self) -> None:
-        for options in ({"dirty": True}, {"other_head": True}):
-            with self.subTest(options=options):
-                result, report = self.run_hook(**options)
+        for dirty, other_head in ((True, False), (False, True)):
+            with self.subTest(dirty=dirty, other_head=other_head):
+                result, report = self.run_hook(dirty=dirty, other_head=other_head)
                 self.assertNotEqual(0, result.returncode)
                 self.assertEqual("", report)
 
@@ -153,6 +159,34 @@ class PrePushLauncherTest(unittest.TestCase):
         result, report = self.run_hook(deletion=True)
         self.assertEqual(0, result.returncode)
         self.assertEqual("", report)
+
+    def test_fixture_git_preserves_an_inherited_repository(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kast parent repository ") as temporary:
+            parent = Path(temporary)
+            environment = {
+                "PATH": os.environ["PATH"], "HOME": str(parent),
+                "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+            }
+            _ = subprocess.run(["git", "init", "-q", str(parent)], env=environment, check=True)
+            _ = (parent / "sentinel").write_text("parent-owned content\n")
+            _ = subprocess.run(["git", "add", "sentinel"], cwd=parent, env=environment, check=True)
+            _ = subprocess.run([
+                "git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "commit", "-qm", "parent",
+            ], cwd=parent, env=environment, check=True)
+            head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=parent, env=environment)
+            index = (parent / ".git/index").read_bytes()
+            result, report = self.run_hook(inherited={
+                "GIT_DIR": str(parent / ".git"),
+                "GIT_WORK_TREE": str(parent),
+                "GIT_INDEX_FILE": str(parent / ".git/index"),
+                "GIT_COMMON_DIR": str(parent / ".git"),
+            })
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual("mise", json.loads(report)["projectLauncher"])
+            self.assertEqual(head, subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=parent, env=environment))
+            self.assertEqual(index, (parent / ".git/index").read_bytes())
+            self.assertEqual("parent-owned content\n", (parent / "sentinel").read_text())
 
 
 if __name__ == "__main__":
