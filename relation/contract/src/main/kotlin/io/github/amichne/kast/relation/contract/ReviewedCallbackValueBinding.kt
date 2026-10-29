@@ -39,6 +39,20 @@ private constructor(
 ) {
     val sourceSections: List<ReviewedSourceSection> =
         when (rule) {
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ->
+                listOf(
+                    ReviewedSourceSection.SORTED_BY,
+                    ReviewedSourceSection.SORTED_WITH,
+                    ReviewedSourceSection.TO_LIST,
+                    ReviewedSourceSection.TO_MUTABLE_LIST,
+                    ReviewedSourceSection.COLLECTION_TO_MUTABLE_LIST,
+                )
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
+                listOf(ReviewedSourceSection.ASSOCIATE, ReviewedSourceSection.ASSOCIATE_TO)
+            ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1 -> listOf(ReviewedSourceSection.TO, ReviewedSourceSection.PAIR)
+            ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_FIRST_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_SECOND_V1 -> listOf(ReviewedSourceSection.PAIR)
             ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 ->
                 listOf(ReviewedSourceSection.MAP_2_3_0, ReviewedSourceSection.MAP_TO_2_3_0)
             ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
@@ -46,6 +60,8 @@ private constructor(
             ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> listOf(ReviewedSourceSection.LET)
             ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 -> listOf(ReviewedSourceSection.ALSO)
         }
+    val helpers: List<ReviewedLibraryHelper> = rule.reviewedHelpers()
+
     val sourceEntry
         get() = rule.sourceEntry
 
@@ -92,28 +108,32 @@ private constructor(
             binaryArtifact: DependencyArtifactDigest,
             sourceArtifact: DependencyArtifactDigest,
         ): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> =
-            when (selected.operation) {
-                ReviewedLibraryOperation.ITERABLE_MAP -> admit(binaryArtifact, sourceArtifact)
-                ReviewedLibraryOperation.LET,
-                ReviewedLibraryOperation.ALSO ->
-                    if (
-                        binaryArtifact.value == "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" &&
-                            sourceArtifact.value == "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"
-                    )
-                        Refinement.Refined(
-                            ReviewedLibraryArtifact(
-                                binaryArtifact,
-                                sourceArtifact,
-                                when (selected.operation) {
-                                    ReviewedLibraryOperation.LET -> ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1
-                                    ReviewedLibraryOperation.ALSO -> ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1
-                                    ReviewedLibraryOperation.ITERABLE_MAP ->
-                                        ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1
-                                },
-                            )
-                        )
-                    else Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_MISMATCH)
-            }
+            if (selected.operation == ReviewedLibraryOperation.ITERABLE_MAP) admit(binaryArtifact, sourceArtifact)
+            else admit230(selected.operation, binaryArtifact, sourceArtifact)
+
+        fun admit(
+            selected: ReviewedOrdinaryLibraryCallable,
+            binaryArtifact: DependencyArtifactDigest,
+            sourceArtifact: DependencyArtifactDigest,
+        ): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> =
+            admit230(selected.operation, binaryArtifact, sourceArtifact)
+
+        private fun admit230(
+            operation: ReviewedLibraryOperation,
+            binaryArtifact: DependencyArtifactDigest,
+            sourceArtifact: DependencyArtifactDigest,
+        ): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> {
+            if (
+                binaryArtifact.value != "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" ||
+                    sourceArtifact.value != "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"
+            )
+                return Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_MISMATCH)
+            val rule =
+                ReviewedLibraryRule.entries.single {
+                    it.operation == operation && it != ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1
+                }
+            return Refinement.Refined(ReviewedLibraryArtifact(binaryArtifact, sourceArtifact, rule))
+        }
     }
 
     override fun equals(other: Any?): Boolean =
@@ -122,28 +142,18 @@ private constructor(
     override fun hashCode(): Int = 31 * binaryArtifact.hashCode() + rule.hashCode()
 }
 
-/** Reviewed spans belong to the exact source artifact and source entry. */
-enum class ReviewedSourceSection(val firstLine: Int, val lastLine: Int) {
-    MAP_2_3_0(REVIEWED_MAP_2_3_0_FIRST_LINE, REVIEWED_MAP_2_3_0_LAST_LINE),
-    MAP_TO_2_3_0(REVIEWED_MAP_TO_2_3_0_FIRST_LINE, REVIEWED_MAP_TO_2_3_0_LAST_LINE),
-    MAP(REVIEWED_MAP_FIRST_LINE, REVIEWED_MAP_LAST_LINE),
-    MAP_TO(REVIEWED_MAP_TO_FIRST_LINE, REVIEWED_MAP_TO_LAST_LINE),
-    LET(REVIEWED_LET_FIRST_LINE, REVIEWED_LET_LAST_LINE),
-    ALSO(REVIEWED_ALSO_FIRST_LINE, REVIEWED_ALSO_LAST_LINE),
-}
-
 /** A compiler-selected supplier and formal bind a reviewed rule on one source epoch. */
 class ReviewedCallbackValueBinding
 private constructor(
-    val enclosing: RelationEndpoint,
+    override val enclosing: RelationEndpoint,
     val body: RelationCallableBody.Anonymous,
-    val occurrence: RelationOccurrence,
+    override val occurrence: RelationOccurrence,
     val selected: ReviewedLibraryCallable,
-    val artifact: ReviewedLibraryArtifact,
+    override val artifact: ReviewedLibraryArtifact,
     val invocationEvidence: ReviewedCallbackInvocationEvidence = ReviewedCallbackInvocationEvidence.Unestablished,
-) {
-    val basis = enclosing.lease.identity
-    val retainedBytes: Long
+) : ReviewedValueAuthority {
+    override val basis = enclosing.lease.identity
+    override val retainedBytes: Long
         get() =
             8192L
                 .addBytes(enclosing.detachedTextUnits().multiplyBytes(2))
@@ -161,7 +171,7 @@ private constructor(
                     }
                 )
 
-    val target
+    override val target
         get() = selected.target
 
     val position
@@ -261,6 +271,10 @@ private constructor(
             val operation =
                 when {
                     signature.matchesReviewedIterableMap(receiver, file) -> ReviewedLibraryOperation.ITERABLE_MAP
+                    signature.matchesReviewedCollection(receiver, file, "sortedBy", 2) ->
+                        ReviewedLibraryOperation.ITERABLE_SORTED_BY
+                    signature.matchesReviewedCollection(receiver, file, "associate", 3) ->
+                        ReviewedLibraryOperation.ITERABLE_ASSOCIATE
                     signature.matchesReviewedScope(receiver, file, "let", 2) -> ReviewedLibraryOperation.LET
                     signature.matchesReviewedScope(receiver, file, "also", 1) -> ReviewedLibraryOperation.ALSO
                     else -> return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
@@ -270,6 +284,13 @@ private constructor(
                     ReviewedLibraryOperation.ITERABLE_MAP,
                     ReviewedLibraryOperation.LET -> "(T)->R"
                     ReviewedLibraryOperation.ALSO -> "(T)->kotlin/Unit"
+                    ReviewedLibraryOperation.ITERABLE_SORTED_BY -> "(T)->R?"
+                    ReviewedLibraryOperation.ITERABLE_ASSOCIATE -> "(T)->kotlin/Pair<K,V>"
+                    ReviewedLibraryOperation.TO,
+                    ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
+                    ReviewedLibraryOperation.PAIR_FIRST,
+                    ReviewedLibraryOperation.PAIR_SECOND ->
+                        return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
                 }
             if (position.value != 0 || signature.valueParameters.map { it.value } != listOf(parameter))
                 return Refinement.Rejected(ReviewedCallbackValueFailure.FORMAL_MISMATCH)
@@ -312,17 +333,15 @@ private fun CanonicalCompilerSignature.Function.matchesReviewedScope(
 
 private const val SHA256_LENGTH = 64
 private const val MAP_TYPE_PARAMETERS = 2
-private const val REVIEWED_MAP_FIRST_LINE = 1744
-private const val REVIEWED_MAP_LAST_LINE = 1746
-private const val REVIEWED_MAP_TO_FIRST_LINE = 1819
-private const val REVIEWED_MAP_TO_LAST_LINE = 1823
 
-private const val REVIEWED_LET_FIRST_LINE = 114
-private const val REVIEWED_LET_LAST_LINE = 119
-private const val REVIEWED_ALSO_FIRST_LINE = 99
-private const val REVIEWED_ALSO_LAST_LINE = 105
-
-private const val REVIEWED_MAP_2_3_0_FIRST_LINE = 1585
-private const val REVIEWED_MAP_2_3_0_LAST_LINE = 1587
-private const val REVIEWED_MAP_TO_2_3_0_FIRST_LINE = 1660
-private const val REVIEWED_MAP_TO_2_3_0_LAST_LINE = 1664
+private fun CanonicalCompilerSignature.Function.matchesReviewedCollection(
+    receiver: CanonicalCompilerReceiver.Present,
+    file: SymbolDiscoveryFileIdentity.External,
+    name: String,
+    parameters: Int,
+): Boolean =
+    qualifiedIdentity.value == "kotlin.collections.$name" &&
+        receiver.type.value == "kotlin/collections/Iterable<T>" &&
+        contextReceivers.isEmpty() &&
+        typeParameterCount.value == parameters &&
+        file.url.value.endsWith("!/kotlin/collections/CollectionsKt.class")

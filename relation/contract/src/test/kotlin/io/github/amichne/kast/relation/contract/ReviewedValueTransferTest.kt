@@ -31,7 +31,10 @@ class ReviewedValueTransferTest {
         assertSame(fixture.field, (transfer.target.valuePath.segments.last() as ValuePathSegment.Field).field)
         assertEquals(source.callStack, transfer.target.callStack)
         assertEquals(listOf(frame), transfer.target.callStack.frames)
-        assertEquals(ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT, transfer.semantics)
+        assertEquals(
+            ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+            (transfer.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
     }
 
     @Test

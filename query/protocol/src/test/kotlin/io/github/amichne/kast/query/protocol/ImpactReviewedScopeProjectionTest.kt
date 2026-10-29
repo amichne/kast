@@ -50,10 +50,11 @@ import org.junit.jupiter.api.Test
 class ImpactReviewedScopeProjectionTest {
     @Test
     fun `reviewed let projects invocation authority without declaring a compiler return effect`() {
-        val transfer = scopeTransfer()
+        val transfer = ReviewedScopeProjectionFixture().transfer()
         val document = transfer.impactDocument().scopeProjection()
         assertTrue(document.admitsEvidence())
-        val reviewed = document.binding
+        val reviewed =
+            document.binding.authority as io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
         val invocation =
             assertInstanceOf(ImpactReviewedInvocationEvidenceDocument.Declared::class.java, reviewed.invocationEvidence)
                 .binding
@@ -64,7 +65,10 @@ class ImpactReviewedScopeProjectionTest {
         assertEquals(ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1, reviewed.rule)
         assertEquals(
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
-            reviewed.semantics,
+            (document.binding.relation
+                    as
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument.CallbackCorrespondence)
+                .semantics,
         )
         assertEquals(ImpactActualExecutionDocument.NOT_ESTABLISHED, reviewed.actualExecution)
         assertEquals(ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED, reviewed.invocationCount)
@@ -86,16 +90,19 @@ class ImpactReviewedScopeProjectionTest {
 
     @Test
     fun `reviewed also projects receiver identity without callback result correspondence`() {
-        val transfer = scopeTransfer(receiver = true)
+        val transfer = ReviewedScopeProjectionFixture().transfer(receiver = true)
         val document = transfer.impactDocument().scopeProjection()
         assertTrue(document.admitsEvidence())
         assertEquals(ImpactExecutionOwnerDocument.Declaration, document.source.executionOwner)
         assertEquals(ImpactExecutionOwnerDocument.Declaration, document.target.executionOwner)
         assertEquals(
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
-            document.binding.semantics,
+            (document.binding.relation
+                    as
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument.CallbackCorrespondence)
+                .semantics,
         )
-        assertEquals(ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1, document.binding.rule)
+        assertEquals(ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1, document.binding.authority.rule)
         assertTrue(document.source.valuePath.values.isEmpty())
         assertTrue(document.target.valuePath.values.isEmpty())
         val premise =
@@ -109,17 +116,24 @@ class ImpactReviewedScopeProjectionTest {
         assertEquals(document.source.role, premise.origin.role)
         assertEquals(document.target.range, premise.useRange)
 
-        val artifact = assertInstanceOf(ImpactReviewedScopeArtifactsDocument::class.java, document.binding.artifacts)
+        val artifact =
+            assertInstanceOf(ImpactReviewedScopeArtifactsDocument::class.java, document.binding.authority.artifacts)
         assertEquals(99, artifact.functionLines.first.value)
         assertEquals(105, artifact.functionLines.last.value)
-        assertEquals(ImpactActualExecutionDocument.NOT_ESTABLISHED, document.binding.actualExecution)
+        assertEquals(
+            ImpactActualExecutionDocument.NOT_ESTABLISHED,
+            (document.binding.authority as io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument)
+                .actualExecution,
+        )
         assertEquals(
             document,
             Json.decodeFromString<ImpactReviewedValueTransferDocument>(Json.encodeToString(document)),
         )
     }
+}
 
-    private fun scopeTransfer(receiver: Boolean = false): ReviewedValueTransfer {
+internal class ReviewedScopeProjectionFixture {
+    fun transfer(receiver: Boolean = false): ReviewedValueTransfer {
         val owner = ImpactPathProjectionFixture().owner as RelationEndpoint.Resolved
         val body = body(owner)
         val target = target(receiver)

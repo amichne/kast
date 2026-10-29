@@ -93,23 +93,42 @@ class ImpactReviewedFindingProjectionTest {
     }
 
     private fun assertBinding(
-        binding: io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
+        relationship: io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
     ) {
+        val binding =
+            relationship.authority as io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
         assertEquals("kotlin.collections.map", binding.selected.qualifiedIdentity.value)
         assertEquals(0, binding.selected.formalIndex.value)
         assertEquals(
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
-            binding.semantics,
+            (relationship.relation
+                    as
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument.CallbackCorrespondence)
+                .semantics,
         )
         assertEquals(ImpactActualExecutionDocument.NOT_ESTABLISHED, binding.actualExecution)
         assertEquals(ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED, binding.invocationCount)
         val artifacts =
             org.junit.jupiter.api.Assertions.assertInstanceOf(
-                io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument::class.java,
+                io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionArtifactsDocument::class.java,
                 binding.artifacts,
             )
-        assertEquals(1744, artifacts.mapLines.first.value)
-        assertEquals(1823, artifacts.mapToLines.last.value)
+        assertEquals(
+            1744,
+            (artifacts.sections
+                    as io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument.Map)
+                .mapLines
+                .first
+                .value,
+        )
+        assertEquals(
+            1823,
+            (artifacts.sections
+                    as io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument.Map)
+                .mapToLines
+                .last
+                .value,
+        )
     }
 }
 

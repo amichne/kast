@@ -29,6 +29,8 @@ internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolLi
                         ImpactValueConditionDocument.DeclaredCallbackResult(origin.first, origin.second, binding)
                     }
             is ValueCondition.ReviewedCallbackNormalReturn -> condition.impactDocument()
+            is ValueCondition.ReviewedCollectionNormalResult -> condition.impactDocument()
+            is ValueCondition.ReviewedEntryKeyUnique -> condition.impactDocument()
             is ValueCondition.StableLocal -> condition.impactDocument()
             is ValueCondition.StableReceiver ->
                 condition.origin
@@ -108,3 +110,21 @@ private fun ValueConditionOrigin.impactDocument(): ImpactProjected<ImpactValueCo
             val (location, role) = occurrence
             ImpactValueConditionOriginDocument(location.first, location.second, role, path, stack)
         }
+
+private fun ValueCondition.ReviewedCollectionNormalResult.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedCollectionNormalResult> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(binding.impactDocument()).impactMap {
+        (origin, binding) ->
+        ImpactValueConditionDocument.ReviewedCollectionNormalResult(
+            origin.first,
+            origin.second,
+            binding,
+        )
+    }
+
+private fun ValueCondition.ReviewedEntryKeyUnique.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedEntryKeyUnique> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(entry.impactDocument()).impactMap {
+        (origin, entry) ->
+        ImpactValueConditionDocument.ReviewedEntryKeyUnique(origin.first, origin.second, entry)
+    }

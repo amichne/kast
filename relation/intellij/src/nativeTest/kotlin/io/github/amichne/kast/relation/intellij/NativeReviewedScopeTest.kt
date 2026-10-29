@@ -1,35 +1,30 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.roots.ModuleRootModificationUtil
-import com.intellij.openapi.roots.OrderRootType
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
-import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.MapEntrySlot
 import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
+import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
+import io.github.amichne.kast.relation.contract.ReviewedCollectionSelection
 import io.github.amichne.kast.relation.contract.ReviewedLibraryRule
+import io.github.amichne.kast.relation.contract.ReviewedValueRelation
 import io.github.amichne.kast.relation.contract.ValueExecutionContext
-import io.github.amichne.kast.relation.contract.ValueFlowRead
-import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValuePathSegment
-import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
-import io.github.amichne.kast.relation.contract.ValueSiteIdentity
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 
-class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
+class NativeReviewedScopeTest : NativeReviewedValueFixture() {
     override val fixtureSdkName = "reviewed-scope-jdk"
 
     fun testCallbackResultCannotReplaceAlsoReceiverOrConstantReturn() {
@@ -63,7 +58,7 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
     fun testAlsoReturnsTheDistinctReceiverWholeValue() {
         val fixture = fixture()
         val owner = declaration("reviewedAlso")
-        val steps = trace(fixture, owner, "siblingPayload")
+        val steps = trace(fixture, owner, declaration("siblingPayload"))
         val destination = fixture.markedExpression(owner, "destination")
         val result = steps.singleOrNull { it.source.range == destination.anchor && it.source.role == ValueRole.Return }
         assertNotNull("Missing also receiver result: ${steps.flatMap { it.obligations }}", result)
@@ -80,7 +75,7 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
             assertEquals(
                 io.github.amichne.kast.relation.contract.ReviewedValueSemantics
                     .CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
-                edge.semantics,
+                (edge.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
             )
             assertEquals(edge.source.conditions, edge.target.conditions)
             assertTrue(
@@ -94,7 +89,7 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
         val fixture = fixture()
         for (name in listOf("receiverThrow", "receiverNonLocal", "receiverNothing", "receiverEarlyThrow")) {
             val owner = declaration(name)
-            val steps = trace(fixture, owner, "siblingPayload")
+            val steps = trace(fixture, owner, declaration("siblingPayload"))
             val destination = fixture.markedExpression(owner, "destination")
             assertFalse(
                 "Forbidden normal result from abrupt callback $name",
@@ -107,40 +102,8 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
     fun testReviewedReceiverRestoresItsExactPublicSite() = runBlocking {
         val fixture = fixture()
         val owner = declaration("reviewedAlso")
-        val steps = trace(fixture, owner, "siblingPayload")
-        val edge = steps.flatMap { it.reviewedTransfers }.single()
-        val destination = fixture.markedExpression(owner, "destination")
-        val selected =
-            io.github.amichne.kast.symbol.contract.SymbolSelector.issue(
-                fixture.lease,
-                edge.source.enclosing.scope,
-                edge.binding.target,
-            )
-        val claim =
-            io.github.amichne.kast.relation.contract.ValueSiteRoleClaim.Receiver(
-                destination.anchor,
-                selected,
-                io.github.amichne.kast.relation.contract.ValueReceiverKind.EXTENSION,
-            )
-        val question =
-            io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest.create(
-                    enclosing = destination.enclosing,
-                    anchor = edge.source.range,
-                    role = claim,
-                    budget = fixture.budget,
-                )
-                .nativeRefined()
-        val read =
-            IntellijValueFlowCompilerAdapter()
-                .revalidateSite(project = project, current = fixture.lease, request = question, model = fixture.model)
-        assertTrue(
-            "Reviewed receiver site must restore: $read",
-            read is io.github.amichne.kast.relation.contract.ValueModelSiteRead.Revalidated,
-        )
-        assertEquals(
-            edge.source.role,
-            (read as io.github.amichne.kast.relation.contract.ValueModelSiteRead.Revalidated).position.site.role,
-        )
+        val steps = trace(fixture, owner, declaration("siblingPayload"))
+        project.assertReviewedRestoration(fixture, owner, steps)
     }
 
     fun testLocalCallbackReturnKeepsItsExactTarget() {
@@ -181,7 +144,8 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
             steps
                 .flatMap { it.reviewedTransfers }
                 .all { transfer ->
-                    transfer.binding.invocationEvidence == ReviewedCallbackInvocationEvidence.Unestablished &&
+                    (transfer.binding as ReviewedCallbackValueBinding).invocationEvidence ==
+                        ReviewedCallbackInvocationEvidence.Unestablished &&
                         transfer.binding.artifact.rule == ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1
                 }
         )
@@ -220,6 +184,77 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
         assertFalse(steps.any { it.source.range == destination.anchor })
     }
 
+    fun testTupleLibraryTargetsComeFromTheSelectedCompilerSymbols() {
+        fixture(paths = listOf(CONTROLS, PIPELINE_VARIANTS))
+        com.intellij.openapi.application.ReadAction.run<RuntimeException> {
+            val virtual =
+                checkNotNull(
+                    getOrCreateProjectBaseDir()
+                        .findFileByRelativePath("src/fixture/controls/ReviewedPipelineVariants.kt")
+                )
+            val file = psiManager.findFile(virtual) as org.jetbrains.kotlin.psi.KtFile
+            assertReviewedTupleTargets(file)
+        }
+    }
+
+    fun testSortSelectorCannotBecomeAnOutputElement() {
+        val fixture = fixture(paths = listOf(CONTROLS, PIPELINE_VARIANTS))
+        val owner = PacketDeclaration(PIPELINE_VARIANTS, "", "selectorCannotBecomeElement")
+        assertPipelineExcludesDestination(fixture, owner, trace(fixture, owner))
+    }
+
+    fun testSameTypedPairSlotsCannotExchangeValues() {
+        val fixture = fixture(paths = listOf(CONTROLS, PIPELINE_VARIANTS))
+        for (name in
+            listOf("pairKeyCannotBecomeValue", "pairValueCannotBecomeKey", "constructorKeyCannotBecomeValue")) {
+            val owner = PacketDeclaration(PIPELINE_VARIANTS, "", name)
+            assertPipelineExcludesDestination(fixture, owner, trace(fixture, owner))
+        }
+    }
+
+    fun testSelectedElementCrossesTheWholeSchemaPipeline() {
+        val fixture = fixture(paths = listOf(CONTROLS, PIPELINE_VARIANTS))
+        val owner = PacketDeclaration(PIPELINE_VARIANTS, "", "schemaPipelineElement")
+        val steps = trace(fixture, owner, budget = composedBudget(fixture))
+        assertPipelineStages(
+            fixture = fixture,
+            owner = owner,
+            steps = steps,
+            selection = ReviewedCollectionSelection.ELEMENT,
+        )
+        val mapped = fixture.markedExpression(owner, "map-output")
+        assertTrue(steps.any { it.source.range == mapped.anchor })
+        val argument = pipelineArgument(fixture, owner, steps)
+        assertEquals(
+            listOf("feature", "payload"),
+            argument.valuePath.segments.filterIsInstance<ValuePathSegment.Field>().map {
+                it.field.declaration.name.value
+            },
+        )
+    }
+
+    fun testWholeCollectionCrossesTheSchemaPipelineAsContent() {
+        val fixture = fixture(paths = listOf(CONTROLS, PIPELINE_VARIANTS))
+        val owner = PacketDeclaration(PIPELINE_VARIANTS, "", "schemaPipelineWhole")
+        val producer = PacketDeclaration(PIPELINE_VARIANTS, "", "pipelineFeatures")
+        val steps = trace(fixture = fixture, owner = owner, budget = composedBudget(fixture), producer = producer)
+        assertTrue(steps.first().source.valuePath.segments.isEmpty())
+        assertPipelineStages(
+            fixture = fixture,
+            owner = owner,
+            steps = steps,
+            selection = ReviewedCollectionSelection.CONTENT,
+        )
+        val argument = pipelineArgument(fixture, owner, steps)
+        assertEquals(
+            listOf("feature"),
+            argument.valuePath.segments.filterIsInstance<ValuePathSegment.Field>().map {
+                it.field.declaration.name.value
+            },
+        )
+        assertFalse(argument.valuePath.segments.isEmpty())
+    }
+
     private fun assertMapNegatives(fixture: NativePacketValueFixture) {
         for (name in listOf("mapSiblingRoute", "mapConstantRoute")) {
             val owner = declaration(name)
@@ -235,116 +270,6 @@ class NativeReviewedScopeTest : NativePacketValueFixtureTest() {
         val steps = trace(fixture, owner)
         assertMapRoute(fixture, owner, steps)
         assertTrue(steps.flatMap { it.reviewedTransfers }.all { it.binding.artifact.rule == rule })
-    }
-
-    private fun fixture(consumer: Boolean = true, paths: List<String> = listOf(CONTROLS)): NativePacketValueFixture =
-        packetFixture(
-            paths,
-            configureCompiler = {
-                ModuleRootModificationUtil.updateModel(module) { model ->
-                    for (library in model.moduleLibraryTable.libraries) model.moduleLibraryTable.removeLibrary(library)
-                    val library = model.moduleLibraryTable.createLibrary("reviewed-value-stdlib").modifiableModel
-                    for ((name, kind, hash) in reviewedFiles(consumer)) {
-                        val source = reviewedLibraryPath(name)
-                        val bytes = Files.readAllBytes(source)
-                        assertEquals(
-                            hash,
-                            java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),
-                        )
-                        val owned = getOrCreateProjectBaseDir().toNioPath().resolve(name)
-                        Files.write(owned, bytes)
-                        checkNotNull(
-                            com.intellij.openapi.vfs.LocalFileSystem.getInstance().refreshAndFindFileByNioFile(owned)
-                        )
-                        library.addRoot("jar://$owned!/", kind)
-                    }
-                    library.commit()
-                }
-            },
-        )
-
-    private fun reviewedFiles(consumer: Boolean): List<Triple<String, OrderRootType, String>> =
-        if (consumer)
-            listOf(
-                Triple(
-                    "kotlin-stdlib-2.3.0.jar",
-                    OrderRootType.CLASSES,
-                    "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1",
-                ),
-                Triple(
-                    "kotlin-stdlib-2.3.0-sources.jar",
-                    OrderRootType.SOURCES,
-                    "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531",
-                ),
-            )
-        else
-            listOf(
-                Triple(
-                    "kotlin-stdlib-2.4.21.jar",
-                    OrderRootType.CLASSES,
-                    "bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3",
-                ),
-                Triple(
-                    "kotlin-stdlib-2.4.21-sources.jar",
-                    OrderRootType.SOURCES,
-                    "1e29c0668b0aa555e7b154e5da2e8094e1b755cfee25737839195bbbdad8a4a2",
-                ),
-            )
-
-    private fun reviewedLibraryPath(name: String): Path =
-        if (name == "kotlin-stdlib-2.4.21.jar")
-            System.getProperty("java.class.path").split(java.io.File.pathSeparator).map(Path::of).single {
-                it.fileName.toString() == name
-            }
-        else Path.of(checkNotNull(javaClass.getResource("/reviewed-libraries/$name")).toURI())
-
-    private fun trace(
-        fixture: NativePacketValueFixture,
-        owner: PacketDeclaration,
-        producer: String = "scopePayload",
-        beforeRead: (ValueSite) -> Unit = {},
-        observation: IntellijReadObservation = IntellijReadObservation.None,
-    ): List<ValueFlowStep> = runBlocking {
-        val adapter = IntellijValueFlowCompilerAdapter(observation)
-        val seed =
-            adapter.seed(
-                project = project,
-                current = fixture.lease,
-                request = fixture.selection(owner, producer, declaration(producer)),
-                model = fixture.model,
-            )
-        assertTrue("Producer admission prerequisite: $seed", seed is ValueProducerSeedRead.Seeded)
-        val pending = ArrayDeque<ValueSite>()
-        pending.add((seed as ValueProducerSeedRead.Seeded).seed.site)
-        val visited = mutableSetOf<ValueSiteIdentity>()
-        val steps = mutableListOf<ValueFlowStep>()
-        while (pending.isNotEmpty()) {
-            val site = pending.removeFirst()
-            if (!visited.add(site.identity)) continue
-            assertTrue("Fixture route exceeds its finite limit", visited.size < MAX_SITES)
-            beforeRead(site)
-            val read =
-                adapter.read(
-                    project = project,
-                    current = fixture.lease,
-                    request = ValueFlowRequest(site, fixture.budget, RelationSearchBoundary.RETAINED_SUBJECT),
-                    model = fixture.model,
-                )
-            assertTrue("Native read prerequisite at ${site.range}: $read", read is ValueFlowRead.Observed)
-            val step = (read as ValueFlowRead.Observed).step
-            steps.add(step)
-            step.transfers.forEach { pending.add(it.target) }
-            step.reviewedTransfers.forEach { pending.add(it.target) }
-        }
-        steps
-    }
-
-    private fun declaration(name: String) = PacketDeclaration(CONTROLS, "", name)
-
-    private companion object {
-        const val CONTROLS = "src/main/kotlin/fixture/controls/ReviewedScopeControls.kt"
-        const val MAP_VARIANTS = "src/main/kotlin/fixture/controls/ReviewedMapVariants.kt"
-        const val MAX_SITES = 64
     }
 }
 
@@ -420,3 +345,103 @@ private fun assertMapInput(input: io.github.amichne.kast.relation.contract.Revie
 }
 
 private const val MAP_RELATION_COUNT = 3
+
+private fun assertPipelineExcludesDestination(
+    fixture: NativePacketValueFixture,
+    owner: PacketDeclaration,
+    steps: List<ValueFlowStep>,
+) {
+    val destination = fixture.markedExpression(owner, "destination")
+    assertTrue("The exact source producer must pass native seed admission", steps.isNotEmpty())
+    assertFalse(
+        "Forbidden selected-producer arrival at ${owner.name}",
+        steps.any { it.source.range == destination.anchor && it.source.role == ValueRole.Return },
+    )
+}
+
+private fun assertPipelineStages(
+    fixture: NativePacketValueFixture,
+    owner: PacketDeclaration,
+    steps: List<ValueFlowStep>,
+    selection: ReviewedCollectionSelection,
+) {
+    val argument = pipelineArgument(fixture, owner, steps)
+    val entry = argument.valuePath.segments.first() as ValuePathSegment.MapEntryComponent
+    assertEquals(MapEntrySlot.VALUE, entry.slot)
+    val sorting =
+        steps
+            .flatMap { it.reviewedTransfers }
+            .map { it.relation }
+            .filterIsInstance<ReviewedValueRelation.ReorderedElements>()
+            .single()
+    assertEquals(selection, sorting.selection)
+    for (marker in listOf("sorted-output", "pair", "feature-read")) {
+        val selected = fixture.markedExpression(owner, marker)
+        assertTrue(
+            "Missing independently marked pipeline stage $marker",
+            steps.any { it.source.range == selected.anchor },
+        )
+    }
+}
+
+private fun pipelineArgument(
+    fixture: NativePacketValueFixture,
+    owner: PacketDeclaration,
+    steps: List<ValueFlowStep>,
+): ValueSite {
+    val destination = fixture.markedExpression(owner, "destination")
+    val schema = fixture.markedExpression(owner, "schema")
+    val argument = steps.singleOrNull { step ->
+        step.source.range == destination.anchor &&
+            step.source.role is ValueRole.Argument &&
+            step.source.valuePath.segments.filterIsInstance<ValuePathSegment.Field>().any {
+                it.field.declaration.name.value == "feature"
+            }
+    }
+    assertNotNull("Missing schema constructor argument: ${steps.flatMap { it.obligations }}", argument)
+    val site = checkNotNull(argument).source
+    val role = site.role as ValueRole.Argument
+    assertEquals(0, role.position.value)
+    assertEquals(schema.anchor, role.call.range)
+    return site
+}
+
+private suspend fun Project.assertReviewedRestoration(
+    fixture: NativePacketValueFixture,
+    owner: PacketDeclaration,
+    steps: List<ValueFlowStep>,
+) {
+    val edge = steps.flatMap { it.reviewedTransfers }.single()
+    val destination = fixture.markedExpression(owner, "destination")
+    val selected =
+        io.github.amichne.kast.symbol.contract.SymbolSelector.issue(
+            fixture.lease,
+            edge.source.enclosing.scope,
+            edge.binding.target,
+        )
+    val claim =
+        io.github.amichne.kast.relation.contract.ValueSiteRoleClaim.Receiver(
+            destination.anchor,
+            selected,
+            io.github.amichne.kast.relation.contract.ValueReceiverKind.EXTENSION,
+        )
+    val question =
+        io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest.create(
+                enclosing = destination.enclosing,
+                anchor = edge.source.range,
+                role = claim,
+                budget = fixture.budget,
+            )
+            .nativeRefined()
+    val read =
+        IntellijValueFlowCompilerAdapter()
+            .revalidateSite(project = this, current = fixture.lease, request = question, model = fixture.model)
+    assertTrue(
+        "Reviewed receiver site must restore: $read",
+        read is io.github.amichne.kast.relation.contract.ValueModelSiteRead.Revalidated,
+    )
+    assertEquals(
+        edge.source.role,
+        (read as io.github.amichne.kast.relation.contract.ValueModelSiteRead.Revalidated).position.site.role,
+    )
+}

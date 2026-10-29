@@ -32,7 +32,7 @@ internal fun QueryImpactFinding.findingDocument(
             path.steps
                 .filterIsInstance<QueryImpactStep.ReviewedLibrary>()
                 .map { it.transfer }
-                .distinctBy { it.binding to it.semantics }
+                .distinctBy { it.binding to it.relation }
                 .impactEach { it.relationshipDocument() }
         )
         .impactZip(path.classificationDocument())

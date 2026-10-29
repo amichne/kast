@@ -1,7 +1,11 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -9,13 +13,11 @@ class ImpactReviewedMapInputAdmissionTest {
     @Test
     fun `applied input semantics cannot replace canonical callback owner authority`() {
         val f = InputAdmissionFixture()
-        val forged =
-            f.binding.copy(
-                semantics = ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER
-            )
-        val owner = ImpactExecutionOwnerDocument.ReviewedCallback(forged)
-        assertFalse(forged.admits(forged.enclosing))
-        assertFalse(f.transfer.copy(target = f.target(owner = owner)).admitsEvidence())
+        val encoded = Json.encodeToString(f.binding)
+        val forged = encoded.dropLast(1) + ",\"semantics\":\"CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER\"}"
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromString<ImpactReviewedValueBindingDocument>(forged)
+        }
         assertTrue(f.transfer.admitsEvidence())
     }
 
@@ -44,7 +46,9 @@ class ImpactReviewedMapInputAdmissionTest {
                 f.transfer.copy(
                     source = f.transfer.source.copy(enclosing = f.binding.enclosing.copy(basis = foreignBasis))
                 ),
-                f.transfer.copy(binding = f.transfer.binding.copy(supplierRange = f.base.range(31, 90))),
+                f.transfer.copy(
+                    binding = f.transfer.binding.copy(authority = f.binding.copy(supplierRange = f.base.range(31, 90)))
+                ),
             )
         for (candidate in cases) assertFalse(candidate.admitsEvidence())
         assertTrue(f.transfer.admitsEvidence())
@@ -55,7 +59,7 @@ class ImpactReviewedMapInputAdmissionTest {
         val f = InputAdmissionFixture(kotlin230 = true)
         assertTrue(f.binding.admits(f.binding.enclosing))
         assertTrue(f.transfer.admitsEvidence())
-        val artifacts = f.binding.artifacts as ImpactReviewedMapArtifactsDocument
+        val artifacts = f.binding.artifacts as ImpactReviewedCollectionArtifactsDocument
         val wrong =
             listOf(
                 artifacts.copy(binaryArtifactSha256 = f.base.text("f".repeat(64))),
@@ -63,22 +67,41 @@ class ImpactReviewedMapInputAdmissionTest {
                 artifacts.copy(sourceEntrySha256 = f.base.text("f".repeat(64))),
                 artifacts.copy(facadeSha256 = f.base.text("f".repeat(64))),
                 artifacts.copy(implementationSha256 = f.base.text("f".repeat(64))),
-                artifacts.copy(mapLines = ImpactReviewedSourceLinesDocument(offset(1744), offset(1746))),
-                artifacts.copy(mapToLines = ImpactReviewedSourceLinesDocument(offset(1819), offset(1823))),
+                artifacts.copy(
+                    sections =
+                        (artifacts.sections as ImpactReviewedCollectionSectionsDocument.Map).copy(
+                            mapLines = ImpactReviewedSourceLinesDocument(offset(1744), offset(1746))
+                        )
+                ),
+                artifacts.copy(
+                    sections =
+                        (artifacts.sections as ImpactReviewedCollectionSectionsDocument.Map).copy(
+                            mapToLines = ImpactReviewedSourceLinesDocument(offset(1819), offset(1823))
+                        )
+                ),
             )
         for (artifact in wrong) assertFalse(
-            f.transfer.copy(binding = f.transfer.binding.copy(artifacts = artifact)).admitsEvidence()
+            f.transfer
+                .copy(binding = f.transfer.binding.copy(authority = f.binding.copy(artifacts = artifact)))
+                .admitsEvidence()
         )
         assertFalse(
             f.transfer
                 .copy(
                     binding =
-                        f.transfer.binding.copy(rule = ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1)
+                        f.transfer.binding.copy(
+                            authority =
+                                f.binding.copy(rule = ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1)
+                        )
                 )
                 .admitsEvidence()
         )
         assertFalse(
-            f.transfer.copy(binding = f.transfer.binding.copy(artifacts = f.base.binding.artifacts)).admitsEvidence()
+            f.transfer
+                .copy(
+                    binding = f.transfer.binding.copy(authority = f.binding.copy(artifacts = f.base.binding.artifacts))
+                )
+                .admitsEvidence()
         )
     }
 }
@@ -100,14 +123,17 @@ private class InputAdmissionFixture(kotlin230: Boolean = false) {
                             )
                     ),
                 artifacts =
-                    ImpactReviewedMapArtifactsDocument(
+                    ImpactReviewedCollectionArtifactsDocument(
                         base.text("887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1"),
                         base.text("326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"),
                         base.text("03b2c7e97271674123941c6d1df5f95a8511d7b1d543fd41d4523af6c15e2970"),
                         base.text("516c679f0309fb8a7058dfc33da4f11a4d0b5eab6de8f2225ff15a9ff3e88770"),
                         base.text("fb24111a87f4e45b9a082ea1666dd33eb04d7ce979b24fde34fcb6d229371e39"),
-                        ImpactReviewedSourceLinesDocument(offset(1585), offset(1587)),
-                        ImpactReviewedSourceLinesDocument(offset(1660), offset(1664)),
+                        ImpactReviewedCollectionSectionsDocument.Map(
+                            ImpactReviewedSourceLinesDocument(offset(1585), offset(1587)),
+                            ImpactReviewedSourceLinesDocument(offset(1660), offset(1664)),
+                        ),
+                        base.bounded(listOf(base.collectionCapacity())),
                     ),
             )
         else base.binding

@@ -65,8 +65,14 @@ class ReviewedScopeReturnTest {
         assertEquals(source.executionOwner, result.target.executionOwner)
         assertEquals(source.callStack, result.target.callStack)
         assertEquals(source.conditions.facts, result.target.conditions.facts.dropLast(1))
-        assertEquals(ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT, result.semantics)
-        assertEquals(ReviewedCallbackInvocationEvidence.Declared(f.declared), result.binding.invocationEvidence)
+        assertEquals(
+            ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+            (result.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
+        assertEquals(
+            ReviewedCallbackInvocationEvidence.Declared(f.declared),
+            (result.binding as ReviewedCallbackValueBinding).invocationEvidence,
+        )
     }
 
     @Test
@@ -151,12 +157,18 @@ class ReviewedScopeReturnTest {
         val transfer = ReviewedValueTransfer.receiverResult(source, f.reviewed, f.declared).flowRefined()
         assertEquals(
             Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH),
-            ValueCondition.ReviewedCallbackNormalReturn.fromReviewed(f.source, transfer.binding),
+            ValueCondition.ReviewedCallbackNormalReturn.fromReviewed(
+                f.source,
+                transfer.binding as ReviewedCallbackValueBinding,
+            ),
         )
         val anotherCall = receiver(f, callRange = flowRange(420, 459))
         assertEquals(
             Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH),
-            ValueCondition.ReviewedCallbackNormalReturn.fromReviewed(anotherCall, transfer.binding),
+            ValueCondition.ReviewedCallbackNormalReturn.fromReviewed(
+                anotherCall,
+                transfer.binding as ReviewedCallbackValueBinding,
+            ),
         )
     }
 

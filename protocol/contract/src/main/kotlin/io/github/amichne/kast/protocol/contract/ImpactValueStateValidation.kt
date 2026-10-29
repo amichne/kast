@@ -19,6 +19,8 @@ internal fun ImpactValueSiteReferenceDocument.admitsValueState(): Boolean =
 internal fun ImpactValuePathSegmentDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         ImpactValuePathSegmentDocument.Element -> true
+        is ImpactValuePathSegmentDocument.PairComponent -> origin.admits(basis)
+        is ImpactValuePathSegmentDocument.MapEntryComponent -> entry.admits(basis)
         is ImpactValuePathSegmentDocument.Field -> declaration.basis == basis && declaration.validValueDeclaration()
     }
 

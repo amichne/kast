@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
-import org.jetbrains.kotlin.psi.KtValueArgument
 
 /** Native binding and type proof for one restored exact role; lexical shape alone never establishes a value. */
 internal fun nativeValueSiteRole(
@@ -75,7 +74,7 @@ internal fun nativeValueSiteRole(
                     workAllowance = prepared.scope.request.budget.resources.workAllowance,
                     executionOwner = executionOwner,
                 )
-            is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
+            is ValueSiteRoleClaim.Argument -> nativeArgumentSiteRole(element, prepared, executionOwner, callbackContext)
             is ValueSiteRoleClaim.Receiver ->
                 receiverRole(
                     element = element,
@@ -273,22 +272,6 @@ private fun returnRole(
     }
 }
 
-private fun argumentRole(
-    element: PsiElement,
-    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val expression = element as? KtExpression ?: return roleRejected()
-    val argument = element.parent as? KtValueArgument ?: return roleRejected()
-    return nativeValueArgument(
-        expression = expression,
-        argument = argument,
-        scope = prepared.scope,
-        projection = prepared.projection,
-        executionOwner = executionOwner,
-    )
-}
-
 private fun receiverRole(
     element: PsiElement,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
@@ -297,51 +280,42 @@ private fun receiverRole(
     callbackContext: IntellijCallbackFlowContext,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     if (element is KtDestructuringDeclarationEntry)
-        return when (
-            val target =
-                componentSiteTarget(
-                    entry = element,
-                    prepared = prepared,
-                    executionOwner = executionOwner,
-                    permit = permit,
-                )
-        ) {
-            is Refinement.Rejected -> target
-            is Refinement.Refined ->
-                when (val selected = target.value) {
-                    is NativeComponentTarget.Field -> roleRejected()
-                    is NativeComponentTarget.Callable ->
-                        nativeComponentReceiver(
-                            entry = element,
-                            target = selected,
-                            executionOwner = executionOwner,
-                            scope = prepared.scope,
-                            projection = prepared.projection,
-                        )
-                }
-        }
+        return componentReceiverRole(element, prepared, executionOwner, permit)
     val expression = element as? KtExpression ?: return roleRejected()
+    val binary = expression.parent as? org.jetbrains.kotlin.psi.KtBinaryExpression
+    if (binary != null) return nativeReviewedTupleRole(expression, binary, executionOwner, callbackContext)
     val qualified = element.parent as? KtQualifiedExpression ?: return roleRejected()
+    return nativeQualifiedReceiverSiteRole(expression, qualified, prepared, executionOwner, callbackContext)
+}
+
+private fun componentReceiverRole(
+    element: KtDestructuringDeclarationEntry,
+    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     return when (
-        val receiver =
-            nativeValueReceiver(
-                expression = expression,
-                qualified = qualified,
-                scope = prepared.scope,
-                projection = prepared.projection,
+        val target =
+            componentSiteTarget(
+                entry = element,
+                prepared = prepared,
                 executionOwner = executionOwner,
+                permit = permit,
             )
     ) {
-        is Refinement.Refined -> receiver
-        is Refinement.Rejected ->
-            if (receiver.failure == ValueFlowUnsupportedCause.EXTERNAL_CALL)
-                nativeReviewedReceiverRole(
-                    receiverRange = sourceValueRange(expression),
-                    executionOwner = executionOwner,
-                    qualified = qualified,
-                    context = callbackContext,
-                )
-            else receiver
+        is Refinement.Rejected -> target
+        is Refinement.Refined ->
+            when (val selected = target.value) {
+                is NativeComponentTarget.Field -> roleRejected()
+                is NativeComponentTarget.Callable ->
+                    nativeComponentReceiver(
+                        entry = element,
+                        target = selected,
+                        executionOwner = executionOwner,
+                        scope = prepared.scope,
+                        projection = prepared.projection,
+                    )
+            }
     }
 }
 

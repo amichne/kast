@@ -185,9 +185,18 @@ internal class NativeValueExpressionFlow(
     }
 
     private fun assignmentDestination(expression: KtExpression, assignment: KtBinaryExpression) {
-        if (nativeExternalInfixCall(assignment, observation))
-            retained.unresolvedAt(ValueFlowUnsupportedCause.EXTERNAL_CALL, assignment)
-        else if (assignment.right === expression) localVersionDestination(assignment)
+        if (nativeExternalInfixCall(assignment, observation)) {
+            val context = receiverContext(request, scope, projection, allowance)
+            when (val role = nativeReviewedTupleRole(expression, assignment, request.source.executionOwner, context)) {
+                is Refinement.Refined ->
+                    when (val selected = role.value) {
+                        is ValueRole.Receiver -> retained.emit(expression, selected, ValueTransferKind.RECEIVER)
+                        is ValueRole.Argument -> retained.emit(expression, selected, ValueTransferKind.ARGUMENT)
+                        else -> retained.unresolvedAt(ValueFlowUnsupportedCause.EXTERNAL_CALL, assignment)
+                    }
+                is Refinement.Rejected -> retained.unresolvedAt(role.failure, assignment)
+            }
+        } else if (assignment.right === expression) localVersionDestination(assignment)
         else retained.unresolvedAt(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW, assignment)
     }
 

@@ -25,7 +25,10 @@ internal class ImpactReviewedValueFixture {
         ImpactReviewedValueTransferDocument(
             source,
             target,
-            ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+            ImpactReviewedValueRelationshipDocument.fromBinding(
+                binding,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+            ),
         )
 
     fun text(raw: String) = base.text(raw)
@@ -48,7 +51,6 @@ internal class ImpactReviewedValueFixture {
             supplierRange = range(30, 90),
             selected = selected(),
             artifacts = artifacts(),
-            semantics = ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
             actualExecution = ImpactActualExecutionDocument.NOT_ESTABLISHED,
             invocationCount = ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
         )
@@ -78,14 +80,18 @@ internal class ImpactReviewedValueFixture {
     }
 
     private fun artifacts() =
-        ImpactReviewedMapArtifactsDocument(
+        ImpactReviewedCollectionArtifactsDocument(
             binaryArtifactSha256 = text("bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3"),
             sourceArtifactSha256 = text("1e29c0668b0aa555e7b154e5da2e8094e1b755cfee25737839195bbbdad8a4a2"),
             sourceEntrySha256 = text("aad6a5398189369be27f65952a5f2c935e3bf00d166e2046a0fb4be0d007a85c"),
             facadeSha256 = text("7f74e68459e9c8ae6c69510014b6fe0f565b9389ddbe5acb5e181dd773558878"),
             implementationSha256 = text("e5afca255b864c70152adeeecd88367f5477966ab26bd16f8db2b5c56c995296"),
-            mapLines = ImpactReviewedSourceLinesDocument(base.offset(1744), base.offset(1746)),
-            mapToLines = ImpactReviewedSourceLinesDocument(base.offset(1819), base.offset(1823)),
+            sections =
+                ImpactReviewedCollectionSectionsDocument.Map(
+                    ImpactReviewedSourceLinesDocument(base.offset(1744), base.offset(1746)),
+                    ImpactReviewedSourceLinesDocument(base.offset(1819), base.offset(1823)),
+                ),
+            helpers = bounded(emptyList()),
         )
 }
 
@@ -94,3 +100,26 @@ private fun <T, F> Refinement<T, F>.refined(): T =
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Invalid reviewed fixture: $failure")
     }
+
+internal fun ImpactReviewedValueFixture.collectionCapacity(): ImpactReviewedLibraryHelperDocument =
+    ImpactReviewedLibraryHelperDocument(
+        ImpactReviewedLibraryHelperKindDocument.COLLECTION_CAPACITY,
+        text("commonMain/kotlin/collections/Iterables.kt"),
+        text("db36d783a35dc062366af184d7e54cbc70f57e3cf570329696931c7008c1e244"),
+        bounded(
+            listOf(
+                ImpactReviewedSourceLinesDocument(
+                    (ProtocolOffset.parse(39) as Refinement.Refined).value,
+                    (ProtocolOffset.parse(39) as Refinement.Refined).value,
+                )
+            )
+        ),
+        bounded(
+            listOf(
+                ImpactReviewedClassEvidenceDocument(
+                    text("kotlin/collections/CollectionsKt__IterablesKt.class"),
+                    text("813642e022be0e7327b93fb9eb92ed8c1500059b4b22747525267e9f6bae1154"),
+                )
+            )
+        ),
+    )

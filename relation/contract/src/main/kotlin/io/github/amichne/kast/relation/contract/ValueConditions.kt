@@ -65,6 +65,56 @@ sealed interface ValueCondition {
         }
     }
 
+    /** Normal collection completion does not assert selector invocation. */
+    @ConsistentCopyVisibility
+    data class ReviewedCollectionNormalResult
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+        val binding: ReviewedCallbackValueBinding,
+    ) : ValueCondition {
+        companion object {
+            fun fromReviewed(
+                source: ValueSite,
+                binding: ReviewedCallbackValueBinding,
+            ): Refinement<ReviewedCollectionNormalResult, ValueSiteFailure> =
+                if (binding.admitsSortedReceiver(source))
+                    Refinement.Refined(
+                        ReviewedCollectionNormalResult(
+                            ValueConditionOrigin.fromSite(source),
+                            binding.occurrence.range,
+                            binding,
+                        )
+                    )
+                else Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+        }
+    }
+
+    /** Exact correlated entry identity depends on a key unique across the complete insertion set. */
+    @ConsistentCopyVisibility
+    data class ReviewedEntryKeyUnique
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+        val entry: ReviewedMapEntryCorrelation,
+    ) : ValueCondition {
+        companion object {
+            fun fromReviewed(
+                source: ValueSite,
+                entry: ReviewedMapEntryCorrelation,
+            ): Refinement<ReviewedEntryKeyUnique, ValueSiteFailure> =
+                if (entry.keyEvidence == ReviewedEntryKeyEvidence.Conditional && entry.matches(source))
+                    Refinement.Refined(
+                        ReviewedEntryKeyUnique(
+                            ValueConditionOrigin.fromSite(source),
+                            entry.binding.occurrence.range,
+                            entry,
+                        )
+                    )
+                else Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+        }
+    }
+
     /** The receiver result depends on normal callback return, without asserting that return occurs. */
     @ConsistentCopyVisibility
     data class ReviewedCallbackNormalReturn
@@ -255,6 +305,8 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
         val added = target.conditions.facts.last()
         if (!added.origin.matches(source) || added.useRange != target.range) return false
         return when (added) {
+            is ValueCondition.ReviewedCollectionNormalResult,
+            is ValueCondition.ReviewedEntryKeyUnique,
             is ValueCondition.ReviewedCallbackNormalReturn -> false
             is ValueCondition.DeclaredCallbackResult ->
                 kind == ValueTransferKind.SOURCE_CALL_RETURN &&

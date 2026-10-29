@@ -44,22 +44,16 @@ internal fun ReviewedCallbackValueBinding.storageBytes(g: QueryImpactRetainedGra
                 }
             )
             .saturatedAdd(g.node(selected) { target.storageBytes(g) })
-            .saturatedAdd(
-                g.node(artifact) {
-                    g.text(artifact.binaryArtifact.value)
-                        .saturatedAdd(g.text(artifact.sourceArtifact.value))
-                        .saturatedAdd(g.text(artifact.sourceEntry))
-                        .saturatedAdd(g.text(artifact.sourceEntrySha256))
-                        .saturatedAdd(g.text(artifact.facadeSha256))
-                        .saturatedAdd(g.text(artifact.implementationSha256))
-                        .saturatedAdd(g.collection(artifact.sourceSections) { g.node(it) { 0L } })
-                }
-            )
+            .saturatedAdd(artifact.storageBytes(g))
     }
 
 internal fun ReviewedValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        source.storageBytes(g).saturatedAdd(target.storageBytes(g)).saturatedAdd(binding.storageBytes(g))
+        source
+            .storageBytes(g)
+            .saturatedAdd(target.storageBytes(g))
+            .saturatedAdd(binding.storageBytes(g))
+            .saturatedAdd(relation.storageBytes(g))
     }
 
 internal fun ValueCaptureInvocation.storageBytes(g: QueryImpactRetainedGraph): Long =

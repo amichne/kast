@@ -126,11 +126,18 @@ class ImpactPeerAccountingTest {
             (binding.basis as ImpactSemanticBasisDocument.Published).copy(
                 generation = (ImpactEvidenceRevisionDocument.parse(8) as Refinement.Refined).value
             )
+        val authority = binding.authority as ImpactReviewedValueBindingDocument
         val stale =
             binding.copy(
-                basis = staleBasis,
-                enclosing = binding.enclosing.copy(basis = staleBasis),
-                selected = binding.selected.copy(declaration = binding.selected.declaration.copy(basis = staleBasis)),
+                authority =
+                    authority.copy(
+                        basis = staleBasis,
+                        enclosing = authority.enclosing.copy(basis = staleBasis),
+                        selected =
+                            authority.selected.copy(
+                                declaration = authority.selected.declaration.copy(basis = staleBasis)
+                            ),
+                    )
             )
         assertTrue(stale.admits(stale.enclosing))
         assertEquals(

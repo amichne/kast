@@ -13,6 +13,12 @@ enum class ImpactReviewedValueRuleDocument {
     KOTLIN_2_3_0_ITERABLE_MAP_V1,
     KOTLIN_2_3_0_LET_V1,
     KOTLIN_2_3_0_ALSO_V1,
+    KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1,
+    KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1,
+    KOTLIN_2_3_0_TO_V1,
+    KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1,
+    KOTLIN_2_3_0_PAIR_FIRST_V1,
+    KOTLIN_2_3_0_PAIR_SECOND_V1,
 }
 
 @Serializable
@@ -58,7 +64,7 @@ sealed interface ImpactReviewedArtifactsDocument {
 
 @Serializable
 @SerialName("commonMain/generated/_Collections.kt")
-data class ImpactReviewedMapArtifactsDocument(
+data class ImpactReviewedCollectionArtifactsDocument(
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
     override val binaryArtifactSha256: ProtocolText,
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
@@ -69,8 +75,8 @@ data class ImpactReviewedMapArtifactsDocument(
     override val facadeSha256: ProtocolText,
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
     override val implementationSha256: ProtocolText,
-    val mapLines: ImpactReviewedSourceLinesDocument,
-    val mapToLines: ImpactReviewedSourceLinesDocument,
+    val sections: ImpactReviewedCollectionSectionsDocument,
+    val helpers: BoundedProtocolList<ImpactReviewedLibraryHelperDocument>,
 ) : ImpactReviewedArtifactsDocument
 
 @Serializable
@@ -89,65 +95,42 @@ data class ImpactReviewedScopeArtifactsDocument(
     val functionLines: ImpactReviewedSourceLinesDocument,
 ) : ImpactReviewedArtifactsDocument
 
+@Serializable
+@SerialName("commonMain/kotlin/util/Tuples.kt")
+data class ImpactReviewedTupleArtifactsDocument(
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val binaryArtifactSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val sourceArtifactSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val sourceEntrySha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val facadeSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val implementationSha256: ProtocolText,
+    val sections: ImpactReviewedTupleSectionsDocument,
+) : ImpactReviewedArtifactsDocument
+
 /** Inclusive one-based lines in the artifact's exact source entry. */
 @Serializable data class ImpactReviewedSourceLinesDocument(val first: ProtocolOffset, val last: ProtocolOffset)
 
 /** Static correspondence carries no actual invocation or cardinality assertion. */
 @Serializable
+@SerialName("CALLBACK")
 data class ImpactReviewedValueBindingDocument(
-    val rule: ImpactReviewedValueRuleDocument,
-    val basis: ImpactSemanticBasisDocument,
-    val enclosing: ImpactDeclarationReferenceDocument,
+    override val rule: ImpactReviewedValueRuleDocument,
+    override val basis: ImpactSemanticBasisDocument,
+    override val enclosing: ImpactDeclarationReferenceDocument,
     val body: ImpactCapturedBodyDocument,
-    val supplierRange: ImpactSourceRangeDocument,
+    override val supplierRange: ImpactSourceRangeDocument,
     val selected: ImpactReviewedFunctionDocument,
-    val artifacts: ImpactReviewedArtifactsDocument,
-    val semantics: ImpactReviewedValueSemanticsDocument,
+    override val artifacts: ImpactReviewedArtifactsDocument,
     val actualExecution: ImpactActualExecutionDocument,
     val invocationCount: ImpactInvocationCountKnowledgeDocument,
     @Required
     val invocationEvidence: ImpactReviewedInvocationEvidenceDocument =
         ImpactReviewedInvocationEvidenceDocument.Unestablished,
-)
-
-/** Applied correspondence remains separate from the canonical callback-owner binding. */
-@Serializable
-data class ImpactReviewedValueRelationshipDocument(
-    val rule: ImpactReviewedValueRuleDocument,
-    val basis: ImpactSemanticBasisDocument,
-    val enclosing: ImpactDeclarationReferenceDocument,
-    val body: ImpactCapturedBodyDocument,
-    val supplierRange: ImpactSourceRangeDocument,
-    val selected: ImpactReviewedFunctionDocument,
-    val artifacts: ImpactReviewedArtifactsDocument,
-    val semantics: ImpactReviewedValueSemanticsDocument,
-    val actualExecution: ImpactActualExecutionDocument,
-    val invocationCount: ImpactInvocationCountKnowledgeDocument,
-    @Required
-    val invocationEvidence: ImpactReviewedInvocationEvidenceDocument =
-        ImpactReviewedInvocationEvidenceDocument.Unestablished,
-) {
-    companion object {
-        /** Projection only. Evidence admission remains explicit at the transport reader. */
-        fun fromBinding(
-            binding: ImpactReviewedValueBindingDocument,
-            semantics: ImpactReviewedValueSemanticsDocument,
-        ): ImpactReviewedValueRelationshipDocument =
-            ImpactReviewedValueRelationshipDocument(
-                binding.rule,
-                binding.basis,
-                binding.enclosing,
-                binding.body,
-                binding.supplierRange,
-                binding.selected,
-                binding.artifacts,
-                semantics,
-                binding.actualExecution,
-                binding.invocationCount,
-                binding.invocationEvidence,
-            )
-    }
-}
+) : ImpactReviewedValueAuthorityDocument
 
 @Serializable
 data class ImpactReviewedValueTransferDocument(

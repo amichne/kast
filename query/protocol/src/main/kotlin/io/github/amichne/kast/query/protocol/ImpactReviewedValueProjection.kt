@@ -3,12 +3,8 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactActualExecutionDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationCountKnowledgeDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedArtifactsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedFunctionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedInvocationEvidenceDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedScopeArtifactsDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedSourceLinesDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRuleDocument
@@ -17,10 +13,8 @@ import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocum
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
 import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
-import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
 import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
 import io.github.amichne.kast.relation.contract.ReviewedLibraryRule
-import io.github.amichne.kast.relation.contract.ReviewedSourceSection
 import io.github.amichne.kast.relation.contract.ReviewedValueSemantics
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
@@ -35,11 +29,11 @@ internal fun ReviewedValueTransfer.impactDocument(): ImpactProjected<ImpactRevie
     }
 
 internal fun ReviewedValueTransfer.relationshipDocument(): ImpactProjected<ImpactReviewedValueRelationshipDocument> =
-    binding.impactDocument().impactMap {
-        ImpactReviewedValueRelationshipDocument.fromBinding(it, semantics.impactDocument())
+    binding.impactDocument().impactZip(relation.impactDocument()).impactMap { (authority, relation) ->
+        ImpactReviewedValueRelationshipDocument(authority, relation)
     }
 
-private fun ReviewedValueSemantics.impactDocument(): ImpactReviewedValueSemanticsDocument =
+internal fun ReviewedValueSemantics.impactDocument(): ImpactReviewedValueSemanticsDocument =
     when (this) {
         ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT ->
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT
@@ -70,16 +64,6 @@ internal fun ReviewedCallbackValueBinding.impactDocument(): ImpactProjected<Impa
                         supplierRange = supply.first.second,
                         selected = supply.second,
                         artifacts = artifact,
-                        semantics =
-                            when (this.artifact.rule) {
-                                ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1,
-                                ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
-                                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT
-                                ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 ->
-                                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT
-                                ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 ->
-                                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT
-                            },
                         actualExecution = ImpactActualExecutionDocument.NOT_ESTABLISHED,
                         invocationCount = ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
                         invocationEvidence = invocation,
@@ -123,70 +107,22 @@ private fun ReviewedLibraryCallable.impactDocument(
     }
 }
 
-private fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactReviewedArtifactsDocument> =
-    when (rule) {
-        ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
-            mapDocument(ReviewedSourceSection.MAP, ReviewedSourceSection.MAP_TO)
-        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 ->
-            mapDocument(ReviewedSourceSection.MAP_2_3_0, ReviewedSourceSection.MAP_TO_2_3_0)
-        ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> scopeDocument(ReviewedSourceSection.LET)
-        ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 -> scopeDocument(ReviewedSourceSection.ALSO)
-    }
-
-private fun ReviewedLibraryArtifact.mapDocument(
-    map: ReviewedSourceSection,
-    mapTo: ReviewedSourceSection,
-): ImpactProjected<ImpactReviewedArtifactsDocument> =
-    binaryArtifact.value.impactText().impactZip(sourceArtifact.value.impactText()).impactThen { (binary, source) ->
-        sourceEntrySha256.impactText().impactThen { entryHash ->
-            facadeSha256
-                .impactText()
-                .impactZip(implementationSha256.impactText())
-                .impactZip(sourceLines(map))
-                .impactZip(sourceLines(mapTo))
-                .impactMap { (classes, mapToLines) ->
-                    ImpactReviewedMapArtifactsDocument(
-                        binary,
-                        source,
-                        entryHash,
-                        classes.first.first,
-                        classes.first.second,
-                        classes.second,
-                        mapToLines,
-                    )
-                }
-        }
-    }
-
-private fun ReviewedLibraryArtifact.scopeDocument(
-    section: ReviewedSourceSection
-): ImpactProjected<ImpactReviewedArtifactsDocument> =
-    binaryArtifact.value.impactText().impactZip(sourceArtifact.value.impactText()).impactThen { (binary, source) ->
-        sourceEntrySha256
-            .impactText()
-            .impactZip(facadeSha256.impactText())
-            .impactZip(implementationSha256.impactText())
-            .impactThen { (hashes, implementation) ->
-                sourceLines(section).impactMap { lines ->
-                    ImpactReviewedScopeArtifactsDocument(
-                        binary,
-                        source,
-                        hashes.first,
-                        hashes.second,
-                        implementation,
-                        lines,
-                    )
-                }
-            }
-    }
-
-private fun ReviewedLibraryRule.impactDocument(): ImpactReviewedValueRuleDocument =
+internal fun ReviewedLibraryRule.impactDocument(): ImpactReviewedValueRuleDocument =
     when (this) {
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_V1
         ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
             ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_TO_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_FIRST_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_FIRST_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_SECOND_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_SECOND_V1
     }
 
 private fun ReviewedCallbackInvocationEvidence.impactDocument():
@@ -196,15 +132,4 @@ private fun ReviewedCallbackInvocationEvidence.impactDocument():
             Refinement.Refined(ImpactReviewedInvocationEvidenceDocument.Unestablished)
         is ReviewedCallbackInvocationEvidence.Declared ->
             binding.impactDocument().impactMap { ImpactReviewedInvocationEvidenceDocument.Declared(it) }
-    }
-
-private fun ReviewedLibraryArtifact.sourceLines(
-    section: ReviewedSourceSection
-): ImpactProjected<ImpactReviewedSourceLinesDocument> =
-    when (val source = sourceSections.singleOrNull { it == section }) {
-        null -> Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
-        else ->
-            source.firstLine.impactOffset().impactZip(source.lastLine.impactOffset()).impactMap { (start, end) ->
-                ImpactReviewedSourceLinesDocument(start, end)
-            }
     }

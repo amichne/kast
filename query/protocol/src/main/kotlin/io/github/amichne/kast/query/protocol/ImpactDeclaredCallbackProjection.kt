@@ -15,6 +15,8 @@ import io.github.amichne.kast.relation.contract.DeclaredCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 internal fun DeclaredCallbackValueBinding.impactDocument():
     ImpactProjected<ImpactDeclaredCallbackValueBindingDocument> =
@@ -61,11 +63,16 @@ private fun CallbackDependencyContract.impactDocument(): ImpactProjected<ImpactC
             )
         }
 
-private fun CallbackDependencyContract.targetDocument(): ImpactProjected<ImpactDeclaredCallbackTargetDocument> {
-    val signature = target.signature
+private fun CallbackDependencyContract.targetDocument(): ImpactProjected<ImpactDeclaredCallbackTargetDocument> =
+    target.impactCallableTarget(basis)
+
+internal fun CompilerGroundedSymbolEvidence.impactCallableTarget(
+    basis: SemanticReadIdentity
+): ImpactProjected<ImpactDeclaredCallbackTargetDocument> {
+    val signature = this.signature
     if (signature !is CanonicalCompilerSignature.Function)
         return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
-    return ValueDeclarationIdentity.fromCompiler(target)
+    return ValueDeclarationIdentity.fromCompiler(this)
         .impactDocument(basis)
         .impactZip(signature.qualifiedIdentity.value.impactText())
         .impactZip(signature.receiver.declaredReceiverDocument())
@@ -83,7 +90,7 @@ private fun CallbackDependencyContract.targetDocument(): ImpactProjected<ImpactD
         }
 }
 
-private fun CanonicalCompilerReceiver.declaredReceiverDocument():
+internal fun CanonicalCompilerReceiver.declaredReceiverDocument():
     ImpactProjected<ImpactDeclaredCallbackReceiverDocument> =
     when (this) {
         CanonicalCompilerReceiver.Absent -> Refinement.Refined(ImpactDeclaredCallbackReceiverDocument.Absent)

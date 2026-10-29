@@ -147,10 +147,14 @@ class NativeReviewedValueQueryTest : NativeSmartModeFixtureTest() {
 
     private fun assertReviewedRule(path: ImpactPathDocument) {
         val transfer = path.steps.values.filterIsInstance<ImpactPathStepDocument.ReviewedLibrary>().single().transfer
-        val binding = transfer.binding
+        val relation =
+            transfer.binding.relation
+                as io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument.CallbackCorrespondence
+        val binding =
+            transfer.binding.authority as io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
         assertEquals(
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
-            binding.semantics,
+            relation.semantics,
         )
         assertEquals(ImpactActualExecutionDocument.NOT_ESTABLISHED, binding.actualExecution)
         assertEquals(ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED, binding.invocationCount)
@@ -170,8 +174,8 @@ class NativeReviewedValueQueryTest : NativeSmartModeFixtureTest() {
     }
 
     private fun assertReviewedArtifacts(document: ImpactReviewedArtifactsDocument) {
-        assertTrue(document is io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument)
-        val artifacts = document as io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument
+        assertTrue(document is io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionArtifactsDocument)
+        val artifacts = document as io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionArtifactsDocument
         assertEquals(NativeReviewedQueryFixture.BINARY_SHA256, artifacts.binaryArtifactSha256.value)
         assertEquals(NativeReviewedQueryFixture.SOURCES_SHA256, artifacts.sourceArtifactSha256.value)
         assertEquals(
@@ -183,10 +187,12 @@ class NativeReviewedValueQueryTest : NativeSmartModeFixtureTest() {
             "e5afca255b864c70152adeeecd88367f5477966ab26bd16f8db2b5c56c995296",
             artifacts.implementationSha256.value,
         )
-        assertEquals(REVIEWED_MAP_FIRST_LINE, artifacts.mapLines.first.value)
-        assertEquals(REVIEWED_MAP_LAST_LINE, artifacts.mapLines.last.value)
-        assertEquals(REVIEWED_MAP_TO_FIRST_LINE, artifacts.mapToLines.first.value)
-        assertEquals(REVIEWED_MAP_TO_LAST_LINE, artifacts.mapToLines.last.value)
+        val sections =
+            artifacts.sections as io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument.Map
+        assertEquals(REVIEWED_MAP_FIRST_LINE, sections.mapLines.first.value)
+        assertEquals(REVIEWED_MAP_LAST_LINE, sections.mapLines.last.value)
+        assertEquals(REVIEWED_MAP_TO_FIRST_LINE, sections.mapToLines.first.value)
+        assertEquals(REVIEWED_MAP_TO_LAST_LINE, sections.mapToLines.last.value)
     }
 
     private fun prepare(variant: NativeReviewedQueryVariant): NativeReviewedQueryCase {

@@ -7,6 +7,10 @@ import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ReviewedDistinctStringKeys
+import io.github.amichne.kast.relation.contract.ReviewedEntryKeyEvidence
+import io.github.amichne.kast.relation.contract.ReviewedMapEntryCorrelation
+import io.github.amichne.kast.relation.contract.ReviewedTupleOrigin
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowStep
@@ -83,7 +87,7 @@ internal fun ValueSite.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
         localVersion.hasForeignBasis(lease) ||
         executionOwner.enclosing.lease != lease ||
         executionOwner.basis != lease.identity ||
-        valuePath.segments.filterIsInstance<ValuePathSegment.Field>().any { it.field.declaration.lease != lease } ||
+        valuePath.segments.any { it.hasForeignBasis(lease) } ||
         callStack.frames.any { it.hasForeignBasis(lease) } ||
         conditions.hasForeignBasis(lease) ||
         when (val current = role) {
@@ -113,9 +117,7 @@ private fun ValueConditions.hasForeignBasis(lease: SemanticReadAuthority): Boole
     val origin = condition.origin
     origin.execution.enclosing.lease != lease ||
         origin.basis != lease.identity ||
-        origin.valuePath.segments.filterIsInstance<ValuePathSegment.Field>().any {
-            it.field.declaration.lease != lease
-        } ||
+        origin.valuePath.segments.any { it.hasForeignBasis(lease) } ||
         origin.callStack.frames.any { it.hasForeignBasis(lease) }
 }
 
@@ -278,3 +280,39 @@ private fun ValueFormalPosition.hasForeignBasis(lease: SemanticReadAuthority): B
 
 private fun ValueLoopProtocol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     listOf(iterator, hasNext, next).any { it.hasForeignBasis(lease) }
+
+private fun ValuePathSegment.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        ValuePathSegment.Element -> false
+        is ValuePathSegment.Field -> field.declaration.lease != lease
+        is ValuePathSegment.PairComponent -> origin.hasForeignBasis(lease)
+        is ValuePathSegment.MapEntryComponent -> entry.hasForeignBasis(lease)
+    }
+
+private fun ReviewedTupleOrigin.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    binding.invocation.hasForeignBasis(lease) || callStack.frames.any { it.hasForeignBasis(lease) }
+
+private fun ReviewedMapEntryCorrelation.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    binding.enclosing.lease != lease ||
+        binding.basis != lease.identity ||
+        tupleOrigin.hasForeignBasis(lease) ||
+        returnExecution.enclosing.lease != lease ||
+        returnExecution.basis != lease.identity ||
+        callStack.frames.any { it.hasForeignBasis(lease) } ||
+        keyEvidence.hasForeignBasis(lease)
+
+private fun ReviewedEntryKeyEvidence.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        ReviewedEntryKeyEvidence.Conditional -> false
+        is ReviewedEntryKeyEvidence.Distinct -> proof.hasForeignBasis(lease)
+    }
+
+private fun ReviewedDistinctStringKeys.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    input.formal.invocation.hasForeignBasis(lease) ||
+        input.arguments.any { it.formal.invocation.hasForeignBasis(lease) } ||
+        key.binding.basis != lease.identity ||
+        key.binding.enclosing.lease != lease ||
+        key.formal.callable.lease != lease ||
+        key.formal.executionOwner.basis != lease.identity ||
+        key.tupleOrigin.hasForeignBasis(lease) ||
+        associationInvocation.hasForeignBasis(lease)

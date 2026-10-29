@@ -34,7 +34,15 @@ internal fun nativeReviewedCallbackReturn(
         is Refinement.Rejected -> unsupportedReviewedReturn(fresh.failure.valueFlowCause())
         is Refinement.Refined ->
             if (fresh.value != expected.binding) unsupportedReviewedReturn()
-            else NativeValueReturnEffect.Reviewed(ReviewedValueTransfer.callbackResult(source, fresh.value))
+            else
+                NativeValueReturnEffect.Reviewed(
+                    if (
+                        fresh.value.selected.operation ==
+                            io.github.amichne.kast.relation.contract.ReviewedLibraryOperation.ITERABLE_ASSOCIATE
+                    )
+                        nativeReviewedAssociationReturn(literal, source, fresh.value, context)
+                    else ReviewedValueTransfer.callbackResult(source, fresh.value)
+                )
     }
 }
 

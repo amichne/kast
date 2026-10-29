@@ -28,8 +28,10 @@ class ImpactReviewedMapInputTest {
                 .copy(
                     binding =
                         input.binding.copy(
-                            semantics =
-                                ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER
+                            relation =
+                                ImpactReviewedValueRelationDocument.CallbackCorrespondence(
+                                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER
+                                )
                         )
                 )
                 .admitsEvidence()
@@ -43,16 +45,18 @@ class ImpactReviewedMapInputTest {
         assertTrue(input.admitsEvidence())
         val encoded = Json.parseToJsonElement(Json.encodeToString(input)).jsonObject
         assertEquals(setOf("source", "target", "binding"), encoded.keys)
-        val relation = encoded.getValue("binding").jsonObject
+        val relation = encoded.getValue("binding").jsonObject.getValue("relation").jsonObject
+        val authority = encoded.getValue("binding").jsonObject.getValue("authority").jsonObject
         assertEquals(
             "CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER",
             relation.getValue("semantics").jsonPrimitive.content,
         )
-        assertEquals("NOT_ESTABLISHED", relation.getValue("actualExecution").jsonPrimitive.content)
-        assertEquals("NOT_ESTABLISHED", relation.getValue("invocationCount").jsonPrimitive.content)
+        assertEquals("NOT_ESTABLISHED", authority.getValue("actualExecution").jsonPrimitive.content)
+        assertEquals("NOT_ESTABLISHED", authority.getValue("invocationCount").jsonPrimitive.content)
         val owner =
             encoded.getValue("target").jsonObject.getValue("executionOwner").jsonObject.getValue("binding").jsonObject
-        assertEquals("CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT", owner.getValue("semantics").jsonPrimitive.content)
+        assertFalse("semantics" in owner)
+        assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", owner.getValue("rule").jsonPrimitive.content)
         val steps =
             f.bounded<ImpactPathStepDocument>(
                 listOf(

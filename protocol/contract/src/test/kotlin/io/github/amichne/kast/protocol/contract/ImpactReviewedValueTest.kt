@@ -45,8 +45,11 @@ class ImpactReviewedValueTest {
     }
 
     private fun assertBindingShape(binding: JsonObject) {
+        assertEquals(setOf("authority", "relation"), binding.keys)
+        val authority = binding.getValue("authority").jsonObject
         assertEquals(
             setOf(
+                "type",
                 "rule",
                 "basis",
                 "enclosing",
@@ -54,21 +57,24 @@ class ImpactReviewedValueTest {
                 "supplierRange",
                 "selected",
                 "artifacts",
-                "semantics",
                 "actualExecution",
                 "invocationCount",
                 "invocationEvidence",
             ),
-            binding.keys,
+            authority.keys,
         )
+        assertEquals("CALLBACK", authority.getValue("type").jsonPrimitive.content)
+        assertEquals("NOT_ESTABLISHED", authority.getValue("actualExecution").jsonPrimitive.content)
+        assertEquals("NOT_ESTABLISHED", authority.getValue("invocationCount").jsonPrimitive.content)
+        assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", authority.getValue("rule").jsonPrimitive.content)
+        val relation = binding.getValue("relation").jsonObject
+        assertEquals(setOf("type", "semantics"), relation.keys)
+        assertEquals("CALLBACK_CORRESPONDENCE", relation.getValue("type").jsonPrimitive.content)
         assertEquals(
             "CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
-            binding.getValue("semantics").jsonPrimitive.content,
+            relation.getValue("semantics").jsonPrimitive.content,
         )
-        assertEquals("NOT_ESTABLISHED", binding.getValue("actualExecution").jsonPrimitive.content)
-        assertEquals("NOT_ESTABLISHED", binding.getValue("invocationCount").jsonPrimitive.content)
-        assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", binding.getValue("rule").jsonPrimitive.content)
-        val selected = binding.getValue("selected").jsonObject
+        val selected = authority.getValue("selected").jsonObject
         assertEquals("kotlin.collections.map", selected.getValue("qualifiedIdentity").jsonPrimitive.content)
         assertEquals("0", selected.getValue("formalIndex").jsonPrimitive.content)
     }
@@ -100,7 +106,11 @@ class ImpactReviewedValueTest {
             assertFalse(
                 transfer
                     .copy(
-                        binding = ImpactReviewedValueRelationshipDocument.fromBinding(changed, changed.semantics),
+                        binding =
+                            ImpactReviewedValueRelationshipDocument.fromBinding(
+                                changed,
+                                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+                            ),
                         source =
                             transfer.source.copy(
                                 executionOwner = ImpactExecutionOwnerDocument.ReviewedCallback(changed)
@@ -118,7 +128,7 @@ class ImpactReviewedValueTest {
             binding.copy(
                 artifacts =
                     org.junit.jupiter.api.Assertions.assertInstanceOf(
-                            ImpactReviewedMapArtifactsDocument::class.java,
+                            ImpactReviewedCollectionArtifactsDocument::class.java,
                             binding.artifacts,
                         )
                         .copy(binaryArtifactSha256 = fixture.text("f".repeat(64)))
@@ -126,7 +136,7 @@ class ImpactReviewedValueTest {
             binding.copy(
                 artifacts =
                     org.junit.jupiter.api.Assertions.assertInstanceOf(
-                            ImpactReviewedMapArtifactsDocument::class.java,
+                            ImpactReviewedCollectionArtifactsDocument::class.java,
                             binding.artifacts,
                         )
                         .copy(sourceArtifactSha256 = fixture.text("f".repeat(64)))

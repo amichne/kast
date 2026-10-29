@@ -116,8 +116,14 @@ class ReviewedMapInputAdmissionTest {
             listOf(ValuePathSegment.Element, ValuePathSegment.Field(fixture.field)),
             transfer.target.valuePath.segments,
         )
-        assertEquals(ReviewedCallbackInvocationEvidence.Unestablished, transfer.binding.invocationEvidence)
-        assertEquals(ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT, transfer.semantics)
+        assertEquals(
+            ReviewedCallbackInvocationEvidence.Unestablished,
+            (transfer.binding as ReviewedCallbackValueBinding).invocationEvidence,
+        )
+        assertEquals(
+            ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+            (transfer.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
     }
 
     private fun receiver(fixture: ReviewedValueFixture): ValueSite {

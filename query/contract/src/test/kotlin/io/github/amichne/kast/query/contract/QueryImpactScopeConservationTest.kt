@@ -82,7 +82,8 @@ class QueryImpactScopeConservationTest {
             val invocation =
                 assertInstanceOf(
                     ReviewedCallbackInvocationEvidence.Declared::class.java,
-                    f.edge.binding.invocationEvidence,
+                    (f.edge.binding as io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding)
+                        .invocationEvidence,
                 )
             assertSame(f.declared, invocation.binding)
             assertEquals(DeclaredCallbackResultEffect.UNSPECIFIED, invocation.binding.resultEffect)
@@ -138,7 +139,12 @@ class QueryImpactScopeConservationTest {
             assertEquals(8L, f.edge.binding.storageBytes(graph))
             assertEquals(
                 8L,
-                graph.node(f.edge.binding.invocationEvidence) { error("Invocation evidence was not retained") },
+                graph.node(
+                    (f.edge.binding as io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding)
+                        .invocationEvidence
+                ) {
+                    error("Invocation evidence was not retained")
+                },
             )
         }
     }

@@ -187,6 +187,10 @@ class WorkspaceInspectionSchemaReuseTest {
 internal class LocalSchemaAssertions(private val schema: JsonObject) {
     private val definitions = schema["\$defs"]?.jsonObject.orEmpty()
 
+    fun assertEquivalent(expected: IndependentSchemaGraph) {
+        LocalSchemaGraphAssertions(schema, expected).assertEquivalent()
+    }
+
     fun assertEquivalent(expected: JsonElement) {
         assertLocalReferences()
         compare(expected, schema, "root", allowDefinitions = true)

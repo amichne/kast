@@ -110,8 +110,14 @@ class ReviewedMapInputTransferTest {
         assertEquals(formal.range, transfer.target.range)
         assertEquals(formal.executionOwner, transfer.target.executionOwner)
         assertEquals(path.segments.drop(1), transfer.target.valuePath.segments)
-        assertEquals(ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER, transfer.semantics)
-        assertEquals(ReviewedCallbackInvocationEvidence.Unestablished, transfer.binding.invocationEvidence)
+        assertEquals(
+            ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
+            (transfer.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
+        assertEquals(
+            ReviewedCallbackInvocationEvidence.Unestablished,
+            (transfer.binding as ReviewedCallbackValueBinding).invocationEvidence,
+        )
     }
 
     @Test
@@ -129,8 +135,14 @@ class ReviewedMapInputTransferTest {
                 .flowRefined()
         assertEquals(ValueAccessPath.Whole, content.target.valuePath)
         assertEquals(ValueAccessPath.Whole, element.target.valuePath)
-        assertEquals(ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER, content.semantics)
-        assertNotEquals(content.semantics, element.semantics)
+        assertEquals(
+            ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER,
+            (content.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
+        assertNotEquals(
+            (content.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+            (element.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
         assertNotEquals(content, element)
     }
 
@@ -178,7 +190,10 @@ class ReviewedMapInputTransferTest {
                 .flowRefined()
         val shared = step.shareCallableEvidence(listOf(step))
         assertEquals(listOf(transfer), shared.reviewedTransfers)
-        assertEquals(transfer.semantics, shared.reviewedTransfers.single().semantics)
+        assertEquals(
+            (transfer.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+            (shared.reviewedTransfers.single().relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
         assertEquals(step.retainedBytes, step.receipts.single().returnedBytes.value)
         assertTrue(
             transfer.retainedBytes >=

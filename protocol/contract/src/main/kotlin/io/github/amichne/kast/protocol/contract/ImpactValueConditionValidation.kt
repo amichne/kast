@@ -21,19 +21,25 @@ private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueCon
             other is ImpactValueConditionDocument.DeclaredCallbackResult && binding == other.binding
         is ImpactValueConditionDocument.ReviewedCallbackNormalReturn ->
             other is ImpactValueConditionDocument.ReviewedCallbackNormalReturn && binding == other.binding
+        is ImpactValueConditionDocument.ReviewedCollectionNormalResult ->
+            other is ImpactValueConditionDocument.ReviewedCollectionNormalResult && binding == other.binding
+        is ImpactValueConditionDocument.ReviewedEntryKeyUnique ->
+            other is ImpactValueConditionDocument.ReviewedEntryKeyUnique && entry == other.entry
         is ImpactValueConditionDocument.StableLocal ->
             other is ImpactValueConditionDocument.StableLocal && sameLocalRefinement(other)
         is ImpactValueConditionDocument.StableReceiver ->
-            other is ImpactValueConditionDocument.StableReceiver &&
-                originalType == other.originalType &&
-                kind == other.kind &&
-                refinedType == other.refinedType
+            other is ImpactValueConditionDocument.StableReceiver && sameReceiverRefinement(other)
         is ImpactValueConditionDocument.CastSuccess ->
-            other is ImpactValueConditionDocument.CastSuccess &&
-                originalType == other.originalType &&
-                kind == other.kind &&
-                targetType == other.targetType
+            other is ImpactValueConditionDocument.CastSuccess && sameCastRefinement(other)
     }
+
+private fun ImpactValueConditionDocument.StableReceiver.sameReceiverRefinement(
+    other: ImpactValueConditionDocument.StableReceiver
+): Boolean = originalType == other.originalType && kind == other.kind && refinedType == other.refinedType
+
+private fun ImpactValueConditionDocument.CastSuccess.sameCastRefinement(
+    other: ImpactValueConditionDocument.CastSuccess
+): Boolean = originalType == other.originalType && kind == other.kind && targetType == other.targetType
 
 internal fun ImpactValueSiteReferenceDocument.admitsConditions(): Boolean =
     conditions.values.withIndex().all { (index, condition) ->
@@ -44,6 +50,7 @@ private fun ImpactValueConditionDocument.admits(basis: ImpactSemanticBasisDocume
     origin.execution.enclosing.declarationFailure() is Refinement.Refined &&
         sourceSite().isOnBasis(basis) &&
         (this is ImpactValueConditionDocument.DeclaredCallbackResult ||
+            this is ImpactValueConditionDocument.ReviewedEntryKeyUnique ||
             origin.execution.executionOwner.admits(origin.execution.enclosing, useRange)) &&
         admitsRefinement()
 
@@ -53,6 +60,8 @@ private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
             useRange.containsExecutionRange(entryRange) && entryRange.containsExecutionRange(origin.range)
         is ImpactValueConditionDocument.DeclaredCallbackResult -> admitsResult()
         is ImpactValueConditionDocument.ReviewedCallbackNormalReturn -> admitsNormalReturn()
+        is ImpactValueConditionDocument.ReviewedCollectionNormalResult -> admitsCollectionResult()
+        is ImpactValueConditionDocument.ReviewedEntryKeyUnique -> admitsEntryKeyUnique()
         is ImpactValueConditionDocument.StableLocal ->
             sourceSite().admitsLocalVersion() &&
                 version.admitsLocalRead(useRange) &&
@@ -115,13 +124,15 @@ private fun ImpactValueConditionDocument.matchesTransferKind(kind: ImpactTransfe
     when (this) {
         is ImpactValueConditionDocument.StringContentNonNull -> kind == ImpactTransferKindDocument.STRING_CONTENT
         is ImpactValueConditionDocument.DeclaredCallbackResult -> kind == ImpactTransferKindDocument.SOURCE_CALL_RETURN
-        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn -> false
+        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn,
+        is ImpactValueConditionDocument.ReviewedCollectionNormalResult,
+        is ImpactValueConditionDocument.ReviewedEntryKeyUnique -> false
         is ImpactValueConditionDocument.StableLocal -> kind == ImpactTransferKindDocument.LOCAL_READ
         is ImpactValueConditionDocument.StableReceiver -> kind == ImpactTransferKindDocument.FIELD_READ
         is ImpactValueConditionDocument.CastSuccess -> kind == ImpactTransferKindDocument.CAST_RESULT
     }
 
-private fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReferenceDocument =
+internal fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReferenceDocument =
     ImpactValueSiteReferenceDocument(
         origin.execution.enclosing,
         origin.range,
@@ -135,6 +146,8 @@ private fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReferenceD
                 is ImpactValueConditionDocument.StringContentNonNull,
                 is ImpactValueConditionDocument.DeclaredCallbackResult,
                 is ImpactValueConditionDocument.ReviewedCallbackNormalReturn,
+                is ImpactValueConditionDocument.ReviewedCollectionNormalResult,
+                is ImpactValueConditionDocument.ReviewedEntryKeyUnique,
                 is ImpactValueConditionDocument.StableReceiver,
                 is ImpactValueConditionDocument.CastSuccess -> ImpactLocalVersionDocument.Unversioned
             },

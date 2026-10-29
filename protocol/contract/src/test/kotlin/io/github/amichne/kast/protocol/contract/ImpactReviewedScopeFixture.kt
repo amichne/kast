@@ -78,7 +78,6 @@ internal class ImpactReviewedScopeFixture {
                 base.offset(0),
             ),
             artifacts,
-            ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
             ImpactActualExecutionDocument.NOT_ESTABLISHED,
             ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
             ImpactReviewedInvocationEvidenceDocument.Declared(declared),
@@ -108,7 +107,10 @@ internal class ImpactReviewedScopeFixture {
         ImpactReviewedValueTransferDocument(
             source,
             target,
-            ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+            ImpactReviewedValueRelationshipDocument.fromBinding(
+                binding,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
+            ),
         )
 
     fun range(start: Int, end: Int) = ImpactSourceRangeDocument(base.offset(start), base.offset(end))

@@ -42,11 +42,12 @@ class ImpactReviewedMapInputNegativeTest {
         assertTrue(f.transfer.admitsEvidence())
         val encoded = Json.parseToJsonElement(Json.encodeToString(f.transfer)).jsonObject
         assertEquals(setOf("source", "target", "binding"), encoded.keys)
-        val binding = encoded.getValue("binding").jsonObject
+        val relationship = encoded.getValue("binding").jsonObject
+        val binding = relationship.getValue("authority").jsonObject
         assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", binding.getValue("rule").jsonPrimitive.content)
         assertEquals(
             "CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
-            binding.getValue("semantics").jsonPrimitive.content,
+            relationship.getValue("relation").jsonObject.getValue("semantics").jsonPrimitive.content,
         )
         assertEquals("NOT_ESTABLISHED", binding.getValue("actualExecution").jsonPrimitive.content)
         assertEquals("NOT_ESTABLISHED", binding.getValue("invocationCount").jsonPrimitive.content)

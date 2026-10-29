@@ -29,6 +29,8 @@ private fun ValueCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
                     is ValueCondition.StringContentNonNull -> g.node(entryRange) { 0L }
                     is ValueCondition.DeclaredCallbackResult -> binding.storageBytes(g)
                     is ValueCondition.ReviewedCallbackNormalReturn -> binding.storageBytes(g)
+                    is ValueCondition.ReviewedCollectionNormalResult -> binding.storageBytes(g)
+                    is ValueCondition.ReviewedEntryKeyUnique -> entry.storageBytes(g)
                     is ValueCondition.StableLocal ->
                         version
                             .storageBytes(g)
@@ -52,6 +54,8 @@ internal fun ValueAccessPath.storageBytes(g: QueryImpactRetainedGraph): Long =
             g.node(segment) {
                 when (segment) {
                     ValuePathSegment.Element -> 0L
+                    is ValuePathSegment.PairComponent -> segment.origin.storageBytes(g)
+                    is ValuePathSegment.MapEntryComponent -> segment.entry.storageBytes(g)
                     is ValuePathSegment.Field -> g.node(segment.field) { segment.field.declaration.storageBytes(g) }
                 }
             }

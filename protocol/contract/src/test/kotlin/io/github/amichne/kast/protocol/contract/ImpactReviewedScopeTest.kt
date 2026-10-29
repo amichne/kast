@@ -16,38 +16,18 @@ class ImpactReviewedScopeTest {
     @Test
     fun `reviewed return rejects missing invocation mismatched owner artifact and overload`() {
         val f = ImpactReviewedScopeFixture()
-        val changed =
-            listOf(
-                f.binding.copy(invocationEvidence = ImpactReviewedInvocationEvidenceDocument.Unestablished),
-                f.binding.copy(body = f.body.copy(range = f.range(41, 80))),
-                f.binding.copy(supplierRange = f.range(29, 90)),
-                f.binding.copy(artifacts = f.artifacts.copy(binaryArtifactSha256 = f.base.text("f".repeat(64)))),
-                f.binding.copy(artifacts = f.artifacts.copy(sourceArtifactSha256 = f.base.text("f".repeat(64)))),
-                f.binding.copy(
-                    artifacts =
-                        f.artifacts.copy(
-                            functionLines = ImpactReviewedSourceLinesDocument(f.base.offset(99), f.base.offset(105))
-                        )
-                ),
-                f.binding.copy(
-                    selected = f.binding.selected.copy(receiver = f.base.text("kotlin/collections/Iterable<T>"))
-                ),
-                f.binding.copy(selected = f.binding.selected.copy(formalIndex = f.base.offset(1))),
-                f.binding.copy(rule = ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1),
-                f.binding.copy(
-                    invocationEvidence =
-                        ImpactReviewedInvocationEvidenceDocument.Declared(
-                            f.declared.copy(
-                                contract = f.declared.contract.copy(classDigest = f.base.text("f".repeat(64)))
-                            )
-                        )
-                ),
-            )
+        val changed = changedBindings(f)
         for (binding in changed) {
             assertFalse(binding.admits(binding.enclosing), binding.toString())
             assertFalse(
                 f.transfer
-                    .copy(binding = ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics))
+                    .copy(
+                        binding =
+                            ImpactReviewedValueRelationshipDocument.fromBinding(
+                                binding,
+                                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
+                            )
+                    )
                     .admitsEvidence()
             )
         }
@@ -67,9 +47,13 @@ class ImpactReviewedScopeTest {
         assertTrue(f.transfer.admitsEvidence())
         val encoded = Json.encodeToString(f.transfer)
         val transfer = Json.parseToJsonElement(encoded).jsonObject
-        val binding = transfer.getValue("binding").jsonObject
+        val relationship = transfer.getValue("binding").jsonObject
+        val binding = relationship.getValue("authority").jsonObject
         assertEquals("KOTLIN_2_3_0_LET_V1", binding.getValue("rule").jsonPrimitive.content)
-        assertEquals("CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT", binding.getValue("semantics").jsonPrimitive.content)
+        assertEquals(
+            "CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT",
+            relationship.getValue("relation").jsonObject.getValue("semantics").jsonPrimitive.content,
+        )
         assertEquals("NOT_ESTABLISHED", binding.getValue("actualExecution").jsonPrimitive.content)
         assertEquals("NOT_ESTABLISHED", binding.getValue("invocationCount").jsonPrimitive.content)
         val invocation = binding.getValue("invocationEvidence").jsonObject
@@ -121,4 +105,30 @@ class ImpactReviewedScopeTest {
             }
         }
     }
+
+    private fun changedBindings(f: ImpactReviewedScopeFixture): List<ImpactReviewedValueBindingDocument> =
+        listOf(
+            f.binding.copy(invocationEvidence = ImpactReviewedInvocationEvidenceDocument.Unestablished),
+            f.binding.copy(body = f.body.copy(range = f.range(41, 80))),
+            f.binding.copy(supplierRange = f.range(29, 90)),
+            f.binding.copy(artifacts = f.artifacts.copy(binaryArtifactSha256 = f.base.text("f".repeat(64)))),
+            f.binding.copy(artifacts = f.artifacts.copy(sourceArtifactSha256 = f.base.text("f".repeat(64)))),
+            f.binding.copy(
+                artifacts =
+                    f.artifacts.copy(
+                        functionLines = ImpactReviewedSourceLinesDocument(f.base.offset(99), f.base.offset(105))
+                    )
+            ),
+            f.binding.copy(
+                selected = f.binding.selected.copy(receiver = f.base.text("kotlin/collections/Iterable<T>"))
+            ),
+            f.binding.copy(selected = f.binding.selected.copy(formalIndex = f.base.offset(1))),
+            f.binding.copy(rule = ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1),
+            f.binding.copy(
+                invocationEvidence =
+                    ImpactReviewedInvocationEvidenceDocument.Declared(
+                        f.declared.copy(contract = f.declared.contract.copy(classDigest = f.base.text("f".repeat(64))))
+                    )
+            ),
+        )
 }

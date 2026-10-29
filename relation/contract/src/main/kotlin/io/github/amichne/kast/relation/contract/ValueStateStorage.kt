@@ -21,6 +21,8 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
                 is ValueCondition.StringContentNonNull -> STRING_CONTENT_CONDITION_BYTES
                 is ValueCondition.DeclaredCallbackResult -> condition.binding.retainedBytes
                 is ValueCondition.ReviewedCallbackNormalReturn -> condition.binding.retainedBytes
+                is ValueCondition.ReviewedCollectionNormalResult -> condition.binding.retainedBytes
+                is ValueCondition.ReviewedEntryKeyUnique -> condition.entry.retainedBytes
                 is ValueCondition.StableLocal ->
                     VALUE_CALL_PROOF_BYTES.addBytes(
                             condition.version.execution.enclosing.detachedTextUnits().multiplyBytes(2)
@@ -41,7 +43,7 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
         )
 }
 
-private fun valueExecutionStorageBytes(execution: ValueExecutionOwner): Long =
+internal fun valueExecutionStorageBytes(execution: ValueExecutionOwner): Long =
     when (val context = execution.context) {
         ValueExecutionContext.Declaration -> 0L
         is ValueExecutionContext.ReviewedCallback -> context.binding.retainedBytes
@@ -59,6 +61,10 @@ private fun valuePathStorageBytes(path: ValueAccessPath): Long =
     path.segments.fold(0L) { sum, segment ->
         when (segment) {
             ValuePathSegment.Element -> sum.addBytes(VALUE_FIELD_PROOF_BYTES)
+            is ValuePathSegment.PairComponent ->
+                sum.addBytes(segment.origin.retainedBytes).addBytes(VALUE_FIELD_PROOF_BYTES)
+            is ValuePathSegment.MapEntryComponent ->
+                sum.addBytes(segment.entry.retainedBytes).addBytes(VALUE_FIELD_PROOF_BYTES)
             is ValuePathSegment.Field ->
                 sum.addBytes(VALUE_FIELD_PROOF_BYTES)
                     .addBytes(segment.field.declaration.detachedTextUnits().multiplyBytes(2))

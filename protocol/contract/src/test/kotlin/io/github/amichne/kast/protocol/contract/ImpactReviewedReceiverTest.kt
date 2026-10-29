@@ -53,13 +53,19 @@ class ImpactReviewedReceiverTest {
                 transfer.copy(
                     binding =
                         transfer.binding.copy(
-                            invocationEvidence = ImpactReviewedInvocationEvidenceDocument.Unestablished
+                            authority =
+                                (transfer.binding.authority as ImpactReviewedValueBindingDocument).copy(
+                                    invocationEvidence = ImpactReviewedInvocationEvidenceDocument.Unestablished
+                                )
                         )
                 ),
                 transfer.copy(
                     binding =
                         transfer.binding.copy(
-                            semantics = ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT
+                            relation =
+                                ImpactReviewedValueRelationDocument.CallbackCorrespondence(
+                                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT
+                                )
                         )
                 ),
             )
@@ -71,9 +77,13 @@ class ImpactReviewedReceiverTest {
         val transfer = receiverTransfer()
         assertTrue(transfer.admitsEvidence(), "Missing reviewed also receiver correspondence")
         val encoded = Json.parseToJsonElement(Json.encodeToString(transfer)).jsonObject
-        val binding = encoded.getValue("binding").jsonObject
+        val relationship = encoded.getValue("binding").jsonObject
+        val binding = relationship.getValue("authority").jsonObject
         assertEquals("KOTLIN_2_3_0_ALSO_V1", binding.getValue("rule").jsonPrimitive.content)
-        assertEquals("CONDITIONAL_RECEIVER_TO_CALL_RESULT", binding.getValue("semantics").jsonPrimitive.content)
+        assertEquals(
+            "CONDITIONAL_RECEIVER_TO_CALL_RESULT",
+            relationship.getValue("relation").jsonObject.getValue("semantics").jsonPrimitive.content,
+        )
         assertEquals("NOT_ESTABLISHED", binding.getValue("actualExecution").jsonPrimitive.content)
         assertEquals("NOT_ESTABLISHED", binding.getValue("invocationCount").jsonPrimitive.content)
         val lines = binding.getValue("artifacts").jsonObject.getValue("functionLines").jsonObject
@@ -177,7 +187,10 @@ class ImpactReviewedReceiverTest {
         return ImpactReviewedValueTransferDocument(
             source,
             result,
-            ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+            ImpactReviewedValueRelationshipDocument.fromBinding(
+                binding,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+            ),
         )
     }
 
@@ -210,7 +223,6 @@ class ImpactReviewedReceiverTest {
             )
         return f.binding.copy(
             rule = ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1,
-            semantics = ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
             artifacts =
                 f.artifacts.copy(
                     functionLines = ImpactReviewedSourceLinesDocument(f.base.offset(99), f.base.offset(105))

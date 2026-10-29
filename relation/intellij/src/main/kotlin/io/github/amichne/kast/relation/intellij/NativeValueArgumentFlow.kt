@@ -77,7 +77,27 @@ internal class NativeValueArgumentFlow(
                 )
         ) {
             is Refinement.Refined -> retained.emit(expression, role.value, ValueTransferKind.ARGUMENT)
-            is Refinement.Rejected -> retained.unresolvedAt(role.failure, argument)
+            is Refinement.Rejected -> {
+                val call = (argument.parent as? KtValueArgumentList)?.parent as? KtCallExpression
+                if (
+                    role.failure == io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.EXTERNAL_CALL &&
+                        call != null
+                ) {
+                    val context = receiverContext(request, scope, projection, allowance)
+                    when (
+                        val reviewed =
+                            nativeReviewedTupleRole(
+                                expression,
+                                call.valueInvocationExpression() as KtExpression,
+                                request.source.executionOwner,
+                                context,
+                            )
+                    ) {
+                        is Refinement.Refined -> retained.emit(expression, reviewed.value, ValueTransferKind.ARGUMENT)
+                        is Refinement.Rejected -> retained.unresolvedAt(reviewed.failure, argument)
+                    }
+                } else retained.unresolvedAt(role.failure, argument)
+            }
         }
     }
 }

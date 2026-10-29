@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingRepresentationDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueSemanticsDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.admitsEvidence
@@ -41,15 +42,19 @@ class ImpactReviewedMapInputProjectionTest {
         assertTrue(document.admitsEvidence())
         assertEquals(
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER,
-            document.binding.semantics,
+            (document.binding.relation
+                    as
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument.CallbackCorrespondence)
+                .semantics,
         )
         val owner = document.target.executionOwner as ImpactExecutionOwnerDocument.ReviewedCallback
+        assertEquals(owner.binding, document.binding.authority)
         assertEquals(
-            ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
-            owner.binding.semantics,
+            owner.binding.body,
+            (document.binding.authority as io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument)
+                .body,
         )
-        assertEquals(owner.binding.body, document.binding.body)
-        assertEquals(owner.binding.artifacts, document.binding.artifacts)
+        assertEquals(owner.binding.artifacts, document.binding.authority.artifacts)
     }
 
     @Test
@@ -94,7 +99,9 @@ class ImpactReviewedMapInputProjectionTest {
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER,
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
             ),
-            projected.reviewedRelations.values.map { it.semantics },
+            projected.reviewedRelations.values.map {
+                (it.relation as ImpactReviewedValueRelationDocument.CallbackCorrespondence).semantics
+            },
         )
         assertEquals(ImpactFindingRepresentationDocument.NotModeled, projected.representation)
     }

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.protocol.contract
 
-/** Wire admission keeps applied correspondence separate from callback-owner authority. */
+/** Applied correspondence never changes the authority of the selected call or callback owner. */
 fun ImpactReviewedValueTransferDocument.admitsEvidence(): Boolean =
     binding.admits(binding.enclosing) &&
         source.isOnBasis(binding.basis) &&
@@ -11,61 +11,68 @@ fun ImpactReviewedValueTransferDocument.admitsEvidence(): Boolean =
         admitsRelation()
 
 private fun ImpactReviewedValueTransferDocument.admitsRelation(): Boolean =
-    when (binding.semantics) {
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT ->
-            admitsMapReturn() && source.conditions.hasSameConditions(target.conditions)
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT ->
-            admitsScopeReturn() &&
-                source.valuePath == target.valuePath &&
-                source.conditions.hasSameConditions(target.conditions)
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
-            binding.matchesReceiver(source) &&
-                source.valuePath.values.isEmpty() &&
-                target.valuePath.values.isEmpty() &&
-                admitsResult() &&
-                source.conservesReviewedReceiverConditions(target, binding)
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER -> admitsElementInput()
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
-            admitsInput() && source.valuePath.values.isEmpty() && target.valuePath.values.isEmpty()
+    when (val relation = binding.relation) {
+        is ImpactReviewedValueRelationDocument.CallbackCorrespondence -> admitsCallback(relation.semantics)
+        is ImpactReviewedValueRelationDocument.ReorderedElements -> admitsSorted(relation)
+        is ImpactReviewedValueRelationDocument.TupleConstruction -> admitsTupleConstruction(relation)
+        is ImpactReviewedValueRelationDocument.TupleProjection -> admitsTupleProjection(relation)
+        is ImpactReviewedValueRelationDocument.AssociationComponent -> admitsAssociation(relation)
     }
 
-private fun ImpactReviewedValueTransferDocument.admitsMapReturn(): Boolean =
-    source.role == ImpactValueRoleDocument.Return &&
-        admitsResult() &&
-        when (val owner = source.executionOwner) {
-            is ImpactExecutionOwnerDocument.ReviewedCallback -> binding.matchesOwner(owner.binding)
-            else -> false
-        } &&
-        listOf(ImpactValuePathSegmentDocument.Element) + source.valuePath.values == target.valuePath.values
+private fun ImpactReviewedValueTransferDocument.admitsCallback(
+    semantics: ImpactReviewedValueSemanticsDocument
+): Boolean {
+    val proof = binding.authority as? ImpactReviewedValueBindingDocument ?: return false
+    return when (semantics) {
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT -> admitsMapResult(proof)
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT -> admitsLet(proof)
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
+            proof.admitsReceiver(source) &&
+                admitsCallbackResult(proof) &&
+                target.valuePath.values.isEmpty() &&
+                source.conservesReviewedReceiverConditions(target, binding)
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER ->
+            admitsInput(proof) &&
+                source.valuePath.values.firstOrNull() == ImpactValuePathSegmentDocument.Element &&
+                source.valuePath.values.drop(1) == target.valuePath.values
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
+            admitsInput(proof) && source.valuePath.values.isEmpty() && target.valuePath.values.isEmpty()
+    }
+}
 
-private fun ImpactReviewedValueTransferDocument.admitsScopeReturn(): Boolean =
+private fun ImpactReviewedValueTransferDocument.admitsMapResult(proof: ImpactReviewedValueBindingDocument): Boolean =
     source.role == ImpactValueRoleDocument.Return &&
-        admitsResult() &&
-        when (val evidence = binding.invocationEvidence) {
+        source.executionOwner == ImpactExecutionOwnerDocument.ReviewedCallback(proof) &&
+        admitsCallbackResult(proof) &&
+        listOf(ImpactValuePathSegmentDocument.Element) + source.valuePath.values == target.valuePath.values &&
+        source.conditions.hasSameConditions(target.conditions)
+
+private fun ImpactReviewedValueTransferDocument.admitsLet(proof: ImpactReviewedValueBindingDocument): Boolean =
+    source.role == ImpactValueRoleDocument.Return &&
+        admitsCallbackResult(proof) &&
+        source.valuePath == target.valuePath &&
+        source.conditions.hasSameConditions(target.conditions) &&
+        when (val evidence = proof.invocationEvidence) {
             ImpactReviewedInvocationEvidenceDocument.Unestablished -> false
             is ImpactReviewedInvocationEvidenceDocument.Declared ->
                 source.executionOwner == ImpactExecutionOwnerDocument.DeclaredCallback(evidence.binding)
         }
 
-private fun ImpactReviewedValueTransferDocument.admitsResult(): Boolean =
+internal fun ImpactReviewedValueTransferDocument.admitsCallbackResult(
+    proof: ImpactReviewedValueBindingDocument
+): Boolean =
     target.executionOwner == ImpactExecutionOwnerDocument.Declaration &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
-        target.range == binding.supplierRange
+        target.range == proof.supplierRange
 
-private fun ImpactReviewedValueTransferDocument.admitsInput(): Boolean {
-    if (!binding.matchesReceiver(source) || !source.conditions.hasSameConditions(target.conditions)) return false
+private fun ImpactReviewedValueTransferDocument.admitsInput(proof: ImpactReviewedValueBindingDocument): Boolean {
+    if (!proof.matchesReceiver(source) || !source.conditions.hasSameConditions(target.conditions)) return false
     val formal = target.role as? ImpactValueRoleDocument.Formal ?: return false
     val position = formal.position as? ImpactFormalPositionDocument.Parameter ?: return false
     val parameter = position.parameter
-    val owner = parameter.executionOwner as? ImpactExecutionOwnerDocument.ReviewedCallback ?: return false
     return parameter.index.value == 0 &&
-        parameter.callable == binding.enclosing &&
+        parameter.callable == proof.enclosing &&
         parameter.range == target.range &&
         parameter.executionOwner == target.executionOwner &&
-        binding.matchesOwner(owner.binding)
+        target.executionOwner == ImpactExecutionOwnerDocument.ReviewedCallback(proof)
 }
-
-private fun ImpactReviewedValueTransferDocument.admitsElementInput(): Boolean =
-    admitsInput() &&
-        source.valuePath.values.firstOrNull() == ImpactValuePathSegmentDocument.Element &&
-        source.valuePath.values.drop(1) == target.valuePath.values

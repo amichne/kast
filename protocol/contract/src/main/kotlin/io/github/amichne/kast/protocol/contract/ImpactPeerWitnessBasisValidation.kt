@@ -36,6 +36,7 @@ private fun ImpactFindingDocument.hasSourceBasis(basis: ImpactSemanticBasisDocum
 internal fun ImpactFindingDocument.reviewedEvidenceHasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     reviewedRelations.values.all { it.basis == basis && it.admits(it.enclosing) } &&
         representation.hasReviewedSourceBasis(basis) &&
+        admitsReviewedPremises() &&
         classification.admitsReviewedClassification(reviewedRelations, representation)
 
 private fun ImpactFindingRepresentationDocument.hasReviewedSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
@@ -98,7 +99,8 @@ private fun ImpactPathClassificationDocument.admitsReviewedClassification(
         is ImpactPathClassificationDocument.NotEstablished -> true
         is ImpactPathClassificationDocument.Established ->
             relationship == ImpactRelationshipDocument.DERIVED ||
-                (relations.values.none { it.semantics.isDerived() } && !representation.hasDerivedReviewedRelation())
+                (relations.values.none { it.relation.relationship() == ImpactRelationshipDocument.DERIVED } &&
+                    !representation.hasDerivedReviewedRelation())
     }
 
 private fun ImpactFindingRepresentationDocument.hasDerivedReviewedRelation(): Boolean =
@@ -108,16 +110,7 @@ private fun ImpactFindingRepresentationDocument.hasDerivedReviewedRelation(): Bo
             branches.values.any { branch ->
                 branch.provenance.values.any { provenance ->
                     provenance is ImpactFindingProvenanceDocument.ReviewedLibrary &&
-                        provenance.binding.semantics.isDerived()
+                        provenance.binding.relation.relationship() == ImpactRelationshipDocument.DERIVED
                 }
             }
-    }
-
-private fun ImpactReviewedValueSemanticsDocument.isDerived(): Boolean =
-    when (this) {
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER -> true
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
-        ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER -> false
     }

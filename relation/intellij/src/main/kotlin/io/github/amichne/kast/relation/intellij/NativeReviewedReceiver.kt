@@ -76,30 +76,56 @@ internal fun nativeReviewedReceiverRole(
     }
 }
 
-internal fun nativeReviewedReceiverResult(
+internal fun nativeReviewedReceiverResults(
     request: ValueFlowRequest,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     allowance: IntellijRelationAllowance,
-): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-    val role = request.source.role as? ValueRole.Receiver ?: return receiverUnsupported()
+    retained: NativeValueFlowTransfers,
+) {
+    val role = request.source.role as? ValueRole.Receiver
+    if (role == null) {
+        retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+        return
+    }
     val host =
         when (val found = projection.subject(scope, request.source.enclosing)) {
             is IntellijRelationSubjectLookup.Found -> found.declaration
-            is IntellijRelationSubjectLookup.Rejected -> return receiverUnsupported()
+            is IntellijRelationSubjectLookup.Rejected -> {
+                retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+                return
+            }
         }
-    val qualified = host.exactValueElement(role.call.range) as? KtQualifiedExpression ?: return receiverUnsupported()
+    val qualified = host.exactValueElement(role.call.range) as? KtQualifiedExpression
+    val literal = qualified?.let(::receiverLiteral)
+    if (qualified == null || literal == null) {
+        retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+        return
+    }
     val context = receiverContext(request, scope, projection, allowance)
     val binding =
         when (val read = receiverBinding(request.source.range, request.source.enclosing, qualified, context)) {
             is Refinement.Refined -> read.value
-            is Refinement.Rejected -> return read
+            is Refinement.Rejected -> {
+                retained.unresolved(read.failure)
+                return
+            }
         }
-    val literal = receiverLiteral(qualified) ?: return receiverUnsupported()
-    return when (binding.selected.operation) {
-        ReviewedLibraryOperation.ITERABLE_MAP -> nativeReviewedInput(request, binding, literal, context)
-        ReviewedLibraryOperation.ALSO -> nativeReviewedIdentityResult(request, binding, literal, context)
-        ReviewedLibraryOperation.LET -> receiverUnsupported()
+    when (binding.selected.operation) {
+        ReviewedLibraryOperation.ITERABLE_MAP,
+        ReviewedLibraryOperation.ITERABLE_ASSOCIATE ->
+            retained.adoptReviewed(nativeReviewedInput(request, binding, literal, context))
+        ReviewedLibraryOperation.ITERABLE_SORTED_BY -> {
+            retained.adoptReviewed(ReviewedValueTransfer.sortedResult(request.source, binding))
+            retained.adoptReviewed(nativeReviewedInput(request, binding, literal, context))
+        }
+        ReviewedLibraryOperation.ALSO ->
+            retained.adoptReviewed(nativeReviewedIdentityResult(request, binding, literal, context))
+        ReviewedLibraryOperation.LET,
+        ReviewedLibraryOperation.TO,
+        ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
+        ReviewedLibraryOperation.PAIR_FIRST,
+        ReviewedLibraryOperation.PAIR_SECOND -> retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
     }
 }
 
@@ -178,7 +204,13 @@ private fun receiverBinding(
                     ?: return@observedAnalyze null
             if (
                 symbol.origin != org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin.LIBRARY ||
-                    symbol.callableId?.asSingleFqName()?.asString() !in setOf("kotlin.also", "kotlin.collections.map")
+                    symbol.callableId?.asSingleFqName()?.asString() !in
+                        setOf(
+                            "kotlin.also",
+                            "kotlin.collections.map",
+                            "kotlin.collections.sortedBy",
+                            "kotlin.collections.associate",
+                        )
             )
                 return@observedAnalyze null
             nativeExplicitReceiverKind(
@@ -193,8 +225,14 @@ private fun receiverBinding(
         is Refinement.Refined ->
             when (read.value.selected.operation) {
                 ReviewedLibraryOperation.ALSO,
-                ReviewedLibraryOperation.ITERABLE_MAP -> read
-                ReviewedLibraryOperation.LET -> receiverUnsupported()
+                ReviewedLibraryOperation.ITERABLE_MAP,
+                ReviewedLibraryOperation.ITERABLE_SORTED_BY,
+                ReviewedLibraryOperation.ITERABLE_ASSOCIATE -> read
+                ReviewedLibraryOperation.LET,
+                ReviewedLibraryOperation.TO,
+                ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
+                ReviewedLibraryOperation.PAIR_FIRST,
+                ReviewedLibraryOperation.PAIR_SECOND -> receiverUnsupported()
             }
         is Refinement.Rejected -> Refinement.Rejected(read.failure.valueFlowCause())
     }
@@ -208,7 +246,7 @@ private fun receiverLiteral(qualified: KtQualifiedExpression): KtFunctionLiteral
         ?.functionLiteral
 }
 
-private fun receiverContext(
+internal fun receiverContext(
     request: ValueFlowRequest,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,

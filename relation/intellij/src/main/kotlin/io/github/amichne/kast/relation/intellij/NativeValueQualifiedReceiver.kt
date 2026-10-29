@@ -30,7 +30,10 @@ internal class NativeValueQualifiedReceiver(
                     )
             ) {
                 is Refinement.Refined -> field(result.value)
-                is Refinement.Rejected -> getter(expression, qualified, result.failure)
+                is Refinement.Rejected ->
+                    if (qualified.selectorExpression?.text in setOf("first", "second"))
+                        reviewedTupleReceiver(expression, qualified)
+                    else getter(expression, qualified, result.failure)
             }
             return
         }
@@ -87,6 +90,10 @@ internal class NativeValueQualifiedReceiver(
                     }
                 }
         }
+        readCallReceiver(expression, qualified)
+    }
+
+    private fun readCallReceiver(expression: KtExpression, qualified: KtQualifiedExpression) {
         when (
             val role =
                 nativeValueReceiver(
@@ -99,12 +106,31 @@ internal class NativeValueQualifiedReceiver(
         ) {
             is Refinement.Refined -> retained.emit(expression, role.value, ValueTransferKind.RECEIVER)
             is Refinement.Rejected ->
-                if (role.failure == io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.EXTERNAL_CALL) {
-                    when (val reviewed = nativeReviewedReceiverRole(request, qualified, scope, projection, allowance)) {
-                        is Refinement.Refined -> retained.emit(expression, reviewed.value, ValueTransferKind.RECEIVER)
-                        is Refinement.Rejected -> retained.unresolvedAt(reviewed.failure, qualified)
-                    }
-                } else retained.unresolvedAt(role.failure, qualified)
+                if (role.failure == io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause.EXTERNAL_CALL)
+                    reviewedReceiver(expression, qualified)
+                else retained.unresolvedAt(role.failure, qualified)
+        }
+    }
+
+    private fun reviewedReceiver(expression: KtExpression, qualified: KtQualifiedExpression) {
+        when (val reviewed = nativeReviewedReceiverRole(request, qualified, scope, projection, allowance)) {
+            is Refinement.Refined -> retained.emit(expression, reviewed.value, ValueTransferKind.RECEIVER)
+            is Refinement.Rejected ->
+                if (
+                    (qualified.selectorExpression as? org.jetbrains.kotlin.psi.KtCallExpression)
+                        ?.calleeExpression
+                        ?.text == "to"
+                )
+                    reviewedTupleReceiver(expression, qualified)
+                else retained.unresolvedAt(reviewed.failure, qualified)
+        }
+    }
+
+    private fun reviewedTupleReceiver(expression: KtExpression, qualified: KtQualifiedExpression) {
+        val context = receiverContext(request, scope, projection, allowance)
+        when (val reviewed = nativeReviewedTupleRole(expression, qualified, source.executionOwner, context)) {
+            is Refinement.Refined -> retained.emit(expression, reviewed.value, ValueTransferKind.RECEIVER)
+            is Refinement.Rejected -> retained.unresolvedAt(reviewed.failure, qualified)
         }
     }
 

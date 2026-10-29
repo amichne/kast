@@ -55,6 +55,22 @@ sealed interface ImpactValueConditionDocument {
     ) : ImpactValueConditionDocument
 
     @Serializable
+    @SerialName("REVIEWED_COLLECTION_NORMAL_RESULT")
+    data class ReviewedCollectionNormalResult(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+        val binding: ImpactReviewedValueBindingDocument,
+    ) : ImpactValueConditionDocument
+
+    @Serializable
+    @SerialName("REVIEWED_ENTRY_KEY_UNIQUE")
+    data class ReviewedEntryKeyUnique(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+        val entry: ImpactReviewedMapEntryCorrelationDocument,
+    ) : ImpactValueConditionDocument
+
+    @Serializable
     @SerialName("STABLE_LOCAL")
     data class StableLocal(
         override val origin: ImpactValueConditionOriginDocument,

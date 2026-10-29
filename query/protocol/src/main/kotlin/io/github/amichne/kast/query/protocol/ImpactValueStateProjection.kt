@@ -25,6 +25,14 @@ internal fun ValueAccessPath.impactDocument(): ImpactProjected<BoundedProtocolLi
     segments.impactEach { segment ->
         when (segment) {
             ValuePathSegment.Element -> Refinement.Refined(ImpactValuePathSegmentDocument.Element)
+            is ValuePathSegment.PairComponent ->
+                segment.origin.impactDocument().impactMap {
+                    ImpactValuePathSegmentDocument.PairComponent(it, segment.slot.impactDocument())
+                }
+            is ValuePathSegment.MapEntryComponent ->
+                segment.entry.impactDocument().impactMap {
+                    ImpactValuePathSegmentDocument.MapEntryComponent(it, segment.slot.impactDocument())
+                }
             is ValuePathSegment.Field ->
                 segment.field.declaration.impactDeclaration().impactMap(ImpactValuePathSegmentDocument::Field)
         }
