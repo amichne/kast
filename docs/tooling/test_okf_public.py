@@ -74,10 +74,21 @@ class ManifestDocument:
 
 
 def manifest_without_introduction(manifest: Manifest) -> str:
-    document = asdict(ManifestDocument(manifest.views))
+    document = asdict(ManifestDocument(manifest.views, manifest.authored))
     for view in document["views"]:
         view.pop("introduction", None)
     return json.dumps(document)
+
+
+def test_absent_introduction_fixture_preserves_authored_routes() -> None:
+    manifest = Manifest(
+        (View("reference/example", 'title: "Example"', (PAGE,), (), (), ()),),
+        (Authored("start", "reader-navigation"),),
+    )
+    document = json.loads(manifest_without_introduction(manifest))
+    assert document["authored"] == [{"route": "start", "purpose": "reader-navigation"}]
+    assert "introduction" not in document["views"][0]
+    assert parse_manifest(manifest_without_introduction(manifest)) == manifest
 
 
 def claims_document(page: str, version: str) -> str:
@@ -338,9 +349,7 @@ def test_write_creates_or_restores_declared_generated_route(
 ) -> None:
     manifest, _tracked = fixture(tmp_path)
     (tmp_path / "docs/public").mkdir(parents=True)
-    (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(asdict(ManifestDocument(manifest.views)))
-    )
+    (tmp_path / "docs/okf-public.json").write_text(manifest_without_introduction(manifest))
     git = shutil.which("git")
     assert git is not None
     subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
@@ -375,8 +384,8 @@ def test_write_does_not_invent_a_missing_authored_page(tmp_path: Path) -> None:
     manifest, _tracked = fixture(tmp_path)
     (tmp_path / "docs/public").mkdir(parents=True)
     (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(
-            asdict(ManifestDocument(manifest.views, (Authored("start", "reader-navigation"),)))
+        manifest_without_introduction(
+            Manifest(manifest.views, (Authored("start", "reader-navigation"),))
         )
     )
     git = shutil.which("git")

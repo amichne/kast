@@ -170,15 +170,25 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 The graph rejects native compilation, installed-product composition, release runtime admission, hosted-plugin assembly, and release assembly.
 Candidate qualification keeps those tasks, actual release versions, acceptance, sealing, and exact identity admission.
 Source feedback waits for the selected source, documentation, and portable jobs.
-The final required gate also waits for candidate qualification.
+The source result has exactly one producer: standalone affected validation or successful candidate qualification.
+When a candidate is selected, `productBuildGate` includes `sourceValidationGate` in the same Gradle invocation.
+The standalone `source-work` job skips, and the stable `Source validation` check requires candidate success.
+For source-only changes, that check instead requires the standalone job and a skipped candidate job.
+Failed, cancelled, missing, duplicate, and unexpected producer results reject the source result.
+Source feedback therefore waits for qualification only when qualification owns the source proofs.
+The final required gate still checks candidate success and exact candidate identity.
 A successful source-feedback aggregate cannot seal a qualified-candidate outcome.
 
 Qualification remains necessary for packaging, installation, native inputs, toolchains, and release policy before merge.
 Unknown ownership and unavailable history select the full plan.
 Repository branch-protection settings remain unchanged.
 
-Source and candidate jobs overlap on release-sensitive changes during this split.
-That overlap is measured runner work, not a performance reduction.
+Source and candidate checks share one Gradle invocation on release-sensitive changes.
+The resolved product graph must include the source gate and every module's `check` and `scopedCheck` tasks.
+Candidate preflight checks that membership; it does not replace task execution.
+Standalone source changes keep stable versions and their existing affected validation.
+The source-result job adds one small aggregation step to that path.
+No matched hosted timing comparison establishes the size of the improvement yet.
 The six-minute criterion remains open until the frozen hosted corpus passes.
 
 ## Affected obligations and rollout

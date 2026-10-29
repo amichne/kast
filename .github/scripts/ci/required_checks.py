@@ -37,9 +37,7 @@ def _mapping(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
 
 
-def admit_checks(needs: object, gate: Gate = Gate.COMPLETE) -> CompletedChecks | CompletedSourceChecks | Verdict:
-    if not _mapping(needs):
-        return Verdict.INVALID_SELECTION
+def selected_scope(needs: dict[object, object]) -> Scope | Verdict:
     scope = needs.get("scope")
     if not _mapping(scope) or scope.get("result") != "success":
         return Verdict.SELECTOR_FAILED
@@ -53,17 +51,45 @@ def admit_checks(needs: object, gate: Gate = Gate.COMPLETE) -> CompletedChecks |
         return Verdict.INVALID_SELECTION
     if any(outputs.get(check.value) != ("run" if check in selected else "skip") for check in Check):
         return Verdict.INVALID_SELECTION
-    for check, job in (("source", "source"), ("product", "kotlin"), ("portable", "portable"), ("documentation", "documentation")):
-        if gate is Gate.SOURCE_FEEDBACK and check == "product":
-            continue
-        decision = outputs.get(check)
-        if decision not in {"run", "skip"}:
-            return Verdict.INVALID_SELECTION
-        expected = "success" if decision == "run" else "skipped"
+    return selected_scope
+
+
+def source_proof(needs: object) -> Verdict:
+    """Source work runs once: standalone or inside the qualified candidate gate."""
+    if not _mapping(needs):
+        return Verdict.INVALID_SELECTION
+    scope = selected_scope(needs)
+    if isinstance(scope, Verdict):
+        return scope
+    selected = SCOPE_CHECKS[scope]
+    if Check.SOURCE not in selected:
+        return Verdict.INVALID_SELECTION
+    qualified = Check.PRODUCT in selected
+    for job, expected in (
+        ("source-work", "skipped" if qualified else "success"),
+        ("kotlin", "success" if qualified else "skipped"),
+    ):
         observed = needs.get(job)
         if not _mapping(observed) or observed.get("result") != expected:
             return Verdict.CHECK_FAILED
-    return CompletedSourceChecks(selected_scope) if gate is Gate.SOURCE_FEEDBACK else CompletedChecks(selected_scope)
+    return Verdict.COMPLETE
+
+
+def admit_checks(needs: object, gate: Gate = Gate.COMPLETE) -> CompletedChecks | CompletedSourceChecks | Verdict:
+    if not _mapping(needs):
+        return Verdict.INVALID_SELECTION
+    selected_scope_value = selected_scope(needs)
+    if isinstance(selected_scope_value, Verdict):
+        return selected_scope_value
+    selected = SCOPE_CHECKS[selected_scope_value]
+    for check, job in ((Check.SOURCE, "source"), (Check.PRODUCT, "kotlin"), (Check.PORTABLE, "portable"), (Check.DOCUMENTATION, "documentation")):
+        if gate is Gate.SOURCE_FEEDBACK and check is Check.PRODUCT:
+            continue
+        expected = "success" if check in selected else "skipped"
+        observed = needs.get(job)
+        if not _mapping(observed) or observed.get("result") != expected:
+            return Verdict.CHECK_FAILED
+    return CompletedSourceChecks(selected_scope_value) if gate is Gate.SOURCE_FEEDBACK else CompletedChecks(selected_scope_value)
 
 
 def inspect(needs: object, gate: Gate = Gate.COMPLETE) -> Verdict:
@@ -73,11 +99,14 @@ def inspect(needs: object, gate: Gate = Gate.COMPLETE) -> Verdict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-feedback", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--source-feedback", action="store_true")
+    mode.add_argument("--source-proof", action="store_true")
     args = parser.parse_args()
     gate = Gate.SOURCE_FEEDBACK if args.source_feedback else Gate.COMPLETE
     try:
-        verdict = inspect(json.loads(os.environ["CI_NEEDS"]), gate)
+        needs: object = json.loads(os.environ["CI_NEEDS"])
+        verdict = source_proof(needs) if args.source_proof else inspect(needs, gate)
     except (KeyError, TypeError, ValueError, AttributeError):
         verdict = Verdict.INVALID_SELECTION
     print(f"ci-checks: {verdict.value}")

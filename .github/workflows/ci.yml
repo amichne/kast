@@ -88,10 +88,10 @@ jobs:
       - name: Run offline packaging suites
         run: ./packaging/run-portable-tests-container.sh
 
-  source:
+  source-work:
     needs: scope
-    if: needs.scope.outputs.source == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
-    name: Source validation
+    if: needs.scope.outputs.source == 'run' && needs.scope.outputs.product == 'skip' && (inputs.rollout == '' || inputs.rollout == 'none')
+    name: Source obligations
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -289,6 +289,22 @@ jobs:
             **/build/test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  source:
+    name: Source validation
+    needs: [scope, source-work, kotlin]
+    if: always() && needs.scope.outputs.source == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Require the selected source-proof producer
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: python3 .github/scripts/ci/required_checks.py --source-proof
 
   source-feedback:
     name: Source feedback

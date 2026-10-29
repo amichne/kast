@@ -593,6 +593,9 @@ sourceValidationGate.configure {
     dependsOn(modulePaths.flatMap { listOf("$it:scopedCheck", "$it:check") })
 }
 
+// A qualified candidate owns these source proofs in the same Gradle invocation.
+productBuildGate.configure { dependsOn(sourceValidationGate) }
+
 val configurationIngressTest = tasks.register<Exec>("configurationIngressTest") {
     group = "verification"
     inputs.files("packaging/configuration_ingress.py", "packaging/test-configuration-ingress.py")
