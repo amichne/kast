@@ -6,21 +6,27 @@ Pull requests use the merge base. Pushes use the entire before/head range.
 
 | Plan | Required work | Product publication |
 | --- | --- | --- |
-| `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, and example consumers | None |
+| `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, installer examples, and documentation tooling | None |
 | `SOURCE` | Affected owners and consumers, their semantic families, shared guards, offline preflight and portable packaging | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
-The documentation plan admits the reviewed pages, navigation, styles, and value-journey example inputs.
+The documentation plan admits reviewed pages, navigation, styles, generated views, and their documentation tooling.
+It also admits the reader-journey audit reports and Vale profiles from PR #1130.
+The frozen path inventory in `fixtures/pr1130-paths.txt` covers all 113 changed files at `d02373e8`.
+Tests reject broader validation skips when an installer script, Kotlin source, build file, or workflow joins that inventory.
 Before adding a path, inspect its consumers in Gradle, packaging, generators and tests.
-Installer examples in README, start, installation and compatibility keep full validation.
+README, start, installation and compatibility examples run `packaging/test-installer-entrypoint.py` without Gradle.
+When the readability runner or its test exists, the documentation job also runs its pytest, Pyright and Ruff checks.
 Most OpenWiki source inputs keep full validation.
 Reviewed documentation inputs instead run `check-documentation-inputs` for source paths and links.
 That mode emits `DOCUMENTATION_INPUTS` evidence and makes no Kotlin declaration claim.
 Full source validation keeps `verifyKnowledgeBase` and its declaration evidence.
 A source-inventory test checks the current literal source paths and inline links.
 New references to listed pages and unsupported reference forms require review before CI can pass.
-Generated schemas, scripts, build configuration, new paths and mixed documentation/product changes also select full validation.
+Generated callable schemas, product scripts, build configuration, unknown paths and mixed documentation/product changes select full validation.
+A reviewed documentation script keeps its direct tests instead of selecting Kotlin product qualification.
+Rejected affected plans report their finite failure code, such as `UNKNOWN_OWNER` or `STALE_GRAPH`.
 Regular file edits, additions and deletions keep both endpoints of the diff.
 Renames are read as deletion plus addition, so an excluded endpoint keeps full validation.
 Symlinks, executable modes, type changes and malformed observations select full validation.
@@ -68,6 +74,16 @@ A transport hit does not prove task-output reuse or a speedup.
 Candidate versions keep the workflow run number.
 Source validation uses the stable version `0.0.0` for product, control, and hosted-plugin resources.
 Source identities can still invalidate outputs. Measure their effect.
+Source and candidate invocations use `--info` to keep configuration-cache rejection reasons and task input changes.
+Source logs stay in the existing source reports; candidate logs stay in the Actions build step.
+Keep ordinary source validation at `0.0.0`; do not substitute a run number to improve candidate reuse.
+Candidate qualification retains its actual release version and exact source identity.
+
+A local CLI compilation probe reused configuration and left compilation up-to-date on an identical second invocation.
+Changing `version` invalidated configuration reuse and changed the included-build JAR output name.
+With that version fixed, changing `controlVersion` invalidated configuration reuse and regenerated `ManagementVersion.kt`.
+Gradle then identified that generated source as the changed compilation input.
+These observations explain version-driven work; they do not measure a CI improvement or explain every hosted cache miss.
 No build scan evidence is available for this change.
 
 ## Temporary semantic fixture switch
