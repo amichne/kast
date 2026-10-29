@@ -2,7 +2,7 @@
 name = "kast-task-access"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
-dependencies = ["pydantic==2.12.3", "jsonschema==4.25.1"]
+dependencies = ["pydantic==2.12.3", "jsonschema==4.25.1", "mcp==1.26.0", "anyio==4.12.1"]
 
 [dependency-groups]
 dev = ["ruff==0.14.0", "pyright[nodejs]==1.1.407", "pytest==9.0.3", "types-jsonschema==4.25.1.20251009"]
@@ -20,7 +20,8 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["*.py"]
+include = ["*.py", "../../agent-tools/skills/kast/scripts/*.py"]
+extraPaths = ["../../agent-tools/skills/kast/scripts"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 
@@ -33,6 +34,6 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
-pythonpath = ["."]
+pythonpath = [".", "../../agent-tools/skills/kast/scripts"]
 testpaths = ["."]
 python_files = ["test_*.py"]

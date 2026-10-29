@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from access import InputError, prepare
 
 

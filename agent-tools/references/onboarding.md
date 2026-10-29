@@ -1,7 +1,7 @@
 # Kast
 
 Use reachable Kast tools first for supported Kotlin semantic tasks in this exact workspace.
-Use `query_symbols` for identity, callers, references, implementations, and affected uses; `check_diagnostics` for compiler diagnostics.
+Use `find`, relationship tasks, `source`, and `diagnostics`. Use `schema` and `raw` for advanced existing operations.
 Read source for unresolved questions. Reuse returned or listed paths.
 
 Do not enumerate the repository for supplied paths.
@@ -48,34 +48,20 @@ Do not repeat discovery or failures without new evidence or changed prerequisite
 Incomplete results and scope qualifications do not prove absence. Preserve them.
 Public tool contract: `18`. The installed schema governs.
 
-`RUN` needs `source`, optional transformation `steps`, and one non-null `terminalStep` object tagged `EMIT` or `TRACE`.
-Use `terminalStep.output`, not `RUN.output`. `EMIT` accepts all outputs; `TRACE` accepts only `SYMBOLS` and owns `expansionScope` directly.
-Never put `TRACE` in `steps` or add `traceOptions`. Allow at most 1000 steps for EMIT, 999 before TRACE.
-Omitted or null output selects `NAME` and `LOCATION`; explicit `SYMBOLS` requires `fields`, with `[]` for identity and kind only.
-Keep retention, mode, and budget on RUN. Other actions have no terminal; `READ_RESULT.output` stays unchanged.
-
-Minimal interface query:
-
-```json
-{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"OrderRepository","declarationKinds":["CLASS"],"scope":{"type":"PACKAGE","packageName":"com.example.orders","includeSubpackages":false,"sourceSetNames":["main"]}},"terminalStep":{"type":"EMIT","output":{"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE"]}},"executionBudget":{"maxResults":20}}}
-```
-
-- `declarationName` is a simple name. `nameMatch` accepts `EXACT|FUZZY`. Omission means case-sensitive `EXACT`.
-- `declarationKinds`: `CLASS|FUNCTION|PROPERTY|TYPE_ALIAS`. `CLASS` includes interfaces, objects, `enum` and annotation classes. `INTERFACE` is invalid.
-- For a known directory, use `scope.type=DIRECTORY` with workspace-relative `relativeDirectoryPath`. Use `.` for the root.
-- For a known package, use `scope.type=PACKAGE` with dotted `packageName`, independent of its directory.
-- Directory paths exclude absolute paths, files, globs, and parent traversal. Descendant inclusion defaults to `true`.
-- `sourceSetNames`: exact imported Gradle names, such as `main`, `test`, or `commonMain`. Default: `main` and `test`.
-- Apply known name, kind, scope, and source-set constraints before discovery. Empty or duplicate kind and source-set arrays reject.
-- For `SYMBOLS`, `fields` selects `NAME|LOCATION|SIGNATURE|SOURCE` without filtering eligible declarations.
-- Select exact owner, receiver, location, and signature. Reuse the issued `ref` unchanged in `source.type=SYMBOL_REFS`, `symbolRefs:[ref]`.
-- Use a relation for direct callers or references; terminal `TRACE` adds implementations and another caller layer.
-- Discovery scope selects seeds; expansion scope selects destinations. `WORKSPACE` includes clients across modules and is the TRACE default.
-- Relation enums are `REFERENCES|CALLERS|CALLEES|IMPLEMENTATIONS|INHERITORS|OVERRIDES|TYPE_USES`. Read the schema before other steps or output variants.
-- The host can reduce the numeric `executionBudget` grant. Preserve `COMPLETE_ONLY` rejection and recovery evidence.
-- `retention=RETAIN` keeps evidence for `READ_RESULT` with an issued result reference and cursors.
-- `RESUME` presents produced output using an issued `query-output:v1` token. `READ_SOURCE.candidateRef` accepts issued candidates, exact symbols, or source selectors; `region` and `text` are separate choices.
-- Never invent references, exchange token families, or resubmit a query to recover lost output.
-- Diagnostic paths are workspace-relative. Changes need the user's request and an issued `exactTarget`.
-
-Read `query-topics.md` beside the schema for named help topics. Placeholders grant no authority.
+Use `find` with a simple `name`, known `kind`, and declaration `directory` or `package`.
+Use `source_sets` for exact imported Gradle source sets. The default is `main` and `test`.
+The `interface` kind searches the CLASS family. Examine source before an interface claim.
+Select the exact owner, signature, receiver, and location. Reuse the issued `ref` unchanged.
+Use a relation for direct callers or references. `trace` selects fixed affected-use topology.
+Use `walk` with `relation` and `depth` for every established hop through that depth.
+Destination `directory` and `source_sets` differ from discovery scope. Omission covers the workspace.
+Use `source` with its default `ANCHOR` before a body region. Body regions can be absent.
+A cursor on a call selects the enclosing declaration, not the callee.
+Location ranges contain UTF-16 offsets, not line numbers.
+Use `result` with the original output kind and both issued cursors for retained output.
+Use `resume` only with an issued output continuation. Never repeat a query to recover lost output.
+Use `diagnostics` with a workspace-relative path for compiler diagnostics.
+For advanced operations, read `schema`, then use `raw` with the original arguments.
+Source changes need the user's request, an issued `exactTarget`, and `write:true`.
+Cancellation or timeout can leave submission or effects uncertain. Never retry automatically.
+Read the bundled Kast skill for task choices, CLI fallback, and recovery rules.

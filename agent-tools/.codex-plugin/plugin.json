@@ -1,7 +1,7 @@
 {
   "name": "kast",
   "version": "0.0.0",
-  "description": "Compiler-grounded Kotlin queries, usage patterns, and examples with Kast.",
+  "description": "Kotlin task tools and a shared Kast skill over the installed runtime.",
   "author": {
     "name": "Amichne"
   },
@@ -16,7 +16,11 @@
     "longDescription": "Find declarations, inspect callers and relationships, and examine compiler diagnostics with Kast and compact context at session start.",
     "developerName": "Amichne",
     "category": "Coding",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "defaultPrompt": "Use Kast to find a declaration and inspect its callers."
-  }
+  },
+  "skills": "./skills/"
 }
