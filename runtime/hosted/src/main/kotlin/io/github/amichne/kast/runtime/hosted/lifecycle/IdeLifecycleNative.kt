@@ -5,6 +5,8 @@ import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
+import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ex.ProjectManagerEx
@@ -43,6 +45,14 @@ internal class IdeLifecycleNative(
     private val observePreparation: (NativePreparationObservation) -> Unit = {},
 ) {
     private val projects = java.util.concurrent.ConcurrentHashMap<UUID, Project>()
+
+    fun hasActivePreparation(): Boolean {
+        val processing = ExternalSystemProcessingManager.getInstance()
+        return ProjectManager.getInstance().openProjects.any { project ->
+            processing.hasTaskOfTypeInProgress(ExternalSystemTaskType.RESOLVE_PROJECT, project) ||
+                project.getServiceIfCreated(HostedEndpointService::class.java)?.lifecycleHasWork() == true
+        }
+    }
 
     fun observeProjects() {
         ProjectManager.getInstance()
