@@ -368,8 +368,10 @@ The public command was:
 kast query --request - < query.json
 ```
 
-The [raw summary](public-cli-v1/native-measurements-d7/summary.json) and one record per sample preserve exact executable paths and command vectors.
+The [raw summary](public-cli-v1/native-measurements-d7/summary.json.gz) and one record per sample preserve exact executable paths and command vectors.
 Raw stdout, stderr, compressed Host logs, and process snapshots accompany each record.
+The [compression manifest](public-cli-v1/compressed-records.json) records raw SHA-256 values and byte counts for large JSON records.
+Gzip decompression reproduces the committed record bytes exactly.
 The [harness](public-cli-v1/native-measurements-d7/measurement-harness.py.txt) preserves collection and comparison rules.
 Only `document.items[0].row_id` and `document.retention.reference` differ through fresh token allocation.
 The comparison preserves every other result field, including canonical question, declarations, locations, selected values, coverage, completion interpretation, qualifications, and recovery data.
