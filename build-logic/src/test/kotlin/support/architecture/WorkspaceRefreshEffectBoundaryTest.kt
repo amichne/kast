@@ -28,6 +28,17 @@ class WorkspaceRefreshEffectBoundaryTest {
     }
 
     @Test
+    fun `import callback admits only the platform future overload in the existing owner`() {
+        val builder = "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder"
+        val future = JvmMember.of(builder, "withCallback", "(Ljava/util/concurrent/CompletableFuture;)L$builder;")
+        val legacy = JvmMember.of(builder, "withCallback", "(Lcom/intellij/openapi/externalSystem/service/project/ExternalProjectRefreshCallback;)L$builder;")
+        assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner + "Kt", future))
+        assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner + "Kt", legacy))
+        assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.RUNTIME_HOSTED,
+            "io/github/amichne/kast/runtime/hosted/HostedSemanticServices", future))
+    }
+
+    @Test
     fun `initial link remains confined to the existing refresh owner`() {
         val link = JvmMember.of("com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "linkExternalProject", "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V")
         assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner, link))

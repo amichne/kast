@@ -15,7 +15,7 @@ internal object HostedWorkspaceRefreshAuthority {
         JvmMember.of(BUILDER, "dontNavigateToError", "()L$BUILDER;"),
         JvmMember.of("com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "linkExternalProject", "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;L$BUILDER;)V"),
         JvmMember.of("org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "createLinkSettings", "(Ljava/nio/file/Path;Lcom/intellij/openapi/project/Project;)Lorg/jetbrains/plugins/gradle/settings/GradleProjectSettings;"),
-        JvmMember.of(BUILDER, "withCallback", "(Lcom/intellij/openapi/externalSystem/service/project/ExternalProjectRefreshCallback;)L$BUILDER;"),
+        JvmMember.of(BUILDER, "withCallback", "(Ljava/util/concurrent/CompletableFuture;)L$BUILDER;"),
         JvmMember.of("com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "refreshProject", "(Ljava/lang/String;L$BUILDER;)V"),
     )
     private val fileTargets = setOf(JvmMember.of("com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh",

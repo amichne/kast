@@ -87,6 +87,12 @@ This guide owns repository rules and routes source investigation.
 - A detached checkout, missing upstream, or divergent branch does not require a base decision: use the latest `origin/main`. Preserve existing branch references; retain any unique detached commits under a branch before switching bases.
 - If local changes prevent refreshing the task checkout, preserve that checkout and its stashes, and use a separate clean managed worktree from the fetched `origin/main`. Pull and verify that worktree as above, then continue there without asking the user to choose a base. Do not reset, overwrite, stash, rebase, or apply existing work merely to refresh the base.
 
+## Local IntelliJ Restarts
+
+- Restart IntelliJ IDEA whenever Kast development, diagnosis, tests, or recovery need a restart.
+- The user grants standing authorization for these restarts. Do not ask for separate approval.
+- Preserve user work through the normal IDE restart action.
+
 ## Navigation Hints
 
 - For architecture uncertainty, use optional OpenWiki retrieval. If retrieval tools are unavailable, read `openwiki/quickstart.md` and its source citations.

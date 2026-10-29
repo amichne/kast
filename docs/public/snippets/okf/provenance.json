@@ -324,7 +324,7 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429",
-          "currentVersion": "repo-file-v1:sha256:d8442b32228a6f7fe9d88fb48ed3e437f78a6b1377ca99a4150715fd28047a48",
+          "currentVersion": "repo-file-v1:sha256:2c6b755e0df3590b74327b494ef0d04964e0f5ad5ed10072ea2d966fb9072ac0",
           "status": "CHANGED"
         },
         {
@@ -338,7 +338,7 @@
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
           "resource": "repo://build.gradle.kts#L558-L594",
           "recordedVersion": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ",
-          "currentVersion": "repo-file-v1:sha256:d8442b32228a6f7fe9d88fb48ed3e437f78a6b1377ca99a4150715fd28047a48",
+          "currentVersion": "repo-file-v1:sha256:2c6b755e0df3590b74327b494ef0d04964e0f5ad5ed10072ea2d966fb9072ac0",
           "status": "NOT_ASSESSED"
         },
         {
@@ -471,8 +471,8 @@
           "claim": "claim_cef6aa14cee14d75b0fedd02c53e9033",
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
           "recordedVersion": "repo-file-v1:sha256:5ffa5cbec74786e8702f0dbd21e881083b13c9996b9783958054759c922c7d80",
-          "currentVersion": "repo-file-v1:sha256:5ffa5cbec74786e8702f0dbd21e881083b13c9996b9783958054759c922c7d80",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_ee41761235244553bcf1a058d83d8d5c",
