@@ -1,0 +1,2393 @@
+{
+  "name": "4-public-read",
+  "route": "followup",
+  "argv": [
+    "/private/tmp/kcv1g-a3b5uat/.local/bin/kast",
+    "result",
+    "read",
+    "--ref",
+    "result:v1:0e5cad2c-5da9-4184-8a33-38f50db30a52",
+    "--fields",
+    "name,signature,location"
+  ],
+  "cwd": "/private/tmp/kast-public-cli-v1-a3b5uat_/workspace",
+  "childPid": 62125,
+  "exitCode": 0,
+  "elapsedNanos": 2050814125,
+  "requestBytes": 0,
+  "stdoutBytes": 2301,
+  "stderrBytes": 1672,
+  "jvmStartupNotices": 1,
+  "preparationRequestIds": [
+    "1bfc484b-e79a-4fd1-b24a-f9b63c9e81b4"
+  ],
+  "hostedOperations": [
+    "STATUS",
+    "QUERY_RUN"
+  ],
+  "physicalHostedConnections": 2,
+  "lifecycleRequestCompletions": 1,
+  "semanticInvocations": 1,
+  "transportStages": [
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "ACCEPT",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 2188916334,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "CONNECTION_ADMISSION",
+      "outcome": "STARTED",
+      "elapsedNanos": 708,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "CONNECTION_ADMISSION",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 6291,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "ACCEPT",
+      "outcome": "STARTED",
+      "elapsedNanos": 500,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "REQUEST_READ",
+      "outcome": "STARTED",
+      "elapsedNanos": 3125,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "REQUEST_READ",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 123917,
+      "bytes": 83,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "SEMANTIC_ADMISSION",
+      "outcome": "STARTED",
+      "elapsedNanos": 708,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "SEMANTIC_ADMISSION",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 4667,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "EXECUTION",
+      "outcome": "STARTED",
+      "elapsedNanos": 208,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "EXECUTION",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 188666,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "ENCODING",
+      "outcome": "STARTED",
+      "elapsedNanos": 667,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "ENCODING",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 21542,
+      "bytes": 969,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "REPLY_WRITE",
+      "outcome": "STARTED",
+      "elapsedNanos": 291,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "REPLY_WRITE",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 32208,
+      "bytes": 973,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "CONNECTION_RELEASE",
+      "outcome": "STARTED",
+      "elapsedNanos": 333,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "49400bb1-bf53-4a72-9b79-91ccdc1dd5ca",
+      "stage": "CONNECTION_RELEASE",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 3333,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "ACCEPT",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 23911791,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "CONNECTION_ADMISSION",
+      "outcome": "STARTED",
+      "elapsedNanos": 666,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "CONNECTION_ADMISSION",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 4708,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "eaabbbab-3ee2-445b-9312-bc73245cbbf2",
+      "stage": "ACCEPT",
+      "outcome": "STARTED",
+      "elapsedNanos": 500,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "REQUEST_READ",
+      "outcome": "STARTED",
+      "elapsedNanos": 8250,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "REQUEST_READ",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 558833,
+      "bytes": 413,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "SEMANTIC_ADMISSION",
+      "outcome": "STARTED",
+      "elapsedNanos": 791,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "SEMANTIC_ADMISSION",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 5833,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "EXECUTION",
+      "outcome": "STARTED",
+      "elapsedNanos": 4959,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "EXECUTION",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 8032667,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "ENCODING",
+      "outcome": "STARTED",
+      "elapsedNanos": 875,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "ENCODING",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 15792,
+      "bytes": 3190,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "REPLY_WRITE",
+      "outcome": "STARTED",
+      "elapsedNanos": 250,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "REPLY_WRITE",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 38542,
+      "bytes": 3194,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "CONNECTION_RELEASE",
+      "outcome": "STARTED",
+      "elapsedNanos": 417,
+      "bytes": 0,
+      "failure": null
+    },
+    {
+      "connectionId": "4223056e-ae2e-4fd7-8da5-da7dde635446",
+      "stage": "CONNECTION_RELEASE",
+      "outcome": "COMPLETED",
+      "elapsedNanos": 3667,
+      "bytes": 0,
+      "failure": null
+    }
+  ],
+  "semanticRecords": [
+    {
+      "schemaVersion": 16,
+      "limits": [
+        {
+          "parameter": "MODEL_CACHED_GRADLE_MODELS",
+          "value": 8,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "MODEL_SOURCE_ROOTS_PER_MODULE",
+          "value": 256,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "MODEL_CLASSPATH_ENTRIES_PER_MODULE",
+          "value": 2048,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "MODEL_IDENTITY_CHARACTERS",
+          "value": 512,
+          "unit": "CHARACTERS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "MODEL_PATH_CHARACTERS",
+          "value": 4096,
+          "unit": "CHARACTERS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "MODEL_CLASSPATH_URL_CHARACTERS",
+          "value": 8192,
+          "unit": "CHARACTERS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EPOCH_CACHED_GRADLE_MODELS",
+          "value": 16,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EPOCH_VFS_EVENTS",
+          "value": 4096,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EPOCH_PATH_CHARACTERS",
+          "value": 4096,
+          "unit": "CHARACTERS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EPOCH_PATH_BYTES",
+          "value": 8192,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_QUERY_MILLIS",
+          "value": 30000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SEMANTIC_MILLIS",
+          "value": 15000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EXECUTION_MAX_MILLIS",
+          "value": 2147483646,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EXECUTION_MAX_WORK",
+          "value": 2147483646,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EXECUTION_MAX_RESULTS",
+          "value": 2147483646,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "EXECUTION_MAX_RETURNED_BYTES",
+          "value": 2147483646,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SEMANTIC_WORK",
+          "value": 2000000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SEMANTIC_RESULTS",
+          "value": 128,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SEMANTIC_RETURNED_BYTES",
+          "value": 49152,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "QUERY_CHECKPOINT_BYTES",
+          "value": 33554432,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "QUERY_CONTINUATION_ENTRIES",
+          "value": 64,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "QUERY_CONTINUATION_BYTES",
+          "value": 134217728,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "QUERY_CONTINUATION_TTL_MILLIS",
+          "value": 600000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DISCOVERY_FILES",
+          "value": 100000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DISCOVERY_NAMES",
+          "value": 10000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DISCOVERY_CANDIDATES",
+          "value": 10000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "RELATION_CANDIDATES",
+          "value": 10000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SOURCE_ENTITY_WORK",
+          "value": 10000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SOURCE_CONTINUATIONS",
+          "value": 1024,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SOURCE_CONTINUATION_BYTES",
+          "value": 33554432,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SOURCE_CONTINUATION_TTL_MILLIS",
+          "value": 600000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SOURCE_ENTITIES",
+          "value": 128,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "SOURCE_RETURNED_BYTES",
+          "value": 49152,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "TRAVERSAL_DEPTH",
+          "value": 16,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "TRAVERSAL_FRONTIER",
+          "value": 128,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_REFERENCE_ENTRIES",
+          "value": 16384,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_REFERENCE_BYTES",
+          "value": 33554432,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_REQUEST_BYTES",
+          "value": 2147483646,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_RESPONSE_BYTES",
+          "value": 2147483646,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_DESCRIPTOR_BYTES",
+          "value": 16384,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_ACCEPT_BACKLOG",
+          "value": 64,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_CONNECTIONS",
+          "value": 16,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_READERS",
+          "value": 2,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_CONNECTION_MILLIS",
+          "value": 31000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "CLIENT_EXCHANGE_MILLIS",
+          "value": 32000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_FILE_CHARACTERS",
+          "value": 262144,
+          "unit": "CHARACTERS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "HOST_CLASS_CANDIDATES",
+          "value": 32,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_SCOPE_FILES",
+          "value": 256,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_SCOPE_WORK",
+          "value": 20000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_SCOPE_MILLIS",
+          "value": 2000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_COUNT",
+          "value": 1000000000,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_FAILURES",
+          "value": 16,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_FRAMES",
+          "value": 8,
+          "unit": "COUNT",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "DIAGNOSTIC_TEXT_CHARACTERS",
+          "value": 256,
+          "unit": "CHARACTERS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "PROVIDER_OUTPUT_BYTES",
+          "value": 2147483646,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "PROVIDER_INVOCATION_MILLIS",
+          "value": 1080000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "PROVIDER_GRAPH_INVOCATION_MILLIS",
+          "value": 1260000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "PROCESS_INPUT_BYTES",
+          "value": 2147483646,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "PROCESS_OUTPUT_BYTES",
+          "value": 2147483646,
+          "unit": "BYTES",
+          "source": "DEFAULT"
+        },
+        {
+          "parameter": "PROCESS_TIMEOUT_MILLIS",
+          "value": 1260000,
+          "unit": "MILLISECONDS",
+          "source": "DEFAULT"
+        }
+      ],
+      "pid": 60244,
+      "readId": "00109843-e4dc-478f-a738-f105b668c914",
+      "correlation": {
+        "type": "bound",
+        "host": "0aa85843-e09e-4208-b3f5-7ea2cc052dbd",
+        "epoch": 1
+      },
+      "durationNanos": 4859625,
+      "stages": [
+        {
+          "stage": "REQUEST_ADMISSION",
+          "startedNanos": 102042,
+          "durationNanos": 184666
+        },
+        {
+          "stage": "PROJECT_ADMISSION",
+          "startedNanos": 286708,
+          "durationNanos": 8584
+        },
+        {
+          "stage": "EPOCH_OBSERVATION",
+          "startedNanos": 295292,
+          "durationNanos": 292958
+        },
+        {
+          "stage": "MODEL_CAPTURE",
+          "startedNanos": 588250,
+          "durationNanos": 139583
+        },
+        {
+          "stage": "SEMANTIC_READ",
+          "startedNanos": 727833,
+          "durationNanos": 3763917
+        },
+        {
+          "stage": "CONTENT_REVALIDATION",
+          "startedNanos": 4491750,
+          "durationNanos": 188708
+        },
+        {
+          "stage": "RESULT_DETACHED",
+          "startedNanos": 4680458,
+          "durationNanos": 179167
+        }
+      ],
+      "nativePhase": {
+        "type": "entered",
+        "phase": "RETENTION"
+      },
+      "nativePhaseDurations": [
+        {
+          "phase": "RETENTION",
+          "durationNanos": 140667
+        },
+        {
+          "phase": "ENCODING",
+          "durationNanos": 430000
+        },
+        {
+          "phase": "FRESHNESS_VALIDATION",
+          "durationNanos": 231750
+        },
+        {
+          "phase": "CANCELLATION_DRAINAGE",
+          "durationNanos": 44250
+        }
+      ],
+      "semanticEntry": {
+        "type": "entered",
+        "remainingDeadlineNanos": 29999272167
+      },
+      "semanticBudget": {
+        "type": "admitted",
+        "remainingHostMillis": 29996,
+        "completionReserveMillis": 250,
+        "semanticMillis": 15000,
+        "diagnosticScopeMillis": 2000
+      },
+      "counters": [
+        {
+          "counter": "DEPENDENCY_TREE_ENTRIES_VISITED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_SDK_PLANNED_FILES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_SDK_MINIMUM_HASH_READS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_SDK_FILE_PLANS_COMPLETED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_HASH_BYTES_READ",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_HASHES_COMPLETED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_HASH_MEMO_HITS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DEPENDENCY_TREE_MEMO_HITS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_PSI_NODES_VISITED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_NODES_VISITED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_PSI_REQUESTS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_PSI_FALLBACKS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_LEGACY_FALLBACKS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_STARTUP_AGENT_FALLBACKS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_PARSER_FALLBACKS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_MAPPING_PSI_PROBES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DECLARATION_AST_BINDING_BYTES_READ",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DISCOVERY_SCOPE_FILES_ADMITTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DISCOVERY_SCOPE_FILES_EXCLUDED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_ADMISSIONS_READY",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_ADMISSIONS_HALTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_FILES_ADMITTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_FILES_EXCLUDED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_PATH_OWNERSHIP_PROBES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_MODULES_ADMITTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_MODULES_EXCLUDED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_MODULE_SOURCE_KINDS_ADMITTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_MODULE_SOURCE_KINDS_EXCLUDED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_LIBRARY_SEARCH_ADMITTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "RELATION_SCOPE_LIBRARY_SEARCH_EXCLUDED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NAMED_SOURCE_MEMBERSHIP_CHECKS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NAMED_SOURCE_ROOT_PATH_CONVERSIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NAMED_SOURCE_OWNERSHIP_PROBES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NAMED_SOURCE_EXCLUSION_PROBES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DISCOVERY_PATH_OWNERSHIP_PROBES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "DISCOVERY_DIRECTORY_PATH_CONVERSIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NATIVE_DISCOVERY_PAGES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NATIVE_RELATION_PAGES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "VALUE_PRODUCER_SEED_READS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "VALUE_MODEL_REVALIDATIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "VALUE_MODEL_SITE_REVALIDATIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "VALUE_MODEL_SITE_REVALIDATIONS_REJECTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "PEER_SITE_READS_STARTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "PEER_SITE_READS_COMPLETED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "PEER_SITE_READS_REJECTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "VALUE_FLOW_READS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "REVALIDATION_LOCATORS_RETAINED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "REVALIDATION_LOCATORS_REJECTED",
+          "contributor": "NONE",
+          "count": 1
+        },
+        {
+          "counter": "EPOCH_READ_PREEMPTIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_PARTITIONS_STARTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_PARTITIONS_COMPLETED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_PARTITIONS_REJECTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_CALLS_EXAMINED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_VALUES_CONFIRMED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_BODY_SCANS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_BODY_SCANS_COMPLETED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_BODY_SCANS_INCOMPLETE",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_FORMAL_COVERAGE_COMPLETE",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_FORMAL_COVERAGE_INCOMPLETE",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_COVERAGE_COMPLETE",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUPPLIER_COVERAGE_INCOMPLETE",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUMMARY_HITS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUMMARY_MISSES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUMMARY_REJECTIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUMMARIES_RETAINED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_SUMMARY_RETENTION_REJECTIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NAMED_CALLBACK_REFERENCES_CONFIRMED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "NAMED_CALLBACK_REFERENCES_REJECTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_PARTITIONS_EXTRACTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_PARTITIONS_REUSED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_PARTITIONS_INVALIDATED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_DEPENDENCY_REVALIDATIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_DEPENDENCY_REJECTIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_GENERATIONS_PUBLISHED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_GENERATIONS_REJECTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_NAMED_PARTITIONS_EXTRACTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_NAMED_PARTITIONS_REUSED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_NAMED_PARTITIONS_INVALIDATED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_NAMED_PARTITIONS_INELIGIBLE",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_SUPPLIER_INVENTORIES_EXTRACTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_SUPPLIER_INVENTORIES_REUSED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SEMANTIC_FACT_SUPPLIER_INVENTORIES_INVALIDATED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_FORWARDING_FORMALS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_FORWARDING_EDGES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_FIXED_POINTS_COMPLETED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "CALLBACK_FIXED_POINTS_REJECTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "QUERY_POLICY_EVIDENCE_PUBLICATIONS_DISCARDED",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "IMPORTED_PROJECTS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "IDEA_MODULES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SELECTED_GRADLE_MODULES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "FOREIGN_GRADLE_MODULES",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "SOURCE_ROOTS",
+          "contributor": "NONE",
+          "count": 0
+        },
+        {
+          "counter": "REFERENCE_HANDLES_ISSUED",
+          "contributor": "NONE",
+          "count": 1
+        }
+      ],
+      "nativeCalls": [
+        {
+          "call": "VALUE_DECLARED_CALLBACK_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VALUE_REVIEWED_CALLBACK_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VALUE_REVIEWED_CALL_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VALUE_REVIEWED_KEY_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "K2_ANALYSIS",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VALUE_RETURN_CALL_BINDING",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VALUE_RETURN_OWNER_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_READ_ATTEMPT",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_COMPILE",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_CALLBACK_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_FILE_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_SOURCE_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_MODULE_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_MODULE_SOURCE_KIND_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_LIBRARY_POLICY",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_FILE_ENUMERATION_PREPARATION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_FILE_ID_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_FILE_ID_ARRAY",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SCOPE_FILE_COLLECTION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RELATION_SUBJECT_RESTORE",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "CALLBACK_FACT_PREPARATION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SEMANTIC_DEPENDENCY_CAPTURE",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "MODULE_INVENTORY",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "MODULE_DEPENDENCIES",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "KOTLIN_FACET",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "MODULE_SOURCE_ROOTS",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SDK_CLASS_ROOTS",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SDK_FILE_PLAN",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "RECURSIVE_CLASSPATH_ROOTS",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VFS_FIND_FILE",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VFS_CHILDREN",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DOCUMENT_DIRTY_CHECK",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DOCUMENT_CACHE_LOOKUP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DOCUMENT_COMMIT_CHECK",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "VFS_OPEN_STREAM",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "FILE_STREAM_READ",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "REFERENCE_SEARCH",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DEFINITION_SEARCH",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "REFERENCE_CALLBACK",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DEFINITION_CALLBACK",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SYMBOL_EXACT_RESOLUTION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SYMBOL_EXACT_REVALIDATION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "NAMED_DECLARATION_INDEX",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_COMPILE",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_ROOT_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_FILE_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_SOURCE_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_DETACHED_ADMISSION",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_SCOPE_PATH_OWNERSHIP",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_DIRECTORY_PLAN",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DISCOVERY_PARTITION_SUPPLY",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SCOPED_FILE_INDEX",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "EXACT_PACKAGE_INDEX",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "SCOPED_FILE_CALLBACK",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "PSI_FIND_FILE",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "PSI_FIND_ELEMENT",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "PSI_REFERENCES",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DECLARATION_PSI_SCAN",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        },
+        {
+          "call": "DECLARATION_AST_BINDING",
+          "parent": {
+            "type": "root"
+          },
+          "entered": 0,
+          "returned": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unfinished": 0,
+          "qualification": "EXACT",
+          "firstEntry": {
+            "type": "not-entered"
+          },
+          "durationNanos": 0
+        }
+      ],
+      "nativeSearches": [
+        {
+          "search": "REFERENCES",
+          "entered": 0,
+          "firstCallbackObserved": 0,
+          "returnedWithoutCallback": 0,
+          "cancelledWithoutCallback": 0,
+          "failedWithoutCallback": 0,
+          "unfinishedWithoutCallback": 0,
+          "qualification": "EXACT",
+          "firstCallbackDelayTotalNanos": 0,
+          "firstCallbackDelayMaximumNanos": 0,
+          "workVisibility": "NATIVE_INTERNAL_WORK_UNOBSERVED"
+        },
+        {
+          "search": "DEFINITIONS",
+          "entered": 0,
+          "firstCallbackObserved": 0,
+          "returnedWithoutCallback": 0,
+          "cancelledWithoutCallback": 0,
+          "failedWithoutCallback": 0,
+          "unfinishedWithoutCallback": 0,
+          "qualification": "EXACT",
+          "firstCallbackDelayTotalNanos": 0,
+          "firstCallbackDelayMaximumNanos": 0,
+          "workVisibility": "NATIVE_INTERNAL_WORK_UNOBSERVED"
+        },
+        {
+          "search": "SCOPED_FILES",
+          "entered": 0,
+          "firstCallbackObserved": 0,
+          "returnedWithoutCallback": 0,
+          "cancelledWithoutCallback": 0,
+          "failedWithoutCallback": 0,
+          "unfinishedWithoutCallback": 0,
+          "qualification": "EXACT",
+          "firstCallbackDelayTotalNanos": 0,
+          "firstCallbackDelayMaximumNanos": 0,
+          "workVisibility": "NATIVE_INTERNAL_WORK_UNOBSERVED"
+        },
+        {
+          "search": "EXACT_PACKAGE_FILES",
+          "entered": 0,
+          "firstCallbackObserved": 0,
+          "returnedWithoutCallback": 0,
+          "cancelledWithoutCallback": 0,
+          "failedWithoutCallback": 0,
+          "unfinishedWithoutCallback": 0,
+          "qualification": "EXACT",
+          "firstCallbackDelayTotalNanos": 0,
+          "firstCallbackDelayMaximumNanos": 0,
+          "workVisibility": "NATIVE_INTERNAL_WORK_UNOBSERVED"
+        }
+      ],
+      "readActions": [
+        {
+          "kind": "RELATION",
+          "mode": "READ",
+          "submissions": {
+            "entered": 0,
+            "returned": 0,
+            "cancelled": 0,
+            "failed": 0,
+            "unfinished": 0,
+            "qualification": "EXACT"
+          },
+          "attempts": {
+            "entered": 0,
+            "returned": 0,
+            "cancelled": 0,
+            "failed": 0,
+            "unfinished": 0,
+            "qualification": "EXACT"
+          },
+          "cancelledBeforeAcquisition": 0,
+          "failedBeforeAcquisition": 0,
+          "attemptsAfterCompletion": 0,
+          "qualification": "EXACT",
+          "firstSubmission": {
+            "type": "not-entered"
+          },
+          "waits": [
+            {
+              "wait": "INITIAL_ADMISSION",
+              "samples": 0,
+              "durationNanos": 0,
+              "maximumNanos": 0,
+              "qualification": "EXACT"
+            },
+            {
+              "wait": "RETRY_ADMISSION",
+              "samples": 0,
+              "durationNanos": 0,
+              "maximumNanos": 0,
+              "qualification": "EXACT"
+            },
+            {
+              "wait": "RETURN_DISPATCH",
+              "samples": 0,
+              "durationNanos": 0,
+              "maximumNanos": 0,
+              "qualification": "EXACT"
+            },
+            {
+              "wait": "AFTER_COMPLETION_ADMISSION",
+              "samples": 0,
+              "durationNanos": 0,
+              "maximumNanos": 0,
+              "qualification": "EXACT"
+            },
+            {
+              "wait": "AFTER_COMPLETION_DRAINAGE",
+              "samples": 0,
+              "durationNanos": 0,
+              "maximumNanos": 0,
+              "qualification": "EXACT"
+            }
+          ]
+        }
+      ],
+      "discoveryPages": {
+        "offered": 0,
+        "published": 0,
+        "suppressed": 0,
+        "failed": 0,
+        "unavailable": 0,
+        "qualification": "EXACT"
+      },
+      "nativeCallVocabulary": [
+        "VALUE_DECLARED_CALLBACK_ADMISSION",
+        "VALUE_REVIEWED_CALLBACK_ADMISSION",
+        "VALUE_REVIEWED_CALL_ADMISSION",
+        "VALUE_REVIEWED_KEY_ADMISSION",
+        "K2_ANALYSIS",
+        "VALUE_RETURN_CALL_BINDING",
+        "VALUE_RETURN_OWNER_ADMISSION",
+        "RELATION_READ_ATTEMPT",
+        "RELATION_SCOPE_COMPILE",
+        "RELATION_SCOPE_CALLBACK_ADMISSION",
+        "RELATION_SCOPE_FILE_MEMBERSHIP",
+        "RELATION_SCOPE_SOURCE_MEMBERSHIP",
+        "RELATION_SCOPE_MODULE_MEMBERSHIP",
+        "RELATION_SCOPE_MODULE_SOURCE_KIND_MEMBERSHIP",
+        "RELATION_SCOPE_LIBRARY_POLICY",
+        "RELATION_FILE_ENUMERATION_PREPARATION",
+        "RELATION_SCOPE_FILE_ID_MEMBERSHIP",
+        "RELATION_SCOPE_FILE_ID_ARRAY",
+        "RELATION_SCOPE_FILE_COLLECTION",
+        "RELATION_SUBJECT_RESTORE",
+        "CALLBACK_FACT_PREPARATION",
+        "SEMANTIC_DEPENDENCY_CAPTURE",
+        "MODULE_INVENTORY",
+        "MODULE_DEPENDENCIES",
+        "KOTLIN_FACET",
+        "MODULE_SOURCE_ROOTS",
+        "SDK_CLASS_ROOTS",
+        "SDK_FILE_PLAN",
+        "RECURSIVE_CLASSPATH_ROOTS",
+        "VFS_FIND_FILE",
+        "VFS_CHILDREN",
+        "DOCUMENT_DIRTY_CHECK",
+        "DOCUMENT_CACHE_LOOKUP",
+        "DOCUMENT_COMMIT_CHECK",
+        "VFS_OPEN_STREAM",
+        "FILE_STREAM_READ",
+        "REFERENCE_SEARCH",
+        "DEFINITION_SEARCH",
+        "REFERENCE_CALLBACK",
+        "DEFINITION_CALLBACK",
+        "SYMBOL_EXACT_RESOLUTION",
+        "SYMBOL_EXACT_REVALIDATION",
+        "NAMED_DECLARATION_INDEX",
+        "DISCOVERY_SCOPE_COMPILE",
+        "DISCOVERY_SCOPE_ROOT_ADMISSION",
+        "DISCOVERY_SCOPE_FILE_MEMBERSHIP",
+        "DISCOVERY_SCOPE_SOURCE_MEMBERSHIP",
+        "DISCOVERY_SCOPE_DETACHED_ADMISSION",
+        "DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP",
+        "DISCOVERY_SCOPE_PATH_OWNERSHIP",
+        "DISCOVERY_DIRECTORY_PLAN",
+        "DISCOVERY_PARTITION_SUPPLY",
+        "SCOPED_FILE_INDEX",
+        "EXACT_PACKAGE_INDEX",
+        "SCOPED_FILE_CALLBACK",
+        "PSI_FIND_FILE",
+        "PSI_FIND_ELEMENT",
+        "PSI_REFERENCES",
+        "DECLARATION_PSI_SCAN",
+        "DECLARATION_AST_BINDING"
+      ],
+      "gauges": [
+        {
+          "gauge": "QUERY_RETAINED_BYTES",
+          "value": 505896
+        },
+        {
+          "gauge": "QUERY_RETAINED_BYTES_HIGH_WATER",
+          "value": 506280
+        },
+        {
+          "gauge": "QUERY_RETAINED_ENTRIES",
+          "value": 8
+        }
+      ],
+      "terminations": [],
+      "outcome": {
+        "type": "evaluated",
+        "outcome": "COMPLETE"
+      },
+      "unexpectedFailures": []
+    }
+  ],
+  "loadBefore": [
+    10.50390625,
+    11.13623046875,
+    9.9306640625
+  ],
+  "loadAfter": [
+    10.22314453125,
+    11.0673828125,
+    9.9130859375
+  ]
+}

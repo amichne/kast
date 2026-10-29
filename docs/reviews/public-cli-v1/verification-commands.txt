@@ -20,3 +20,11 @@ mise exec -- ./gradlew :cli:test --tests '*PublicOutputCancellationTest' --tests
 
 # Complete source wrapper
 mise exec -- python3 .github/scripts/ci/source_validation.py
+
+# Exact-candidate native evidence and fixed cohort
+mise exec -- uv run --locked --script /private/tmp/kast-public-cli-v1-a3b5uat_/correctness.py
+mise exec -- uv run --locked --script /private/tmp/kast-public-cli-v1-a3b5uat_/installed_output.py
+mise exec -- uv run --locked --script /private/tmp/kast-public-cli-v1-a3b5uat_/measure.py
+
+# Complete product gate
+ORG_GRADLE_PROJECT_hostedIdeaHome='/Users/amichne/Applications/IntelliJ IDEA.app/Contents' mise exec -- python3 distribution/release/run_product_gate.py

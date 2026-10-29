@@ -1,0 +1,24 @@
+product-gate: latest published stable release v0.50.2 from amichne/kast; building current checkout
+> Task :workspace:intellij-read:compileTestJava NO-SOURCE
+> Task :workspace:intellij-read:testClasses UP-TO-DATE
+> Task :workspace:intellij-read:test UP-TO-DATE
+> Task :workspace:intellij-read:check
+> Task :workspace:intellij-read:scopedCheck
+> Task :sourceValidationGate
+> Task :productBuildGate
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-7206b34f-8ee4-4eec-9bf7-04613a3651cb/kast/build/reports/kotlin-build/kast-build-2026-10-29-19-31-59-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-7206b34f-8ee4-4eec-9bf7-04613a3651cb/kast/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 9m 22s
+641 actionable tasks: 237 executed, 1 from cache, 403 up-to-date
+Configuration cache entry stored.
+
+See the profiling report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-7206b34f-8ee4-4eec-9bf7-04613a3651cb/kast/build/reports/profile/profile-2026-10-29-19-22-40.html
+A fine-grained performance profile is available: use the --scan option.

@@ -129,7 +129,7 @@
       "Check": "Slopsentral.Grade",
       "Description": "",
       "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
-      "Message": "Estimated Flesch-Kincaid grade 9.33 exceeds the shared advisory target of 8.",
+      "Message": "Estimated Flesch-Kincaid grade 9.34 exceeds the shared advisory target of 8.",
       "Severity": "warning",
       "Match": "",
       "Line": 1
@@ -152,7 +152,7 @@
       "Message": "Did you really mean 'interruptible'?",
       "Severity": "error",
       "Match": "interruptible",
-      "Line": 172
+      "Line": 173
     },
     {
       "Action": {
@@ -174,7 +174,7 @@
       "Message": "Use 'HOME's' instead of 'home's'.",
       "Severity": "error",
       "Match": "home's",
-      "Line": 305
+      "Line": 306
     },
     {
       "Action": {
@@ -194,7 +194,7 @@
       "Message": "Did you really mean 'CPUs'?",
       "Severity": "error",
       "Match": "CPUs",
-      "Line": 309
+      "Line": 310
     }
   ],
   "docs/tool-rpc.md": [

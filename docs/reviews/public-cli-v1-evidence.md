@@ -1,6 +1,6 @@
 # Public CLI version 1 evidence
 
-Version 1 remains incomplete until every acceptance criterion passes at its stated scope.
+AC01–AC18 and the repository product gate passed at their stated scopes.
 This report covers revision 1 of `kast-cli-specification.md`, dated October 29, 2026.
 
 ## Source identity
@@ -14,9 +14,10 @@ This report covers revision 1 of `kast-cli-specification.md`, dated October 29, 
 - Initial implementation commit: `4db45af85af8d2529a0c23bf079ec4bfc16c59ae`.
 - Test-owner repair: `65541c554b8ca2653b0432d083fcb6e660eeee9a`.
 - Ingress-policy repair: `bea2b0f0696ed91a878977e7e439e88929739361`.
-- Source-gate revision: `f4bcf2ebc5ae07684aefa129da944ea3ae995a01`.
-- Source-gate tree: `cb0fe1cb0cd7ad7b744ec7d9658362934d91c6fe`.
-- Cancellation repair and final candidate: pending.
+- Earlier source-gate revision: `f4bcf2ebc5ae07684aefa129da944ea3ae995a01`.
+- Earlier source-gate tree: `cb0fe1cb0cd7ad7b744ec7d9658362934d91c6fe`.
+- Cancellation repair and tested candidate: `d7b34409abf424b03d652eebbfe1035ac65a4f88`.
+- Final source-gate tree: `1ff67756da5ed3b2edab21bf0c15d4e8c0394167`.
 
 The PR head did not change from the specification baseline.
 The task branch started at that head.
@@ -45,7 +46,7 @@ An infrastructure failure does not establish a product failure or a regression t
 
 | Criterion | Independent expectation | Status | Evidence or remaining scope |
 | --- | --- | --- | --- |
-| AC01 | The public candidate returns fixture declarations and relations without MCP. | PASS | Candidate `4db45af85` returned the exact declaration and caller edge with candidate MCP launchers disabled. |
+| AC01 | The public candidate returns fixture declarations and relations without MCP. | PASS | Candidate `d7b34409a` returned the exact declaration and caller edge with candidate MCP launchers disabled. |
 | AC02 | Flags and explicit JSON admit equal requests and ordered relations. | PASS | `PublicCliArgumentsTest` covers independent documents, all sources, and reversed relation order. |
 | AC03 | File and stdin agree. Malformed and mixed inputs reject before host work. | PASS | Parser rejection cases and `PublicCliProcessTest` passed, with a forbidden host factory and real input children. |
 | AC04 | The selected catalog stays exact. `COMMON` rejects advanced syntax. | PASS | `PublicCliArgumentsTest` preserves explicit catalog restrictions and the private `COMMON` default. |
@@ -54,7 +55,7 @@ An infrastructure failure does not establish a product failure or a regression t
 | AC07 | Complete `SOURCE_RELATIONSHIPS` preserves legitimate success. | PASS | `PublicShellExitTest` preserves success for the typed source-relationship interpretation. |
 | AC08 | Pages preserve complete proof, distinct progress, and issued identities without producer replay. | PASS | Retained-read controls and the successor exit case passed. The 150-row fixture asserts one provider call. |
 | AC09 | A selected row subset keeps `ROW_SELECTION_INCOMPLETE`. | PASS | `QueryRetainedRowAdmissionTest` passed all 10 cases, including subset qualification and unknown-row rejection. |
-| AC10 | Another process can read an issued handle under the original host authority. Invalid authority rejects. | PASS | Candidate `4db45af85` preserved issued tokens across processes. Deterministic lifetime controls passed. |
+| AC10 | Another process can read an issued handle under the original host authority. Invalid authority rejects. | PASS | Candidate `d7b34409a` preserved issued tokens across processes. Deterministic lifetime controls passed. |
 | AC11 | Metadata and planning need no workspace, host, or network. | PASS | Real metadata and planning children passed. Forbidden session factories and missing-schema cases passed. |
 | AC12 | 4,095 bytes reject. 4,096 bytes admit. Omitted grants use owner defaults. | PASS | Admission limits, forbidden host effects, and both configured-default pairs passed. |
 | AC13 | A successor does not imply missing delivery. A fallback keeps its delivery failure. | PASS | Real output cases preserve complete pagination with exit 0 and delivery failure with exit 11. |
@@ -62,7 +63,7 @@ An infrastructure failure does not establish a product failure or a regression t
 | AC15 | The first accepted terminal event controls exit and prevents a second document. | PASS | Both terminal-event orders, closed-consumer exit 5, and blocked-writer interruption passed. |
 | AC16 | Existing RPC and MCP shapes, catalogs, and exits stay compatible. | PASS | Focused RPC, MCP, catalog, and encoded-output regressions passed. |
 | AC17 | Packaged examples admit, and descriptors match parser defaults and variants. | PASS | Packaged examples, misspelled-example rejection, descriptors, output schemas, and public generation guards passed. |
-| AC18 | Matched direct and public calls preserve semantic facts and record separate costs. | NOT RUN | Final candidate parity and matched measurements remain pending. |
+| AC18 | Matched direct and public calls preserve semantic facts and record separate costs. | PASS | Six matched native samples and six separate follow-up reads passed. Latency, bytes, calls, and work remain separate. |
 
 ## Existing executable oracles
 
@@ -174,7 +175,7 @@ Both retained cases passed: blocked-writer `SIGINT` exits 130 without a reader d
 The same command also passed the invocation-owner cases, static rules, formatting, and JSON guard.
 The log is `/tmp/kast-cli-blocked-output-green.log`.
 The [suite record](public-cli-v1/blocked-output-green.json) preserves the executed assertions.
-A successor candidate and final source gate remain pending.
+The successor candidate and final source gate passed. Installed-candidate output evidence appears in the final native record.
 
 ## Repository gates
 
@@ -210,7 +211,7 @@ Exact identifiers and authority distinctions explain the remaining technical voc
 `distribution/cli/AGENTS.md` has an inherited sentence-length finding at line 31.
 Those unchanged passages remain outside this focused documentation edit.
 
-## Native environment
+## Preliminary native environment
 
 Read-only inspection found this local environment:
 
@@ -241,7 +242,7 @@ The planned sample count is three per route.
 The generated Host installer returned `ACTIVATED` for the isolated plugin path.
 The candidate archive is `kast-ide-hosted-v0.0.0-idea-262.zip`, with SHA-256 `70b73ebbc3161c9cb3a31dbca17c142cd0612a3f4524f4de6e75896382722e98`.
 Its record identifies the baseline revision, with changes in the task tree. It does not identify a final implementation commit.
-The current candidate IDEA process has PID 23194.
+That preliminary IDEA process had PID 23194.
 Its log reports `Kast Existing IDE Runtime (0.0.0)` and all isolated directory properties.
 
 The first process stopped before project import.
@@ -257,7 +258,7 @@ The first workspace launch rejected its endpoint directory because the Unix sock
 The candidate home now uses `/private/tmp/kcv1h-a3b5uat`, with an 86-byte socket path.
 The Host published its exact-workspace endpoint at `18:07:33` local time.
 Gradle import completed at `18:07:41`, with a recorded duration of 8,634 milliseconds.
-The current endpoint identifies host `d0fa38e6-2249-45c3-895d-a570159d1a92` and schema `kast.query.run.v9`.
+That preliminary endpoint identifies host `d0fa38e6-2249-45c3-895d-a570159d1a92` and schema `kast.query.run.v9`.
 The preliminary public query returned `example.OrderService` with complete compiler proof.
 A later process read the issued handle and preserved its exact reference, row identity, workspace, host, and basis.
 The caller query returned only `example.placeOrder` and its compiler-confirmed call to `submitOrder`.
@@ -304,7 +305,7 @@ No registry ownership rule changed.
 A normal clean installation succeeded under `/private/tmp/kcv1f-a3b5uat`.
 The generated Host installer returned `ACTIVATED` for that home's plugin path.
 Only the owned IDEA process restarted.
-Its PID is 31895, and its host identity is `cda95f2e-e6fd-4b11-9155-69b86bc6e83c`.
+Its PID was 31895, and its host identity was `cda95f2e-e6fd-4b11-9155-69b86bc6e83c`.
 The selected runtime is JetBrains JBR `25.0.4+1-508.27-nomod`.
 The machine is an Apple M1 Max with 10 CPUs and macOS 26.5.2.
 
@@ -314,17 +315,107 @@ The caller query returned only `example.placeOrder` and one compiler-confirmed e
 The call occurrence spans offsets 152–163.
 A separate process read the issued result and preserved its row, symbol reference, retained reference, and live authority.
 Candidate MCP launchers lacked execute permission during every call. Their original modes were restored afterward.
-These samples describe the first candidate. The repaired candidate still needs native qualification.
+These samples describe the first candidate. Its owned IDEA process later stopped and was reaped.
+
+## Final candidate and source gate
+
+The [final candidate](public-cli-v1/candidate-d7-native/candidate.json) records producer `d7b34409abf424b03d652eebbfe1035ac65a4f88`.
+Its Control archive has SHA-256 `8837d8139d9d7ba249e80a3263b4c2a589006a86597630fd1e49c9aaf1ef4552` and contains 55,268,786 bytes.
+The Host archive keeps SHA-256 `70b73ebbc3161c9cb3a31dbca17c142cd0612a3f4524f4de6e75896382722e98` and contains 37,910,101 bytes.
+Both release records name that producer.
+A later evidence-only commit does not replace this tested producer or relabel its artifacts.
+
+A fresh candidate installation used `/private/tmp/kcv1g-a3b5uat` and the same IDEA application, JBR, workspace, source, and explicit grants.
+The owned IDEA process had PID 60244 and host identity `0aa85843-e09e-4208-b3f5-7ea2cc052dbd`.
+The [final native assertions](public-cli-v1/candidate-d7-native/acceptance.json) passed the declaration, exact caller edge, and separate-process retained read.
+All samples matched that host, workspace, epoch 1, saved-content basis, and version 1.
+Candidate MCP launchers lacked execute permission during those calls and the measured cohort. Their original modes were restored.
+
+The [installed output case](public-cli-v1/installed-output-d7/result.json) exercised the public native executable and selected IDEA JBR.
+The normal control returned 3,129,373 bytes and exit 0.
+After a thread dump proved a blocked writer, `SIGINT` produced exit 130 without downstream reads.
+The native launcher reaped its JVM child before the harness read the remaining 65,536 bytes.
+This proves local output cancellation and child ownership. It does not prove native semantic settlement.
+
+The full source wrapper returned `SOURCE_VALIDATED` at `d7b34409a` in 6 minutes and 1 second.
+Its [source record](public-cli-v1/source-execution-d7.json) contains 604 tasks and the same six explicit fixture skips.
+The documentation wrapper also passed, including 382 documentation cases, eight readability cases, and its static checks.
+Logs: `/tmp/kast-cli-source-validation-d7.log` and `/tmp/kast-cli-documentation-repaired.log`.
+The [product gate record](public-cli-v1/product-gate-d7.json) reports PASS in 9 minutes and 22 seconds.
+It selected published stable version `0.50.2` and ran 641 tasks: 237 executed, one cached, and 403 up-to-date.
+Its task graph included `sourceValidationGate`, `publicLauncherTest`, and `installedProductTest`.
+Production source remained at `d7b34409a`. Only evidence files changed during that gate.
+The [log tail](public-cli-v1/product-gate-d7-tail.txt) preserves the terminal result.
+The pre-push hook will repeat the gate against the final clean commit.
 
 ## Measurements
 
-Native measurements are NOT RUN.
+The [collection decision](public-cli-v1/native-measurements-d7/collection-decision.json) fixes three warm samples per route before collection.
+The routes alternated after one warm-up each. Six follow-up reads ran outside the measured query intervals.
+Every query used the same 283-byte stdin document, `COMPLETE`, scope, fields, 128-result grant, and 49,152-byte output grant.
+No request included a semantic timeout.
+The root agent suspended Gradle and candidate assembly during the cohort.
+
+The direct command was:
+
+```sh
+kast-tool-rpc-complete --catalog=COMPLETE call query_symbols < query.json
+```
+
+The public command was:
+
+```sh
+kast query --request - < query.json
+```
+
+The [raw summary](public-cli-v1/native-measurements-d7/summary.json) and one record per sample preserve exact executable paths and command vectors.
+Raw stdout, stderr, compressed Host logs, and process snapshots accompany each record.
+The [harness](public-cli-v1/native-measurements-d7/measurement-harness.py.txt) preserves collection and comparison rules.
+Only `document.items[0].row_id` and `document.retention.reference` differ through fresh token allocation.
+The comparison preserves every other result field, including canonical question, declarations, locations, selected values, coverage, completion interpretation, qualifications, and recovery data.
+Each separate follow-up preserves its issued token bytes and identity relationships exactly.
+Five negative controls reject changed coverage, completion model, location, host, and field selection.
+
+| Route | Samples | Process median | Process range | Hosted-read median | Hosted-read range |
+| --- | --- | --- | --- | --- | --- |
+| Existing direct route | 3 | 2,014.159 ms | 2,010.497–2,423.250 ms | 7.695 ms | 7.229–9.143 ms |
+| Public CLI | 3 | 2,217.835 ms | 1,949.261–2,279.405 ms | 11.677 ms | 6.841–14.757 ms |
+
+The median residual outside the recorded hosted read was 2,006.931 milliseconds for direct calls and 2,203.078 milliseconds for public calls.
+That residual includes process startup, admission, preparation, transport, and output. It does not isolate JVM startup cost.
+Available stage durations remain in the raw records.
+
+| Per-query measure | Direct route | Public CLI |
+| --- | --- | --- |
+| UTF-8 request bytes | 283 | 283 |
+| UTF-8 stdout bytes | 2,432 | 2,432 |
+| UTF-8 stderr bytes | 1,659 | 1,672 |
+| JVM startup notices | 1 | 1 |
+| Hosted endpoint connections | 2 | 2 |
+| Lifecycle preparation completions | 1 | 1 |
+| Hosted semantic invocations | 1 | 1 |
+
+The two hosted connections carry `STATUS` and `QUERY_RUN`.
+The separate lifecycle completion is not included in that connection count.
+The inherited `JAVA_TOOL_OPTIONS` startup notice measures JVM launches for these invocations.
+No claim treats two hosted connections as the total across every RPC interface.
+
+All six complete semantic-counter arrays matched exactly.
+Each sample visited 85 declaration PSI nodes, admitted seven discovery files, performed one compiler refinement, and published one native discovery page.
+Each sample charged two revalidation work units and hashed 175 source bytes.
+These counters do not measure compiler CPU or every internal index operation.
+Bytes are not tokens. Token cost and agent usability were NOT RUN.
+
+The machine remained shared with personal applications.
+One-minute load averages ranged from 9.725 to 10.763 at sample starts, and process snapshots preserve external CPU activity.
+Three samples do not support a general latency or speedup claim.
 No latency, byte, physical-call, or semantic-work improvement is claimed.
-Parity must pass before a performance comparison can support an improvement claim.
-Each sample must keep the same request, workspace, scope, fields, budgets, and host state.
 
 ## Handoff limits
 
-The successor candidate, matched measurements, and final source gate remain pending.
+All acceptance criteria and the product gate passed. The final commit and pre-push gate remain under the integration owner.
+The [cleanup record](public-cli-v1/candidate-d7-native/cleanup.json) records the owned IDEA exit and private Gradle shutdown.
+All fixture files remain available. The incidental fixture window in the personal IDEA remains open.
+No personal installation changed, and no personal IDE process stopped.
 Normal rollback uses a source revert and removal of the owned candidate artifacts.
 No semantic-state migration belongs to this implementation.

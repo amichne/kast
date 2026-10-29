@@ -1,0 +1,171 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = []
+# [tool.uv]
+# no-build = true
+# ///
+"""Collect fixed native samples after an explicit candidate record exists."""
+from dataclasses import asdict, dataclass
+from pathlib import Path
+import copy
+import json
+import os
+import statistics
+import subprocess
+import time
+
+ROOT = Path(__file__).resolve().parent
+HOME = Path('/private/tmp/kcv1g-a3b5uat')
+INSTALL = HOME / '.local/share/kast/installation'
+WORKSPACE = ROOT / 'workspace'
+ENDPOINT = HOME / '.kast/ide-hosted/b00e70b458865193c9bd7d785206e125/endpoint.json'
+LOG = ROOT / 'logs/idea.log'
+OUTPUT = ROOT / 'evidence/final-native'
+REQUEST = (ROOT / 'query.json').read_bytes()
+ENVIRONMENT = {'PATH': os.environ['PATH'], 'HOME': str(HOME), 'USER': os.environ['USER'], 'LANG': 'en_US.UTF-8', 'JAVA_TOOL_OPTIONS': '-Duser.home=' + str(HOME), 'KAST_INSTALL_IDEA_HOME': '/Users/amichne/Applications/IntelliJ IDEA.app/Contents'}
+
+@dataclass(frozen=True)
+class Sample:
+    name: str
+    route: str
+    argv: list[str]
+    cwd: str
+    childPid: int
+    exitCode: int
+    elapsedNanos: int
+    requestBytes: int
+    stdoutBytes: int
+    stderrBytes: int
+    jvmStartupNotices: int
+    preparationRequestIds: list[str]
+    hostedOperations: list[str]
+    physicalHostedConnections: int
+    lifecycleRequestCompletions: int
+    semanticInvocations: int
+    transportStages: list[dict]
+    semanticRecords: list[dict]
+    loadBefore: tuple[float, float, float]
+    loadAfter: tuple[float, float, float]
+
+
+def records(text: str, marker: str) -> list[dict]:
+    return [json.loads(line.split(marker, 1)[1]) for line in text.splitlines() if marker in line]
+
+
+def invoke(name: str, route: str, argv: list[str], request: bytes = b'') -> tuple[dict, Sample]:
+    log_offset = LOG.stat().st_size
+    load_before = os.getloadavg()
+    (OUTPUT / (name + ".processes-before.txt")).write_bytes(subprocess.check_output(["/bin/ps", "-axo", "pid,ppid,pcpu,comm"]))
+    started = time.perf_counter_ns()
+    with (OUTPUT / (name + '.stdout')).open('wb') as stdout, (OUTPUT / (name + '.stderr')).open('wb') as stderr:
+        child = subprocess.Popen(argv, cwd=WORKSPACE, env=ENVIRONMENT, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr)
+        try:
+            child.communicate(request, timeout=120)
+        except subprocess.TimeoutExpired:
+            child.terminate()
+            try:
+                child.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait(timeout=30)
+            raise
+    elapsed = time.perf_counter_ns() - started
+    load_after = os.getloadavg()
+    (OUTPUT / (name + '.processes-after.txt')).write_bytes(subprocess.check_output(['/bin/ps', '-axo', 'pid,ppid,pcpu,comm']))
+    stdout_bytes = (OUTPUT / (name + '.stdout')).read_bytes()
+    stderr_bytes = (OUTPUT / (name + '.stderr')).read_bytes()
+    with LOG.open('rb') as stream:
+        stream.seek(log_offset)
+        log_bytes = stream.read()
+    (OUTPUT / (name + '.host.log')).write_bytes(log_bytes)
+    assert child.returncode == 0, (name, child.returncode, stdout_bytes, stderr_bytes)
+    assert stdout_bytes.endswith(b'\n') and stdout_bytes.count(b'\n') == 1
+    result = json.loads(stdout_bytes)
+    log_text = log_bytes.decode()
+    stderr_text = stderr_bytes.decode()
+    stderr_records = [json.loads(line) for line in stderr_text.splitlines() if line.startswith('{')]
+    transport = records(log_text, ' - kast_transport ')
+    semantic = records(log_text, ' - kast_semantic_read ')
+    lifecycle = records(log_text, ' - kast_lifecycle ')
+    sample = Sample(name, route, argv, str(WORKSPACE), child.pid, child.returncode, elapsed, len(request), len(stdout_bytes), len(stderr_bytes), stderr_text.count('Picked up JAVA_TOOL_OPTIONS:'), sorted({r['requestId'] for r in stderr_records if r.get('event') == 'workspace-preparation'}), [r['operation'] for r in stderr_records if r.get('evidence', {}).get('type') == 'HOST_RESPONSE_DECODED'], len({r['connectionId'] for r in transport if r['stage'] == 'ACCEPT' and r['outcome'] == 'COMPLETED'}), sum(r.get('outcome') == 'COMPLETE' for r in lifecycle), len(semantic), transport, semantic, load_before, load_after)
+    (OUTPUT / (name + '.json')).write_text(json.dumps(asdict(sample), indent=2) + '\n')
+    print(name, child.returncode, elapsed / 1e6, 'ms', flush=True)
+    return result, sample
+
+
+def oracle(result: dict, endpoint: dict) -> dict:
+    assert result['type'] == 'complete'
+    document = result['document']
+    assert document['status'] == 'complete'
+    assert document['coverage'] == {'exhaustive': True}
+    assert document['question'] == {
+        'from': {'type': 'symbols', 'match': {'type': 'name', 'text': 'OrderService', 'matching': 'exact-name'}, 'scope': {'sourceSets': ['main', 'test'], 'directory': {'path': '.', 'containment': 'descendants'}, 'packageName': None}, 'declarationKinds': ['class', 'function', 'property', 'type-alias']},
+        'steps': [], 'output': {'type': 'symbols', 'fields': ['name', 'signature', 'location']},
+        'completion': {'type': 'COMPLETE_ONLY', 'model': 'COMPILER_RESOLVED_STATIC_V1'},
+    }
+    assert document['live'] == {'root': str(WORKSPACE), 'host': endpoint['host'], 'epoch': 1, 'contentView': 'SAVED_PSI_COMMITTED', 'version': 1}
+    assert len(document['items']) == 1
+    item = document['items'][0]
+    assert item['name'] == 'OrderService'
+    assert item['kind'] == 'classlike'
+    assert item['signature'] == {'type': 'class-like', 'qualifiedIdentity': 'example.OrderService'}
+    assert item['location'] == {'file': str(WORKSPACE / 'src/main/kotlin/example/OrderService.kt'), 'range': {'startInclusive': 17, 'endExclusive': 94}}
+    assert item['connections'] == []
+    assert document['original_evidence_summary'] == {'failure_count': 0, 'omission_count': 0, 'evidence_count': 1}
+    normalized = copy.deepcopy(result)
+    # The only excluded fields are newly allocated retained/result-row tokens.
+    normalized['document']['items'][0]['row_id'] = '<allocated-row-token>'
+    normalized['document']['retention']['reference'] = '<allocated-result-token>'
+    return normalized
+
+
+def main() -> None:
+    candidate = json.loads((ROOT / 'final-candidate.json').read_text())
+    assert candidate['sourceStatus'] == 'COMMITTED'
+    OUTPUT.mkdir(exist_ok=False)
+    endpoint = json.loads(ENDPOINT.read_text())
+    decision = {'samplesPerRoute': 3, 'state': 'warm-existing-host', 'order': ['direct', 'public'] * 3, 'excludedFields': ['document.items[0].row_id', 'document.retention.reference'], 'matchedEnvironmentFields': ['document.live.root', 'document.live.host', 'document.live.epoch', 'document.live.contentView', 'document.live.version'], 'endpoint': endpoint, 'candidate': candidate, 'request': json.loads(REQUEST), 'catalog': 'COMPLETE', 'harnessDeadlineSeconds': 120, 'semanticTimeout': None}
+    (OUTPUT / 'collection-decision.json').write_text(json.dumps(decision, indent=2) + '\n')
+    launchers = [INSTALL / 'bin/kast-mcp', INSTALL / 'bin/kast-mcp-complete']
+    modes = [(path, path.stat().st_mode) for path in launchers]
+    samples = []
+    expected = None
+    try:
+        for path, mode in modes:
+            path.chmod(mode & ~0o111)
+        # Warm both paths before the fixed sample cohort.
+        for route in ('direct', 'public'):
+            argv = [str(INSTALL / 'bin/kast-tool-rpc-complete'), '--catalog=COMPLETE', 'call', 'query_symbols'] if route == 'direct' else [str(HOME / '.local/bin/kast'), 'query', '--request', '-']
+            result, _ = invoke('warmup-' + route, route, argv, REQUEST)
+            oracle(result, endpoint)
+        for index, route in enumerate(decision['order']):
+            argv = [str(INSTALL / 'bin/kast-tool-rpc-complete'), '--catalog=COMPLETE', 'call', 'query_symbols'] if route == 'direct' else [str(HOME / '.local/bin/kast'), 'query', '--request', '-']
+            name = f'{index + 1}-{route}'
+            result, sample = invoke(name, route, argv, REQUEST)
+            normalized = oracle(result, endpoint)
+            if expected is None:
+                expected = normalized
+            assert normalized == expected, name
+            assert sample.jvmStartupNotices == 1
+            assert sample.hostedOperations == ['STATUS', 'QUERY_RUN']
+            assert sample.semanticInvocations == 1
+            assert all(r['pid'] == endpoint['hostPid'] for r in sample.semanticRecords)
+            samples.append(sample)
+            # Each issued result is read in a new process, outside the timed cohort.
+            original = result['document']
+            reference = original['retention']['reference']
+            followup, _ = invoke(name + '-read', 'followup', [str(HOME / '.local/bin/kast'), 'result', 'read', '--ref', reference, '--fields', 'name,signature,location'])
+            assert followup['document']['retention']['reference'] == reference
+            assert followup['document']['items'] == original['items']
+            assert followup['document']['live'] == original['live']
+        summaries = {}
+        for route in ('direct', 'public'):
+            times = [s.elapsedNanos / 1e6 for s in samples if s.route == route]
+            summaries[route] = {'sampleCount': len(times), 'medianMillis': statistics.median(times), 'minimumMillis': min(times), 'maximumMillis': max(times)}
+        (OUTPUT / 'summary.json').write_text(json.dumps({'parity': 'PASS', 'samples': [asdict(s) for s in samples], 'summary': summaries}, indent=2) + '\n')
+    finally:
+        for path, mode in modes:
+            path.chmod(mode)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "rejectedMutations": [
+    "coverage",
+    "completion",
+    "location",
+    "host",
+    "fields"
+  ],
+  "allowedAllocationDifferences": [
+    "document.items[0].row_id",
+    "document.retention.reference"
+  ]
+}
