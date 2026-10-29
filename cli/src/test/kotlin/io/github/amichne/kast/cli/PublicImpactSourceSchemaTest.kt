@@ -21,7 +21,11 @@ class PublicImpactSourceSchemaTest {
 
     @Test
     fun `public impact syntax matches its input serializer owners`() {
-        val expected = independentImpactSchema(QueryImpactSourceDocument.serializer()).getValue("properties").jsonObject
+        val expected =
+            independentFactoredImpactSchema(QueryImpactSourceDocument.serializer())
+                .root
+                .getValue("properties")
+                .jsonObject
         val definitions = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS).getValue("\$defs").jsonObject
         val impact = definitions["ImpactSource"]
         assertNotNull(impact, expected.toString())

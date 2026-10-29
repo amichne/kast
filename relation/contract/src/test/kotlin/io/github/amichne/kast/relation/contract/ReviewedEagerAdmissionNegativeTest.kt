@@ -23,9 +23,15 @@ class ReviewedEagerAdmissionNegativeTest {
         val fixture = ReviewedPositionFixture().base
         for (operation in ReviewedEagerAdmissionCase.entries) {
             val target = operation.target(fixture, typeParameters = operation.typeParameters + 1)
+            // Three type parameters select groupBy's value-transform identity, but its second formal is missing.
+            val expectedFailure =
+                if (operation == ReviewedEagerAdmissionCase.ITERABLE_GROUP_BY)
+                    ReviewedCallbackValueFailure.FORMAL_MISMATCH
+                else ReviewedCallbackValueFailure.CALLABLE_MISMATCH
             assertEquals(
-                Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH),
+                Refinement.Rejected(expectedFailure),
                 ReviewedLibraryCallable.admit(target, fixture.position(operation.callbackPositions.first())),
+                "Forbidden generic overload for ${operation.name}",
             )
         }
     }
