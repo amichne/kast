@@ -9,17 +9,21 @@ import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackTargetDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowDomainDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.LocalDeclarationAddressCliDocument
+import io.github.amichne.kast.protocol.wire.presentation.SourceRangeCliDocument
 import java.util.IdentityHashMap
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -41,8 +45,12 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
                         "queryResultItem" to CanonicalQueryCliDocuments.itemSerializer,
                         "localDeclarationAddress" to LocalDeclarationAddressCliDocument.serializer(),
+                        "sourceRangeCli" to SourceRangeCliDocument.serializer(),
                         "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
+                        "impactSourceRange" to ImpactSourceRangeDocument.serializer(),
                         "impactDeclarationReference" to ImpactDeclarationReferenceDocument.serializer(),
+                        "impactDeclaredCallbackTarget" to ImpactDeclaredCallbackTargetDocument.serializer(),
+                        "impactDeclaredCallbackValueBinding" to ImpactDeclaredCallbackValueBindingDocument.serializer(),
                         "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
                         "impactExecutionOwner" to ImpactExecutionOwnerDocument.serializer(),
                         "impactCapturedBody" to ImpactCapturedBodyDocument.serializer(),

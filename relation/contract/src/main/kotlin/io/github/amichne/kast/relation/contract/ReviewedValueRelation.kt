@@ -5,7 +5,35 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
 /** Applied positions remain part of relationship identity, independent of selected library authority. */
 sealed interface ReviewedValueRelation {
+    data class CallbackReceiverInput(val receiver: ReviewedCallbackReceiver) : ReviewedValueRelation
+
     data class CallbackCorrespondence(val semantics: ReviewedValueSemantics) : ReviewedValueRelation
+
+    data class EntryInput(val entry: ReviewedInputEntryOrigin, val slot: MapEntrySlot) : ReviewedValueRelation {
+        val selection: ReviewedEntrySelection
+            get() = entry.selection
+    }
+
+    data class PreservedKey(val entry: ReviewedPreservedKeyOrigin) : ReviewedValueRelation {
+        val selection: ReviewedEntrySelection
+            get() = entry.selection
+    }
+
+    data class EntryProjection(val entry: ReviewedMapEntryOrigin, val slot: MapEntrySlot) : ReviewedValueRelation {
+        val selection: ReviewedEntrySelection
+            get() = entry.selection
+    }
+
+    data class MappedValue(val entry: ReviewedMappedEntryOrigin) : ReviewedValueRelation {
+        val selection: ReviewedEntrySelection
+            get() = entry.selection
+    }
+
+    data class GroupPlacement(val entry: ReviewedGroupBucket) : ReviewedValueRelation
+
+    data class FilteredElements(val selection: ReviewedCollectionSelection) : ReviewedValueRelation
+
+    data object NonNullCallbackResult : ReviewedValueRelation
 
     data class ReorderedElements(val selection: ReviewedCollectionSelection) : ReviewedValueRelation
 
@@ -86,11 +114,11 @@ private constructor(
     val returnExecution: ValueExecutionOwner,
     val callStack: ValueCallStack,
     val keyEvidence: ReviewedEntryKeyEvidence,
-) {
-    val basis
+) : ReviewedMapEntryOrigin {
+    override val basis
         get() = binding.basis
 
-    val retainedBytes: Long
+    override val retainedBytes: Long
         get() =
             binding.retainedBytes
                 .addBytes(tupleOrigin.retainedBytes)

@@ -27,7 +27,7 @@ class ReviewedValueSchemaReuseTest {
                 "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
                 "impactReviewedValueRelationship" to ImpactReviewedValueRelationshipDocument.serializer(),
             )) {
-            assertions.assertDefinitionEquivalent(name, independentImpactSchema(serializer))
+            assertions.assertDefinitionEquivalent(name, independentFactoredImpactSchema(serializer))
             assertTrue(referenceCount(schema, name) > 1, "The repeated schema must share $name")
         }
     }

@@ -11,6 +11,14 @@ import io.github.amichne.kast.protocol.contract.ImpactReviewedCallValueBindingDo
 import io.github.amichne.kast.protocol.contract.ImpactReviewedTupleOriginDocument;
 import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryCorrelationDocument;
 import io.github.amichne.kast.protocol.contract.ImpactReviewedDistinctStringKeysDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryOriginDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryFamilyDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedInputEntryOriginDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedPreservedKeyOriginDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedEntryReadOrderDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedEntryComponentInvocationDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMappedEntryOriginDocument;
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCallbackParentDocument;
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument;
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments;
 import io.github.amichne.kast.query.contract.QueryLimitation;
@@ -52,7 +60,15 @@ public class PiQuestionSchema {
                 Map.entry("impactReviewedCallValueBinding", ImpactReviewedCallValueBindingDocument.Companion.serializer()),
                 Map.entry("impactReviewedTupleOrigin", ImpactReviewedTupleOriginDocument.Companion.serializer()),
                 Map.entry("impactReviewedMapEntryCorrelation", ImpactReviewedMapEntryCorrelationDocument.Companion.serializer()),
-                Map.entry("impactReviewedDistinctStringKeys", ImpactReviewedDistinctStringKeysDocument.Companion.serializer()));
+                Map.entry("impactReviewedDistinctStringKeys", ImpactReviewedDistinctStringKeysDocument.Companion.serializer()),
+                Map.entry("impactReviewedMapEntryOrigin", ImpactReviewedMapEntryOriginDocument.Companion.serializer()),
+                Map.entry("impactReviewedMapEntryFamily", ImpactReviewedMapEntryFamilyDocument.Companion.serializer()),
+                Map.entry("impactReviewedInputEntryOrigin", ImpactReviewedInputEntryOriginDocument.Companion.serializer()),
+                Map.entry("impactReviewedPreservedKeyOrigin", ImpactReviewedPreservedKeyOriginDocument.Companion.serializer()),
+                Map.entry("impactReviewedEntryReadOrder", ImpactReviewedEntryReadOrderDocument.Companion.serializer()),
+                Map.entry("impactReviewedEntryComponentInvocation", ImpactReviewedEntryComponentInvocationDocument.Companion.serializer()),
+                Map.entry("impactReviewedMappedEntryOrigin", ImpactReviewedMappedEntryOriginDocument.Companion.serializer()),
+                Map.entry("impactReviewedCallbackParent", ImpactReviewedCallbackParentDocument.Companion.serializer()));
         var references = CanonicalSchemaReferences.Companion.from(shared);
         var root = new LinkedHashMap<String, JsonElement>(KotlinxRequestJsonSchemaKt.generatedOutputSchema(serializer, references));
         var definitions = new LinkedHashMap<String, JsonElement>();

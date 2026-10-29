@@ -86,7 +86,7 @@ internal class NativeValueArgumentFlow(
                     val context = receiverContext(request, scope, projection, allowance)
                     when (
                         val reviewed =
-                            nativeReviewedTupleRole(
+                            nativeReviewedArgumentRole(
                                 expression,
                                 call.valueInvocationExpression() as KtExpression,
                                 request.source.executionOwner,

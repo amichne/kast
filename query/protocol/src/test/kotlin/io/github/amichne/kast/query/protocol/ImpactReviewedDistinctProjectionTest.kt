@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactReviewedDistinctStringKeysDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedEntryKeyEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryCorrelationDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument
@@ -43,7 +44,11 @@ class ImpactReviewedDistinctProjectionTest {
         val entry = (document.target.valuePath.values.first() as ImpactValuePathSegmentDocument.MapEntryComponent).entry
         assertEquals(relation.entry, entry)
         assertNotEquals(conditional.binding.relation, document.binding.relation)
-        val encoded = Json.parseToJsonElement(Json.encodeToString(entry.keyEvidence)).jsonObject
+        val encoded =
+            Json.parseToJsonElement(
+                    Json.encodeToString((entry as ImpactReviewedMapEntryCorrelationDocument).keyEvidence)
+                )
+                .jsonObject
         assertEquals("DISTINCT", encoded.getValue("type").jsonPrimitive.content)
         val proof = encoded.getValue("proof").jsonObject
         assertEquals(setOf("input", "key", "associationInvocation", "receiverRange"), proof.keys)

@@ -131,7 +131,7 @@ internal class ReviewedComponentLedgerFixture {
     fun associated(construction: ReviewedValueTransfer): ReviewedValueTransfer =
         ReviewedValueTransfer.associatedReturn(returned(construction).target, association).componentValue()
 
-    private fun callback(name: String, parameter: String, count: Int): ReviewedCallbackValueBinding {
+    fun callback(name: String, parameter: String, count: Int): ReviewedCallbackValueBinding {
         val selected =
             ReviewedLibraryCallable.admit(
                     external(

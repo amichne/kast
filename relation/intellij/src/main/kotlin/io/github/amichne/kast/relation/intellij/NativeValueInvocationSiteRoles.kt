@@ -17,7 +17,7 @@ internal fun nativeArgumentSiteRole(
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     val expression = element as? KtExpression ?: return roleRejected()
     val binary = expression.parent as? org.jetbrains.kotlin.psi.KtBinaryExpression
-    if (binary != null) return nativeReviewedTupleRole(expression, binary, executionOwner, callbackContext)
+    if (binary != null) return nativeReviewedArgumentRole(expression, binary, executionOwner, callbackContext)
     val argument = element.parent as? KtValueArgument ?: return roleRejected()
     return when (
         val role =
@@ -35,7 +35,7 @@ internal fun nativeArgumentSiteRole(
                 (argument.parent as? org.jetbrains.kotlin.psi.KtValueArgumentList)?.parent
                     as? org.jetbrains.kotlin.psi.KtCallExpression
             if (role.failure == ValueFlowUnsupportedCause.EXTERNAL_CALL && call != null)
-                nativeReviewedTupleRole(
+                nativeReviewedArgumentRole(
                     expression,
                     call.valueInvocationExpression() as KtExpression,
                     executionOwner,
@@ -53,7 +53,7 @@ internal fun nativeQualifiedReceiverSiteRole(
     executionOwner: ValueExecutionOwner,
     callbackContext: IntellijCallbackFlowContext,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (qualified.selectorExpression?.text in setOf("first", "second")) {
+    if (qualified.selectorExpression?.text in setOf("first", "second", "key", "value")) {
         when (val reviewed = nativeReviewedTupleRole(expression, qualified, executionOwner, callbackContext)) {
             is Refinement.Refined -> return reviewed
             is Refinement.Rejected ->
@@ -101,8 +101,8 @@ private fun reviewedQualifiedReceiverRole(
         is Refinement.Refined -> reviewed
         is Refinement.Rejected ->
             if (
-                (qualified.selectorExpression as? org.jetbrains.kotlin.psi.KtCallExpression)?.calleeExpression?.text ==
-                    "to"
+                (qualified.selectorExpression as? org.jetbrains.kotlin.psi.KtCallExpression)?.calleeExpression?.text in
+                    setOf("to", "component1", "component2")
             )
                 nativeReviewedTupleRole(expression, qualified, executionOwner, callbackContext)
             else reviewed

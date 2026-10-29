@@ -13,6 +13,21 @@ private fun ImpactReviewedValueRelationshipDocument.admitsCallbackRelation(
     proof: ImpactReviewedValueBindingDocument
 ): Boolean =
     when (val applied = relation) {
+        is ImpactReviewedValueRelationDocument.CallbackReceiverInput ->
+            proof == applied.receiver.binding && applied.receiver.admits(proof.enclosing)
+        is ImpactReviewedValueRelationDocument.GroupPlacement ->
+            applied.entry.matchesBinding(proof) && applied.entry.admits(proof.basis)
+        is ImpactReviewedValueRelationDocument.FilteredElements ->
+            proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1
+        ImpactReviewedValueRelationDocument.NonNullCallbackResult ->
+            proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1
+        is ImpactReviewedValueRelationDocument.EntryInput ->
+            proof == applied.entry.family.binding && applied.entry.admits(proof.basis)
+        is ImpactReviewedValueRelationDocument.PreservedKey ->
+            proof == applied.entry.family.binding && applied.entry.admits(proof.basis)
+        is ImpactReviewedValueRelationDocument.EntryProjection -> false
+        is ImpactReviewedValueRelationDocument.MappedValue ->
+            proof == applied.entry.binding && applied.entry.admits(proof.basis)
         is ImpactReviewedValueRelationDocument.CallbackCorrespondence ->
             when (applied.semantics) {
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
@@ -21,9 +36,9 @@ private fun ImpactReviewedValueRelationshipDocument.admitsCallbackRelation(
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT ->
                     proof.rule.isReviewedMap()
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT ->
-                    proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1
+                    proof.rule.isReviewedDeclaredReturn()
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
-                    proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1
+                    proof.rule.isReviewedReceiverResult()
             }
         is ImpactReviewedValueRelationDocument.ReorderedElements ->
             proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1
@@ -37,6 +52,15 @@ private fun ImpactReviewedValueRelationshipDocument.admitsCallRelation(
     proof: ImpactReviewedCallValueBindingDocument
 ): Boolean =
     when (val applied = relation) {
+        is ImpactReviewedValueRelationDocument.CallbackReceiverInput -> false
+        is ImpactReviewedValueRelationDocument.GroupPlacement -> false
+        is ImpactReviewedValueRelationDocument.FilteredElements,
+        ImpactReviewedValueRelationDocument.NonNullCallbackResult -> false
+        is ImpactReviewedValueRelationDocument.EntryInput,
+        is ImpactReviewedValueRelationDocument.PreservedKey -> false
+        is ImpactReviewedValueRelationDocument.EntryProjection ->
+            applied.entry.admitsSlot(proof.basis, applied.slot) && proof.rule.admitsEntrySlot(applied.slot)
+        is ImpactReviewedValueRelationDocument.MappedValue -> false
         is ImpactReviewedValueRelationDocument.TupleConstruction ->
             applied.origin.binding == proof &&
                 applied.origin.admits(proof.basis) &&
@@ -81,4 +105,8 @@ private fun ImpactReviewedValueRuleDocument.isReviewedMap(): Boolean =
 private fun ImpactReviewedValueRuleDocument.isReviewedCollection(): Boolean =
     isReviewedMap() ||
         this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ||
-        this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1
+        this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ||
+        this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1 ||
+        this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 ||
+        this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1 ||
+        this == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1

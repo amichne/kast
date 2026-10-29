@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactActualExecutionDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationCountKnowledgeDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCallbackParentDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedFunctionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedInvocationEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
@@ -12,13 +13,13 @@ import io.github.amichne.kast.protocol.contract.ImpactReviewedValueSemanticsDocu
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
 import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
+import io.github.amichne.kast.relation.contract.ReviewedCallbackParent
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
 import io.github.amichne.kast.relation.contract.ReviewedLibraryRule
 import io.github.amichne.kast.relation.contract.ReviewedValueSemantics
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
@@ -55,7 +56,8 @@ internal fun ReviewedCallbackValueBinding.impactDocument(): ImpactProjected<Impa
             .impactZip(selected.impactDocument(basis))
             .impactZip(artifact.impactDocument())
             .impactThen { (supply, artifact) ->
-                invocationEvidence.impactDocument().impactMap { invocation ->
+                invocationEvidence.impactDocument().impactZip(parent.impactDocument()).impactMap { (invocation, parent)
+                    ->
                     ImpactReviewedValueBindingDocument(
                         rule = this.artifact.rule.impactDocument(),
                         basis = host.basis,
@@ -67,6 +69,7 @@ internal fun ReviewedCallbackValueBinding.impactDocument(): ImpactProjected<Impa
                         actualExecution = ImpactActualExecutionDocument.NOT_ESTABLISHED,
                         invocationCount = ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
                         invocationEvidence = invocation,
+                        parent = parent,
                     )
                 }
             }
@@ -78,38 +81,55 @@ private fun ReviewedLibraryCallable.impactDocument(
     val signature =
         target.signature as? CanonicalCompilerSignature.Function
             ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
-    val receiver =
-        signature.receiver as? CanonicalCompilerReceiver.Present
-            ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
     return ValueDeclarationIdentity.fromCompiler(target).impactDocument(basis).impactThen { declaration ->
-        signature.qualifiedIdentity.value.impactText().impactZip(receiver.type.value.impactText()).impactThen {
-            (name, receiver) ->
-            signature.contextReceivers
-                .impactEach { it.value.impactText() }
-                .impactZip(signature.valueParameters.impactEach { it.value.impactText() })
-                .impactZip(
-                    QueryDiscoveryCountDocument.parse(signature.typeParameterCount.value.toLong())
-                        .impactFailure(ImpactPathProjectionFailure::Count)
-                )
-                .impactZip(position.value.impactOffset())
-                .impactMap { (types, position) ->
-                    ImpactReviewedFunctionDocument(
-                        declaration,
-                        name,
-                        receiver,
-                        types.first.first,
-                        types.first.second,
-                        types.second,
-                        position,
+        signature.qualifiedIdentity.value
+            .impactText()
+            .impactZip(signature.receiver.declaredReceiverDocument())
+            .impactThen { (name, receiver) ->
+                signature.contextReceivers
+                    .impactEach { it.value.impactText() }
+                    .impactZip(signature.valueParameters.impactEach { it.value.impactText() })
+                    .impactZip(
+                        QueryDiscoveryCountDocument.parse(signature.typeParameterCount.value.toLong())
+                            .impactFailure(ImpactPathProjectionFailure::Count)
                     )
-                }
-        }
+                    .impactZip(position.value.impactOffset())
+                    .impactMap { (types, position) ->
+                        ImpactReviewedFunctionDocument(
+                            declaration,
+                            name,
+                            receiver,
+                            types.first.first,
+                            types.first.second,
+                            types.second,
+                            position,
+                        )
+                    }
+            }
     }
 }
 
 internal fun ReviewedLibraryRule.impactDocument(): ImpactReviewedValueRuleDocument =
     when (this) {
+        ReviewedLibraryRule.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_RUN_RECEIVER_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_RECEIVER_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_WITH_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_WITH_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_APPLY_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_APPLY_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_FILTER_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_VALUES_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_VALUES_V1
         ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
             ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1
@@ -132,4 +152,13 @@ private fun ReviewedCallbackInvocationEvidence.impactDocument():
             Refinement.Refined(ImpactReviewedInvocationEvidenceDocument.Unestablished)
         is ReviewedCallbackInvocationEvidence.Declared ->
             binding.impactDocument().impactMap { ImpactReviewedInvocationEvidenceDocument.Declared(it) }
+    }
+
+private fun ReviewedCallbackParent.impactDocument(): ImpactProjected<ImpactReviewedCallbackParentDocument> =
+    when (this) {
+        ReviewedCallbackParent.Declaration -> Refinement.Refined(ImpactReviewedCallbackParentDocument.Declaration)
+        is ReviewedCallbackParent.DeclaredCallback ->
+            binding.impactDocument().impactMap {
+                ImpactReviewedCallbackParentDocument.DeclaredCallback(it)
+            }
     }

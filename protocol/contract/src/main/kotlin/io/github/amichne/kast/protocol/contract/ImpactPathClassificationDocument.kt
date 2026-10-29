@@ -74,6 +74,12 @@ private fun ImpactTransferKindDocument.relationship(): ImpactRelationshipDocumen
 
 internal fun ImpactReviewedValueRelationDocument.relationship(): ImpactRelationshipDocument =
     when (this) {
+        is ImpactReviewedValueRelationDocument.CallbackReceiverInput -> ImpactRelationshipDocument.EXACT
+        is ImpactReviewedValueRelationDocument.GroupPlacement -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.FilteredElements ->
+            if (selection == ImpactReviewedCollectionSelectionDocument.CONTENT) ImpactRelationshipDocument.DERIVED
+            else ImpactRelationshipDocument.EXACT
+        ImpactReviewedValueRelationDocument.NonNullCallbackResult -> ImpactRelationshipDocument.EXACT
         is ImpactReviewedValueRelationDocument.CallbackCorrespondence ->
             when (semantics) {
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
@@ -89,7 +95,17 @@ internal fun ImpactReviewedValueRelationDocument.relationship(): ImpactRelations
                 ImpactReviewedCollectionSelectionDocument.CONTENT -> ImpactRelationshipDocument.DERIVED
                 ImpactReviewedCollectionSelectionDocument.ELEMENT -> ImpactRelationshipDocument.EXACT
             }
+        is ImpactReviewedValueRelationDocument.EntryInput -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.PreservedKey -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.EntryProjection -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.MappedValue -> entry.selection.relationship()
         is ImpactReviewedValueRelationDocument.TupleConstruction,
         is ImpactReviewedValueRelationDocument.TupleProjection,
         is ImpactReviewedValueRelationDocument.AssociationComponent -> ImpactRelationshipDocument.EXACT
+    }
+
+private fun ImpactReviewedEntrySelectionDocument.relationship(): ImpactRelationshipDocument =
+    when (this) {
+        ImpactReviewedEntrySelectionDocument.COMPONENT -> ImpactRelationshipDocument.EXACT
+        ImpactReviewedEntrySelectionDocument.CONTENT -> ImpactRelationshipDocument.DERIVED
     }

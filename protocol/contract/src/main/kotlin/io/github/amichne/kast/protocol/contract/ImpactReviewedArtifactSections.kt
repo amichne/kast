@@ -10,6 +10,35 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("type")
 sealed interface ImpactReviewedCollectionSectionsDocument {
     @Serializable
+    @SerialName("GROUP_BY")
+    data class GroupBy(
+        val groupByLines: ImpactReviewedSourceLinesDocument,
+        val groupByToLines: ImpactReviewedSourceLinesDocument,
+    ) : ImpactReviewedCollectionSectionsDocument
+
+    @Serializable
+    @SerialName("GROUP_BY_TRANSFORM")
+    data class GroupByTransform(
+        val groupByLines: ImpactReviewedSourceLinesDocument,
+        val groupByToLines: ImpactReviewedSourceLinesDocument,
+    ) : ImpactReviewedCollectionSectionsDocument
+
+    @Serializable
+    @SerialName("FILTER")
+    data class Filter(
+        val filterLines: ImpactReviewedSourceLinesDocument,
+        val filterToLines: ImpactReviewedSourceLinesDocument,
+    ) : ImpactReviewedCollectionSectionsDocument
+
+    @Serializable
+    @SerialName("MAP_NOT_NULL")
+    data class MapNotNull(
+        val mapNotNullLines: ImpactReviewedSourceLinesDocument,
+        val mapNotNullToLines: ImpactReviewedSourceLinesDocument,
+        val forEachLines: ImpactReviewedSourceLinesDocument,
+    ) : ImpactReviewedCollectionSectionsDocument
+
+    @Serializable
     @SerialName("MAP")
     data class Map(val mapLines: ImpactReviewedSourceLinesDocument, val mapToLines: ImpactReviewedSourceLinesDocument) :
         ImpactReviewedCollectionSectionsDocument
@@ -47,6 +76,8 @@ sealed interface ImpactReviewedTupleSectionsDocument {
 
 @Serializable
 enum class ImpactReviewedLibraryHelperKindDocument {
+    GROUP_LOOKUP,
+    NON_NULL_LET,
     SORT_COMPARISON,
     SORT_ARRAY,
     SORT_MUTABLE_LIST,

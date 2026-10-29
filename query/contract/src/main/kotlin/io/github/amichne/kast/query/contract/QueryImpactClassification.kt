@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.ReviewedCollectionSelection
+import io.github.amichne.kast.relation.contract.ReviewedEntrySelection
 import io.github.amichne.kast.relation.contract.ReviewedValueRelation
 import io.github.amichne.kast.relation.contract.ReviewedValueSemantics
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -75,6 +76,10 @@ private fun ValueTransferKind.relationship(): QueryImpactRelationship =
 
 private fun ReviewedValueRelation.relationship(): QueryImpactRelationship =
     when (this) {
+        is ReviewedValueRelation.FilteredElements ->
+            if (selection == ReviewedCollectionSelection.CONTENT) QueryImpactRelationship.DERIVED
+            else QueryImpactRelationship.EXACT
+        ReviewedValueRelation.NonNullCallbackResult -> QueryImpactRelationship.EXACT
         is ReviewedValueRelation.CallbackCorrespondence ->
             when (semantics) {
                 ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
@@ -89,7 +94,19 @@ private fun ReviewedValueRelation.relationship(): QueryImpactRelationship =
                 ReviewedCollectionSelection.ELEMENT -> QueryImpactRelationship.EXACT
                 ReviewedCollectionSelection.CONTENT -> QueryImpactRelationship.DERIVED
             }
+        is ReviewedValueRelation.CallbackReceiverInput -> QueryImpactRelationship.EXACT
+        is ReviewedValueRelation.GroupPlacement -> entry.selection.relationship()
+        is ReviewedValueRelation.EntryInput -> selection.relationship()
+        is ReviewedValueRelation.PreservedKey -> selection.relationship()
+        is ReviewedValueRelation.EntryProjection -> selection.relationship()
+        is ReviewedValueRelation.MappedValue -> selection.relationship()
         is ReviewedValueRelation.TupleConstruction,
         is ReviewedValueRelation.TupleProjection,
         is ReviewedValueRelation.AssociationComponent -> QueryImpactRelationship.EXACT
+    }
+
+private fun ReviewedEntrySelection.relationship(): QueryImpactRelationship =
+    when (this) {
+        ReviewedEntrySelection.COMPONENT -> QueryImpactRelationship.EXACT
+        ReviewedEntrySelection.CONTENT -> QueryImpactRelationship.DERIVED
     }

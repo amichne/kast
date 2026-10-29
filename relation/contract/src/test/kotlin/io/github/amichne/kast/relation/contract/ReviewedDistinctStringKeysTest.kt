@@ -97,7 +97,10 @@ class ReviewedDistinctStringKeysTest {
         val transfer = ReviewedValueTransfer.associatedReturn(f.returned, f.positions.callback, proof).flowRefined()
         assertTrue(transfer.target.conditions.facts.none { it is ValueCondition.ReviewedEntryKeyUnique })
         val component = transfer.target.valuePath.segments.first() as ValuePathSegment.MapEntryComponent
-        assertEquals(proof, (component.entry.keyEvidence as ReviewedEntryKeyEvidence.Distinct).proof)
+        assertEquals(
+            proof,
+            ((component.entry as ReviewedMapEntryCorrelation).keyEvidence as ReviewedEntryKeyEvidence.Distinct).proof,
+        )
         assertEquals(MapEntrySlot.VALUE, component.slot)
         assertEquals(listOf("first", "second"), listOf("a" to "first", "b" to "second").toMap().values.toList())
         assertTrue(transfer.retainedBytes > f.returned.retainedBytes + proof.retainedBytes)

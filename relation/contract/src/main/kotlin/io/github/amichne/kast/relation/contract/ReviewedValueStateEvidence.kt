@@ -10,6 +10,13 @@ internal fun StringBuilder.reviewedCallbackBinding(binding: ReviewedCallbackValu
     field(binding.position.value.toString())
     field(binding.artifact.binaryArtifact.value)
     field(binding.artifact.sourceArtifact.value)
+    when (val parent = binding.parent) {
+        ReviewedCallbackParent.Declaration -> field("DECLARATION_PARENT")
+        is ReviewedCallbackParent.DeclaredCallback -> {
+            field("DECLARED_CALLBACK_PARENT")
+            declaredCallbackBinding(parent.binding)
+        }
+    }
 }
 
 internal fun StringBuilder.reviewedNormalReturn(condition: ValueCondition.ReviewedCallbackNormalReturn) {
@@ -56,12 +63,7 @@ internal fun ValuePathSegment.reviewedPathEndpoints(): List<RelationEndpoint> =
         ValuePathSegment.Element -> emptyList()
         is ValuePathSegment.Field -> listOf(field.declaration)
         is ValuePathSegment.PairComponent -> origin.reviewedEndpoints()
-        is ValuePathSegment.MapEntryComponent ->
-            entry.tupleOrigin.reviewedEndpoints() +
-                entry.binding.enclosing +
-                entry.returnExecution.enclosing +
-                entry.callStack.frames.flatMap { it.stateEndpoints() } +
-                entry.keyEvidence.reviewedEndpoints()
+        is ValuePathSegment.MapEntryComponent -> entry.reviewedEndpoints()
     }
 
 private fun ReviewedTupleOrigin.reviewedEndpoints(): List<RelationEndpoint> =
@@ -123,4 +125,130 @@ private fun StringBuilder.reviewedStringList(input: ReviewedStringListInput) {
         range(it.range)
         field(it.value)
     }
+}
+
+internal fun StringBuilder.reviewedMapEntryOrigin(entry: ReviewedMapEntryOrigin) {
+    when (entry) {
+        is ReviewedGroupBucket -> {
+            field("GROUP_BUCKET")
+            reviewedGroupBucket(entry)
+        }
+        is ReviewedMapEntryCorrelation -> {
+            field("ASSOCIATION")
+            reviewedMapEntry(entry)
+        }
+        is ReviewedMappedEntryOrigin -> {
+            field("MAPPED_RETURN")
+            field(entry.selection.name)
+            reviewedMapEntryFamily(entry.family)
+            range(entry.returnRange)
+            executionContext(entry.returnExecution.context)
+        }
+        is ReviewedInputEntryOrigin -> {
+            field("INPUT_ENTRY")
+            field(entry.selection.name)
+            reviewedMapEntryFamily(entry.family)
+            range(entry.receiverRange)
+            executionContext(entry.receiverExecution.context)
+        }
+        is ReviewedPreservedKeyOrigin -> {
+            field("PRESERVED_KEY")
+            field(entry.selection.name)
+            reviewedMapEntryFamily(entry.family)
+            range(entry.receiverRange)
+            executionContext(entry.receiverExecution.context)
+        }
+    }
+}
+
+private fun ReviewedMapEntryOrigin.reviewedEndpoints(): List<RelationEndpoint> =
+    when (this) {
+        is ReviewedGroupBucket -> {
+            val owners =
+                when (val callbacks = callbacks) {
+                    is ReviewedGroupCallbacks.OriginalElements -> listOf(callbacks.selector.enclosing)
+                    is ReviewedGroupCallbacks.TransformedElements ->
+                        listOf(callbacks.selector.enclosing, callbacks.transform.enclosing)
+                }
+            owners + sourceExecution.enclosing + callStack.frames.flatMap { it.stateEndpoints() }
+        }
+        is ReviewedMapEntryCorrelation ->
+            tupleOrigin.reviewedEndpoints() +
+                binding.enclosing +
+                returnExecution.enclosing +
+                callStack.frames.flatMap { it.stateEndpoints() } +
+                keyEvidence.reviewedEndpoints()
+        is ReviewedMappedEntryOrigin ->
+            listOf(binding.enclosing, returnExecution.enclosing) + callStack.frames.flatMap { it.stateEndpoints() }
+        is ReviewedInputEntryOrigin ->
+            listOf(family.binding.enclosing, receiverExecution.enclosing) +
+                family.callStack.frames.flatMap { it.stateEndpoints() }
+        is ReviewedPreservedKeyOrigin ->
+            listOf(family.binding.enclosing, receiverExecution.enclosing) +
+                family.callStack.frames.flatMap { it.stateEndpoints() }
+    }
+
+internal fun StringBuilder.reviewedMappedKeySurvives(condition: ValueCondition.ReviewedMappedKeySurvives) {
+    field("REVIEWED_MAPPED_KEY_SURVIVES")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    reviewedMapEntryOrigin(condition.entry)
+}
+
+internal fun StringBuilder.reviewedMapEntryFamily(family: ReviewedMapEntryFamily) {
+    reviewedCallbackBinding(family.binding)
+    field(family.binding.artifact.rule.name)
+    field(family.callStack.frames.size.toString())
+    family.callStack.frames.forEach { callFrame(it) }
+}
+
+internal fun StringBuilder.reviewedPreservedKeySurvives(condition: ValueCondition.ReviewedPreservedKeySurvives) {
+    field("REVIEWED_PRESERVED_KEY_SURVIVES")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    reviewedMapEntryOrigin(condition.entry)
+}
+
+internal fun StringBuilder.reviewedEntryComponentStable(condition: ValueCondition.ReviewedEntryComponentStable) {
+    field("REVIEWED_ENTRY_COMPONENT_STABLE")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    reviewedEntryRead(condition.binding)
+    reviewedMapEntryOrigin(condition.entry)
+    field(condition.slot.name)
+}
+
+internal fun StringBuilder.reviewedEntryRead(binding: ReviewedCallValueBinding) {
+    valueCall(binding.invocation)
+    executionContext(binding.invocation.executionOwner.context)
+    field(binding.artifact.rule.name)
+    field(binding.artifact.binaryArtifact.value)
+    field(binding.artifact.sourceArtifact.value)
+    when (val order = binding.entryReadOrder) {
+        ReviewedEntryReadOrder.Direct -> field("DIRECT_ENTRY_READ")
+        is ReviewedEntryReadOrder.Destructured -> {
+            field("DESTRUCTURED_ENTRY_READ")
+            range(order.declarationRange)
+            when (val prefix = order.prefix) {
+                ReviewedEntryReadPrefix.Empty -> field("EMPTY_PREFIX")
+                is ReviewedEntryReadPrefix.FirstComponent -> {
+                    field("FIRST_COMPONENT_PREFIX")
+                    valueCall(prefix.invocation.invocation)
+                    executionContext(prefix.invocation.invocation.executionOwner.context)
+                    field(prefix.invocation.artifact.rule.name)
+                    field(prefix.invocation.artifact.binaryArtifact.value)
+                    field(prefix.invocation.artifact.sourceArtifact.value)
+                }
+            }
+        }
+    }
+}
+
+internal fun StringBuilder.reviewedEntryPrefixNormal(condition: ValueCondition.ReviewedEntryPrefixNormal) {
+    field("REVIEWED_ENTRY_PREFIX_NORMAL")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    reviewedEntryRead(condition.binding)
+    reviewedMapEntryOrigin(condition.entry)
+    field(condition.slot.name)
 }

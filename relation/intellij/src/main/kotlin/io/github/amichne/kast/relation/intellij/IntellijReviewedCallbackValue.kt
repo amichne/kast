@@ -6,6 +6,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.DeclaredCallbackValueBinding
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
@@ -51,20 +52,13 @@ private fun reviewedBinding(
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return permit
     }
-    val expression =
-        literal.parent as? KtLambdaExpression ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
-    val call =
-        PsiTreeUtil.getParentOfType(expression, KtCallExpression::class.java, true)
-            ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
-    val selected =
-        when (val read = context.observation.observedAnalyze(call) { reviewedTarget(context, call, expression) }) {
+    val (call, selected) =
+        when (val read = reviewedCallSelection(literal, context)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
     val body = context.anonymous(literal) ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
-    val supplier =
-        context.owner(call) as? RelationCallableBody.Named
-            ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
+    val supplier = context.owner(call) ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
     val occurrence =
         context.occurrence(call.valueInvocationExpression())
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
@@ -73,14 +67,71 @@ private fun reviewedBinding(
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
-    return ReviewedCallbackValueBinding.admit(
-        enclosing = enclosing,
-        body = body,
-        occurrence = occurrence,
-        supplier = supplier,
-        selected = selected.callable,
-        artifact = artifact,
-    )
+    return when (supplier) {
+        is RelationCallableBody.Named ->
+            ReviewedCallbackValueBinding.admit(
+                enclosing = enclosing,
+                body = body,
+                occurrence = occurrence,
+                supplier = supplier,
+                selected = selected.callable,
+                artifact = artifact,
+            )
+        is RelationCallableBody.Anonymous -> {
+            val parent =
+                when (val read = reviewedParentBinding(call, enclosing, context)) {
+                    is Refinement.Refined -> read.value
+                    is Refinement.Rejected -> return read
+                }
+            ReviewedCallbackValueBinding.admit(
+                enclosing = enclosing,
+                body = body,
+                occurrence = occurrence,
+                supplier = supplier,
+                parent = parent,
+                selected = selected.callable,
+                artifact = artifact,
+            )
+        }
+    }
+}
+
+private data class NativeReviewedCallSelection(val call: KtCallExpression, val selected: NativeReviewedTarget)
+
+private fun reviewedCallSelection(
+    literal: KtFunction,
+    context: IntellijCallbackFlowContext,
+): Refinement<NativeReviewedCallSelection, ReviewedCallbackValueFailure> {
+    val expression =
+        literal.parent as? KtLambdaExpression ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
+    val call =
+        PsiTreeUtil.getParentOfType(expression, KtCallExpression::class.java, true)
+            ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
+    return when (val read = context.observation.observedAnalyze(call) { reviewedTarget(context, call, expression) }) {
+        is Refinement.Refined -> Refinement.Refined(NativeReviewedCallSelection(call, read.value))
+        is Refinement.Rejected -> read
+    }
+}
+
+private fun reviewedParentBinding(
+    call: KtCallExpression,
+    enclosing: RelationEndpoint,
+    context: IntellijCallbackFlowContext,
+): Refinement<DeclaredCallbackValueBinding, ReviewedCallbackValueFailure> {
+    val parentLiteral =
+        PsiTreeUtil.getParentOfType(call, KtFunction::class.java, true)
+            ?: return Refinement.Rejected(ReviewedCallbackValueFailure.OWNER_MISMATCH)
+    return when (val read = readDeclaredCallbackValueBinding(parentLiteral, enclosing, context)) {
+        is Refinement.Refined -> read
+        is Refinement.Rejected ->
+            Refinement.Rejected(
+                when (read.failure) {
+                    ValueFlowUnsupportedCause.WORK_LIMIT_REACHED -> ReviewedCallbackValueFailure.WORK_LIMIT_REACHED
+                    ValueFlowUnsupportedCause.TIME_LIMIT_REACHED -> ReviewedCallbackValueFailure.TIME_LIMIT_REACHED
+                    else -> ReviewedCallbackValueFailure.OWNER_MISMATCH
+                }
+            )
+    }
 }
 
 private fun org.jetbrains.kotlin.analysis.api.KaSession.reviewedTarget(
@@ -97,17 +148,24 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.reviewedTarget(
             symbol.callableId?.asSingleFqName()?.asString() !in
                 setOf(
                     "kotlin.collections.map",
+                    "kotlin.collections.mapValues",
+                    "kotlin.collections.filter",
+                    "kotlin.collections.mapNotNull",
                     "kotlin.collections.sortedBy",
                     "kotlin.collections.associate",
+                    "kotlin.collections.groupBy",
                     "kotlin.let",
                     "kotlin.also",
+                    "kotlin.run",
+                    "kotlin.with",
+                    "kotlin.apply",
                 )
     )
         return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
     val formal =
         resolved.valueArgumentMapping[expression]?.symbol
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.FORMAL_MISMATCH)
-    if (formal.name.asString() != symbol.reviewedFormalName())
+    if (formal.name.asString() != symbol.reviewedFormalName(symbol.valueParameters.indexOf(formal)))
         return Refinement.Rejected(ReviewedCallbackValueFailure.FORMAL_MISMATCH)
     val position =
         when (val parsed = ValueArgumentPosition.parse(symbol.valueParameters.indexOf(formal))) {
@@ -128,13 +186,25 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.reviewedTarget(
     }
 }
 
-private fun KaNamedFunctionSymbol.reviewedFormalName(): String? =
+private fun KaNamedFunctionSymbol.reviewedFormalName(position: Int): String? =
     when (callableId?.asSingleFqName()?.asString()) {
         "kotlin.collections.map",
+        "kotlin.collections.mapValues",
+        "kotlin.collections.mapNotNull",
         "kotlin.collections.associate" -> "transform"
+        "kotlin.collections.filter" -> "predicate"
         "kotlin.collections.sortedBy" -> "selector"
+        "kotlin.collections.groupBy" ->
+            when (position) {
+                0 -> "keySelector"
+                1 -> "valueTransform"
+                else -> null
+            }
         "kotlin.let",
-        "kotlin.also" -> "block"
+        "kotlin.also",
+        "kotlin.run",
+        "kotlin.with",
+        "kotlin.apply" -> "block"
         else -> null
     }
 
@@ -145,15 +215,28 @@ private fun reviewedArtifact(
 ): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> {
     val entry =
         when (selected.callable.operation) {
+            ReviewedLibraryOperation.MAP_VALUES -> "commonMain/kotlin/collections/Maps.kt"
             ReviewedLibraryOperation.ITERABLE_MAP,
+            ReviewedLibraryOperation.ITERABLE_GROUP_BY,
+            ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM,
+            ReviewedLibraryOperation.ITERABLE_FILTER,
+            ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
             ReviewedLibraryOperation.ITERABLE_SORTED_BY,
             ReviewedLibraryOperation.ITERABLE_ASSOCIATE -> "commonMain/generated/_Collections.kt"
+            ReviewedLibraryOperation.RUN_TOP_LEVEL,
+            ReviewedLibraryOperation.RUN_RECEIVER,
+            ReviewedLibraryOperation.WITH,
+            ReviewedLibraryOperation.APPLY,
             ReviewedLibraryOperation.LET,
             ReviewedLibraryOperation.ALSO -> "commonMain/kotlin/util/Standard.kt"
             ReviewedLibraryOperation.TO,
             ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
             ReviewedLibraryOperation.PAIR_FIRST,
-            ReviewedLibraryOperation.PAIR_SECOND ->
+            ReviewedLibraryOperation.PAIR_SECOND,
+            ReviewedLibraryOperation.MAP_ENTRY_KEY,
+            ReviewedLibraryOperation.MAP_ENTRY_VALUE,
+            ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
+            ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2 ->
                 return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
         }
     return when (val read = readReviewedLibraryArtifact(call, selected.file, entry, context)) {

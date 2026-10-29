@@ -209,7 +209,7 @@ private fun nativeAdmittedPosition(
                         element = element,
                         claim = claim,
                         prepared = prepared,
-                        executionOwner = execution.owner,
+                        execution = execution.execution,
                         componentPermit = work::permit,
                         callbackContext =
                             IntellijCallbackFlowContext(

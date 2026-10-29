@@ -7,7 +7,6 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedLibraryOperation
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
-import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -15,11 +14,7 @@ import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
-import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
-import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFunctionLiteral
-import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** The reviewed artifact admits only the selected external receiver, without expanding the source domain. */
@@ -45,7 +40,7 @@ internal fun nativeReviewedReceiverRole(
 ): Refinement<ValueRole.Receiver, ValueFlowUnsupportedCause> {
     val enclosing = executionOwner.enclosing
     val binding =
-        when (val read = receiverBinding(receiverRange, enclosing, qualified, context)) {
+        when (val read = nativeReviewedReceiverBinding(receiverRange, enclosing, qualified, context)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
@@ -83,49 +78,115 @@ internal fun nativeReviewedReceiverResults(
     allowance: IntellijRelationAllowance,
     retained: NativeValueFlowTransfers,
 ) {
-    val role = request.source.role as? ValueRole.Receiver
-    if (role == null) {
-        retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
-        return
-    }
-    val host =
-        when (val found = projection.subject(scope, request.source.enclosing)) {
-            is IntellijRelationSubjectLookup.Found -> found.declaration
-            is IntellijRelationSubjectLookup.Rejected -> {
-                retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
-                return
-            }
-        }
-    val qualified = host.exactValueElement(role.call.range) as? KtQualifiedExpression
-    val literal = qualified?.let(::receiverLiteral)
-    if (qualified == null || literal == null) {
-        retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
-        return
-    }
-    val context = receiverContext(request, scope, projection, allowance)
-    val binding =
-        when (val read = receiverBinding(request.source.range, request.source.enclosing, qualified, context)) {
+    val qualified =
+        when (val read = reviewedReceiverCall(request, scope, projection)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> {
                 retained.unresolved(read.failure)
                 return
             }
         }
+    val context = receiverContext(request, scope, projection, allowance)
+    val literal =
+        when (val read = reviewedReceiverLiteral(qualified, context)) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> {
+                retained.unresolved(read.failure)
+                return
+            }
+        }
+    val binding =
+        when (
+            val read =
+                nativeReviewedReceiverBinding(
+                    receiverRange = request.source.range,
+                    enclosing = request.source.enclosing,
+                    qualified = qualified,
+                    context = context,
+                )
+        ) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> {
+                retained.unresolved(read.failure)
+                return
+            }
+        }
+    reviewedReceiverTransfers(
+        request = request,
+        binding = binding,
+        literal = literal,
+        context = context,
+        retained = retained,
+    )
+}
+
+private fun reviewedReceiverCall(
+    request: ValueFlowRequest,
+    scope: CompiledRelationScope,
+    projection: IntellijK2RelationProjection,
+): Refinement<KtQualifiedExpression, ValueFlowUnsupportedCause> {
+    val role = request.source.role as? ValueRole.Receiver ?: return receiverUnsupported()
+    val host =
+        when (val found = projection.subject(scope, request.source.enclosing)) {
+            is IntellijRelationSubjectLookup.Found -> found.declaration
+            is IntellijRelationSubjectLookup.Rejected -> return receiverUnsupported()
+        }
+    return when (val qualified = host.exactValueElement(role.call.range) as? KtQualifiedExpression) {
+        null -> receiverUnsupported()
+        else -> Refinement.Refined(qualified)
+    }
+}
+
+private fun reviewedReceiverTransfers(
+    request: ValueFlowRequest,
+    binding: ReviewedCallbackValueBinding,
+    literal: KtFunctionLiteral,
+    context: IntellijCallbackFlowContext,
+    retained: NativeValueFlowTransfers,
+) {
     when (binding.selected.operation) {
         ReviewedLibraryOperation.ITERABLE_MAP,
+        ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
         ReviewedLibraryOperation.ITERABLE_ASSOCIATE ->
             retained.adoptReviewed(nativeReviewedInput(request, binding, literal, context))
+        ReviewedLibraryOperation.ITERABLE_GROUP_BY,
+        ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM ->
+            nativeReviewedGroupingInputs(request, binding, literal, context, retained)
+        ReviewedLibraryOperation.MAP_VALUES ->
+            nativeReviewedMapInputs(
+                source = request.source,
+                binding = binding,
+                literal = literal,
+                context = context,
+                retained = retained,
+            )
+        ReviewedLibraryOperation.ITERABLE_FILTER -> {
+            retained.adoptReviewed(ReviewedValueTransfer.filteredResult(request.source, binding))
+            retained.adoptReviewed(nativeReviewedInput(request, binding, literal, context))
+        }
         ReviewedLibraryOperation.ITERABLE_SORTED_BY -> {
             retained.adoptReviewed(ReviewedValueTransfer.sortedResult(request.source, binding))
             retained.adoptReviewed(nativeReviewedInput(request, binding, literal, context))
         }
+        ReviewedLibraryOperation.RUN_RECEIVER ->
+            retained.adoptReviewed(nativeReviewedScopeReceiverInput(request.source, binding, literal, context))
+        ReviewedLibraryOperation.APPLY -> {
+            retained.adoptReviewed(nativeReviewedScopeReceiverInput(request.source, binding, literal, context))
+            retained.adoptReviewed(nativeReviewedIdentityResult(request, binding, literal, context))
+        }
         ReviewedLibraryOperation.ALSO ->
             retained.adoptReviewed(nativeReviewedIdentityResult(request, binding, literal, context))
+        ReviewedLibraryOperation.RUN_TOP_LEVEL,
+        ReviewedLibraryOperation.WITH,
         ReviewedLibraryOperation.LET,
         ReviewedLibraryOperation.TO,
         ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
         ReviewedLibraryOperation.PAIR_FIRST,
-        ReviewedLibraryOperation.PAIR_SECOND -> retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+        ReviewedLibraryOperation.PAIR_SECOND,
+        ReviewedLibraryOperation.MAP_ENTRY_KEY,
+        ReviewedLibraryOperation.MAP_ENTRY_VALUE,
+        ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
+        ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2 -> retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
     }
 }
 
@@ -134,39 +195,11 @@ private fun nativeReviewedInput(
     binding: ReviewedCallbackValueBinding,
     literal: KtFunctionLiteral,
     context: IntellijCallbackFlowContext,
-): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-    when (context.claimWork()) {
-        CallbackWorkAdmission.READY -> Unit
-        CallbackWorkAdmission.WORK_LIMIT_REACHED ->
-            return Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
-        CallbackWorkAdmission.TIME_LIMIT_REACHED ->
-            return Refinement.Rejected(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
-    }
-    val position =
-        when (val admitted = ValueArgumentPosition.parse(0)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return receiverUnsupported()
-        }
-    return when (
-        val parameter =
-            context.observation.observedAnalyze(literal) {
-                nativeCallbackInputParameter(literal, ValueExecutionOwner.reviewedCallback(binding), position)
-            }
-    ) {
+): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+    when (val parameter = nativeReviewedInputParameter(binding, literal, context)) {
         is Refinement.Refined -> ReviewedValueTransfer.callbackInput(request.source, binding, parameter.value)
-        is Refinement.Rejected -> {
-            context.observation.terminated(IntellijReadTermination.VALUE_REVIEWED_FORMAL_MISMATCH)
-            Refinement.Rejected(
-                when (val failure = parameter.failure) {
-                    is NativeCallbackInputFailure.Value -> failure.cause
-                    is NativeCallbackInputFailure.Callback,
-                    is NativeCallbackInputFailure.Contract,
-                    is NativeCallbackInputFailure.Graph -> ValueFlowUnsupportedCause.NESTED_EXECUTION
-                }
-            )
-        }
+        is Refinement.Rejected -> parameter
     }
-}
 
 private fun nativeReviewedIdentityResult(
     request: ValueFlowRequest,
@@ -179,71 +212,11 @@ private fun nativeReviewedIdentityResult(
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
-    when (
-        val normal = nativeCallbackNormalReturn(literal, context.observation, request.budget.resources.workAllowance)
-    ) {
+    when (val normal = nativeCallbackNormalReturn(literal, context)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return normal
     }
     return ReviewedValueTransfer.receiverResult(request.source, binding, declared)
-}
-
-private fun receiverBinding(
-    receiverRange: ExactDeclarationTextRange,
-    enclosing: RelationEndpoint,
-    qualified: KtQualifiedExpression,
-    context: IntellijCallbackFlowContext,
-): Refinement<ReviewedCallbackValueBinding, ValueFlowUnsupportedCause> {
-    if (sourceValueRange(qualified.receiverExpression) != receiverRange) return receiverUnsupported()
-    val call = qualified.selectorExpression as? KtCallExpression ?: return receiverUnsupported()
-    val receiver =
-        context.observation.observedAnalyze(call) {
-            val resolved = call.resolveCall() ?: return@observedAnalyze null
-            val symbol =
-                resolved.signature.symbol as? org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
-                    ?: return@observedAnalyze null
-            if (
-                symbol.origin != org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin.LIBRARY ||
-                    symbol.callableId?.asSingleFqName()?.asString() !in
-                        setOf(
-                            "kotlin.also",
-                            "kotlin.collections.map",
-                            "kotlin.collections.sortedBy",
-                            "kotlin.collections.associate",
-                        )
-            )
-                return@observedAnalyze null
-            nativeExplicitReceiverKind(
-                qualified.receiverExpression,
-                resolved.extensionReceiver,
-                resolved.dispatchReceiver,
-            )
-        }
-    if (receiver != ValueReceiverKind.EXTENSION) return receiverUnsupported()
-    val literal = receiverLiteral(qualified) ?: return receiverUnsupported()
-    return when (val read = readReviewedCallbackValueBinding(literal, enclosing, context)) {
-        is Refinement.Refined ->
-            when (read.value.selected.operation) {
-                ReviewedLibraryOperation.ALSO,
-                ReviewedLibraryOperation.ITERABLE_MAP,
-                ReviewedLibraryOperation.ITERABLE_SORTED_BY,
-                ReviewedLibraryOperation.ITERABLE_ASSOCIATE -> read
-                ReviewedLibraryOperation.LET,
-                ReviewedLibraryOperation.TO,
-                ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
-                ReviewedLibraryOperation.PAIR_FIRST,
-                ReviewedLibraryOperation.PAIR_SECOND -> receiverUnsupported()
-            }
-        is Refinement.Rejected -> Refinement.Rejected(read.failure.valueFlowCause())
-    }
-}
-
-private fun receiverLiteral(qualified: KtQualifiedExpression): KtFunctionLiteral? {
-    val call = qualified.selectorExpression as? KtCallExpression ?: return null
-    return call.valueArguments
-        .mapNotNull { it.getArgumentExpression() as? KtLambdaExpression }
-        .singleOrNull()
-        ?.functionLiteral
 }
 
 internal fun receiverContext(

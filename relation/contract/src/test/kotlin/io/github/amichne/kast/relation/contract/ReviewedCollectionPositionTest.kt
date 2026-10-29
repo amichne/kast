@@ -81,7 +81,10 @@ class ReviewedCollectionPositionTest {
         val firstEntry = (first.target.valuePath.segments.first() as ValuePathSegment.MapEntryComponent).entry
         val otherEntry = (other.target.valuePath.segments.first() as ValuePathSegment.MapEntryComponent).entry
         assertNotEquals(firstEntry, otherEntry)
-        assertNotEquals(firstEntry.tupleOrigin, otherEntry.tupleOrigin)
+        assertNotEquals(
+            (firstEntry as ReviewedMapEntryCorrelation).tupleOrigin,
+            (otherEntry as ReviewedMapEntryCorrelation).tupleOrigin,
+        )
     }
 
     @Test

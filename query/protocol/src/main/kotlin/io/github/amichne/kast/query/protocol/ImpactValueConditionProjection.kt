@@ -4,6 +4,10 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactCastKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueConditionDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocument
+import io.github.amichne.kast.relation.contract.ReviewedCallbackResultNonNull
+import io.github.amichne.kast.relation.contract.ReviewedGroupKeyRepresentative
+import io.github.amichne.kast.relation.contract.ReviewedGroupMembership
+import io.github.amichne.kast.relation.contract.ReviewedPredicateAccepts
 import io.github.amichne.kast.relation.contract.ValueCastKind
 import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueConditionOrigin
@@ -12,6 +16,10 @@ import io.github.amichne.kast.relation.contract.ValueConditions
 internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolList<ImpactValueConditionDocument>> =
     facts.impactEach { condition ->
         when (condition) {
+            is ReviewedGroupMembership -> condition.impactDocument()
+            is ReviewedGroupKeyRepresentative -> condition.impactDocument()
+            is ReviewedPredicateAccepts -> condition.impactDocument()
+            is ReviewedCallbackResultNonNull -> condition.impactDocument()
             is ValueCondition.StringContentNonNull ->
                 condition.origin
                     .impactDocument()
@@ -30,6 +38,10 @@ internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolLi
                     }
             is ValueCondition.ReviewedCallbackNormalReturn -> condition.impactDocument()
             is ValueCondition.ReviewedCollectionNormalResult -> condition.impactDocument()
+            is ValueCondition.ReviewedMappedKeySurvives -> condition.impactDocument()
+            is ValueCondition.ReviewedPreservedKeySurvives -> condition.impactDocument()
+            is ValueCondition.ReviewedEntryComponentStable -> condition.impactDocument()
+            is ValueCondition.ReviewedEntryPrefixNormal -> condition.impactDocument()
             is ValueCondition.ReviewedEntryKeyUnique -> condition.impactDocument()
             is ValueCondition.StableLocal -> condition.impactDocument()
             is ValueCondition.StableReceiver ->
@@ -98,7 +110,7 @@ private fun ValueCondition.CastSuccess.impactDocument(): ImpactProjected<ImpactV
             )
         }
 
-private fun ValueConditionOrigin.impactDocument(): ImpactProjected<ImpactValueConditionOriginDocument> =
+internal fun ValueConditionOrigin.impactDocument(): ImpactProjected<ImpactValueConditionOriginDocument> =
     execution
         .impactDocument()
         .impactZip(range.impactDocument())
@@ -127,4 +139,66 @@ private fun ValueCondition.ReviewedEntryKeyUnique.impactDocument():
     origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(entry.impactDocument()).impactMap {
         (origin, entry) ->
         ImpactValueConditionDocument.ReviewedEntryKeyUnique(origin.first, origin.second, entry)
+    }
+
+private fun ValueCondition.ReviewedMappedKeySurvives.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedMappedKeySurvives> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(entry.impactDocument()).impactMap {
+        (origin, entry) ->
+        ImpactValueConditionDocument.ReviewedMappedKeySurvives(origin.first, origin.second, entry)
+    }
+
+private fun ValueCondition.ReviewedPreservedKeySurvives.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedPreservedKeySurvives> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(entry.impactDocument()).impactMap {
+        (origin, entry) ->
+        ImpactValueConditionDocument.ReviewedPreservedKeySurvives(origin.first, origin.second, entry)
+    }
+
+private fun ValueCondition.ReviewedEntryComponentStable.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedEntryComponentStable> =
+    origin
+        .impactDocument()
+        .impactZip(useRange.impactDocument())
+        .impactZip(binding.impactDocument())
+        .impactZip(entry.impactDocument())
+        .impactMap { (origin, entry) ->
+            ImpactValueConditionDocument.ReviewedEntryComponentStable(
+                origin.first.first,
+                origin.first.second,
+                origin.second,
+                entry,
+                slot.impactDocument(),
+            )
+        }
+
+private fun ValueCondition.ReviewedEntryPrefixNormal.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedEntryPrefixNormal> =
+    origin
+        .impactDocument()
+        .impactZip(useRange.impactDocument())
+        .impactZip(binding.impactDocument())
+        .impactZip(entry.impactDocument())
+        .impactMap { (origin, entry) ->
+            ImpactValueConditionDocument.ReviewedEntryPrefixNormal(
+                origin.first.first,
+                origin.first.second,
+                origin.second,
+                entry,
+                slot.impactDocument(),
+            )
+        }
+
+private fun ReviewedPredicateAccepts.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedPredicateAccepts> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(binding.impactDocument()).impactMap {
+        (origin, binding) ->
+        ImpactValueConditionDocument.ReviewedPredicateAccepts(origin.first, origin.second, binding)
+    }
+
+private fun ReviewedCallbackResultNonNull.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.ReviewedCallbackResultNonNull> =
+    origin.impactDocument().impactZip(useRange.impactDocument()).impactZip(binding.impactDocument()).impactMap {
+        (origin, binding) ->
+        ImpactValueConditionDocument.ReviewedCallbackResultNonNull(origin.first, origin.second, binding)
     }

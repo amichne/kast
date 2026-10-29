@@ -60,6 +60,7 @@ class ImpactReviewedValueTest {
                 "actualExecution",
                 "invocationCount",
                 "invocationEvidence",
+                "parent",
             ),
             authority.keys,
         )

@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocume
 import io.github.amichne.kast.protocol.contract.ImpactActualExecutionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackReceiverDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationCountKnowledgeDocument
@@ -95,7 +96,7 @@ private fun selected(enclosing: ImpactDeclarationReferenceDocument): ImpactRevie
             compilerIdentity = CompilerSymbolEvidenceDocument.fromSignature(signature).value().identity,
         ),
         signature.qualifiedIdentity,
-        text("kotlin/collections/Iterable<T>"),
+        ImpactDeclaredCallbackReceiverDocument.Present(text("kotlin/collections/Iterable<T>")),
         signature.contextReceivers,
         signature.valueParameters,
         QueryDiscoveryCountDocument.parse(2).value(),

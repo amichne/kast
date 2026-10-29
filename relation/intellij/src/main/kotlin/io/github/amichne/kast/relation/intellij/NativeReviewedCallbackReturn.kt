@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ReviewedLibraryOperation
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -36,12 +37,14 @@ internal fun nativeReviewedCallbackReturn(
             if (fresh.value != expected.binding) unsupportedReviewedReturn()
             else
                 NativeValueReturnEffect.Reviewed(
-                    if (
-                        fresh.value.selected.operation ==
-                            io.github.amichne.kast.relation.contract.ReviewedLibraryOperation.ITERABLE_ASSOCIATE
-                    )
-                        nativeReviewedAssociationReturn(literal, source, fresh.value, context)
-                    else ReviewedValueTransfer.callbackResult(source, fresh.value)
+                    when (fresh.value.selected.operation) {
+                        ReviewedLibraryOperation.ITERABLE_ASSOCIATE ->
+                            nativeReviewedAssociationReturn(literal, source, fresh.value, context)
+                        ReviewedLibraryOperation.ITERABLE_GROUP_BY,
+                        ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM ->
+                            nativeReviewedGroupingReturn(literal, source, fresh.value, context)
+                        else -> ReviewedValueTransfer.callbackResult(source, fresh.value)
+                    }
                 )
     }
 }

@@ -7,6 +7,7 @@ import com.intellij.openapi.projectRoots.Sdk
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.ImpactActualExecutionDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackReceiverDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationCountKnowledgeDocument
 import io.github.amichne.kast.protocol.contract.ImpactPathDocument
@@ -159,7 +160,12 @@ class NativeReviewedValueQueryTest : NativeSmartModeFixtureTest() {
         assertEquals(ImpactActualExecutionDocument.NOT_ESTABLISHED, binding.actualExecution)
         assertEquals(ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED, binding.invocationCount)
         assertEquals("kotlin.collections.map", binding.selected.qualifiedIdentity.value)
-        assertEquals("kotlin/collections/Iterable<T>", binding.selected.receiver.value)
+        val receiver = binding.selected.receiver
+        assertTrue(receiver is ImpactDeclaredCallbackReceiverDocument.Present)
+        assertEquals(
+            "kotlin/collections/Iterable<T>",
+            (receiver as ImpactDeclaredCallbackReceiverDocument.Present).compilerType.value,
+        )
         assertEquals(listOf("(T)->R"), binding.selected.valueParameters.values.map { it.value })
         assertEquals(0, binding.selected.formalIndex.value)
         assertReviewedArtifacts(binding.artifacts)

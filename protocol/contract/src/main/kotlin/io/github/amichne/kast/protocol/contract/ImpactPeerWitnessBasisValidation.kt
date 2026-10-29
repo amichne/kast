@@ -37,7 +37,13 @@ internal fun ImpactFindingDocument.reviewedEvidenceHasSourceBasis(basis: ImpactS
     reviewedRelations.values.all { it.basis == basis && it.admits(it.enclosing) } &&
         representation.hasReviewedSourceBasis(basis) &&
         admitsReviewedPremises() &&
-        classification.admitsReviewedClassification(reviewedRelations, representation)
+        classification.admitsReviewedClassification(reviewedRelations, representation) &&
+        admitsEntryContentClassification()
+
+private fun ImpactFindingDocument.admitsEntryContentClassification(): Boolean =
+    classification != ImpactPathClassificationDocument.Established(ImpactRelationshipDocument.EXACT) ||
+        (producer.reviewedEntrySelection() == ImpactReviewedEntrySelectionDocument.COMPONENT &&
+            destination.reviewedEntrySelection() == ImpactReviewedEntrySelectionDocument.COMPONENT)
 
 private fun ImpactFindingRepresentationDocument.hasReviewedSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {

@@ -20,7 +20,14 @@ private constructor(
     val relation: ReviewedValueRelation,
 ) {
     val retainedBytes: Long
-        get() = 8192L.addBytes(source.retainedBytes).addBytes(target.retainedBytes).addBytes(binding.retainedBytes)
+        get() =
+            8192L
+                .addBytes(source.retainedBytes)
+                .addBytes(target.retainedBytes)
+                .addBytes(binding.retainedBytes)
+                .addBytes(
+                    if (relation is ReviewedValueRelation.CallbackReceiverInput) relation.receiver.retainedBytes else 0L
+                )
 
     internal fun shareCallableEvidence(proofs: ValueFlowSiteSharing): ReviewedValueTransfer =
         ReviewedValueTransfer(proofs.site(source), proofs.site(target), binding, relation)
@@ -29,89 +36,63 @@ private constructor(
         fun sortedResult(
             source: ValueSite,
             binding: ReviewedCallbackValueBinding,
-        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-            val premise =
-                when (val value = ValueCondition.ReviewedCollectionNormalResult.fromReviewed(source, binding)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
-                }
-            val conditions =
-                when (val value = appendReviewedCondition(source, premise)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
-            val selection =
-                if (source.valuePath == ValueAccessPath.Whole) ReviewedCollectionSelection.CONTENT
-                else ReviewedCollectionSelection.ELEMENT
-            return finishReviewed(
-                source,
-                binding,
-                ReviewedValueRelation.ReorderedElements(selection),
-                source.valuePath,
-                conditions,
-            )
-        }
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, binding, ReviewedSelectionResult.sorted(source, binding))
+
+        fun filteredResult(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, binding, ReviewedSelectionResult.filtered(source, binding))
 
         fun tupleConstruct(
             source: ValueSite,
             binding: ReviewedCallValueBinding,
-        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-            val input =
-                when (val value = reviewedTupleInput(source, binding)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
-            val slot =
-                when (binding.selected.operation) {
-                    ReviewedLibraryOperation.TO ->
-                        if (input == ReviewedTupleInput.EXTENSION_RECEIVER) PairSlot.FIRST else PairSlot.SECOND
-                    else -> if (input == ReviewedTupleInput.ARGUMENT_ZERO) PairSlot.FIRST else PairSlot.SECOND
-                }
-            val origin =
-                when (val value = ReviewedTupleOrigin.fromReviewed(binding, source.callStack)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
-            val path =
-                when (val value = source.valuePath.prepend(ValuePathSegment.PairComponent(origin, slot))) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(ValueFlowUnsupportedCause.ACCESS_PATH_DEPTH_EXCEEDED)
-                }
-            return finishReviewed(
-                source,
-                binding,
-                ReviewedValueRelation.TupleConstruction(origin, input, slot),
-                path,
-                source.conditions,
-            )
-        }
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishTupleResult(source, binding, ReviewedTupleResult.construct(source, binding))
 
         fun tupleProject(
             source: ValueSite,
             binding: ReviewedCallValueBinding,
-        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-            val component =
-                source.valuePath.segments.firstOrNull() as? ValuePathSegment.PairComponent
-                    ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
-            when (val value = admitTupleProjection(source, binding, component)) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return value
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishTupleResult(source, binding, ReviewedTupleResult.project(source, binding))
+
+        private fun finishTupleResult(
+            source: ValueSite,
+            binding: ReviewedCallValueBinding,
+            result: Refinement<ReviewedTupleResult, ValueFlowUnsupportedCause>,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            when (result) {
+                is Refinement.Rejected -> result
+                is Refinement.Refined ->
+                    finishReviewed(source, binding, result.value.relation, result.value.path, source.conditions)
             }
-            val path =
-                when (val value = source.valuePath.select(component)) {
-                    is ValuePathSelection.Selected -> value.path
-                    ValuePathSelection.DifferentField ->
-                        return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
-                }
-            return finishReviewed(
-                source,
-                binding,
-                ReviewedValueRelation.TupleProjection(component.origin, component.slot),
-                path,
-                source.conditions,
-            )
-        }
+
+        fun groupedReceiverElement(
+            source: ValueSite,
+            selector: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, selector, ReviewedGroupResult.original(source, selector))
+
+        fun groupedCallbackResult(
+            source: ValueSite,
+            selector: ReviewedCallbackValueBinding,
+            transform: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, transform, ReviewedGroupResult.transformed(source, selector, transform))
+
+        fun groupedKeyResult(
+            source: ValueSite,
+            selector: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, selector, ReviewedGroupResult.key(source, selector))
+
+        fun groupedKeyResult(
+            source: ValueSite,
+            selector: ReviewedCallbackValueBinding,
+            transform: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, selector, ReviewedGroupResult.key(source, selector, transform))
 
         fun associatedReturn(
             source: ValueSite,
@@ -130,36 +111,8 @@ private constructor(
             source: ValueSite,
             binding: ReviewedCallbackValueBinding,
             evidence: ReviewedEntryKeyEvidence,
-        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-            val entry =
-                when (val value = ReviewedMapEntryCorrelation.fromReviewed(source, binding, evidence)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
-            val component = source.valuePath.segments.first() as ValuePathSegment.PairComponent
-            val slot =
-                when (component.slot) {
-                    PairSlot.FIRST -> MapEntrySlot.KEY
-                    PairSlot.SECOND -> MapEntrySlot.VALUE
-                }
-            val path =
-                when (val value = reviewedAssociationPath(source, entry, slot)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
-            val conditions =
-                when (val value = reviewedAssociationConditions(source, entry)) {
-                    is Refinement.Refined -> value.value
-                    is Refinement.Rejected -> return value
-                }
-            return finishReviewed(
-                source,
-                binding,
-                ReviewedValueRelation.AssociationComponent(entry, slot),
-                path,
-                conditions,
-            )
-        }
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, binding, ReviewedAssociationResult.fromReviewed(source, binding, evidence))
 
         private fun finishReviewed(
             source: ValueSite,
@@ -170,7 +123,7 @@ private constructor(
         ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
             val execution =
                 when (binding) {
-                    is ReviewedCallbackValueBinding -> ValueExecutionOwner.declaration(binding.enclosing)
+                    is ReviewedCallbackValueBinding -> binding.parentExecutionOwner
                     is ReviewedCallValueBinding -> binding.invocation.executionOwner
                 }
             return when (
@@ -191,47 +144,53 @@ private constructor(
             }
         }
 
-        /** Input correspondence reaches a formal; actual body references establish later returns. */
-        fun callbackInput(
+        fun callbackReceiverInput(
             source: ValueSite,
-            binding: ReviewedCallbackValueBinding,
-            formal: ValueFormalParameter,
-        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
-            when (val admitted = admitReviewedInput(source, binding, formal)) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return admitted
-            }
-            val path =
-                when (val selected = source.valuePath.select(ValuePathSegment.Element)) {
-                    is ValuePathSelection.Selected -> selected.path
-                    ValuePathSelection.DifferentField ->
-                        return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                }
-            val semantics =
-                if (source.valuePath == ValueAccessPath.Whole)
-                    ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER
-                else ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER
-            return when (
-                val target =
-                    ValueSite.fromCompiler(
-                        enclosing = formal.callable,
-                        range = formal.range,
-                        role = ValueRole.Formal(ValueFormalPosition.Parameter(formal)),
-                        executionOwner = formal.executionOwner,
-                        valuePath = path,
-                        callStack = source.callStack,
-                        conditions = source.conditions,
-                    )
-            ) {
+            receiver: ReviewedCallbackReceiver,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            when (val target = receiver.target(source)) {
                 is Refinement.Refined ->
                     Refinement.Refined(
                         ReviewedValueTransfer(
                             source,
                             target.value,
-                            binding,
-                            ReviewedValueRelation.CallbackCorrespondence(semantics),
+                            receiver.binding,
+                            ReviewedValueRelation.CallbackReceiverInput(receiver),
                         )
                     )
+                is Refinement.Rejected -> target
+            }
+
+        /** Input correspondence reaches a formal; actual body references establish later returns. */
+        fun callbackInput(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+            formal: ValueFormalParameter,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishInput(source, binding, formal, ReviewedInputCorrespondence.fromReviewed(source, binding, formal))
+
+        fun entryContentInput(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+            formal: ValueFormalParameter,
+            slot: MapEntrySlot,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishInput(source, binding, formal, ReviewedInputCorrespondence.fromContent(source, binding, formal, slot))
+
+        private fun finishInput(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+            formal: ValueFormalParameter,
+            result: Refinement<ReviewedInputCorrespondence, ValueFlowUnsupportedCause>,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
+            val correspondence =
+                when (result) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return result
+                }
+            return when (val target = correspondence.target(source, formal)) {
+                is Refinement.Refined ->
+                    Refinement.Refined(ReviewedValueTransfer(source, target.value, binding, correspondence.relation))
                 is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
             }
         }
@@ -279,6 +238,57 @@ private constructor(
             }
         }
 
+        fun mapPreservedKey(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, binding, ReviewedEntryResult.preserveKey(source, binding))
+
+        fun mapPreservedKeyContent(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, binding, ReviewedEntryResult.preserveKeyContent(source, binding))
+
+        fun entryProject(
+            source: ValueSite,
+            binding: ReviewedCallValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            finishResult(source, binding, ReviewedEntryResult.project(source, binding))
+
+        private fun finishResult(
+            source: ValueSite,
+            binding: ReviewedValueAuthority,
+            result: Refinement<ReviewedResult, ValueFlowUnsupportedCause>,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            when (result) {
+                is Refinement.Rejected -> result
+                is Refinement.Refined ->
+                    finishReviewed(
+                        source,
+                        binding,
+                        result.value.relation,
+                        result.value.path,
+                        result.value.conditions,
+                    )
+            }
+
+        private fun mappedResult(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
+            when (val result = ReviewedMappedResult.fromReviewed(source, binding)) {
+                is Refinement.Rejected -> result
+                is Refinement.Refined ->
+                    finishReviewed(
+                        source,
+                        binding,
+                        ReviewedValueRelation.MappedValue(result.value.entry),
+                        result.value.path,
+                        result.value.conditions,
+                    )
+            }
+
         fun callbackResult(
             source: ValueSite,
             binding: ReviewedCallbackValueBinding,
@@ -290,6 +300,10 @@ private constructor(
                 }
             if (source.basis != binding.basis || source.role != ValueRole.Return)
                 return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
+            if (admitted.selected.operation == ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL)
+                return finishResult(source, admitted, ReviewedSelectionResult.nonNull(source, admitted))
+            if (admitted.selected.operation == ReviewedLibraryOperation.MAP_VALUES)
+                return mappedResult(source, admitted)
             val semantics =
                 when (val value = admitted.outputSemantics()) {
                     is Refinement.Refined -> value.value

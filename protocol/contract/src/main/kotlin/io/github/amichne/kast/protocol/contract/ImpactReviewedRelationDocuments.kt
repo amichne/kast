@@ -3,6 +3,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -27,6 +28,7 @@ data class ImpactReviewedCallValueBindingDocument(
     val invocation: ImpactInvocationReferenceDocument,
     val selected: ImpactReviewedOrdinaryTargetDocument,
     override val artifacts: ImpactReviewedArtifactsDocument,
+    @Required val entryReadOrder: ImpactReviewedEntryReadOrderDocument = ImpactReviewedEntryReadOrderDocument.Direct,
 ) : ImpactReviewedValueAuthorityDocument {
     override val supplierRange: ImpactSourceRangeDocument
         get() = invocation.range
@@ -89,6 +91,7 @@ data class ImpactReviewedTupleOriginDocument(
 
 /** One symbolic returned-pair family, without a runtime iteration or distinct-key assertion. */
 @Serializable
+@SerialName("ASSOCIATION")
 data class ImpactReviewedMapEntryCorrelationDocument(
     val binding: ImpactReviewedValueBindingDocument,
     val tupleOrigin: ImpactReviewedTupleOriginDocument,
@@ -97,11 +100,47 @@ data class ImpactReviewedMapEntryCorrelationDocument(
     @ProtocolCollectionConstraint(maximumItems = 32) val callStack: BoundedProtocolList<ImpactCallFrameDocument>,
     @EncodeDefault
     val keyEvidence: ImpactReviewedEntryKeyEvidenceDocument = ImpactReviewedEntryKeyEvidenceDocument.Conditional,
-)
+) : ImpactReviewedMapEntryOriginDocument
 
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactReviewedValueRelationDocument {
+    @Serializable
+    @SerialName("CALLBACK_RECEIVER_INPUT")
+    data class CallbackReceiverInput(val receiver: ImpactReviewedCallbackReceiverDocument) :
+        ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("GROUP_PLACEMENT")
+    data class GroupPlacement(val entry: ImpactReviewedGroupBucketDocument) : ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("FILTERED_ELEMENTS")
+    data class FilteredElements(val selection: ImpactReviewedCollectionSelectionDocument) :
+        ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("NON_NULL_CALLBACK_RESULT")
+    data object NonNullCallbackResult : ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("ENTRY_INPUT")
+    data class EntryInput(val entry: ImpactReviewedInputEntryOriginDocument, val slot: ImpactMapEntrySlotDocument) :
+        ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("PRESERVED_KEY")
+    data class PreservedKey(val entry: ImpactReviewedPreservedKeyOriginDocument) : ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("ENTRY_PROJECTION")
+    data class EntryProjection(val entry: ImpactReviewedMapEntryOriginDocument, val slot: ImpactMapEntrySlotDocument) :
+        ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("MAPPED_VALUE")
+    data class MappedValue(val entry: ImpactReviewedMappedEntryOriginDocument) : ImpactReviewedValueRelationDocument
+
     @Serializable
     @SerialName("CALLBACK_CORRESPONDENCE")
     data class CallbackCorrespondence(val semantics: ImpactReviewedValueSemanticsDocument) :

@@ -71,7 +71,7 @@ internal class ImpactReviewedScopeFixture {
             ImpactReviewedFunctionDocument(
                 declaration,
                 signature.qualifiedIdentity,
-                base.text("T"),
+                ImpactDeclaredCallbackReceiverDocument.Present(base.text("T")),
                 signature.contextReceivers,
                 signature.valueParameters,
                 base.count(2),

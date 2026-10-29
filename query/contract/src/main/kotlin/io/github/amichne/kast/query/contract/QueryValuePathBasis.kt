@@ -9,7 +9,14 @@ import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ReviewedDistinctStringKeys
 import io.github.amichne.kast.relation.contract.ReviewedEntryKeyEvidence
+import io.github.amichne.kast.relation.contract.ReviewedGroupBucket
+import io.github.amichne.kast.relation.contract.ReviewedGroupCallbacks
+import io.github.amichne.kast.relation.contract.ReviewedInputEntryOrigin
 import io.github.amichne.kast.relation.contract.ReviewedMapEntryCorrelation
+import io.github.amichne.kast.relation.contract.ReviewedMapEntryFamily
+import io.github.amichne.kast.relation.contract.ReviewedMapEntryOrigin
+import io.github.amichne.kast.relation.contract.ReviewedMappedEntryOrigin
+import io.github.amichne.kast.relation.contract.ReviewedPreservedKeyOrigin
 import io.github.amichne.kast.relation.contract.ReviewedTupleOrigin
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueConditions
@@ -292,6 +299,27 @@ private fun ValuePathSegment.hasForeignBasis(lease: SemanticReadAuthority): Bool
 private fun ReviewedTupleOrigin.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     binding.invocation.hasForeignBasis(lease) || callStack.frames.any { it.hasForeignBasis(lease) }
 
+private fun ReviewedMapEntryOrigin.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        is ReviewedGroupBucket -> hasForeignBasis(lease)
+        is ReviewedMapEntryCorrelation -> hasForeignBasis(lease)
+        is ReviewedInputEntryOrigin ->
+            family.hasForeignBasis(lease) ||
+                receiverExecution.enclosing.lease != lease ||
+                receiverExecution.basis != lease.identity
+        is ReviewedPreservedKeyOrigin ->
+            family.hasForeignBasis(lease) ||
+                receiverExecution.enclosing.lease != lease ||
+                receiverExecution.basis != lease.identity
+        is ReviewedMappedEntryOrigin ->
+            family.hasForeignBasis(lease) ||
+                returnExecution.enclosing.lease != lease ||
+                returnExecution.basis != lease.identity
+    }
+
+private fun ReviewedMapEntryFamily.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    binding.enclosing.lease != lease || basis != lease.identity || callStack.frames.any { it.hasForeignBasis(lease) }
+
 private fun ReviewedMapEntryCorrelation.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     binding.enclosing.lease != lease ||
         binding.basis != lease.identity ||
@@ -316,3 +344,13 @@ private fun ReviewedDistinctStringKeys.hasForeignBasis(lease: SemanticReadAuthor
         key.formal.executionOwner.basis != lease.identity ||
         key.tupleOrigin.hasForeignBasis(lease) ||
         associationInvocation.hasForeignBasis(lease)
+
+private fun ReviewedGroupBucket.hasForeignBasis(lease: SemanticReadAuthority): Boolean {
+    val family = callbacks
+    return family.selector.enclosing.lease != lease ||
+        basis != lease.identity ||
+        (family is ReviewedGroupCallbacks.TransformedElements && family.transform.enclosing.lease != lease) ||
+        sourceExecution.enclosing.lease != lease ||
+        sourceExecution.basis != lease.identity ||
+        callStack.frames.any { it.hasForeignBasis(lease) }
+}

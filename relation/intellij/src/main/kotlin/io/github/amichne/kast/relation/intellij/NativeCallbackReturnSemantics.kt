@@ -90,36 +90,77 @@ internal fun Refinement<NativeCallbackReturnSemantics, ValueFlowUnsupportedCause
 /** Reject explicit abrupt exits; an admitted route still needs its normal-return condition. */
 internal fun nativeCallbackNormalReturn(
     function: KtFunctionLiteral,
-    observation: IntellijReadObservation,
-    workAllowance: WorkAllowance,
-): Refinement<Unit, ValueFlowUnsupportedCause> =
-    observation.observedAnalyze(function) {
+    context: IntellijCallbackFlowContext,
+): Refinement<Unit, ValueFlowUnsupportedCause> {
+    when (val allowed = normalReturnPermit(context)) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return allowed
+    }
+    return context.observation.observedAnalyze(function) {
         val statements =
             function.bodyExpression?.statements
                 ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         if (statements.isEmpty()) return@observedAnalyze Refinement.Refined(Unit)
-        val exits = computeExitPointSnapshot(statements)
-        if (exits.hasJumps) return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
-        val types = statements.map {
-            it.expressionType
-                ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
-        normalCallbackTypes(types, workAllowance)
+        normalCallbackStatements(statements, context)
     }
+}
+
+private fun KaSession.normalCallbackStatements(
+    statements: List<KtExpression>,
+    context: IntellijCallbackFlowContext,
+): Refinement<Unit, ValueFlowUnsupportedCause> {
+    when (val allowed = normalReturnPermit(context)) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return allowed
+    }
+    val exits = computeExitPointSnapshot(statements)
+    if (exits.hasJumps) return Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+    val types = mutableListOf<KaType>()
+    for (statement in statements) {
+        when (val allowed = normalReturnPermit(context)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return allowed
+        }
+        val type =
+            statement.expressionType ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        types.add(type)
+    }
+    return normalCallbackTypes(types, context)
+}
 
 private fun KaSession.normalCallbackTypes(
     types: List<KaType>,
-    workAllowance: WorkAllowance,
-): Refinement<Unit, ValueFlowUnsupportedCause> =
-    when (nativeCompilerTypeProof(types, workAllowance)) {
+    context: IntellijCallbackFlowContext,
+): Refinement<Unit, ValueFlowUnsupportedCause> {
+    val proof =
+        when (val read = nativeCompilerTypeProof(types) { normalReturnPermit(context) }) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return read
+        }
+    when (proof) {
         NativeCompilerTypeProof.ERROR_TYPE,
         NativeCompilerTypeProof.UNSUPPORTED_TYPE ->
-            Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        NativeCompilerTypeProof.WORK_LIMIT_REACHED -> Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
-        NativeCompilerTypeProof.ADMITTED ->
-            if (types.any { it.isNothingType && !it.isNullable })
-                Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
-            else Refinement.Refined(Unit)
+            return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
+            return Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+        NativeCompilerTypeProof.ADMITTED -> Unit
+    }
+    for (type in types) {
+        when (val allowed = normalReturnPermit(context)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return allowed
+        }
+        if (type.isNothingType && !type.isNullable)
+            return Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+    }
+    return Refinement.Refined(Unit)
+}
+
+private fun normalReturnPermit(context: IntellijCallbackFlowContext): Refinement<Unit, ValueFlowUnsupportedCause> =
+    when (context.currentWork()) {
+        CallbackWorkAdmission.READY -> Refinement.Refined(Unit)
+        CallbackWorkAdmission.WORK_LIMIT_REACHED -> Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+        CallbackWorkAdmission.TIME_LIMIT_REACHED -> Refinement.Rejected(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
     }
 
 /** The compiler binds a labeled return to this callback before its returned expression can carry value. */

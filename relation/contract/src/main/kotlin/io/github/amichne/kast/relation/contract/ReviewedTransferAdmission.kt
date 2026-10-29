@@ -26,11 +26,28 @@ internal fun callbackBinding(
 ): Refinement<ReviewedCallbackValueBinding, ValueFlowUnsupportedCause> =
     when (val owner = source.executionOwner.context) {
         is ValueExecutionContext.ReviewedCallback ->
-            if (owner.binding == binding && binding.selected.operation == ReviewedLibraryOperation.ITERABLE_MAP)
+            if (
+                owner.binding == binding &&
+                    binding.selected.operation in
+                        setOf(
+                            ReviewedLibraryOperation.ITERABLE_MAP,
+                            ReviewedLibraryOperation.MAP_VALUES,
+                            ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
+                        )
+            )
                 Refinement.Refined(binding)
             else Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
         is ValueExecutionContext.DeclaredCallback ->
-            if (binding.selected.operation == ReviewedLibraryOperation.LET) binding.composeDeclared(owner.binding)
+            if (
+                binding.selected.operation in
+                    setOf(
+                        ReviewedLibraryOperation.LET,
+                        ReviewedLibraryOperation.RUN_TOP_LEVEL,
+                        ReviewedLibraryOperation.RUN_RECEIVER,
+                        ReviewedLibraryOperation.WITH,
+                    )
+            )
+                binding.composeDeclared(owner.binding)
             else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
         ValueExecutionContext.Declaration,
         is ValueExecutionContext.Callback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
@@ -39,7 +56,7 @@ internal fun callbackBinding(
 internal fun ReviewedCallbackValueBinding.admitsReceiver(source: ValueSite): Boolean =
     when (val role = source.role) {
         is ValueRole.Receiver ->
-            selected.operation == ReviewedLibraryOperation.ALSO &&
+            selected.operation in setOf(ReviewedLibraryOperation.ALSO, ReviewedLibraryOperation.APPLY) &&
                 source.matchesReviewedReceiver(this) &&
                 role.matchesReviewedCall(this)
         else -> false
@@ -66,9 +83,22 @@ internal fun ReviewedCallbackValueBinding.outputSemantics():
     when (selected.operation) {
         ReviewedLibraryOperation.ITERABLE_MAP ->
             Refinement.Refined(ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT)
+        ReviewedLibraryOperation.RUN_TOP_LEVEL,
+        ReviewedLibraryOperation.RUN_RECEIVER,
+        ReviewedLibraryOperation.WITH,
         ReviewedLibraryOperation.LET ->
             Refinement.Refined(ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT)
+        ReviewedLibraryOperation.APPLY,
         ReviewedLibraryOperation.ALSO -> Refinement.Refined(ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT)
+        ReviewedLibraryOperation.MAP_ENTRY_KEY,
+        ReviewedLibraryOperation.MAP_ENTRY_VALUE,
+        ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
+        ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2,
+        ReviewedLibraryOperation.MAP_VALUES,
+        ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
+        ReviewedLibraryOperation.ITERABLE_GROUP_BY,
+        ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM,
+        ReviewedLibraryOperation.ITERABLE_FILTER,
         ReviewedLibraryOperation.ITERABLE_SORTED_BY,
         ReviewedLibraryOperation.ITERABLE_ASSOCIATE,
         ReviewedLibraryOperation.TO,
@@ -88,6 +118,10 @@ internal fun admitReviewedInput(
     if (
         binding.selected.operation !in
             setOf(
+                ReviewedLibraryOperation.ITERABLE_GROUP_BY,
+                ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM,
+                ReviewedLibraryOperation.ITERABLE_FILTER,
+                ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
                 ReviewedLibraryOperation.ITERABLE_MAP,
                 ReviewedLibraryOperation.ITERABLE_SORTED_BY,
                 ReviewedLibraryOperation.ITERABLE_ASSOCIATE,
@@ -106,10 +140,15 @@ internal fun admitReviewedInput(
     return Refinement.Refined(Unit)
 }
 
-internal fun ReviewedCallbackValueBinding.admitsSortedReceiver(source: ValueSite): Boolean {
+internal fun ReviewedCallbackValueBinding.admitsSortedReceiver(source: ValueSite): Boolean =
+    selected.operation == ReviewedLibraryOperation.ITERABLE_SORTED_BY && admitsSelectedReceiver(source)
+
+internal fun ReviewedCallbackValueBinding.admitsFilteredReceiver(source: ValueSite): Boolean =
+    selected.operation == ReviewedLibraryOperation.ITERABLE_FILTER && admitsSelectedReceiver(source)
+
+internal fun ReviewedCallbackValueBinding.admitsSelectedReceiver(source: ValueSite): Boolean {
     val receiver = source.role as? ValueRole.Receiver ?: return false
-    if (selected.operation != ReviewedLibraryOperation.ITERABLE_SORTED_BY || !receiver.matchesReviewedCall(this))
-        return false
+    if (!receiver.matchesReviewedCall(this)) return false
     if (source.basis != basis || source.enclosing.valueIdentity != enclosing.valueIdentity) return false
     if (
         source.executionOwner.context != ValueExecutionContext.Declaration ||
@@ -183,8 +222,21 @@ internal fun reviewedCallbackOutputPath(
     val path =
         when (binding.selected.operation) {
             ReviewedLibraryOperation.ITERABLE_MAP -> source.valuePath.prepend(ValuePathSegment.Element)
+            ReviewedLibraryOperation.RUN_TOP_LEVEL,
+            ReviewedLibraryOperation.RUN_RECEIVER,
+            ReviewedLibraryOperation.WITH,
+            ReviewedLibraryOperation.APPLY,
             ReviewedLibraryOperation.LET,
             ReviewedLibraryOperation.ALSO -> Refinement.Refined(source.valuePath)
+            ReviewedLibraryOperation.MAP_ENTRY_KEY,
+            ReviewedLibraryOperation.MAP_ENTRY_VALUE,
+            ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
+            ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2,
+            ReviewedLibraryOperation.MAP_VALUES,
+            ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
+            ReviewedLibraryOperation.ITERABLE_GROUP_BY,
+            ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM,
+            ReviewedLibraryOperation.ITERABLE_FILTER,
             ReviewedLibraryOperation.ITERABLE_SORTED_BY,
             ReviewedLibraryOperation.ITERABLE_ASSOCIATE,
             ReviewedLibraryOperation.TO,

@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaSmartCastedReceiverValue
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtFunction
 
 internal data class NativeReceiverCallRead(
     val receivers: List<ValueRole.Receiver>,
@@ -34,7 +34,7 @@ internal class NativeValueImplicitReceiverCalls(
     private val projection: IntellijK2RelationProjection,
 ) {
     fun read(
-        function: KtNamedFunction,
+        function: KtFunction,
         call: KtCallExpression,
     ): NativeReceiverCallRead {
         val selected =
@@ -78,15 +78,13 @@ internal class NativeValueImplicitReceiverCalls(
         return NativeReceiverCallRead(selected.kinds.map { ValueRole.Receiver(invocation, it) }, selected.causes)
     }
 
-    private fun KaSession.selected(function: KtNamedFunction, call: KtCallExpression): NativeImplicitCall {
+    private fun KaSession.selected(function: KtFunction, call: KtCallExpression): NativeImplicitCall {
         val position =
             (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
                 ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
         val expected =
-            when (position.kind) {
-                ValueReceiverKind.EXTENSION -> function.symbol.receiverParameter
-                ValueReceiverKind.DISPATCH -> function.symbol.containingDeclaration
-            } ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            nativeValueReceiverSymbol(function, position.kind)
+                ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
         val resolved =
             call.resolveCall() ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
         val kinds = mutableListOf<ValueReceiverKind>()

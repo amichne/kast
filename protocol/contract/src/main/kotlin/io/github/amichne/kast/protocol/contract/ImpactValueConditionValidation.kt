@@ -7,6 +7,10 @@ internal fun BoundedProtocolList<ImpactValueConditionDocument>.hasSameConditions
     other: BoundedProtocolList<ImpactValueConditionDocument>
 ): Boolean = values.hasSameConditions(other.values)
 
+internal fun BoundedProtocolList<ImpactValueConditionDocument>.isPreservedBy(
+    target: BoundedProtocolList<ImpactValueConditionDocument>
+): Boolean = values.hasSameConditions(target.values.take(values.size))
+
 private fun List<ImpactValueConditionDocument>.hasSameConditions(other: List<ImpactValueConditionDocument>): Boolean =
     size == other.size && zip(other).all { (first, second) -> first.hasSameCondition(second) }
 
@@ -15,8 +19,65 @@ private fun ImpactValueConditionDocument.hasSameCondition(other: ImpactValueCond
 
 private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueConditionDocument): Boolean =
     when (this) {
-        is ImpactValueConditionDocument.StringContentNonNull ->
-            other is ImpactValueConditionDocument.StringContentNonNull && entryRange == other.entryRange
+        is ImpactValueConditionDocument.ReviewedGroupMembership,
+        is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative -> hasSameGroupRefinement(other)
+        is ImpactValueConditionDocument.ReviewedPredicateAccepts,
+        is ImpactValueConditionDocument.ReviewedCallbackResultNonNull -> hasSameFilteringRefinement(other)
+        is ImpactValueConditionDocument.ReviewedEntryPrefixNormal,
+        is ImpactValueConditionDocument.ReviewedPreservedKeySurvives,
+        is ImpactValueConditionDocument.ReviewedEntryComponentStable,
+        is ImpactValueConditionDocument.ReviewedMappedKeySurvives -> hasSameEntryRefinement(other)
+        is ImpactValueConditionDocument.DeclaredCallbackResult,
+        is ImpactValueConditionDocument.ReviewedCallbackNormalReturn,
+        is ImpactValueConditionDocument.ReviewedCollectionNormalResult,
+        is ImpactValueConditionDocument.ReviewedEntryKeyUnique -> hasSameProofRefinement(other)
+        is ImpactValueConditionDocument.StringContentNonNull,
+        is ImpactValueConditionDocument.StableLocal,
+        is ImpactValueConditionDocument.StableReceiver,
+        is ImpactValueConditionDocument.CastSuccess -> hasSameCompilerRefinement(other)
+    }
+
+private fun ImpactValueConditionDocument.hasSameGroupRefinement(other: ImpactValueConditionDocument): Boolean =
+    when (this) {
+        is ImpactValueConditionDocument.ReviewedGroupMembership ->
+            other is ImpactValueConditionDocument.ReviewedGroupMembership && entry == other.entry
+        is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative ->
+            other is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative && entry == other.entry
+        else -> false
+    }
+
+private fun ImpactValueConditionDocument.hasSameFilteringRefinement(other: ImpactValueConditionDocument): Boolean =
+    when (this) {
+        is ImpactValueConditionDocument.ReviewedPredicateAccepts ->
+            other is ImpactValueConditionDocument.ReviewedPredicateAccepts && binding == other.binding
+        is ImpactValueConditionDocument.ReviewedCallbackResultNonNull ->
+            other is ImpactValueConditionDocument.ReviewedCallbackResultNonNull && binding == other.binding
+        else -> false
+    }
+
+private fun ImpactValueConditionDocument.hasSameEntryRefinement(other: ImpactValueConditionDocument): Boolean =
+    when (this) {
+        is ImpactValueConditionDocument.ReviewedEntryPrefixNormal ->
+            other is ImpactValueConditionDocument.ReviewedEntryPrefixNormal && sameEntryRefinement(other)
+        is ImpactValueConditionDocument.ReviewedPreservedKeySurvives ->
+            other is ImpactValueConditionDocument.ReviewedPreservedKeySurvives && entry == other.entry
+        is ImpactValueConditionDocument.ReviewedEntryComponentStable ->
+            other is ImpactValueConditionDocument.ReviewedEntryComponentStable && sameEntryRefinement(other)
+        is ImpactValueConditionDocument.ReviewedMappedKeySurvives ->
+            other is ImpactValueConditionDocument.ReviewedMappedKeySurvives && entry == other.entry
+        else -> false
+    }
+
+private fun ImpactValueConditionDocument.ReviewedEntryPrefixNormal.sameEntryRefinement(
+    other: ImpactValueConditionDocument.ReviewedEntryPrefixNormal
+): Boolean = binding == other.binding && entry == other.entry && slot == other.slot
+
+private fun ImpactValueConditionDocument.ReviewedEntryComponentStable.sameEntryRefinement(
+    other: ImpactValueConditionDocument.ReviewedEntryComponentStable
+): Boolean = binding == other.binding && entry == other.entry && slot == other.slot
+
+private fun ImpactValueConditionDocument.hasSameProofRefinement(other: ImpactValueConditionDocument): Boolean =
+    when (this) {
         is ImpactValueConditionDocument.DeclaredCallbackResult ->
             other is ImpactValueConditionDocument.DeclaredCallbackResult && binding == other.binding
         is ImpactValueConditionDocument.ReviewedCallbackNormalReturn ->
@@ -25,12 +86,20 @@ private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueCon
             other is ImpactValueConditionDocument.ReviewedCollectionNormalResult && binding == other.binding
         is ImpactValueConditionDocument.ReviewedEntryKeyUnique ->
             other is ImpactValueConditionDocument.ReviewedEntryKeyUnique && entry == other.entry
+        else -> false
+    }
+
+private fun ImpactValueConditionDocument.hasSameCompilerRefinement(other: ImpactValueConditionDocument): Boolean =
+    when (this) {
+        is ImpactValueConditionDocument.StringContentNonNull ->
+            other is ImpactValueConditionDocument.StringContentNonNull && entryRange == other.entryRange
         is ImpactValueConditionDocument.StableLocal ->
             other is ImpactValueConditionDocument.StableLocal && sameLocalRefinement(other)
         is ImpactValueConditionDocument.StableReceiver ->
             other is ImpactValueConditionDocument.StableReceiver && sameReceiverRefinement(other)
         is ImpactValueConditionDocument.CastSuccess ->
             other is ImpactValueConditionDocument.CastSuccess && sameCastRefinement(other)
+        else -> false
     }
 
 private fun ImpactValueConditionDocument.StableReceiver.sameReceiverRefinement(
@@ -50,12 +119,24 @@ private fun ImpactValueConditionDocument.admits(basis: ImpactSemanticBasisDocume
     origin.execution.enclosing.declarationFailure() is Refinement.Refined &&
         sourceSite().isOnBasis(basis) &&
         (this is ImpactValueConditionDocument.DeclaredCallbackResult ||
+            this is ImpactValueConditionDocument.ReviewedCallbackResultNonNull ||
+            this is ImpactValueConditionDocument.ReviewedGroupMembership ||
+            this is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative ||
+            this is ImpactValueConditionDocument.ReviewedMappedKeySurvives ||
             this is ImpactValueConditionDocument.ReviewedEntryKeyUnique ||
             origin.execution.executionOwner.admits(origin.execution.enclosing, useRange)) &&
         admitsRefinement()
 
 private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.ReviewedGroupMembership -> admitsGroupMembership()
+        is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative -> admitsGroupRepresentative()
+        is ImpactValueConditionDocument.ReviewedPredicateAccepts -> admitsPredicateAcceptance()
+        is ImpactValueConditionDocument.ReviewedCallbackResultNonNull -> admitsNonNullAcceptance()
+        is ImpactValueConditionDocument.ReviewedEntryPrefixNormal -> admitsEntryPrefixNormal()
+        is ImpactValueConditionDocument.ReviewedPreservedKeySurvives -> admitsPreservedKey()
+        is ImpactValueConditionDocument.ReviewedEntryComponentStable -> admitsStableEntry()
+        is ImpactValueConditionDocument.ReviewedMappedKeySurvives -> admitsMappedKeySurvives()
         is ImpactValueConditionDocument.StringContentNonNull ->
             useRange.containsExecutionRange(entryRange) && entryRange.containsExecutionRange(origin.range)
         is ImpactValueConditionDocument.DeclaredCallbackResult -> admitsResult()
@@ -81,7 +162,7 @@ private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
 
 private fun ImpactValueConditionDocument.ReviewedCallbackNormalReturn.admitsNormalReturn(): Boolean =
     binding.admits(origin.execution.enclosing) &&
-        binding.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1 &&
+        binding.rule.isReviewedReceiverResult() &&
         binding.admitsReceiver(sourceSite()) &&
         useRange == binding.supplierRange
 
@@ -122,6 +203,14 @@ internal fun ImpactValueSiteReferenceDocument.conservesReviewedReceiverCondition
 
 private fun ImpactValueConditionDocument.matchesTransferKind(kind: ImpactTransferKindDocument): Boolean =
     when (this) {
+        is ImpactValueConditionDocument.ReviewedGroupMembership,
+        is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative -> false
+        is ImpactValueConditionDocument.ReviewedPredicateAccepts,
+        is ImpactValueConditionDocument.ReviewedCallbackResultNonNull -> false
+        is ImpactValueConditionDocument.ReviewedEntryPrefixNormal,
+        is ImpactValueConditionDocument.ReviewedPreservedKeySurvives,
+        is ImpactValueConditionDocument.ReviewedEntryComponentStable -> false
+        is ImpactValueConditionDocument.ReviewedMappedKeySurvives -> false
         is ImpactValueConditionDocument.StringContentNonNull -> kind == ImpactTransferKindDocument.STRING_CONTENT
         is ImpactValueConditionDocument.DeclaredCallbackResult -> kind == ImpactTransferKindDocument.SOURCE_CALL_RETURN
         is ImpactValueConditionDocument.ReviewedCallbackNormalReturn,
@@ -143,10 +232,18 @@ internal fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReference
         localVersion =
             when (this) {
                 is ImpactValueConditionDocument.StableLocal -> version
+                is ImpactValueConditionDocument.ReviewedGroupMembership,
+                is ImpactValueConditionDocument.ReviewedGroupKeyRepresentative,
+                is ImpactValueConditionDocument.ReviewedPredicateAccepts,
+                is ImpactValueConditionDocument.ReviewedCallbackResultNonNull,
                 is ImpactValueConditionDocument.StringContentNonNull,
                 is ImpactValueConditionDocument.DeclaredCallbackResult,
                 is ImpactValueConditionDocument.ReviewedCallbackNormalReturn,
                 is ImpactValueConditionDocument.ReviewedCollectionNormalResult,
+                is ImpactValueConditionDocument.ReviewedEntryPrefixNormal,
+                is ImpactValueConditionDocument.ReviewedPreservedKeySurvives,
+                is ImpactValueConditionDocument.ReviewedEntryComponentStable,
+                is ImpactValueConditionDocument.ReviewedMappedKeySurvives,
                 is ImpactValueConditionDocument.ReviewedEntryKeyUnique,
                 is ImpactValueConditionDocument.StableReceiver,
                 is ImpactValueConditionDocument.CastSuccess -> ImpactLocalVersionDocument.Unversioned

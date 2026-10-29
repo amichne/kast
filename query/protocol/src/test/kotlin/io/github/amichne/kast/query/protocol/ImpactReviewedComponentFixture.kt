@@ -114,7 +114,7 @@ internal class ImpactReviewedComponentFixture {
         return ReviewedValueTransfer.sortedResult(site, sorting).componentValue()
     }
 
-    private fun callback(name: String, parameter: String, count: Int): ReviewedCallbackValueBinding {
+    fun callback(name: String, parameter: String, count: Int): ReviewedCallbackValueBinding {
         val selected =
             ReviewedLibraryCallable.admit(
                     external(

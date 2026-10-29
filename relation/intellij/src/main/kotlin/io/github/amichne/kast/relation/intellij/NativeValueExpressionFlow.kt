@@ -67,13 +67,7 @@ internal class NativeValueExpressionFlow(
             is Refinement.Rejected -> return
         }
         if (expression is KtDestructuringDeclarationEntry) {
-            NativeValueDestructuring(request.source, scope, projection)
-                .bind(
-                    entry = expression,
-                    permit = permit,
-                    consume = { componentBinding(expression) },
-                    unsupported = { retained.unresolvedAt(it, expression) },
-                )
+            bindDestructuringEntry(expression)
             return
         }
         when (val parent = expression.parent) {
@@ -109,6 +103,25 @@ internal class NativeValueExpressionFlow(
         }
     }
 
+    private fun bindDestructuringEntry(expression: KtDestructuringDeclarationEntry) {
+        NativeValueDestructuring(
+                source = request.source,
+                scope = scope,
+                projection = projection,
+                reviewed =
+                    NativeReviewedComponentScope.Available(
+                        request.source.executionOwner,
+                        receiverContext(request, scope, projection, allowance),
+                    ),
+            )
+            .bind(
+                entry = expression,
+                permit = permit,
+                consume = { componentBinding(expression) },
+                unsupported = { cause, at -> retained.unresolvedAt(cause, at) },
+            )
+    }
+
     private fun containerDestination(expression: KtExpression, container: KtContainerNode) {
         when (val control = container.parent) {
             is KtForExpression ->
@@ -123,13 +136,22 @@ internal class NativeValueExpressionFlow(
     }
 
     private fun destructuringDestination(expression: KtExpression, declaration: KtDestructuringDeclaration) =
-        NativeValueDestructuring(request.source, scope, projection)
+        NativeValueDestructuring(
+                source = request.source,
+                scope = scope,
+                projection = projection,
+                reviewed =
+                    NativeReviewedComponentScope.Available(
+                        request.source.executionOwner,
+                        receiverContext(request, scope, projection, allowance),
+                    ),
+            )
             .read(
                 expression = expression,
                 declaration = declaration,
                 permit = permit,
                 consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
-                unsupported = { retained.unresolvedAt(it, declaration) },
+                unsupported = { cause, at -> retained.unresolvedAt(cause, at) },
             )
 
     private fun returnDestination(expression: KtExpression, returned: KtReturnExpression) {

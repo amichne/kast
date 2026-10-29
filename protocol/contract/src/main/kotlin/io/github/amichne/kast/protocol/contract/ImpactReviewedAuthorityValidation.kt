@@ -3,9 +3,7 @@ package io.github.amichne.kast.protocol.contract
 import io.github.amichne.kast.kernel.Refinement
 
 internal fun ImpactReviewedValueBindingDocument.admitsReceiver(source: ImpactValueSiteReferenceDocument): Boolean =
-    rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1 &&
-        source.valuePath.values.isEmpty() &&
-        matchesReceiver(source)
+    rule.isReviewedReceiverResult() && source.valuePath.values.isEmpty() && matchesReceiver(source)
 
 internal fun ImpactReviewedValueBindingDocument.matchesReceiver(source: ImpactValueSiteReferenceDocument): Boolean =
     when (val receiver = source.role) {
@@ -32,10 +30,24 @@ internal fun ImpactReviewedValueBindingDocument.admits(host: ImpactDeclarationRe
         enclosing
             .copy(file = body.file, range = body.range, compilerIdentity = body.compilerIdentity)
             .declarationFailure() is Refinement.Refined &&
+        admitsParent() &&
         admitsSelectedRule()
 
 private fun ImpactReviewedValueBindingDocument.admitsSelectedRule(): Boolean =
     when (rule) {
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_RECEIVER_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_WITH_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_APPLY_V1 -> admitsScopeFamily()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 -> admitsGroupRule()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 -> admitsMapRule()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_KEY_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_VALUE_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1 -> false
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_VALUES_V1 -> admitsMappedRule()
         ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1,
@@ -65,22 +77,24 @@ private fun ImpactReviewedValueBindingDocument.admitsAlsoRule(): Boolean =
         artifacts.admitsRule(rule) &&
         admitsDeclaredInvocation()
 
-private fun ImpactReviewedValueBindingDocument.admitsDeclaredInvocation(): Boolean =
-    when (val evidence = invocationEvidence) {
-        ImpactReviewedInvocationEvidenceDocument.Unestablished -> false
-        is ImpactReviewedInvocationEvidenceDocument.Declared ->
-            evidence.binding.admits(enclosing) &&
-                evidence.binding.body == body &&
-                evidence.binding.contract.occurrenceRange == supplierRange &&
-                evidence.binding.contract.target.declaration == selected.declaration &&
-                evidence.binding.contract.position == selected.formalIndex &&
-                evidence.binding.contract.classDigest == artifacts.facadeSha256
-    }
+internal fun ImpactReviewedValueBindingDocument.admitsDeclaredInvocation(): Boolean =
+    parent == ImpactReviewedCallbackParentDocument.Declaration &&
+        when (val evidence = invocationEvidence) {
+            ImpactReviewedInvocationEvidenceDocument.Unestablished -> false
+            is ImpactReviewedInvocationEvidenceDocument.Declared ->
+                evidence.binding.admits(enclosing) &&
+                    evidence.binding.body == body &&
+                    evidence.binding.contract.occurrenceRange == supplierRange &&
+                    evidence.binding.contract.target.declaration == selected.declaration &&
+                    evidence.binding.contract.position == selected.formalIndex &&
+                    evidence.binding.contract.classDigest ==
+                        (artifacts as? ImpactReviewedScopeArtifactsDocument)?.facadeSha256
+        }
 
 private fun ImpactReviewedFunctionDocument.admitsScope(name: String, parameter: String, typeParameters: Long): Boolean {
     if (
         qualifiedIdentity.value != name ||
-            receiver.value != "T" ||
+            !receiver.hasType("T") ||
             !declaration.file.value.endsWith("!/kotlin/StandardKt.class")
     )
         return false
@@ -95,7 +109,7 @@ private fun ImpactReviewedFunctionDocument.admitsScope(name: String, parameter: 
     val signature =
         CompilerSignatureDocument.Function(
             qualifiedIdentity,
-            CompilerReceiverDocument.Present(receiver),
+            receiver.compilerReceiverDocument(),
             contextReceivers,
             valueParameters,
             count,
@@ -106,6 +120,9 @@ private fun ImpactReviewedFunctionDocument.admitsScope(name: String, parameter: 
 private fun ImpactReviewedFunctionDocument.admitsReviewedCollection(rule: ImpactReviewedValueRuleDocument): Boolean {
     val expected =
         when (rule) {
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1 ->
+                Triple("filter", "(T)->kotlin/Boolean", 1)
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 -> Triple("mapNotNull", "(T)->R?", 2)
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_V1,
             ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1 -> Triple("map", "(T)->R", 2)
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 -> Triple("sortedBy", "(T)->R?", 2)
@@ -115,7 +132,7 @@ private fun ImpactReviewedFunctionDocument.admitsReviewedCollection(rule: Impact
         }
     if (
         qualifiedIdentity.value != "kotlin.collections.${expected.first}" ||
-            receiver.value != "kotlin/collections/Iterable<T>" ||
+            !receiver.hasType("kotlin/collections/Iterable<T>") ||
             !declaration.file.value.endsWith("!/kotlin/collections/CollectionsKt.class")
     )
         return false
@@ -135,7 +152,7 @@ private fun ImpactReviewedFunctionDocument.admitsReviewedCollection(rule: Impact
         declaration.compilerIdentity,
         CompilerSignatureDocument.Function(
             qualifiedIdentity,
-            CompilerReceiverDocument.Present(receiver),
+            receiver.compilerReceiverDocument(),
             contextReceivers,
             valueParameters,
             count,

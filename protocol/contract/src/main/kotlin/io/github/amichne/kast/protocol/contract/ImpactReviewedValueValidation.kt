@@ -12,6 +12,14 @@ fun ImpactReviewedValueTransferDocument.admitsEvidence(): Boolean =
 
 private fun ImpactReviewedValueTransferDocument.admitsRelation(): Boolean =
     when (val relation = binding.relation) {
+        is ImpactReviewedValueRelationDocument.CallbackReceiverInput -> admitsScopeReceiver(relation)
+        is ImpactReviewedValueRelationDocument.GroupPlacement -> admitsGroup(relation)
+        is ImpactReviewedValueRelationDocument.FilteredElements -> admitsFiltered(relation)
+        ImpactReviewedValueRelationDocument.NonNullCallbackResult -> admitsNonNullResult()
+        is ImpactReviewedValueRelationDocument.EntryInput -> admitsEntryInput(relation)
+        is ImpactReviewedValueRelationDocument.PreservedKey -> admitsPreservedKey(relation)
+        is ImpactReviewedValueRelationDocument.EntryProjection -> admitsEntryProjection(relation)
+        is ImpactReviewedValueRelationDocument.MappedValue -> admitsMapped(relation)
         is ImpactReviewedValueRelationDocument.CallbackCorrespondence -> admitsCallback(relation.semantics)
         is ImpactReviewedValueRelationDocument.ReorderedElements -> admitsSorted(relation)
         is ImpactReviewedValueRelationDocument.TupleConstruction -> admitsTupleConstruction(relation)
@@ -61,7 +69,7 @@ private fun ImpactReviewedValueTransferDocument.admitsLet(proof: ImpactReviewedV
 internal fun ImpactReviewedValueTransferDocument.admitsCallbackResult(
     proof: ImpactReviewedValueBindingDocument
 ): Boolean =
-    target.executionOwner == ImpactExecutionOwnerDocument.Declaration &&
+    target.executionOwner == proof.parentExecutionOwner &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         target.range == proof.supplierRange
 

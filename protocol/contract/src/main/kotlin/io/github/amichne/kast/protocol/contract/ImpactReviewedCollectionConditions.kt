@@ -1,7 +1,8 @@
 package io.github.amichne.kast.protocol.contract
 
 internal fun ImpactValueConditionDocument.ReviewedCollectionNormalResult.admitsCollectionResult(): Boolean =
-    binding.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 &&
+    (binding.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ||
+        binding.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1) &&
         binding.admits(origin.execution.enclosing) &&
         binding.matchesReceiver(sourceSite()) &&
         useRange == binding.supplierRange

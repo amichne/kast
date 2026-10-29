@@ -11,12 +11,14 @@ internal fun ImpactReviewedCallValueBindingDocument.admits(host: ImpactDeclarati
         invocation.callable == selected.declaration &&
         selected.declaration.declarationFailure() is Refinement.Refined &&
         selected.admitsOrdinary(rule) &&
-        artifacts.admitsRule(rule)
+        artifacts.admitsRule(rule) &&
+        admitsEntryReadOrder()
 
-private fun ImpactReviewedOrdinaryTargetDocument.admitsOrdinary(rule: ImpactReviewedValueRuleDocument): Boolean =
+internal fun ImpactReviewedOrdinaryTargetDocument.admitsOrdinary(rule: ImpactReviewedValueRuleDocument): Boolean =
     when (this) {
-        is ImpactReviewedOrdinaryTargetDocument.Function -> signature.admitsTupleFunction(rule)
-        is ImpactReviewedOrdinaryTargetDocument.Property -> admitsTupleProperty(rule)
+        is ImpactReviewedOrdinaryTargetDocument.Function ->
+            (signature.admitsTupleFunction(rule) || signature.admitsEntryFunction(rule))
+        is ImpactReviewedOrdinaryTargetDocument.Property -> admitsTupleProperty(rule) || admitsEntryProperty(rule)
     }
 
 private fun ImpactDeclaredCallbackTargetDocument.admitsTupleFunction(rule: ImpactReviewedValueRuleDocument): Boolean {

@@ -252,7 +252,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                 )
                 .filterKeys { it in definitions }
                 .forEach { (definition, serializer) ->
-                    compare(independentImpactSchema(serializer), definitions.getValue(definition), definition)
+                    assertDefinitionEquivalent(definition, independentFactoredImpactSchema(serializer))
                 }
         }
     }

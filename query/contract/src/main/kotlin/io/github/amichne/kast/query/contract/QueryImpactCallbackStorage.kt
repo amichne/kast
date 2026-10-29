@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
+import io.github.amichne.kast.relation.contract.ReviewedCallbackParent
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueCaptureInvocation
@@ -43,6 +44,7 @@ internal fun ReviewedCallbackValueBinding.storageBytes(g: QueryImpactRetainedGra
                         g.node(evidence) { evidence.binding.storageBytes(g) }
                 }
             )
+            .saturatedAdd(parent.storageBytes(g))
             .saturatedAdd(g.node(selected) { target.storageBytes(g) })
             .saturatedAdd(artifact.storageBytes(g))
     }
@@ -77,4 +79,10 @@ private fun RelationCallableBody.storageBytes(g: QueryImpactRetainedGraph): Long
                     is RelationCallableBody.Anonymous -> signature.storageBytes(g)
                 }
             )
+    }
+
+private fun ReviewedCallbackParent.storageBytes(g: QueryImpactRetainedGraph): Long =
+    when (this) {
+        ReviewedCallbackParent.Declaration -> 0L
+        is ReviewedCallbackParent.DeclaredCallback -> g.node(this) { binding.storageBytes(g) }
     }

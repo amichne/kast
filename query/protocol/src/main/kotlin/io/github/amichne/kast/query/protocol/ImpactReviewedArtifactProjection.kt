@@ -7,6 +7,8 @@ import io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionArtifact
 import io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedLibraryHelperDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedLibraryHelperKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMapSectionsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedScopeArtifactsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedSourceLinesDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedTupleArtifactsDocument
@@ -28,6 +30,13 @@ private data class ArtifactHashes(
 internal fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactReviewedArtifactsDocument> =
     hashes().impactThen { hashes ->
         when (rule) {
+            ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_MAP_VALUES_V1 -> mapDocument(hashes)
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_FILTER_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1,
             ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1,
@@ -44,6 +53,12 @@ internal fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactRev
                         helpers,
                     )
                 }
+            ReviewedLibraryRule.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1 ->
+                scopeDocument(hashes, ReviewedSourceSection.RUN_TOP_LEVEL)
+            ReviewedLibraryRule.KOTLIN_2_3_0_RUN_RECEIVER_V1 ->
+                scopeDocument(hashes, ReviewedSourceSection.RUN_RECEIVER)
+            ReviewedLibraryRule.KOTLIN_2_3_0_WITH_V1 -> scopeDocument(hashes, ReviewedSourceSection.WITH)
+            ReviewedLibraryRule.KOTLIN_2_3_0_APPLY_V1 -> scopeDocument(hashes, ReviewedSourceSection.APPLY)
             ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> scopeDocument(hashes, ReviewedSourceSection.LET)
             ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 -> scopeDocument(hashes, ReviewedSourceSection.ALSO)
             ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1,
@@ -106,6 +121,27 @@ private fun ReviewedLibraryArtifact.collectionSections(): ImpactProjected<Impact
             sourceLines(ReviewedSourceSection.MAP_2_3_0)
                 .impactZip(sourceLines(ReviewedSourceSection.MAP_TO_2_3_0))
                 .impactMap { (map, mapTo) -> ImpactReviewedCollectionSectionsDocument.Map(map, mapTo) }
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1 ->
+            sourceLines(ReviewedSourceSection.GROUP_BY)
+                .impactZip(sourceLines(ReviewedSourceSection.GROUP_BY_TO))
+                .impactMap { (group, groupTo) -> ImpactReviewedCollectionSectionsDocument.GroupBy(group, groupTo) }
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 ->
+            sourceLines(ReviewedSourceSection.GROUP_BY_TRANSFORM)
+                .impactZip(sourceLines(ReviewedSourceSection.GROUP_BY_TRANSFORM_TO))
+                .impactMap { (group, groupTo) ->
+                    ImpactReviewedCollectionSectionsDocument.GroupByTransform(group, groupTo)
+                }
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_FILTER_V1 ->
+            sourceLines(ReviewedSourceSection.FILTER)
+                .impactZip(sourceLines(ReviewedSourceSection.FILTER_TO))
+                .impactMap { (filter, filterTo) -> ImpactReviewedCollectionSectionsDocument.Filter(filter, filterTo) }
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 ->
+            sourceLines(ReviewedSourceSection.MAP_NOT_NULL)
+                .impactZip(sourceLines(ReviewedSourceSection.MAP_NOT_NULL_TO))
+                .impactZip(sourceLines(ReviewedSourceSection.FOR_EACH))
+                .impactMap { (mapped, forEach) ->
+                    ImpactReviewedCollectionSectionsDocument.MapNotNull(mapped.first, mapped.second, forEach)
+                }
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 -> sortedSections()
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
             sourceLines(ReviewedSourceSection.ASSOCIATE)
@@ -180,5 +216,41 @@ private fun ReviewedLibraryHelper.kindDocument(): ImpactReviewedLibraryHelperKin
         ReviewedLibraryHelper.SORT_MUTABLE_LIST -> ImpactReviewedLibraryHelperKindDocument.SORT_MUTABLE_LIST
         ReviewedLibraryHelper.MAP_INSERTION -> ImpactReviewedLibraryHelperKindDocument.MAP_INSERTION
         ReviewedLibraryHelper.MAP_CAPACITY -> ImpactReviewedLibraryHelperKindDocument.MAP_CAPACITY
+        ReviewedLibraryHelper.GROUP_LOOKUP -> ImpactReviewedLibraryHelperKindDocument.GROUP_LOOKUP
+        ReviewedLibraryHelper.NON_NULL_LET -> ImpactReviewedLibraryHelperKindDocument.NON_NULL_LET
         ReviewedLibraryHelper.COLLECTION_CAPACITY -> ImpactReviewedLibraryHelperKindDocument.COLLECTION_CAPACITY
+    }
+
+private fun ReviewedLibraryArtifact.mapDocument(
+    hashes: ArtifactHashes
+): ImpactProjected<ImpactReviewedMapArtifactsDocument> =
+    mapSections().impactZip(helpers.impactEach { it.impactDocument() }).impactMap { (sections, helpers) ->
+        ImpactReviewedMapArtifactsDocument(
+            hashes.binary,
+            hashes.source,
+            hashes.entry,
+            hashes.facade,
+            hashes.implementation,
+            sections,
+            helpers,
+        )
+    }
+
+private fun ReviewedLibraryArtifact.mapSections(): ImpactProjected<ImpactReviewedMapSectionsDocument> =
+    when (rule) {
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_VALUES_V1 ->
+            sourceLines(ReviewedSourceSection.MAP_VALUES)
+                .impactZip(sourceLines(ReviewedSourceSection.MAP_VALUES_TO))
+                .impactMap { (first, second) ->
+                    ImpactReviewedMapSectionsDocument.MapValues(first, second)
+                }
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1 ->
+            sourceLines(ReviewedSourceSection.MAP_ENTRY_COMPONENT1).impactMap {
+                ImpactReviewedMapSectionsDocument.EntryComponent(it)
+            }
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1 ->
+            sourceLines(ReviewedSourceSection.MAP_ENTRY_COMPONENT2).impactMap {
+                ImpactReviewedMapSectionsDocument.EntryComponent(it)
+            }
+        else -> Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
     }

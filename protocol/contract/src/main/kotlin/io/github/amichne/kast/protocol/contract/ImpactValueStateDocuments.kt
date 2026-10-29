@@ -19,7 +19,7 @@ sealed interface ImpactValuePathSegmentDocument {
     @Serializable
     @SerialName("MAP_ENTRY_COMPONENT")
     data class MapEntryComponent(
-        val entry: ImpactReviewedMapEntryCorrelationDocument,
+        val entry: ImpactReviewedMapEntryOriginDocument,
         val slot: ImpactMapEntrySlotDocument,
     ) : ImpactValuePathSegmentDocument
 

@@ -48,7 +48,10 @@ class NativeReviewedKeyProofRejectionTest : NativeReviewedValueFixture() {
             val source = checkNotNull(result).source
             val entry = source.valuePath.segments.single() as ValuePathSegment.MapEntryComponent
             assertEquals(MapEntrySlot.VALUE, entry.slot)
-            assertEquals(ReviewedEntryKeyEvidence.Conditional, entry.entry.keyEvidence)
+            assertEquals(
+                ReviewedEntryKeyEvidence.Conditional,
+                (entry.entry as io.github.amichne.kast.relation.contract.ReviewedMapEntryCorrelation).keyEvidence,
+            )
             assertTrue(
                 "Unsupported key proof must keep the exact entry premise for $name",
                 source.conditions.facts.any {

@@ -160,6 +160,12 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.serializer()
                 ),
+            "impactSourceRange" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument.serializer()),
+            "impactDeclaredCallbackTarget" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackTargetDocument.serializer()
+                ),
             "impactDeclarationReference" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument.serializer()
@@ -251,6 +257,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
             "sourceRange" to sourceRangeSchema(),
+            "sourceRangeCli" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.SourceRangeCliDocument.serializer()
+                ),
             "symbol" to symbolSchema(),
             "symbolDiscovery" to symbolDiscoverySchema(),
             "relationFact" to relationFactSchema(),

@@ -9,6 +9,7 @@ enum class ValueAccessPathFailure {
     NOT_PROPERTY,
     DEPTH_EXCEEDED,
     BASIS_MISMATCH,
+    COMPONENT_MISMATCH,
 }
 
 /** A resolved property declaration, rather than a field name or a rendered type. */
@@ -34,7 +35,7 @@ sealed interface ValuePathSegment {
 
     data class PairComponent(val origin: ReviewedTupleOrigin, val slot: PairSlot) : ValuePathSegment
 
-    data class MapEntryComponent(val entry: ReviewedMapEntryCorrelation, val slot: MapEntrySlot) : ValuePathSegment
+    data class MapEntryComponent(val entry: ReviewedMapEntryOrigin, val slot: MapEntrySlot) : ValuePathSegment
 
     /** An element position preserves the rest of the path without an index or cardinality assertion. */
     data object Element : ValuePathSegment
@@ -71,6 +72,8 @@ class ValueAccessPath private constructor(val segments: List<ValuePathSegment>) 
 
         fun fromSegments(segments: List<ValuePathSegment>): Refinement<ValueAccessPath, ValueAccessPathFailure> {
             if (segments.size > MAX_DEPTH) return Refinement.Rejected(ValueAccessPathFailure.DEPTH_EXCEEDED)
+            if (segments.any { !it.admitsEntrySlot() })
+                return Refinement.Rejected(ValueAccessPathFailure.COMPONENT_MISMATCH)
             val bases = segments.flatMap { it.segmentBasis() }.distinct()
             if (bases.size > 1) return Refinement.Rejected(ValueAccessPathFailure.BASIS_MISMATCH)
             return Refinement.Refined(ValueAccessPath(Collections.unmodifiableList(segments.toList())))
@@ -88,4 +91,17 @@ private fun ValuePathSegment.segmentBasis(): List<SemanticReadIdentity> =
         is ValuePathSegment.Field -> listOf(field.basis)
         is ValuePathSegment.PairComponent -> listOf(origin.basis)
         is ValuePathSegment.MapEntryComponent -> listOf(entry.basis)
+    }
+
+private fun ValuePathSegment.admitsEntrySlot(): Boolean =
+    when (this) {
+        is ValuePathSegment.MapEntryComponent ->
+            when (entry) {
+                is ReviewedGroupBucket -> slot == entry.slot
+                is ReviewedMappedEntryOrigin -> slot == MapEntrySlot.VALUE
+                is ReviewedPreservedKeyOrigin -> slot == MapEntrySlot.KEY
+                is ReviewedInputEntryOrigin,
+                is ReviewedMapEntryCorrelation -> true
+            }
+        else -> true
     }

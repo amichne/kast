@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
@@ -71,7 +72,7 @@ private fun reviewedTupleBinding(
                 readReviewedLibraryArtifact(
                     expression,
                     selected.file,
-                    "commonMain/kotlin/util/Tuples.kt",
+                    selected.callable.sourceEntry,
                     context,
                 )
         ) {
@@ -154,6 +155,7 @@ internal fun KaSession.resolvedReviewedOrdinaryCall(expression: KtExpression): K
     when (expression) {
         is KtBinaryExpression -> expression.resolveCall() as? KaSingleCall<*, *>
         is KtCallExpression -> expression.resolveCall()
+        is KtDestructuringDeclarationEntry -> expression.resolveCall()
         is KtQualifiedExpression ->
             when (val selector = expression.selectorExpression) {
                 is KtCallExpression -> selector.resolveCall()

@@ -5,6 +5,13 @@ internal fun BoundedProtocolList<ImpactReviewedLibraryHelperDocument>.admitsHelp
 ): Boolean {
     val expected =
         when (rule) {
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1,
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 ->
+                listOf(ImpactReviewedLibraryHelperKindDocument.GROUP_LOOKUP)
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 ->
+                listOf(ImpactReviewedLibraryHelperKindDocument.NON_NULL_LET)
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_VALUES_V1 ->
+                listOf(ImpactReviewedLibraryHelperKindDocument.MAP_CAPACITY)
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ->
                 listOf(
                     ImpactReviewedLibraryHelperKindDocument.SORT_COMPARISON,
@@ -26,6 +33,8 @@ internal fun BoundedProtocolList<ImpactReviewedLibraryHelperDocument>.admitsHelp
 
 private fun ImpactReviewedLibraryHelperDocument.admitsHelper(): Boolean =
     when (kind) {
+        ImpactReviewedLibraryHelperKindDocument.GROUP_LOOKUP -> admitsGroupLookup()
+        ImpactReviewedLibraryHelperKindDocument.NON_NULL_LET -> admitsNonNullLet()
         ImpactReviewedLibraryHelperKindDocument.SORT_COMPARISON -> admitsSortComparison()
         ImpactReviewedLibraryHelperKindDocument.SORT_ARRAY -> admitsSortArray()
         ImpactReviewedLibraryHelperKindDocument.SORT_MUTABLE_LIST -> admitsSortMutableList()

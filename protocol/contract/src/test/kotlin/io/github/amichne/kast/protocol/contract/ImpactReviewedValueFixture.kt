@@ -71,7 +71,7 @@ internal class ImpactReviewedValueFixture {
                 compilerIdentity = identity,
             ),
             signature.qualifiedIdentity,
-            text("kotlin/collections/Iterable<T>"),
+            ImpactDeclaredCallbackReceiverDocument.Present(text("kotlin/collections/Iterable<T>")),
             signature.contextReceivers,
             signature.valueParameters,
             base.count(2),

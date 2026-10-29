@@ -2,6 +2,8 @@ package io.github.amichne.kast.protocol.contract
 
 internal fun ImpactReviewedArtifactsDocument.admitsRule(rule: ImpactReviewedValueRuleDocument): Boolean =
     when (this) {
+        is ImpactReviewedEntryDeclarationArtifactDocument -> admitsEntryDeclaration(rule)
+        is ImpactReviewedMapArtifactsDocument -> admitsMapValues(rule)
         is ImpactReviewedCollectionArtifactsDocument -> admitsCollection(rule)
         is ImpactReviewedScopeArtifactsDocument -> admitsScope(rule)
         is ImpactReviewedTupleArtifactsDocument -> admitsTuple(rule)
@@ -10,6 +12,10 @@ internal fun ImpactReviewedArtifactsDocument.admitsRule(rule: ImpactReviewedValu
 private fun ImpactReviewedCollectionArtifactsDocument.admitsCollection(rule: ImpactReviewedValueRuleDocument): Boolean {
     val sectionsAdmitted =
         when (val section = sections) {
+            is ImpactReviewedCollectionSectionsDocument.GroupBy,
+            is ImpactReviewedCollectionSectionsDocument.GroupByTransform -> section.admitsGroupSections(rule)
+            is ImpactReviewedCollectionSectionsDocument.Filter,
+            is ImpactReviewedCollectionSectionsDocument.MapNotNull -> section.admitsSelectionSections(rule)
             is ImpactReviewedCollectionSectionsDocument.Map ->
                 when (rule) {
                     ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_V1 ->
@@ -51,6 +57,13 @@ private fun ImpactReviewedCollectionSectionsDocument.SortedBy.admits(): Boolean 
 
 private fun ImpactReviewedScopeArtifactsDocument.admitsScope(rule: ImpactReviewedValueRuleDocument): Boolean =
     when (rule) {
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1 ->
+            functionLines.matches(RUN_TOP_FIRST_LINE, RUN_TOP_LAST_LINE)
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_RECEIVER_V1 ->
+            functionLines.matches(RUN_RECEIVER_FIRST_LINE, RUN_RECEIVER_LAST_LINE)
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_WITH_V1 -> functionLines.matches(WITH_FIRST_LINE, WITH_LAST_LINE)
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_APPLY_V1 ->
+            functionLines.matches(APPLY_FIRST_LINE, APPLY_LAST_LINE)
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1 -> functionLines.matches(LET_FIRST_LINE, LET_LAST_LINE)
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1 -> functionLines.matches(ALSO_FIRST_LINE, ALSO_LAST_LINE)
         else -> false
@@ -88,7 +101,7 @@ private fun ImpactReviewedTupleArtifactsDocument.admitsTuple(rule: ImpactReviewe
         )
 }
 
-private fun ImpactReviewedArtifactsDocument.matches230(entry: String, facade: String, implementation: String): Boolean =
+private fun ImpactReviewedJvmArtifactHashes.matches230(entry: String, facade: String, implementation: String): Boolean =
     matches(
         "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1",
         "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531",
@@ -97,7 +110,7 @@ private fun ImpactReviewedArtifactsDocument.matches230(entry: String, facade: St
         implementation,
     )
 
-private fun ImpactReviewedArtifactsDocument.matches(
+private fun ImpactReviewedJvmArtifactHashes.matches(
     binary: String,
     source: String,
     entry: String,
@@ -127,3 +140,58 @@ private const val LET_FIRST_LINE = 114
 private const val LET_LAST_LINE = 119
 private const val ALSO_FIRST_LINE = 99
 private const val ALSO_LAST_LINE = 105
+
+private fun ImpactReviewedMapArtifactsDocument.admitsMapValues(rule: ImpactReviewedValueRuleDocument): Boolean =
+    admitsMapSections(rule) &&
+        helpers.admitsHelpers(rule) &&
+        matches230(
+            "1eed0a8e3180aa82e46bcb0049efcaa80c4b6bdee50aef9754b848ee171cdde7",
+            "520e0f6d39db8a20da2ae0b5098ec91be861892695db7a40fef3480a1a7a80b4",
+            "bb2bb2582743754096256a7cb4cd3a219bfb498a0de1a12f725e7e999227d389",
+        )
+
+private fun ImpactReviewedMapArtifactsDocument.admitsMapSections(rule: ImpactReviewedValueRuleDocument): Boolean =
+    when (val lines = sections) {
+        is ImpactReviewedMapSectionsDocument.MapValues ->
+            rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_VALUES_V1 &&
+                lines.mapValuesLines.matches(MAP_VALUES_FIRST_LINE, MAP_VALUES_LAST_LINE) &&
+                lines.mapValuesToLines.matches(MAP_VALUES_TO_FIRST_LINE, MAP_VALUES_TO_LAST_LINE)
+        is ImpactReviewedMapSectionsDocument.EntryComponent ->
+            when (rule) {
+                ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1 ->
+                    lines.componentLines.matches(ENTRY_COMPONENT_ONE_LINE, ENTRY_COMPONENT_ONE_LINE)
+                ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1 ->
+                    lines.componentLines.matches(ENTRY_COMPONENT_TWO_LINE, ENTRY_COMPONENT_TWO_LINE)
+                else -> false
+            }
+    }
+
+private fun ImpactReviewedEntryDeclarationArtifactDocument.admitsEntryDeclaration(
+    rule: ImpactReviewedValueRuleDocument
+): Boolean =
+    (rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_KEY_V1 ||
+        rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_VALUE_V1) &&
+        binaryArtifactSha256.value == "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" &&
+        sourceArtifactSha256.value == "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531" &&
+        sourceEntrySha256.value == "a972160cdcfa4c563abeaf0d10992080470713315a2028de4c421a761a0b3850" &&
+        declarationLines.matches(ENTRY_DECLARATION_FIRST_LINE, ENTRY_DECLARATION_LAST_LINE) &&
+        metadata.entry.value == "kotlin/collections/collections.kotlin_builtins" &&
+        metadata.sha256.value == "e91b5fc8241f903f0cd2c6e3d038c10a9c74a8f22659dfa9268e21afcca70bf1"
+
+private const val MAP_VALUES_FIRST_LINE = 465
+private const val MAP_VALUES_LAST_LINE = 467
+private const val MAP_VALUES_TO_FIRST_LINE = 414
+private const val MAP_VALUES_TO_LAST_LINE = 416
+private const val ENTRY_COMPONENT_ONE_LINE = 312
+private const val ENTRY_COMPONENT_TWO_LINE = 325
+private const val ENTRY_DECLARATION_FIRST_LINE = 611
+private const val ENTRY_DECLARATION_LAST_LINE = 627
+
+private const val RUN_TOP_FIRST_LINE = 41
+private const val RUN_TOP_LAST_LINE = 46
+private const val RUN_RECEIVER_FIRST_LINE = 55
+private const val RUN_RECEIVER_LAST_LINE = 60
+private const val WITH_FIRST_LINE = 69
+private const val WITH_LAST_LINE = 74
+private const val APPLY_FIRST_LINE = 83
+private const val APPLY_LAST_LINE = 89

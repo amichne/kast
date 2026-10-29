@@ -40,14 +40,17 @@ internal fun StringBuilder.valueState(site: ValueSite) {
     site.conditions.facts.forEach { condition ->
         when (condition) {
             is ValueCondition.ReviewedCallbackNormalReturn -> reviewedNormalReturn(condition)
+            is ReviewedGroupMembership -> reviewedGroupMembership(condition)
+            is ReviewedGroupKeyRepresentative -> reviewedGroupKeyRepresentative(condition)
+            is ReviewedPredicateAccepts -> reviewedPredicateAccepts(condition)
+            is ReviewedCallbackResultNonNull -> reviewedCallbackResultNonNull(condition)
             is ValueCondition.ReviewedCollectionNormalResult -> reviewedCollectionNormalResult(condition)
             is ValueCondition.ReviewedEntryKeyUnique -> reviewedEntryKeyUnique(condition)
-            is ValueCondition.DeclaredCallbackResult -> {
-                field("DECLARED_CALLBACK_RESULT")
-                conditionOrigin(condition.origin)
-                range(condition.useRange)
-                declaredCallbackBinding(condition.binding)
-            }
+            is ValueCondition.ReviewedMappedKeySurvives -> reviewedMappedKeySurvives(condition)
+            is ValueCondition.ReviewedPreservedKeySurvives -> reviewedPreservedKeySurvives(condition)
+            is ValueCondition.ReviewedEntryComponentStable -> reviewedEntryComponentStable(condition)
+            is ValueCondition.ReviewedEntryPrefixNormal -> reviewedEntryPrefixNormal(condition)
+            is ValueCondition.DeclaredCallbackResult -> declaredResultCondition(condition)
             is ValueCondition.StableLocal -> {
                 field("STABLE_LOCAL")
                 conditionOrigin(condition.origin)
@@ -82,6 +85,13 @@ internal fun StringBuilder.valueState(site: ValueSite) {
     }
 }
 
+private fun StringBuilder.declaredResultCondition(condition: ValueCondition.DeclaredCallbackResult) {
+    field("DECLARED_CALLBACK_RESULT")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    declaredCallbackBinding(condition.binding)
+}
+
 internal fun StringBuilder.conditionOrigin(origin: ValueConditionOrigin) {
     endpoint(origin.execution.enclosing)
     range(origin.execution.range)
@@ -108,7 +118,7 @@ private fun StringBuilder.valueState(
             }
             is ValuePathSegment.MapEntryComponent -> {
                 field("MAP_ENTRY_COMPONENT")
-                reviewedMapEntry(segment.entry)
+                reviewedMapEntryOrigin(segment.entry)
                 field(segment.slot.name)
             }
             is ValuePathSegment.Field -> {

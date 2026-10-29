@@ -3,6 +3,8 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ReviewedCallValueBinding
+import io.github.amichne.kast.relation.contract.ReviewedLibraryOperation
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
@@ -64,15 +66,50 @@ internal fun nativeReviewedTupleResult(
             ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
     val context = receiverContext(request, scope, projection, allowance)
     val binding =
-        when (val read = readReviewedTupleBinding(call, request.source.executionOwner, context)) {
+        when (
+            val read =
+                nativeReviewedResultBinding(
+                    call = call,
+                    execution = request.source.executionOwner,
+                    projection = projection,
+                    context = context,
+                )
+        ) {
             is Refinement.Refined -> read.value
-            is Refinement.Rejected -> return Refinement.Rejected(read.failure.valueFlowCause())
+            is Refinement.Rejected -> return read
         }
     if (binding.invocation != invocation) return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
-    return if (invocation.signature is CanonicalCompilerSignature.Property)
-        ReviewedValueTransfer.tupleProject(request.source, binding)
-    else ReviewedValueTransfer.tupleConstruct(request.source, binding)
+    return when (binding.selected.operation) {
+        ReviewedLibraryOperation.MAP_ENTRY_KEY,
+        ReviewedLibraryOperation.MAP_ENTRY_VALUE,
+        ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
+        ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2 -> ReviewedValueTransfer.entryProject(request.source, binding)
+        else ->
+            if (invocation.signature is CanonicalCompilerSignature.Property)
+                ReviewedValueTransfer.tupleProject(request.source, binding)
+            else ReviewedValueTransfer.tupleConstruct(request.source, binding)
+    }
 }
+
+private fun nativeReviewedResultBinding(
+    call: KtExpression,
+    execution: ValueExecutionOwner,
+    projection: IntellijK2RelationProjection,
+    context: IntellijCallbackFlowContext,
+): Refinement<ReviewedCallValueBinding, ValueFlowUnsupportedCause> =
+    if (call is org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry)
+        nativeReviewedComponentBinding(
+            entry = call,
+            execution = execution,
+            scope = context.scope,
+            projection = projection,
+            context = context,
+        )
+    else
+        when (val selected = readReviewedTupleBinding(call, execution, context)) {
+            is Refinement.Refined -> selected
+            is Refinement.Rejected -> Refinement.Rejected(selected.failure.valueFlowCause())
+        }
 
 private fun KaSession.tupleInput(expression: KtExpression, call: KtExpression): NativeTupleInput {
     return when (val resolved = resolvedReviewedOrdinaryCall(call)) {

@@ -120,7 +120,13 @@ class ImpactReviewedScopeTest {
                     )
             ),
             f.binding.copy(
-                selected = f.binding.selected.copy(receiver = f.base.text("kotlin/collections/Iterable<T>"))
+                selected =
+                    f.binding.selected.copy(
+                        receiver =
+                            ImpactDeclaredCallbackReceiverDocument.Present(
+                                f.base.text("kotlin/collections/Iterable<T>")
+                            )
+                    )
             ),
             f.binding.copy(selected = f.binding.selected.copy(formalIndex = f.base.offset(1))),
             f.binding.copy(rule = ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1),

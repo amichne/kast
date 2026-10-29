@@ -104,7 +104,7 @@ private fun ImpactValueSiteReferenceDocument.matchesOrdinaryOwner(
         executionOwner == proof.invocation.executionOwner &&
         proof.invocation.range.containsExecutionRange(range)
 
-private fun ImpactValueSiteReferenceDocument.isOrdinaryResult(proof: ImpactReviewedCallValueBindingDocument): Boolean =
+internal fun ImpactValueSiteReferenceDocument.isOrdinaryResult(proof: ImpactReviewedCallValueBindingDocument): Boolean =
     matchesOrdinaryOwner(proof) && role == ImpactValueRoleDocument.ExpressionResult && range == proof.invocation.range
 
 private fun ImpactValueSiteReferenceDocument.conservesEntryEvidence(

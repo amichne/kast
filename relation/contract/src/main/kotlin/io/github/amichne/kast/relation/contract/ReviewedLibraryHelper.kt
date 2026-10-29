@@ -9,6 +9,36 @@ enum class ReviewedLibraryHelper(
     val sourceSections: List<ReviewedSourceSection>,
     val classes: List<ReviewedClassEvidence>,
 ) {
+    GROUP_LOOKUP(
+        "commonMain/kotlin/collections/Maps.kt",
+        "1eed0a8e3180aa82e46bcb0049efcaa80c4b6bdee50aef9754b848ee171cdde7",
+        listOf(ReviewedSourceSection.GROUP_GET_OR_PUT),
+        listOf(
+            ReviewedClassEvidence(
+                "kotlin/collections/MapsKt.class",
+                "520e0f6d39db8a20da2ae0b5098ec91be861892695db7a40fef3480a1a7a80b4",
+            ),
+            ReviewedClassEvidence(
+                "kotlin/collections/MapsKt__MapsKt.class",
+                "bb2bb2582743754096256a7cb4cd3a219bfb498a0de1a12f725e7e999227d389",
+            ),
+        ),
+    ),
+    NON_NULL_LET(
+        "commonMain/kotlin/util/Standard.kt",
+        "86b7320d868d66492d277ebb5d5d8ad78da074d592dacf32f186a83d8d3196a0",
+        listOf(ReviewedSourceSection.LET),
+        listOf(
+            ReviewedClassEvidence(
+                "kotlin/StandardKt.class",
+                "f7d71cc1a37a29843d8e3a0b660afa358bdf0f8ac3ffb566a0e79c004f7ffd05",
+            ),
+            ReviewedClassEvidence(
+                "kotlin/StandardKt__StandardKt.class",
+                "bfdad3872af89a51041163c03afda592baea4e394a8b1665de5b7547f4f43ce0",
+            ),
+        ),
+    ),
     SORT_COMPARISON(
         "commonMain/kotlin/comparisons/Comparisons.kt",
         "a4d437cb59c2a9ee1277211ad895545ec65842f307790358900ac4d22fde67a3",
@@ -95,6 +125,11 @@ enum class ReviewedLibraryHelper(
 
 internal fun ReviewedLibraryRule.reviewedHelpers(): List<ReviewedLibraryHelper> =
     when (this) {
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1,
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 -> listOf(ReviewedLibraryHelper.GROUP_LOOKUP)
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 -> listOf(ReviewedLibraryHelper.NON_NULL_LET)
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_FILTER_V1 -> emptyList()
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_VALUES_V1 -> listOf(ReviewedLibraryHelper.MAP_CAPACITY)
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ->
             listOf(
                 ReviewedLibraryHelper.SORT_COMPARISON,
@@ -108,7 +143,13 @@ internal fun ReviewedLibraryRule.reviewedHelpers(): List<ReviewedLibraryHelper> 
                 ReviewedLibraryHelper.COLLECTION_CAPACITY,
             )
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 -> listOf(ReviewedLibraryHelper.COLLECTION_CAPACITY)
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
         ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1,
+        ReviewedLibraryRule.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1,
+        ReviewedLibraryRule.KOTLIN_2_3_0_RUN_RECEIVER_V1,
+        ReviewedLibraryRule.KOTLIN_2_3_0_WITH_V1,
+        ReviewedLibraryRule.KOTLIN_2_3_0_APPLY_V1,
         ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1,
         ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1,
         ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1,

@@ -9,6 +9,19 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 enum class ImpactReviewedValueRuleDocument {
+    KOTLIN_2_3_0_RUN_TOP_LEVEL_V1,
+    KOTLIN_2_3_0_RUN_RECEIVER_V1,
+    KOTLIN_2_3_0_WITH_V1,
+    KOTLIN_2_3_0_APPLY_V1,
+    KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1,
+    KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1,
+    KOTLIN_2_3_0_ITERABLE_FILTER_V1,
+    KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1,
+    KOTLIN_2_3_0_MAP_ENTRY_KEY_V1,
+    KOTLIN_2_3_0_MAP_ENTRY_VALUE_V1,
+    KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
+    KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
+    KOTLIN_2_3_0_MAP_VALUES_V1,
     KOTLIN_2_4_21_ITERABLE_MAP_V1,
     KOTLIN_2_3_0_ITERABLE_MAP_V1,
     KOTLIN_2_3_0_LET_V1,
@@ -45,7 +58,7 @@ enum class ImpactInvocationCountKnowledgeDocument {
 data class ImpactReviewedFunctionDocument(
     val declaration: ImpactDeclarationReferenceDocument,
     val qualifiedIdentity: ProtocolText,
-    val receiver: ProtocolText,
+    val receiver: ImpactDeclaredCallbackReceiverDocument,
     val contextReceivers: BoundedProtocolList<ProtocolText>,
     val valueParameters: BoundedProtocolList<ProtocolText>,
     val typeParameterCount: QueryDiscoveryCountDocument,
@@ -58,8 +71,6 @@ sealed interface ImpactReviewedArtifactsDocument {
     val binaryArtifactSha256: ProtocolText
     val sourceArtifactSha256: ProtocolText
     val sourceEntrySha256: ProtocolText
-    val facadeSha256: ProtocolText
-    val implementationSha256: ProtocolText
 }
 
 @Serializable
@@ -77,7 +88,7 @@ data class ImpactReviewedCollectionArtifactsDocument(
     override val implementationSha256: ProtocolText,
     val sections: ImpactReviewedCollectionSectionsDocument,
     val helpers: BoundedProtocolList<ImpactReviewedLibraryHelperDocument>,
-) : ImpactReviewedArtifactsDocument
+) : ImpactReviewedArtifactsDocument, ImpactReviewedJvmArtifactHashes
 
 @Serializable
 @SerialName("commonMain/kotlin/util/Standard.kt")
@@ -93,7 +104,7 @@ data class ImpactReviewedScopeArtifactsDocument(
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
     override val implementationSha256: ProtocolText,
     val functionLines: ImpactReviewedSourceLinesDocument,
-) : ImpactReviewedArtifactsDocument
+) : ImpactReviewedArtifactsDocument, ImpactReviewedJvmArtifactHashes
 
 @Serializable
 @SerialName("commonMain/kotlin/util/Tuples.kt")
@@ -109,7 +120,7 @@ data class ImpactReviewedTupleArtifactsDocument(
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
     override val implementationSha256: ProtocolText,
     val sections: ImpactReviewedTupleSectionsDocument,
-) : ImpactReviewedArtifactsDocument
+) : ImpactReviewedArtifactsDocument, ImpactReviewedJvmArtifactHashes
 
 /** Inclusive one-based lines in the artifact's exact source entry. */
 @Serializable data class ImpactReviewedSourceLinesDocument(val first: ProtocolOffset, val last: ProtocolOffset)
@@ -130,6 +141,7 @@ data class ImpactReviewedValueBindingDocument(
     @Required
     val invocationEvidence: ImpactReviewedInvocationEvidenceDocument =
         ImpactReviewedInvocationEvidenceDocument.Unestablished,
+    @Required val parent: ImpactReviewedCallbackParentDocument = ImpactReviewedCallbackParentDocument.Declaration,
 ) : ImpactReviewedValueAuthorityDocument
 
 @Serializable

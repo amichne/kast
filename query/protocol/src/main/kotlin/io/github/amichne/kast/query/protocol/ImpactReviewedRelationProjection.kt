@@ -36,7 +36,9 @@ internal fun ReviewedCallValueBinding.impactDocument(): ImpactProjected<ImpactRe
         .impactZip(invocation.impactDocument())
         .impactZip(ordinaryTargetDocument())
         .impactZip(artifact.impactDocument())
-        .impactMap { (selected, artifacts) ->
+        .impactZip(entryReadOrder.impactDocument())
+        .impactMap { (authority, order) ->
+            val (selected, artifacts) = authority
             ImpactReviewedCallValueBindingDocument(
                 artifact.rule.impactDocument(),
                 selected.first.first.basis,
@@ -44,6 +46,7 @@ internal fun ReviewedCallValueBinding.impactDocument(): ImpactProjected<ImpactRe
                 selected.first.second,
                 selected.second,
                 artifacts,
+                order,
             )
         }
 
@@ -97,6 +100,26 @@ internal fun ReviewedMapEntryCorrelation.impactDocument(): ImpactProjected<Impac
 
 internal fun ReviewedValueRelation.impactDocument(): ImpactProjected<ImpactReviewedValueRelationDocument> =
     when (this) {
+        is ReviewedValueRelation.CallbackReceiverInput ->
+            receiver.impactDocument().impactMap { ImpactReviewedValueRelationDocument.CallbackReceiverInput(it) }
+        is ReviewedValueRelation.GroupPlacement ->
+            entry.impactDocument().impactMap { ImpactReviewedValueRelationDocument.GroupPlacement(it) }
+        is ReviewedValueRelation.FilteredElements ->
+            Refinement.Refined(ImpactReviewedValueRelationDocument.FilteredElements(selection.impactDocument()))
+        ReviewedValueRelation.NonNullCallbackResult ->
+            Refinement.Refined(ImpactReviewedValueRelationDocument.NonNullCallbackResult)
+        is ReviewedValueRelation.EntryInput ->
+            entry.impactDocument().impactMap {
+                ImpactReviewedValueRelationDocument.EntryInput(it, slot.impactDocument())
+            }
+        is ReviewedValueRelation.PreservedKey ->
+            entry.impactDocument().impactMap { ImpactReviewedValueRelationDocument.PreservedKey(it) }
+        is ReviewedValueRelation.EntryProjection ->
+            entry.impactDocument().impactMap {
+                ImpactReviewedValueRelationDocument.EntryProjection(it, slot.impactDocument())
+            }
+        is ReviewedValueRelation.MappedValue ->
+            entry.impactDocument().impactMap { ImpactReviewedValueRelationDocument.MappedValue(it) }
         is ReviewedValueRelation.CallbackCorrespondence ->
             Refinement.Refined(ImpactReviewedValueRelationDocument.CallbackCorrespondence(semantics.impactDocument()))
         is ReviewedValueRelation.ReorderedElements ->
