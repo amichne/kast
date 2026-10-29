@@ -26,6 +26,10 @@ internal class LocalSchemaGraphAssertions(
         }
     }
 
+    fun assertDefinitionEquivalent(name: String) {
+        compare(expected.root, definitions.getValue(name), "definition/$name")
+    }
+
     private fun compare(left: JsonElement, right: JsonElement, path: String, allowDefinitions: Boolean = false) {
         val expectedShape = resolve(left, expected.definitions)
         val actualShape = resolve(right, definitions)

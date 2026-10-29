@@ -196,6 +196,10 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
         compare(expected, schema, "root", allowDefinitions = true)
     }
 
+    fun assertDefinitionEquivalent(name: String, expected: IndependentSchemaGraph) {
+        LocalSchemaGraphAssertions(schema, expected).assertDefinitionEquivalent(name)
+    }
+
     fun assertDefinitionEquivalent(name: String, expected: JsonElement) {
         compare(expected, definitions.getValue(name), name)
     }

@@ -13,10 +13,8 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowDomainDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments
@@ -37,6 +35,7 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
         val Installed by lazy {
             from(
                 CanonicalCallbackSchemaDocuments.serializers +
+                    CanonicalReviewedSchemaDocuments.serializers +
                     mapOf(
                         "callbackObservation" to CanonicalQueryCliDocuments.callbackObservationSerializer,
                         "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
@@ -50,12 +49,10 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
                         "impactCallFrame" to ImpactCallFrameDocument.serializer(),
                         "impactCallTarget" to ImpactCallTargetDocument.serializer(),
+                        "impactValueConditionOrigin" to ImpactValueConditionOriginDocument.serializer(),
                         "impactValueRole" to ImpactValueRoleDocument.serializer(),
                         "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                         "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
-                        "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
-                        "impactReviewedValueRelationship" to ImpactReviewedValueRelationshipDocument.serializer(),
-                        "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
                         "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
                         "impactCallbackInputFailure" to ImpactCallbackInputFailureDocument.serializer(),
                         "impactFlowDomain" to ImpactFlowDomainDocument.serializer(),

@@ -182,6 +182,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument.serializer()),
             "impactCallTarget" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument.serializer()),
+            "impactValueConditionOrigin" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocument.serializer()
+                ),
             "impactValueRole" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument.serializer()),
             "callbackGraphCause" to
@@ -196,21 +200,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument.serializer()
                 ),
-            "impactReviewedValueBinding" to
-                generatedOutputSchema(
-                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument.serializer()
-                ),
-            "impactReviewedValueRelationship" to
-                generatedOutputSchema(
-                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument.serializer()
-                ),
             "impactDeclaredCallbackValueBinding" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument.serializer()
-                ),
-            "impactReviewedValueTransfer" to
-                generatedOutputSchema(
-                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument.serializer()
                 ),
             "impactFlowDomain" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactFlowDomainDocument.serializer()),
@@ -279,8 +271,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
         )
         .apply {
             for ((name, serializer) in
-                io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers) {
-                check(name !in this) { "Duplicate canonical callback schema address: $name" }
+                io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers +
+                    CanonicalReviewedSchemaDocuments.serializers) {
+                check(name !in this) { "Duplicate canonical schema address: $name" }
                 this[name] = generatedOutputSchema(serializer)
             }
             for ((name, definition) in
