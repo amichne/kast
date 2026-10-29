@@ -42,6 +42,7 @@ class Failure(str, Enum):
     PAYLOAD_MISMATCH = "PAYLOAD_MISMATCH"
     UNSAFE_ARCHIVE = "UNSAFE_ARCHIVE"
     WRONG_PLATFORM = "WRONG_PLATFORM"
+    TOOLCHAIN_MISMATCH = "TOOLCHAIN_MISMATCH"
     PROCESS_FAILED = "PROCESS_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
 
@@ -58,6 +59,7 @@ class Record:
     kind: Kind
     identity: Identity
     sha256: str
+    toolchainReleaseSha256: str
 
 
 @dataclass(frozen=True)
@@ -71,31 +73,32 @@ def mapping(value: object) -> TypeGuard[dict[object, object]]:
 
 
 def decode(value: object) -> Record | Failure:
-    if not mapping(value) or set(value) != {"kind", "identity", "sha256"}:
+    if not mapping(value) or set(value) != {"kind", "identity", "sha256", "toolchainReleaseSha256"}:
         return Failure.INVALID_RECORD
     identity = value["identity"]
     if not mapping(identity) or set(identity) != {"revision", "tree", "version"}:
         return Failure.INVALID_RECORD
     revision, tree, version = identity["revision"], identity["tree"], identity["version"]
     kind, digest = value["kind"], value["sha256"]
-    if not all(isinstance(item, str) for item in (revision, tree, version, kind, digest)):
-        return Failure.INVALID_RECORD
+    toolchain = value["toolchainReleaseSha256"]
     if (
         not isinstance(revision, str)
         or not isinstance(tree, str)
         or not isinstance(version, str)
         or not isinstance(kind, str)
         or not isinstance(digest, str)
+        or not isinstance(toolchain, str)
     ):
         return Failure.INVALID_RECORD
     if (
         not all(re.fullmatch(r"[0-9a-f]{40}", sha) and sha != "0" * 40 for sha in (revision, tree))
         or not re.fullmatch(r"\d+\.\d+\.\d+", version)
         or not re.fullmatch(r"[0-9a-f]{64}", digest)
+        or not re.fullmatch(r"[0-9a-f]{64}", toolchain)
     ):
         return Failure.INVALID_RECORD
     try:
-        return Record(Kind(kind), Identity(revision, tree, version), digest)
+        return Record(Kind(kind), Identity(revision, tree, version), digest, toolchain)
     except ValueError:
         return Failure.INVALID_RECORD
 
@@ -161,14 +164,18 @@ def unpack(payload: Admitted, destination: Path) -> Failure | Extraction:
     return Extraction.COMPLETE
 
 
-def record(archive: Path, destination: Path, identity: Identity, kind: Kind) -> None:
+def record(
+    archive: Path, destination: Path, identity: Identity, kind: Kind, toolchain: str
+) -> None:
     destination.mkdir(parents=True, exist_ok=False)
     _ = shutil.copyfile(archive, destination / "payload.tar.gz")
-    value = Record(kind, identity, digest(destination / "payload.tar.gz"))
+    value = Record(kind, identity, digest(destination / "payload.tar.gz"), toolchain)
     _ = (destination / "record.json").write_text(json.dumps(asdict(value), indent=2) + "\n")
 
 
-def pack(directory: Path, destination: Path, identity: Identity, kind: Kind) -> None:
+def pack(
+    directory: Path, destination: Path, identity: Identity, kind: Kind, toolchain: str
+) -> None:
     with tempfile.TemporaryDirectory() as temporary:
         archive = Path(temporary) / "payload.tar.gz"
         with tarfile.open(archive, "w:gz") as payload:
@@ -176,7 +183,7 @@ def pack(directory: Path, destination: Path, identity: Identity, kind: Kind) -> 
                 if path.is_symlink():
                     raise SystemExit(Failure.UNSAFE_ARCHIVE.value)
                 payload.add(path, arcname=path.relative_to(directory).as_posix(), recursive=False)
-        record(archive, destination, identity, kind)
+        record(archive, destination, identity, kind, toolchain)
 
 
 def run(command: list[str], *, cwd: Path = ROOT, environment: dict[str, str] | None = None) -> None:
@@ -263,7 +270,13 @@ def native(payload: Admitted, destination: Path) -> None:
         _ = (metrics.parent / "macos-build.txt").write_text(target)
         if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:
             raise SystemExit(Failure.WRONG_PLATFORM.value)
-        pack(output, destination, payload.record.identity, Kind.NATIVE)
+        pack(
+            output,
+            destination,
+            payload.record.identity,
+            Kind.NATIVE,
+            digest(Path(os.environ["JAVA_HOME"]) / "release"),
+        )
 
 
 def assemble(payload: Admitted, destination: Path) -> None:
@@ -303,12 +316,15 @@ def assemble(payload: Admitted, destination: Path) -> None:
         destination,
         payload.record.identity,
         Kind.RELEASE,
+        payload.record.toolchainReleaseSha256,
     )
 
 
 def qualify(payload: Admitted) -> None:
     if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
         raise SystemExit(Failure.WRONG_PLATFORM.value)
+    if payload.record.toolchainReleaseSha256 != digest(Path(os.environ["JAVA_HOME"]) / "release"):
+        raise SystemExit(Failure.TOOLCHAIN_MISMATCH.value)
     identity = payload.record.identity
     release = ROOT / f"build/release/v{identity.version}"
     release.mkdir(parents=True, exist_ok=False)
@@ -356,6 +372,7 @@ def main() -> None:
             args.output,
             identity,
             Kind.INPUTS,
+            digest(Path(os.environ["JAVA_HOME"]) / "release"),
         )
     else:
         kind = {"native": Kind.INPUTS, "assemble": Kind.NATIVE, "qualify": Kind.RELEASE}[args.stage]

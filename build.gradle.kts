@@ -124,9 +124,9 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
 }
 
-val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").map { platform ->
+val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
     require(platform == "macos-aarch64") { "Imported native archives must target macos-aarch64" }
-    require(providers.gradleProperty("kastNativeExecutable").isPresent) { "An imported platform needs a native executable" }
+    require(executable.isNotBlank()) { "An imported platform needs a native executable" }
     platform
 }.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {

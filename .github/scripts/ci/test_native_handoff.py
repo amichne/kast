@@ -32,7 +32,7 @@ class NativeHandoffTest(unittest.TestCase):
             executable.write_bytes(b"native fixture")
             executable.chmod(0o755)
             bundle = root / "bundle"
-            pack(inputs, bundle, identity, Kind.NATIVE)
+            pack(inputs, bundle, identity, Kind.NATIVE, "c" * 64)
             accepted = admit(bundle, identity, Kind.NATIVE)
             self.assertIsInstance(accepted, Admitted)
             if not isinstance(accepted, Admitted):
@@ -49,7 +49,13 @@ class NativeHandoffTest(unittest.TestCase):
             self.assertEqual(Failure.IDENTITY_MISMATCH, admit(bundle, identity, Kind.RELEASE))
             (bundle / "payload.tar.gz").write_bytes(b"changed")
             self.assertEqual(Failure.PAYLOAD_MISMATCH, admit(bundle, identity, Kind.NATIVE))
+            self.assertEqual("c" * 64, accepted.record.toolchainReleaseSha256)
             document = asdict(accepted.record)
+            self.assertEqual(
+                Failure.INVALID_RECORD, decode(document | {"toolchainReleaseSha256": "wrong"})
+            )
+            (bundle / "record.json").write_text('{"kind":"native","kind":"release"}')
+            self.assertEqual(Failure.INVALID_RECORD, admit(bundle, identity, Kind.NATIVE))
             for key in tuple(document):
                 malformed = dict(document)
                 del malformed[key]

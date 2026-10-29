@@ -186,6 +186,8 @@ The routine candidate path uses four stages:
 4. macOS runs the installed-product tests against those archives and seals the existing candidate record.
 
 Each transfer carries the source revision, source tree, version, artifact kind, and SHA-256 digest.
+The native artifact also carries the compiler toolchain digest through assembly.
+Final qualification rejects a different toolchain before candidate sealing.
 A mismatched identity or digest rejects the next stage before compilation or assembly.
 Archive extraction rejects links and paths outside the destination.
 The Mac jobs run no Gradle tasks and compile no Kotlin sources.
@@ -228,7 +230,8 @@ The seven symbol cases remain in the complete 237-case gate.
 Missing, skipped, duplicate, malformed, unexpected, and zero case populations fail that accountant.
 
 The CI dispatch input `rollout` supports `warm`, `changed`, `reuse`, and `cold` phases.
-All four corpus jobs use `macos-15`.
+All four corpus jobs use `ubuntu-latest`.
+Earlier macOS timings do not form a matched cohort with these Linux runs.
 Set `rollout_case` to one corpus name for a measurement through its own aggregate.
 The default `all` runs the complete matrix.
 Each case has a separate concurrency group.

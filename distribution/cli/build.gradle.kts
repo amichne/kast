@@ -1,3 +1,4 @@
+import java.io.File
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.WriteProperties
 import org.gradle.api.tasks.bundling.Compression
@@ -91,7 +92,7 @@ tasks.named<ProcessResources>("processResources") {
 val importedManagementExecutable = providers.gradleProperty("kastNativeExecutable")
 configurations.consumable("managementExecutableElements") {
     if (importedManagementExecutable.isPresent) {
-        outgoing.artifact(layout.file(importedManagementExecutable.map { file(it) }))
+        outgoing.artifact(layout.file(importedManagementExecutable.map { File(it).also { path -> require(path.isAbsolute) { "Imported native executable needs an absolute path" } } }))
     } else {
         outgoing.artifact(layout.buildDirectory.file("native/nativeCompile/kast")) {
             builtBy(tasks.named("nativeCompile"))
