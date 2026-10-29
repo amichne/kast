@@ -94,7 +94,7 @@ val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKas
 val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     group = "distribution"
     description = "Stages the Kast control installation for the existing IDE."
-    dependsOn(":cli:installDist", ":distribution:cli:nativeCompile", generateKastControlMetadata, generateKastAgentTools)
+    dependsOn(":cli:installDist", generateKastControlMetadata, generateKastAgentTools)
     into(controlProductDirectory)
     from(cliInstallation) {
         exclude("bin/cli", "bin/kast.bat")
@@ -124,13 +124,17 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
 }
 
-val controlArchivePlatform = providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
+val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").map { platform ->
+    require(platform == "macos-aarch64") { "Imported native archives must target macos-aarch64" }
+    require(providers.gradleProperty("kastNativeExecutable").isPresent) { "An imported platform needs a native executable" }
+    platform
+}.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {
         os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
         os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
         else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64")
     }
-}
+})
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     group = "distribution"

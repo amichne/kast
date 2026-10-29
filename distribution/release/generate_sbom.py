@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -13,8 +14,10 @@ import tarfile
 import tempfile
 
 SYFT_VERSION = "1.51.1"
-SYFT_ARCHIVE = f"syft_{SYFT_VERSION}_darwin_arm64.tar.gz"
-SYFT_DIGEST = "sha256:ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1"
+SYFT_TARGETS = {
+    ("Darwin", "arm64"): ("darwin_arm64", "sha256:ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1"),
+    ("Linux", "x86_64"): ("linux_amd64", "sha256:8fcb33017a0dc1058298c923c436d19dfa68ae93968e0b423248542e3afb9fc3"),
+}
 
 
 class SbomError(Exception):
@@ -47,21 +50,26 @@ def write(path: Path, value: object) -> None:
 
 
 def scanner(root: Path) -> Path:
-    cache = root / ".gradle/release-tools" / f"syft-{SYFT_VERSION}"
+    target = SYFT_TARGETS.get((platform.system(), platform.machine()))
+    if target is None:
+        raise SbomError("unsupported SBOM scanner platform")
+    suffix, expected_digest = target
+    archive_name = f"syft_{SYFT_VERSION}_{suffix}.tar.gz"
+    cache = root / ".gradle/release-tools" / f"syft-{SYFT_VERSION}-{suffix}"
     cache.mkdir(parents=True, exist_ok=True)
-    archive = cache / SYFT_ARCHIVE
+    archive = cache / archive_name
     if not archive.exists():
         with tempfile.TemporaryDirectory(dir=cache) as temporary:
             run([
                 "gh", "release", "download", f"v{SYFT_VERSION}",
-                "--repo", "anchore/syft", "--pattern", SYFT_ARCHIVE,
+                "--repo", "anchore/syft", "--pattern", archive_name,
                 "--dir", temporary,
             ], root, os.environ.copy())
-            downloaded = Path(temporary) / SYFT_ARCHIVE
-            if digest(downloaded) != SYFT_DIGEST:
+            downloaded = Path(temporary) / archive_name
+            if digest(downloaded) != expected_digest:
                 raise SbomError("SBOM scanner archive checksum mismatch")
             downloaded.replace(archive)
-    if digest(archive) != SYFT_DIGEST:
+    if digest(archive) != expected_digest:
         raise SbomError("cached SBOM scanner archive checksum mismatch")
 
     executable = cache / "syft"

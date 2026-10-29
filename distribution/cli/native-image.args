@@ -1,0 +1,2 @@
+--no-fallback
+-H:IncludeResources=management/bootstrap-install.sh

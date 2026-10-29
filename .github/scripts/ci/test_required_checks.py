@@ -33,25 +33,24 @@ def docs_only_results():
 
 
 class RequiredChecksTest(unittest.TestCase):
-    def test_source_proof_uses_exactly_one_selected_producer(self):
+    def test_source_proof_requires_linux_even_when_native_succeeds(self):
         for qualified in (False, True):
             needs = docs_only_results()
             needs["scope"]["outputs"].update(
                 source="run", product="run" if qualified else "skip", portable="run",
                 documentation="skip", scope="PRODUCT" if qualified else "SOURCE",
             )
-            needs["source-work"] = {"result": "skipped" if qualified else "success"}
-            needs["kotlin"]["result"] = "success" if qualified else "skipped"
-            self.assertEqual(Verdict.COMPLETE, source_proof(needs))
-            for producer in ("source-work", "kotlin"):
-                for result in ("failure", "cancelled", "", "skipped" if needs[producer]["result"] == "success" else "success"):
-                    rejected = deepcopy(needs)
-                    rejected[producer]["result"] = result
-                    with self.subTest(qualified=qualified, producer=producer, result=result):
-                        self.assertEqual(Verdict.CHECK_FAILED, source_proof(rejected))
-            missing = deepcopy(needs)
-            del missing["source-work"]
-            self.assertEqual(Verdict.CHECK_FAILED, source_proof(missing))
+            needs["source-work"] = {"result": "success"}
+            # Native work is independent of the source result.
+            for native in ("success", "failure", "cancelled", "skipped"):
+                needs["kotlin"] = {"result": native}
+                self.assertEqual(Verdict.COMPLETE, source_proof(needs))
+            for result in ("failure", "cancelled", "", "skipped"):
+                rejected = deepcopy(needs)
+                rejected["source-work"]["result"] = result
+                self.assertEqual(Verdict.CHECK_FAILED, source_proof(rejected))
+            del needs["source-work"]
+            self.assertEqual(Verdict.CHECK_FAILED, source_proof(needs))
         self.assertEqual(Verdict.INVALID_SELECTION, source_proof(docs_only_results()))
 
     def test_source_feedback_cannot_complete_candidate_qualification(self):
