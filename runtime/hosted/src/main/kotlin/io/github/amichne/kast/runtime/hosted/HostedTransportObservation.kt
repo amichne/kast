@@ -21,6 +21,7 @@ internal data class HostedTransportObservation(
 @Serializable
 internal enum class HostedTransportStage {
     ACCEPT,
+    CONNECTION_ADMISSION,
     REQUEST_READ,
     SEMANTIC_ADMISSION,
     EXECUTION,

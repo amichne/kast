@@ -6,6 +6,7 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.channels.Channels
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,36 +36,25 @@ internal suspend fun serveHostedListener(
                 }
             }
         trace.emit(HostedEndpointOutcome.COMPLETED)
-        if (connections.tryAcquire()) {
-            // Atomic start installs cleanup even when cancellation races with scheduling.
-            launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
-                try {
-                    client.use {
-                        serveAdmittedHostedConnection(it, observer, trace, limits, dispatch)
-                    }
-                } finally {
-                    connections.release()
-                    trace.enter(HostedTransportStage.CONNECTION_RELEASE)
-                    trace.emit(HostedEndpointOutcome.COMPLETED)
+        trace.enter(HostedTransportStage.CONNECTION_ADMISSION)
+        try {
+            connections.acquire()
+        } catch (cancelled: CancellationException) {
+            client.close()
+            trace.emit(HostedEndpointOutcome.CANCELLED)
+            throw cancelled
+        }
+        trace.emit(HostedEndpointOutcome.COMPLETED)
+        // Atomic start installs cleanup even when cancellation races with scheduling.
+        launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
+            try {
+                client.use {
+                    serveAdmittedHostedConnection(it, observer, trace, limits, dispatch)
                 }
-            }
-        } else {
-            // One bounded rejection exchange, without another queued job or semantic admission.
-            client.use {
-                serveHostedConnection(
-                    Channels.newInputStream(it),
-                    Channels.newOutputStream(it),
-                    observer,
-                    limits,
-                    trace,
-                ) {
-                    trace.enter(HostedTransportStage.SEMANTIC_ADMISSION)
-                    trace.emit(
-                        HostedEndpointOutcome.REJECTED,
-                        failure = HostedEndpointFailure.ADMISSION_CAPACITY_EXCEEDED,
-                    )
-                    HostedResponse.Rejected(HostedEndpointFailure.ADMISSION_CAPACITY_EXCEEDED)
-                }
+            } finally {
+                connections.release()
+                trace.enter(HostedTransportStage.CONNECTION_RELEASE)
+                trace.emit(HostedEndpointOutcome.COMPLETED)
             }
         }
     }

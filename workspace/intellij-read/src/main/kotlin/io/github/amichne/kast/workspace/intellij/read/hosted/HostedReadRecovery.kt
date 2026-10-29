@@ -24,7 +24,7 @@ sealed interface HostedReadRecovery {
 
         @kotlinx.serialization.EncodeDefault
         val instruction: String =
-            "The host deadline expired during project admission or cached Gradle model capture, before semantic search. Inspect the kast_semantic_read stage and elapsed time; narrow search scope only after semantic search begins. Increase the host query, connection, and client exchange deadlines together if this project consistently needs more preparation time."
+            "The host deadline expired before semantic work started. Read admission, queue wait, project admission, or cached Gradle model capture consumed the allowance. Inspect the kast_semantic_read stages before you change the query scope. Increase the host query, connection, and client exchange deadlines together if this project needs more preparation time."
     }
 
     @Serializable
@@ -108,7 +108,7 @@ sealed interface HostedReadRecovery {
 
         @kotlinx.serialization.EncodeDefault
         val instruction: String =
-            "All read slots are occupied. Allow an active read to finish before retrying this host."
+            "The read queue is full. This request did not start semantic work. Allow an active read to finish before you submit another request."
     }
 
     @Serializable
