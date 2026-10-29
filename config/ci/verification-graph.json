@@ -226,7 +226,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt",
-            "sha256": "f67d8e76b4a9056f200ebdc82899a9eb5cf4418dbaf67c39581e34713eb56cbb"
+            "sha256": "b9f8d0dfa349485f1cadeb16a4ffc6ca5c86bb4add9a06d9e6e6617136b625ea"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",

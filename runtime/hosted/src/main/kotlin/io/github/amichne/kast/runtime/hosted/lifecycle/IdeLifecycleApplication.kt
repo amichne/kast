@@ -59,6 +59,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         action: suspend (Project, CanonicalWorkspaceRoot) -> HostedSemanticReadResult<Value>,
     ): HostedSemanticReadResult<Value> = native.withRegisteredPeer(expected, action)
 
+    internal fun hasActivePreparation(): Boolean = native.hasActivePreparation()
+
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =
@@ -339,22 +341,12 @@ class IdeLifecycleStartup : AppLifecycleListener, com.intellij.ide.plugins.Dynam
 
     override fun checkUnloadPlugin(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
         if (pluginDescriptor.pluginId.idString != PLUGIN_ID) return
-        val processing =
-            com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager.getInstance()
-        for (project in ProjectManager.getInstance().openProjects) {
-            if (
-                processing.hasTaskOfTypeInProgress(
-                    com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType.RESOLVE_PROJECT,
-                    project,
-                ) ||
-                    project
-                        .getServiceIfCreated(io.github.amichne.kast.runtime.hosted.HostedEndpointService::class.java)
-                        ?.lifecycleHasWork() == true
-            ) {
-                throw com.intellij.ide.plugins.CannotUnloadPluginException(
-                    "Kast workspace preparation must finish before plugin reload"
-                )
-            }
+        if (
+            ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java).hasActivePreparation()
+        ) {
+            throw com.intellij.ide.plugins.CannotUnloadPluginException(
+                "Kast workspace preparation must finish before plugin reload"
+            )
         }
     }
 

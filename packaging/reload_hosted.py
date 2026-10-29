@@ -86,7 +86,7 @@ class Staged:
     backup: str
     digest: str
     type: str = "STAGED"
-    next_action: str = "Return to IntelliJ or use File > Reload All from Disk. Examine the live Host version before a semantic query."
+    next_action: str = "Return to IntelliJ or use File > Reload All from Disk. Request a fresh Kast query and examine its Host identity."
 
 
 def bundle(jars: tuple[Jar, ...]) -> Bundle | Rejected:

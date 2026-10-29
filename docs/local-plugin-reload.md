@@ -24,15 +24,22 @@ Set these paths to your IntelliJ application and its active profile:
 ```bash
 idea_home="$HOME/Applications/IntelliJ IDEA.app/Contents"
 plugins_dir="$HOME/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
+bundle_version="0.0.local"
 host_version="0.0.$(date -u +%s)"
 
 mise exec -- ./gradlew :runtime:hosted:hostedPlugin \
-  "-PhostedIdeaHome=$idea_home" "-PhostedPluginVersion=$host_version"
+  "-PhostedIdeaHome=$idea_home" "-Pversion=$bundle_version" \
+  "-PhostedPluginVersion=$host_version"
 
 uv run --locked --script packaging/reload_hosted.py \
   --archive "runtime/hosted/build/distributions/kast-ide-hosted-v$host_version-idea-262.zip" \
   --plugins-dir "$plugins_dir"
 ```
+
+Keep `bundle_version` fixed from the initial installation through each reload.
+For an existing baseline, use its component JAR version, such as the version in `kernel-<version>.jar`.
+The default Git-derived version changes component filenames after a commit and causes `LAYOUT_CHANGED`.
+Only `host_version` changes on each cycle.
 
 Before the replacement, wait for workspace preparation and Gradle imports to finish.
 The command rejects changes to the descriptor, hosted contract, or JAR layout.
@@ -45,8 +52,9 @@ Return to IntelliJ to trigger its file refresh.
 If needed, select **File > Reload All from Disk**, or press **Command+Option+Y**.
 Wait for **Kast Existing IDE Runtime reloaded successfully**.
 
-Use `kast status` to examine the live Host version and process identity.
-Then request a fresh Kast query in the same agent session.
+Request a fresh Kast query in the same agent session.
+With verbose output, examine its `live.host` identity.
+That identity must differ from the value before replacement.
 Old symbol references belong to the previous Host and must be acquired again.
 IntelliJ can need index updates before the fresh query succeeds.
 The native reload notification does not prove semantic readiness.
