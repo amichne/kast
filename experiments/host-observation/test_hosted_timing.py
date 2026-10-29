@@ -20,7 +20,8 @@ RETRY = '44444444-4444-4444-8444-444444444444'
 def transport(connection=CONNECTION):
     # Independent producer order, excluding pre-invocation idle ACCEPT.
     result = []
-    for stage, elapsed, count in ((h.TransportStage.REQUEST_READ, 11, 19),
+    for stage, elapsed, count in ((h.TransportStage.CONNECTION_ADMISSION, 3, 0),
+        (h.TransportStage.REQUEST_READ, 11, 19),
         (h.TransportStage.SEMANTIC_ADMISSION, 12, 0), (h.TransportStage.EXECUTION, 130, 0),
         (h.TransportStage.ENCODING, 14, 29), (h.TransportStage.REPLY_WRITE, 15, 31),
         (h.TransportStage.CONNECTION_RELEASE, 16, 0)):
@@ -83,7 +84,7 @@ class HostedTimingTest(unittest.TestCase):
         result = h.join_timing(window(), READ)
         self.assertIsInstance(result, h.JoinedTiming)
         self.assertEqual((CONNECTION, READ, (READ,)), (result.connectionId, result.readId, result.readIds))
-        self.assertEqual([11, 12, 130, 14, 15, 16],
+        self.assertEqual([3, 11, 12, 130, 14, 15, 16],
                          [record.elapsedNanos for record in result.transport if record.outcome != 'STARTED'])
         self.assertEqual(90, result.smartModeWaits[1].wait.elapsedNanos)
 
