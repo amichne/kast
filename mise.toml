@@ -1,7 +1,0 @@
-[tools]
-java = "oracle-graalvm-25.0.2"
-node = "24.21.0"
-vale = "3.24.0"
-
-[env]
-GRAALVM_HOME = { value = "{{ tools.java.path }}", tools = true }

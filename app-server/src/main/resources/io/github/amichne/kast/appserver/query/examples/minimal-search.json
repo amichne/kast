@@ -1,7 +1,0 @@
-{
-  "type": "QUERY",
-  "from": {
-    "type": "SEARCH",
-    "query": "OrderService"
-  }
-}

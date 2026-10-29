@@ -1,4 +1,0 @@
-[
- {"type":"IMPACT_SOURCE_REJECTED","cause":{"type":"ADMISSION","cause":"ANCHOR_MISMATCH","position":2}},
- {"type":"IMPACT_SOURCE_REJECTED","cause":{"type":"REFERENCE","reason":"REVALIDATION_EXPIRED","position":3}}
-]

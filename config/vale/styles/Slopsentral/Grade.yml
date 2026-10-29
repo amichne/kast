@@ -1,3 +1,0 @@
-extends: Readability.FleschKincaid
-message: "Estimated Flesch-Kincaid grade %s exceeds the shared advisory target of 8."
-level: warning

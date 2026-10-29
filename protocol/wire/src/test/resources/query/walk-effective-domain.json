@@ -1,5 +1,0 @@
-{
-  "scope": {"type": "WORKSPACE"},
-  "source_policy": "production-and-test", "generated_sources": "exclude", "libraries": "exclude",
-  "source_sets": {"kind": "all"}, "directory": null, "package_name": null, "declaration_kinds": []
-}
