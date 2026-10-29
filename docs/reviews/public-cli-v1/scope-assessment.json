@@ -1,0 +1,230 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 11.31 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "DICTION",
+          "line": 90,
+          "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+          "rule": "Slopsentral.Diction",
+          "severity": "warning",
+          "span": [
+            163,
+            168
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 147,
+          "message": "Long sentence: 26 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            4,
+            9
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 158,
+          "message": "Long sentence: 41 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            3,
+            9
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 160,
+          "message": "Long sentence: 27 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            173,
+            179
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "DICTION",
+          "line": 162,
+          "message": "Use 'keep' instead of 'Retain'. Keep the source meaning.",
+          "rule": "Slopsentral.Diction",
+          "severity": "warning",
+          "span": [
+            3,
+            8
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "DICTION",
+          "line": 162,
+          "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+          "rule": "Slopsentral.Diction",
+          "severity": "warning",
+          "span": [
+            145,
+            150
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "DICTION",
+          "line": 171,
+          "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+          "rule": "Slopsentral.Diction",
+          "severity": "warning",
+          "span": [
+            159,
+            164
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "DICTION",
+          "line": 199,
+          "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+          "rule": "Slopsentral.Diction",
+          "severity": "warning",
+          "span": [
+            72,
+            77
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 208,
+          "message": "Long sentence: 26 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            61,
+            63
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 4782,
+        "fleschKincaidGrade": 11.31,
+        "sentences": 235,
+        "words": 2476,
+        "wordsPerSentence": 10.54
+      },
+      "path": "AGENTS.md",
+      "sourceSha256": "be37117810fe21f5fb6a36f4d9fb56138adb6b6db136ad3f7f98464c46d4f563",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 12.22 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 1095,
+        "fleschKincaidGrade": 12.22,
+        "sentences": 64,
+        "words": 525,
+        "wordsPerSentence": 8.2
+      },
+      "path": "cli/AGENTS.md",
+      "sourceSha256": "680a025cb1e9dc1a421018c0f96e00ca81570394ebca1927d8c16be3a09fd374",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 16.17 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 520,
+        "fleschKincaidGrade": 16.17,
+        "sentences": 26,
+        "words": 215,
+        "wordsPerSentence": 8.27
+      },
+      "path": "protocol/AGENTS.md",
+      "sourceSha256": "226b3aa61367fbeff6accfdb736e9d2ff399b204ac8209aa639c3ee0af65a89d",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [],
+      "metrics": {
+        "estimatedSyllables": 411,
+        "fleschKincaidGrade": 7.39,
+        "sentences": 30,
+        "words": 245,
+        "wordsPerSentence": 8.17
+      },
+      "path": "agent-tools/AGENTS.md",
+      "sourceSha256": "38c7f2e267e8cdd9977f1dd03fc719456b3a9fea580f89dbd4af91bdb14448f7",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "glossary": {
+    "entries": 23,
+    "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+    "type": "CHECKED"
+  },
+  "schemaVersion": 1,
+  "type": "ASSESSED"
+}

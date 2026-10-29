@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-26T12:15:41Z"
-source_revision: ee55c3d411f8217f1dbeaaa4242168b5406b90a2
+timestamp: "2026-10-29T23:41:55Z"
+source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -13,6 +13,7 @@ code_sources:
   - path: config/vale/styles/Kast/Terminology.yml
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: install.sh
@@ -53,7 +54,7 @@ This guide owns repository rules and routes source investigation.
 - [`diagnostic/`](diagnostic/AGENTS.md) and [`change/`](change/AGENTS.md) - compiler diagnostics and proof-carrying mutation workflows.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
-- [`cli/`](cli/AGENTS.md) - private JVM entry points, direct tools, installation workflows, and typed output projections.
+- [`cli/`](cli/AGENTS.md) - the public semantic CLI, private JVM entry points, direct tools, installation workflows, and typed output projections.
 - [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
 - [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
@@ -74,6 +75,8 @@ This guide owns repository rules and routes source investigation.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - Public native command: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
+- Public semantic JVM entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
+- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task uses a real JVM child and local peer.
 - Private installer version entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
@@ -98,7 +101,7 @@ This guide owns repository rules and routes source investigation.
 - For architecture uncertainty, use optional OpenWiki retrieval. If retrieval tools are unavailable, read `openwiki/quickstart.md` and its source citations.
 - For domain behavior, start in the matching `*/contract`, then read `*/service`, and open `*/intellij` only for platform effects.
 - For public syntax, start with the authored schema and admission in the [public query guide](app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md).
-- For semantic execution, trace direct MCP or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
+- For semantic execution, trace the public CLI, direct MCP, or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
 - For wire contracts, trace `protocol/contract` -> `protocol/registry` -> `protocol/wire`.
 - For startup or connectivity, start with `docs/public/start.mdx` and `docs/public/reference/installation.mdx`, then examine `cli`, `app-server`, and `runtime/hosted`.
 - For installation failures, start with `install.sh`, `distribution`, and `packaging`; use `app-server/docs/compatibility.md` for known Codex integration gates.
