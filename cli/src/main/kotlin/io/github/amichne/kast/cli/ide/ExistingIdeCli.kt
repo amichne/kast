@@ -219,6 +219,7 @@ private fun executeDaemonOperation(
         is DaemonOperationResult.Hosted -> CliExit.Complete(result.document)
         is DaemonOperationResult.Rejected ->
             boundaryExit(CliBoundaryExitStatus.RUNTIME, result.failure.diagnosticCode())
+                .copy(cause = CliFailureCause.Runtime(result.failure))
     }
 }
 

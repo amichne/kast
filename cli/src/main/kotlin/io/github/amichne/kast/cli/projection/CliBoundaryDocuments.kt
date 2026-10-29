@@ -11,6 +11,8 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.Serializable
 
 internal object CliBoundaryDocuments {
+    val boundarySerializer: kotlinx.serialization.KSerializer<*> = BoundaryRejectedDocument.serializer()
+
     fun boundaryRejected(status: CliBoundaryExitStatus, reason: String): CanonicalJsonDocument =
         boundaryFactory.create(BoundaryRejectedDocument("rejected", status.name.lowercase(), reason))
 

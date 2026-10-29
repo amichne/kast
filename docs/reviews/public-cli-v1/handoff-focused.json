@@ -1,0 +1,186 @@
+{
+  "log": "/tmp/kast-cli-handoff-focused.log",
+  "scope": "Executed assertions passed; whole build failed one file-name lint finding",
+  "suites": [
+    {
+      "name": "io.github.amichne.kast.cli.installation.InstallationWorkflowTest",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:10.830Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.75"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.installation.InstallationPublicEndpointPreservationTest",
+      "tests": "10",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:16.642Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "3.344"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicCliDiscoveryTest",
+      "tests": "6",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:20.184Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.723"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.installation.InstallationPublicEndpointSelectionTest",
+      "tests": "6",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:19.986Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.033"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicRuntimeFailureTest",
+      "tests": "2",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:24.491Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.014"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.PublicToolCommandTest",
+      "tests": "2",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:15.770Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.37"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.HostedPublicationFailureSchemaTest",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:11.583Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "3.023"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.PublicImpactSourceSchemaTest",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:14.606Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "1.164"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicFailureRegressionTest",
+      "tests": "3",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:24.109Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.369"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicShellExitTest",
+      "tests": "6",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:24.505Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.08"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicCliArgumentsTest",
+      "tests": "12",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:20.019Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.16"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicCliMissingMetadataTest",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:20.907Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.413"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicInvocationOwnerTest",
+      "tests": "7",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:24.478Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.013"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.installation.InstallationJavaRuntimeTest",
+      "tests": "6",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:16.141Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.501"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicCliProcessTest",
+      "tests": "6",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:21.321Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "2.788"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicCliBudgetTest",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:20.179Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.004"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicSourceExitTest",
+      "tests": "2",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:28:24.585Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.122"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicLauncherCompositionTest",
+      "tests": "3",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T22:29:01.963Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "9.59"
+    }
+  ]
+}

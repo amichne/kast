@@ -1,0 +1,16 @@
+# Candidate adapter and artifact batch
+mise exec -- ./gradlew :cli:test --tests '*Public*Test' --tests '*KastToolRpcBridgeTest' --tests '*KastToolRpcResultAdmissionTest' --tests '*DirectCatalogArgumentsTest' --tests '*McpStructuredResultsTest' --tests '*McpOutputBoundaryTest' --tests '*McpDirectConstraintAdmissionTest' --tests '*KastMcpServerTest' :cli:detekt :query:protocol:detekt :protocol:wire:detekt verifyJsonContracts verifyKastArchitecture generateVerificationGraph :app-server:verifyPublicQueryGeneration assembleControlRelease assembleHostRelease -Pversion=0.0.0 -PcontrolVersion=0.0.0 -PhostedPluginVersion=0.0.0 -PhostedIdeaHome='/Users/amichne/Applications/IntelliJ IDEA.app/Contents' --continue
+
+# Focused handoff batch
+mise exec -- ./gradlew :cli:test --tests '*Public*Test' --tests '*InstallationJavaRuntimeTest' --tests '*InstallationWorkflowTest.public installed launcher reports unavailable selected Java as structured runtime failure' :publicLauncherTest :cli:detekt :query:protocol:detekt :protocol:wire:detekt verifyJsonContracts verifyVerificationGraph knowledgeImpact verifyKnowledgeBase --continue
+
+# Final static repair
+mise exec -- ./gradlew :cli:spotlessCheck :cli:detekt
+
+# Documentation provenance and gate
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/okf_public.py --write
+python3 .github/scripts/ci/verify_documentation.py
+
+# Changed prose
+mise exec -- vale --no-global --config=.vale.ini --output=JSON docs/public-cli.md docs/reviews/public-cli-v1-evidence.md docs/tool-rpc.md agent-tools/skills/kast/public-cli.md agent-tools/skills/kast/SKILL.md distribution/cli/AGENTS.md
+mise exec -- uv run --locked --script /Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/4.0.6/skills/controlled-technical-writing/scripts/assess_text.py --glossary docs/glossary.json docs/public-cli.md docs/reviews/public-cli-v1-evidence.md docs/tool-rpc.md agent-tools/skills/kast/public-cli.md agent-tools/skills/kast/SKILL.md distribution/cli/AGENTS.md

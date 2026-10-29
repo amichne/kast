@@ -12,6 +12,17 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+internal fun printManagementStatus(root: Path, json: Boolean) {
+    val commandPath =
+        ProcessHandle.current()
+            .info()
+            .command()
+            .map { Path.of(it).toAbsolutePath().normalize().toString() }
+            .orElse("unavailable")
+    val status = readStatus(root, commandPath)
+    println(if (json) status.asJson() else status.asText())
+}
+
 @Serializable
 internal enum class ReleaseChannel {
     STABLE,
