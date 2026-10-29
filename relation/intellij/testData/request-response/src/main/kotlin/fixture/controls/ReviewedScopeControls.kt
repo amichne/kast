@@ -63,3 +63,22 @@ fun labeledLet(): ScopeEnvelope =
 
 fun receiverEarlyThrow(): ScopePayload =
     /*<destination>*/siblingPayload().also { throw IllegalStateException("stop"); scopePayload() }/*</destination>*/
+
+data class ScopeItem(val payload: ScopePayload)
+
+fun mapScopeItems(): List<String> = listOf("one")
+
+fun mapSelectedRoute(): List<ScopeItem> =
+    /*<destination>*/mapScopeItems()
+        .map { ScopeEnvelope(scopePayload(), siblingPayload()) }
+        .map { ScopeItem(/*<body-read>*/it/*</body-read>*/.selected) }/*</destination>*/
+
+fun mapSiblingRoute(): List<ScopeItem> =
+    /*<destination>*/mapScopeItems()
+        .map { ScopeEnvelope(scopePayload(), siblingPayload()) }
+        .map { ScopeItem(it.sibling) }/*</destination>*/
+
+fun mapConstantRoute(): List<ScopeItem> =
+    /*<destination>*/mapScopeItems()
+        .map { ScopeEnvelope(scopePayload(), siblingPayload()) }
+        .map { ScopeItem(siblingPayload()) }/*</destination>*/

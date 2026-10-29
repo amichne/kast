@@ -100,7 +100,7 @@ class ImpactReviewedValueTest {
             assertFalse(
                 transfer
                     .copy(
-                        binding = changed,
+                        binding = ImpactReviewedValueRelationshipDocument.fromBinding(changed, changed.semantics),
                         source =
                             transfer.source.copy(
                                 executionOwner = ImpactExecutionOwnerDocument.ReviewedCallback(changed)
@@ -113,40 +113,36 @@ class ImpactReviewedValueTest {
     }
 
     private fun changedBindings(fixture: ImpactReviewedValueFixture): List<ImpactReviewedValueBindingDocument> {
-        val transfer = fixture.transfer
+        val binding = fixture.binding
         return listOf(
-            transfer.binding.copy(
+            binding.copy(
                 artifacts =
                     org.junit.jupiter.api.Assertions.assertInstanceOf(
                             ImpactReviewedMapArtifactsDocument::class.java,
-                            transfer.binding.artifacts,
+                            binding.artifacts,
                         )
                         .copy(binaryArtifactSha256 = fixture.text("f".repeat(64)))
             ),
-            transfer.binding.copy(
+            binding.copy(
                 artifacts =
                     org.junit.jupiter.api.Assertions.assertInstanceOf(
                             ImpactReviewedMapArtifactsDocument::class.java,
-                            transfer.binding.artifacts,
+                            binding.artifacts,
                         )
                         .copy(sourceArtifactSha256 = fixture.text("f".repeat(64)))
             ),
-            transfer.binding.copy(
-                body = transfer.binding.body.copy(compilerIdentity = fixture.text("name-only-callback"))
-            ),
-            transfer.binding.copy(
+            binding.copy(body = binding.body.copy(compilerIdentity = fixture.text("name-only-callback"))),
+            binding.copy(
                 selected =
-                    transfer.binding.selected.copy(
+                    binding.selected.copy(
                         declaration =
-                            transfer.binding.selected.declaration.copy(
+                            binding.selected.declaration.copy(
                                 compilerIdentity = fixture.text("canonical-signature-sha256-v1|" + "f".repeat(64))
                             )
                     )
             ),
-            transfer.binding.copy(
-                selected = transfer.binding.selected.copy(formalIndex = ProtocolOffset.parse(1).reviewedValue())
-            ),
-            transfer.binding.copy(
+            binding.copy(selected = binding.selected.copy(formalIndex = ProtocolOffset.parse(1).reviewedValue())),
+            binding.copy(
                 basis =
                     ImpactSemanticBasisDocument.Published(
                         fixture.text("/workspace"),

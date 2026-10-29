@@ -200,6 +200,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument.serializer()
                 ),
+            "impactReviewedValueRelationship" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument.serializer()
+                ),
             "impactDeclaredCallbackValueBinding" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument.serializer()

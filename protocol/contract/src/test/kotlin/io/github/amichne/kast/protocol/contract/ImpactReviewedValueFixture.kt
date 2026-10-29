@@ -21,7 +21,12 @@ internal class ImpactReviewedValueFixture {
             ImpactValueRoleDocument.ExpressionResult,
             valuePath = base.bounded(listOf(ImpactValuePathSegmentDocument.Element, field)),
         )
-    val transfer = ImpactReviewedValueTransferDocument(source, target, binding)
+    val transfer =
+        ImpactReviewedValueTransferDocument(
+            source,
+            target,
+            ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+        )
 
     fun text(raw: String) = base.text(raw)
 

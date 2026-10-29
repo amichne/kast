@@ -226,7 +226,7 @@ class QueryImpactReviewedConservationTest {
     }
 }
 
-private class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "map", occurrenceStart: Int = 20) {
+internal class ReviewedLedgerFixture(generation: Long = 1, targetName: String = "map", occurrenceStart: Int = 20) {
     private val base = QueryImpactLedgerFixture()
     private val lease = SemanticReadLease(base.lease.workspaceRoot, EvidenceGeneration.parse(generation).value())
     private val owner = RelationEndpoint.resolve(lease, base.scope, base.evidence).value()

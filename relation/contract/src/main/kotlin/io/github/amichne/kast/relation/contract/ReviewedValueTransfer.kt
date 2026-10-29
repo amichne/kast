@@ -4,6 +4,8 @@ import io.github.amichne.kast.kernel.Refinement
 
 /** The rule describes every returned callback value. Actual execution and invocation counts remain unknown. */
 enum class ReviewedValueSemantics {
+    CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
+    CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER,
     CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
     CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
     CONDITIONAL_RECEIVER_TO_CALL_RESULT,
@@ -15,21 +17,53 @@ private constructor(
     val source: ValueSite,
     val target: ValueSite,
     val binding: ReviewedCallbackValueBinding,
+    val semantics: ReviewedValueSemantics,
 ) {
-    val semantics =
-        when (binding.selected.operation) {
-            ReviewedLibraryOperation.ITERABLE_MAP ->
-                ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT
-            ReviewedLibraryOperation.LET -> ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT
-            ReviewedLibraryOperation.ALSO -> ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT
-        }
     val retainedBytes: Long
         get() = 8192L.addBytes(source.retainedBytes).addBytes(target.retainedBytes).addBytes(binding.retainedBytes)
 
     internal fun shareCallableEvidence(proofs: ValueFlowSiteSharing): ReviewedValueTransfer =
-        ReviewedValueTransfer(proofs.site(source), proofs.site(target), binding)
+        ReviewedValueTransfer(proofs.site(source), proofs.site(target), binding, semantics)
 
     companion object {
+        /** Input correspondence reaches a formal; actual body references establish later returns. */
+        fun callbackInput(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+            formal: ValueFormalParameter,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
+            when (val admitted = admitReviewedInput(source, binding, formal)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            val path =
+                when (val selected = source.valuePath.select(ValuePathSegment.Element)) {
+                    is ValuePathSelection.Selected -> selected.path
+                    ValuePathSelection.DifferentField ->
+                        return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                }
+            val semantics =
+                if (source.valuePath == ValueAccessPath.Whole)
+                    ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER
+                else ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER
+            return when (
+                val target =
+                    ValueSite.fromCompiler(
+                        enclosing = formal.callable,
+                        range = formal.range,
+                        role = ValueRole.Formal(ValueFormalPosition.Parameter(formal)),
+                        executionOwner = formal.executionOwner,
+                        valuePath = path,
+                        callStack = source.callStack,
+                        conditions = source.conditions,
+                    )
+            ) {
+                is Refinement.Refined ->
+                    Refinement.Refined(ReviewedValueTransfer(source, target.value, binding, semantics))
+                is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            }
+        }
+
         /** Whole receiver identity survives normal completion; callback writes do not establish component contents. */
         fun receiverResult(
             source: ValueSite,
@@ -58,7 +92,15 @@ private constructor(
                         conditions = conditions,
                     )
             ) {
-                is Refinement.Refined -> Refinement.Refined(ReviewedValueTransfer(source, target.value, composed))
+                is Refinement.Refined ->
+                    Refinement.Refined(
+                        ReviewedValueTransfer(
+                            source,
+                            target.value,
+                            composed,
+                            ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+                        )
+                    )
                 is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
             }
         }
@@ -99,16 +141,24 @@ private constructor(
                         conditions = source.conditions,
                     )
             ) {
-                is Refinement.Refined -> Refinement.Refined(ReviewedValueTransfer(source, target.value, admitted))
+                is Refinement.Refined ->
+                    Refinement.Refined(
+                        ReviewedValueTransfer(source, target.value, admitted, admitted.outputSemantics())
+                    )
                 is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
             }
         }
     }
 
     override fun equals(other: Any?): Boolean =
-        other is ReviewedValueTransfer && source == other.source && target == other.target && binding == other.binding
+        other is ReviewedValueTransfer &&
+            source == other.source &&
+            target == other.target &&
+            binding == other.binding &&
+            semantics == other.semantics
 
-    override fun hashCode(): Int = 31 * (31 * source.hashCode() + target.hashCode()) + binding.hashCode()
+    override fun hashCode(): Int =
+        31 * (31 * (31 * source.hashCode() + target.hashCode()) + binding.hashCode()) + semantics.hashCode()
 }
 
 private fun ValueSite.matchesReviewedReceiver(binding: ReviewedCallbackValueBinding): Boolean {
@@ -168,4 +218,37 @@ private fun reviewedReceiverConditions(
         is Refinement.Refined -> admitted
         is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
     }
+}
+
+private fun ReviewedCallbackValueBinding.outputSemantics(): ReviewedValueSemantics =
+    when (selected.operation) {
+        ReviewedLibraryOperation.ITERABLE_MAP -> ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT
+        ReviewedLibraryOperation.LET -> ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT
+        ReviewedLibraryOperation.ALSO -> ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT
+    }
+
+private fun admitReviewedInput(
+    source: ValueSite,
+    binding: ReviewedCallbackValueBinding,
+    formal: ValueFormalParameter,
+): Refinement<Unit, ValueFlowUnsupportedCause> {
+    val receiver =
+        source.role as? ValueRole.Receiver
+            ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    if (
+        binding.selected.operation != ReviewedLibraryOperation.ITERABLE_MAP ||
+            !receiver.matchesReviewedCall(binding) ||
+            source.range.endExclusive > binding.body.range.startInclusive
+    )
+        return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    if (
+        source.basis != binding.basis ||
+            source.enclosing.valueIdentity != binding.enclosing.valueIdentity ||
+            source.executionOwner.context != ValueExecutionContext.Declaration
+    )
+        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    if (formal.executionOwner != ValueExecutionOwner.reviewedCallback(binding))
+        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    if (formal.position.value != 0) return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    return Refinement.Refined(Unit)
 }

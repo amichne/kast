@@ -45,7 +45,11 @@ class ImpactReviewedScopeTest {
             )
         for (binding in changed) {
             assertFalse(binding.admits(binding.enclosing), binding.toString())
-            assertFalse(f.transfer.copy(binding = binding).admitsEvidence())
+            assertFalse(
+                f.transfer
+                    .copy(binding = ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics))
+                    .admitsEvidence()
+            )
         }
         for (source in
             listOf(

@@ -39,6 +39,8 @@ private constructor(
 ) {
     val sourceSections: List<ReviewedSourceSection> =
         when (rule) {
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 ->
+                listOf(ReviewedSourceSection.MAP_2_3_0, ReviewedSourceSection.MAP_TO_2_3_0)
             ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
                 listOf(ReviewedSourceSection.MAP, ReviewedSourceSection.MAP_TO)
             ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> listOf(ReviewedSourceSection.LET)
@@ -70,6 +72,17 @@ private constructor(
                         binaryArtifact,
                         sourceArtifact,
                         ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1,
+                    )
+                )
+            else if (
+                binaryArtifact.value == "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" &&
+                    sourceArtifact.value == "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"
+            )
+                Refinement.Refined(
+                    ReviewedLibraryArtifact(
+                        binaryArtifact,
+                        sourceArtifact,
+                        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1,
                     )
                 )
             else Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_MISMATCH)
@@ -111,6 +124,8 @@ private constructor(
 
 /** Reviewed spans belong to the exact source artifact and source entry. */
 enum class ReviewedSourceSection(val firstLine: Int, val lastLine: Int) {
+    MAP_2_3_0(REVIEWED_MAP_2_3_0_FIRST_LINE, REVIEWED_MAP_2_3_0_LAST_LINE),
+    MAP_TO_2_3_0(REVIEWED_MAP_TO_2_3_0_FIRST_LINE, REVIEWED_MAP_TO_2_3_0_LAST_LINE),
     MAP(REVIEWED_MAP_FIRST_LINE, REVIEWED_MAP_LAST_LINE),
     MAP_TO(REVIEWED_MAP_TO_FIRST_LINE, REVIEWED_MAP_TO_LAST_LINE),
     LET(REVIEWED_LET_FIRST_LINE, REVIEWED_LET_LAST_LINE),
@@ -306,3 +321,8 @@ private const val REVIEWED_LET_FIRST_LINE = 114
 private const val REVIEWED_LET_LAST_LINE = 119
 private const val REVIEWED_ALSO_FIRST_LINE = 99
 private const val REVIEWED_ALSO_LAST_LINE = 105
+
+private const val REVIEWED_MAP_2_3_0_FIRST_LINE = 1585
+private const val REVIEWED_MAP_2_3_0_LAST_LINE = 1587
+private const val REVIEWED_MAP_TO_2_3_0_FIRST_LINE = 1660
+private const val REVIEWED_MAP_TO_2_3_0_LAST_LINE = 1664

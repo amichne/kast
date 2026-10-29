@@ -18,7 +18,7 @@ class ImpactReviewedFindingTest {
         val plain = values.finding().copy(representation = ImpactFindingRepresentationDocument.NotModeled)
         val empty = Json.parseToJsonElement(Json.encodeToString(plain)).jsonObject
         assertEquals(emptyList<Nothing>(), empty.getValue("reviewedRelations").jsonArray.toList())
-        val finding = plain.copy(reviewedRelations = reviewed.bounded(listOf(reviewed.binding)))
+        val finding = plain.copy(reviewedRelations = reviewed.bounded(listOf(reviewed.transfer.binding)))
         val encoded = Json.parseToJsonElement(Json.encodeToString(finding)).jsonObject
         assertEquals(
             setOf(
@@ -43,7 +43,7 @@ class ImpactReviewedFindingTest {
         assertEquals("NOT_ESTABLISHED", relation.getValue("invocationCount").jsonPrimitive.content)
         assertTrue(ImpactWitnessDocument.Finding(finding).hasSourceBasis(reviewed.binding.basis))
         val foreign =
-            reviewed.binding.copy(
+            reviewed.transfer.binding.copy(
                 basis =
                     (reviewed.binding.basis as ImpactSemanticBasisDocument.Published).copy(
                         root = reviewed.text("/other")
@@ -63,7 +63,8 @@ class ImpactReviewedFindingTest {
             ImpactWitnessDocument.ReviewedTransfer(values.count(0), values.count(0), fixture.transfer)
         val history: ImpactRepresentationHistoryDocument =
             ImpactRepresentationHistoryDocument.ReviewedTransfer(fixture.transfer)
-        val finding: ImpactFindingProvenanceDocument = ImpactFindingProvenanceDocument.ReviewedLibrary(fixture.binding)
+        val finding: ImpactFindingProvenanceDocument =
+            ImpactFindingProvenanceDocument.ReviewedLibrary(fixture.transfer.binding)
         val encodedWitness = Json.parseToJsonElement(Json.encodeToString(witness)).jsonObject
         val encodedHistory = Json.parseToJsonElement(Json.encodeToString(history)).jsonObject
         val encodedFinding = Json.parseToJsonElement(Json.encodeToString(finding)).jsonObject

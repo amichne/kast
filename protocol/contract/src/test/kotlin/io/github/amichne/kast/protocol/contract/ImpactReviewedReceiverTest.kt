@@ -174,7 +174,11 @@ class ImpactReviewedReceiverTest {
                 binding,
             )
         val result = f.target.copy(valuePath = EmptyImpactValuePath, conditions = f.base.bounded(listOf(premise)))
-        return ImpactReviewedValueTransferDocument(source, result, binding)
+        return ImpactReviewedValueTransferDocument(
+            source,
+            result,
+            ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+        )
     }
 
     private fun receiverBinding(f: ImpactReviewedScopeFixture): ImpactReviewedValueBindingDocument {

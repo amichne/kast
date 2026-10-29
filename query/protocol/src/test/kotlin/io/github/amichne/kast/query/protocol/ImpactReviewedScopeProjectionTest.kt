@@ -86,7 +86,8 @@ class ImpactReviewedScopeProjectionTest {
 
     @Test
     fun `reviewed also projects receiver identity without callback result correspondence`() {
-        val document = scopeTransfer(receiver = true).impactDocument().scopeProjection()
+        val transfer = scopeTransfer(receiver = true)
+        val document = transfer.impactDocument().scopeProjection()
         assertTrue(document.admitsEvidence())
         assertEquals(ImpactExecutionOwnerDocument.Declaration, document.source.executionOwner)
         assertEquals(ImpactExecutionOwnerDocument.Declaration, document.target.executionOwner)
@@ -103,7 +104,7 @@ class ImpactReviewedScopeProjectionTest {
                 document.target.conditions.values.single(),
             )
         assertTrue(document.source.conditions.values.isEmpty())
-        assertEquals(document.binding, premise.binding)
+        assertEquals(transfer.binding.impactDocument().scopeProjection(), premise.binding)
         assertEquals(document.source.range, premise.origin.range)
         assertEquals(document.source.role, premise.origin.role)
         assertEquals(document.target.range, premise.useRange)

@@ -35,7 +35,8 @@ private fun ImpactFindingDocument.hasSourceBasis(basis: ImpactSemanticBasisDocum
 
 internal fun ImpactFindingDocument.reviewedEvidenceHasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     reviewedRelations.values.all { it.basis == basis && it.admits(it.enclosing) } &&
-        representation.hasReviewedSourceBasis(basis)
+        representation.hasReviewedSourceBasis(basis) &&
+        classification.admitsReviewedClassification(reviewedRelations, representation)
 
 private fun ImpactFindingRepresentationDocument.hasReviewedSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
@@ -87,4 +88,36 @@ private fun ImpactBoundaryRuleDocument.isOnBasis(basis: ImpactSemanticBasisDocum
     when (this) {
         is ImpactBoundaryRuleDocument.Terminal -> source.site.isOnBasis(basis)
         is ImpactBoundaryRuleDocument.Continuation -> source.site.isOnBasis(basis) && target.site.isOnBasis(basis)
+    }
+
+private fun ImpactPathClassificationDocument.admitsReviewedClassification(
+    relations: BoundedProtocolList<ImpactReviewedValueRelationshipDocument>,
+    representation: ImpactFindingRepresentationDocument,
+): Boolean =
+    when (this) {
+        is ImpactPathClassificationDocument.NotEstablished -> true
+        is ImpactPathClassificationDocument.Established ->
+            relationship == ImpactRelationshipDocument.DERIVED ||
+                (relations.values.none { it.semantics.isDerived() } && !representation.hasDerivedReviewedRelation())
+    }
+
+private fun ImpactFindingRepresentationDocument.hasDerivedReviewedRelation(): Boolean =
+    when (this) {
+        ImpactFindingRepresentationDocument.NotModeled -> false
+        is ImpactFindingRepresentationDocument.Present ->
+            branches.values.any { branch ->
+                branch.provenance.values.any { provenance ->
+                    provenance is ImpactFindingProvenanceDocument.ReviewedLibrary &&
+                        provenance.binding.semantics.isDerived()
+                }
+            }
+    }
+
+private fun ImpactReviewedValueSemanticsDocument.isDerived(): Boolean =
+    when (this) {
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER -> true
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER -> false
     }

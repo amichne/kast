@@ -86,13 +86,15 @@ class ImpactReviewedFindingProjectionTest {
         assertReviewedClassification(finding)
         assertEquals(ImpactFindingRepresentationDocument.NotModeled, finding.representation)
         val binding = finding.reviewedRelations.values.single()
-        assertEquals(fixture.binding.impactDocument().reviewed(), binding)
+        assertEquals(fixture.transfer.relationshipDocument().reviewed(), binding)
         assertBinding(binding)
         assertTrue(ledger.representationModels.isEmpty())
         assertTrue(ledger.boundaryModels.isEmpty())
     }
 
-    private fun assertBinding(binding: io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument) {
+    private fun assertBinding(
+        binding: io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
+    ) {
         assertEquals("kotlin.collections.map", binding.selected.qualifiedIdentity.value)
         assertEquals(0, binding.selected.formalIndex.value)
         assertEquals(
@@ -111,8 +113,8 @@ class ImpactReviewedFindingProjectionTest {
     }
 }
 
-private class ReviewedProjectionFixture {
-    private val owner = ImpactPathProjectionFixture().owner as RelationEndpoint.Resolved
+internal class ReviewedProjectionFixture {
+    val owner = ImpactPathProjectionFixture().owner as RelationEndpoint.Resolved
     private val bodyRange = range(40, 90)
     private val signature =
         CanonicalCompilerSignature.function(
@@ -198,7 +200,7 @@ private class ReviewedProjectionFixture {
         return ReviewedLibraryCallable.admit(evidence, ValueArgumentPosition.parse(0).reviewed()).reviewed()
     }
 
-    private fun observation(site: ValueSite, transfers: List<ReviewedValueTransfer>): ValueFlowStep =
+    fun observation(site: ValueSite, transfers: List<ReviewedValueTransfer>): ValueFlowStep =
         ValueFlowStep.fromEvidence(
                 site,
                 emptyList(),

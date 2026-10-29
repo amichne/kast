@@ -98,13 +98,13 @@ internal fun ImpactValueSiteReferenceDocument.conservesConditions(
 
 internal fun ImpactValueSiteReferenceDocument.conservesReviewedReceiverConditions(
     target: ImpactValueSiteReferenceDocument,
-    binding: ImpactReviewedValueBindingDocument,
+    binding: ImpactReviewedValueRelationshipDocument,
 ): Boolean {
     if (target.conditions.values.size != conditions.values.size + 1) return false
     if (!conditions.values.hasSameConditions(target.conditions.values.dropLast(1))) return false
     return when (val added = target.conditions.values.last()) {
         is ImpactValueConditionDocument.ReviewedCallbackNormalReturn ->
-            added.binding == binding &&
+            binding.matchesOwner(added.binding) &&
                 added.sourceSite().hasSameValueIdentity(copy(conditions = EmptyImpactConditions)) &&
                 added.useRange == target.range
         else -> false

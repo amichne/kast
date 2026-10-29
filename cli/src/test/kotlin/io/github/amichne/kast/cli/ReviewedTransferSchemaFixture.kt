@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.ImpactReviewedFunctionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedSourceLinesDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueSemanticsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
@@ -69,7 +70,11 @@ internal fun reviewedTransferSchemaFixture(): ImpactReviewedValueTransferDocumen
             ImpactValueRoleDocument.ExpressionResult,
             valuePath = bounded(listOf(ImpactValuePathSegmentDocument.Element, field)),
         )
-    return ImpactReviewedValueTransferDocument(source, target, binding)
+    return ImpactReviewedValueTransferDocument(
+        source,
+        target,
+        ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+    )
 }
 
 private fun selected(enclosing: ImpactDeclarationReferenceDocument): ImpactReviewedFunctionDocument {

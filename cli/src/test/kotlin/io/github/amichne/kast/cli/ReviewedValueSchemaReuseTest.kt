@@ -4,6 +4,7 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
@@ -24,6 +25,7 @@ class ReviewedValueSchemaReuseTest {
             mapOf(
                 "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
                 "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
+                "impactReviewedValueRelationship" to ImpactReviewedValueRelationshipDocument.serializer(),
             )) {
             assertions.assertDefinitionEquivalent(name, independentImpactSchema(serializer))
             assertTrue(referenceCount(schema, name) > 1, "The repeated schema must share $name")

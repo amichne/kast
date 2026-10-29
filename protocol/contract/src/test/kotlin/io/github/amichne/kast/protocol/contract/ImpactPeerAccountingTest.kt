@@ -121,7 +121,7 @@ class ImpactPeerAccountingTest {
 
     @Test
     fun `final peer receipt cannot admit reviewed provenance from another source epoch`() {
-        val binding = ImpactReviewedValueFixture().binding
+        val binding = ImpactReviewedValueFixture().transfer.binding
         val staleBasis =
             (binding.basis as ImpactSemanticBasisDocument.Published).copy(
                 generation = (ImpactEvidenceRevisionDocument.parse(8) as Refinement.Refined).value
@@ -145,7 +145,7 @@ class ImpactPeerAccountingTest {
         )
     }
 
-    private fun peerFinding(binding: ImpactReviewedValueBindingDocument): ImpactFindingDocument =
+    private fun peerFinding(binding: ImpactReviewedValueRelationshipDocument): ImpactFindingDocument =
         values
             .finding(0)
             .copy(

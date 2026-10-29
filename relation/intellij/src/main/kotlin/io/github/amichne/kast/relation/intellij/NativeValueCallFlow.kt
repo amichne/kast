@@ -26,7 +26,7 @@ internal class NativeValueCallFlow(
                     io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.External &&
                 (receiver.call.callable.qualifiedIdentity
                         as? io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available)
-                    ?.value == "kotlin.also"
+                    ?.value in setOf("kotlin.also", "kotlin.collections.map")
         ) {
             retained.adoptReviewed(nativeReviewedReceiverResult(request, scope, projection, allowance))
             return Refinement.Refined(Unit)

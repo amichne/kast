@@ -104,7 +104,12 @@ internal class ImpactReviewedScopeFixture {
             role = ImpactValueRoleDocument.ExpressionResult,
             executionOwner = ImpactExecutionOwnerDocument.Declaration,
         )
-    val transfer = ImpactReviewedValueTransferDocument(source, target, binding)
+    val transfer =
+        ImpactReviewedValueTransferDocument(
+            source,
+            target,
+            ImpactReviewedValueRelationshipDocument.fromBinding(binding, binding.semantics),
+        )
 
     fun range(start: Int, end: Int) = ImpactSourceRangeDocument(base.offset(start), base.offset(end))
 }
