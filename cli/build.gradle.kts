@@ -50,8 +50,48 @@ graalvmNative {
     }
 }
 
+val importedQueryExecutable = providers.gradleProperty("kastQueryNativeExecutable")
+
+require(importedQueryExecutable.isPresent == providers.gradleProperty("kastNativeExecutable").isPresent) {
+    "Imported native executables need both management and query artifacts"
+}
+
 configurations.consumable("queryExecutableElements") {
-    outgoing.artifact(tasks.named<BuildNativeImageTask>("nativeCompile").flatMap { it.outputFile })
+    if (importedQueryExecutable.isPresent) {
+        outgoing.artifact(
+            layout.file(
+                importedQueryExecutable.map {
+                    File(it).also { path ->
+                        require(path.isAbsolute) { "Imported query executable needs an absolute path" }
+                    }
+                }
+            )
+        )
+    } else {
+        outgoing.artifact(tasks.named<BuildNativeImageTask>("nativeCompile").flatMap { it.outputFile })
+    }
+}
+
+val queryNativeImageOptions =
+    tasks.register<WriteProperties>("nativeImageOptions") {
+        destinationFile.set(layout.buildDirectory.file("native-inputs/image.properties"))
+        property("mainClass", "io.github.amichne.kast.cli.publicshell.KastPublicCliMain")
+    }
+
+tasks.register<Tar>("assembleNativeImageInputs") {
+    group = "distribution"
+    description = "Packages the query client inputs for native compilation on the target host."
+    into("lib") {
+        from(tasks.named("jar"))
+        from(configurations.runtimeClasspath)
+    }
+    from(queryNativeImageOptions.flatMap { it.destinationFile })
+    from("native-image.args", "native-image-macos.args")
+    archiveFileName.set("native-inputs.tar.gz")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    compression = Compression.GZIP
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 dependencies {

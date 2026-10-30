@@ -3,12 +3,78 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Instant
+import java.util.Optional
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class OneShotObservationTest {
+    @Test
+    fun `unknown process start never establishes stale record completion`(@TempDir temporary: Path) {
+        val installation = qualifyFixture(temporary)
+        val directory = Files.createDirectories(installation.resolve("state/run/one-shot"))
+        Files.writeString(
+            directory.resolve("unknown.json"),
+            managementJson.encodeToString(InstalledToolInvocation(1, 42, 99)),
+        )
+        val current = ProcessHandle.current()
+        val process =
+            object : ProcessHandle by current {
+                override fun info() =
+                    object : ProcessHandle.Info by current.info() {
+                        override fun startInstant(): Optional<Instant> = Optional.empty()
+
+                        override fun command(): Optional<String> = error("unexpected command read")
+                    }
+            }
+        assertEquals(
+            ObservationState.UNAVAILABLE,
+            observeOneShotRequests(installation) { NativeLifecycleProcesses.observe(process) }.state,
+        )
+    }
+
+    @Test
+    fun `stale process start survives missing command or arguments while matching identity rejects`(
+        @TempDir temporary: Path
+    ) {
+        val installation = qualifyFixture(temporary)
+        val directory = Files.createDirectories(installation.resolve("state/run/one-shot"))
+        val entry = directory.resolve("former.json")
+        val current = ProcessHandle.current()
+        for (missingCommand in listOf(true, false)) {
+            val process =
+                object : ProcessHandle by current {
+                    override fun pid() = 42L
+
+                    override fun isAlive() = true
+
+                    override fun info() =
+                        object : ProcessHandle.Info by current.info() {
+                            override fun startInstant(): Optional<Instant> = Optional.of(Instant.ofEpochMilli(100))
+
+                            override fun command(): Optional<String> =
+                                if (missingCommand) Optional.empty() else Optional.of("/foreign/process")
+
+                            override fun arguments(): Optional<Array<String>> = Optional.empty()
+                        }
+                }
+            Files.writeString(entry, managementJson.encodeToString(InstalledToolInvocation(1, 42, 99)))
+            val bytes = Files.readString(entry)
+            assertEquals(
+                Observation.verified(0),
+                observeOneShotRequests(installation) { NativeLifecycleProcesses.observe(process) },
+            )
+            assertEquals(bytes, Files.readString(entry))
+            Files.writeString(entry, managementJson.encodeToString(InstalledToolInvocation(1, 42, 100)))
+            assertEquals(
+                ObservationState.UNAVAILABLE,
+                observeOneShotRequests(installation) { NativeLifecycleProcesses.observe(process) }.state,
+            )
+        }
+    }
+
     @Test
     fun `verified one-shot records count only the owned live process incarnation`(@TempDir temporary: Path) {
         val installation = qualifyFixture(temporary)

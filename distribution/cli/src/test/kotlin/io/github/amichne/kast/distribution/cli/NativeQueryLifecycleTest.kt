@@ -89,9 +89,37 @@ class NativeQueryLifecycleTest {
     }
 
     @Test
+    fun `identity alone establishes stale records but never ownership`() {
+        val record = InstalledToolInvocation(1, 42, 100)
+        val installation = Path.of("/selected/installation")
+        val manifest = BundledManifest(3, installation.toString(), emptyList())
+        for ((observation, expected) in
+            listOf(
+                LifecycleProcessObservation.IdentityOnly(42, 101) to ShutdownProcessAdmission.Finished,
+                LifecycleProcessObservation.IdentityOnly(42, 100) to ShutdownProcessAdmission.Rejected,
+                LifecycleProcessObservation.IdentityOnly(43, 101) to ShutdownProcessAdmission.Rejected,
+            )) {
+            assertEquals(expected, OwnedLifecycleProcess.admit(record, observation, installation, manifest))
+            assertEquals(expected, OwnedLifecycleProcess.admit(record, observation, installation))
+        }
+    }
+
+    @Test
     fun `same bytes at a replacement inode cannot retain retirement authority`(@TempDir temporary: Path) {
         val fixture = fixture(temporary)
         val owned = assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit()).process
+        assertEquals(
+            ShutdownProcessAdmission.Finished,
+            owned.revalidate(LifecycleProcessObservation.IdentityOnly(42, 101)),
+        )
+        assertEquals(
+            ShutdownProcessAdmission.Rejected,
+            owned.revalidate(LifecycleProcessObservation.IdentityOnly(42, 100)),
+        )
+        assertEquals(
+            ShutdownProcessAdmission.Rejected,
+            owned.revalidate(LifecycleProcessObservation.IdentityOnly(43, 101)),
+        )
         val replacement = temporary.resolve("replacement")
         Files.copy(fixture.executable, replacement)
         assertTrue(replacement.toFile().setExecutable(true))

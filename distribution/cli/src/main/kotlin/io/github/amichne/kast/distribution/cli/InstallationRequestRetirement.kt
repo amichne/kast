@@ -82,6 +82,12 @@ internal class InstallationRequestRetirement(
         when (val current = processes.observe(process.snapshot.pid)) {
             LifecycleProcessObservation.Absent -> LifecycleEffect.Completed
             LifecycleProcessObservation.Unavailable -> ownershipRejected()
+            is LifecycleProcessObservation.IdentityOnly ->
+                if (
+                    current.pid == process.snapshot.pid && current.startEpochMillis != process.snapshot.startEpochMillis
+                )
+                    LifecycleEffect.Completed
+                else ownershipRejected()
             is LifecycleProcessObservation.Present ->
                 if (current.snapshot.startEpochMillis == process.snapshot.startEpochMillis)
                     LifecycleEffect.Rejected(LifecycleFailure.REQUESTS_DID_NOT_RETIRE)

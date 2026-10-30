@@ -21,6 +21,8 @@ internal sealed interface LifecycleProcessObservation {
 
     data object Unavailable : LifecycleProcessObservation
 
+    data class IdentityOnly(val pid: Long, val startEpochMillis: Long) : LifecycleProcessObservation
+
     data class Present(val snapshot: LifecycleProcessSnapshot) : LifecycleProcessObservation
 }
 
@@ -56,6 +58,10 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
         when (observation) {
             LifecycleProcessObservation.Absent -> ShutdownProcessAdmission.Finished
             LifecycleProcessObservation.Unavailable -> ShutdownProcessAdmission.Rejected
+            is LifecycleProcessObservation.IdentityOnly ->
+                if (observation.pid == snapshot.pid && observation.startEpochMillis != snapshot.startEpochMillis)
+                    ShutdownProcessAdmission.Finished
+                else ShutdownProcessAdmission.Rejected
             is LifecycleProcessObservation.Present ->
                 when {
                     observation.snapshot.pid != snapshot.pid -> ShutdownProcessAdmission.Rejected
@@ -114,6 +120,10 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
             return when (observation) {
                 LifecycleProcessObservation.Absent -> ShutdownProcessAdmission.Finished
                 LifecycleProcessObservation.Unavailable -> ShutdownProcessAdmission.Rejected
+                is LifecycleProcessObservation.IdentityOnly ->
+                    if (observation.pid == record.pid && observation.startEpochMillis != record.startEpochMillis)
+                        ShutdownProcessAdmission.Finished
+                    else ShutdownProcessAdmission.Rejected
                 is LifecycleProcessObservation.Present -> {
                     val snapshot = observation.snapshot
                     if (snapshot.pid != record.pid) ShutdownProcessAdmission.Rejected
@@ -213,11 +223,14 @@ internal object NativeLifecycleProcesses : LifecycleProcesses {
         val pid = process.pid()
         val info = process.info()
         val start = info.startInstant().orElse(null) ?: return LifecycleProcessObservation.Unavailable
-        val command = info.command().orElse(null) ?: return LifecycleProcessObservation.Unavailable
-        val arguments = info.arguments().orElse(null) ?: return LifecycleProcessObservation.Unavailable
-        return LifecycleProcessObservation.Present(
-            LifecycleProcessSnapshot(pid, start.toEpochMilli(), command, arguments.toList())
-        )
+        val command = info.command().orElse(null)
+        val arguments = info.arguments().orElse(null)
+        return if (command == null || arguments == null)
+            LifecycleProcessObservation.IdentityOnly(pid, start.toEpochMilli())
+        else
+            LifecycleProcessObservation.Present(
+                LifecycleProcessSnapshot(pid, start.toEpochMilli(), command, arguments.toList())
+            )
     }
 
     override fun retire(

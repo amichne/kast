@@ -169,6 +169,9 @@ val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip
     require(platform == "macos-aarch64") { "Imported native archives must target macos-aarch64" }
     require(executable.isNotBlank()) { "An imported platform needs a native executable" }
     platform
+}.zip(providers.gradleProperty("kastQueryNativeExecutable").orElse("")) { platform, queryExecutable ->
+    require(queryExecutable.isNotBlank()) { "An imported platform needs a query executable" }
+    platform
 }.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {
         os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
