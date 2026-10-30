@@ -173,6 +173,7 @@ jobs:
       - name: Examine candidate gate membership
         if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
         env:
+          GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           GATE_GRAPH: ${{ needs.scope.outputs.gate_graph }}
         run: python3 .github/scripts/ci/verify-checks.py --preflight-only --gate-graph "$GATE_GRAPH"
