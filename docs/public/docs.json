@@ -32,25 +32,21 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Discover Kast",
+            "group": "Get started",
             "pages": [
               "index",
-              "search"
+              "start",
+              "search",
+              "troubleshooting"
             ]
           },
           {
             "group": "Try it on your project",
-            "pages": [
-              "start",
-              "agent-harnesses",
-              "tutorials/first-query"
-            ]
+            "pages": []
           },
           {
             "group": "Get unstuck",
-            "pages": [
-              "troubleshooting"
-            ]
+            "pages": []
           }
         ]
       },
@@ -105,7 +101,8 @@
               "how-to/complete-engineering-task",
               "reference/troubleshooting",
               "reference/management",
-              "tutorials"
+              "tutorials",
+              "tutorials/first-query"
             ]
           },
           {
@@ -126,7 +123,8 @@
               "reference/rpc-catalog",
               "reference/compatibility",
               "reference/installation",
-              "reference/integrations"
+              "reference/integrations",
+              "agent-harnesses"
             ]
           },
           {
