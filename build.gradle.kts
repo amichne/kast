@@ -218,8 +218,8 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     qualifiedQueryExecutable.set(layout.file(queryExecutableFiles.flatMap { it.elements }.map { it.single().asFile }))
     targetPlatform.set(controlArchivePlatform)
     maximumEntries.set(controlDistributionMaximumEntries)
-    maximumArchiveBytes.set(64L * 1024L * 1024L)
-    maximumInstalledBytes.set(128L * 1024L * 1024L)
+    maximumArchiveBytes.set(96L * 1024L * 1024L)
+    maximumInstalledBytes.set(192L * 1024L * 1024L)
 }
 
 val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {

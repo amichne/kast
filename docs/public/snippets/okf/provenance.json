@@ -324,7 +324,7 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429",
-          "currentVersion": "repo-file-v1:sha256:9708d1916360bd175f73fb12e56e9f95c127a84fd246487259ef24cc436366d3",
+          "currentVersion": "repo-file-v1:sha256:65367bed3dc7903b57f874e4ed94a85e0d6bc20cf7879ffb63aed0a812b3951a",
           "status": "CHANGED"
         },
         {
@@ -338,7 +338,7 @@
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
           "resource": "repo://build.gradle.kts#L558-L594",
           "recordedVersion": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ",
-          "currentVersion": "repo-file-v1:sha256:9708d1916360bd175f73fb12e56e9f95c127a84fd246487259ef24cc436366d3",
+          "currentVersion": "repo-file-v1:sha256:65367bed3dc7903b57f874e4ed94a85e0d6bc20cf7879ffb63aed0a812b3951a",
           "status": "NOT_ASSESSED"
         },
         {

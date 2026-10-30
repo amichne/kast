@@ -52,7 +52,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "control query payload is not a native executable for ${targetPlatform.get()}"
         }
         check(archive.length() < maximumArchiveBytes.get()) {
-            "control archive is ${archive.length()} bytes; limit is below 64 MiB"
+            "control archive is ${archive.length()} bytes. It must be less than ${maximumArchiveBytes.get()} bytes."
         }
         val paths = Files.walk(root).use { stream -> stream.limit(maximumEntries.get().toLong() + 2).toList() }
         val entries = paths.map { path -> root.relativize(path).toString() }
@@ -65,7 +65,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             .filter(Files::isRegularFile)
             .sumOf(Files::size)
         check(installedBytes < maximumInstalledBytes.get()) {
-            "installed control product is $installedBytes bytes; limit is below 128 MiB"
+            "installed control product is $installedBytes bytes. It must be less than ${maximumInstalledBytes.get()} bytes."
         }
         val required = listOf(
             "bin/kast",
