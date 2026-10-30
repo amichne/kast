@@ -44,6 +44,7 @@ class Failure(str, Enum):
     WRONG_PLATFORM = "WRONG_PLATFORM"
     TOOLCHAIN_MISMATCH = "TOOLCHAIN_MISMATCH"
     PROCESS_FAILED = "PROCESS_FAILED"
+    QUERY_PLAN_FAILED = "QUERY_PLAN_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
 
 
@@ -286,6 +287,15 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
     ]
     if len(classes) != 1 or not re.fullmatch(r"[A-Za-z0-9_.]+", classes[0]):
         raise SystemExit(Failure.INVALID_RECORD.value)
+    metadata = inputs / "reachability-metadata"
+    if not metadata.is_dir():
+        raise SystemExit(Failure.INVALID_RECORD.value)
+    directories = sorted(
+        {path.parent.relative_to(inputs).as_posix() for path in metadata.rglob("*.json")}
+    )
+    metadata_arguments = (
+        [f"-H:ConfigurationFileDirectories={','.join(directories)}"] if directories else []
+    )
     report_directory = ROOT / "build/reports/native"
     if executable.name == "kast-query":
         report_directory = report_directory / "kast-query"
@@ -303,6 +313,7 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
             str(executable),
             "-H:+UnlockExperimentalVMOptions",
             f"-H:BuildOutputJSONFile={metrics}",
+            *metadata_arguments,
             "-H:-UnlockExperimentalVMOptions",
         ],
         cwd=inputs,
@@ -315,6 +326,22 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
         not query and result != identity.version
     ):
         raise SystemExit(Failure.IDENTITY_MISMATCH.value)
+    if query:
+        try:
+            plan = subprocess.check_output(
+                [
+                    str(executable),
+                    "-XX:MissingRegistrationReportingMode=Exit",
+                    "query",
+                    "plan",
+                    "--name",
+                    "OrderService",
+                ],
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            raise SystemExit(Failure.QUERY_PLAN_FAILED.value) from None
+        _ = (report_directory / "query-plan.stdout").write_text(plan)
     target = subprocess.check_output(["xcrun", "vtool", "-show-build", str(executable)], text=True)
     _ = (metrics.parent / "macos-build.txt").write_text(target)
     if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:

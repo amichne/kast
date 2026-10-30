@@ -1,4 +1,5 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
+import org.graalvm.buildtools.gradle.tasks.CollectReachabilityMetadata
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 
@@ -86,6 +87,9 @@ tasks.register<Tar>("assembleNativeImageInputs") {
         from(configurations.runtimeClasspath)
     }
     from(queryNativeImageOptions.flatMap { it.destinationFile })
+    from(tasks.named<CollectReachabilityMetadata>("collectReachabilityMetadata").flatMap { it.into }) {
+        into("reachability-metadata")
+    }
     from("native-image.args", "native-image-macos.args")
     archiveFileName.set("native-inputs.tar.gz")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))

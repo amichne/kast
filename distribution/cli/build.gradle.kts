@@ -1,4 +1,5 @@
 import java.io.File
+import org.graalvm.buildtools.gradle.tasks.CollectReachabilityMetadata
 import org.gradle.api.tasks.WriteProperties
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
@@ -129,6 +130,9 @@ tasks.register<Tar>("assembleNativeImageInputs") {
     dependsOn(tasks.named("installDist"), nativeImageOptions)
     from(tasks.named<Sync>("installDist").map { it.destinationDir }) { include("lib/**") }
     from(nativeImageOptions.flatMap { it.destinationFile })
+    from(tasks.named<CollectReachabilityMetadata>("collectReachabilityMetadata").flatMap { it.into }) {
+        into("reachability-metadata")
+    }
     from("native-image.args", "native-image-macos.args")
     archiveFileName.set("native-inputs.tar.gz")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))

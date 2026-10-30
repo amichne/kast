@@ -1,10 +1,11 @@
 """Only matching, intact archives authorize the next platform stage."""
 
 import json
+import subprocess
 import tarfile
 import tempfile
 import unittest
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,6 +22,16 @@ from native_handoff import (
     safe_members,
     unpack,
 )
+
+
+@dataclass(frozen=True)
+class ResourceFixture:
+    glob: str
+
+
+@dataclass(frozen=True)
+class ReachabilityFixture:
+    resources: tuple[ResourceFixture, ...]
 
 
 class NativeHandoffTest(unittest.TestCase):
@@ -43,6 +54,14 @@ class NativeHandoffTest(unittest.TestCase):
                 (fixture / "image.properties").write_text(f"mainClass={classes[name]}\n")
                 (fixture / "native-image.args").write_text("--no-fallback\n")
                 (fixture / "native-image-macos.args").write_text("--target=macos-aarch64\n")
+                for library in ("alpha", "beta"):
+                    metadata = fixture / f"reachability-metadata/fixture/{library}/1.0"
+                    metadata.mkdir(parents=True)
+                    (metadata / "reachability-metadata.json").write_text(
+                        json.dumps(
+                            asdict(ReachabilityFixture((ResourceFixture(f"{name}/{library}"),)))
+                        )
+                    )
                 with tarfile.open(archive, "w:gz") as bundle:
                     for path in fixture.iterdir():
                         bundle.add(path, arcname=path.name)
@@ -67,6 +86,23 @@ class NativeHandoffTest(unittest.TestCase):
                     self.assertEqual(classes[executable.name], command[5])
                     self.assertEqual(executable.name, cwd.name)
                     self.assertTrue((cwd / "native-image.args").is_file())
+                    self.assertIn(
+                        "-H:ConfigurationFileDirectories=reachability-metadata/fixture/alpha/1.0,"
+                        "reachability-metadata/fixture/beta/1.0",
+                        command,
+                    )
+                    for library in ("alpha", "beta"):
+                        self.assertEqual(
+                            (
+                                root
+                                / executable.name
+                                / f"reachability-metadata/fixture/{library}/1.0/reachability-metadata.json"
+                            ).read_bytes(),
+                            (
+                                cwd
+                                / f"reachability-metadata/fixture/{library}/1.0/reachability-metadata.json"
+                            ).read_bytes(),
+                        )
                     compiled.append(executable.name)
                     executable.write_bytes(
                         bytes.fromhex("cffaedfe0c000001") + executable.name.encode()
@@ -82,6 +118,15 @@ class NativeHandoffTest(unittest.TestCase):
                         self.assertEqual(["xcrun", "vtool", "-show-build"], command[:3])
                         return "    minos 15.0\n"
                     name = Path(command[0]).name
+                    if command[1:] == [
+                        "-XX:MissingRegistrationReportingMode=Exit",
+                        "query",
+                        "plan",
+                        "--name",
+                        "OrderService",
+                    ]:
+                        self.assertEqual("kast-query", name)
+                        return "query-plan-probe-output\n"
                     self.assertEqual(["--version"] if name == "kast" else ["--help"], command[1:])
                     return "0.0.7\n" if name == "kast" else "kast query [--help]\n"
 
@@ -98,7 +143,11 @@ class NativeHandoffTest(unittest.TestCase):
                     native_handoff.native(payload, root / "native-bundle")
                 self.assertEqual(["kast", "kast-query"], compiled)
                 self.assertEqual(2, run.call_count)
-                self.assertEqual(4, inspect.call_count)
+                self.assertEqual(5, inspect.call_count)
+                self.assertEqual(
+                    "query-plan-probe-output\n",
+                    (root / "build/reports/native/kast-query/query-plan.stdout").read_text(),
+                )
                 output = admit(root / "native-bundle", identity, Kind.NATIVE)
                 if not isinstance(output, Admitted):
                     self.fail("matching native outputs rejected")
@@ -109,6 +158,58 @@ class NativeHandoffTest(unittest.TestCase):
                         bytes.fromhex("cffaedfe0c000001") + name.encode(),
                         (root / "outputs" / name).read_bytes(),
                     )
+
+    def test_query_plan_registration_failure_rejects_native_qualification(self):
+        identity = Identity("a" * 40, "b" * 40, "0.0.7")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "image.properties").write_text("mainClass=fixture.Query\n")
+            metadata = root / "reachability-metadata/fixture"
+            metadata.mkdir(parents=True)
+            (metadata / "reachability-metadata.json").write_text(
+                json.dumps(asdict(ReachabilityFixture((ResourceFixture("fixture"),))))
+            )
+
+            def inspect_effect(command, *, text):
+                self.assertTrue(text)
+                if command == [str(root / "kast-query"), "--help"]:
+                    return "kast query [--help]\n"
+                self.assertEqual(
+                    [
+                        str(root / "kast-query"),
+                        "-XX:MissingRegistrationReportingMode=Exit",
+                        "query",
+                        "plan",
+                        "--name",
+                        "OrderService",
+                    ],
+                    command,
+                )
+                raise subprocess.CalledProcessError(172, command)
+
+            with (
+                patch.object(native_handoff, "ROOT", root),
+                patch.dict(native_handoff.os.environ, {"JAVA_HOME": str(root)}),
+                patch.object(native_handoff, "run"),
+                patch.object(
+                    native_handoff.subprocess, "check_output", side_effect=inspect_effect
+                ) as inspect,
+                self.assertRaisesRegex(SystemExit, "QUERY_PLAN_FAILED"),
+            ):
+                native_handoff.compile_native(root, root / "kast-query", identity)
+            self.assertEqual(2, inspect.call_count)
+
+    def test_missing_metadata_export_rejects_before_native_compilation(self):
+        identity = Identity("a" * 40, "b" * 40, "0.0.7")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "image.properties").write_text("mainClass=fixture.Query\n")
+            with (
+                patch.object(native_handoff, "run") as compile_effect,
+                self.assertRaisesRegex(SystemExit, "INVALID_RECORD"),
+            ):
+                native_handoff.compile_native(root, root / "kast-query", identity)
+            compile_effect.assert_not_called()
 
     def test_assembly_imports_both_macos_executables(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
