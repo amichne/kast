@@ -35,7 +35,6 @@
             "group": "Discover Kast",
             "pages": [
               "index",
-              "explanation/value-journey",
               "search"
             ]
           },
@@ -52,21 +51,6 @@
             "pages": [
               "troubleshooting"
             ]
-          },
-          {
-            "group": "Task details",
-            "pages": [
-              "how-to",
-              "reference/search",
-              "how-to/inspect-diagnostics",
-              "how-to/read-retained-evidence",
-              "reference/query-pipelines",
-              "reference/change",
-              "how-to/complete-engineering-task",
-              "reference/troubleshooting",
-              "reference/management",
-              "tutorials"
-            ]
           }
         ]
       },
@@ -77,6 +61,7 @@
             "group": "Understand Kast",
             "pages": [
               "explanation",
+              "explanation/value-journey",
               "reference/internals/architecture",
               "explanation/query-lifecycle",
               "architecture/query-reuse",
@@ -106,6 +91,21 @@
             "pages": [
               "reference",
               "glossary"
+            ]
+          },
+          {
+            "group": "Task details",
+            "pages": [
+              "how-to",
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "reference/change",
+              "how-to/complete-engineering-task",
+              "reference/troubleshooting",
+              "reference/management",
+              "tutorials"
             ]
           },
           {
