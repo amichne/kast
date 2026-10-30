@@ -1,6 +1,6 @@
 # CI validation and cache policy
 
-`validation_scope.py` admits four check plans from the exact Git diff.
+`validation_scope.py` selects checks from the exact Git diff and the native compilation setting.
 The selector checks the checkout revision before it reads the diff.
 Pull requests use the merge base. Pushes use the entire before/head range.
 
@@ -8,6 +8,7 @@ Pull requests use the merge base. Pushes use the entire before/head range.
 | --- | --- | --- |
 | `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, installer examples, and documentation tooling | None |
 | `SOURCE` | Affected owners and consumers, their semantic families, shared guards, offline preflight and portable packaging | None |
+| `SOURCE_FULL` | Complete source gate, portable packaging and documentation | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
@@ -59,15 +60,21 @@ That duplication adds unmeasured work to full runs.
 ## Cache ownership
 
 Gradle cache transport remains owned by the pinned `setup-gradle` action.
-Only main push and main workflow-dispatch runs can write entries.
+Only trusted main runs can write entries.
 Pull requests, forks, merge groups and other refs remain read-only.
 This prevents PR-scoped writes from consuming space that shared main entries need.
 Cleanup runs after successful builds, and existing encrypted configuration-cache handling stays in place.
 
 A successful main candidate reuse skips Gradle setup and retains the existing fast path.
-When main has no useful Gradle cache, an authorized CI workflow dispatch on an accepted main revision can seed it.
-That dispatch runs full validation and does not trigger automatic developer publication.
-Do not change candidate reuse merely to refresh a cache.
+The separate `Populate Gradle caches` workflow supplies cache entries after main pushes and daily at 08:00 UTC.
+Its Linux job runs the complete source gate with the stable version `0.0.0`.
+Its macOS job runs the three reset-adapter suites when native compilation is enabled.
+Both jobs use the same platform, toolchain, cache owner and job identifiers as their CI consumers.
+The workflow also accepts a manual dispatch on main.
+Other refs skip both cache producers.
+The workflow does not compile native executables, create product candidates or publish releases.
+It runs independently of required CI checks and developer promotion.
+The cache producer adds runner work to populate shared entries even when main reuses a candidate.
 
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
@@ -85,6 +92,32 @@ With that version fixed, changing `controlVersion` invalidated configuration reu
 Gradle then identified that generated source as the changed compilation input.
 These observations explain version-driven work; they do not measure a CI improvement or explain every hosted cache miss.
 No build scan evidence is available for this change.
+
+## CI native compilation switch
+
+CI enables native compilation by default.
+Set the GitHub repository variable `KAST_NATIVE_COMPILATION` to `false` to omit native compilation and its dependent product jobs:
+
+```sh
+gh variable set KAST_NATIVE_COMPILATION --repo amichne/kast --body false
+```
+
+Source, portable packaging and documentation keep their selected checks.
+A full selection becomes `SOURCE_FULL` and runs the complete source gate.
+Its validation record says `SOURCE_VALIDATED` and grants no product publication authority.
+The source gate cannot reuse a product candidate while native compilation is disabled.
+Developer promotion also skips while the variable is `false`.
+An earlier source-only record still rejects product promotion after the variable returns to `true`.
+Explicit release workflows keep their native compilation obligations.
+
+Set the variable to `true` to restore CI native compilation:
+
+```sh
+gh variable set KAST_NATIVE_COMPILATION --repo amichne/kast --body true
+```
+
+An absent variable also enables native compilation.
+Values other than `true` and `false` reject the CI selection.
 
 ## Temporary semantic fixture switch
 

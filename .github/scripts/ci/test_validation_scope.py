@@ -3,6 +3,7 @@
 
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -20,8 +21,11 @@ from validation_scope import (
     DOCUMENTATION_PATHS,
     PRODUCT_MODULES,
     Check,
+    NativeCompilation,
     Reason,
     Selection,
+    SCOPE_CHECKS,
+    Scope,
     classify_diff,
     classify_paths,
     main,
@@ -36,6 +40,49 @@ SOURCE = "cli/src/main/kotlin/Management.kt"
 
 
 class ValidationScopeTest(unittest.TestCase):
+    def test_native_toggle_preserves_all_other_obligations_for_each_scope(self):
+        for scope, checks in SCOPE_CHECKS.items():
+            selected = Selection(checks, Reason.CHANGED_INPUTS)
+            with self.subTest(scope=scope):
+                self.assertIs(selected, selected.with_native_compilation(NativeCompilation.ENABLED))
+                disabled = selected.with_native_compilation(NativeCompilation.DISABLED)
+                self.assertEqual(checks - {Check.PRODUCT, Check.GATE_GRAPH}, disabled.checks)
+                self.assertEqual(disabled.checks, SCOPE_CHECKS[disabled.scope])
+                self.assertNotIn(disabled.scope, (Scope.FULL, Scope.PRODUCT))
+
+    def test_disabled_native_compilation_keeps_every_source_check(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "outputs"
+            with (
+                patch.dict(os.environ, {"KAST_NATIVE_COMPILATION": "false"}),
+                patch("validation_scope.select", return_value=Selection(ALL_CHECKS, Reason.FULL_EVENT)),
+                patch.object(sys, "argv", ["validation_scope.py", "--event", "workflow_dispatch",
+                                          "--github-output", str(output)]),
+                redirect_stdout(io.StringIO()),
+            ):
+                main()
+            self.assertEqual(
+                "source=run\nproduct=skip\nportable=run\ndocumentation=run\ngate_graph=skip\nscope=SOURCE_FULL\n",
+                output.read_text(),
+            )
+
+    def test_unknown_native_toggle_rejects_before_selection_or_output(self):
+        for value in ("", "False", "TRUE", "0", "typo"):
+            with tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "outputs"
+                with (
+                    self.subTest(value=value),
+                    patch.dict(os.environ, {"KAST_NATIVE_COMPILATION": value}),
+                    patch("validation_scope.select", return_value=Selection(ALL_CHECKS, Reason.FULL_EVENT)) as select_checks,
+                    patch.object(sys, "argv", ["validation_scope.py", "--event", "workflow_dispatch",
+                                              "--github-output", str(output)]),
+                    redirect_stdout(io.StringIO()),
+                    self.assertRaises(ValueError),
+                ):
+                    main()
+                select_checks.assert_not_called()
+                self.assertFalse(output.exists())
+
     def test_kotlin_shaped_paths_cannot_bypass_protected_or_unknown_roots(self):
         for prefix in (
             ".github/tools",
@@ -410,6 +457,23 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_cache_producers_are_independent_main_jobs_without_product_publication(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
+        self.assertIn("branches: [main]", workflow)
+        self.assertIn("schedule:", workflow)
+        self.assertIn("workflow_dispatch:", workflow)
+        for job in ("source-work", "native"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1].split("\n  native:\n", 1)[0]
+            self.assertIn("if: github.ref == 'refs/heads/main'", body)
+            self.assertIn("cache-read-only: false", body)
+            self.assertIn("cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}", body)
+            self.assertNotIn("needs:", body)
+        for forbidden in ("nativeCompile", "native_handoff.py", "build_candidate.py", "contents: write"):
+            self.assertNotIn(forbidden, workflow)
+        self.assertIn("run: python3 .github/scripts/ci/source_validation.py", workflow)
+        for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
+            self.assertIn(f"--tests '*{case}'", workflow)
+
     def test_frozen_pr1130_diff_selects_documentation_without_qualification(self):
         # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).
         inventory = Path(__file__).parent / "fixtures/pr1130-paths.txt"

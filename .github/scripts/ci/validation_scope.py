@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import re
 import subprocess
 from dataclasses import asdict, dataclass
@@ -175,7 +176,13 @@ class Check(str, Enum):
 ALL_CHECKS = frozenset(Check)
 PRODUCT_CHECKS = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
 SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE})
+FULL_SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE, Check.DOCUMENTATION})
 DOCUMENTATION_CHECKS = frozenset({Check.DOCUMENTATION})
+
+
+class NativeCompilation(str, Enum):
+    ENABLED = "true"
+    DISABLED = "false"
 
 
 class Scope(str, Enum):
@@ -183,6 +190,7 @@ class Scope(str, Enum):
     PRODUCT = "PRODUCT"
     DOCUMENTATION = "DOCUMENTATION"
     SOURCE = "SOURCE"
+    SOURCE_FULL = "SOURCE_FULL"
 
 
 SCOPE_CHECKS = {
@@ -190,6 +198,7 @@ SCOPE_CHECKS = {
     Scope.PRODUCT: PRODUCT_CHECKS,
     Scope.DOCUMENTATION: DOCUMENTATION_CHECKS,
     Scope.SOURCE: SOURCE_CHECKS,
+    Scope.SOURCE_FULL: FULL_SOURCE_CHECKS,
 }
 
 
@@ -208,6 +217,11 @@ class Selection:
     checks: frozenset[Check]
     reason: Reason | verification_plan.Failure
     plan: verification_plan.Plan | None = None
+
+    def with_native_compilation(self, mode: NativeCompilation) -> "Selection":
+        if mode is NativeCompilation.DISABLED:
+            return Selection(self.checks - {Check.PRODUCT, Check.GATE_GRAPH}, self.reason, self.plan)
+        return self
 
     @property
     def scope(self) -> Scope:
@@ -336,7 +350,9 @@ def main() -> None:
     parser.add_argument("--github-output", type=Path, required=True)
     parser.add_argument("--affected", action="store_true")
     args = parser.parse_args()
+    native = NativeCompilation(os.environ.get("KAST_NATIVE_COMPILATION", "true"))
     selection = select(args.event, args.base, args.head, affected=True) if args.affected else select(args.event, args.base, args.head)
+    selection = selection.with_native_compilation(native)
     with args.github_output.open("a", encoding="utf-8") as output:
         for check in Check:
             output.write(f"{check.value}={'run' if check in selection.checks else 'skip'}\n")
@@ -344,7 +360,7 @@ def main() -> None:
         if selection.plan is not None:
             output.write("plan=" + json.dumps(asdict(selection.plan), separators=(",", ":")) + "\n")
     selected = ",".join(check.value for check in Check if check in selection.checks)
-    print(f"validation-scope: {selected} ({selection.reason.value})", flush=True)
+    print(f"validation-scope: {selected} ({selection.reason.value}); native-compilation={native.value}", flush=True)
 
 
 if __name__ == "__main__":

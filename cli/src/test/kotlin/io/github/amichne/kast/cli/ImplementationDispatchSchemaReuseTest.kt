@@ -65,6 +65,7 @@ class ImplementationDispatchSchemaReuseTest {
     fun `shared impact definitions retain their independent complete serializer shapes`() {
         val assertions = LocalSchemaAssertions(schema)
         assertions.assertLocalReferences()
+        val independentSchemas = IndependentImpactSchemas()
         val serializers =
             mapOf(
                 "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
@@ -86,7 +87,7 @@ class ImplementationDispatchSchemaReuseTest {
         for ((name, serializer) in serializers) {
             assertions.assertDefinitionEquivalent(
                 name,
-                independentFactoredImpactSchema(serializer),
+                independentSchemas.graph(serializer),
             )
         }
     }

@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import sys
 import unittest
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 import build_candidate as candidate
 from validation_outcome import DocumentationValidated, Outcome, ProductValidated, SourceValidated, ValidationRecord
@@ -190,17 +190,19 @@ class PayloadAdmissionTest(unittest.TestCase):
         destination = Path(self.temporary.name) / "source-download"
         promotion = Path(self.temporary.name) / "source-promotion.json"
         main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
-        source = SourceValidated(replace(validation_record(), scope=Scope.SOURCE, outcome=Outcome.SOURCE_VALIDATED))
-        with patch.object(candidate, "observe", side_effect=[asdict(main), asdict(Run())]), \
+        for scope in (Scope.SOURCE, Scope.SOURCE_FULL):
+            source = SourceValidated(replace(validation_record(), scope=scope, outcome=Outcome.SOURCE_VALIDATED))
+            with self.subTest(scope=scope), \
+                patch.object(candidate, "observe", side_effect=[asdict(main), asdict(Run())]), \
                 patch.object(candidate, "admit_validation", return_value=source), \
                 patch.object(candidate, "download", return_value=self.value) as download, \
                 patch.object(candidate, "tree", return_value=TREE), \
                 patch.object(candidate.legacy, "digest", return_value="f" * 64), \
                 self.assertRaises(candidate.Rejected) as rejected:
-            candidate.promote(REPOSITORY, MERGED, 456, destination, promotion)
-        self.assertEqual("SOURCE_NOT_QUALIFIED", rejected.exception.failure.value)
-        download.assert_not_called()
-        self.assertFalse(promotion.exists())
+                candidate.promote(REPOSITORY, MERGED, 456, destination, promotion)
+            self.assertEqual("SOURCE_NOT_QUALIFIED", rejected.exception.failure.value)
+            download.assert_not_called()
+            self.assertFalse(promotion.exists())
 
     def test_boolean_attempt_in_promotion_rejects_before_external_observation(self):
         promotion = Path(self.temporary.name) / "promotion.json"

@@ -33,6 +33,19 @@ def docs_only_results():
 
 
 class RequiredChecksTest(unittest.TestCase):
+    def test_source_full_requires_docs_and_source_without_product_authority(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", portable="run", scope="SOURCE_FULL")
+        needs["source"]["result"] = needs["portable"]["result"] = "success"
+        self.assertEqual(Verdict.COMPLETE, inspect(needs))
+        for job in ("source", "portable", "documentation"):
+            for result in ("skipped", "failure", "cancelled"):
+                rejected = deepcopy(needs)
+                rejected[job]["result"] = result
+                self.assertEqual(Verdict.CHECK_FAILED, inspect(rejected))
+        needs["kotlin"]["result"] = "success"
+        self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
+
     def test_source_proof_requires_linux_even_when_native_succeeds(self):
         for qualified in (False, True):
             needs = docs_only_results()
