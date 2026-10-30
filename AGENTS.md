@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-29T23:41:55Z"
-source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
+timestamp: "2026-10-30T14:28:03Z"
+source_revision: 2ca945f49f621979a0817d7e29a2b3a6d72633ef
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -71,7 +71,7 @@ This guide owns repository rules and routes source investigation.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
-- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds transferred artifacts to source identity and digest. Mac jobs compile and exercise the native executable.
+- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds both transferred executables to source identity and digest. Mac jobs compile and exercise both executables.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.

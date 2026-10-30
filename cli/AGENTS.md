@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-29T23:41:55Z"
-source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
+timestamp: "2026-10-30T14:28:03Z"
+source_revision: 2ca945f49f621979a0817d7e29a2b3a6d72633ef
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -82,6 +82,9 @@ Owns the public semantic CLI, private JVM entry points, direct tool sessions, in
 - Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
 - Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the real launcher, JVM child, and local-peer composition.
 - The public native `kast` executable lives in `distribution/cli`.
+- Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
+- CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
+- CI imports supply `kastQueryNativeExecutable` together with `kastNativeExecutable`. The `queryExecutableElements` artifact uses the imported query executable.
 - The private installer entry in `KastCliMain.kt` admits only `--version`.
 - The installation places private service control at `share/kast/libexec/kast-service`.
 - [KastToolRpcQuerySessionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt) - query framing and retained delivery.
