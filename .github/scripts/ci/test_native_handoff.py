@@ -112,7 +112,7 @@ class NativeHandoffTest(unittest.TestCase):
                         "report"
                     )
 
-                def inspect_effect(command, *, text):
+                def inspect_effect(command, *, text, stderr=None):
                     self.assertTrue(text)
                     if command[0] == "xcrun":
                         self.assertEqual(["xcrun", "vtool", "-show-build"], command[:3])
@@ -126,6 +126,7 @@ class NativeHandoffTest(unittest.TestCase):
                         "OrderService",
                     ]:
                         self.assertEqual("kast-query", name)
+                        self.assertEqual(subprocess.STDOUT, stderr)
                         return "query-plan-probe-output\n"
                     self.assertEqual(["--version"] if name == "kast" else ["--help"], command[1:])
                     return "0.0.7\n" if name == "kast" else "kast query [--help]\n"
@@ -147,6 +148,12 @@ class NativeHandoffTest(unittest.TestCase):
                 self.assertEqual(
                     "query-plan-probe-output\n",
                     (root / "build/reports/native/kast-query/query-plan.stdout").read_text(),
+                )
+                self.assertEqual(
+                    {"stage": "QUERY_PLAN", "outcome": "COMPLETE", "exitCode": 0},
+                    json.loads(
+                        (root / "build/reports/native/kast-query/query-plan.json").read_text()
+                    ),
                 )
                 output = admit(root / "native-bundle", identity, Kind.NATIVE)
                 if not isinstance(output, Admitted):
@@ -170,7 +177,7 @@ class NativeHandoffTest(unittest.TestCase):
                 json.dumps(asdict(ReachabilityFixture((ResourceFixture("fixture"),))))
             )
 
-            def inspect_effect(command, *, text):
+            def inspect_effect(command, *, text, stderr=None):
                 self.assertTrue(text)
                 if command == [str(root / "kast-query"), "--help"]:
                     return "kast query [--help]\n"
@@ -185,7 +192,10 @@ class NativeHandoffTest(unittest.TestCase):
                     ],
                     command,
                 )
-                raise subprocess.CalledProcessError(172, command)
+                self.assertEqual(subprocess.STDOUT, stderr)
+                raise subprocess.CalledProcessError(
+                    172, command, output="missing registration\n" + "x" * 10000
+                )
 
             with (
                 patch.object(native_handoff, "ROOT", root),
@@ -198,6 +208,12 @@ class NativeHandoffTest(unittest.TestCase):
             ):
                 native_handoff.compile_native(root, root / "kast-query", identity)
             self.assertEqual(2, inspect.call_count)
+            report = root / "build/reports/native/kast-query"
+            self.assertEqual(
+                {"stage": "QUERY_PLAN", "outcome": "PROCESS_FAILED", "exitCode": 172},
+                json.loads((report / "query-plan.json").read_text()),
+            )
+            self.assertEqual(4096, len((report / "query-plan.stdout").read_text()))
 
     def test_missing_metadata_export_rejects_before_native_compilation(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")

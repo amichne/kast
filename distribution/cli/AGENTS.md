@@ -4,8 +4,8 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and Codex plugin installation."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-10-30T14:28:03Z"
-source_revision: 2ca945f49f621979a0817d7e29a2b3a6d72633ef
+timestamp: "2026-10-30T16:46:35Z"
+source_revision: 8b42ef5bdbb0608f10e6b91e925f41c965321026
 code_sources:
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
@@ -64,6 +64,8 @@ Run `./gradlew :distribution:cli:test :distribution:cli:nativeCompile` for chang
 
 `assembleNativeImageInputs` packages JVM libraries and the shared Native Image arguments for the target host.
 `native-image.args` owns portable arguments. `native-image-macos.args` owns Mac linker arguments.
+`collectReachabilityMetadata` supplies resolved metadata for each input archive.
+Keep module directories during transfer and raw native compilation.
 Routine CI admits both transferred executables before Linux assembly.
 It supplies `kastNativeExecutable` and `kastQueryNativeExecutable` together.
 Ordinary local builds keep `nativeCompile` as the executable producer.

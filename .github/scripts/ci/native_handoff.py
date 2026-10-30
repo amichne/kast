@@ -36,6 +36,22 @@ class Extraction(str, Enum):
     COMPLETE = "COMPLETE"
 
 
+class ProbeStage(str, Enum):
+    QUERY_PLAN = "QUERY_PLAN"
+
+
+class ProbeOutcome(str, Enum):
+    COMPLETE = "COMPLETE"
+    PROCESS_FAILED = "PROCESS_FAILED"
+
+
+@dataclass(frozen=True)
+class QueryPlanObservation:
+    outcome: ProbeOutcome
+    exitCode: int
+    stage: ProbeStage = ProbeStage.QUERY_PLAN
+
+
 class Failure(str, Enum):
     INVALID_RECORD = "INVALID_RECORD"
     IDENTITY_MISMATCH = "IDENTITY_MISMATCH"
@@ -327,25 +343,37 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
     ):
         raise SystemExit(Failure.IDENTITY_MISMATCH.value)
     if query:
-        try:
-            plan = subprocess.check_output(
-                [
-                    str(executable),
-                    "-XX:MissingRegistrationReportingMode=Exit",
-                    "query",
-                    "plan",
-                    "--name",
-                    "OrderService",
-                ],
-                text=True,
-            )
-        except subprocess.CalledProcessError:
-            raise SystemExit(Failure.QUERY_PLAN_FAILED.value) from None
-        _ = (report_directory / "query-plan.stdout").write_text(plan)
+        probe_query_plan(executable, report_directory)
     target = subprocess.check_output(["xcrun", "vtool", "-show-build", str(executable)], text=True)
     _ = (metrics.parent / "macos-build.txt").write_text(target)
     if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:
         raise SystemExit(Failure.WRONG_PLATFORM.value)
+
+
+def probe_query_plan(executable: Path, report_directory: Path) -> None:
+    try:
+        output = subprocess.check_output(
+            [
+                str(executable),
+                "-XX:MissingRegistrationReportingMode=Exit",
+                "query",
+                "plan",
+                "--name",
+                "OrderService",
+            ],
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+        observation = QueryPlanObservation(ProbeOutcome.COMPLETE, 0)
+    except subprocess.CalledProcessError as error:
+        output = error.output if isinstance(error.output, str) else ""
+        observation = QueryPlanObservation(ProbeOutcome.PROCESS_FAILED, error.returncode)
+    _ = (report_directory / "query-plan.stdout").write_text(output[:4096])
+    _ = (report_directory / "query-plan.json").write_text(
+        json.dumps(asdict(observation), indent=2) + "\n"
+    )
+    if observation.outcome is ProbeOutcome.PROCESS_FAILED:
+        raise SystemExit(Failure.QUERY_PLAN_FAILED.value)
 
 
 def assemble(payload: Admitted, destination: Path) -> None:
