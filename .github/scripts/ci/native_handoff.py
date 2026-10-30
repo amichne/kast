@@ -307,8 +307,13 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
         ],
         cwd=inputs,
     )
-    result = subprocess.check_output([str(executable), "--version"], text=True).strip()
-    if result != identity.version:
+    query = executable.name == "kast-query"
+    result = subprocess.check_output(
+        [str(executable), "--help" if query else "--version"], text=True
+    ).strip()
+    if (query and not result.startswith("kast query [")) or (
+        not query and result != identity.version
+    ):
         raise SystemExit(Failure.IDENTITY_MISMATCH.value)
     target = subprocess.check_output(["xcrun", "vtool", "-show-build", str(executable)], text=True)
     _ = (metrics.parent / "macos-build.txt").write_text(target)

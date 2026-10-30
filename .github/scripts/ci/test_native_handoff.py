@@ -76,6 +76,15 @@ class NativeHandoffTest(unittest.TestCase):
                         "report"
                     )
 
+                def inspect_effect(command, *, text):
+                    self.assertTrue(text)
+                    if command[0] == "xcrun":
+                        self.assertEqual(["xcrun", "vtool", "-show-build"], command[:3])
+                        return "    minos 15.0\n"
+                    name = Path(command[0]).name
+                    self.assertEqual(["--version"] if name == "kast" else ["--help"], command[1:])
+                    return "0.0.7\n" if name == "kast" else "kast query [--help]\n"
+
                 with (
                     patch.object(native_handoff.platform, "system", return_value="Darwin"),
                     patch.object(native_handoff.platform, "machine", return_value="arm64"),
@@ -83,7 +92,7 @@ class NativeHandoffTest(unittest.TestCase):
                     patch.object(
                         native_handoff.subprocess,
                         "check_output",
-                        side_effect=["0.0.7\n", "    minos 15.0\n"] * 2,
+                        side_effect=inspect_effect,
                     ) as inspect,
                 ):
                     native_handoff.native(payload, root / "native-bundle")
