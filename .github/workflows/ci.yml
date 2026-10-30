@@ -229,6 +229,18 @@ jobs:
         with:
           python-version-file: .python-version
       - run: python3 -m pip install uv==0.12.9
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
+      - name: Exercise macOS reset adapters
+        run: >-
+          ./gradlew :distribution:cli:test
+          --tests '*NativeResetListenerTest'
+          --tests '*NativeResetPeerAcceptanceTest'
+          --tests '*ResetLaunchObservationTest'
+          --console=plain
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
@@ -249,7 +261,9 @@ jobs:
         if: always()
         with:
           name: native-reports-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/reports/
+          path: |
+            build/reports/
+            distribution/cli/build/test-results/
           if-no-files-found: warn
           retention-days: 14
 
