@@ -59,6 +59,13 @@ The connection owner may migrate an exactly recorded legacy MCP command only dur
 
 Run `./gradlew :distribution:cli:test :distribution:cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
 
+## Native compilation inputs
+
+`assembleNativeImageInputs` packages JVM libraries and the shared Native Image arguments for the target host.
+`native-image.args` owns portable arguments. `native-image-macos.args` owns Mac linker arguments.
+Routine CI admits the transferred native artifact before it supplies `kastNativeExecutable` to Gradle on Linux.
+Ordinary local builds keep `nativeCompile` as the executable producer.
+
 ## Navigation
 
 - [KastManagementMain.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt)

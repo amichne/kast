@@ -250,7 +250,10 @@ private constructor(
                         LinkOption.NOFOLLOW_LINKS,
                     )
                     .fileKey() ?: return
-            if (current == fileKey) Files.deleteIfExists(path)
+            val target = aliasTarget
+            if (current == fileKey && (target == null || Files.readSymbolicLink(path) == target.linkTarget)) {
+                Files.deleteIfExists(path)
+            }
         } catch (_: IOException) {
             return
         } catch (_: SecurityException) {
@@ -279,7 +282,8 @@ private constructor(
                 if (!ProcessUnixSocketOwnership.holds(processPid, target, timeoutMillis)) {
                     return PublishedAliasCapture.Unproven
                 }
-                val owned = OwnedUnixSocket(alias, aliasKey, SocketTarget(target, targetKey))
+                val owned =
+                    OwnedUnixSocket(alias, aliasKey, SocketTarget(target, targetKey, Files.readSymbolicLink(alias)))
                 if (owned.matchesCurrent()) PublishedAliasCapture.Captured(owned) else PublishedAliasCapture.Unproven
             } catch (_: IOException) {
                 PublishedAliasCapture.Unproven
@@ -312,10 +316,15 @@ private constructor(
     }
 }
 
-private data class SocketTarget(val path: Path, val fileKey: Any)
+private data class SocketTarget(val path: Path, val fileKey: Any, val linkTarget: Path)
 
 /** Observes the launched process's open Unix socket, rather than inferring ownership from a successful connection. */
-private object ProcessUnixSocketOwnership {
+internal object ProcessUnixSocketOwnership {
+    internal fun matchesOwnerRecords(pid: Long, target: Path, lines: List<String>): Boolean =
+        lines.firstOrNull() == "p$pid" &&
+            lines.none { it.startsWith("p") && it != "p$pid" } &&
+            lines.any { it == "n$target" || it == "n$target type=STREAM" }
+
     fun holds(pid: Long, target: Path, timeoutMillis: Long): Boolean {
         if (pid <= 0 || timeoutMillis <= 0) return false
         val lsof =
@@ -331,7 +340,7 @@ private object ProcessUnixSocketOwnership {
             }
             if (probe.exitValue() != 0) return false
             val lines = probe.inputStream.bufferedReader().use { it.readLines() }
-            return lines.firstOrNull() == "p$pid" && lines.any { it == "n$target" }
+            return matchesOwnerRecords(pid, target, lines)
         } catch (_: IOException) {
             return false
         } catch (_: InterruptedException) {

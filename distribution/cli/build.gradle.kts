@@ -1,3 +1,7 @@
+import java.io.File
+import org.gradle.api.tasks.WriteProperties
+import org.gradle.api.tasks.bundling.Compression
+import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -60,13 +64,16 @@ graalvmNative {
             mainClass.set(application.mainClass)
             sharedLibrary.set(false)
             fallback.set(false)
-            buildArgs.add("--no-fallback")
-            buildArgs.add("-H:IncludeResources=management/bootstrap-install.sh")
+            buildArgs.addAll(
+                providers.fileContents(layout.projectDirectory.file("native-image.args")).asText.map {
+                    it.lines().filter(String::isNotBlank)
+                }
+            )
             if (providers.systemProperty("os.name").get().startsWith("Mac")) {
                 buildArgs.addAll(
-                    "-H:+UnlockExperimentalVMOptions",
-                    "-H:NativeLinkerOption=-mmacosx-version-min=15.0",
-                    "-H:-UnlockExperimentalVMOptions",
+                    providers.fileContents(layout.projectDirectory.file("native-image-macos.args")).asText.map {
+                        it.lines().filter(String::isNotBlank)
+                    }
                 )
             }
             if (providers.gradleProperty("kastNativeBuildMetrics").orNull == "true") {
@@ -90,8 +97,42 @@ tasks.named<ProcessResources>("processResources") {
     }
 }
 
+val importedManagementExecutable = providers.gradleProperty("kastNativeExecutable")
+
 configurations.consumable("managementExecutableElements") {
-    outgoing.artifact(layout.buildDirectory.file("native/nativeCompile/kast")) {
-        builtBy(tasks.named("nativeCompile"))
+    if (importedManagementExecutable.isPresent) {
+        outgoing.artifact(
+            layout.file(
+                importedManagementExecutable.map {
+                    File(it).also { path ->
+                        require(path.isAbsolute) { "Imported native executable needs an absolute path" }
+                    }
+                }
+            )
+        )
+    } else {
+        outgoing.artifact(layout.buildDirectory.file("native/nativeCompile/kast")) {
+            builtBy(tasks.named("nativeCompile"))
+        }
     }
+}
+
+val nativeImageOptions =
+    tasks.register<WriteProperties>("nativeImageOptions") {
+        destinationFile.set(layout.buildDirectory.file("native-inputs/image.properties"))
+        property("mainClass", application.mainClass)
+    }
+
+tasks.register<Tar>("assembleNativeImageInputs") {
+    group = "distribution"
+    description = "Packages compiled JVM inputs for native compilation on the target host."
+    dependsOn(tasks.named("installDist"), nativeImageOptions)
+    from(tasks.named<Sync>("installDist").map { it.destinationDir }) { include("lib/**") }
+    from(nativeImageOptions.flatMap { it.destinationFile })
+    from("native-image.args", "native-image-macos.args")
+    archiveFileName.set("native-inputs.tar.gz")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    compression = Compression.GZIP
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }

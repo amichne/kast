@@ -94,7 +94,7 @@ class InstalledBrokerServerTest {
     @Test
     fun `tool selection defaults without symbols and admits one exact configured subset`(@TempDir temporary: Path) {
         val suffix = UUID.randomUUID().toString().take(8)
-        val codexHome = Path.of("/private/tmp/kast-tool-exposure-$suffix")
+        val codexHome = Path.of("/tmp").toRealPath().resolve("kast-tool-exposure-$suffix")
         Files.createDirectory(codexHome)
         val user = temporary.toRealPath()
         val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
@@ -150,7 +150,7 @@ class InstalledBrokerServerTest {
 
     @Test
     fun `installed clients use canonical discovery with a private upstream`(@TempDir temporary: Path) {
-        val home = Path.of("/private/tmp/kast-host-" + UUID.randomUUID().toString().take(8))
+        val home = Path.of("/tmp").toRealPath().resolve("kast-host-" + UUID.randomUUID().toString().take(8))
         Files.createDirectory(home)
         try {
             val user = temporary.toRealPath()
@@ -192,7 +192,7 @@ class InstalledBrokerServerTest {
     fun `managed startup publishes its exact finite rejection instead of timing out`(@TempDir temporary: Path) =
         runBlocking {
             val suffix = UUID.randomUUID().toString().take(8)
-            val codexHome = Path.of("/private/tmp/kast-service-rejected-$suffix")
+            val codexHome = Path.of("/tmp").toRealPath().resolve("kast-service-rejected-$suffix")
             Files.createDirectory(codexHome)
             val userHome = temporary.toRealPath()
             val kast = executable(Files.createDirectories(userHome.resolve("bin")).resolve("kast"))
@@ -235,7 +235,7 @@ class InstalledBrokerServerTest {
     @Test
     fun `Codex qualification rejection emits its exact bounded startup reason`(@TempDir temporary: Path) = runBlocking {
         val suffix = UUID.randomUUID().toString().take(8)
-        val codexHome = Path.of("/private/tmp/kast-service-observed-$suffix")
+        val codexHome = Path.of("/tmp").toRealPath().resolve("kast-service-observed-$suffix")
         Files.createDirectory(codexHome)
         val userHome = temporary.toRealPath()
         val kast = executable(Files.createDirectories(userHome.resolve("bin")).resolve("kast"))
@@ -278,7 +278,7 @@ class InstalledBrokerServerTest {
         @TempDir temporary: Path
     ) = runBlocking {
         val suffix = UUID.randomUUID().toString().take(8)
-        val codexHome = Path.of("/private/tmp/kast-service-$suffix")
+        val codexHome = Path.of("/tmp").toRealPath().resolve("kast-service-$suffix")
         Files.createDirectory(codexHome)
         val userHome = temporary.toRealPath()
         val kast = executable(Files.createDirectories(userHome.resolve("bin")).resolve("kast"))

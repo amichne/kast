@@ -1,0 +1,3 @@
+-H:+UnlockExperimentalVMOptions
+-H:NativeLinkerOption=-mmacosx-version-min=15.0
+-H:-UnlockExperimentalVMOptions

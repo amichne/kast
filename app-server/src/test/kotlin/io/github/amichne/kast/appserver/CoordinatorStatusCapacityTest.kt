@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 class CoordinatorStatusCapacityTest {
     @Test
     fun `passive transport admits the coordinator with no isolated workers`() = runBlocking {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kst-cap-").toRealPath()
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kst-cap-").toRealPath()
         try {
             listOf("bin", "lib", "share").forEach { Files.createDirectory(root.resolve(it)) }
             val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")

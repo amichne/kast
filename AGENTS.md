@@ -71,6 +71,7 @@ This guide owns repository rules and routes source investigation.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
+- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds transferred artifacts to source identity and digest. Mac jobs compile and exercise the native executable.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.

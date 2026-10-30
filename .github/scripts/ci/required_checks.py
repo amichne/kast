@@ -55,7 +55,7 @@ def selected_scope(needs: dict[object, object]) -> Scope | Verdict:
 
 
 def source_proof(needs: object) -> Verdict:
-    """Source work runs once: standalone or inside the qualified candidate gate."""
+    """Linux owns source proof independently of native candidate completion."""
     if not _mapping(needs):
         return Verdict.INVALID_SELECTION
     scope = selected_scope(needs)
@@ -64,14 +64,9 @@ def source_proof(needs: object) -> Verdict:
     selected = SCOPE_CHECKS[scope]
     if Check.SOURCE not in selected:
         return Verdict.INVALID_SELECTION
-    qualified = Check.PRODUCT in selected
-    for job, expected in (
-        ("source-work", "skipped" if qualified else "success"),
-        ("kotlin", "success" if qualified else "skipped"),
-    ):
-        observed = needs.get(job)
-        if not _mapping(observed) or observed.get("result") != expected:
-            return Verdict.CHECK_FAILED
+    observed = needs.get("source-work")
+    if not _mapping(observed) or observed.get("result") != "success":
+        return Verdict.CHECK_FAILED
     return Verdict.COMPLETE
 
 

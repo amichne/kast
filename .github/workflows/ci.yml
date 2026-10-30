@@ -90,79 +90,12 @@ jobs:
 
   source-work:
     needs: scope
-    if: needs.scope.outputs.source == 'run' && needs.scope.outputs.product == 'skip' && (inputs.rollout == '' || inputs.rollout == 'none')
+    if: needs.scope.outputs.source == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     name: Source obligations
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Set up GraalVM Java 25
-        id: jdk25
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: graalvm
-          java-version: 25.0.2
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: ".python-version"
-          cache: pip
-          cache-dependency-path: experiments/host-observation/requirements-test.txt
-
-      - name: Install host protocol and semantic test tools
-        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
-
-      - name: Set up documentation parser runtime
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24.21.0"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
-        with:
-          validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
-          # A main workflow_dispatch performs a full build to seed/refresh these entries.
-          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
-          cache-cleanup: on-success
-          # caches includes caches/build-cache-1, Gradle's local task-output cache.
-          # Cacheable IDEA extraction tasks restore their outputs from that cache. Cache the non-cacheable topology Sync separately.
-          gradle-home-cache-includes: |
-            caches
-            notifications
-            native-build-tools
-            kast/topology-intellij-kotlin-plugin
-
-      - name: Validate affected source obligations
-        env:
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          CI_VERIFICATION_PLAN: ${{ needs.scope.outputs.plan }}
-        run: python3 .github/scripts/ci/source_validation.py --affected --base "$BASE_SHA" --event "$GITHUB_EVENT_NAME"
-
-      - name: Retain source evidence
-        if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: ci-source-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-          path: |
-            build/reports/
-            **/build/test-results/
-          if-no-files-found: error
-          retention-days: 14
-
-  kotlin:
-    needs: scope
-    if: needs.scope.outputs.product == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
-    name: Kotlin product
-    runs-on: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.KAST_SELF_HOSTED_RUNNER == 'true' && fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') || 'macos-15' }}
-    timeout-minutes: 60
+    outputs:
+      candidate: ${{ steps.reuse.outputs.candidate || 'MISSING' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -170,7 +103,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Reuse tested merged PR candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.KAST_SEMANTIC_FIXTURES == 'false'
+        if: needs.scope.outputs.product == 'run' && github.event_name == 'push' && github.ref == 'refs/heads/main' && env.KAST_SEMANTIC_FIXTURES == 'false'
         id: reuse
         env:
           GH_TOKEN: ${{ github.token }}
@@ -188,25 +121,12 @@ jobs:
           java-version: 25.0.2
 
       - name: Set up Python
-        if: steps.reuse.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
+        if: steps.reuse.outputs.candidate != 'REUSED'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
           cache: pip
           cache-dependency-path: experiments/host-observation/requirements-test.txt
-
-      - name: Set up local Python
-        if: steps.reuse.outputs.candidate != 'REUSED' && runner.environment == 'self-hosted'
-        env:
-          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
-        run: |
-          python_version="$(cat .python-version)"
-          uv python install "$python_version"
-          python_executable="$(uv python find --managed-python --system "$python_version")"
-          python_environment="$RUNNER_TOOL_CACHE/kast-python-$python_version"
-          uv venv --allow-existing --seed --python "$python_executable" "$python_environment"
-          echo "$python_environment/bin" >> "$GITHUB_PATH"
-          "$python_environment/bin/python3" --version
 
       - name: Install host protocol and semantic test tools
         if: steps.reuse.outputs.candidate != 'REUSED'
@@ -223,8 +143,6 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           validate-wrappers: true
-          # The local runner keeps its Gradle User Home between jobs.
-          cache-disabled: ${{ runner.environment == 'self-hosted' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
           # A main workflow_dispatch performs a full build to seed/refresh these entries.
@@ -238,30 +156,212 @@ jobs:
             native-build-tools
             kast/topology-intellij-kotlin-plugin
 
-      - name: Run candidate preflight
-        if: steps.reuse.outputs.candidate != 'REUSED'
+      - name: Validate affected source obligations
+        if: needs.scope.outputs.product == 'skip'
+        env:
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_VERIFICATION_PLAN: ${{ needs.scope.outputs.plan }}
+        run: python3 .github/scripts/ci/source_validation.py --affected --base "$BASE_SHA" --event "$GITHUB_EVENT_NAME"
+
+      - name: Validate complete candidate source obligations
+        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
+        env:
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+        run: python3 .github/scripts/ci/source_validation.py
+
+      - name: Examine candidate gate membership
+        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
         env:
           GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           GATE_GRAPH: ${{ needs.scope.outputs.gate_graph }}
         run: python3 .github/scripts/ci/verify-checks.py --preflight-only --gate-graph "$GATE_GRAPH"
 
-      - name: Build and test one immutable candidate
-        if: steps.reuse.outputs.candidate != 'REUSED'
+      - name: Prepare compiled native inputs
+        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
+        run: uv run --locked --script .github/scripts/ci/native_handoff.py inputs --version "0.0.$GITHUB_RUN_NUMBER"
+
+      - name: Retain compiled native inputs
+        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-output/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain reused candidate
+        if: steps.reuse.outputs.candidate == 'REUSED'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: reused-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/candidate/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain source evidence
+        if: always() && steps.reuse.outputs.candidate != 'REUSED' && (inputs.rollout == '' || inputs.rollout == 'none')
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-source-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            build/reports/
+            **/build/test-results/
+          if-no-files-found: error
+          retention-days: 14
+
+  native:
+    name: Compile macOS native executable
+    needs: [scope, source-work]
+    if: needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: graalvm
+          java-version: 25.0.2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: python3 -m pip install uv==0.12.9
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
+      - name: Exercise macOS reset adapters
+        run: >-
+          ./gradlew :distribution:cli:test
+          --tests '*NativeResetListenerTest'
+          --tests '*NativeResetPeerAcceptanceTest'
+          --tests '*ResetLaunchObservationTest'
+          --console=plain
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-input/
+      - name: Compile and examine the native executable
+        run: >-
+          python3 .github/scripts/ci/build_execution.py
+          --report build/reports/ci/build-execution.json
+          --native-report build/reports/native/build-output.json --
+          uv run --locked --script .github/scripts/ci/native_handoff.py native --version "0.0.$GITHUB_RUN_NUMBER"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: native-executable-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-output/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: native-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/reports/
+            distribution/cli/build/test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  assembly:
+    name: Assemble release on Linux
+    needs: [scope, native]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: graalvm
+          java-version: 25.0.2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: python3 -m pip install uv==0.12.9
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.21.0"
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: native-executable-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-input/
+      - name: Admit native output and assemble the release
         env:
           GH_TOKEN: ${{ github.token }}
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-        run: bash .github/scripts/ci/verify.sh --version "0.0.$GITHUB_RUN_NUMBER"
+        run: uv run --locked --script .github/scripts/ci/native_handoff.py assemble --version "0.0.$GITHUB_RUN_NUMBER"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-output/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: assembly-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/reports/
+          if-no-files-found: warn
+          retention-days: 14
 
-      - name: Examine native macOS target
-        if: steps.reuse.outputs.candidate != 'REUSED'
+  kotlin:
+    name: Kotlin product
+    needs: [scope, source-work, native, assembly]
+    if: always() && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
+    runs-on: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.KAST_SELF_HOSTED_RUNNER == 'true' && fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') || 'macos-15' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        if: needs.source-work.outputs.candidate == 'REUSED'
+        with:
+          name: reused-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/candidate/
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: needs.source-work.outputs.candidate != 'REUSED'
+        with:
+          distribution: graalvm
+          java-version: 25.0.2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: needs.source-work.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
+        with:
+          python-version-file: .python-version
+      - run: python3 -m pip install uv==0.12.9
+        if: needs.source-work.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
+      - name: Set up local Python
+        if: needs.source-work.outputs.candidate != 'REUSED' && runner.environment == 'self-hosted'
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
         run: |
-          xcrun vtool -show-build distribution/cli/build/native/nativeCompile/kast \
-            | tee build/reports/native/macos-build.txt \
-            | awk '$1 == "minos" { if ($2 != "15.0") exit 1; found = 1 } END { if (!found) exit 1 }'
-
+          uv python install "$(cat .python-version)"
+          uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
+          echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        if: needs.source-work.outputs.candidate != 'REUSED'
+        with:
+          name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-input/
+      - name: Exercise the assembled Mac product
+        if: needs.source-work.outputs.candidate != 'REUSED'
+        run: uv run --locked --script .github/scripts/ci/native_handoff.py qualify --version "0.0.$GITHUB_RUN_NUMBER"
       - name: Seal tested candidate identity
-        if: steps.reuse.outputs.candidate != 'REUSED'
+        if: needs.source-work.outputs.candidate != 'REUSED'
         env:
           CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: >-
@@ -269,7 +369,6 @@ jobs:
           --repository "$GITHUB_REPOSITORY" --revision "$CHECKOUT_SHA"
           --run-id "$GITHUB_RUN_ID" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
           --event "$GITHUB_EVENT_NAME" --bundle build/candidate
-
       - name: Retain immutable build candidate
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -279,20 +378,9 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-      - name: Retain verification reports
-        if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: ci-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-          path: |
-            build/reports/
-            **/build/test-results/
-          if-no-files-found: warn
-          retention-days: 14
-
   source:
     name: Source validation
-    needs: [scope, source-work, kotlin]
+    needs: [scope, source-work]
     if: always() && needs.scope.outputs.source == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -363,7 +451,7 @@ jobs:
       fail-fast: false
       matrix:
         case: ${{ fromJSON(inputs.rollout_case == 'all' && '["documentation","leaf-service","semantic-adapter","shared-contract"]' || format('["{0}"]', inputs.rollout_case)) }}
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

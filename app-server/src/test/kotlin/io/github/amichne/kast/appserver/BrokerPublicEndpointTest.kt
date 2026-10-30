@@ -185,7 +185,7 @@ class BrokerPublicEndpointTest {
     @Test
     fun `unreachable incumbent canonical socket rejects before launchd submission`(@TempDir temporary: Path) {
         val fixture = installedFixture(temporary)
-        val home = Files.createTempDirectory(Path.of("/private/tmp"), "kast-o-")
+        val home = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-o-")
         try {
             val command =
                 resolvedCommand(
