@@ -457,6 +457,18 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_cache_producers_provision_validation_tools_before_gradle(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
+        for job in ("source-work", "native"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1].split("\n  native:\n", 1)[0]
+            with self.subTest(job=job):
+                self.assertIn("uses: actions/setup-python@", body)
+                self.assertIn("uv==0.12.9", body)
+                self.assertLess(body.index("uses: actions/setup-python@"),
+                                body.index("uses: gradle/actions/setup-gradle@"))
+                self.assertLess(body.index("uv==0.12.9"),
+                                body.index("uses: gradle/actions/setup-gradle@"))
+
     def test_cache_producers_are_independent_main_jobs_without_product_publication(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
         self.assertIn("branches: [main]", workflow)
