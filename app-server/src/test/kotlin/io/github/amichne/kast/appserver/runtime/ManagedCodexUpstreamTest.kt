@@ -37,7 +37,7 @@ class ManagedCodexUpstreamTest {
     fun `foreign socket alias survives rejection and clean retry`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-stale-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-stale-${UUID.randomUUID()}.sock")
         val foreign = Files.writeString(temporary.resolve("foreign.sock"), "foreign-transport")
         val launcher = EchoCodexLauncher()
         val options =
@@ -72,8 +72,8 @@ class ManagedCodexUpstreamTest {
     fun `socket alias held by the launched process connects and retires`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-alias-${UUID.randomUUID()}.sock")
-        val target = Path.of("/private/tmp/kast-codex-target-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-alias-${UUID.randomUUID()}.sock")
+        val target = Path.of("/tmp").toRealPath().resolve("kast-codex-target-${UUID.randomUUID()}.sock")
         val launcher = EchoCodexLauncher(target)
         try {
             val result =
@@ -106,8 +106,8 @@ class ManagedCodexUpstreamTest {
     fun `socket alias held by another process does not gain ownership`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-unowned-${UUID.randomUUID()}.sock")
-        val target = Path.of("/private/tmp/kast-codex-foreign-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-unowned-${UUID.randomUUID()}.sock")
+        val target = Path.of("/tmp").toRealPath().resolve("kast-codex-foreign-${UUID.randomUUID()}.sock")
         val launcher = EchoCodexLauncher(target, Long.MAX_VALUE)
         try {
             val result =
@@ -138,8 +138,8 @@ class ManagedCodexUpstreamTest {
     fun `retargeted alias is rejected and not deleted on close`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-retarget-${UUID.randomUUID()}.sock")
-        val target = Path.of("/private/tmp/kast-codex-original-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-retarget-${UUID.randomUUID()}.sock")
+        val target = Path.of("/tmp").toRealPath().resolve("kast-codex-original-${UUID.randomUUID()}.sock")
         val foreign = Files.writeString(temporary.resolve("foreign"), "preserve")
         val launcher = EchoCodexLauncher(target)
         try {
@@ -176,7 +176,7 @@ class ManagedCodexUpstreamTest {
         )
         val codex = Path.of(configured).toRealPath()
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-native-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-native-${UUID.randomUUID()}.sock")
         try {
             val started =
                 ManagedCodexUpstream.start(
@@ -209,7 +209,7 @@ class ManagedCodexUpstreamTest {
     ) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-${UUID.randomUUID()}.sock")
         val launcher = EchoCodexLauncher()
         val options =
             ManagedCodexUpstreamOptions(
@@ -262,7 +262,7 @@ class ManagedCodexUpstreamTest {
     fun `startup timeout bounds a stalled unix websocket upgrade`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-codex-stall-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-codex-stall-${UUID.randomUUID()}.sock")
         val launcher = StallingCodexLauncher()
         try {
             val result =

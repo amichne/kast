@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
 class WireDeadlineTest {
     @Test
     fun `successful frame preserves its reusable connection and reports completion`() {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kwd-")
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kwd-")
         val socket = root.resolve("s")
         try {
             ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
@@ -52,7 +52,7 @@ class WireDeadlineTest {
     @Test fun `partial frame cannot renew the elapsed allowance`() = stalledPeer(true)
 
     private fun stalledPeer(partial: Boolean) {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kwd-")
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kwd-")
         val socket = root.resolve("s")
         val executor = Executors.newSingleThreadExecutor()
         try {

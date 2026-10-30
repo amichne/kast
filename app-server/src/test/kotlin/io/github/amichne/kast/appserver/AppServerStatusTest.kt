@@ -188,7 +188,7 @@ class AppServerStatusTest {
         }
 
     private fun withPayload(test: (Path, Path) -> Unit) {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-s-").toRealPath()
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-s-").toRealPath()
         try {
             for (directory in listOf("bin", "lib", "share")) Files.createDirectory(root.resolve(directory))
             val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
