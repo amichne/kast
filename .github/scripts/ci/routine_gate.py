@@ -10,7 +10,7 @@ from validation_scope import NATIVE_INPUT_MODULES, PRODUCT_MODULES
 ROOT = Path(__file__).resolve().parents[3]
 PRODUCT_GATE_COMMAND = ["python3", "distribution/release/run_product_gate.py"]
 REQUIRED = frozenset({
-    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:nativeTest", ":app-server:test",
+    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:udsTest", ":app-server:test",
     ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
     ":topology:contract:test", ":topology:build:test", ":topology:service:test", ":topology:intellij:test",
     ":evidence:topology-sqlite:test",

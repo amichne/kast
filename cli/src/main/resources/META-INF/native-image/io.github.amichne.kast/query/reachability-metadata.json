@@ -1,0 +1,29 @@
+{
+  "reflection": [
+    { "type": "ch.qos.logback.classic.util.DefaultJoranConfigurator", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.BasicConfigurator", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.encoder.PatternLayoutEncoder", "allPublicConstructors": true, "allPublicMethods": true },
+    { "type": "ch.qos.logback.classic.PatternLayout", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.core.ConsoleAppender", "allPublicConstructors": true, "allPublicMethods": true },
+    { "type": "ch.qos.logback.core.spi.ContextAware", "allPublicMethods": true },
+    { "type": "ch.qos.logback.classic.pattern.DateConverter", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.pattern.ThreadConverter", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.pattern.LevelConverter", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.pattern.LoggerConverter", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.pattern.MessageConverter", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.pattern.LineSeparatorConverter", "allPublicConstructors": true },
+    { "type": "ch.qos.logback.classic.pattern.ThrowableProxyConverter", "allPublicConstructors": true }
+  ],
+  "resources": [
+    { "glob": "io/github/amichne/kast/appserver/query/*.json" },
+    { "glob": "io/github/amichne/kast/appserver/query/examples/*.json" },
+    { "glob": "ide-hosted/*.json" },
+    { "glob": "control/hosted-endpoint-owner.schema.json" },
+    { "glob": "kast-hosted-platform.properties" },
+    { "glob": "query-delivery.schema.json" },
+    { "glob": "ch/qos/logback/classic/logback-classic-version.properties" },
+    { "glob": "META-INF/services/ch.qos.logback.classic.spi.Configurator" },
+    { "glob": "logback-test.xml" },
+    { "glob": "logback.xml" }
+  ]
+}

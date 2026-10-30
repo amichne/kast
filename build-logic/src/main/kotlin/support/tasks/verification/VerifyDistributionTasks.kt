@@ -24,6 +24,13 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val controlArchive: RegularFileProperty
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val qualifiedQueryExecutable: RegularFileProperty
+
+    @get:Input
+    abstract val targetPlatform: Property<String>
+
     @get:Input
     abstract val maximumEntries: Property<Int>
 
@@ -36,6 +43,14 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     fun verify() {
         val root = controlDirectory.get().asFile.toPath()
         val archive = controlArchive.get().asFile
+        val query = root.resolve("bin/kast-query")
+        check(Files.mismatch(query, qualifiedQueryExecutable.get().asFile.toPath()) == -1L) {
+            "control query payload differs from its native producer"
+        }
+        val header = Files.newInputStream(query).use { it.readNBytes(20) }
+        check(nativeQueryHeaderMatches(header, targetPlatform.get())) {
+            "control query payload is not a native executable for ${targetPlatform.get()}"
+        }
         check(archive.length() < maximumArchiveBytes.get()) {
             "control archive is ${archive.length()} bytes; limit is below 64 MiB"
         }
@@ -114,6 +129,15 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         }
     }
 }
+
+internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Boolean =
+    header.size == 20 && when (platform) {
+        "macos-aarch64" -> header.take(8).map { it.toInt() and 255 } ==
+            listOf(207, 250, 237, 254, 12, 0, 0, 1) && header[12].toInt() == 2
+        "linux-x86_64" -> header.take(6).map { it.toInt() and 255 } ==
+            listOf(127, 69, 76, 70, 2, 1) && header[18].toInt() == 62 && header[19].toInt() == 0
+        else -> false
+    }
 
 @CacheableTask
 abstract class VerifySemanticRuntimeDistributionTask : DefaultTask() {

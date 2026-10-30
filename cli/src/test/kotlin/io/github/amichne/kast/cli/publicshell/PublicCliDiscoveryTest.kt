@@ -4,12 +4,18 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.cli.rpc.QueryCostPlanReply
 import io.github.amichne.kast.cli.rpc.QueryDeliveryFixtures
+import io.github.amichne.kast.cli.rpc.planToolQuery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -94,6 +100,40 @@ class PublicCliDiscoveryTest {
         val type = fixtures.values.first().jsonObject.getValue("type").jsonPrimitive.content
         val malformed = valid.replaceFirst("\"$type\"", "\"unrecognized\"")
         assertFalse(validator.validate(malformed, InputFormat.JSON).isEmpty())
+    }
+
+    @Test
+    fun `plan output resolves every recursive definition and validates all packaged plans`() {
+        for (catalog in PublicToolCatalog.entries) {
+            val schema =
+                document(PublicCliCommandId.QUERY_PLAN, PublicCliDescribeSection.OUTPUT, catalog)
+                    .getValue("content")
+                    .jsonObject
+            val definitions = schema.getValue("\$defs").jsonObject
+            assertTrue("impactInvocationReference" in definitions)
+            assertTrue("impactExecutionOwner" in definitions)
+            fun assertReferences(value: JsonElement) {
+                when (value) {
+                    is JsonObject -> {
+                        value["\$ref"]?.jsonPrimitive?.content?.let { reference ->
+                            assertTrue(reference.startsWith("#/\$defs/"), reference)
+                            assertTrue(reference.removePrefix("#/\$defs/") in definitions, reference)
+                        }
+                        value.values.forEach(::assertReferences)
+                    }
+                    is JsonArray -> value.forEach(::assertReferences)
+                    else -> Unit
+                }
+            }
+            assertReferences(schema)
+            val validator =
+                SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(schema.toString())
+            for ((name, example) in PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS, catalog).examples) {
+                val plan = planToolQuery(example.value.toString().toByteArray(), catalog)
+                val violations = validator.validate(Json.encodeToString<QueryCostPlanReply>(plan), InputFormat.JSON)
+                assertTrue(violations.isEmpty(), "$catalog $name: $violations")
+            }
+        }
     }
 
     @Test

@@ -28,7 +28,7 @@ def expected_obligations():
         ":verifyConfigurationIngress", ":verifyKnowledgeBase", ":hostObservationTest", ":componentReleaseTest",
         ":verifyDocumentationGlossary", ":documentationToolingTest", ":verifyDocumentationMarkdown",
         ":verifyKotlinSemanticCoverage", ":verifyKotlinSemanticInputs", ":verifyKotlinSemanticInventory",
-        ":cli:nativeTest", ":cli:queryDeliveryContractTest", ":cli:queryDeliverySchemaTest",
+        ":cli:udsTest", ":cli:queryDeliveryContractTest", ":cli:queryDeliverySchemaTest",
         ":cli:queryPresentationTest", ":cli:verifyMintlifyCallableReference", ":app-server:verifyPublicQueryGeneration",
         ":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest",
         ":symbol:intellij:semanticCoverageFixtureTest", ":relation:intellij:dependencyFixtureTest",

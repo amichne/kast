@@ -73,7 +73,7 @@ object KastToolRpcMain {
                         ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
                     else if (session.admission() != InstalledToolAdmission.AVAILABLE)
                         ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
-                    else invokeObserved(bridge, command[1], bytes)
+                    else invokeObserved(session, bridge, command[1], bytes)
                 }
                 else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
             }
@@ -86,7 +86,7 @@ object KastToolRpcMain {
             session.admission() != InstalledToolAdmission.AVAILABLE ->
                 printReply(ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED))
             else ->
-                OneShotInvocationRecord.begin()?.use {
+                session.beginInvocation(InvocationRecordKind.RPC)?.use {
                     KastToolRpcQuerySession(session.queryCatalog, bridge::callAdmitted).run(System.`in`, ::printReply)
                 } ?: printReply(ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE))
         }
@@ -101,10 +101,15 @@ object KastToolRpcMain {
         System.out.flush()
     }
 
-    private fun invokeObserved(bridge: KastToolRpcBridge, name: String, bytes: ByteArray): ToolRpcReply =
+    private fun invokeObserved(
+        session: KastDirectToolSession,
+        bridge: KastToolRpcBridge,
+        name: String,
+        bytes: ByteArray,
+    ): ToolRpcReply =
         when (val input = decodeToolRpcInput(bytes)) {
             is Refinement.Refined ->
-                OneShotInvocationRecord.begin()?.use { bridge.call(name, input.value) }
+                session.beginInvocation(InvocationRecordKind.RPC)?.use { bridge.call(name, input.value) }
                     ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
             is Refinement.Rejected -> ToolRpcReply.Rejected(input.failure)
         }
