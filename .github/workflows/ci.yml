@@ -26,6 +26,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   KAST_SEMANTIC_FIXTURES: ${{ vars.KAST_SEMANTIC_FIXTURES || 'false' }}
+  KAST_NATIVE_COMPILATION: ${{ vars.KAST_NATIVE_COMPILATION || 'true' }}
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ inputs.rollout_case && inputs.rollout_case != 'all' && format('-{0}', inputs.rollout_case) || '' }}
