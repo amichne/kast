@@ -60,7 +60,7 @@ SOURCE_REQUIRED = frozenset(
         ":symbol:intellij:semanticCoverageFixtureTest",
         ":relation:intellij:dependencyFixtureTest",
         ":runtime:hosted:dependencyFixtureTest",
-        ":cli:nativeTest",
+        ":cli:udsTest",
         ":cli:queryDeliveryContractTest",
         ":cli:queryDeliverySchemaTest",
         ":cli:verifyMintlifyCallableReference",

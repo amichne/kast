@@ -4,7 +4,7 @@
 # [tool.uv]
 # no-build = true
 # ///
-"""Transfer exact JVM inputs and a target-native executable between CI hosts."""
+"""Transfer exact JVM inputs and both target-native executables between CI hosts."""
 
 from __future__ import annotations
 
@@ -36,6 +36,22 @@ class Extraction(str, Enum):
     COMPLETE = "COMPLETE"
 
 
+class ProbeStage(str, Enum):
+    QUERY_PLAN = "QUERY_PLAN"
+
+
+class ProbeOutcome(str, Enum):
+    COMPLETE = "COMPLETE"
+    PROCESS_FAILED = "PROCESS_FAILED"
+
+
+@dataclass(frozen=True)
+class QueryPlanObservation:
+    outcome: ProbeOutcome
+    exitCode: int
+    stage: ProbeStage = ProbeStage.QUERY_PLAN
+
+
 class Failure(str, Enum):
     INVALID_RECORD = "INVALID_RECORD"
     IDENTITY_MISMATCH = "IDENTITY_MISMATCH"
@@ -44,6 +60,7 @@ class Failure(str, Enum):
     WRONG_PLATFORM = "WRONG_PLATFORM"
     TOOLCHAIN_MISMATCH = "TOOLCHAIN_MISMATCH"
     PROCESS_FAILED = "PROCESS_FAILED"
+    QUERY_PLAN_FAILED = "QUERY_PLAN_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
 
 
@@ -156,7 +173,11 @@ def safe_members(members: list[tarfile.TarInfo]) -> bool:
 
 
 def unpack(payload: Admitted, destination: Path) -> Failure | Extraction:
-    with tarfile.open(payload.archive, "r:gz") as archive:
+    return extract(payload.archive, destination)
+
+
+def extract(archive_path: Path, destination: Path) -> Failure | Extraction:
+    with tarfile.open(archive_path, "r:gz") as archive:
         members = archive.getmembers()
         if not safe_members(members):
             return Failure.UNSAFE_ARCHIVE
@@ -227,6 +248,27 @@ def gradle(identity: Identity, *tasks: str) -> None:
     )
 
 
+def stage_inputs(identity: Identity, destination: Path) -> None:
+    gradle(
+        identity, ":distribution:cli:assembleNativeImageInputs", ":cli:assembleNativeImageInputs"
+    )
+    with tempfile.TemporaryDirectory(prefix="kast-native-inputs-") as temporary:
+        inputs = Path(temporary)
+        for name, module in (("kast", "distribution/cli"), ("kast-query", "cli")):
+            failure = extract(
+                ROOT / module / "build/distributions/native-inputs.tar.gz", inputs / name
+            )
+            if isinstance(failure, Failure):
+                raise SystemExit(failure.value)
+        pack(
+            inputs,
+            destination,
+            identity,
+            Kind.INPUTS,
+            digest(Path(os.environ["JAVA_HOME"]) / "release"),
+        )
+
+
 def native(payload: Admitted, destination: Path) -> None:
     if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
         raise SystemExit(Failure.WRONG_PLATFORM.value)
@@ -235,48 +277,103 @@ def native(payload: Admitted, destination: Path) -> None:
         failure = unpack(payload, inputs)
         if isinstance(failure, Failure):
             raise SystemExit(failure.value)
-        properties = (inputs / "image.properties").read_text().splitlines()
-        classes = [
-            line.removeprefix("mainClass=") for line in properties if line.startswith("mainClass=")
-        ]
-        if len(classes) != 1 or not re.fullmatch(r"[A-Za-z0-9_.]+", classes[0]):
+        if set(path.name for path in inputs.iterdir()) != {"kast", "kast-query"}:
             raise SystemExit(Failure.INVALID_RECORD.value)
-        metrics = ROOT / "build/reports/native/build-output.json"
-        metrics.parent.mkdir(parents=True, exist_ok=True)
-        output = inputs / "output"
-        output.mkdir()
-        run(
+        with tempfile.TemporaryDirectory(prefix="kast-native-output-") as output_directory:
+            output = Path(output_directory)
+            for name in ("kast", "kast-query"):
+                executable_directory = inputs / name / "output"
+                executable_directory.mkdir()
+                executable = executable_directory / name
+                compile_native(inputs / name, executable, payload.record.identity)
+                _ = shutil.copyfile(executable, output / name)
+            pack(
+                output,
+                destination,
+                payload.record.identity,
+                Kind.NATIVE,
+                digest(Path(os.environ["JAVA_HOME"]) / "release"),
+            )
+
+
+def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
+    properties = (inputs / "image.properties").read_text().splitlines()
+    classes = [
+        line.removeprefix("mainClass=") for line in properties if line.startswith("mainClass=")
+    ]
+    if len(classes) != 1 or not re.fullmatch(r"[A-Za-z0-9_.]+", classes[0]):
+        raise SystemExit(Failure.INVALID_RECORD.value)
+    metadata = inputs / "reachability-metadata"
+    if not metadata.is_dir():
+        raise SystemExit(Failure.INVALID_RECORD.value)
+    directories = sorted(
+        {path.parent.relative_to(inputs).as_posix() for path in metadata.rglob("*.json")}
+    )
+    metadata_arguments = (
+        [f"-H:ConfigurationFileDirectories={','.join(directories)}"] if directories else []
+    )
+    report_directory = ROOT / "build/reports/native"
+    if executable.name == "kast-query":
+        report_directory = report_directory / "kast-query"
+    metrics = report_directory / "build-output.json"
+    metrics.parent.mkdir(parents=True, exist_ok=True)
+    run(
+        [
+            str(Path(os.environ["JAVA_HOME"]) / "bin/native-image"),
+            "@native-image.args",
+            "@native-image-macos.args",
+            "-cp",
+            "lib/*",
+            classes[0],
+            "-o",
+            str(executable),
+            "-H:+UnlockExperimentalVMOptions",
+            f"-H:BuildOutputJSONFile={metrics}",
+            *metadata_arguments,
+            "-H:-UnlockExperimentalVMOptions",
+        ],
+        cwd=inputs,
+    )
+    query = executable.name == "kast-query"
+    result = subprocess.check_output(
+        [str(executable), "--help" if query else "--version"], text=True
+    ).strip()
+    if (query and not result.startswith("kast query [")) or (
+        not query and result != identity.version
+    ):
+        raise SystemExit(Failure.IDENTITY_MISMATCH.value)
+    if query:
+        probe_query_plan(executable, report_directory)
+    target = subprocess.check_output(["xcrun", "vtool", "-show-build", str(executable)], text=True)
+    _ = (metrics.parent / "macos-build.txt").write_text(target)
+    if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:
+        raise SystemExit(Failure.WRONG_PLATFORM.value)
+
+
+def probe_query_plan(executable: Path, report_directory: Path) -> None:
+    try:
+        output = subprocess.check_output(
             [
-                str(Path(os.environ["JAVA_HOME"]) / "bin/native-image"),
-                "@native-image.args",
-                "@native-image-macos.args",
-                "-cp",
-                "lib/*",
-                classes[0],
-                "-o",
-                str(output / "kast"),
-                "-H:+UnlockExperimentalVMOptions",
-                f"-H:BuildOutputJSONFile={metrics}",
-                "-H:-UnlockExperimentalVMOptions",
+                str(executable),
+                "-XX:MissingRegistrationReportingMode=Exit",
+                "query",
+                "plan",
+                "--name",
+                "OrderService",
             ],
-            cwd=inputs,
+            text=True,
+            stderr=subprocess.STDOUT,
         )
-        result = subprocess.check_output([str(output / "kast"), "--version"], text=True).strip()
-        if result != payload.record.identity.version:
-            raise SystemExit(Failure.IDENTITY_MISMATCH.value)
-        target = subprocess.check_output(
-            ["xcrun", "vtool", "-show-build", str(output / "kast")], text=True
-        )
-        _ = (metrics.parent / "macos-build.txt").write_text(target)
-        if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:
-            raise SystemExit(Failure.WRONG_PLATFORM.value)
-        pack(
-            output,
-            destination,
-            payload.record.identity,
-            Kind.NATIVE,
-            digest(Path(os.environ["JAVA_HOME"]) / "release"),
-        )
+        observation = QueryPlanObservation(ProbeOutcome.COMPLETE, 0)
+    except subprocess.CalledProcessError as error:
+        output = error.output if isinstance(error.output, str) else ""
+        observation = QueryPlanObservation(ProbeOutcome.PROCESS_FAILED, error.returncode)
+    _ = (report_directory / "query-plan.stdout").write_text(output[:4096])
+    _ = (report_directory / "query-plan.json").write_text(
+        json.dumps(asdict(observation), indent=2) + "\n"
+    )
+    if observation.outcome is ProbeOutcome.PROCESS_FAILED:
+        raise SystemExit(Failure.QUERY_PLAN_FAILED.value)
 
 
 def assemble(payload: Admitted, destination: Path) -> None:
@@ -285,15 +382,18 @@ def assemble(payload: Admitted, destination: Path) -> None:
     failure = unpack(payload, native_dir)
     if isinstance(failure, Failure):
         raise SystemExit(failure.value)
-    executable = native_dir / "kast"
-    if set(native_dir.iterdir()) != {executable} or executable.read_bytes()[:8] != bytes.fromhex(
-        "cffaedfe0c000001"
-    ):
+    executables = (native_dir / "kast", native_dir / "kast-query")
+    if set(native_dir.iterdir()) != set(executables):
         raise SystemExit(Failure.WRONG_PLATFORM.value)
-    executable.chmod(0o755)
+    for executable in executables:
+        with executable.open("rb") as stream:
+            if stream.read(8) != bytes.fromhex("cffaedfe0c000001"):
+                raise SystemExit(Failure.WRONG_PLATFORM.value)
+        executable.chmod(0o755)
     gradle(
         payload.record.identity,
-        f"-PkastNativeExecutable={executable}",
+        f"-PkastNativeExecutable={executables[0]}",
+        f"-PkastQueryNativeExecutable={executables[1]}",
         "-PkastControlPlatform=macos-aarch64",
         "assembleRelease",
         "generateKastModuleKnowledge",
@@ -366,14 +466,7 @@ def main() -> None:
     args = parser.parse_args()
     identity = current_identity(args.version)
     if args.stage == "inputs":
-        gradle(identity, ":distribution:cli:assembleNativeImageInputs")
-        record(
-            ROOT / "distribution/cli/build/distributions/native-inputs.tar.gz",
-            args.output,
-            identity,
-            Kind.INPUTS,
-            digest(Path(os.environ["JAVA_HOME"]) / "release"),
-        )
+        stage_inputs(identity, args.output)
     else:
         kind = {"native": Kind.INPUTS, "assemble": Kind.NATIVE, "qualify": Kind.RELEASE}[args.stage]
         payload = admit(args.input, identity, kind)

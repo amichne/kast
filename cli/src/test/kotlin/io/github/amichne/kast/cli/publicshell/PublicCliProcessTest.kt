@@ -1,6 +1,10 @@
 package io.github.amichne.kast.cli.publicshell
 
+import com.networknt.schema.InputFormat
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -11,12 +15,48 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class PublicCliProcessTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `real plan output descriptor validates COMPLETE plans without installation`() {
+        assertPlanOutputDescriptor(PublicToolCatalog.COMPLETE)
+    }
+
+    @Test
+    fun `real plan output descriptor validates COMMON plans without installation`() {
+        assertPlanOutputDescriptor(PublicToolCatalog.COMMON)
+    }
+
+    private fun assertPlanOutputDescriptor(catalog: PublicToolCatalog) {
+        val (process, stdout, stderr) =
+            start(listOf("describe", "query.plan", "--section", "output", "--catalog", catalog.name.lowercase()))
+        val text =
+            try {
+                assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Plan metadata waited for stdin EOF")
+                assertEquals(0, process.exitValue(), Files.readString(stderr))
+                Files.readString(stdout)
+            } finally {
+                if (process.isAlive) process.destroyForcibly().waitFor()
+            }
+        assertEquals(1, text.count { it == '\n' })
+        val descriptor = Json.parseToJsonElement(text).jsonObject
+        assertEquals(catalog.name, descriptor.getValue("catalog").jsonPrimitive.content)
+        val validator =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+                .getSchema(descriptor.getValue("content").toString())
+        val plan = child(listOf("query", "plan", "--name", "OrderService", "--catalog", catalog.name.lowercase()))
+        assertEquals(0, plan.first)
+        assertTrue(validator.validate(plan.second, InputFormat.JSON).isEmpty())
+        assertFalse(
+            validator.validate(plan.second.replace("REQUEST_SHAPE_ONLY", "UNKNOWN_BASIS"), InputFormat.JSON).isEmpty()
+        )
+    }
 
     @Test
     fun `metadata and valid planning never compose an installation or read unintended stdin`() {

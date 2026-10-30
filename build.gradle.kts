@@ -58,6 +58,7 @@ val providerFiles = consumeProjectOutput("providerCatalogueFiles", ":cli", "prov
 val generatedProviderCatalogue = layout.file(providerFiles.flatMap { it.elements }.map { it.single().asFile })
 val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "cliInstallationElements")
 val managementExecutable = consumeProjectOutput("managementExecutable", ":distribution:cli", "managementExecutableElements")
+val queryExecutableFiles = consumeProjectOutput("queryExecutable", ":cli", "queryExecutableElements")
 
 val publicLauncherTestClasses = consumeProjectOutput("publicLauncherTestClasses", ":cli", "publicLauncherTestClassesElements")
 val publicLauncherTestRuntime = consumeProjectOutput("publicLauncherTestRuntime", ":cli", "publicLauncherTestRuntimeElements")
@@ -67,12 +68,19 @@ abstract class PublicLauncherArguments : CommandLineArgumentProvider {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val executable: org.gradle.api.file.RegularFileProperty
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val queryExecutable: org.gradle.api.file.RegularFileProperty
+
     override fun asArguments(): Iterable<String> =
-        listOf("-Dkast.publicLauncher=${executable.get().asFile.absolutePath}")
+        listOf(
+            "-Dkast.publicLauncher=${executable.get().asFile.absolutePath}",
+            "-Dkast.queryExecutable=${queryExecutable.get().asFile.absolutePath}",
+        )
 }
 
 val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
-    description = "Exercises the public native launcher with its real owned JVM and a local socket peer."
+    description = "Exercises the public native launcher and query payload with a local Unix socket peer."
     group = "verification"
     testClassesDirs = files(publicLauncherTestClasses)
     classpath = files(publicLauncherTestRuntime)
@@ -82,6 +90,7 @@ val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
     reports.html.outputLocation.set(layout.buildDirectory.dir("reports/tests/publicLauncherTest"))
     jvmArgumentProviders.add(objects.newInstance<PublicLauncherArguments>().apply {
         executable.set(layout.file(managementExecutable.flatMap { it.elements }.map { it.single().asFile }))
+        queryExecutable.set(layout.file(queryExecutableFiles.flatMap { it.elements }.map { it.single().asFile }))
     })
 }
 
@@ -126,6 +135,11 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(cliInstallation) {
         exclude("bin/cli", "bin/kast.bat")
     }
+    from(queryExecutableFiles) {
+        into("bin")
+        rename { "kast-query" }
+        filePermissions { unix("755") }
+    }
     from(generatedControlMetadata) {
         into("share/kast")
     }
@@ -154,6 +168,9 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
 val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
     require(platform == "macos-aarch64") { "Imported native archives must target macos-aarch64" }
     require(executable.isNotBlank()) { "An imported platform needs a native executable" }
+    platform
+}.zip(providers.gradleProperty("kastQueryNativeExecutable").orElse("")) { platform, queryExecutable ->
+    require(queryExecutable.isNotBlank()) { "An imported platform needs a query executable" }
     platform
 }.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {
@@ -198,9 +215,11 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     dependsOn(assembleKastControlDist)
     controlDirectory.set(controlProductDirectory)
     controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    qualifiedQueryExecutable.set(layout.file(queryExecutableFiles.flatMap { it.elements }.map { it.single().asFile }))
+    targetPlatform.set(controlArchivePlatform)
     maximumEntries.set(controlDistributionMaximumEntries)
-    maximumArchiveBytes.set(64L * 1024L * 1024L)
-    maximumInstalledBytes.set(128L * 1024L * 1024L)
+    maximumArchiveBytes.set(96L * 1024L * 1024L)
+    maximumInstalledBytes.set(192L * 1024L * 1024L)
 }
 
 val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
@@ -582,6 +601,7 @@ val productBuildGate = tasks.register("productBuildGate") {
         installedProductTest,
         testCheckoutInstaller,
         installerEntrypointTest,
+        verifyKastControlDistLayout,
         "verifyKastArchitecture",
         ":app-server:verifyReleaseRuntimeAdmission",
     )

@@ -1,7 +1,11 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
@@ -17,35 +21,148 @@ internal sealed interface LifecycleProcessObservation {
 
     data object Unavailable : LifecycleProcessObservation
 
+    data class IdentityOnly(val pid: Long, val startEpochMillis: Long) : LifecycleProcessObservation
+
     data class Present(val snapshot: LifecycleProcessSnapshot) : LifecycleProcessObservation
 }
 
-/** An admitted record and exact process incarnation, including the installed main class and classpath. */
-internal class OwnedLifecycleProcess private constructor(val snapshot: LifecycleProcessSnapshot) {
+/** An admitted record and exact JVM or native query process incarnation. */
+internal sealed class OwnedLifecycleProcess private constructor(val snapshot: LifecycleProcessSnapshot) {
+    private class Jvm(snapshot: LifecycleProcessSnapshot) : OwnedLifecycleProcess(snapshot) {
+        override fun payloadUnchanged(): Boolean = true
+    }
+
+    private class NativeQuery(
+        snapshot: LifecycleProcessSnapshot,
+        private val installation: Path,
+        private val manifest: BundledManifest,
+        private val attributes: BasicFileAttributes,
+    ) : OwnedLifecycleProcess(snapshot) {
+        override fun payloadUnchanged(): Boolean =
+            try {
+                val executable = installation.resolve(NATIVE_QUERY_EXECUTABLE)
+                sameExecutable(attributes, executable) &&
+                    Files.isExecutable(executable) &&
+                    payloadOwned(installation, manifest, NATIVE_QUERY_EXECUTABLE) &&
+                    sameExecutable(attributes, executable)
+            } catch (_: IOException) {
+                false
+            } catch (_: SecurityException) {
+                false
+            }
+    }
+
+    protected abstract fun payloadUnchanged(): Boolean
+
+    fun revalidate(observation: LifecycleProcessObservation): ShutdownProcessAdmission =
+        when (observation) {
+            LifecycleProcessObservation.Absent -> ShutdownProcessAdmission.Finished
+            LifecycleProcessObservation.Unavailable -> ShutdownProcessAdmission.Rejected
+            is LifecycleProcessObservation.IdentityOnly ->
+                if (observation.pid == snapshot.pid && observation.startEpochMillis != snapshot.startEpochMillis)
+                    ShutdownProcessAdmission.Finished
+                else ShutdownProcessAdmission.Rejected
+            is LifecycleProcessObservation.Present ->
+                when {
+                    observation.snapshot.pid != snapshot.pid -> ShutdownProcessAdmission.Rejected
+                    observation.snapshot.startEpochMillis != snapshot.startEpochMillis ->
+                        ShutdownProcessAdmission.Finished
+                    observation.snapshot != snapshot || !payloadUnchanged() -> ShutdownProcessAdmission.Rejected
+                    else -> ShutdownProcessAdmission.Owned(this)
+                }
+        }
+
     companion object {
+        /** Pure JVM matching retained for callers that have not yet admitted payload files. */
         fun admit(
             record: InstalledToolInvocation,
             observation: LifecycleProcessObservation,
             installation: Path,
+        ): ShutdownProcessAdmission =
+            admitIncarnation(record, observation) { snapshot ->
+                if (ownsJvm(snapshot, installation)) ShutdownProcessAdmission.Owned(Jvm(snapshot))
+                else ShutdownProcessAdmission.Rejected
+            }
+
+        /** Both ordinary status and retirement use this manifest-qualified admission. */
+        fun admit(
+            record: InstalledToolInvocation,
+            observation: LifecycleProcessObservation,
+            installation: Path,
+            manifest: BundledManifest,
+        ): ShutdownProcessAdmission =
+            admitIncarnation(record, observation) { snapshot ->
+                try {
+                    if (ownsJvm(snapshot, installation)) {
+                        val classpath = snapshot.arguments.indexOfFirst { it == "-classpath" || it == "-cp" }
+                        if (
+                            snapshot.arguments[classpath + 1].split(':').all {
+                                payloadOwned(installation, manifest, "lib/" + Path.of(it).fileName)
+                            }
+                        )
+                            ShutdownProcessAdmission.Owned(Jvm(snapshot))
+                        else ShutdownProcessAdmission.Rejected
+                    } else admitNative(snapshot, installation, manifest)
+                } catch (_: IOException) {
+                    ShutdownProcessAdmission.Rejected
+                } catch (_: SecurityException) {
+                    ShutdownProcessAdmission.Rejected
+                }
+            }
+
+        private fun admitIncarnation(
+            record: InstalledToolInvocation,
+            observation: LifecycleProcessObservation,
+            ownership: (LifecycleProcessSnapshot) -> ShutdownProcessAdmission,
         ): ShutdownProcessAdmission {
             if (record.schemaVersion != 1 || record.pid <= 0 || record.startEpochMillis <= 0)
                 return ShutdownProcessAdmission.Rejected
             return when (observation) {
                 LifecycleProcessObservation.Absent -> ShutdownProcessAdmission.Finished
                 LifecycleProcessObservation.Unavailable -> ShutdownProcessAdmission.Rejected
+                is LifecycleProcessObservation.IdentityOnly ->
+                    if (observation.pid == record.pid && observation.startEpochMillis != record.startEpochMillis)
+                        ShutdownProcessAdmission.Finished
+                    else ShutdownProcessAdmission.Rejected
                 is LifecycleProcessObservation.Present -> {
                     val snapshot = observation.snapshot
                     if (snapshot.pid != record.pid) ShutdownProcessAdmission.Rejected
                     else if (snapshot.startEpochMillis != record.startEpochMillis) ShutdownProcessAdmission.Finished
-                    else if (
-                        Path.of(snapshot.command).fileName.toString() != "java" ||
-                            !ownsArguments(snapshot.arguments, installation)
-                    )
-                        ShutdownProcessAdmission.Rejected
-                    else ShutdownProcessAdmission.Owned(OwnedLifecycleProcess(snapshot))
+                    else ownership(snapshot)
                 }
             }
         }
+
+        private fun admitNative(
+            snapshot: LifecycleProcessSnapshot,
+            installation: Path,
+            manifest: BundledManifest,
+        ): ShutdownProcessAdmission {
+            val executable = installation.resolve(NATIVE_QUERY_EXECUTABLE)
+            if (snapshot.command != executable.toString()) return ShutdownProcessAdmission.Rejected
+            val attributes = Files.readAttributes(executable, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+            val process = NativeQuery(snapshot, installation, manifest, attributes)
+            return process.revalidate(LifecycleProcessObservation.Present(snapshot))
+        }
+
+        private fun sameExecutable(expected: BasicFileAttributes, path: Path): Boolean {
+            val current = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+            return expected.isRegularFile &&
+                current.isRegularFile &&
+                expected.fileKey() != null &&
+                current.fileKey() == expected.fileKey() &&
+                current.creationTime() == expected.creationTime() &&
+                current.lastModifiedTime() == expected.lastModifiedTime() &&
+                current.size() == expected.size()
+        }
+
+        private fun ownsJvm(snapshot: LifecycleProcessSnapshot, installation: Path): Boolean =
+            try {
+                Path.of(snapshot.command).fileName.toString() == "java" &&
+                    ownsArguments(snapshot.arguments, installation)
+            } catch (_: IllegalArgumentException) {
+                false
+            }
 
         private fun ownsArguments(arguments: List<String>, installation: Path): Boolean {
             val main = arguments.indexOfFirst {
@@ -74,6 +191,8 @@ internal class OwnedLifecycleProcess private constructor(val snapshot: Lifecycle
         }
     }
 }
+
+private const val NATIVE_QUERY_EXECUTABLE = "bin/kast-query"
 
 internal sealed interface ShutdownProcessAdmission {
     data object Finished : ShutdownProcessAdmission
@@ -104,11 +223,14 @@ internal object NativeLifecycleProcesses : LifecycleProcesses {
         val pid = process.pid()
         val info = process.info()
         val start = info.startInstant().orElse(null) ?: return LifecycleProcessObservation.Unavailable
-        val command = info.command().orElse(null) ?: return LifecycleProcessObservation.Unavailable
-        val arguments = info.arguments().orElse(null) ?: return LifecycleProcessObservation.Unavailable
-        return LifecycleProcessObservation.Present(
-            LifecycleProcessSnapshot(pid, start.toEpochMilli(), command, arguments.toList())
-        )
+        val command = info.command().orElse(null)
+        val arguments = info.arguments().orElse(null)
+        return if (command == null || arguments == null)
+            LifecycleProcessObservation.IdentityOnly(pid, start.toEpochMilli())
+        else
+            LifecycleProcessObservation.Present(
+                LifecycleProcessSnapshot(pid, start.toEpochMilli(), command, arguments.toList())
+            )
     }
 
     override fun retire(
@@ -116,18 +238,13 @@ internal object NativeLifecycleProcesses : LifecycleProcesses {
         operation: LifecycleOperation,
         allowance: Duration,
     ): LifecycleEffect {
-        when (val current = observe(process.snapshot.pid)) {
-            LifecycleProcessObservation.Absent -> return LifecycleEffect.Completed
-            LifecycleProcessObservation.Unavailable ->
-                return LifecycleEffect.Rejected(LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN)
-            is LifecycleProcessObservation.Present -> {
-                if (current.snapshot.startEpochMillis != process.snapshot.startEpochMillis)
-                    return LifecycleEffect.Completed
-                if (current.snapshot != process.snapshot)
-                    return LifecycleEffect.Rejected(LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN)
-            }
-        }
         val handle = ProcessHandle.of(process.snapshot.pid).orElse(null) ?: return LifecycleEffect.Completed
+        when (process.revalidate(observe(handle))) {
+            ShutdownProcessAdmission.Finished -> return LifecycleEffect.Completed
+            ShutdownProcessAdmission.Rejected ->
+                return LifecycleEffect.Rejected(LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN)
+            is ShutdownProcessAdmission.Owned -> Unit
+        }
         return try {
             if (operation == LifecycleOperation.STOP_FORCE) handle.destroyForcibly()
             handle.onExit().get(allowance.toMillis(), TimeUnit.MILLISECONDS)

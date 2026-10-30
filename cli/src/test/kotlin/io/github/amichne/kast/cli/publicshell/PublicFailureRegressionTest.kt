@@ -41,6 +41,29 @@ class PublicFailureRegressionTest {
     }
 
     @Test
+    fun `caller timeout before operation admission retains elapsed policy`() {
+        val document = CanonicalJsonDocument.generated(CallerTimeoutFixture.serializer()).create(CallerTimeoutFixture())
+        val reply = presentToolRpcExit("query_symbols", CliExit.OperationRejected(document))
+        assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, reply)
+        assertEquals(124, classifyPublicReply(reply, PublicElapsedGrant.EXPLICIT).code)
+        assertEquals(10, classifyPublicReply(reply, PublicElapsedGrant.ABSENT).code)
+    }
+
+    @Test
+    fun `elapsed classification requires both budget failure and caller timeout cause`() {
+        val cases =
+            listOf(
+                CallerTimeoutFixture(failure = "PLATFORM_FAILURE"),
+                CallerTimeoutFixture(detail = CallerTimeoutDetailFixture("RUNTIME")),
+            )
+        for (fixture in cases) {
+            val document = CanonicalJsonDocument.generated(CallerTimeoutFixture.serializer()).create(fixture)
+            val reply = presentToolRpcExit("query_symbols", CliExit.OperationRejected(document))
+            assertEquals(6, classifyPublicReply(reply, PublicElapsedGrant.EXPLICIT).code)
+        }
+    }
+
+    @Test
     fun `admitted hosted rejections preserve public input root transport and protocol categories`() {
         val cases =
             listOf(
@@ -85,3 +108,15 @@ private enum class HostedFailureFixture {
     IO_UNAVAILABLE,
     RESPONSE_REJECTED,
 }
+
+/** The real host's pre-operation rejection has no operation or HOST_REJECTED discriminator. */
+@Serializable
+private data class CallerTimeoutFixture(
+    @Required val failure: String = "BUDGET_EXCEEDED",
+    @Required val detail: CallerTimeoutDetailFixture = CallerTimeoutDetailFixture(),
+    @Required val stage: String = "REQUEST_ADMISSION",
+    @Required val schemaVersion: Int = 1,
+    @Required val outcome: String = "rejected",
+)
+
+@Serializable private data class CallerTimeoutDetailFixture(@Required val cause: String = "CALLER_TIMEOUT")

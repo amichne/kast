@@ -16,6 +16,8 @@ import io.github.amichne.kast.cli.ide.executeAdmittedPublicTool
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.mcp.McpInvestigationTools
 import io.github.amichne.kast.cli.mcp.McpSingleChangeTool
+import io.github.amichne.kast.cli.rpc.InvocationRecordKind
+import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
@@ -36,6 +38,7 @@ internal class KastDirectToolSession(
     },
     val admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
     val queryCatalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+    val beginInvocation: (InvocationRecordKind) -> OneShotInvocationRecord? = { null },
 ) {
     /** Invocation admission uses compiled registrations; schema projection is only a discovery effect. */
     val catalog: List<DirectToolDocument>
@@ -95,9 +98,11 @@ internal class KastDirectToolSession(
             environment: Map<String, String>,
             queryCatalog: PublicToolCatalog = PublicToolCatalog.COMMON,
         ): KastDirectToolSession? {
-            val code =
-                Path.of(KastDirectToolSession::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
-            val installation = code.parent.takeIf { it.fileName.toString() == "lib" }?.parent ?: return null
+            val context =
+                when (val admitted = InstalledClientContext.current(environment)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return null
+                }
             val selected =
                 CanonicalAgentToolDefinitions.all.filter { definition ->
                     PublicToolIdentity.entries.any { it.toolName == definition.name.value }
@@ -110,13 +115,13 @@ internal class KastDirectToolSession(
                 }
             val read =
                 observeDirectToolStage(DirectToolStage.WORKSPACE_CLIENT_COMPOSITION) {
-                    mcpWorkspaceOperationClient(home, environment)
+                    mcpWorkspaceOperationClient(home, context.environment)
                 }
             val capabilities =
                 observeDirectToolStage(DirectToolStage.CAPABILITIES_COMPOSITION) {
                     ExistingIdeCliCapabilities(
                         FilesystemCanonicalRootDiscovery,
-                        configuredExistingIdeClient(home, environment),
+                        configuredExistingIdeClient(home, context.environment),
                         read,
                     )
                 }
@@ -169,11 +174,12 @@ internal class KastDirectToolSession(
                         }
                     },
                 root = root,
-                admission = { observeInstalledToolAdmission(installation) },
+                admission = context::observe,
                 start = read::start,
                 invokePublic = invokePublic,
                 invokeSupport = investigation::invoke,
                 queryCatalog = queryCatalog,
+                beginInvocation = { kind -> OneShotInvocationRecord.begin(context, kind) },
             )
         }
     }

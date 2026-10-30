@@ -1,0 +1,8 @@
+--no-fallback
+--exact-reachability-metadata
+-Os
+--emit
+build-report
+-H:+UnlockExperimentalVMOptions
+-H:+GenerateEmbeddedResourcesFile
+-H:-UnlockExperimentalVMOptions

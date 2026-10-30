@@ -5,7 +5,7 @@ import io.github.amichne.kast.appserver.query.PublicToolExample
 import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
-import io.github.amichne.kast.cli.rpc.QueryCostPlanReply
+import io.github.amichne.kast.cli.queryPlanOutputSchema
 import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
@@ -251,7 +251,7 @@ private fun actionInputSchema(action: String, catalog: PublicToolCatalog): JsonO
 
 private fun outputSchema(command: PublicCliCommandId): JsonObject =
     when (command) {
-        PublicCliCommandId.QUERY_PLAN -> generatedRequestSchema(QueryCostPlanReply.serializer())
+        PublicCliCommandId.QUERY_PLAN -> queryPlanOutputSchema()
         PublicCliCommandId.DESCRIBE ->
             discoveryJson
                 .encodeToJsonElement(
