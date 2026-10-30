@@ -55,6 +55,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val required = listOf(
             "bin/kast",
             "bin/kast-tool-rpc",
+            "bin/kast-query",
             "share/kast/adapters/copilot/extension.mjs",
             "share/kast/adapters/pi/extension.ts",
             "share/kast/agent-tools/.agents/plugins/marketplace.json",
@@ -82,10 +83,10 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val publicExecutables = Files.list(root.resolve("bin")).use { paths ->
             paths.filter(Files::isRegularFile).map { path -> path.fileName.toString() }.toList()
         }
-        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc")) {
+        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc", "kast-query")) {
             "control product must expose the semantic CLI and integration host: $publicExecutables"
         }
-        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
+        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
             "control product kast launcher is not executable"
         }
         check(paths.none(Files::isSymbolicLink)) { "control product contains a symbolic link" }

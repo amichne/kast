@@ -1,0 +1,338 @@
+{
+  "agent-tools/skills/kast/SKILL.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 8.59 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "agent-tools/skills/kast/public-cli.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.29 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "distribution/cli/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.98 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        442,
+        445
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 32 words.",
+      "Severity": "warning",
+      "Match": "They",
+      "Line": 31
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        22,
+        24
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 58
+    }
+  ],
+  "docs/public-cli.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.30 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "docs/reviews/public-cli-v1-evidence.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.36 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        35,
+        47
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'interruptible'?",
+      "Severity": "error",
+      "Match": "interruptible",
+      "Line": 173
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "HOME's"
+        ]
+      },
+      "Suggestions": [
+        "HOME's"
+      ],
+      "Span": [
+        60,
+        65
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'HOME's' instead of 'home's'.",
+      "Severity": "error",
+      "Match": "home's",
+      "Line": 306
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        40,
+        43
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'CPUs'?",
+      "Severity": "error",
+      "Match": "CPUs",
+      "Line": 310
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        4
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'Gzip'?",
+      "Severity": "error",
+      "Match": "Gzip",
+      "Line": 374
+    }
+  ],
+  "docs/tool-rpc.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 10.20 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        53,
+        58
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 29
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        24,
+        26
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 136
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        53,
+        56
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "When",
+      "Line": 144
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        86,
+        88
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 164
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "stop"
+        ]
+      },
+      "Suggestions": [
+        "stop"
+      ],
+      "Span": [
+        1,
+        9
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'stop' instead of 'terminate'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "terminate",
+      "Line": 199
+    }
+  ]
+}

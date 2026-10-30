@@ -1,5 +1,7 @@
 # Tool RPC for agent extensions
 
+For public shell commands, read [Query Kotlin with the public CLI](public-cli.md).
+
 `kast-tool-rpc` is a bounded process interface for Kast's IDEA-backed tools.
 It does not speak MCP or connect to the Codex App Server. The process uses its
 current working directory to discover the exact Gradle workspace, then uses

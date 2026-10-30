@@ -1,0 +1,7 @@
+package example
+
+class OrderService {
+    fun submitOrder(orderId: String): String = orderId
+}
+
+fun placeOrder(service: OrderService): String = service.submitOrder("fixture")

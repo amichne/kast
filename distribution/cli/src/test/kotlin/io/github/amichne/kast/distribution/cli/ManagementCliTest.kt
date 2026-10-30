@@ -65,7 +65,7 @@ class ManagementCliTest {
     }
 
     @Test
-    fun `Clikt exposes only management commands and selects status by default`() {
+    fun `management commands preserve the status default and reject private entry points`() {
         assertEquals(ManagementParsing.Selected(ManagementCommand.Status(false)), parseManagementCommand(emptyList()))
         assertEquals(
             ManagementParsing.Selected(ManagementCommand.Status(true)),

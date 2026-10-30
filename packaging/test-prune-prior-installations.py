@@ -118,11 +118,14 @@ class PriorCleanupTest(unittest.TestCase):
         report, _ = self.run_review('no\n')
         self.assertEqual([cleanup.Retained(cleanup.Kind.VERSION, str(unknown), cleanup.RetentionReason.DECLINED)], report.retained)
         item = cleanup.candidate(cleanup.Kind.VERSION, unknown, 'MANIFEST_REJECTED')
-        unknown.rmdir()
+        original = self.versions / 'kast-older-original'
+        unknown.rename(original)
         unknown.mkdir()
+        self.assertNotEqual(item.identity, cleanup.Identity.observe(unknown))
         with self.assertRaises(ValueError):
             cleanup.remove_entry(item)
         self.assertTrue(unknown.exists())
+        self.assertTrue(original.exists())
 
     def test_process_trace_identifies_prior_root_and_marks_foreign_owner(self):
         prefix = str(self.versions)

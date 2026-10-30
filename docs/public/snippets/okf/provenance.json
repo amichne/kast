@@ -114,7 +114,7 @@
           "claim": "claim_e33e1df867cd458cb285276411f1490d",
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L109-L167",
           "recordedVersion": "repo-lines-v1:sha256:f2fea363ea8abb7fe929ec1b9159147ca9236c827b6e0328d6c5423dc3e3647e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0YmZlNmE0ZjEyMTYzNDNiNjY4YTM1YzcxYTVhYTFiNTc1Y2JkZjMxYjNmNzJmZTNhM2RjYzcyNjQxYWZjNmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiY2Y1ZmU1NGRmNjdiMzJjYWRiNTMzODkwYzdmM2JiNGM4YjM5MWE3MWM3YmUwMWRhYjM4ODNkY2ZiOTg5YmMifQ",
-          "currentVersion": "repo-file-v1:sha256:0c0bbfeef670fd34ec155890dbd4e76d9c4bdad70ea82cbb4bdc690c3df36755",
+          "currentVersion": "repo-file-v1:sha256:a0f3c78ac11893c86cf6b29136874651f5105bb0c38a18a7c76af378b42fdf72",
           "status": "NOT_ASSESSED"
         },
         {
@@ -324,7 +324,7 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429",
-          "currentVersion": "repo-file-v1:sha256:12acaba8ef640e16b5ad6f575ca9e98cd5ca1a5fad65868e85cd955409ea0bb3",
+          "currentVersion": "repo-file-v1:sha256:c43e0b68a3e5cebb9e098a1342b32716493df81a4271f23fa21763e81f6961f9",
           "status": "CHANGED"
         },
         {
@@ -338,7 +338,7 @@
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
           "resource": "repo://build.gradle.kts#L558-L594",
           "recordedVersion": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ",
-          "currentVersion": "repo-file-v1:sha256:12acaba8ef640e16b5ad6f575ca9e98cd5ca1a5fad65868e85cd955409ea0bb3",
+          "currentVersion": "repo-file-v1:sha256:c43e0b68a3e5cebb9e098a1342b32716493df81a4271f23fa21763e81f6961f9",
           "status": "NOT_ASSESSED"
         },
         {

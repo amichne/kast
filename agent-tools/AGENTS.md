@@ -4,9 +4,11 @@ title: "Kast agent onboarding"
 description: "Defines the bundled skill, task service, shared brief, and host adapters."
 resource: "repo://agent-tools"
 tags: [kast, agents, plugins]
-timestamp: "2026-10-28T18:00:00Z"
-source_revision: c2f3f64d2c53470997ddca5093f7c6411dc39d1a
+timestamp: "2026-10-29T23:41:55Z"
+source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
 code_sources:
+  - path: agent-tools/skills/kast/SKILL.md
+  - path: agent-tools/skills/kast/public-cli.md
   - path: agent-tools/skills/kast/scripts/tasks.py
   - path: agent-tools/skills/kast/scripts/service.py
   - path: copilot/task-extension.mjs
@@ -28,6 +30,10 @@ It also owns `references/query-common-schema.json` from `catalogs.COMMON` in the
 Change the template or the authored public schema before regeneration.
 Ship `skills/kast/SKILL.md` inside the plugin. Keep its scripts and dependency locks together.
 Do not publish a separate skill archive.
+
+`skills/kast/public-cli.md` owns authored guidance for public shell reads.
+The bundled `skills/kast/SKILL.md` links to it.
+Edit that guide directly. Keep query references under their existing generator owner.
 
 `README.md` owns the on-demand Pi inventory example.
 Its executable assertions stay in `cli/src/test/js/native-onboarding.test.mjs`.

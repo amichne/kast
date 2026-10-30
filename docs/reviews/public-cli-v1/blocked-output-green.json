@@ -1,0 +1,25 @@
+{
+  "log": "/tmp/kast-cli-blocked-output-green.log",
+  "suites": [
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicOutputCancellationTest",
+      "tests": "2",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T23:05:23.226Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "6.986"
+    },
+    {
+      "name": "io.github.amichne.kast.cli.publicshell.PublicInvocationOwnerTest",
+      "tests": "7",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-29T23:05:30.214Z",
+      "hostname": "Austins-MacBook-Pro.local",
+      "time": "0.009"
+    }
+  ]
+}

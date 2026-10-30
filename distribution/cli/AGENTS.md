@@ -4,8 +4,8 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and Codex plugin installation."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-10-21T22:40:00Z"
-source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
+timestamp: "2026-10-29T22:15:41Z"
+source_revision: 7135d0f2a847a28b919bdba84bbbc8253f8d885a
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
@@ -15,11 +15,18 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginBundle.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt
 ---
 
 # Native management CLI
 
-This module owns the public `kast` executable. Keep its command graph limited to status, version, supported harness registration and plugin installation, upgrade, verified stop/reinstall (with force flags), and uninstall. The operational JVM CLI and transport launchers are private managed payloads.
+This module owns the public `kast` executable and its management commands.
+Route `query`, `result`, `source`, and `describe` through the selected `bin/kast-query-complete` launcher with unchanged argv.
+The JVM owns semantic options, admission, output, and public-shell exit policy.
+Keep native dispatch thin and preserve management independence from JVM startup.
+Forward signals only to the owned query child and reap that child.
+Child termination does not prove native semantic settlement.
+The operational JVM CLI and transport launchers remain private managed payloads.
 
 Keep receipt facts separate from passive runtime observations. Status must not start Java, prepare workspaces, or contact release servers. Admit release manifests and external registration documents before effects; preserve foreign files and registrations. Use the existing installer and service shutdown boundary for verified replacement and removal. Explicit uninstall/reinstall --force bypass old payload and receipt ownership admission. They still require a canonical deletion scope, an exterior reset fence and stable lock, durable retention intent before atomic detachment, and verified retirement of root-scoped jobs and process incarnations before erasure. Remove only the exact selected installation's exterior login entries. Never signal shared IDEA or Gradle processes. Keep deletion scope distinct from ownership; never erase filesystem roots, HOME or its ancestors.
 

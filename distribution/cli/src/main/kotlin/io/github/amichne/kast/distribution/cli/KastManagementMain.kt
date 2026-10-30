@@ -130,6 +130,8 @@ internal sealed interface ManagementParsing {
 }
 
 internal fun parseManagementCommand(arguments: List<String>): ManagementParsing {
+    if (arguments.firstOrNull() in publicQueryNamespaces)
+        return ManagementParsing.Selected(ManagementCommand.PublicQuery(arguments.toList()))
     val root =
         ManagementRoot()
             .subcommands(
@@ -141,6 +143,10 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
                 PluginCommand(),
                 UpgradeCommand(),
                 UninstallCommand(),
+                PublicQueryNamespace("query"),
+                PublicQueryNamespace("result"),
+                PublicQueryNamespace("source"),
+                PublicQueryNamespace("describe"),
             )
     var selected: ManagementCommand? = null
     return try {
@@ -168,7 +174,7 @@ internal class ManagementRoot : ManagementNode("kast") {
         eagerOption("--version", help = "Print this executable's version") { throw PrintMessage(MANAGEMENT_VERSION) }
     }
 
-    override fun help(context: Context) = "Inspect and manage one Kast installation and its agent integrations."
+    override fun help(context: Context) = "Query Kotlin and manage one Kast installation and its agent integrations."
 
     override fun selection() = if (currentContext.invokedSubcommand == null) ManagementCommand.Status(false) else null
 }
@@ -261,6 +267,9 @@ internal fun resolveManagementRoot(environment: Map<String, String>): Management
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
 private fun perform(command: ManagementCommand) {
     val environment = System.getenv()
+    if (command is ManagementCommand.PublicQuery) {
+        exitProcess(runInstalledPublicQuery(command.arguments, Path.of("").toAbsolutePath(), environment))
+    }
     val home = environment["HOME"] ?: throw ManagementRejected("environment", "HOME is unavailable")
     val root =
         when (val resolved = resolveManagementRoot(environment)) {
@@ -268,6 +277,7 @@ private fun perform(command: ManagementCommand) {
             is ManagementRootResolution.Rejected -> throw ManagementRejected("environment", resolved.failure.reason)
         }
     when (command) {
+        is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
         is ManagementCommand.Status -> printManagementStatus(root, command.json)
         is ManagementCommand.Connect -> {
             if (command.connection == null) println("Supported integrations: codex plugin, copilot, pi")
@@ -382,14 +392,3 @@ private fun lifecycleRecovery(failure: LifecycleFailure): String =
         LifecycleFailure.FILESYSTEM_REJECTED ->
             "inspect kast status --json; shutdown fencing and recovery evidence are retained"
     }
-
-private fun printManagementStatus(root: Path, json: Boolean) {
-    val commandPath =
-        ProcessHandle.current()
-            .info()
-            .command()
-            .map { Path.of(it).toAbsolutePath().normalize().toString() }
-            .orElse("unavailable")
-    val status = readStatus(root, commandPath)
-    println(if (json) status.asJson() else status.asText())
-}

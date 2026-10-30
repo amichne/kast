@@ -5,6 +5,8 @@ description: Use for Kotlin declaration discovery, exact callers, reference occu
 
 # Kast
 
+For public shell queries without MCP registration, read [Public CLI reads](public-cli.md).
+
 Use the Kast task tools for supported Kotlin semantic work in the exact workspace.
 The plugin exposes these task tools through MCP in Codex, Copilot, and Pi.
 The Copilot SDK extension uses the same task catalog and service.

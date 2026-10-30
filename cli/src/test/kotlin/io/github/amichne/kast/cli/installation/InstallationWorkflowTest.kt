@@ -89,6 +89,35 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `public installed launcher reports unavailable selected Java as structured runtime failure`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("home/.local/share/kast")
+        val request =
+            releaseRequest(
+                root,
+                installation,
+                root.resolve("home/.local/bin"),
+                Files.createDirectory(root.resolve("home")),
+                Files.createDirectory(root.resolve("codex-home")),
+                "1.2.3",
+            )
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        Files.delete(request.javaHome.value.resolve("bin/java"))
+        val launcher = installation.resolve("installation/bin/kast-query-complete")
+        val child = ProcessBuilder(launcher.toString(), "describe", "query_symbols").start()
+        val output = child.inputReader().readText()
+        val error = child.errorReader().readText()
+        assertEquals(4, child.waitFor(), error)
+        val document = Json.parseToJsonElement(output).jsonObject
+        assertEquals(setOf("type", "failure"), document.keys)
+        assertEquals("rejected", document.getValue("type").jsonPrimitive.content)
+        assertEquals("CATALOG_UNAVAILABLE", document.getValue("failure").jsonPrimitive.content)
+        assertEquals(1, output.count { it == '\n' })
+    }
+
+    @Test
     fun `fresh installation materializes every saved default in its environment file`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("home/.local/share/kast")
@@ -107,6 +136,7 @@ class InstallationWorkflowTest {
         )
         val selected = installation.resolve("installation")
         assertFreshInstallationOwnership(installation, selected)
+        assertTrue(Files.isExecutable(selected.resolve("bin/kast-query-complete")))
         val values =
             Files.readAllLines(selected.resolve("config/environment"))
                 .filterNot { it.startsWith("#") }
@@ -369,6 +399,7 @@ private fun writeControlFiles(
     Files.copy(executable, bin.resolve("kast-codex"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(executable, bin.resolve("kast-mcp"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(executable, bin.resolve("kast-tool-rpc"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    Files.copy(executable, bin.resolve("kast-query"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(Path.of("../packaging/codex-mcp-registration.py"), metadata.resolve("codex-mcp-registration.py"))
     Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)
     Files.writeString(metadata.resolve("wire-schema.json"), emptyDocument)
