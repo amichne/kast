@@ -1,12 +1,19 @@
 ---
 type: Module Guide
 title: "Kast cli"
-description: "Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections."
+description: "Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-22T05:31:45Z"
-source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
+timestamp: "2026-10-29T23:41:55Z"
+source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
 code_sources:
+  - path: build.gradle.kts
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -35,10 +42,15 @@ code_sources:
 
 ## Purpose
 
-Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections.
+Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections.
 
 ## Key Files
 
+- [KastPublicCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt) - public semantic commands through shared admission and direct execution.
+- [PublicCliArguments.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt) - flags, JSON input modes, and exact catalog selection.
+- [PublicCliDiscovery.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt) - descriptors, schemas, and examples from packaged contracts.
+- [PublicInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt) - public terminal-event precedence and output delivery.
+- [PublicShellExit.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt) - public shell status codes and outcome classification.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - the client-owned stdio MCP process.
 - [McpRunnerInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt) - one query worker, exact cancellation, and worker cleanup.
 - [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, request-only plans, one-shot invocation, and query sessions.
@@ -56,6 +68,7 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 
 ## Subdirectories
 
+- [src/main/kotlin/io/github/amichne/kast/cli/publicshell/](src/main/kotlin/io/github/amichne/kast/cli/publicshell/) - public semantic parsing, discovery, output, exit policy, and invocation lifecycle.
 - [src/main/kotlin/io/github/amichne/kast/cli/direct/](src/main/kotlin/io/github/amichne/kast/cli/direct/) - shared native tool composition.
 - [src/main/kotlin/io/github/amichne/kast/cli/mcp/](src/main/kotlin/io/github/amichne/kast/cli/mcp/) - MCP transport and support tools.
 - [src/main/kotlin/io/github/amichne/kast/cli/rpc/](src/main/kotlin/io/github/amichne/kast/cli/rpc/) - tool RPC and query sessions.
@@ -66,6 +79,8 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 ## Entry Points
 
 - Gradle project: `:cli`.
+- Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
+- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the real launcher, JVM child, and local-peer composition.
 - The public native `kast` executable lives in `distribution/cli`.
 - The private installer entry in `KastCliMain.kt` admits only `--version`.
 - The installation places private service control at `share/kast/libexec/kast-service`.
@@ -74,6 +89,11 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 
 ## Navigation Hints
 
+- Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
+- Packaged discovery and request planning use installed contracts before workspace or host composition.
+- Keep `publicshell` exit and signal policy separate from private RPC and MCP behavior.
+- `PublicInvocationOwner` accepts the first terminal event. `PublicCliInvocation` owns its worker and signal handling.
+- Cancellation requests and child exit do not prove native semantic settlement.
 - Direct MCP and tool RPC sessions default to `COMMON`. Select `--catalog=COMPLETE` before the command for advanced grammar.
 - Keep the selected catalog stable through discovery, public admission, and retained reads. Pi native MCP registration explicitly selects `COMPLETE`.
 

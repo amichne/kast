@@ -55,6 +55,7 @@ tasks.named<Test>("test") {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
         excludeTags("native")
+        excludeTags("public-launcher")
     }
 }
 
@@ -71,6 +72,21 @@ val nativeTest =
 
 tasks.named("check") {
     dependsOn(nativeTest)
+}
+
+// Product integration consumes test outputs without introducing a production module dependency.
+val publicLauncherTestOutputs = sourceSets.test.get()
+
+configurations.consumable("publicLauncherTestClassesElements") {
+    outgoing.artifacts(provider { publicLauncherTestOutputs.output.classesDirs.files.toList() }) {
+        builtBy(publicLauncherTestOutputs.output.classesDirs)
+    }
+}
+
+configurations.consumable("publicLauncherTestRuntimeElements") {
+    outgoing.artifacts(provider { publicLauncherTestOutputs.runtimeClasspath.files.toList() }) {
+        builtBy(publicLauncherTestOutputs.runtimeClasspath)
+    }
 }
 
 val queryDeliveryContractTest =
@@ -137,6 +153,15 @@ val toolRpcStartScripts =
         dependsOn(tasks.named("jar"))
     }
 
+val publicQueryStartScripts =
+    tasks.register<CreateStartScripts>("publicQueryStartScripts") {
+        applicationName = "kast-query"
+        mainClass = "io.github.amichne.kast.cli.publicshell.KastPublicCliMain"
+        outputDir = layout.buildDirectory.dir("public-query-scripts").get().asFile
+        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
+        dependsOn(tasks.named("jar"))
+    }
+
 val daemonStartScripts =
     tasks.register<CreateStartScripts>("daemonStartScripts") {
         applicationName = "kast-daemon"
@@ -161,6 +186,11 @@ val serviceStartScripts =
 
 distributions.main {
     contents {
+        from(publicQueryStartScripts) {
+            into("bin")
+            exclude("*.bat")
+            filePermissions { unix("755") }
+        }
         from(serviceStartScripts) {
             into("share/kast/libexec")
             exclude("*.bat")

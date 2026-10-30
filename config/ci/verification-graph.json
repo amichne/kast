@@ -350,11 +350,11 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-            "sha256": "c832022b94b254478f4489d93b9c9622d191a64aafc3c43d4bfcf83d28fe10c4"
+            "sha256": "756c050e4bf77ed2ada63e91fde3855a95d74beeb04d0b6c396d409a31b21d3a"
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "df0dbb9537236f5193f5fb1136419a875bab0531794e7e5b76aa74eed29c6be8"
+            "sha256": "72e02aa1e3bc11ed61c9381d6ae81b9501c4bb8c6a24ba4aeaf07660e0bb831e"
         },
         {
             "path": "change/apply/build.gradle.kts",
@@ -386,7 +386,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "7c76cb482d920edefe714132dc5985634a13973e8cc8bb1ca0b9824f670d8956"
+            "sha256": "287a983c755bc60d58a0ccb1e38d57e938b6ec72f6b4bdbeabcb908ac186ef23"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",

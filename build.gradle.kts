@@ -1,5 +1,6 @@
 import support.consumeProjectOutput
 import org.gradle.process.CommandLineArgumentProvider
+import org.gradle.api.tasks.testing.Test
 import support.tasks.idea.selectedIdeaProductInfo
 import conventions.registerJsonContractVerification
 import conventions.jsoncontracts.JsonContractScanRequest
@@ -57,6 +58,32 @@ val providerFiles = consumeProjectOutput("providerCatalogueFiles", ":cli", "prov
 val generatedProviderCatalogue = layout.file(providerFiles.flatMap { it.elements }.map { it.single().asFile })
 val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "cliInstallationElements")
 val managementExecutable = consumeProjectOutput("managementExecutable", ":distribution:cli", "managementExecutableElements")
+
+val publicLauncherTestClasses = consumeProjectOutput("publicLauncherTestClasses", ":cli", "publicLauncherTestClassesElements")
+val publicLauncherTestRuntime = consumeProjectOutput("publicLauncherTestRuntime", ":cli", "publicLauncherTestRuntimeElements")
+
+abstract class PublicLauncherArguments : CommandLineArgumentProvider {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val executable: org.gradle.api.file.RegularFileProperty
+
+    override fun asArguments(): Iterable<String> =
+        listOf("-Dkast.publicLauncher=${executable.get().asFile.absolutePath}")
+}
+
+val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
+    description = "Exercises the public native launcher with its real owned JVM and a local socket peer."
+    group = "verification"
+    testClassesDirs = files(publicLauncherTestClasses)
+    classpath = files(publicLauncherTestRuntime)
+    useJUnitPlatform { includeTags("public-launcher") }
+    binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/publicLauncherTest/binary"))
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/publicLauncherTest"))
+    reports.html.outputLocation.set(layout.buildDirectory.dir("reports/tests/publicLauncherTest"))
+    jvmArgumentProviders.add(objects.newInstance<PublicLauncherArguments>().apply {
+        executable.set(layout.file(managementExecutable.flatMap { it.elements }.map { it.single().asFile }))
+    })
+}
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
 tasks.named("generateKastDocumentation") {
@@ -150,6 +177,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "bin/kast-codex",
                 "bin/kast-mcp",
                 "bin/kast-tool-rpc",
+                "bin/kast-query",
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
                 "share/kast/libexec/kast-management",
@@ -556,7 +584,10 @@ val productBuildGate = tasks.register("productBuildGate") {
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
-productBuildGate.configure { dependsOn(modulePaths.map { "$it:check" }) }
+productBuildGate.configure {
+    dependsOn(modulePaths.map { "$it:check" })
+    dependsOn(publicLauncherTest)
+}
 
 val sourceValidationGate = tasks.register("sourceValidationGate") {
     group = "verification"

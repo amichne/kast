@@ -1,0 +1,113 @@
+{
+  "schema": "kast.cli.evidence.compression.v1",
+  "compression": "gzip-mtime-zero",
+  "sourceRevision": "8fdb3578bd9656ba5ef9b529722295beb25cdbb0",
+  "byteIdentity": "PASS_AGAINST_COMMITTED_RAW_BYTES",
+  "records": [
+    {
+      "path": "docs/reviews/public-cli-v1/candidate-4db45af85-native/callers.json.gz",
+      "rawSha256": "857149081fccf78a25a404b03fd7534d74267f3c4835756add88cab31af9707b",
+      "rawBytes": 94642
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/candidate-4db45af85-native/cross-process-read.json.gz",
+      "rawSha256": "dea8baaf37e0acaf6a3aa98e5cfb00101708637ff8e0e6a751ef6dd93c70dff3",
+      "rawBytes": 61210
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/candidate-4db45af85-native/declaration.json.gz",
+      "rawSha256": "7a5424661cd719a4afc302fdc93bff310ad346459401228f2efb524ba7dad9df",
+      "rawBytes": 71885
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/candidate-d7-native/callers.json.gz",
+      "rawSha256": "83c07b2d387e27ec0d36ca04e2543ff5143fb4d42522d29bdeb7d9d6ba19ba9d",
+      "rawBytes": 94807
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/candidate-d7-native/cross-process-read.json.gz",
+      "rawSha256": "430c96bc102463acaaffd6cee05700105f8e6ea84902647cca29731e8e0ef16a",
+      "rawBytes": 61363
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/candidate-d7-native/declaration.json.gz",
+      "rawSha256": "a500a555f4e24601187d58fc08302e9e57441c22302d7fd1a0e751988c2fbf45",
+      "rawBytes": 72034
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/1-direct-read.json.gz",
+      "rawSha256": "2f171b0c7026a8ea0bcd8d8fef88b51c21e6acaccfc158a7e595606a02db9053",
+      "rawBytes": 61354
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/1-direct.json.gz",
+      "rawSha256": "574b6d3b4dde4e978256bed4e4f7dff431eea4a1486f7eeea0643c7f0a14f96f",
+      "rawBytes": 71983
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/2-public-read.json.gz",
+      "rawSha256": "e7ddb999b6536ce652950e9861df32e7d205607e0a1d96f6551c994a467e0c3e",
+      "rawBytes": 61350
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/2-public.json.gz",
+      "rawSha256": "0a7fa3515d588ac65e802059d525e2b9589ac2935a43a699cdfb123a1df736af",
+      "rawBytes": 71916
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/3-direct-read.json.gz",
+      "rawSha256": "69d69d50240c4f3670d1e68478b2c7ad999b801d4852dcd14686abcf49580052",
+      "rawBytes": 61349
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/3-direct.json.gz",
+      "rawSha256": "5173480874b98a3e2d32db6479229713cfa12b548ea283a13d658b934fbbd3ec",
+      "rawBytes": 71971
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/4-public-read.json.gz",
+      "rawSha256": "ff015d2f58f2847bd13ef646e24e20efe8db51efdd276b209071a2f2fa73e514",
+      "rawBytes": 61353
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/4-public.json.gz",
+      "rawSha256": "05565a05fa79556e109de308d5c9121e2ab379c8cd84914c401763161d2b34a6",
+      "rawBytes": 71930
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/5-direct-read.json.gz",
+      "rawSha256": "c204d2cf8056089b1ba9ede75a9e0bab452633a2a11608570a21b8f31efd5a50",
+      "rawBytes": 61351
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/5-direct.json.gz",
+      "rawSha256": "76af03adc59deb5c08d6a4d775dc0a6aafd8c2eb53b28006671cdf057f6f05eb",
+      "rawBytes": 71971
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/6-public-read.json.gz",
+      "rawSha256": "dc00172343e83ba794c278a5a935672aeaf408881ba13aa04d798a6c639c5ad1",
+      "rawBytes": 61355
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/6-public.json.gz",
+      "rawSha256": "f12a8d28c5631375f1b782260cf37f5ef212d38031cc171d4856a96d7255847f",
+      "rawBytes": 71910
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/summary.json.gz",
+      "rawSha256": "c6edf832e2487a700fb06918c3a6b97ca3d9f28e6817cbc47ca00a04cf352281",
+      "rawBytes": 499228
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/warmup-direct.json.gz",
+      "rawSha256": "5d8b6e2ecc2fad166cf2f032cac1172763c835a689f5fcd0ff476ee2b4300e7e",
+      "rawBytes": 72022
+    },
+    {
+      "path": "docs/reviews/public-cli-v1/native-measurements-d7/warmup-public.json.gz",
+      "rawSha256": "8a8a59c54def935b9192179e20d27f5286c917632495c581e2c73d1b9d9d9161",
+      "rawBytes": 71938
+    }
+  ]
+}

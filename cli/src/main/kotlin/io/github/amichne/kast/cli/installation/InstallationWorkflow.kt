@@ -378,6 +378,7 @@ internal object InstallationWorkflow {
             writeLauncher(plan, staged, "kast-codex")
             writeLauncher(plan, staged, "kast-mcp")
             writeLauncher(plan, staged, "kast-tool-rpc")
+            writeLauncher(plan, staged, "kast-query")
             writeInstallationConfiguration(
                 plan = plan,
                 stagedConfiguration = staged.resolve("config/environment"),
@@ -454,6 +455,9 @@ internal object InstallationWorkflow {
 
     private fun writeLauncher(plan: VerifiedInstallationPlan, staged: Path, executable: String) {
         val launcher = staged.resolve("bin/$executable-complete")
+        val javaFailureMode =
+            if (executable == "kast-query") InstallationJavaFailureMode.PUBLIC_QUERY
+            else InstallationJavaFailureMode.PRIVATE_LAUNCHER
         val dispatch =
             if (executable == "kast") {
                 """
@@ -481,7 +485,7 @@ internal object InstallationWorkflow {
             |fi
             |control_executable="${'$'}script_dir/$executable"
             |[ -x "${'$'}control_executable" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
-            |${installationJavaRuntimeEnvironment(plan.request.javaHome)}
+            |${installationJavaRuntimeEnvironment(plan.request.javaHome, javaFailureMode)}
             |unset KAST_SESSION_ROOT
             |if [ -e "${'$'}installation_root/.recovery-detached" ]; then
             |  case "${'$'}{1-} ${'$'}{2-}" in
@@ -916,7 +920,11 @@ private fun sha256(bytes: ByteArray): Sha256 =
 private fun ByteArray.hex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
 private fun verifyControlLayout(root: Path): ControlInventoryAdmission {
-    if (listOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc").any { !regularExecutable(root.resolve("bin/$it")) })
+    if (
+        listOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc", "kast-query").any {
+            !regularExecutable(root.resolve("bin/$it"))
+        }
+    )
         return ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY)
     val required =
         listOf(

@@ -52,6 +52,7 @@ internal class OwnedLifecycleProcess private constructor(val snapshot: Lifecycle
                 it in
                     setOf(
                         "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
+                        "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
                         "io.github.amichne.kast.cli.mcp.KastMcpMain",
                     )
             }

@@ -259,12 +259,13 @@ class HostedTimingTest(unittest.TestCase):
     def test_timing_vocabulary_matches_authoritative_kotlin_boundaries(self):
         root = Path(__file__).resolve().parents[2]
         hosted = root / 'runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted'
-        for name, vocabulary, filename in (
-            ('HostedTransportStage', h.TransportStage, 'HostedTransportObservation.kt'),
-            ('HostedEndpointOutcome', h.TransportOutcome, 'HostedEndpointService.kt'),
-            ('HostedEndpointFailure', h.EndpointFailure, 'HostedEndpointProtocol.kt'),
-            ('HostedSmartModeWaitOutcome', h.SmartModeOutcome, 'HostedSmartModeWait.kt')):
-            source = (hosted / filename).read_text()
+        contract = root / 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract'
+        for name, vocabulary, source_path in (
+            ('HostedTransportStage', h.TransportStage, hosted / 'HostedTransportObservation.kt'),
+            ('HostedEndpointOutcome', h.TransportOutcome, hosted / 'HostedEndpointService.kt'),
+            ('HostedEndpointFailure', h.EndpointFailure, contract / 'HostedEndpointFailure.kt'),
+            ('HostedSmartModeWaitOutcome', h.SmartModeOutcome, hosted / 'HostedSmartModeWait.kt')):
+            source = source_path.read_text()
             body = re.search(r'enum class ' + name + r'\s*\{([^}]+)\}', source).group(1)
             self.assertEqual(set(re.findall(r'\b([A-Z][A-Z_]*)\s*,', body)), {item.value for item in vocabulary})
 
