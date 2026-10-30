@@ -28,6 +28,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -88,7 +89,7 @@ class ManagedCodexUpstreamTest {
                         startupTimeoutMillis = 5_000,
                     )
                 )
-            val started = result as ManagedCodexUpstreamStart.Started
+            val started = assertInstanceOf(ManagedCodexUpstreamStart.Started::class.java, result, result.toString())
             val connection = (started.upstream.connect() as BrokerUpstreamConnectionAdmission.Connected).connection
             assertEquals(BrokerUpstreamSend.SENT, connection.send("alias"))
             assertEquals(BrokerUpstreamFrame.Text("alias"), connection.receive())
@@ -143,7 +144,7 @@ class ManagedCodexUpstreamTest {
         val foreign = Files.writeString(temporary.resolve("foreign"), "preserve")
         val launcher = EchoCodexLauncher(target)
         try {
-            val started =
+            val result =
                 ManagedCodexUpstream.start(
                     ManagedCodexUpstreamOptions(
                         executable =
@@ -154,7 +155,8 @@ class ManagedCodexUpstreamTest {
                         maximumMessageBytes = 1024 * 1024,
                         startupTimeoutMillis = 5_000,
                     )
-                ) as ManagedCodexUpstreamStart.Started
+                )
+            val started = assertInstanceOf(ManagedCodexUpstreamStart.Started::class.java, result, result.toString())
             Files.delete(socket)
             Files.createSymbolicLink(socket, foreign)
             assertEquals(BrokerUpstreamConnectionAdmission.Rejected, started.upstream.connect())
