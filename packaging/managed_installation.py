@@ -627,7 +627,7 @@ class NativeComposition:
         finally:
             path.unlink(missing_ok=True)
 
-    def inspect(self, attach: bool = True) -> tuple[contract.Snapshot, bytes]:
+    def inspection_frame(self, attach: bool) -> tuple[object, bytes]:
         value, raw = self.bridge(
             InspectRequest(
                 str(self.idea.home),
@@ -643,10 +643,24 @@ class NativeComposition:
             and isinstance(blocked_reason, str)
         ):
             raise reject(self.stage, contract.Failure.HOST_REJECTED, blocked_reason)
+        return value, raw
+
+    def inspect(self, attach: bool = True) -> tuple[contract.Snapshot, bytes]:
+        value, raw = self.inspection_frame(attach)
         parsed = contract.parse_inspection(value, str(self.idea.home), str(self.idea.profile))
         if isinstance(parsed, contract.Rejected):
             raise StageRejected(replace(parsed, stage=self.stage))
         return parsed, raw
+
+    def readmit(self, prior: contract.Snapshot) -> contract.Snapshot:
+        attach = isinstance(prior, contract.Legacy) and isinstance(
+            prior.host, contract.LegacyHostUnavailable
+        )
+        value, _ = self.inspection_frame(attach)
+        admitted = contract.readmit_inspection(value, prior)
+        if isinstance(admitted, contract.Rejected):
+            raise StageRejected(admitted)
+        return admitted
 
     def host_action(
         self,
@@ -1260,11 +1274,7 @@ def install_composition(
                 existing = already_current(adapter, composition, prior, True)
             else:
                 with management_lock(adapter.root):
-                    fresh, _ = adapter.inspect(False)
-                    if fresh != prior:
-                        return contract.Rejected(
-                            contract.Stage.RE_ADMISSION, contract.Failure.CONCURRENT_CHANGE
-                        )
+                    fresh = adapter.readmit(prior)
                     existing = already_current(adapter, composition, fresh, False)
             if existing is not None:
                 return existing
@@ -1279,11 +1289,7 @@ def install_composition(
         if dry_run:
             return contract.Planned(composition.identity, strategy)
         with management_lock(adapter.root):
-            current, _ = adapter.inspect()
-            if current != prior:
-                return contract.Rejected(
-                    contract.Stage.RE_ADMISSION, contract.Failure.CONCURRENT_CHANGE
-                )
+            _ = adapter.readmit(prior)
             transaction = str(uuid.uuid4())
             adapter.enter(contract.Stage.JOURNAL)
             adapter.control_action(composition, transaction, "prepare")
@@ -1363,9 +1369,7 @@ def install_composition(
                     unchanged_preimage(preimage) for preimage in (management, executable, options)
                 ):
                     raise reject(contract.Stage.RE_ADMISSION, contract.Failure.CONCURRENT_CHANGE)
-                fresh, _ = adapter.inspect(False)
-                if fresh != prior:
-                    raise reject(contract.Stage.RE_ADMISSION, contract.Failure.CONCURRENT_CHANGE)
+                _ = adapter.readmit(prior)
                 adapter.enter(contract.Stage.FENCE)
                 record, core = advance(record, core, journal_types.ManagedPhase.FENCED)
                 RECOVERY.save(journal / "receipt.json", record)

@@ -133,12 +133,25 @@ class Loaded:
 
 
 @dataclass(frozen=True, slots=True)
+class LegacyHost:
+    hostLifetime: str
+    ideaHome: str
+    ideBuild: str
+    compatibilitySha256: str
+
+
+class LegacyHostUnavailable(StrEnum):
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+@dataclass(frozen=True, slots=True)
 class Legacy:
     process: ProcessIdentity
     ideaHome: str
     profile: str
     contractDigest: str | None
     version: str | None
+    host: LegacyHost | LegacyHostUnavailable = LegacyHostUnavailable.UNAVAILABLE
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,7 +271,12 @@ def parse_inspection(value: object, home: str, profile: str) -> Snapshot | Rejec
         and parse_process(legacy.get("process")) == process
     ):
         digest, version = None, None
+        host: LegacyHost | LegacyHostUnavailable = LegacyHostUnavailable.UNAVAILABLE
         if release.mapping(result) and result.get("type") == "inspected":
+            captured = parse_legacy_host(result, home)
+            if isinstance(captured, Rejected):
+                return captured
+            host = captured
             compatibility = result.get("compatibility")
             if release.mapping(compatibility):
                 candidate_version = compatibility.get("hostedPluginVersion")
@@ -270,8 +288,62 @@ def parse_inspection(value: object, home: str, profile: str) -> Snapshot | Rejec
                         compatibility.get("hostedContract"), sort_keys=True, separators=(",", ":")
                     ).encode()
                 ).hexdigest()
-        return Legacy(process, home, profile, digest, version)
+        return Legacy(process, home, profile, digest, version, host)
     return Rejected(Stage.PREPARATION, Failure.OWNERSHIP_UNPROVEN)
+
+
+def parse_legacy_host(value: object, home: str) -> LegacyHost | Rejected:
+    if release.mapping(value) and value.get("type") == "inspected":
+        host, captured_home, build, compatibility = (
+            value.get(key) for key in ("host", "home", "build", "compatibility")
+        )
+        if (
+            isinstance(host, str)
+            and 1 <= len(host) <= 128
+            and captured_home == home
+            and isinstance(build, str)
+            and 1 <= len(build) <= 128
+            and release.mapping(compatibility)
+            and value.get("runtimeIdentity") is None
+        ):
+            return LegacyHost(
+                host,
+                home,
+                build,
+                hashlib.sha256(
+                    json.dumps(compatibility, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest(),
+            )
+    return Rejected(Stage.RE_ADMISSION, Failure.OWNERSHIP_UNPROVEN)
+
+
+def readmit_inspection(value: object, prior: Snapshot) -> Snapshot | Rejected:
+    if isinstance(prior, Legacy) and isinstance(prior.host, LegacyHost):
+        if release.mapping(value) and value.get("type") == "INSPECTED":
+            processes = value.get("processes")
+            if (
+                release.sequence(processes)
+                and len(processes) == 1
+                and parse_process(processes[0]) == prior.process
+                and parse_legacy_host(value.get("result"), prior.ideaHome) == prior.host
+                and value.get("legacyProfile") is None
+            ):
+                # The same process and Host lifetime preserve the earlier attached profile proof.
+                return prior
+    else:
+        target = (
+            prior.target
+            if isinstance(prior, Stopped)
+            else Target(prior.identity.ideaHome, prior.identity.profile)
+            if isinstance(prior, Loaded)
+            else Target(prior.ideaHome, prior.profile)
+        )
+        parsed = parse_inspection(value, target.ideaHome, target.profile)
+        if isinstance(parsed, Rejected):
+            return parsed
+        if parsed == prior:
+            return prior
+    return Rejected(Stage.RE_ADMISSION, Failure.CONCURRENT_CHANGE)
 
 
 def choose_strategy(

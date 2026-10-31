@@ -24,7 +24,7 @@ class InspectionFixture:
     home: str
     build: str
     compatibility: CompatibilityFixture
-    runtimeIdentity: contract.RuntimeIdentity
+    runtimeIdentity: contract.RuntimeIdentity | None
     projects: tuple[object, ...] = ()
     protocol: int = 1
     background: str = "best_effort"
@@ -46,11 +46,18 @@ class InspectionFixture:
 
 
 @dataclass(frozen=True)
+class LegacyProfileFixture:
+    ideaHome: str
+    profile: str
+    process: contract.ProcessIdentity
+
+
+@dataclass(frozen=True)
 class BridgeFixture:
     processes: tuple[contract.ProcessIdentity, ...]
-    result: InspectionFixture
+    result: InspectionFixture | None
     type: str = "INSPECTED"
-    legacyProfile: None = None
+    legacyProfile: LegacyProfileFixture | None = None
 
 
 class ManagedUpdateContractTest(unittest.TestCase):
@@ -146,6 +153,125 @@ class ManagedUpdateContractTest(unittest.TestCase):
         if not isinstance(rejected, contract.Rejected):
             self.fail("multiple IDEA instances must reject")
         self.assertEqual(contract.Failure.TARGET_AMBIGUOUS, rejected.reason)
+
+    def legacy_fixture(self) -> BridgeFixture:
+        return BridgeFixture(
+            (self.process,),
+            InspectionFixture(
+                "legacy-host",
+                self.runtime.ideaHome,
+                "262.1",
+                CompatibilityFixture(self.hosted),
+                None,
+            ),
+            legacyProfile=LegacyProfileFixture(
+                self.runtime.ideaHome, self.runtime.profile, self.process
+            ),
+        )
+
+    def parse_fixture(self, fixture: BridgeFixture) -> contract.Snapshot | contract.Rejected:
+        return contract.parse_inspection(
+            json.loads(json.dumps(asdict(fixture))), self.runtime.ideaHome, self.runtime.profile
+        )
+
+    def test_legacy_readmission_preserves_profile_only_for_the_same_process_and_host(self) -> None:
+        attached = self.legacy_fixture()
+        prior = self.parse_fixture(attached)
+        if not isinstance(prior, contract.Legacy):
+            self.fail("the attached legacy profile must admit a legacy snapshot")
+        self.assertIsInstance(prior.host, contract.LegacyHost)
+        bare = replace(attached, legacyProfile=None)
+        self.assertEqual(
+            contract.Rejected(contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN),
+            self.parse_fixture(bare),
+        )
+        self.assertIs(
+            prior,
+            contract.readmit_inspection(json.loads(json.dumps(asdict(bare))), prior),
+        )
+
+    def test_legacy_readmission_rejects_changed_or_missing_captured_facts(self) -> None:
+        attached = self.legacy_fixture()
+        prior = self.parse_fixture(attached)
+        if not isinstance(prior, contract.Legacy) or attached.result is None:
+            self.fail("the attached legacy endpoint must admit a legacy snapshot")
+        bare = replace(attached, legacyProfile=None)
+        for changed in (
+            replace(bare, processes=()),
+            replace(bare, processes=(self.process, replace(self.process, pid=124))),
+            replace(bare, processes=(replace(self.process, pid=124),)),
+            replace(bare, processes=(replace(self.process, processStartEpochMillis=457),)),
+            replace(bare, processes=(replace(self.process, executable="/different/idea"),)),
+            replace(bare, result=None),
+            replace(bare, result=replace(attached.result, host="different-host")),
+            replace(bare, result=replace(attached.result, home="/different/home")),
+            replace(bare, result=replace(attached.result, build="262.2")),
+            replace(bare, result=replace(attached.result, runtimeIdentity=self.runtime)),
+            replace(
+                bare,
+                result=replace(
+                    attached.result,
+                    compatibility=replace(
+                        attached.result.compatibility, hostedPluginVersion="9.0.0"
+                    ),
+                ),
+            ),
+            replace(
+                bare,
+                result=replace(
+                    attached.result,
+                    compatibility=replace(
+                        attached.result.compatibility, kotlinPluginBuild="changed-kotlin"
+                    ),
+                ),
+            ),
+            replace(
+                bare,
+                result=replace(
+                    attached.result,
+                    compatibility=replace(
+                        attached.result.compatibility,
+                        hostedContract=replace(self.hosted, wireSchemaDigest="sha256:" + "f" * 64),
+                    ),
+                ),
+            ),
+            attached,
+        ):
+            with self.subTest(changed=changed):
+                self.assertEqual(
+                    contract.Rejected(
+                        contract.Stage.RE_ADMISSION, contract.Failure.CONCURRENT_CHANGE
+                    ),
+                    contract.readmit_inspection(json.loads(json.dumps(asdict(changed))), prior),
+                )
+
+    def test_legacy_without_endpoint_needs_fresh_attached_profile(self) -> None:
+        attached = replace(self.legacy_fixture(), result=None)
+        prior = self.parse_fixture(attached)
+        if not isinstance(prior, contract.Legacy):
+            self.fail("the attached profile must remain usable without an endpoint identity")
+        self.assertEqual(contract.LegacyHostUnavailable.UNAVAILABLE, prior.host)
+        self.assertIs(
+            prior,
+            contract.readmit_inspection(json.loads(json.dumps(asdict(attached))), prior),
+        )
+        self.assertEqual(
+            contract.Rejected(contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN),
+            contract.readmit_inspection(
+                json.loads(json.dumps(asdict(replace(attached, legacyProfile=None)))), prior
+            ),
+        )
+
+    def test_legacy_profile_cannot_admit_an_endpoint_from_another_home(self) -> None:
+        attached = self.legacy_fixture()
+        if attached.result is None:
+            self.fail("the fixture needs an inspected endpoint")
+        self.assertIsInstance(
+            self.parse_fixture(
+                replace(attached, result=replace(attached.result, home="/different/home"))
+            ),
+            contract.Rejected,
+        )
 
     def test_profile_options_preserve_unrelated_bytes_and_have_one_property(self) -> None:
         before = b"-Xmx4g\r\n-Dunrelated=value\n-Didea.auto.reload.plugins=false\n# user comment\n"

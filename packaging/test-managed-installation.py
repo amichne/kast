@@ -15,6 +15,7 @@ import unittest
 import zipfile
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
+from typing import Literal
 from unittest.mock import patch
 
 import managed_installation as install
@@ -62,6 +63,114 @@ class CoordinatorTest(unittest.TestCase):
             {"PATH": os.environ["PATH"]},
         )
         self.identity = journal.BuildIdentity("v2.0.0", "2.0.0", "a" * 40, "b" * 40)
+
+    def test_running_legacy_readmission_reaches_restart_required_without_effects(self) -> None:
+        process = contract.ProcessIdentity(123, 456, str(self.idea.home / "MacOS/idea"))
+        compatibility = install.release.HostedContract(
+            "kast.ide-hosted.runtime.v3",
+            "sha256:" + "c" * 64,
+            "sha256:" + "d" * 64,
+            ("workspace.lifecycle",),
+        )
+        result = LegacyInspectionResultFixture(
+            "original-host",
+            str(self.idea.home),
+            "262.1",
+            InspectionCompatibilityFixture(compatibility),
+        )
+        attached = InspectionFixture(
+            (process,),
+            result,
+            legacyProfile=LegacyProfileFixture(
+                str(self.idea.home), str(self.idea.profile), process
+            ),
+        )
+        fresh = replace(attached, legacyProfile=None)
+        runner = RawRunner(
+            [install.encoded(attached), install.encoded(fresh)],
+            ["ATTACH", "REJECT_UNPROVEN"],
+        )
+        self.adapter.runner = runner
+        receipt = ReceiptFixture(
+            2,
+            str(self.root),
+            str(self.home / "bin/kast"),
+            "1" * 64,
+            "STABLE",
+            (),
+            journal.TrackStable(),
+            journal.BuildIdentity("v1.0.0", "1.0.0", "c" * 40, "d" * 40),
+        )
+        path = self.root / "management.json"
+        before = install.encoded(receipt)
+        _ = path.write_bytes(before)
+        identity = journal.Identity.observe(path)
+        composition = install.release.AdmittedComposition(
+            self.identity,
+            journal.TrackStable(),
+            self.control,
+            self.home / "control.tar.gz",
+            self.home / "host.zip",
+            self.home / "control-record",
+            self.home / "host-record",
+            "e" * 64,
+            "f" * 64,
+            compatibility,
+            "9" * 64,
+        )
+        outcome = install.install_composition(self.adapter, composition, False, False)
+        self.assertEqual(
+            contract.Rejected(contract.Stage.PREPARATION, contract.Failure.RESTART_REQUIRED),
+            outcome,
+        )
+        runner.finished()
+        self.assertEqual(before, path.read_bytes())
+        self.assertEqual(identity, journal.Identity.observe(path))
+        self.assertFalse((self.root / "recovery/replacement").exists())
+        self.assertFalse((self.root / "shutdown.json").exists())
+        self.assertFalse(self.idea.profile.exists())
+
+    def test_legacy_without_endpoint_readmits_through_explicit_attach(self) -> None:
+        process = contract.ProcessIdentity(123, 456, str(self.idea.home / "MacOS/idea"))
+        attached = InspectionFixture(
+            (process,),
+            legacyProfile=LegacyProfileFixture(
+                str(self.idea.home), str(self.idea.profile), process
+            ),
+        )
+        prior = contract.parse_inspection(
+            install.release.document(install.encoded(attached)),
+            str(self.idea.home),
+            str(self.idea.profile),
+        )
+        if not isinstance(prior, contract.Legacy):
+            self.fail("the attached profile must admit a legacy snapshot")
+        runner = RawRunner([install.encoded(attached)], ["ATTACH"])
+        self.adapter.runner = runner
+        self.assertIs(prior, self.adapter.readmit(prior))
+        runner.finished()
+        self.assertEqual(contract.LegacyHostUnavailable.UNAVAILABLE, prior.host)
+
+    def test_legacy_readmission_preserves_a_known_blocked_reason(self) -> None:
+        prior = contract.Legacy(
+            contract.ProcessIdentity(123, 456, str(self.idea.home / "MacOS/idea")),
+            str(self.idea.home),
+            str(self.idea.profile),
+            None,
+            None,
+        )
+        frame = InspectionFixture((prior.process,), BlockedInspectionFixture())
+        runner = RawRunner([install.encoded(frame)], ["ATTACH"])
+        self.adapter.runner = runner
+        with self.assertRaises(install.StageRejected) as rejected:
+            _ = self.adapter.readmit(prior)
+        self.assertEqual(
+            contract.Rejected(
+                contract.Stage.PREPARATION, contract.Failure.HOST_REJECTED, "PROFILE_UNAVAILABLE"
+            ),
+            rejected.exception.failure,
+        )
+        runner.finished()
 
     def record(self):
         slot = self.root / "recovery/replacement"
@@ -393,6 +502,9 @@ class ConfigurationFixture:
 @dataclass(frozen=True)
 class InspectionCompatibilityFixture:
     hostedContract: install.release.HostedContract
+    hostedPluginVersion: str = "1.0.0"
+    ideBuild: str = "262.1"
+    kotlinPluginBuild: str = "262.1-IJ"
 
 
 @dataclass(frozen=True)
@@ -411,16 +523,52 @@ class HostResumedFixture:
 
 
 @dataclass(frozen=True)
+class LegacyInspectionResultFixture:
+    host: str
+    home: str
+    build: str
+    compatibility: InspectionCompatibilityFixture
+    runtimeIdentity: None = None
+    type: str = "inspected"
+
+
+@dataclass(frozen=True)
+class LegacyProfileFixture:
+    ideaHome: str
+    profile: str
+    process: contract.ProcessIdentity
+
+
+@dataclass(frozen=True)
+class BlockedInspectionFixture:
+    reason: str = "PROFILE_UNAVAILABLE"
+    type: str = "blocked"
+
+
+@dataclass(frozen=True)
 class InspectionFixture:
     processes: tuple[contract.ProcessIdentity, ...] = ()
-    result: InspectionResultFixture | HostResumedFixture | None = None
+    result: (
+        InspectionResultFixture
+        | HostResumedFixture
+        | LegacyInspectionResultFixture
+        | BlockedInspectionFixture
+        | None
+    ) = None
     type: str = "INSPECTED"
+    legacyProfile: LegacyProfileFixture | None = None
 
 
 class RawRunner:
-    def __init__(self, frames: list[bytes]) -> None:
+    def __init__(
+        self,
+        frames: list[bytes],
+        modes: list[Literal["ATTACH", "REJECT_UNPROVEN"]] | None = None,
+    ) -> None:
         self.frames = list(frames)
+        self.modes = list(modes) if modes is not None else None
         self.requests: list[str] = []
+        self.violations: list[str] = []
 
     def __call__(
         self, arguments: list[str], environment: dict[str, str], timeout: float
@@ -432,11 +580,26 @@ class RawRunner:
         request = install.release.document(Path(arguments[2]).read_bytes())
         if not install.release.mapping(request) or request.get("type") != "INSPECT":
             raise AssertionError(f"unexpected Host effect: {request}")
+        mode = request.get("legacyProfileInspection")
+        if self.modes is not None and (not self.modes or mode != self.modes.pop(0)):
+            self.violations.append("unexpected legacy profile inspection mode")
+            raise AssertionError(f"unexpected legacy profile inspection mode: {mode}")
+        frame = self.frames.pop(0)
+        response = install.release.document(frame)
+        if (
+            mode == "REJECT_UNPROVEN"
+            and install.release.mapping(response)
+            and response.get("legacyProfile") is not None
+        ):
+            self.violations.append("REJECT_UNPROVEN supplied a legacy profile proof")
+            raise AssertionError("REJECT_UNPROVEN cannot manufacture a legacy profile proof")
         self.requests.append(str(request["type"]))
-        return subprocess.CompletedProcess(arguments, 0, self.frames.pop(0), b"")
+        return subprocess.CompletedProcess(arguments, 0, frame, b"")
 
     def finished(self) -> None:
-        if self.frames:
+        if self.violations:
+            raise AssertionError(self.violations)
+        if self.frames or self.modes:
             raise AssertionError("unused child observations")
 
 
