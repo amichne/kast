@@ -93,6 +93,19 @@ private fun classifyOperation(document: JsonObject, grant: PublicElapsedGrant): 
             classifySemantic(CanonicalQueryCliDocuments.classificationFacts(document), grant)
         PublicSemanticOperation.SOURCE ->
             classifySource(CanonicalSourceReadCliDocuments.classificationFacts(document), grant)
+        null -> classifyReadRejection(classificationJson.decodeFromJsonElement(document), grant)
+    }
+
+private fun classifyReadRejection(facts: PublicReadRejectionFacts, grant: PublicElapsedGrant): PublicShellExit =
+    when (facts.failure) {
+        PublicReadFailure.BUDGET_EXCEEDED ->
+            when (facts.detail.cause) {
+                PublicReadCause.CALLER_TIMEOUT ->
+                    when (grant) {
+                        PublicElapsedGrant.EXPLICIT -> PublicShellExit.ELAPSED
+                        PublicElapsedGrant.ABSENT -> PublicShellExit.SEMANTIC
+                    }
+            }
     }
 
 private fun classifyHeader(header: QueryPresentationHeaderDocument, grant: PublicElapsedGrant): PublicShellExit {
@@ -129,7 +142,23 @@ private fun classifyHeaderDelivery(header: QueryPresentationHeaderDocument): Pub
             }
     }
 
-@Serializable private data class PublicOperationFacts(val operation: PublicSemanticOperation)
+@Serializable private data class PublicOperationFacts(val operation: PublicSemanticOperation? = null)
+
+/** Recognizes the host's caller timeout before an operation document exists; other shapes fail closed. */
+@Serializable
+private data class PublicReadRejectionFacts(val failure: PublicReadFailure, val detail: PublicReadRejectionDetail)
+
+@Serializable private data class PublicReadRejectionDetail(val cause: PublicReadCause)
+
+@Serializable
+private enum class PublicReadFailure {
+    BUDGET_EXCEEDED
+}
+
+@Serializable
+private enum class PublicReadCause {
+    CALLER_TIMEOUT
+}
 
 @Serializable
 private enum class PublicSemanticOperation {

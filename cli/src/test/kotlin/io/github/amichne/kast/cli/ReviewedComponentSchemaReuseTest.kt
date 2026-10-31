@@ -32,6 +32,7 @@ class ReviewedComponentSchemaReuseTest {
     fun `shared component proofs preserve each independent serializer shape`() {
         val schema = installedPublicToolOutputSchema(PublicToolIdentity.QUERY_SYMBOLS)
         val assertions = LocalSchemaAssertions(schema)
+        val independentSchemas = IndependentImpactSchemas()
         for ((name, serializer) in
             mapOf(
                 "sourceRangeCli" to SourceRangeCliDocument.serializer(),
@@ -58,7 +59,7 @@ class ReviewedComponentSchemaReuseTest {
                 "impactReviewedCallbackParent" to ImpactReviewedCallbackParentDocument.serializer(),
                 "impactReviewedDistinctStringKeys" to ImpactReviewedDistinctStringKeysDocument.serializer(),
             )) {
-            assertions.assertDefinitionEquivalent(name, independentFactoredImpactSchema(serializer))
+            assertions.assertDefinitionEquivalent(name, independentSchemas.graph(serializer))
             assertTrue(referenceCount(schema, name) > 0, "The schema must reference the exact $name definition")
         }
     }

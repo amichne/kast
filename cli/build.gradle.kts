@@ -1,9 +1,12 @@
+import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
+import org.graalvm.buildtools.gradle.tasks.CollectReachabilityMetadata
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 
 plugins {
     id("kast.runtime-serialization-app")
     id("kast.role.cli")
+    id("org.graalvm.buildtools.native") version "1.1.14"
 }
 
 val repositoryRoot = project.isolated.rootProject.projectDirectory
@@ -11,6 +14,88 @@ val repositoryRoot = project.isolated.rootProject.projectDirectory
 application {
     applicationName = "kast"
     mainClass = "io.github.amichne.kast.cli.KastCliMainKt"
+}
+
+graalvmNative {
+    testSupport.set(false)
+    metadataRepository {
+        // Repository metadata 1.5.29 registers nonexistent valueOf methods with runtime
+        // conditions, which GraalVM 25 rejects before analysis. Register this CLI's
+        // logback.xml types in its own metadata instead.
+        excludedModules.add("ch.qos.logback:logback-classic")
+    }
+    val nativeImageLauncher = javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(25))
+        nativeImageCapable.set(true)
+    }
+    binaries {
+        configureEach { javaLauncher.set(nativeImageLauncher) }
+        named("main") {
+            imageName.set("kast-query")
+            mainClass.set("io.github.amichne.kast.cli.publicshell.KastPublicCliMain")
+            sharedLibrary.set(false)
+            fallback.set(false)
+            buildArgs.addAll(
+                providers.fileContents(layout.projectDirectory.file("native-image.args")).asText.map {
+                    it.lines().filter(String::isNotBlank)
+                }
+            )
+            if (providers.systemProperty("os.name").get().startsWith("Mac")) {
+                buildArgs.addAll(
+                    providers.fileContents(layout.projectDirectory.file("native-image-macos.args")).asText.map {
+                        it.lines().filter(String::isNotBlank)
+                    }
+                )
+            }
+        }
+    }
+}
+
+val importedQueryExecutable = providers.gradleProperty("kastQueryNativeExecutable")
+
+require(importedQueryExecutable.isPresent == providers.gradleProperty("kastNativeExecutable").isPresent) {
+    "Imported native executables need both management and query artifacts"
+}
+
+configurations.consumable("queryExecutableElements") {
+    if (importedQueryExecutable.isPresent) {
+        outgoing.artifact(
+            layout.file(
+                importedQueryExecutable.map {
+                    File(it).also { path ->
+                        require(path.isAbsolute) { "Imported query executable needs an absolute path" }
+                    }
+                }
+            )
+        )
+    } else {
+        outgoing.artifact(tasks.named<BuildNativeImageTask>("nativeCompile").flatMap { it.outputFile })
+    }
+}
+
+val queryNativeImageOptions =
+    tasks.register<WriteProperties>("nativeImageOptions") {
+        destinationFile.set(layout.buildDirectory.file("native-inputs/image.properties"))
+        property("mainClass", "io.github.amichne.kast.cli.publicshell.KastPublicCliMain")
+    }
+
+tasks.register<Tar>("assembleNativeImageInputs") {
+    group = "distribution"
+    description = "Packages the query client inputs for native compilation on the target host."
+    into("lib") {
+        from(tasks.named("jar"))
+        from(configurations.runtimeClasspath)
+    }
+    from(queryNativeImageOptions.flatMap { it.destinationFile })
+    from(tasks.named<CollectReachabilityMetadata>("collectReachabilityMetadata").flatMap { it.into }) {
+        into("reachability-metadata")
+    }
+    from("native-image.args", "native-image-macos.args")
+    archiveFileName.set("native-inputs.tar.gz")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    compression = Compression.GZIP
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 dependencies {
@@ -59,9 +144,9 @@ tasks.named<Test>("test") {
     }
 }
 
-val nativeTest =
-    tasks.register<Test>("nativeTest") {
-        description = "Runs native UDS CLI boundary tests."
+val udsTest =
+    tasks.register<Test>("udsTest") {
+        description = "Runs native UDS CLI boundary tests on the JVM."
         group = "verification"
         testClassesDirs = sourceSets.test.get().output.classesDirs
         classpath = sourceSets.test.get().runtimeClasspath
@@ -71,7 +156,7 @@ val nativeTest =
     }
 
 tasks.named("check") {
-    dependsOn(nativeTest)
+    dependsOn(udsTest)
 }
 
 // Product integration consumes test outputs without introducing a production module dependency.
@@ -153,15 +238,6 @@ val toolRpcStartScripts =
         dependsOn(tasks.named("jar"))
     }
 
-val publicQueryStartScripts =
-    tasks.register<CreateStartScripts>("publicQueryStartScripts") {
-        applicationName = "kast-query"
-        mainClass = "io.github.amichne.kast.cli.publicshell.KastPublicCliMain"
-        outputDir = layout.buildDirectory.dir("public-query-scripts").get().asFile
-        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
-        dependsOn(tasks.named("jar"))
-    }
-
 val daemonStartScripts =
     tasks.register<CreateStartScripts>("daemonStartScripts") {
         applicationName = "kast-daemon"
@@ -186,11 +262,6 @@ val serviceStartScripts =
 
 distributions.main {
     contents {
-        from(publicQueryStartScripts) {
-            into("bin")
-            exclude("*.bat")
-            filePermissions { unix("755") }
-        }
         from(serviceStartScripts) {
             into("share/kast/libexec")
             exclude("*.bat")

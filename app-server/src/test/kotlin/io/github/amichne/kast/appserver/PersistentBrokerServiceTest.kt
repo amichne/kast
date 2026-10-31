@@ -156,7 +156,7 @@ class PersistentBrokerServiceTest {
 
     @Test
     fun `raw Unix listener is not broker readiness`() {
-        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb-probe.")
+        val temporary = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kb-probe.")
         val socket = temporary.resolve("raw.sock")
         ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
             server.bind(UnixDomainSocketAddress.of(socket))
@@ -405,7 +405,7 @@ class PersistentBrokerServiceTest {
 
     @Test
     fun `clean homes submit exactly one service through admitted socket proof`() {
-        val temporary = Files.createTempDirectory(Path.of("/private/tmp"), "kb.")
+        val temporary = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kb.")
         val fixture = installedFixture(temporary)
         val command = resolvedCommand(fixture)
         var present = false

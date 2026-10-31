@@ -26,6 +26,9 @@ class InstallationLifecycleTest {
             )
             assertEquals(fixture.installation, directory)
             assertEquals(fixture.home.toString(), environment["HOME"])
+            assertEquals("'-Duser.home=${fixture.home}'", environment["JAVA_TOOL_OPTIONS"])
+            assertTrue("JAVA_OPTS" !in environment)
+            assertTrue("JDK_JAVA_OPTIONS" !in environment)
             assertTrue(Files.isRegularFile(fixture.root.resolve(SHUTDOWN_FENCE)))
             LifecycleChildObservation.Exited(0)
         }
@@ -34,7 +37,11 @@ class InstallationLifecycleTest {
             executeInstallationLifecycle(
                 fixture.root,
                 fixture.home,
-                emptyMap(),
+                mapOf(
+                    "JAVA_OPTS" to "-Duser.home=/foreign",
+                    "JAVA_TOOL_OPTIONS" to "-Duser.home=/foreign",
+                    "JDK_JAVA_OPTIONS" to "-Duser.home=/foreign",
+                ),
                 LifecycleOperation.STOP,
                 LifecycleExecution(child = child, processes = processes(), observe = events::add),
             )

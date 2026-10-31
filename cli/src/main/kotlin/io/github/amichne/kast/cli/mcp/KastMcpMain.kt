@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli.mcp
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.selectDirectCatalog
 import io.github.amichne.kast.cli.rpc.InvocationRecordKind
-import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
 import io.github.amichne.kast.kernel.Refinement
 import java.io.BufferedInputStream
 import java.nio.file.Path
@@ -21,7 +20,7 @@ object KastMcpMain {
         val directory = Path.of("").toAbsolutePath()
         val home = Path.of(System.getProperty("user.home"))
         val tools = KastDirectToolSession.installed(directory, home, System.getenv(), selected.catalog) ?: return
-        val record = OneShotInvocationRecord.begin(InvocationRecordKind.MCP_SESSION) ?: return
+        val record = tools.beginInvocation(InvocationRecordKind.MCP_SESSION) ?: return
         record.use {
             KastMcpServer(
                     catalog = tools.catalog,

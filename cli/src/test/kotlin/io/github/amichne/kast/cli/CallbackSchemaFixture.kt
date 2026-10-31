@@ -74,8 +74,11 @@ internal fun independentImpactSchemaWithDefinitions(serializer: KSerializer<*>):
 }
 
 /** Independent serializer selection keeps each shared proof definition available for structural comparison. */
-internal fun independentFactoredImpactSchema(serializer: KSerializer<*>): IndependentSchemaGraph {
-    val shared =
+internal fun independentFactoredImpactSchema(serializer: KSerializer<*>): IndependentSchemaGraph =
+    IndependentImpactSchemas().graph(serializer)
+
+internal class IndependentImpactSchemas {
+    private val shared =
         mapOf(
             "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
             "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
@@ -95,9 +98,9 @@ internal fun independentFactoredImpactSchema(serializer: KSerializer<*>): Indepe
             "impactReviewedCallbackParent" to ImpactReviewedCallbackParentDocument.serializer(),
             "impactReviewedDistinctStringKeys" to ImpactReviewedDistinctStringKeysDocument.serializer(),
         )
-    val references = CanonicalSchemaReferences.from(shared)
-    return IndependentSchemaGraph(
-        generatedOutputSchema(serializer, references),
-        shared.mapValues { (_, definition) -> generatedOutputSchema(definition, references) },
-    )
+    private val references = CanonicalSchemaReferences.from(shared)
+    private val definitions = shared.mapValues { (_, definition) -> generatedOutputSchema(definition, references) }
+
+    fun graph(serializer: KSerializer<*>): IndependentSchemaGraph =
+        IndependentSchemaGraph(generatedOutputSchema(serializer, references), definitions)
 }

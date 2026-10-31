@@ -21,13 +21,14 @@ class ReviewedValueSchemaReuseTest {
     fun `shared reviewed definitions preserve complete independent serializer shapes`() {
         val assertions = LocalSchemaAssertions(schema)
         assertions.assertLocalReferences()
+        val independentSchemas = IndependentImpactSchemas()
         for ((name, serializer) in
             mapOf(
                 "impactReviewedValueBinding" to ImpactReviewedValueBindingDocument.serializer(),
                 "impactReviewedValueTransfer" to ImpactReviewedValueTransferDocument.serializer(),
                 "impactReviewedValueRelationship" to ImpactReviewedValueRelationshipDocument.serializer(),
             )) {
-            assertions.assertDefinitionEquivalent(name, independentFactoredImpactSchema(serializer))
+            assertions.assertDefinitionEquivalent(name, independentSchemas.graph(serializer))
             assertTrue(referenceCount(schema, name) > 1, "The repeated schema must share $name")
         }
     }

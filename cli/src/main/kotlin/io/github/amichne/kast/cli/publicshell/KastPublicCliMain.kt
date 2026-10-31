@@ -10,7 +10,7 @@ import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
-import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
+import io.github.amichne.kast.cli.rpc.InvocationRecordKind
 import io.github.amichne.kast.cli.rpc.QueryCostPlanFailure
 import io.github.amichne.kast.cli.rpc.QueryCostPlanReply
 import io.github.amichne.kast.cli.rpc.ToolRpcFailure
@@ -63,7 +63,9 @@ internal fun preparePublicCli(
     input: InputStream,
     directory: Path,
     session: (Path, PublicToolCatalog) -> KastDirectToolSession? = { root, catalog ->
-        KastDirectToolSession.installed(root, Path.of(System.getProperty("user.home")), System.getenv(), catalog)
+        val environment = System.getenv()
+        val home = Path.of(environment["HOME"] ?: System.getProperty("user.home"))
+        KastDirectToolSession.installed(root, home, environment, catalog)
     },
     invoke: (KastDirectToolSession, AdmittedPublicTool) -> PublicPreparedOutput = ::invokeInstalledPublic,
 ): PublicPreparedOutput =
@@ -187,7 +189,7 @@ private fun readPublicArguments(input: InputStream): Refinement<JsonObject, Publ
 }
 
 private fun invokeInstalledPublic(session: KastDirectToolSession, admitted: AdmittedPublicTool): PublicPreparedOutput =
-    OneShotInvocationRecord.begin()?.use { invokePublicSession(session, admitted) }
+    session.beginInvocation(InvocationRecordKind.RPC)?.use { invokePublicSession(session, admitted) }
         ?: publicFailure(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
 
 /** Public admission finishes before this function can receive a request. No automatic replay or drain exists. */

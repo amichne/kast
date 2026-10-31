@@ -106,6 +106,7 @@ class KastCodexMainLifecycleTest {
             }
         try {
             val hook = hooks.registered.get(5, TimeUnit.SECONDS)
+            assertTrue(client.waiting.await(5, TimeUnit.SECONDS), "client never entered its wait")
             pool.submit { hook.run() }.get(8, TimeUnit.SECONDS)
 
             assertEquals(1, serverClosed.get(), "shutdown must close the server before its hook returns")
@@ -147,6 +148,7 @@ class KastCodexMainLifecycleTest {
             }
         try {
             val hook = hooks.registered.get(5, TimeUnit.SECONDS)
+            assertTrue(client.waiting.await(5, TimeUnit.SECONDS), "client never entered its wait")
             val shutdown = pool.submit { hook.run() }
             assertTrue(closing.await(5, TimeUnit.SECONDS), "hook never acquired server cleanup")
             assertFalse(running.isDone, "normal exit escaped while shutdown still owned cleanup")
@@ -229,6 +231,7 @@ class KastCodexMainLifecycleTest {
     private class UncooperativeClient : Process() {
         private val exited = CompletableFuture<Int>()
         val forced = AtomicInteger()
+        val waiting = CountDownLatch(1)
 
         override fun getOutputStream(): OutputStream = OutputStream.nullOutputStream()
 
@@ -236,7 +239,10 @@ class KastCodexMainLifecycleTest {
 
         override fun getErrorStream(): InputStream = InputStream.nullInputStream()
 
-        override fun waitFor(): Int = exited.get()
+        override fun waitFor(): Int {
+            waiting.countDown()
+            return exited.get()
+        }
 
         override fun waitFor(timeout: Long, unit: TimeUnit): Boolean =
             try {

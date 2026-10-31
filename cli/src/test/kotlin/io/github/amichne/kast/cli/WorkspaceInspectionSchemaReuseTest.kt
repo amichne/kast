@@ -207,6 +207,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
     fun assertLocalReferences() {
         val visited = mutableSetOf<String>()
         val visiting = mutableSetOf<String>()
+        val comparedImpactDefinitions = mutableSetOf<String>()
         fun visit(element: JsonElement) {
             when (element) {
                 is JsonArray -> element.forEach(::visit)
@@ -215,7 +216,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     if (name == null) element.values.forEach(::visit)
                     else if (name !in visited) {
                         if (!visiting.add(name)) {
-                            assertRecursiveDefinition(name)
+                            assertRecursiveDefinition(name, comparedImpactDefinitions)
                             return
                         }
                         visit(definitions.getValue(name))
@@ -229,7 +230,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
         visit(schema)
     }
 
-    private fun assertRecursiveDefinition(name: String) {
+    private fun assertRecursiveDefinition(name: String, comparedImpactDefinitions: MutableSet<String>) {
         assertTrue(
             name in
                 setOf(
@@ -250,9 +251,10 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
                     "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 )
-                .filterKeys { it in definitions }
+                .filterKeys { it in definitions && it !in comparedImpactDefinitions }
                 .forEach { (definition, serializer) ->
                     assertDefinitionEquivalent(definition, independentFactoredImpactSchema(serializer))
+                    comparedImpactDefinitions.add(definition)
                 }
         }
     }

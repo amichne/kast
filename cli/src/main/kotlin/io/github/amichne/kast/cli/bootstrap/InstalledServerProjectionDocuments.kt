@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
+import io.github.amichne.kast.cli.rpc.QueryCostPlanReply
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -62,6 +63,10 @@ internal fun installedPublicToolSemanticResultSchema(identity: PublicToolIdentit
 
 internal fun installedPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
     installedToolOutputSchemas.computeIfAbsent(identity) { buildInstalledPublicToolOutputSchema(it) }
+
+/** Planning returns canonical requests whose recursive output definitions must remain locally resolvable. */
+internal fun queryPlanOutputSchema(): JsonObject =
+    generatedOutputSchema(QueryCostPlanReply.serializer()).withLocalOutputDefinitions()
 
 private fun buildInstalledPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
     unionSchema(

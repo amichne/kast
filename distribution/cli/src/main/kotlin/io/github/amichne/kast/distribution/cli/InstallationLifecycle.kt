@@ -137,12 +137,7 @@ private constructor(
                 !payloadOwned(selected, current.manifest, "share/kast/libexec/kast-service")
         )
             return LifecycleEffect.Rejected(LifecycleFailure.OWNERSHIP_UNPROVEN)
-        val selectedEnvironment =
-            environment.filterKeys { it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR") } +
-                mapOf(
-                    "HOME" to home.toString(),
-                    "KAST_CONFIGURATION_FILE" to selected.resolve("config/environment").toString(),
-                )
+        val selectedEnvironment = installationLifecycleEnvironment(home, selected, environment)
         return when (
             val result =
                 execution.child.execute(listOf(executable.toString(), action.command), selected, selectedEnvironment)
@@ -249,6 +244,20 @@ internal fun payloadOwned(installation: Path, manifest: BundledManifest, relativ
         path.toRealPath() == path &&
         entry.sha256 == "sha256:${sha256(path)}"
 }
+
+/** Only the selected lifecycle home crosses into the private JVM's system properties. */
+internal fun installationLifecycleEnvironment(
+    home: Path,
+    installation: Path,
+    environment: Map<String, String>,
+): Map<String, String> =
+    environment.filterKeys { it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR") } +
+        mapOf(
+            "HOME" to home.toString(),
+            "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
+            // JVM option quoting, not shell evaluation: preserve one property even for quotes or newlines.
+            "JAVA_TOOL_OPTIONS" to "'-Duser.home=${home.toString().replace("'", "'\"'\"'")}'",
+        )
 
 private enum class LifecycleServiceAction(val command: String) {
     DISABLE("disable")

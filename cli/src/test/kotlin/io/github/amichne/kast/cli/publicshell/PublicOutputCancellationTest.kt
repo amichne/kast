@@ -2,149 +2,77 @@ package io.github.amichne.kast.cli.publicshell
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.Callable
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.CleanupMode
 import org.junit.jupiter.api.io.TempDir
 
-/** Real stdout backpressure exercises the production writer without a semantic host. */
+/** Actual native writer with an unread pipe, established syscall evidence and exact public-child ownership. */
+@Tag("public-launcher")
 class PublicOutputCancellationTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
 
     @Test
-    fun `SIGINT settles a proven blocked metadata writer without downstream reads`() {
-        assertDrainedControl()
-        val child = startMetadata("blocked")
-        try {
-            awaitBlockedWrite(child)
-            sendInterrupt(child)
-            val settledWithoutDrain = child.waitFor(5, TimeUnit.SECONDS)
-            if (!settledWithoutDrain) {
-                val afterSignal = threadDump(child, "after-signal")
-                assertTrue(isBlockedWriter(afterSignal), "Signal fixture lost its blocked-write precondition")
-                val releasedBytes = drainChild(child).size
-                assertEquals(130, child.exitValue(), "Reader release must expose the accepted SIGINT status")
-                Files.writeString(temporary.resolve("reader-release.txt"), "exit=130\nbytes=$releasedBytes\n")
+    fun `both signals settle the proven native blocked writer without downstream reads`() {
+        NativePublicFixture(temporary).use { fixture ->
+            assertDrainedControl(fixture)
+            val complete = Files.readAllBytes(temporary.resolve("control.stdout"))
+            for ((signal, exit) in listOf("INT" to 130, "TERM" to 143)) {
+                val label = "blocked-$signal"
+                val parent = fixture.start(label, metadataArguments(), captureOutput = false)
+                parent.outputStream.close()
+                val child = fixture.awaitQueryChild(parent)
+                // No stdout consumer has run. Sampling must observe this worker inside write, not just join.
+                awaitNativePipeStack(child, temporary, "write")
+                signalNativeProcess(parent, signal)
+                fixture.assertExit(parent, exit, label)
+                fixture.assertReaped(child)
+                // Only after both exits may we inspect the abandoned pipe prefix.
+                val prefix = parent.inputStream.readAllBytes()
+                Files.write(temporary.resolve("$label.prefix"), prefix)
+                assertTrue(prefix.isNotEmpty(), "No bytes reached the blocked stdout pipe")
+                assertTrue(prefix.size < complete.size, "Blocked output unexpectedly completed")
+                assertTrue(
+                    complete.copyOf(prefix.size).contentEquals(prefix),
+                    "Output was not the exact control prefix",
+                )
             }
-            assertTrue(
-                settledWithoutDrain,
-                "SIGINT left the proven native write and worker join blocked. Reader release produced exit130. " +
-                    "Evidence: $temporary",
-            )
-            assertEquals(130, child.exitValue())
-        } finally {
-            stopOwnedChild(child)
         }
     }
 
     @Test
-    fun `closed stdout consumer selects IO failure in the real metadata child`() {
-        val child = startMetadata("closed-consumer")
-        try {
-            child.inputStream.close()
-            assertTrue(child.waitFor(20, TimeUnit.SECONDS), "Closed-consumer child did not settle")
-            assertEquals(5, child.exitValue())
-        } finally {
-            stopOwnedChild(child)
+    fun `closing the proven blocked native stdout pipe selects IO failure and reaps the child`() {
+        NativePublicFixture(temporary).use { fixture ->
+            val parent = fixture.start("closed-consumer", metadataArguments(), captureOutput = false)
+            parent.outputStream.close()
+            val child = fixture.awaitQueryChild(parent)
+            awaitNativePipeStack(child, temporary, "write")
+            parent.inputStream.close()
+            fixture.assertExit(parent, 5, "closed-consumer")
+            fixture.assertReaped(child)
         }
     }
 
-    private fun assertDrainedControl() {
-        val child = startMetadata("control")
-        try {
-            val output = drainChild(child)
-            assertEquals(0, child.exitValue(), "Unsignalled metadata control failed")
-            assertTrue(output.isNotEmpty(), "Metadata control emitted no output")
-            Files.writeString(temporary.resolve("control.txt"), "exit=0\nbytes=${output.size}\n")
-        } finally {
-            stopOwnedChild(child)
-        }
+    private fun assertDrainedControl(fixture: NativePublicFixture) {
+        val parent = fixture.start("control", metadataArguments())
+        parent.outputStream.close()
+        fixture.assertExit(parent, 0, "control")
+        val bytes = Files.readAllBytes(temporary.resolve("control.stdout"))
+        val text = bytes.toString(Charsets.UTF_8)
+        assertTrue(bytes.size > 1_048_576, "Output control no longer exceeds a pipe's capacity")
+        assertEquals(1, text.count { it == '\n' })
+        assertTrue(text.endsWith("\n"))
+        assertEquals(
+            "kast.cli.describe.v1",
+            Json.parseToJsonElement(text).jsonObject.getValue("schema").jsonPrimitive.content,
+        )
+        Files.writeString(temporary.resolve("control.txt"), "exit=0\nbytes=${bytes.size}\n")
     }
 
-    private fun startMetadata(label: String): Process =
-        ProcessBuilder(
-                Path.of(System.getProperty("java.home"), "bin/java").toString(),
-                "-cp",
-                System.getProperty("java.class.path"),
-                KastPublicCliMain::class.java.name,
-                "describe",
-                "query",
-                "--section",
-                "output",
-            )
-            .directory(temporary.toFile())
-            .redirectError(temporary.resolve("$label.stderr").toFile())
-            .apply {
-                environment().clear()
-                environment()["HOME"] = temporary.toString()
-            }
-            .start()
-            .also { it.outputStream.close() }
-
-    private fun awaitBlockedWrite(child: Process) {
-        repeat(100) { index ->
-            assertTrue(child.isAlive, "Metadata child ended before the blocked-write precondition")
-            if (isBlockedWriter(threadDump(child, "before-signal-$index"))) return
-        }
-        error("Fixture could not establish the native-write and worker-join precondition: $temporary")
-    }
-
-    private fun isBlockedWriter(dump: String): Boolean {
-        val worker = dump.substringAfter("\"kast-public-query\"", "").substringBefore("\n\n")
-        val nativeWrite = worker.contains("writeBytes") || worker.contains("write0")
-        return nativeWrite &&
-            worker.contains("Native Method") &&
-            worker.contains("PublicInvocationOwner.publish") &&
-            dump.contains("PublicCliInvocationKt.joinPublicWorker")
-    }
-
-    private fun threadDump(child: Process, label: String): String {
-        val path = temporary.resolve("$label.txt")
-        val command =
-            ProcessBuilder(
-                    Path.of(System.getProperty("java.home"), "bin/jcmd").toString(),
-                    child.pid().toString(),
-                    "Thread.print",
-                )
-                .redirectErrorStream(true)
-                .redirectOutput(path.toFile())
-                .start()
-        try {
-            assertTrue(command.waitFor(15, TimeUnit.SECONDS), "jcmd fixture did not settle")
-            assertEquals(0, command.exitValue(), Files.readString(path))
-            return Files.readString(path)
-        } finally {
-            stopOwnedChild(command)
-        }
-    }
-
-    private fun sendInterrupt(child: Process) {
-        val command = ProcessBuilder("/bin/kill", "-s", "INT", child.pid().toString()).start()
-        try {
-            assertTrue(command.waitFor(5, TimeUnit.SECONDS), "Signal fixture did not settle")
-            assertEquals(0, command.exitValue())
-        } finally {
-            stopOwnedChild(command)
-        }
-    }
-
-    private fun drainChild(child: Process): ByteArray {
-        val executor = Executors.newSingleThreadExecutor()
-        try {
-            val bytes = executor.submit(Callable { child.inputStream.readAllBytes() })
-            assertTrue(child.waitFor(20, TimeUnit.SECONDS), "Drained metadata child did not settle")
-            return bytes.get(5, TimeUnit.SECONDS)
-        } finally {
-            stopOwnedChild(child)
-            executor.shutdownNow()
-        }
-    }
-
-    private fun stopOwnedChild(child: Process) {
-        if (child.isAlive) child.destroyForcibly().waitFor()
-    }
+    private fun metadataArguments(): List<String> = listOf("describe", "query", "--section", "output")
 }

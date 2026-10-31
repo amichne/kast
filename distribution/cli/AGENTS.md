@@ -4,9 +4,10 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and Codex plugin installation."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-10-29T22:15:41Z"
-source_revision: 7135d0f2a847a28b919bdba84bbbc8253f8d885a
+timestamp: "2026-10-30T16:46:35Z"
+source_revision: 8b42ef5bdbb0608f10e6b91e925f41c965321026
 code_sources:
+  - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
@@ -58,6 +59,16 @@ The managed root contains one ordinary `installation` directory. Its stable `bin
 The connection owner may migrate an exactly recorded legacy MCP command only during a proven `PAYLOAD_COMMITTED` legacy replacement transaction. Preserve the canonical replacement receipt, old launcher digest, filesystem identities, selector target, and observed Codex command proof. Restore the complete host configuration and management receipt if the connection transaction fails; the installer seals replacement recovery.
 
 Run `./gradlew :distribution:cli:test :distribution:cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
+
+## Native compilation inputs
+
+`assembleNativeImageInputs` packages JVM libraries and the shared Native Image arguments for the target host.
+`native-image.args` owns portable arguments. `native-image-macos.args` owns Mac linker arguments.
+`collectReachabilityMetadata` supplies resolved metadata for each input archive.
+Keep module directories during transfer and raw native compilation.
+Routine CI admits both transferred executables before Linux assembly.
+It supplies `kastNativeExecutable` and `kastQueryNativeExecutable` together.
+Ordinary local builds keep `nativeCompile` as the executable producer.
 
 ## Navigation
 

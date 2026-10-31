@@ -89,9 +89,7 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `public installed launcher reports unavailable selected Java as structured runtime failure`(
-        @TempDir temporary: Path
-    ) {
+    fun `public installed launcher executes its payload without selected Java`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("home/.local/share/kast")
         val request =
@@ -109,12 +107,12 @@ class InstallationWorkflowTest {
         val child = ProcessBuilder(launcher.toString(), "describe", "query_symbols").start()
         val output = child.inputReader().readText()
         val error = child.errorReader().readText()
-        assertEquals(4, child.waitFor(), error)
-        val document = Json.parseToJsonElement(output).jsonObject
-        assertEquals(setOf("type", "failure"), document.keys)
-        assertEquals("rejected", document.getValue("type").jsonPrimitive.content)
-        assertEquals("CATALOG_UNAVAILABLE", document.getValue("failure").jsonPrimitive.content)
-        assertEquals(1, output.count { it == '\n' })
+        assertEquals(0, child.waitFor(), error)
+        assertEquals("", output)
+        assertTrue(!Files.readString(launcher).contains("kast_java_home"))
+        assertTrue(
+            Files.readString(installation.resolve("installation/bin/kast-mcp-complete")).contains("kast_java_home")
+        )
     }
 
     @Test

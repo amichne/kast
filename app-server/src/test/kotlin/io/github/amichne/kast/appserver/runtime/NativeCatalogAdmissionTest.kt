@@ -33,7 +33,7 @@ class NativeCatalogAdmissionTest {
                     as Refinement.Refined)
                 .value
         val home = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
-        val socket = Path.of("/private/tmp/kast-catalog-${UUID.randomUUID()}.sock")
+        val socket = Path.of("/tmp").toRealPath().resolve("kast-catalog-${UUID.randomUUID()}.sock")
         val started =
             ManagedCodexUpstream.start(
                 ManagedCodexUpstreamOptions(

@@ -284,7 +284,8 @@ internal class ForceDaemonRetirement(
     private fun incarnationRetired(prior: LifecycleProcessSnapshot, observed: LifecycleProcessObservation): Boolean =
         when (observed) {
             LifecycleProcessObservation.Absent -> true
-            LifecycleProcessObservation.Unavailable -> false
+            LifecycleProcessObservation.Unavailable,
+            is LifecycleProcessObservation.IdentityOnly -> false
             is LifecycleProcessObservation.Present ->
                 observed.snapshot.pid == prior.pid && observed.snapshot.startEpochMillis != prior.startEpochMillis
         }

@@ -132,7 +132,8 @@ internal object NativeResetProcessRetirement {
         for (child in children) {
             when (val observed = NativeLifecycleProcesses.observe(child.pid())) {
                 LifecycleProcessObservation.Absent -> Unit
-                LifecycleProcessObservation.Unavailable -> return ResetProcessTable.Unavailable
+                LifecycleProcessObservation.Unavailable,
+                is LifecycleProcessObservation.IdentityOnly -> return ResetProcessTable.Unavailable
                 is LifecycleProcessObservation.Present -> {
                     when (val selection = ResetScopedProcess.select(observed.snapshot, root)) {
                         ResetProcessSelection.Unrelated -> Unit
@@ -159,7 +160,8 @@ internal object NativeResetProcessRetirement {
                 return when (admission.observation) {
                     LifecycleProcessObservation.Absent,
                     is LifecycleProcessObservation.Present -> NativeTermination.RETIRED
-                    LifecycleProcessObservation.Unavailable -> NativeTermination.REJECTED
+                    LifecycleProcessObservation.Unavailable,
+                    is LifecycleProcessObservation.IdentityOnly -> NativeTermination.REJECTED
                 }
             }
         }
@@ -191,7 +193,9 @@ private sealed interface NativeResetAdmission {
         fun admit(prior: LifecycleProcessSnapshot, current: LifecycleProcessObservation): NativeResetAdmission =
             when (current) {
                 LifecycleProcessObservation.Absent -> Finished(current, ResetProcessResult.RETIRED)
-                LifecycleProcessObservation.Unavailable -> Finished(current, ResetProcessResult.OBSERVATION_REJECTED)
+                LifecycleProcessObservation.Unavailable,
+                is LifecycleProcessObservation.IdentityOnly ->
+                    Finished(current, ResetProcessResult.OBSERVATION_REJECTED)
                 is LifecycleProcessObservation.Present ->
                     when {
                         current.snapshot.pid != prior.pid ->
