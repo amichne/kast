@@ -8,6 +8,28 @@ import org.junit.jupiter.api.Test
 
 class ManagedControlCliTest {
     @Test
+    fun `configuration failures preserve the finite owner stage in the child response`() {
+        for ((reason, expected) in
+            listOf(
+                InstallationFailure.CONFIGURATION_SOURCE_REJECTED to "CONFIGURATION_SOURCE_REJECTED",
+                InstallationFailure.CONFIGURATION_RESOLUTION_REJECTED to "CONFIGURATION_RESOLUTION_REJECTED",
+                InstallationFailure.CONFIGURATION_OWNER_REJECTED to "CONFIGURATION_OWNER_REJECTED",
+            )) {
+            val document =
+                installationManifestJson
+                    .parseToJsonElement(
+                        installationManifestJson.encodeToString<ManagedControlOutcome>(
+                            ManagedControlOutcome.Rejected(reason)
+                        )
+                    )
+                    .jsonObject
+            assertEquals(setOf("type", "reason"), document.keys)
+            assertEquals("REJECTED", document.getValue("type").jsonPrimitive.content)
+            assertEquals(expected, document.getValue("reason").jsonPrimitive.content)
+        }
+    }
+
+    @Test
     fun `component states keep their discriminators and finite failure reasons`() {
         val transaction = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
         val cases =

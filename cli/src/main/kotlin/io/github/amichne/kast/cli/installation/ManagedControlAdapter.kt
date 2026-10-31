@@ -77,7 +77,17 @@ internal object ManagedControlAdapter {
         val configuration =
             when (val selected = observeInstallationConfigurationSelection(plan, prior)) {
                 is Refinement.Refined -> selected.value
-                is Refinement.Rejected -> return rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                is Refinement.Rejected ->
+                    return rejected(
+                        when (selected.failure) {
+                            InstallationConfigurationFailure.SOURCE_REJECTED ->
+                                InstallationFailure.CONFIGURATION_SOURCE_REJECTED
+                            InstallationConfigurationFailure.RESOLUTION_REJECTED ->
+                                InstallationFailure.CONFIGURATION_RESOLUTION_REJECTED
+                            InstallationConfigurationFailure.OWNER_REJECTED ->
+                                InstallationFailure.CONFIGURATION_OWNER_REJECTED
+                        }
+                    )
             }
         val staged =
             when (val result = InstallationWorkflow.stage(plan, configuration)) {
