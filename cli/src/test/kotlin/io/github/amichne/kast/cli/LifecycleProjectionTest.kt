@@ -8,6 +8,10 @@ import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCommand
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeFailure
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeStage
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
@@ -155,6 +159,35 @@ class LifecycleProjectionTest {
         val invalid = valid.replace("\"pid\":42", "\"pid\":null")
         assertNotEquals(valid, invalid)
         assertTrue(validator.validate(invalid, InputFormat.JSON).isNotEmpty())
+    }
+
+    @Test
+    fun `shared exchange failure schema preserves command stage and closed cause`() {
+        val schema =
+            installedServerOutputSchema(io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_LIFECYCLE)
+        assertTrue("ideLifecycleExchangeFailure" in schema.getValue("\$defs").jsonObject)
+        val validator =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(schema.toString())
+        val blocked =
+            IdeLifecycleResult.Blocked(
+                IdeLifecycleFailure.HOST_UNAVAILABLE,
+                exchange =
+                    IdeLifecycleExchangeFailure(
+                        IdeLifecycleExchangeCommand.SETTLE_HOST_FOR_RELOAD,
+                        IdeLifecycleExchangeStage.READ_BODY,
+                        IdeLifecycleExchangeCause.TRUNCATED_RESPONSE,
+                        elapsedMillis = 10,
+                        limitMillis = 100,
+                    ),
+            )
+        for (encoded in listOf(json.encodeToString(Completed(blocked)), json.encodeToString(Rejected(blocked)))) {
+            assertTrue(validator.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
+            for (field in listOf("SETTLE_HOST_FOR_RELOAD", "READ_BODY", "TRUNCATED_RESPONSE")) {
+                val invalid = encoded.replace(field, "UNKNOWN_VALUE")
+                assertNotEquals(encoded, invalid)
+                assertTrue(validator.validate(invalid, InputFormat.JSON).isNotEmpty(), invalid)
+            }
+        }
     }
 
     private fun loadedIdentity() =

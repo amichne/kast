@@ -151,6 +151,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity.serializer()),
             "ideLifecycleFailure" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.serializer()),
+            "ideLifecycleExchangeFailure" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeFailure.serializer()
+                ),
             "ideProjectTarget" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeProjectTarget.serializer()),
             "workspaceInspectionObstruction" to
