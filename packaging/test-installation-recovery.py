@@ -1,4 +1,6 @@
 """Recovery uses only private fixtures; no real installations or processes."""
+import contextlib
+import io
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import json
@@ -1222,6 +1224,58 @@ class ManagedControlRecoveryTest(unittest.TestCase):
         self.assertFalse(self.transaction.exists())
         self.assertFalse((self.outer / 'shutdown.json').exists())
 
+    def assert_reservation_abort_keeps_prior(self, kind):
+        r = self.recovery
+        receipt = self.prepare(prior_kind=kind, committed=False)
+        (self.transaction / 'selection.json').unlink()
+        shutil.rmtree(self.transaction / 'host-preimage')
+        receipt = r.replace(receipt, stage=r.ReplacementStage.PREPARED, composition=None)
+        r.save(self.transaction / 'receipt.json', receipt)
+        prior = Path(receipt.previous.installation)
+        witness = r.managed_tree(prior)
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.abort_managed_reservation(self.root, receipt))
+        self.assertEqual(witness, r.managed_tree(prior))
+        self.assertFalse(self.stage.exists())
+        self.assertFalse(self.transaction.exists())
+
+    def test_reservation_abort_preserves_the_current_physical_installation(self):
+        self.assert_reservation_abort_keeps_prior('physical')
+
+    def test_reservation_abort_preserves_the_selected_legacy_installation(self):
+        self.assert_reservation_abort_keeps_prior('legacy')
+
+    def test_terminal_publication_preserves_a_foreign_destination(self):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        foreign = self.transaction.with_name('completed-replacement-' + receipt.reservation.transaction)
+        foreign.mkdir()
+        (foreign / 'foreign').write_text('preserve')
+        with self.assertRaises(r.Rejected):
+            r.finalize_managed_journal(self.root, receipt)
+        self.assertEqual('preserve', (foreign / 'foreign').read_text())
+        self.assertEqual(receipt, r.load(self.transaction / 'receipt.json', r.Replacement))
+
+    def test_terminal_directory_removal_fault_never_leaves_an_empty_pending_journal(self):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        rmdir = os.rmdir
+        calls = []
+        def interrupted(path, *arguments, **options):
+            target = Path(path)
+            if target == self.transaction or target.name.startswith('completed-replacement-'):
+                calls.append(target)
+                raise OSError('controlled terminal directory removal failure')
+            return rmdir(path, *arguments, **options)
+        with patch.object(os, 'rmdir', interrupted):
+            try:
+                r.finalize_managed_journal(self.root, receipt)
+            except r.Rejected:
+                pass
+        self.assertEqual(1, len(calls))
+        if self.transaction.exists():
+            self.assertTrue((self.transaction / 'receipt.json').is_file(),
+                            'a fresh process needs durable proof while the pending path exists')
+
     def assert_finalization_interruption(self, target_name, after):
         r = self.recovery
         receipt = self.finalizable(prior_kind='none', restored=True)
@@ -1251,11 +1305,46 @@ class ManagedControlRecoveryTest(unittest.TestCase):
     def test_finalization_retries_after_fence_removal_with_binding_still_durable(self):
         self.assert_finalization_interruption('fence', True)
 
-    def test_finalization_retries_before_receipt_removal(self):
-        self.assert_finalization_interruption('receipt', False)
+    def test_finalization_retry_reads_durable_receipt_before_terminal_publication(self):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        move = r.managed_move
+        def interrupted(source, destination, witness):
+            if source == self.transaction:
+                raise OSError('controlled terminal publication refusal')
+            return move(source, destination, witness)
+        with patch.object(r, 'managed_move', interrupted):
+            with self.assertRaises(r.Rejected):
+                r.finalize_managed_journal(self.root, receipt)
+        fresh = r.load(self.transaction / 'receipt.json', r.Replacement)
+        self.assertEqual(receipt, fresh)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.finalize_managed_journal(self.root, fresh))
+        self.assertFalse(self.transaction.exists())
 
-    def test_finalization_retries_after_receipt_removal_with_captured_terminal_proof(self):
-        self.assert_finalization_interruption('receipt', True)
+    def assert_closed_receipt_interruption(self, after):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        unlink = os.unlink
+        def interrupted(path, *arguments, **options):
+            if path == 'receipt.json':
+                if after:
+                    unlink(path, *arguments, **options)
+                raise OSError('controlled closed receipt cleanup refusal')
+            return unlink(path, *arguments, **options)
+        output = io.StringIO()
+        with patch.object(os, 'unlink', interrupted), contextlib.redirect_stderr(output):
+            self.assertEqual(r.ManagedControlResult.SEALED, r.finalize_managed_journal(self.root, receipt))
+        self.assertFalse(self.transaction.exists())
+        self.assertFalse((self.outer / 'shutdown.json').exists())
+        self.assertFalse(self.root.exists())
+        self.assertEqual({'event': 'kast_managed_storage_cleanup', 'outcome': 'FAILED',
+                          'reason': r.Failure.FILESYSTEM.value}, json.loads(output.getvalue()))
+
+    def test_finalization_closes_pending_path_before_receipt_cleanup(self):
+        self.assert_closed_receipt_interruption(False)
+
+    def test_finalization_closes_pending_path_before_empty_directory_cleanup(self):
+        self.assert_closed_receipt_interruption(True)
 
     def test_activated_legacy_cleanup_uses_files_only_and_preserves_host_preimages(self):
         r = self.recovery

@@ -65,6 +65,121 @@ class CoordinatorTest(unittest.TestCase):
         )
         self.identity = journal.BuildIdentity("v2.0.0", "2.0.0", "a" * 40, "b" * 40)
 
+    def reservation_only(self) -> tuple[Path, Path]:
+        stage = self.root / ".install-selected"
+        (stage / "bin").mkdir(parents=True)
+        command = stage / "bin/kast-complete"
+        _ = command.write_bytes(b"selected")
+        command.chmod(0o644)
+        installation = self.root / "installation"
+        manifest = ManifestFixture(
+            str(installation),
+            str(installation / "state"),
+            str(installation / "config/environment"),
+            str(installation / "config/workspaces.json"),
+            (
+                PayloadFileFixture(
+                    "bin/kast-complete", "sha256:" + install.release.file_digest(command), 420
+                ),
+            ),
+            "sha256:" + "b" * 64,
+            "sha256:" + "b" * 64,
+            "2.0.0",
+        )
+        _ = (stage / "installation.json").write_bytes(install.encoded(manifest))
+        slot = self.root / "recovery/replacement"
+        slot.mkdir(parents=True)
+        record = journal.Replacement(
+            1,
+            journal.ReplacementStage.PREPARED,
+            str(installation),
+            journal.Identity.observe(stage),
+            journal.NoPrevious("NONE"),
+            journal.ManagedReservation(
+                "12345678-1234-1234-1234-123456789abc",
+                str(stage),
+                "b" * 64,
+                "2.0.0",
+                install.release.file_digest(stage / "installation.json"),
+            ),
+        )
+        install.RECOVERY.save(slot / "receipt.json", record)
+        return stage, slot
+
+    def test_recorded_reservation_without_composition_aborts_before_release_or_host_access(
+        self,
+    ) -> None:
+        stage, slot = self.reservation_only()
+
+        def unexpected(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            self.fail("reservation recovery must not start a process")
+
+        with patch.object(
+            install.release,
+            "HttpReleaseSource",
+            side_effect=AssertionError("unexpected release access"),
+        ):
+            outcome = install.recover_recorded(self.root, self.home, False, runner=unexpected)
+        self.assertEqual(
+            contract.Rejected(contract.Stage.RECOVERY, contract.Failure.CANCELLED), outcome
+        )
+        self.assertFalse(slot.exists())
+        self.assertFalse(stage.exists())
+        self.assertFalse((self.root / "installation").exists())
+
+    def test_recorded_reservation_preserves_unrecorded_host_preparation(self) -> None:
+        stage, slot = self.reservation_only()
+        foreign = slot / "host-candidate"
+        _ = foreign.write_bytes(b"unrecorded Host data")
+        before = (slot / "receipt.json").read_bytes()
+        outcome = install.recover_recorded(self.root, self.home, False)
+        self.assertIsInstance(outcome, contract.RecoveryRequired)
+        self.assertEqual(before, (slot / "receipt.json").read_bytes())
+        self.assertEqual(b"unrecorded Host data", foreign.read_bytes())
+        self.assertTrue(stage.is_dir())
+
+    def test_reservation_recovery_resumes_after_the_staged_control_move(self) -> None:
+        stage, slot = self.reservation_only()
+        move = install.RECOVERY.managed_move
+
+        def interrupted(source: Path, destination: Path, witness: object) -> None:
+            move(source, destination, witness)
+            if source == stage:
+                raise OSError("interrupted after the durable candidate move")
+
+        with patch.object(install.RECOVERY, "managed_move", interrupted):
+            outcome = install.recover_recorded(self.root, self.home, False)
+        self.assertIsInstance(outcome, contract.RecoveryRequired)
+        self.assertTrue((slot / "receipt.json").is_file())
+        self.assertTrue((slot / "aborted-control").is_dir())
+        self.assertFalse(stage.exists())
+        self.assertEqual(
+            contract.Rejected(contract.Stage.RECOVERY, contract.Failure.CANCELLED),
+            install.recover_recorded(self.root, self.home, False),
+        )
+        self.assertFalse(slot.exists())
+
+    def test_reservation_recovery_preserves_changed_candidate_bytes(self) -> None:
+        stage, slot = self.reservation_only()
+        command = stage / "bin/kast-complete"
+        _ = command.write_bytes(b"changed candidate")
+        outcome = install.recover_recorded(self.root, self.home, False)
+        self.assertIsInstance(outcome, contract.RecoveryRequired)
+        self.assertEqual(b"changed candidate", command.read_bytes())
+        self.assertTrue((slot / "receipt.json").is_file())
+
+    def test_reservation_recovery_preserves_an_existing_retirement_fence(self) -> None:
+        stage, slot = self.reservation_only()
+        fence = self.root / "shutdown.json"
+        _ = fence.write_bytes(b"preserve the retirement fence")
+        outcome = install.recover_recorded(self.root, self.home, False)
+        self.assertIsInstance(outcome, contract.RecoveryRequired)
+        self.assertEqual(b"preserve the retirement fence", fence.read_bytes())
+        self.assertTrue(stage.is_dir())
+        self.assertTrue((slot / "receipt.json").is_file())
+
     def test_running_legacy_readmission_reaches_restart_required_without_effects(self) -> None:
         process = contract.ProcessIdentity(123, 456, str(self.idea.home / "MacOS/idea"))
         compatibility = install.release.HostedContract(

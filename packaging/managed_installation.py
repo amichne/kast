@@ -2319,6 +2319,11 @@ def recover_recorded(
             record = journal_types_record(
                 RECOVERY.load(root / "recovery/replacement/receipt.json", RECOVERY.Replacement)
             )
+            if record.composition is None:
+                if record.reservation is not None:
+                    transaction = record.reservation.transaction
+                RECOVERY.abort_managed_reservation(root / "installation", record)
+                return contract.Rejected(contract.Stage.RECOVERY, contract.Failure.CANCELLED)
             reservation, core = journal_types.managed_parts(record)
             transaction = reservation.transaction
             idea = SelectedIdea(

@@ -1137,6 +1137,92 @@ def managed_terminal_control(root, receipt, transaction):
         raise Rejected(Failure.RECEIPT)
 
 
+@dataclass(frozen=True)
+class ManagedStorageCleanupObservation:
+    reason: Failure
+    event: typing.Literal['kast_managed_storage_cleanup'] = 'kast_managed_storage_cleanup'
+    outcome: typing.Literal['FAILED'] = 'FAILED'
+
+
+def admit_managed_transaction(receipt: Replacement) -> uuid.UUID:
+    reservation = receipt.reservation
+    if reservation is None:
+        raise Rejected(Failure.RECEIPT)
+    try:
+        transaction = uuid.UUID(reservation.transaction)
+    except ValueError:
+        raise Rejected(Failure.RECEIPT) from None
+    if str(transaction) != reservation.transaction:
+        raise Rejected(Failure.RECEIPT)
+    return transaction
+
+
+def close_managed_journal(transaction: Path, receipt: Replacement, transaction_id: uuid.UUID) -> None:
+    """Publish terminal completion before deleting its sole durable receipt."""
+    if receipt.reservation is None or str(transaction_id) != receipt.reservation.transaction:
+        raise Rejected(Failure.RECEIPT)
+    if load(transaction / 'receipt.json', Replacement) != receipt:
+        raise Rejected(Failure.RECEIPT)
+    completed = transaction.with_name('completed-replacement-' + str(transaction_id))
+    witness = managed_tree(transaction)
+    if load(transaction / 'receipt.json', Replacement) != receipt:
+        raise Rejected(Failure.RECEIPT)
+    managed_move(transaction, completed, witness)
+    # Closed storage does not block admission of the next transaction.
+    try:
+        if not shutil.rmtree.avoids_symlink_attacks or managed_tree(completed) != witness:
+            raise Rejected(Failure.OWNERSHIP)
+        shutil.rmtree(completed)
+        sync(completed.parent)
+    except (OSError, Rejected) as problem:
+        reason = problem.failure if isinstance(problem, Rejected) else Failure.FILESYSTEM
+        print(json.dumps(asdict(ManagedStorageCleanupObservation(reason))), file=sys.stderr)
+
+
+def abort_managed_reservation(root: Path, receipt: Replacement) -> ManagedControlResult:
+    """Recover only a proven preparation that never acquired a Host or retirement fence."""
+    try:
+        with managed_control_lock(root.parent):
+            outer = physical(root.parent)
+            transaction = physical(outer / 'recovery/replacement')
+            reservation = receipt.reservation
+            if (root != outer / 'installation' or receipt.schemaVersion != 1 or
+                    receipt.installation != str(root) or receipt.stage != ReplacementStage.PREPARED or
+                    receipt.composition is not None or reservation is None or
+                    load(transaction / 'receipt.json', Replacement) != receipt or
+                    os.path.lexists(outer / 'shutdown.json')):
+                raise Rejected(Failure.RECEIPT)
+            if {path.name for path in transaction.iterdir()} - {'receipt.json', 'aborted-control'}:
+                raise Rejected(Failure.EVIDENCE)
+            staged = Path(reservation.staged)
+            if (staged.parent != outer or not staged.name.startswith('.install-') or
+                    not re_full_digest(reservation.controlSha256) or not re_full_digest(reservation.manifestSha256)):
+                raise Rejected(Failure.RECEIPT)
+            transaction_id = admit_managed_transaction(receipt)
+            prior = managed_previous(root, transaction, receipt.previous)
+            if not isinstance(receipt.previous, PhysicalPrevious) and os.path.lexists(root):
+                raise Rejected(Failure.OWNERSHIP)
+            if isinstance(receipt.previous, NoPrevious):
+                if os.path.lexists(root) or os.path.lexists(outer / 'current') or os.path.lexists(outer / 'recovery/installation'):
+                    raise Rejected(Failure.OWNERSHIP)
+            elif prior is not None:
+                managed_recovery(prior[2], prior[1], receipt.previous.identity)
+            retained = transaction / 'aborted-control'
+            candidates = [path for path in (staged, retained) if os.path.lexists(path)]
+            if len(candidates) != 1:
+                raise Rejected(Failure.OWNERSHIP)
+            candidate = candidates[0]
+            witness = managed_payload(candidate, root, receipt.installationIdentity, reservation)
+            if candidate == staged:
+                managed_move(staged, retained, witness)
+            if managed_previous(root, transaction, receipt.previous) != prior:
+                raise Rejected(Failure.OWNERSHIP)
+            close_managed_journal(transaction, receipt, transaction_id)
+            return ManagedControlResult.RESTORED
+    except (OSError, ValueError, UnicodeError):
+        raise Rejected(Failure.FILESYSTEM) from None
+
+
 def finalize_managed_journal(root, receipt):
     """The caller proves terminal files and runtime again before this final, interruption-safe cleanup."""
     try:
@@ -1151,6 +1237,7 @@ def finalize_managed_journal(root, receipt):
                     sync(transaction.parent)
                 return ManagedControlResult.SEALED
             transaction, _ = managed_control_record(root, receipt, {'RESTORED', 'ACTIVATION_PROVEN'})
+            transaction_id = admit_managed_transaction(receipt)
             composition = receipt.composition
             if composition.binding is None:
                 raise Rejected(Failure.RECEIPT)
@@ -1205,10 +1292,7 @@ def finalize_managed_journal(root, receipt):
             record = transaction / 'receipt.json'
             if load(record, Replacement) != receipt or {path.name for path in transaction.iterdir()} != {'receipt.json'}:
                 raise Rejected(Failure.RECEIPT)
-            record.unlink()
-            sync(transaction)
-            transaction.rmdir()
-            sync(transaction.parent)
+            close_managed_journal(transaction, receipt, transaction_id)
             return ManagedControlResult.SEALED
     except (OSError, ValueError, UnicodeError):
         raise Rejected(Failure.FILESYSTEM) from None
