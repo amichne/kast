@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:544ff4a70dcbe7ea89db657740c75b48c7124d4d41a5f87ffdd79d1d3dcae66a",
+  "pageVersion": "sha256:91eb043cc6327bfb3bcb8b9f62e5eed32034f34b3baf08bebffbc658ad20ed73",
   "claims": [
     {
       "id": "claim_ed14f8768fe44ece9daec12e43601ae9",
@@ -28,15 +28,15 @@
       "evidence": [
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignatureEncoding.kt",
-          "version": "repo-file-v1:sha256:534ebf467a267c706c18b134887d25a3223b44b7c5fbb293a60bf2dadff8a05a"
+          "version": "repo-file-v1:sha256:70ec6038a338885c0bfe9374fc0cfa5c21f8a4c6f935522c920becff94510de7"
         },
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt",
-          "version": "repo-file-v1:sha256:ea84304e342b3f941d442ecb06aa0ed932ec3c0c4eea540825c891c8046eacf1"
+          "version": "repo-file-v1:sha256:8e0938819fa0385ce92fa835b1a57e4027b972fd43d063549393f27f886dc1dd"
         },
         {
           "resource": "repo://symbol/contract/src/test/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationIdentityTest.kt",
-          "version": "repo-file-v1:sha256:a5a2f92658d33af7c0ab87e393a7b500bed8ea702d2cf78b4efc11309f4b2f53"
+          "version": "repo-file-v1:sha256:e84ec7676f59462224950643fb6e59f49adc38705e6bbbe2480bf4d85ab6422d"
         }
       ]
     },
@@ -64,7 +64,7 @@
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt",
-          "version": "repo-file-v1:sha256:f585da0b5ef2f85e57d1986eed83f8aa94fa002805ef1a7ef909816656b504fa"
+          "version": "repo-file-v1:sha256:ac533bd25a6475753377fb0ef88e18ab1b26b02c1101ff2152bae46e4c6a1536"
         }
       ]
     },
@@ -74,21 +74,21 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt",
-          "version": "repo-file-v1:sha256:3976c5bfd05bde517477a135314b3380de30e004ddb43f833528e37582c2ca3f"
+          "version": "repo-file-v1:sha256:61fdc58ccef5c76c4e9bf65db877b0363a22474d403a7543ca9d917fc58e66c3"
         },
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignatureEncoding.kt",
-          "version": "repo-file-v1:sha256:534ebf467a267c706c18b134887d25a3223b44b7c5fbb293a60bf2dadff8a05a"
+          "version": "repo-file-v1:sha256:70ec6038a338885c0bfe9374fc0cfa5c21f8a4c6f935522c920becff94510de7"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt",
-          "version": "repo-file-v1:sha256:f585da0b5ef2f85e57d1986eed83f8aa94fa002805ef1a7ef909816656b504fa"
+          "version": "repo-file-v1:sha256:ac533bd25a6475753377fb0ef88e18ab1b26b02c1101ff2152bae46e4c6a1536"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T14:48:27.492Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

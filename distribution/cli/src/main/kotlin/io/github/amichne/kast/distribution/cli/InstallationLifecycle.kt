@@ -33,19 +33,36 @@ private constructor(
     private var fenceIdentity: FenceAttributes = FenceAttributes.Rejected
 
     fun shutdown(operation: LifecycleOperation): LifecycleOutcome {
+        when (val retired = retireClients(operation)) {
+            is ClientRetirement.Rejected -> return LifecycleOutcome.Rejected(operation, retired.stage, retired.failure)
+            ClientRetirement.Completed -> Unit
+        }
+        return when (val effect = step(operation, LifecycleStage.HOST, ::retireHost)) {
+            LifecycleEffect.Completed -> LifecycleOutcome.Stopped(operation, installation.toString())
+            is LifecycleEffect.Rejected -> LifecycleOutcome.Rejected(operation, LifecycleStage.HOST, effect.failure)
+        }
+    }
+
+    /** Replacement reuses exact request retirement and chooses its Host strategy separately. */
+    fun fenceAndRetire(operation: LifecycleOperation): LifecycleEffect =
+        when (val retired = retireClients(operation)) {
+            ClientRetirement.Completed -> LifecycleEffect.Completed
+            is ClientRetirement.Rejected -> LifecycleEffect.Rejected(retired.failure)
+        }
+
+    private fun retireClients(operation: LifecycleOperation): ClientRetirement {
         for ((stage, action) in
             listOf<Pair<LifecycleStage, () -> LifecycleEffect>>(
                 LifecycleStage.FENCE to ::fence,
                 LifecycleStage.COORDINATOR to { service(LifecycleServiceAction.DISABLE) },
                 LifecycleStage.REQUESTS to { retireRequests(operation) },
-                LifecycleStage.HOST to ::retireHost,
             )) {
             when (val effect = step(operation, stage, action)) {
                 LifecycleEffect.Completed -> Unit
-                is LifecycleEffect.Rejected -> return LifecycleOutcome.Rejected(operation, stage, effect.failure)
+                is LifecycleEffect.Rejected -> return ClientRetirement.Rejected(stage, effect.failure)
             }
         }
-        return LifecycleOutcome.Stopped(operation, installation.toString())
+        return ClientRetirement.Completed
     }
 
     fun resume(): LifecycleEffect {
@@ -208,6 +225,12 @@ private constructor(
                 LifecycleAdmission.Rejected
             }
     }
+}
+
+private sealed interface ClientRetirement {
+    data object Completed : ClientRetirement
+
+    data class Rejected(val stage: LifecycleStage, val failure: LifecycleFailure) : ClientRetirement
 }
 
 internal sealed interface LifecycleAdmission {

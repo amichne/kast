@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-30T16:46:35Z"
-source_revision: 8b42ef5bdbb0608f10e6b91e925f41c965321026
+timestamp: "2026-10-30T22:56:37Z"
+source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -23,6 +23,16 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdmission.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostBridge.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessCapture.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessState.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessObservation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyHostProfile.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyProfileSelection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt
@@ -93,6 +103,24 @@ Owns the public semantic CLI, private JVM entry points, direct tool sessions, in
 - [KastToolRpcResultAdmissionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcResultAdmissionTest.kt) - result admission and rejection cases.
 
 ## Navigation Hints
+
+- The native `distribution/cli` module owns `versions`, `upgrade`, and `install` command admission.
+- The candidate installer coordinates one replacement through the existing journal. It uses private installer JVM adapters for bounded effects.
+- `ManagedControlCli` accepts `prepare`, `commit`, and `abort` with an exact transaction identifier.
+- `ManagedControlAdapter` reuses `InstallationWorkflow` staging, retention, replacement, and rollback owners.
+- Preparation keeps the active Control untouched. Commit needs the recorded settlement phase and exact staged bytes.
+- Abort accepts only an unchanged reservation without a managed composition. Unknown journal entries keep recovery evidence.
+- `ManagedHostCli` uses the existing application lifecycle endpoint. It inspects or settles the exact Host without a workspace import.
+- `ManagedHostBridge` binds the selected launcher, profile, process start, and Host lifetime before an effect.
+- Missing executable metadata needs a bounded native state probe. Only proven exit excludes a process whose executable remains unknown.
+- The shared process-state parser keeps zombie rules identical to native reset. Active or unavailable state remains unresolved.
+- Enumeration diagnostics record finite outcomes and bounded counts on stderr. They contain no process payloads.
+- `LegacyHostProfile` uses explicit installer-only attachment to prove an old Host profile. Dry runs must not request attachment.
+- `LegacyProfileSelection` preserves explicit configuration paths and derives supported macOS defaults from captured runtime properties.
+- Missing vendor, selector, or home facts reject. Configured `idea.paths.customizer` values and independent plugin overrides also reject.
+- Normal stop acknowledgment does not prove process exit. The outer installer separately proves exit and the selected Host after restart.
+- These installer JVM adapters do not change the native public-query path.
+- Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before release qualification.
 
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
 - Packaged discovery and request planning use installed contracts before workspace or host composition.

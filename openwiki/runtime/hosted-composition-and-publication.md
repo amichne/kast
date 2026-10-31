@@ -32,24 +32,25 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
   - id: openwiki-source-95e44f119ab39a83df93b28f
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
-generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Hosted endpoint composition and publication
 
 ## Project ownership precedes semantic work
 
-The plugin descriptor registers `HostedEndpointService` as the project-owned endpoint service.
+`HostedEndpointService` declares its project service scope through the IntelliJ `Service` annotation.
 The service composes passive semantic reads and explicitly requested workspace lifecycle operations.
 Its endpoint identity, project admission, refresh owner, and retirement state belong to that project lifetime.
 Another process cannot manufacture a current endpoint by copying a descriptor.
 
 The endpoint admits request framing and connection ownership before semantic dispatch.
 `HostedConnectionAdmission` bounds concurrent connection jobs.
-When capacity is unavailable, it performs one bounded rejection exchange without another queued semantic job.
+After accept, the listener waits for a permit before it starts another dispatch.
+This applies bounded backpressure without another semantic job.
 Each admitted connection releases its permit even when cancellation races with its start.
 
 ## One real query path

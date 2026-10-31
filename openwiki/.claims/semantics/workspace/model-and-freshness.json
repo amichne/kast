@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6567c27626874525dd6b1a207bd206fd14d12ba5e1f1c8022431cc79b2c25099",
+  "pageVersion": "sha256:57566d07455e699038a5741716b26f7f50529320c2c4094722c727fab949a777",
   "claims": [
     {
       "id": "claim_74d7122619d54a03bab3bd3cb1810841",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt",
-          "version": "repo-file-v1:sha256:15f62166d64fa8dbee44736c7201e73ec41eba90e21f48b62e803050a02e0467"
+          "version": "repo-file-v1:sha256:373e53e5d774d51cf13e34c6a29bdf9e1eff7f5b04dda845970ea67e3d1daea5"
         }
       ]
     },
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

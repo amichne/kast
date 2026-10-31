@@ -2,11 +2,11 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
+import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -22,65 +22,6 @@ internal fun printManagementStatus(root: Path, json: Boolean) {
     val status = readStatus(root, commandPath)
     println(if (json) status.asJson() else status.asText())
 }
-
-@Serializable
-internal enum class ReleaseChannel {
-    STABLE,
-    DEVELOPER,
-}
-
-@Serializable
-@OptIn(ExperimentalSerializationApi::class)
-internal data class ManagedRegistration(
-    val connection: HarnessConnection,
-    val destination: String,
-    val payloadSha256: String,
-    // Receipts predating destination selection lack this routing proof.
-    @EncodeDefault(EncodeDefault.Mode.NEVER) val directory: String? = null,
-)
-
-@Serializable private data class ReceiptVersion(val schemaVersion: Int)
-
-@Serializable
-private data class LegacyManagedRegistration(val harness: Harness, val destination: String, val payloadSha256: String)
-
-@Serializable
-private data class LegacyManagementReceipt(
-    val schemaVersion: Int,
-    val installationRoot: String,
-    val executable: String,
-    val executableSha256: String,
-    val channel: ReleaseChannel,
-    val registrations: List<LegacyManagedRegistration>,
-) {
-    fun refine(): ManagementReceipt =
-        ManagementReceipt(
-            2,
-            installationRoot,
-            executable,
-            executableSha256,
-            channel,
-            registrations.map { registration ->
-                val connection =
-                    when (registration.harness) {
-                        Harness.CODEX -> HarnessConnection.CODEX_MCP
-                        Harness.COPILOT -> HarnessConnection.COPILOT
-                        Harness.PI -> HarnessConnection.PI
-                    }
-                ManagedRegistration(connection, registration.destination, registration.payloadSha256)
-            },
-        )
-}
-
-@Serializable
-internal data class ManagementReceipt(
-    val schemaVersion: Int,
-    val installationRoot: String,
-    val executable: String,
-    val executableSha256: String,
-    val channel: ReleaseChannel,
-    val registrations: List<ManagedRegistration>,
-)
 
 @Serializable
 internal enum class ObservationState {
@@ -112,6 +53,11 @@ internal data class InstallationStatus(
     val liveConnections: Observation<Int>,
     val oneShotRequestsInFlight: Observation<Int>,
     val hostedServices: Observation<List<HostedServiceStatus>>,
+    val installedBuild: Observation<InstalledBuildIdentity> = Observation.unavailable("build_identity_unrecorded"),
+    val updatePolicy: Observation<UpdatePolicy> = Observation.unavailable("update_policy_unavailable"),
+    val unresolvedTransaction: Observation<PendingInstallationRecords> =
+        Observation.unavailable("transaction_state_unavailable"),
+    val applicationHost: Observation<LoadedApplicationHost> = Observation.unavailable("application_host_unavailable"),
 )
 
 @Serializable
@@ -127,98 +73,11 @@ internal val managementJson = Json {
 }
 private val manifestJson = Json { ignoreUnknownKeys = true }
 
-internal sealed interface ReceiptRead {
-    data class Read(val receipt: ManagementReceipt) : ReceiptRead
-
-    data class Unavailable(val reason: String) : ReceiptRead
-}
-
-internal fun receiptPath(root: Path): Path = root.resolve("management.json")
-
-private fun decodeReceipt(raw: String): ReceiptRead {
-    val receipt =
-        try {
-            when (manifestJson.decodeFromString<ReceiptVersion>(raw).schemaVersion) {
-                1 -> managementJson.decodeFromString<LegacyManagementReceipt>(raw).refine()
-                2 -> managementJson.decodeFromString<ManagementReceipt>(raw)
-                else -> return ReceiptRead.Unavailable("receipt_invalid")
-            }
-        } catch (_: SerializationException) {
-            return ReceiptRead.Unavailable("receipt_invalid")
-        } catch (_: IllegalArgumentException) {
-            return ReceiptRead.Unavailable("receipt_invalid")
-        }
-    return ReceiptRead.Read(receipt)
-}
-
-@Suppress("ComplexCondition")
-internal fun readReceipt(root: Path): ReceiptRead =
-    admitManagementReceipt(root, readBoundedFile(receiptPath(root), MANAGEMENT_RECEIPT_BYTES))
-
-@Suppress("ComplexCondition")
-internal fun admitManagementReceipt(root: Path, raw: String?): ReceiptRead {
-    if (raw == null) return ReceiptRead.Unavailable("receipt_unavailable")
-    val receipt =
-        when (val decoded = decodeReceipt(raw)) {
-            is ReceiptRead.Read -> decoded.receipt
-            is ReceiptRead.Unavailable -> return decoded
-        }
-    if (
-        receipt.schemaVersion != 2 ||
-            receipt.installationRoot != root.toString() ||
-            receipt.registrations.map { it.connection }.toSet().size != receipt.registrations.size ||
-            !validSha256(receipt.executableSha256) ||
-            receipt.registrations.any { !validManagedRegistration(root, it) }
-    )
-        return ReceiptRead.Unavailable("receipt_invalid")
-    val executable =
-        try {
-            Path.of(receipt.executable)
-        } catch (_: IllegalArgumentException) {
-            return ReceiptRead.Unavailable("receipt_invalid")
-        }
-    if (!executable.isAbsolute || executable.normalize() != executable)
-        return ReceiptRead.Unavailable("receipt_invalid")
-    return ReceiptRead.Read(receipt)
-}
-
-private fun validManagedRegistration(root: Path, registration: ManagedRegistration): Boolean {
-    if (!validSha256(registration.payloadSha256)) return false
-    // Legacy receipts are refined at connect; never manufacture their missing routing proof.
-    val rawDirectory = registration.directory ?: return true
-    val directory =
-        when (val admitted = ConnectionDirectory.admit(rawDirectory)) {
-            is ConnectionDirectoryAdmission.Admitted -> admitted.directory
-            is ConnectionDirectoryAdmission.Rejected -> return false
-        }
-    val destination =
-        when (val admitted = ConnectionDirectory.admit(registration.destination)) {
-            is ConnectionDirectoryAdmission.Admitted -> admitted.directory.path
-            is ConnectionDirectoryAdmission.Rejected -> return false
-        }
-    return registrationDestinationFor(root, registration.connection, directory) == destination
-}
-
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
 internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
     val receipt = readReceipt(root)
     val installation = resolvedInstallation(root, receipt)
-    val installedVersion = installation?.let { selected ->
-        readBoundedFile(selected.resolve("installation.json"), 67_108_864)
-            ?.let { raw ->
-                try {
-                    manifestJson.decodeFromString<InstalledManifest>(raw)
-                } catch (_: SerializationException) {
-                    null
-                }
-            }
-            ?.takeIf {
-                it.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
-                    it.installationRoot == selected.toString() &&
-                    Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(it.semanticVersion)
-            }
-            ?.semanticVersion
-    }
+    val installedVersion = installation?.let(::readInstalledVersion)
     val runtime = installation?.let(::observeRuntime)
     val noRuntimeProjection = "runtime_projection_unavailable"
     return InstallationStatus(
@@ -240,7 +99,62 @@ internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
         oneShotRequestsInFlight =
             installation?.let(::observeOneShotRequests) ?: Observation.unavailable(noRuntimeProjection),
         hostedServices = runtime?.hostedServices ?: Observation.unavailable(noRuntimeProjection),
+        installedBuild =
+            if (receipt is ReceiptRead.Read)
+                receipt.receipt.installedBuild?.let { Observation.verified(it) }
+                    ?: Observation.unavailable("build_identity_unrecorded")
+            else Observation.unavailable("receipt_unavailable"),
+        updatePolicy =
+            if (receipt is ReceiptRead.Read) Observation.verified(receipt.receipt.updatePolicy)
+            else Observation.unavailable("receipt_unavailable"),
+        unresolvedTransaction = passiveTransactionState(root),
+        applicationHost =
+            root.parent?.parent?.parent?.let { readApplicationHost(root, it) }
+                ?: Observation.unavailable("user_home_unavailable"),
     )
+}
+
+private const val INSTALLED_MANIFEST_BYTES = 67_108_864L
+
+private fun readInstalledVersion(selected: Path): String? =
+    readBoundedFile(selected.resolve("installation.json"), INSTALLED_MANIFEST_BYTES)
+        ?.let { raw ->
+            try {
+                manifestJson.decodeFromString<InstalledManifest>(raw)
+            } catch (_: SerializationException) {
+                null
+            }
+        }
+        ?.takeIf {
+            it.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
+                it.installationRoot == selected.toString() &&
+                Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(it.semanticVersion)
+        }
+        ?.semanticVersion
+
+@Serializable
+internal enum class PendingInstallationRecord {
+    SHUTDOWN_FENCE,
+    REPLACEMENT_RECEIPT,
+    REPLACEMENT_STORAGE,
+}
+
+@Serializable internal data class PendingInstallationRecords(val records: List<PendingInstallationRecord>)
+
+private fun passiveTransactionState(root: Path): Observation<PendingInstallationRecords> =
+    Observation.verified(pendingInstallationRecords(root))
+
+internal fun pendingInstallationRecords(root: Path): PendingInstallationRecords {
+    val pending = buildList {
+        if (Files.exists(root.resolve(SHUTDOWN_FENCE), LinkOption.NOFOLLOW_LINKS))
+            add(PendingInstallationRecord.SHUTDOWN_FENCE)
+        val replacement = root.resolve("recovery/replacement")
+        if (Files.exists(replacement.resolve("receipt.json"), LinkOption.NOFOLLOW_LINKS))
+            add(PendingInstallationRecord.REPLACEMENT_RECEIPT)
+        else if (Files.exists(replacement, LinkOption.NOFOLLOW_LINKS))
+            add(PendingInstallationRecord.REPLACEMENT_STORAGE)
+    }
+    return PendingInstallationRecords(pending)
 }
 
 private fun resolvedInstallation(root: Path, receipt: ReceiptRead): Path? {
@@ -264,11 +178,4 @@ internal fun readBoundedFile(path: Path, maximumBytes: Long): String? =
         null
     }
 
-private const val SHA256_HEX_LENGTH = 64
-
-internal fun validSha256(raw: String): Boolean =
-    raw.length == SHA256_HEX_LENGTH && raw.all { it in '0'..'9' || it in 'a'..'f' }
-
 internal fun InstallationStatus.asJson(): String = managementJson.encodeToString(this)
-
-private const val MANAGEMENT_RECEIPT_BYTES = 65536L

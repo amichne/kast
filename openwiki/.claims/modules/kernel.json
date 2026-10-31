@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c19ad4baf118f8c8c3df2ece7480a85b841ebee8b47bc5fa5e3903c009776941",
+  "pageVersion": "sha256:59f0968257c618760fd3e3d1afd65502a1b4bd738fd4496aa67361862005f0b9",
   "claims": [
     {
       "id": "claim_de9c7f03783148e5bd0d94307fa311f9",
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt",
-          "version": "repo-file-v1:sha256:7931b70059310ef9ddacbc334a25c28b2dc0177707141efc8da0ce71fbff0b60"
+          "version": "repo-file-v1:sha256:1a6e91f13c80c03ba05bbb6781b4d689ae2cee24e2e48cf959364c0c23eb6967"
         }
       ]
     },
@@ -49,6 +49,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:57:31.735Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

@@ -38,6 +38,7 @@ private val pluginObservationJson = Json { ignoreUnknownKeys = true }
 internal enum class MarketplacePresence {
     ABSENT,
     ADMITTED,
+    OWNED_OTHER,
 }
 
 internal enum class PluginPresence {
@@ -67,16 +68,20 @@ internal fun observePluginMarketplace(
     if (selected.size != 1) return PluginObservation.Rejected(PluginInstallFailure.MarketplaceConflict)
     val marketplace = selected.single()
     return if (
-        matchesMarketplacePath(marketplace.root, bundle) &&
-            marketplace.marketplaceSource?.let { admitsMarketplaceSource(it, bundle) } == true
+        bundle.ownsMarketplace(marketplace.root) &&
+            marketplace.marketplaceSource?.let { it.sourceType == "local" && it.source == marketplace.root } == true
     )
-        PluginObservation.Observed(MarketplacePresence.ADMITTED)
+        PluginObservation.Observed(
+            if (matchesMarketplacePath(marketplace.root, bundle)) MarketplacePresence.ADMITTED
+            else MarketplacePresence.OWNED_OTHER
+        )
     else PluginObservation.Rejected(PluginInstallFailure.MarketplaceConflict)
 }
 
 @Suppress("ReturnCount", "ComplexCondition")
 internal fun observeInstalledPlugin(
     bundle: AdmittedPluginBundle,
+    codexHome: Path,
     execute: (List<String>) -> ProcessObservation,
 ): PluginObservation<PluginPresence> {
     val output =
@@ -103,7 +108,13 @@ internal fun observeInstalledPlugin(
     val plugin = selected.single()
     if (!ownsPlugin(plugin, bundle)) return PluginObservation.Rejected(PluginInstallFailure.PluginConflict)
     return PluginObservation.Observed(
-        if (plugin.enabled && plugin.version == bundle.version.value) PluginPresence.CURRENT
+        if (
+            plugin.enabled &&
+                plugin.version == bundle.version.value &&
+                matchesPluginPath(plugin.source.path.orEmpty(), bundle) &&
+                bundle.resourcesMatch(codexHome.resolve("plugins/cache/kast/kast").resolve(bundle.version.value))
+        )
+            PluginPresence.CURRENT
         else PluginPresence.ADMITTED
     )
 }
@@ -114,8 +125,11 @@ private fun ownsPlugin(plugin: CodexPlugin, bundle: AdmittedPluginBundle): Boole
         plugin.marketplaceName == KAST_MARKETPLACE_NAME &&
         plugin.installed &&
         plugin.source.source == "local" &&
-        plugin.source.path?.let { matchesPluginPath(it, bundle) } == true &&
-        plugin.marketplaceSource?.let { admitsMarketplaceSource(it, bundle) } == true
+        plugin.marketplaceSource?.let { source ->
+            source.sourceType == "local" &&
+                bundle.ownsMarketplace(source.source) &&
+                plugin.source.path?.let { matchesPath(it, Path.of(source.source).resolve("plugins/kast")) } == true
+        } == true
 
 private fun admitsMarketplaceSource(source: CodexMarketplaceSource, bundle: AdmittedPluginBundle): Boolean =
     source.sourceType == "local" && matchesMarketplacePath(source.source, bundle)

@@ -1,5 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.ObservedProcessState
+import io.github.amichne.kast.distribution.contract.admitObservedProcessState
+
 internal enum class ResetObservedProcessState {
     EXITED,
     ACTIVE,
@@ -13,19 +16,11 @@ internal fun observeResetProcessState(handle: ProcessHandle): ResetObservedProce
 internal fun admitResetProcessState(observation: ProcessObservation): ResetObservedProcessState =
     when (observation) {
         is ProcessObservation.Exited -> {
-            val state = observation.output.trim()
-            if (observation.code != 0 || !Regex("[IRSTUZ][+<>AELNSsVWX]*").matches(state))
-                ResetObservedProcessState.UNAVAILABLE
-            else
-                when (state.first()) {
-                    'Z' -> ResetObservedProcessState.EXITED
-                    'R',
-                    'S',
-                    'I',
-                    'T',
-                    'U' -> ResetObservedProcessState.ACTIVE
-                    else -> ResetObservedProcessState.UNAVAILABLE
-                }
+            when (admitObservedProcessState(observation.code, observation.output)) {
+                ObservedProcessState.EXITED -> ResetObservedProcessState.EXITED
+                ObservedProcessState.ACTIVE -> ResetObservedProcessState.ACTIVE
+                ObservedProcessState.UNAVAILABLE -> ResetObservedProcessState.UNAVAILABLE
+            }
         }
         ProcessObservation.Unavailable -> ResetObservedProcessState.UNAVAILABLE
     }

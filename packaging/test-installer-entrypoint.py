@@ -468,6 +468,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         if retained_replacement:
             recovery_script = ROOT / 'packaging/installation-recovery.py'
             scripts['share/kast/installation-recovery.py'] = recovery_script.read_bytes()
+            scripts['share/kast/managed_update_journal.py'] = (ROOT / 'packaging/managed_update_journal.py').read_bytes()
             spec = importlib.util.spec_from_file_location('installer_recovery_fixture', recovery_script)
             if spec is None or spec.loader is None:
                 raise AssertionError('recovery fixture module is unavailable')

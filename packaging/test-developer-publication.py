@@ -16,7 +16,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-PUBLISHER = ROOT / ".github/scripts/release/publish-developer.sh"
+PUBLISHER = ROOT / ".github/scripts/release/publish_developer.py"
 REPOSITORY = "fixture/kast"
 VERSION = "0.0.123"
 REVISION = "a" * 40
@@ -25,6 +25,8 @@ MERGED = "b" * 40
 TREE = "c" * 40
 sys.path.insert(0, str(ROOT / ".github/scripts/release"))
 import build_candidate as candidate
+import developer_catalog as catalog
+import publish_developer as publisher
 
 
 @dataclass(frozen=True)
@@ -113,10 +115,53 @@ class GhCall:
     exit_code: int = 0
     upload: bool = False
     retained_validation: str | None = None
+    payload: str | None = None
 
     @classmethod
     def observation(cls, endpoint: str, document: Run | GitCommit | ArtifactListing | GitReference) -> GhCall:
         return cls(["api", "--include", endpoint], "HTTP/2.0 200 OK\r\n\r\n" + json.dumps(asdict(document)))
+
+    @classmethod
+    def api(cls, method, endpoint, document, status=200, request=None):
+        arguments = ["api", "--include", "--method", method, f"repos/{REPOSITORY}/{endpoint}"]
+        if request is not None:
+            arguments.extend(("--input", "-"))
+        return cls(arguments, f"HTTP/2.0 {status}\r\n\r\n" + json.dumps(asdict(document)),
+                   0 if status < 400 else 1, payload=json.dumps(asdict(request)) if request is not None else None)
+
+
+@dataclass(frozen=True)
+class ReleaseAsset:
+    name: str
+    digest: str
+    size: int
+    state: str = "uploaded"
+
+
+@dataclass(frozen=True)
+class Release:
+    tag_name: str
+    target_commitish: str
+    assets: tuple[ReleaseAsset, ...]
+    draft: bool = False
+    prerelease: bool = True
+
+
+@dataclass(frozen=True)
+class Contents:
+    content: str
+    type: str = "file"
+    encoding: str = "base64"
+
+
+@dataclass(frozen=True)
+class ApiError:
+    message: str = "Not Found"
+
+
+@dataclass(frozen=True)
+class Comparison:
+    status: str
 
 
 @dataclass
@@ -155,6 +200,8 @@ def scripted_gh(state: Path, calls: Path, violation: Path, arguments: list[str])
             (destination / "validation.json").write_bytes(Path(expected.retained_validation).read_bytes())
         elif arguments != expected.arguments:
             raise AssertionError("unexpected GitHub command")
+        if expected.payload is not None and json.loads(sys.stdin.read()) != json.loads(expected.payload):
+            raise AssertionError("unexpected GitHub request body")
         with calls.open("a") as log:
             log.write(json.dumps(asdict(GhInvocation(arguments))) + "\n")
         script.consumed += 1
@@ -172,6 +219,7 @@ def asset_names() -> tuple[str, ...]:
         f"kast-ide-hosted-v{VERSION}-idea-262.zip",
         f"kast-plugin-v{VERSION}.zip",
         f"kast-marketplace-v{VERSION}.zip",
+        f"kast-control-release-v{VERSION}.json",
         f"kast-host-release-v{VERSION}.json",
         "host-installation.py",
         f"kast-hosted-catalog-v{VERSION}.json",
@@ -213,6 +261,7 @@ class DeveloperPublicationTest(unittest.TestCase):
                                   VERSION, 123, 1, 456, 1, checksum(self.identity)))))
         self.validation = self.root / "validation.json"
         self.validation.write_text(json.dumps(asdict(ValidationEvidence())))
+        self.uploads = [str(self.assets / asset.name) for asset in value.assets]
         self.uploads.extend((str(self.identity), str(self.promotion)))
         self.script = self.root / "gh-script.json"
         self.calls = self.root / "gh-calls.jsonl"
@@ -247,35 +296,49 @@ class DeveloperPublicationTest(unittest.TestCase):
         ]
 
     def published_calls(self, damaged: bool = False) -> list[GhCall]:
-        published = "\n".join(sorted(f"{Path(path).name}\tsha256:{checksum(Path(path))}" for path in self.uploads)) + "\n"
-        return [
-            GhCall(["release", "view", TAG, "--repo", REPOSITORY, "--json", "targetCommitish", "--jq", ".targetCommitish"],
-                   REVISION + "\n"),
-            GhCall(["release", "view", TAG, "--repo", REPOSITORY, "--json", "assets",
-                    "--jq", ".assets[] | [.name, .digest] | @tsv"], "tampered" if damaged else published),
-        ]
+        assets = tuple(ReleaseAsset(Path(path).name, f"sha256:{checksum(Path(path))}", Path(path).stat().st_size) for path in self.uploads)
+        if damaged:
+            assets = (replace(assets[0], digest="sha256:" + "f" * 64), *assets[1:])
+        return [GhCall.api("GET", f"releases/tags/{TAG}", Release(TAG, REVISION, assets))]
 
-    def current_main_call(self, current: bool = True) -> GhCall:
-        return GhCall.observation(f"repos/{REPOSITORY}/git/ref/heads/main",
-                                  GitReference(GitTree(MERGED if current else REVISION)))
-
-    def pointer_calls(self) -> list[GhCall]:
-        pointer = base64.b64encode(f"{TAG} {VERSION} {REVISION}\n".encode()).decode()
-        return [
-            GhCall(["api", f"repos/{REPOSITORY}/git/ref/heads/developer-latest"]),
-            GhCall(["api", f"repos/{REPOSITORY}/contents/latest.txt?ref=developer-latest", "--jq", ".sha"],
-                   "prior-pointer\n"),
-            GhCall(["api", "--method", "PUT", f"repos/{REPOSITORY}/contents/latest.txt",
-                    "-f", f"message=chore(distribution): point developer latest to {TAG}",
-                    "-f", f"content={pointer}", "-f", "branch=developer-latest", "-f", "sha=prior-pointer"]),
-            GhCall(["release", "view", TAG, "--repo", REPOSITORY,
-                    "--json", "tagName,targetCommitish,url,assets"]),
+    def pointer_calls(self, delayed=False) -> list[GhCall]:
+        incoming = catalog.Build(MERGED, REVISION, TREE, TAG, VERSION, ("macos-aarch64",),
+            catalog.RecordReference("candidate.json", checksum(self.identity)),
+            catalog.RecordReference("promotion.json", checksum(self.promotion)))
+        newer = replace(incoming, mainRevision="f" * 40, buildRevision="d" * 40,
+                        version="0.0.124", releaseTag="developer-v0.0.124")
+        prior = catalog.Catalog(1, (newer,) if delayed else ())
+        merged = catalog.Catalog(1, (newer, incoming) if delayed else (incoming,))
+        head, next_tree, next_commit = "7" * 40, "8" * 40, "9" * 40
+        calls = [
+            GhCall.api("GET", "git/ref/heads/developer-latest", GitReference(GitTree(head))),
+            GhCall.api("GET", f"git/commits/{head}", GitCommit(head)),
+            GhCall.api("GET", f"contents/builds.json?ref={head}", Contents(base64.b64encode(catalog.encode(prior).encode()).decode())),
+            GhCall.api("GET", "git/ref/heads/main", GitReference(GitTree(newer.mainRevision if delayed else MERGED))),
         ]
+        if delayed:
+            calls.extend((
+                GhCall.api("GET", f"compare/{newer.mainRevision}...{newer.mainRevision}", Comparison("identical")),
+                GhCall.api("GET", f"compare/{MERGED}...{newer.mainRevision}", Comparison("ahead")),
+                GhCall.api("GET", f"compare/{newer.mainRevision}...{MERGED}", Comparison("behind")),
+            ))
+        else:
+            calls.append(GhCall.api("GET", f"compare/{MERGED}...{MERGED}", Comparison("identical")))
+        calls.extend((
+            GhCall.api("POST", "git/trees", GitTree(next_tree), status=201,
+                       request=publisher.GitTreeRequest(TREE, (publisher.GitTreeFile("builds.json", catalog.encode(merged)),
+                               publisher.GitTreeFile("latest.txt", catalog.latest_pointer(merged))))),
+            GhCall.api("POST", "git/commits", GitTree(next_commit), status=201,
+                       request=publisher.GitCommitRequest(f"chore(distribution): admit {MERGED} to published main builds", next_tree, (head,))),
+            GhCall.api("PATCH", "git/refs/heads/developer-latest", GitReference(GitTree(next_commit)),
+                       request=publisher.GitRefUpdate(next_commit)),
+        ))
+        return calls
 
     def run_publisher(self, calls: list[GhCall]) -> subprocess.CompletedProcess:
         self.script.write_text(json.dumps(asdict(GhScript(calls))))
         result = subprocess.run(
-            ["bash", str(PUBLISHER), "--version", VERSION, "--commit", REVISION,
+            [sys.executable, str(PUBLISHER), "--version", VERSION, "--commit", REVISION,
              "--assets-directory", str(self.assets), "--promotion-record", str(self.promotion)],
             cwd=ROOT, env=self.environment, text=True, capture_output=True, timeout=30,
         )
@@ -292,21 +355,19 @@ class DeveloperPublicationTest(unittest.TestCase):
              "--notes", f"Tested developer build from {REVISION}, promoted after main {MERGED}. Candidate and promotion records, SBOM and checksums are included."],
             upload=True,
         )
-        calls = [*self.admission_calls(), GhCall(["release", "view", TAG, "--repo", REPOSITORY], exit_code=1),
-                 creation, *self.published_calls(), self.current_main_call(), *self.pointer_calls()]
+        calls = [*self.admission_calls(), GhCall.api("GET", f"releases/tags/{TAG}", ApiError(), status=404),
+                 creation, *self.published_calls(), *self.pointer_calls()]
         result = self.run_publisher(calls)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assert_consumed(len(calls))
         invocations = [GhInvocation(**json.loads(line)) for line in self.calls.read_text().splitlines()]
         actual = invocations[len(self.admission_calls()) + 1].arguments
         self.assertEqual(self.uploads, actual[3:actual.index("--repo", 3)])
-        self.assertEqual(20, len(self.uploads))
-        self.assertEqual("release-candidate: admitted", result.stdout.splitlines()[0])
-        self.assertIn(f"https://raw.githubusercontent.com/{REPOSITORY}/developer-latest/latest.txt", result.stdout)
+        self.assertEqual(22, len(self.uploads))
+        self.assertIn(f"https://raw.githubusercontent.com/{REPOSITORY}/developer-latest/builds.json", result.stdout)
 
     def test_existing_complete_release_is_admitted_before_pointer_update(self):
-        calls = [*self.admission_calls(), GhCall(["release", "view", TAG, "--repo", REPOSITORY]),
-                 *self.published_calls(), self.current_main_call(), *self.pointer_calls()]
+        calls = [*self.admission_calls(), *self.published_calls(), *self.pointer_calls()]
         result = self.run_publisher(calls)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assert_consumed(len(calls))
@@ -315,7 +376,7 @@ class DeveloperPublicationTest(unittest.TestCase):
         (self.assets / f"kast-host-release-v{VERSION}.json").unlink()
         result = self.run_publisher([])
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("build-candidate: PAYLOAD_MISMATCH", result.stderr)
+        self.assertIn('"reason": "PAYLOAD_MISMATCH"', result.stderr)
         self.assert_consumed(0)
         self.assertFalse(self.calls.exists())
 
@@ -325,7 +386,7 @@ class DeveloperPublicationTest(unittest.TestCase):
         ]
         result = self.run_publisher(calls)
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("build-candidate: INVALID_RECORD", result.stderr)
+        self.assertIn('"reason": "INVALID_RECORD"', result.stderr)
         self.assert_consumed(len(calls))
 
     def test_wrong_validation_attempt_rejects_before_release_or_pointer_effects(self):
@@ -333,23 +394,21 @@ class DeveloperPublicationTest(unittest.TestCase):
         calls = self.admission_calls()[:4]
         result = self.run_publisher(calls)
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("build-candidate: WRONG_PRODUCER", result.stderr)
+        self.assertIn('"reason": "WRONG_PRODUCER"', result.stderr)
         self.assert_consumed(len(calls))
 
     def test_delayed_publication_preserves_latest(self):
-        calls = [*self.admission_calls(), GhCall(["release", "view", TAG, "--repo", REPOSITORY]),
-                 *self.published_calls(), self.current_main_call(current=False)]
+        calls = [*self.admission_calls(), *self.published_calls(), *self.pointer_calls(delayed=True)]
         result = self.run_publisher(calls)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("latest retained", result.stdout)
+        self.assertIn("builds.json", result.stdout)
         self.assert_consumed(len(calls))
 
     def test_remote_digest_mismatch_rejects_before_pointer_observation(self):
-        calls = [*self.admission_calls(), GhCall(["release", "view", TAG, "--repo", REPOSITORY]),
-                 *self.published_calls(damaged=True)]
+        calls = [*self.admission_calls(), *self.published_calls(damaged=True)]
         result = self.run_publisher(calls)
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("developer assets differ", result.stderr)
+        self.assertIn('"reason": "ASSET_MISMATCH"', result.stderr)
         self.assert_consumed(len(calls))
 
 

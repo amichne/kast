@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:201dea19ed5c649e446891bbacb69e356a1fcbec945310ef679037a443c1ba71",
+  "pageVersion": "sha256:46b0c62630050e3b63e51245a4b85b2a38821860dc8342c54932a98a0e0c58e3",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
-          "version": "repo-file-v1:sha256:1b2d5f98b7e96e19312c3d85863e613c904254062270601e4f50e2cac0e2c540"
+          "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt",
@@ -36,13 +36,13 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
-          "version": "repo-file-v1:sha256:1b2d5f98b7e96e19312c3d85863e613c904254062270601e4f50e2cac0e2c540"
+          "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-18T02:29:42.742Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

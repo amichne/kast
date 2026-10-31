@@ -49,6 +49,9 @@ jobs:
         with:
           python-version-file: .python-version
 
+      - name: Set up the pinned script runner
+        run: python3 -m pip install uv==0.12.9
+
       - name: Admit qualified candidate producer and merged source tree
         id: candidate
         env:
@@ -60,7 +63,7 @@ jobs:
           --run-id "$MAIN_RUN_ID" --bundle build/candidate
           --promotion-record build/promotion.json --github-output "$GITHUB_OUTPUT"
 
-      - name: Publish retained candidate and latest pointer
+      - name: Publish retained candidate and main-build catalog
         if: steps.candidate.outputs.publication == 'PUBLISH'
         env:
           BUILD_SOURCE_SHA: ${{ steps.candidate.outputs.source_revision }}

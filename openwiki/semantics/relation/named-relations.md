@@ -20,9 +20,6 @@ code_sources:
 - path: relation/service/src/test/kotlin/io/github/amichne/kast/relation/service/RelationServiceTest.kt
 - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/RelationFileEnumerationTest.kt
 - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/RelationScopeExclusionTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-2002ffb478926f34bc0304a5
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationOmissionEvidence.kt
@@ -37,6 +34,9 @@ sources:
   - id: openwiki-source-92edd83497ca3a9bab136f66
     resource: repo://relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Named relationships and occurrences

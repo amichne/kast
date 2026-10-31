@@ -13,6 +13,10 @@ enum class IdeLifecycleExchangeCommand {
     CLOSE,
     AUTHORIZED_CLOSE,
     STATUS,
+    SETTLE_HOST,
+    RESUME_HOST,
+    STOP_HOST,
+    REFRESH_HOST_BUNDLE,
 }
 
 @Serializable
@@ -59,4 +63,8 @@ fun IdeLifecycleCommand.exchangeCommand(): IdeLifecycleExchangeCommand =
         is IdeLifecycleCommand.Close -> IdeLifecycleExchangeCommand.CLOSE
         is IdeLifecycleCommand.AuthorizedClose -> IdeLifecycleExchangeCommand.AUTHORIZED_CLOSE
         is IdeLifecycleCommand.Status -> IdeLifecycleExchangeCommand.STATUS
+        is IdeLifecycleCommand.SettleHost -> IdeLifecycleExchangeCommand.SETTLE_HOST
+        is IdeLifecycleCommand.ResumeHost -> IdeLifecycleExchangeCommand.RESUME_HOST
+        is IdeLifecycleCommand.StopHost -> IdeLifecycleExchangeCommand.STOP_HOST
+        is IdeLifecycleCommand.RefreshHostBundle -> IdeLifecycleExchangeCommand.REFRESH_HOST_BUNDLE
     }

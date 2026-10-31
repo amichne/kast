@@ -15,6 +15,20 @@ class SqliteMutationRecoveryJournalTest {
     @TempDir lateinit var temporaryDirectory: Path
 
     @Test
+    fun `settlement keeps unresolved mutation evidence across Host lifetimes`() {
+        val fixture = MutationRecoveryEvidenceFixture()
+        val database = temporaryDirectory.resolve("settlement.db")
+        val first = open(database)
+        assertEquals(MutationRecoverySettlement.Settled, first.settlement())
+        assertDurable(first.prepare(fixture.prepared), fixture.prepared)
+        assertEquals(MutationRecoverySettlement.Unresolved, open(database).settlement())
+        assertDurable(first.recordApplied(fixture.prepared, fixture.applied), fixture.applied)
+        assertEquals(MutationRecoverySettlement.Unresolved, open(database).settlement())
+        assertDurable(first.recordTerminal(fixture.applied, fixture.rolledBack), fixture.rolledBack)
+        assertEquals(MutationRecoverySettlement.Settled, open(database).settlement())
+    }
+
+    @Test
     fun `pre-write applied set and terminal recovery survive reopen with exact plan binding`() {
         val fixture = MutationRecoveryEvidenceFixture()
         val database = temporaryDirectory.resolve("recovery.db")

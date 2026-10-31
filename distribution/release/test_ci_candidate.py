@@ -78,6 +78,7 @@ class CiCandidateTest(unittest.TestCase):
                 plugin,
                 f"kast-plugin-v{VERSION}.zip",
                 f"kast-marketplace-v{VERSION}.zip",
+                f"kast-control-release-v{VERSION}.json",
                 f"kast-host-release-v{VERSION}.json",
                 "host-installation.py",
                 f"kast-hosted-catalog-v{VERSION}.json",
@@ -93,7 +94,7 @@ class CiCandidateTest(unittest.TestCase):
                         {"name": "kast:source-revision", "value": REVISION},
                         *(
                             {"name": f"kast:archive:{name}", "value": f"sha256:{candidate.digest(directory / name)}"}
-                            for name in names[:-3]
+                            for name in names[:4]
                         ),
                     ]
                 },
@@ -103,7 +104,7 @@ class CiCandidateTest(unittest.TestCase):
                 (directory / f"{name}.sha256").write_text(f"{candidate.digest(directory / name)}  {name}\n")
             candidate.validate(directory, VERSION, REVISION)
 
-            for name in names[2:5]:
+            for name in names[2:6]:
                 with self.subTest(agent_archive=name):
                     original = (directory / name).read_bytes()
                     (directory / name).unlink()
@@ -229,7 +230,7 @@ class PendingCandidateTest(unittest.TestCase):
                                   "-n", artifact["name"], "-D", str(directory)], command)
                 archives = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
                             f"kast-plugin-v{VERSION}.zip", f"kast-marketplace-v{VERSION}.zip")
-                for name in (*archives, f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json", f"kast-module-knowledge-v{VERSION}.json"):
+                for name in (*archives, f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json", f"kast-module-knowledge-v{VERSION}.json"):
                     (directory / name).write_bytes(name.encode())
                 sbom = {"bomFormat": "CycloneDX", "metadata": {"properties": [
                     {"name": "kast:source-revision", "value": REVISION},

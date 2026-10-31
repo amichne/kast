@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dc8c9b1ced5b05271392b8569c3bfb2acbbe815cc56a41a7d441ed325f209b36",
+  "pageVersion": "sha256:351658c812124caa5fa4bf8b4e93dbc9c16a42cbd15365874fb9dc0aa6cc7073",
   "claims": [
     {
       "id": "claim_1c2e0b7673bd4f38bdb1b7ebfc49034b",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt",
-          "version": "repo-file-v1:sha256:b389a022ff7be11e878f9f089f237a94e42b29e6abebcb9a3ccb93b9c886a73c"
+          "version": "repo-file-v1:sha256:477b2a0eac61b6638ecc9d70673af182833de958e690b496538733937693470f"
         }
       ]
     },
@@ -18,11 +18,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackBindingReader.kt",
-          "version": "repo-file-v1:sha256:ae6f215a6c3e2e495d3baa7a59e48f1beb3b0f4e7dd530f5c3c78b15cee51e04"
+          "version": "repo-file-v1:sha256:3956d2fd2a4f5423d0cab98e005a995814e7a07e12abb04b536741c799c916da"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt",
-          "version": "repo-file-v1:sha256:7a6e34c69f5997149b337ec3010fbda424e037758524b9f1bca61074be754d0d"
+          "version": "repo-file-v1:sha256:c3e47a72f70d14a8166542ee8620c943f9b19944786fc1251b1440a2593dd9bd"
         }
       ]
     },
@@ -32,13 +32,13 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:5caab847365df145809dde3090a37e539780578941d6ead266269e868441f299"
+          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

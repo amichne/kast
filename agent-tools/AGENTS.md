@@ -4,9 +4,10 @@ title: "Kast agent onboarding"
 description: "Defines the bundled skill, task service, shared brief, and host adapters."
 resource: "repo://agent-tools"
 tags: [kast, agents, plugins]
-timestamp: "2026-10-29T23:41:55Z"
-source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
+timestamp: "2026-10-30T22:15:27Z"
+source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
 code_sources:
+  - path: agent-tools/mcp.json
   - path: agent-tools/skills/kast/SKILL.md
   - path: agent-tools/skills/kast/public-cli.md
   - path: agent-tools/skills/kast/scripts/tasks.py
@@ -28,7 +29,9 @@ code_sources:
 The same generator owns `references/query-topics.md` and its named topic files.
 It also owns `references/query-common-schema.json` from `catalogs.COMMON` in the canonical schema.
 Change the template or the authored public schema before regeneration.
-Ship `skills/kast/SKILL.md` inside the plugin. Keep its scripts and dependency locks together.
+Ship `skills/kast/SKILL.md` inside both compositions.
+Keep Python scripts and dependency locks together in the optional MCP composition.
+The default skill links only to resources within its own directory.
 Do not publish a separate skill archive.
 
 `skills/kast/public-cli.md` owns authored guidance for public shell reads.
@@ -46,8 +49,14 @@ Keep dependency downloads and workspace preparation outside these hooks.
 The task service delegates preparation and semantic work to the installed tool RPC.
 `skills/kast/scripts/tasks.py` owns the catalog shared by MCP and the Copilot SDK adapter.
 Keep binary and wire contracts unchanged. Expose advanced operations through `schema` and `raw`.
-The Codex and Copilot manifests select their own hook configuration and share the same MCP entry.
-The Pi adapter in `pi/mcp-extension.ts` reads bundled resources directly with Node and uses native MCP support.
+The default Codex and Copilot manifests select only the canonical CLI skill.
+`mcp.json` owns the optional MCP launcher input.
+The generator places optional MCP resources under `compositions/mcp`.
+Only that composition receives a root `.mcp.json`.
+No generated composition selects Python context hooks.
+Codex and Copilot own plugin configuration and cached resources.
+Pi default setup uses native skill discovery. Its optional adapter selects MCP explicitly.
+The optional Pi adapter in `pi/mcp-extension.ts` reads the selected MCP composition with Node and uses native MCP support.
 
 Run `python3 packaging/test-agent-onboarding.py` for hook output, rejection, and host-command cases.
 Run `python3 packaging/test-public-query-generation.py` for schema and brief parity.

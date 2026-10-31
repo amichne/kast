@@ -2,6 +2,8 @@ package io.github.amichne.kast.distribution.managed
 
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -31,6 +33,7 @@ sealed interface ManagedRecoveryRemovalProof {
 
     @Serializable
     @SerialName("ADMITTED_RECOVERY")
+    @OptIn(ExperimentalSerializationApi::class)
     data class Admitted(
         val installation: String,
         val installationIdentity: InstallationFilesystemIdentity,
@@ -39,6 +42,7 @@ sealed interface ManagedRecoveryRemovalProof {
         val receipt: CapturedRecoveryFile,
         val recoveryScript: CapturedRecoveryFile,
         val lifecycleScript: CapturedRecoveryFile,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val journalScript: CapturedRecoveryFile? = null,
     ) : ManagedRecoveryRemovalProof
 }
 

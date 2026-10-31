@@ -168,14 +168,12 @@ class ForcedRegistrationTest {
     }
 
     @Test
-    fun `force requires one selected harness and retains ordinary idempotence`() {
-        assertEquals(
-            ManagementParsing.Selected(
-                ManagementCommand.Connect(HarnessConnection.PI, RegistrationOwnership.REPLACE_SELECTED_SLOT)
-            ),
-            parseManagementCommand(listOf("connect", "pi", "--force")),
-        )
-        assertTrue((parseManagementCommand(listOf("connect", "--force")) as ManagementParsing.Print).error)
+    fun `retired force setup names the install replacement`() {
+        for (arguments in listOf(listOf("connect", "pi", "--force"), listOf("connect", "--force"))) {
+            val result = parseManagementCommand(arguments) as ManagementParsing.Print
+            assertTrue(result.error)
+            assertTrue(result.text.contains("kast install"))
+        }
     }
 }
 

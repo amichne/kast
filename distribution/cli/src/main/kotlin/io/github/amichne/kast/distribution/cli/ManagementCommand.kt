@@ -24,37 +24,7 @@ internal enum class HarnessConnection(val harness: Harness, val publicName: Stri
 }
 
 internal enum class ConnectionFailure(val explanation: String) {
-    CODEX_APP_SERVER_RETIRED("Codex App Server registration is retired; use kast plugin codex"),
-    CODEX_TRANSPORT_UNSUPPORTED("Codex uses the Kast plugin; use kast connect codex"),
-    CODEX_PLUGIN_OPTIONS("Codex owns plugin configuration; use kast plugin codex without registration options"),
-    OTHER_HARNESS_TRANSPORT("Only the legacy Codex mcp alias accepts a transport"),
-}
-
-internal sealed interface ConnectionAdmission {
-    data object ListAvailable : ConnectionAdmission
-
-    data class Selected(val connection: HarnessConnection) : ConnectionAdmission
-
-    data class Plugin(val harness: PluginHarness) : ConnectionAdmission
-
-    data class Rejected(val failure: ConnectionFailure) : ConnectionAdmission
-}
-
-internal fun admitConnection(harness: Harness?, transport: String?): ConnectionAdmission {
-    if (harness != Harness.CODEX && transport != null)
-        return ConnectionAdmission.Rejected(ConnectionFailure.OTHER_HARNESS_TRANSPORT)
-    return when (harness) {
-        Harness.CODEX ->
-            when (transport) {
-                "mcp",
-                null -> ConnectionAdmission.Plugin(PluginHarness.CODEX)
-                "app-server" -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_APP_SERVER_RETIRED)
-                else -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_TRANSPORT_UNSUPPORTED)
-            }
-        Harness.COPILOT -> ConnectionAdmission.Selected(HarnessConnection.COPILOT)
-        Harness.PI -> ConnectionAdmission.Selected(HarnessConnection.PI)
-        null -> ConnectionAdmission.ListAvailable
-    }
+    CODEX_APP_SERVER_RETIRED("Codex App Server registration is retired; use kast install codex")
 }
 
 internal enum class RegistrationOwnership {
@@ -71,27 +41,39 @@ internal sealed interface ManagementCommand {
 
     data object Version : ManagementCommand
 
-    data class Connect(
-        val connection: HarnessConnection?,
-        val ownership: RegistrationOwnership = RegistrationOwnership.RECOVER_SELECTED_SLOT,
-        val directory: ConnectionDirectory? = null,
-    ) : ManagementCommand
-
     data class Disconnect(val harness: Harness) : ManagementCommand
 
-    data object ListPluginHarnesses : ManagementCommand
+    data class Install(val target: ProvisionTarget, val json: Boolean) : ManagementCommand
 
-    data class Plugin(val harness: PluginHarness, val json: Boolean) : ManagementCommand
+    data class Versions(val json: Boolean) : ManagementCommand
 
     data class Lifecycle(val operation: LifecycleOperation, val json: Boolean) : ManagementCommand
 
     data class Reset(val operation: ForceResetOperation, val json: Boolean) : ManagementCommand
 
-    data class Upgrade(val controlOnly: Boolean = false) : ManagementCommand
+    data class Upgrade(
+        val request: BuildRequest = BuildRequest.RecordedPolicy,
+        val ideaHome: String? = null,
+        val dryRun: Boolean = false,
+        val restartIde: Boolean = false,
+        val json: Boolean = false,
+    ) : ManagementCommand
 
     data object Uninstall : ManagementCommand
 
     data object Help : ManagementCommand
+}
+
+@Serializable
+internal enum class HarnessComposition {
+    CliOnly,
+    CliWithMcp,
+}
+
+internal sealed interface ProvisionTarget {
+    data class Skill(val output: String?) : ProvisionTarget
+
+    data class Provider(val harness: Harness, val composition: HarnessComposition) : ProvisionTarget
 }
 
 internal enum class DestinationFailure {
@@ -142,3 +124,27 @@ internal fun selectDestination(home: String, xdgConfigHome: String?, path: Strin
         } ?: false
     return DestinationSelection.Selected(directory.resolve("kast"), onPath)
 }
+
+internal sealed interface ProvisionTargetAdmission {
+    data class Admitted(val target: ProvisionTarget) : ProvisionTargetAdmission
+
+    data class Rejected(val reason: String) : ProvisionTargetAdmission
+}
+
+internal fun admitProvisionTarget(raw: String, output: String?, mcp: Boolean): ProvisionTargetAdmission =
+    when {
+        raw == "skill" && mcp -> ProvisionTargetAdmission.Rejected("--mcp needs a harness")
+        raw == "skill" -> ProvisionTargetAdmission.Admitted(ProvisionTarget.Skill(output))
+        output != null -> ProvisionTargetAdmission.Rejected("--output needs install skill")
+        else ->
+            when (val harness = Harness.parse(raw)) {
+                null -> ProvisionTargetAdmission.Rejected("Select codex, copilot, pi, or skill")
+                else ->
+                    ProvisionTargetAdmission.Admitted(
+                        ProvisionTarget.Provider(
+                            harness,
+                            if (mcp) HarnessComposition.CliWithMcp else HarnessComposition.CliOnly,
+                        )
+                    )
+            }
+    }

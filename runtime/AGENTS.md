@@ -4,13 +4,16 @@ title: "Kast runtime"
 description: "Composes semantic services inside IntelliJ IDEA and owns hosted transport, query publication, diagnostics, and source changes."
 resource: "repo://runtime"
 tags: [kast, navigation]
-timestamp: "2026-10-26T11:36:07Z"
-source_revision: 371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a
+timestamp: "2026-10-30T22:56:37Z"
+source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
 code_sources:
   - path: runtime/hosted/build.gradle.kts
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeResources.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEpochStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
@@ -60,6 +63,16 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 - [HostedQueryRetainedPresentationTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryRetainedPresentationTest.kt) - retained output cases.
 
 ## Navigation Hints
+
+- The application service captures its build identity, profile, process incarnation, and loaded `idea.auto.reload.plugins` option at startup.
+- Its existing endpoint descriptor publishes those facts without a project or Gradle import.
+- Build identity, compatibility, and Host lifetime remain separate facts. Replaced plugin files do not change the loaded identity.
+- `SettleHost` fences new semantic calls and preparation requests before it examines native work and durable mutation records.
+- An idle client does not establish completed Host work. Unresolved mutation records keep the Host fenced.
+- `StopHost` acknowledges a normal IDEA exit request. The installer must separately prove that the exact process incarnation exited.
+- The synchronous unload veto uses admitted settlement evidence and does no SQLite work on the Event Dispatch Thread.
+- The installer needs fresh Host identity after reload. Directory exchange alone does not establish Host activation.
+- Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) for current qualification limits.
 
 - Trace requests from the endpoint into canonical dispatch and the domain protocol owner.
 - For read admission, cancellation, and freshness, continue into `workspace/intellij-read`.

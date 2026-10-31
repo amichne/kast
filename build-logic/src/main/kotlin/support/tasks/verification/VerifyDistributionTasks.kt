@@ -73,15 +73,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "bin/kast-query",
             "share/kast/adapters/copilot/extension.mjs",
             "share/kast/adapters/pi/extension.ts",
-            "share/kast/agent-tools/.agents/plugins/marketplace.json",
-            "share/kast/agent-tools/plugins/kast/.codex-plugin/plugin.json",
-            "share/kast/agent-tools/plugins/kast/.mcp.json",
-            "share/kast/agent-tools/plugins/kast/references/onboarding.md",
-            "share/kast/agent-tools/plugins/kast/references/query-examples.json",
-            "share/kast/agent-tools/plugins/kast/hooks/session_start.py",
-            "share/kast/agent-tools/plugins/kast/hooks/session_start.py.lock",
-            "share/kast/agent-tools/plugins/kast/hooks/hooks.json",
-            "share/kast/agent-tools/plugins/kast/hooks/copilot.json",
             "share/kast/libexec/kast-daemon",
             "share/kast/libexec/kast-service",
             "share/kast/libexec/kast-management",
@@ -94,7 +85,15 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/knowledge/manifest.json",
             "share/kast/licenses/LICENSE",
         )
-        check(required.all(entries::contains)) { "control product is missing required entries" }
+        check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
+        val defaultPlugin = "share/kast/agent-tools/plugins/kast/"
+        val defaultEffects = listOf(".mcp.json", "mcp.json", "hooks", "skills/kast/scripts")
+        check(entries.none { entry -> defaultEffects.any { effect ->
+            entry == defaultPlugin + effect || entry.startsWith(defaultPlugin + effect + "/")
+        } }) { "default guidance contains automatic MCP, hooks, or Python transport" }
+        check(paths.none { isPrivateDistributionArtifact(root.relativize(it)) }) {
+            "control product contains a private environment or Python cache"
+        }
         val publicExecutables = Files.list(root.resolve("bin")).use { paths ->
             paths.filter(Files::isRegularFile).map { path -> path.fileName.toString() }.toList()
         }
@@ -128,6 +127,22 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "control product embeds semantic runtime entry $embeddedRuntimeEntry"
         }
     }
+}
+
+private fun guidanceDistributionEntries(): List<String> {
+    val shared = listOf(
+        ".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
+        "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
+        "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
+        "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json",
+    )
+    val compositions = listOf("", "compositions/mcp/").flatMap { composition ->
+        shared.map { "share/kast/agent-tools/$composition$it" }
+    }
+    val transport = listOf(".mcp.json", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
+        "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py", "skills/kast/scripts/transport.py",
+        "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock")
+    return compositions + transport.map { "share/kast/agent-tools/compositions/mcp/plugins/kast/$it" }
 }
 
 internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Boolean =

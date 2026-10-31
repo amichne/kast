@@ -210,10 +210,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Query protocol
@@ -419,8 +419,8 @@ The ledger derives one finite outcome per requested site from original paths. Re
 
 Compiler path steps retain their transfer evidence through model applications,
 path history, ledger retention and value-path paging. Public projection preserves
-the direct or normal branch-result variant, exact try and branch anchors, typed
-alternative and normal-completion condition. A compact finding still expands
+the closed transfer variant. Normal branch results keep exact try and branch
+anchors, a typed alternative, and the normal-completion condition. A compact finding still expands
 the original path with that proof. Transfer evidence is charged by the existing
 retained-storage visitor; byte and work exhaustion retain the existing typed
 qualifications and continuation owners.

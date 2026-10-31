@@ -156,7 +156,7 @@ sources:
 generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T16:19:14.290Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Semantic query

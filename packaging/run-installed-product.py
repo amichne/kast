@@ -70,16 +70,7 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
     require(record["providedHostedContract"] == metadata["requiredHostedContract"], "fresh pair contract")
     for name in ("operation-registry.json", "wire-schema.json", "ide-host.json", "knowledge/manifest.json"):
         require((product / "share/kast" / name).is_file(), "missing resource " + name)
-    with zipfile.ZipFile(plugin) as archive:
-        names = archive.namelist()
-        require(bool(names) and all(name.startswith("kast-ide-hosted/") for name in names), "plugin layout")
-        plugin_jar = f"kast-ide-hosted/lib/kast-ide-hosted-{record['hostedPluginVersion']}.jar"
-        require(plugin_jar in names, "plugin jar")
-        with zipfile.ZipFile(io.BytesIO(archive.read(plugin_jar))) as jar:
-            require(ET.fromstring(jar.read("META-INF/plugin.xml")).findtext("version")
-                    == record["hostedPluginVersion"], "embedded host version")
-            require(json.loads(jar.read("hosted-contract.json")) == record["providedHostedContract"],
-                    "embedded host contract")
+    verify_plugin_archive(plugin, record["hostedPluginVersion"], record["providedHostedContract"])
     with tarfile.open(control) as archive:
         for launcher in ("bin/kast", "bin/kast-codex", "share/kast/libexec/kast-daemon",
                          "share/kast/libexec/kast-service", "share/kast/libexec/kast-management"):
@@ -91,6 +82,20 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
     helper = product / "share/kast/host-installation.py"
     require(helper.is_file() and not helper.is_symlink(), "host installer")
     return AdmittedArtifactPair(control_match.group(1), host_match.group(1), control, plugin, host_record, helper)
+
+
+def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: dict) -> None:
+    with zipfile.ZipFile(plugin) as archive:
+        names = archive.namelist()
+        require(bool(names) and all(name.startswith("kast-ide-hosted/") for name in names), "plugin layout")
+        require(len(names) == len(set(names)), "duplicate plugin entries")
+        plugin_jar = "kast-ide-hosted/lib/kast-ide-hosted.jar"
+        require(plugin_jar in names, "plugin jar")
+        with zipfile.ZipFile(io.BytesIO(archive.read(plugin_jar))) as jar:
+            require(ET.fromstring(jar.read("META-INF/plugin.xml")).findtext("version")
+                    == host_version, "embedded host version")
+            require(json.loads(jar.read("hosted-contract.json")) == provided_contract,
+                    "embedded host contract")
 
 
 def verify_launcher(fixture: InstallerFixture, product: Path, pair: AdmittedArtifactPair) -> None:

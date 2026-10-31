@@ -273,7 +273,7 @@ private fun prepareRecovery(root: Path, plugin: RecoveryPlugin?, pluginRoot: Str
         val recovery = root.parent.resolve("recovery")
         val bundle = recovery.resolve("installation")
         listOf(recovery, bundle).forEach(::prepareDirectory)
-        for (name in listOf("installation-recovery.py", "installation-lifecycle.py")) {
+        for (name in listOf("installation-recovery.py", "installation-lifecycle.py", "managed_update_journal.py")) {
             val source = root.resolve("share/kast/$name")
             if (!Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)) return InstallationRecoveryPreparation.Rejected
             Files.copy(source, bundle.resolve(name), StandardCopyOption.REPLACE_EXISTING)

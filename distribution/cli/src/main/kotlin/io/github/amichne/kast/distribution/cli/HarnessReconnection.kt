@@ -19,7 +19,9 @@ internal fun reconnectHarness(root: Path, home: Path, connection: HarnessConnect
             ) {
                 is PluginInstallOutcome.Installed,
                 is PluginInstallOutcome.AlreadyInstalled -> Unit
-                is PluginInstallOutcome.Rejected -> throw ManagementRejected("plugin-migration", outcome.asJson())
+                is PluginInstallOutcome.Rejected,
+                is PluginInstallOutcome.RecoveryRequired ->
+                    throw ManagementRejected("plugin-migration", outcome.asJson())
             }
         HarnessConnection.PI,
         HarnessConnection.COPILOT -> connectHarness(root, home, connection)

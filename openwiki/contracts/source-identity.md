@@ -79,7 +79,7 @@ sources:
 generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T02:50:46.064Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Source and workspace identity

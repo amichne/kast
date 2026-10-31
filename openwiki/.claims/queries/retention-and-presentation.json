@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d761d083d2d124bf3a712f7af71a773bfcde0c892461bcbdd2e20937f4592c87",
+  "pageVersion": "sha256:f8dc22c8b240f4fe8aa40ebc8bca438e909c3fed0ad3320917b31e8f04f6ce1a",
   "claims": [
     {
       "id": "claim_bb06b67472e44dc29cb85a5a8e577cda",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPublication.kt",
-          "version": "repo-file-v1:sha256:9cd08420264b9bd3f0f9198c02ac88a04a2b8f9484918e14e2093afe812da19e"
+          "version": "repo-file-v1:sha256:9ebb9da244bcd4b01496fe2849de82189e7a7ea69543c5a71ae47828941da030"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt",
-          "version": "repo-file-v1:sha256:6376f3e075c05ba82395fce07492d34b6267087552363c198a83f79c091c28ff"
+          "version": "repo-file-v1:sha256:019c6db38af05865705494db6c9f16585965831af54c5792d82193c84c8323e6"
         }
       ]
     },
@@ -22,11 +22,11 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt",
-          "version": "repo-file-v1:sha256:5485446c78e3c179bf221f262b01907eece061aee7a0752c56400c0298451d57"
+          "version": "repo-file-v1:sha256:63c9651426f0983788c77b61627b9f2a5d22acf8ad566f1d59614e65c7d3a585"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
+          "version": "repo-file-v1:sha256:e314d5a31ea0018ea48f6a34d5f3ce0fa73393904d6835df798dd3fa9c1a2959"
         }
       ]
     },
@@ -36,17 +36,17 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:877ee3ba0deef8350bea52ae9d00fbd1b1e0ee797454e7936b242f0d633ec5bb"
+          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt",
-          "version": "repo-file-v1:sha256:3382cb70a19b0ef3652426972f6efb993986c2f121ecd5d8b3c0f897accb1ef5"
+          "version": "repo-file-v1:sha256:5e4d434f12b0575cc088a766af2981a35170a0e27f36a458a08fa76d7a0ee4a5"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T01:04:37.434Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

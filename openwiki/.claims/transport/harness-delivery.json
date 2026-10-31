@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:80a17734c8bde4c273f7fcea5ddc4090aad804f6fb644d03e35416db32932322",
+  "pageVersion": "sha256:43e1fe305d7a432a1d2ff0d87b502dbc3bb923f1b6ca7a64b7873f2a0c0c1d52",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:aaddeb3869dffbdd8bce5e673b2c4c3138389dc251de15cc8783af3ae70f96cd"
+          "version": "repo-file-v1:sha256:14a437bda450c93145c9f62622e60483dbd00e5280c9193472ce89a7786ad499"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:f026a5a35f8071a4315cfcb604daa6239f9d80f3315ed3014d440651073394a4"
+          "version": "repo-file-v1:sha256:b93c3360385c1f111ead7ecc5200e50addecffccf05ff7b10735de9e1d072e02"
         }
       ]
     },
@@ -22,11 +22,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/js/query-delivery-contract.mjs",
-          "version": "repo-file-v1:sha256:b2c31f3784b6fa39c71ba6f527dfaad63135c1d774baf204a6c3d0f9b7df2ae1"
+          "version": "repo-file-v1:sha256:e2a6a42e6405b1469130faeaae6452e40ceb7eb94dc3c699d2481b3ae0f287e1"
         },
         {
           "resource": "repo://cli/src/main/js/query-delivery.mjs",
-          "version": "repo-file-v1:sha256:1bdf2403520ca33c916a6675c1024fd77dfd171ba71e6fbea13cb45e383838c1"
+          "version": "repo-file-v1:sha256:74f73592d32c1c1ce6dbedf3f1cd55ff98f930cd3b358c50e3f0fe2cfe01e2da"
         }
       ]
     },
@@ -36,7 +36,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/resources/query-delivery.schema.json",
-          "version": "repo-file-v1:sha256:e2f5cd0ecb8959e452a63ddccecaa1992d01fb5dc10ff5f07317fe8771de32e6"
+          "version": "repo-file-v1:sha256:5110de30a7a5e73c03db0a5c53809aa188cc958818559bd5df57f0220af88b1b"
         }
       ]
     },
@@ -46,39 +46,35 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/js/query-presentation.mjs",
-          "version": "repo-file-v1:sha256:026909c60f1ea12306152153fa5f962cb06f18afd9d166117d9302362a329672"
+          "version": "repo-file-v1:sha256:8824ba2e86912e19f3a6c58b1c316fc9a831233601a795eb6daa54e2065a69c1"
         }
       ]
     },
     {
       "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-      "statement": "Codex and Copilot hooks invoke one passive standard-library Python script without uv or dependency downloads. It emits bounded shared context with exact workspace and reference paths, rejecting invalid inputs without partial context.",
+      "statement": "Generated default Codex and Copilot plugins select the canonical CLI skill without hooks or MCP. Explicit MCP composition contains the complete transport. Authored legacy hook resources are not selected automatically.",
       "evidence": [
         {
-          "resource": "repo://agent-tools/hooks/copilot.json",
-          "version": "repo-file-v1:sha256:0ebe32717b265c9fb8aaac9ac26b7b5d7c3fad36ff73aef88552a224fae3aec9"
+          "resource": "repo://agent-tools/skills/kast/SKILL.md",
+          "version": "repo-file-v1:sha256:1cf36670a552feb7f1ed68a6228a11f062629f1ebc734fcb6bf62dff25b569dd"
         },
         {
-          "resource": "repo://agent-tools/hooks/hooks.json",
-          "version": "repo-file-v1:sha256:a0c53cbd7da3edc348425f30c31a1c03d0570cc85c6b888c39133208efb6deab"
-        },
-        {
-          "resource": "repo://agent-tools/hooks/session_start.py",
-          "version": "repo-file-v1:sha256:94c2ba4afd2d99a38a4703c48527171148e27b43419e009e0143fa7ba53a4519"
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
+          "version": "repo-file-v1:sha256:63192b73621d69224301e9658aa30f7c4fd192304924389c5e19e3a4249c6a23"
         }
       ]
     },
     {
       "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-      "statement": "The CLI selects Pi's native MCP extension, which registers Kast and reads bounded bundled context directly with Node. Context rejection emits one warning while later turns and MCP remain available, without Python or uv processes.",
+      "statement": "Explicit Pi MCP setup selects the native extension, which registers Kast and reads bounded bundled context with Node. Context rejection emits one warning while later turns and MCP remain available. Context delivery starts no Python or uv process.",
       "evidence": [
         {
-          "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:ee38548cc514ac551052343c504cd93e75163d1c0952e1e88c90000c714f28c5"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt",
+          "version": "repo-file-v1:sha256:651a1cbe099c92f102872d7a28f8bd2bdcf67c772ed59bee4b2e6ebe33c71050"
         },
         {
           "resource": "repo://pi/mcp-extension.ts",
-          "version": "repo-file-v1:sha256:488b295bf9ae1fb58f5fb504d532d78fa1fc3ca855d189009d3552879ba3cf0d"
+          "version": "repo-file-v1:sha256:2ac0e87c568d530d1ba4aabc7466b450c77296e6aeb7024e21e05c1ddbd97ed5"
         }
       ]
     },
@@ -88,17 +84,17 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/onboarding.template.md",
-          "version": "repo-file-v1:sha256:4fea298e1ef256ded03b9937bb10d0d9e0e85e6ff57532e3d9253d60e8464964"
+          "version": "repo-file-v1:sha256:91ab7a906e7a27decddc36aa87df44f986283be0b6fe996f4594ddc6d4aa9126"
         },
         {
           "resource": "repo://packaging/generate-public-query.py",
-          "version": "repo-file-v1:sha256:db7ec3585323fabf7f70bf8aab10b2e12588172637faae2b8f03e5f0998a9429"
+          "version": "repo-file-v1:sha256:d2e9125cf6e2e862eca9b7a8a83818de38ef694c06491d69099e2be4ef02d1f1"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-18T02:29:42.742Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

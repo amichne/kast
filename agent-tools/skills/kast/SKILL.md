@@ -1,128 +1,72 @@
 ---
 name: kast
-description: Use for Kotlin declaration discovery, exact callers, reference occurrences, implementations, affected-use traces, source reads, and compiler diagnostics with the installed Kast runtime. Offers task commands instead of hand-written MCP queries. Use ordinary source tools for non-Kotlin files.
+description: Use the installed native Kast CLI for Kotlin declaration discovery, callers, references, implementations, source reads, and compiler diagnostics in one exact workspace. Read the installed contract before unfamiliar syntax.
 ---
 
 # Kast
 
-For public shell queries without MCP registration, read [Public CLI reads](public-cli.md).
+Use the installed `kast` command for supported Kotlin work.
+The persistent IntelliJ IDEA Host owns compiler authority and project state.
+Separate CLI calls use that Host without a client JVM or a new daemon.
+Use ordinary source tools for other languages.
 
-Use the Kast task tools for supported Kotlin semantic work in the exact workspace.
-The plugin exposes these task tools through MCP in Codex, Copilot, and Pi.
-The Copilot SDK extension uses the same task catalog and service.
-Read the host's exposed schema before a new task shape.
-For Pi discovery, obey `mcp_servers` and use its native discovery tools.
-
-The CLI fallback uses the same request constructors and installed RPC:
+Read [Public CLI reads](public-cli.md) for command examples.
+Use `kast describe` for the installed contract.
+For unfamiliar query arguments, inspect these sections:
 
 ```sh
-uv run --locked --script <skill-directory>/scripts/access.py COMMAND
+kast describe query --section input
+kast describe query --section examples
 ```
 
-Replace `<skill-directory>` with this file's directory.
-Use `--workspace PATH` when the current directory differs from the target repository.
-The service needs uv and Python 3.12 or 3.13.
-The locked script can download pinned dependencies on its first run.
-The installed Kast binary and IntelliJ plugin keep semantic authority.
+## Select the exact declaration
 
-## Find before relationships
+1. Find the declaration with its simple name, known kind, directory, and source sets.
+2. Examine its owner, signature, receiver, and location.
+3. Select the exact declaration before a relationship query.
+4. Keep each issued reference unchanged.
 
-1. Find the declaration with its known directory, kind, and source sets.
-2. Examine the returned owner, signature, receiver, and location.
-3. Copy the exact reference for the intended declaration.
-4. Use a relationship command with that reference.
+Apply known path and source-set exclusions before discovery and each source read.
+The default source sets are `main` and `test`.
+A directory at a call site does not establish the declaration's directory.
+An interface selector can search the CLASS family. Examine source before an interface claim.
+A cursor at a call selects the enclosing declaration. It does not select the callee.
+Ambiguous overloads need a qualified stop.
 
-For example, call `find` with these arguments:
+## Keep completion and recovery evidence
 
-```json
-{"name":"QueryCompletionDocument","kind":"interface","directory":"protocol","source_sets":["main"]}
-```
-
-Pass the selected issued `ref` to `callers`, `references`, or another relationship tool.
-For MCP, use JSON fields such as `directory`, `source_sets`, and `page_size`.
-For the CLI fallback, use `--directory`, repeated `--source-set`, and `--page-size`.
-
-
-Examples contain placeholders, not issued references. Never execute those placeholders.
-`find` searches descendants unless you explicitly select `--shallow`.
-`--kind interface` searches the CLASS family. Examine the returned declaration before an interface claim.
-Exact names can match several overloads. Never expand all matches when the task identifies one overload.
-If the task explicitly requests all overloads, preserve each target and its separate evidence.
-
-**A cursor on a call selects the enclosing declaration through AT_LOCATION, not the callee.**
-Do not use that location to answer callers of the callee.
-Find the callee by name and select its exact owner and signature from source evidence.
-For a function call, use `find NAME --kind function`.
-The call site's directory does not establish the callee's declaration directory.
-Use imports or declaration evidence before you restrict callee discovery to a module or source set.
-If the callee's scope is unknown, start with workspace discovery and disclose the selected source sets.
-If the evidence cannot distinguish overloads, report the ambiguity.
-
-## Choose the question
-
-| Command | Result |
-|---|---|
-| `callers`, `callees`, `implementations`, `inheritors`, `overrides` | One-hop declaration relationships |
-| `references`, `type_uses` | Individual occurrence evidence |
-| `trace` | Fixed affected-use topology, without an arbitrary depth |
-| `walk` with `relation:"CALLERS",depth:3` | Every established hop through depth three, with traversal records |
-| `source` with `ref:REF,context:10` | The declaration anchor, with a bounded source window |
-| `source` with `ref:REF,region:"CALLABLE_BODY",context:null` | Callable body under the issued authority |
-| `source` with `ref:REF,region:"CALLABLE_BODY",context:10` | A bounded window, not complete source |
-| `diagnostics path` | Compiler diagnostics for a relative file or directory |
-
-Every relationship task needs an issued `ref`.
-Destination scope uses `--directory` and `--source-set`. It is separate from the discovery scope.
-An omitted destination scope covers the workspace.
-Use `--production-only` or `--exclude-generated` only when the task excludes those destinations.
-Three consecutive relation expansions return the third frontier, not all three hop levels. Use `walk` instead.
-
-Start source reads with `source` with `ref:REF,context:10`. Its default region is `ANCHOR`.
-Examine that source before you select `CLASS_BODY` or `CALLABLE_BODY`.
-A data class can have constructor properties without a class body.
-`ENCLOSING_DECLARATION` selects a strict outer declaration. It does not mean the current declaration.
-If a body region rejects with `region-absent`, use `ANCHOR` for the declaration itself.
-State the changed selector and preserve the first rejection.
-
-## Keep evidence and recover
-
-MCP returns the original RPC text and its structured value. The CLI returns the original RPC reply.
-Read both its outer outcome and the document's qualifications.
-Location ranges contain UTF-16 offsets, not line numbers.
-Use a line number only when source text or explicit line metadata establishes it.
+Read the outer outcome and the result's qualifications.
+A presentation page does not establish semantic completion.
 An empty incomplete result does not prove absence.
-`--page-size` limits presentation. It does not establish semantic completion.
-`--bytes` needs at least 4096. A smaller requested answer needs a concise final response, not an invalid query budget.
-Use `--save FILE` to keep the unchanged reply in a new file. Existing files reject before execution.
+A complete relation proves only its declared semantics and scope.
+For a complete source-use answer, resolve imports, companion qualifiers, and unmatched sites too.
+Location ranges contain UTF-16 offsets. They are not line numbers.
 
-```sh
-uv run --locked --script <skill-directory>/scripts/access.py result --ref '<issued result reference>' --output occurrences --cursor 20 --evidence-cursor 3
-uv run --locked --script <skill-directory>/scripts/access.py resume --token '<issued output continuation>'
-```
+Use retained result commands to read produced output.
+Keep the original output kind, issued result reference, and issued cursors.
+Use resume only with an issued output continuation.
+Never repeat semantic work to recover lost output.
+Discard stale source evidence after a source change or freshness rejection.
 
-Copy both issued cursors and the original output kind for a retained result.
-Only an issued output continuation belongs to `resume`.
-Do not repeat RUN to recover missing output. Do not replace stale references silently.
-Kast can save editor buffers and refresh the imported project before semantic reads.
-If preparation rejects, report its exact reason and use source reads for qualified fallback evidence.
-Cancellation or timeout can leave submission or effects uncertain. Never retry automatically.
+Cancellation or timeout can leave submission, work, or effects uncertain.
+Client exit alone does not prove Host settlement.
+Never retry an uncertain operation automatically.
+Preserve the original failure or receipt and its recovery instructions.
+If Host or workspace admission rejects, state the reason and use qualified source reads.
 
-## Advanced existing operations
+## Optional MCP tools
 
-Use MCP `schema` before an advanced operation.
-Use MCP `raw` with `tool`, `arguments`, and `write:true` for an authorized source change.
-The task service admits those arguments against the installed catalog before a call.
-The original raw tool names are not separate exposed MCP tools.
-The CLI fallback provides these matching commands:
+`kast install <harness> --mcp` selects the optional MCP composition.
+CLI and MCP share the persistent IDEA Host and semantic contracts.
+Use `find` before exact relationship tasks.
+Use `source` with `ANCHOR` before a body region.
+Use `schema` before an advanced existing operation through `raw`.
+Source changes need the user's request, an issued exact target, and explicit write admission.
+Do not infer live readiness from registration or schema admission.
 
+## Fresh sessions
 
-Use `schema --definition NAME` to read one installed query definition.
-Use `schema --tool TOOL` to read another tool's complete input schema.
-For value flow, retained joins, detail selectors, or source changes, put the existing arguments in a JSON file.
-Use `raw --tool TOOL --file PATH --emit-request` to examine schema admission without a semantic call.
-Remove `--emit-request` to invoke the existing operation.
-Catalog-declared writes also need `--write` and a user-requested source change.
-Keep the original mutation receipt or failure. A missing response does not prove that no write occurred.
-
-Kast owns issued-reference authority. Local shape admission does not establish that authority.
-Schema admission and request construction do not prove live semantic readiness or answer correctness.
+A core update interrupts owned work and invalidates Host-issued references after a Host transition.
+Start a fresh agent session after installation or an update.
+If the core result reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install <harness>` before that session.
+A standalone skill export keeps its bytes until explicit removal or another output directory.

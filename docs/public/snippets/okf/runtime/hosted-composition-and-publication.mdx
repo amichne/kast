@@ -3,7 +3,7 @@
 Shared [OKF source](https://github.com/amichne/kast/blob/main/openwiki/runtime/hosted-composition-and-publication.md) and [recorded Claims](https://github.com/amichne/kast/blob/main/openwiki/.claims/runtime/hosted-composition-and-publication.json).
 
 <Info>
-Recorded evidence differs from current source or needs further assessment. This explanation does not prove current behavior.
+Recorded evidence matches current file bytes. This comparison does not prove behavior.
 </Info>
 
 <a id="okf-runtime-hosted-composition-and-publication" />
@@ -14,14 +14,15 @@ Recorded evidence differs from current source or needs further assessment. This 
 
 ## Project ownership precedes semantic work
 
-The plugin descriptor registers `HostedEndpointService` as the project-owned endpoint service.
+`HostedEndpointService` declares its project service scope through the IntelliJ `Service` annotation.
 The service composes passive semantic reads and explicitly requested workspace lifecycle operations.
 Its endpoint identity, project admission, refresh owner, and retirement state belong to that project lifetime.
 Another process cannot manufacture a current endpoint by copying a descriptor.
 
 The endpoint admits request framing and connection ownership before semantic dispatch.
 `HostedConnectionAdmission` bounds concurrent connection jobs.
-When capacity is unavailable, it performs one bounded rejection exchange without another queued semantic job.
+After accept, the listener waits for a permit before it starts another dispatch.
+This applies bounded backpressure without another semantic job.
 Each admitted connection releases its permit even when cancellation races with its start.
 
 <a id="okf-runtime-hosted-composition-and-publication-one-real-query-path" />

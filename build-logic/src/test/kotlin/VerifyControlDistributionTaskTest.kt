@@ -9,6 +9,65 @@ import support.tasks.VerifyControlDistributionTask
 
 class VerifyControlDistributionTaskTest {
     @Test
+    fun `CLI default and complete optional MCP composition satisfy the product layout`(@TempDir directory: Path) {
+        guidanceFixture(directory).verify()
+    }
+
+    @Test
+    fun `optional MCP composition needs its complete transport`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        Files.delete(task.controlDirectory.get().asFile.toPath().resolve(
+            "share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/transport.py"))
+        assertEquals("control product is missing required entries",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+    }
+
+    @Test
+    fun `default MCP transport and private environments reject`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        val root = task.controlDirectory.get().asFile.toPath()
+        val defaultTransport = root.resolve("share/kast/agent-tools/plugins/kast/.mcp.json")
+        Files.write(defaultTransport, byteArrayOf())
+        assertEquals("default guidance contains automatic MCP, hooks, or Python transport",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+        Files.delete(defaultTransport)
+        val environment = Files.createDirectories(root.resolve("share/kast/.venv"))
+        Files.write(environment.resolve("pyvenv.cfg"), byteArrayOf())
+        assertEquals("control product contains a private environment or Python cache",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+    }
+
+    private fun guidanceFixture(directory: Path): VerifyControlDistributionTask {
+        val task = sizeFixture(directory)
+        val root = task.controlDirectory.get().asFile.toPath()
+        val entries = listOf(
+            "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc",
+            "share/kast/adapters/copilot/extension.mjs", "share/kast/adapters/pi/extension.ts",
+            "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
+            "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
+            "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
+            "share/kast/knowledge/manifest.json", "share/kast/licenses/LICENSE",
+        ) + listOf("", "compositions/mcp/").flatMap { composition ->
+            val prefix = "share/kast/agent-tools/$composition"
+            listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
+                "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
+                "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
+                "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json").map { prefix + it }
+        } + listOf(".mcp.json", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
+            "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py", "skills/kast/scripts/transport.py",
+            "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock").map {
+            "share/kast/agent-tools/compositions/mcp/plugins/kast/$it"
+        }
+        for (entry in entries) {
+            val file = root.resolve(entry)
+            Files.createDirectories(file.parent)
+            Files.write(file, byteArrayOf())
+        }
+        Files.walk(root).use { paths -> paths.filter(Files::isRegularFile).forEach { it.toFile().setExecutable(true) } }
+        return task
+    }
+
+    @Test
     fun `archive byte cap rejects equality and reports its configured value`(@TempDir directory: Path) {
         val task = sizeFixture(directory)
         task.maximumArchiveBytes.set(3)

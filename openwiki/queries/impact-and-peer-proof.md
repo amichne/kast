@@ -18,9 +18,6 @@ code_sources:
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactPeerSourceAdmissionTest.kt
 - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactPeerBoundaryExecutionTest.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/OriginalImpactRetentionTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-9fcd90db4b894268639790f3
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
@@ -33,6 +30,9 @@ sources:
   - id: openwiki-source-f33cff27f5084631ed8eb931
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteAdmissions.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Value impact and independent peer proof

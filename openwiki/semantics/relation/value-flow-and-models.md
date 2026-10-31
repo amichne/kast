@@ -16,9 +16,6 @@ code_sources:
 - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
 - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt
 - path: relation/service/src/test/kotlin/io/github/amichne/kast/relation/service/RepresentationPropagationTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-b68db27640f24c1cb0a92923
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationModel.kt
@@ -31,6 +28,9 @@ sources:
   - id: openwiki-source-5e4eb99eb5fd7a5dcae4b5eb
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Value flow and representation models

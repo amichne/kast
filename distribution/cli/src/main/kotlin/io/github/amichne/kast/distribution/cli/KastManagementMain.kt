@@ -7,13 +7,10 @@ import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.convert
-import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parsers.CommandLineParser
-import java.nio.file.Path
 import kotlin.system.exitProcess
 
 fun main(arguments: Array<String>) {
@@ -36,93 +33,6 @@ fun main(arguments: Array<String>) {
     }
 }
 
-private fun executeInternalInstall(arguments: List<String>) {
-    val exit =
-        try {
-            internalInstall(arguments, System.getenv())
-        } catch (failure: ManagementRejected) {
-            System.err.println("kast: ${failure.stage}: ${failure.reason}")
-            exitProcess(1)
-        }
-    if (exit != InternalInstallExit.COMPLETED) exitProcess(exit.code)
-}
-
-@Suppress("ThrowsCount")
-private fun internalInstall(arguments: List<String>, environment: Map<String, String>): InternalInstallExit {
-    if (arguments.size != 2) throw ManagementRejected("installer-protocol", "invalid request")
-    if ("KAST_INSTALL_ROOT" !in environment)
-        throw ManagementRejected("installer-protocol", "installation root unavailable")
-    val root =
-        when (val resolved = resolveManagementRoot(environment)) {
-            is ManagementRootResolution.Selected -> resolved.root
-            is ManagementRootResolution.Rejected ->
-                throw ManagementRejected("installer-protocol", resolved.failure.reason)
-        }
-    when (arguments[1]) {
-        "preflight" -> {
-            println(preflightPublicExecutable(root, environment).path)
-            return InternalInstallExit.COMPLETED
-        }
-        "preflight-reset",
-        "reset" -> return internalPublicReset(root, environment, arguments[1])
-        "restore-connections" ->
-            return when (val restored = restorePublicResetConnections(root, environment)) {
-                LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
-                is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", restored.failure.name)
-            }
-        "commit" -> return completeInternalInstall(root, environment, InstallationCompletion.STAGED)
-        "commit-active" -> return completeInternalInstall(root, environment, InstallationCompletion.ACTIVATE)
-        else -> throw ManagementRejected("installer-protocol", "invalid request")
-    }
-}
-
-private fun internalPublicReset(root: Path, environment: Map<String, String>, action: String): InternalInstallExit {
-    val scope =
-        when (val admission = PublicResetScope.admit(root, environment)) {
-            is PublicResetAdmission.Admitted -> admission.scope
-            is PublicResetAdmission.Rejected -> throw ManagementRejected("public-reset", admission.failure.name)
-        }
-    if (action == "preflight-reset") {
-        println(scope.command)
-        return InternalInstallExit.COMPLETED
-    }
-    when (val saved = savePublicResetConnections(root, environment)) {
-        LifecycleEffect.Completed -> Unit
-        is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", saved.failure.name)
-    }
-    return when (presentForceReset(resetPublicInstallation(scope), true)) {
-        ForceResetExit.COMPLETE -> InternalInstallExit.COMPLETED
-        ForceResetExit.INCOMPLETE -> InternalInstallExit.ACTIVATION_REJECTED
-    }
-}
-
-private fun completeInternalInstall(
-    root: Path,
-    environment: Map<String, String>,
-    completion: InstallationCompletion,
-): InternalInstallExit {
-    val channel =
-        when (environment["KAST_MANAGEMENT_CHANNEL"]) {
-            "stable" -> ReleaseChannel.STABLE
-            "developer" -> ReleaseChannel.DEVELOPER
-            else -> throw ManagementRejected("installer-protocol", "release channel unavailable")
-        }
-    val result = completePublicInstallation(root, environment, channel, completion)
-    val destination = result.destination
-    println(destination.path)
-    if (!destination.onPath)
-        System.err.println("kast: installed ${destination.path}; add ${destination.path.parent} to PATH")
-    return when (result) {
-        is InstallationCompletionResult.Published -> InternalInstallExit.COMPLETED
-        is InstallationCompletionResult.ActivationRejected -> InternalInstallExit.ACTIVATION_REJECTED
-    }
-}
-
-private enum class InternalInstallExit(val code: Int) {
-    COMPLETED(0),
-    ACTIVATION_REJECTED(1),
-}
-
 internal sealed interface ManagementParsing {
     data class Selected(val command: ManagementCommand) : ManagementParsing
 
@@ -132,15 +42,17 @@ internal sealed interface ManagementParsing {
 internal fun parseManagementCommand(arguments: List<String>): ManagementParsing {
     if (arguments.firstOrNull() in publicQueryNamespaces)
         return ManagementParsing.Selected(ManagementCommand.PublicQuery(arguments.toList()))
+    if (arguments.firstOrNull() in setOf("connect", "plugin"))
+        return ManagementParsing.Print("kast: setup syntax is retired; use kast install <harness> [--mcp]", true)
     val root =
         ManagementRoot()
             .subcommands(
                 StatusCommand(),
                 StopCommand(),
                 ReinstallCommand(),
-                ConnectCommand(),
                 DisconnectCommand(),
-                PluginCommand(),
+                InstallCommand(),
+                VersionsCommand(),
                 UpgradeCommand(),
                 UninstallCommand(),
                 PublicQueryNamespace("query"),
@@ -213,34 +125,56 @@ private class ReinstallCommand : ManagementNode("reinstall") {
         else ManagementCommand.Lifecycle(LifecycleOperation.REINSTALL, json)
 }
 
-private class PluginCommand : ManagementNode("plugin") {
-    private val json by option("--json", help = "Print the typed plugin installation outcome.").flag()
-    private val harness by
-        argument("harness")
-            .convert { raw ->
-                when (raw.lowercase()) {
-                    "codex" -> PluginHarness.CODEX
-                    else -> fail("Supported plugin harnesses: codex")
-                }
-            }
-            .optional()
-
-    override fun help(context: Context) =
-        "Install the release-bundled MCP and skill plugin. Supported plugin harnesses: codex."
-
-    override fun selection(): ManagementCommand {
-        if (json && harness == null) throw CliktError("--json requires a selected plugin harness")
-        return harness?.let { ManagementCommand.Plugin(it, json) } ?: ManagementCommand.ListPluginHarnesses
-    }
-}
-
 private class UpgradeCommand : ManagementNode("upgrade") {
-    private val controlOnly by
-        option("--control-only", help = "Upgrade control and reuse the admitted running IntelliJ host.").flag()
+    private val channel by option("--channel", help = "Select stable or main.")
+    private val version by option("--version", help = "Pin an exact stable release.")
+    private val commit by
+        option("--commit", help = "Pin a published main revision or its displayed 12-character prefix.")
+    private val ideaHome by option("--idea-home", help = "Select the exact IDEA installation.")
+    private val dryRun by
+        option("--dry-run", help = "Admit the selected artifacts without installation effects.").flag()
+    private val restartIde by option("--restart-ide", help = "Permit a normal IDEA restart when necessary.").flag()
+    private val json by option("--json", help = "Print one terminal management result.").flag()
 
     override fun help(context: Context) = "Install the latest verified release on the selected channel."
 
-    override fun selection() = ManagementCommand.Upgrade(controlOnly)
+    override fun selection(): ManagementCommand =
+        when (val selected = admitBuildRequest(channel, version, commit)) {
+            is SelectionAdmission.Admitted ->
+                ManagementCommand.Upgrade(
+                    request = selected.value,
+                    ideaHome = ideaHome,
+                    dryRun = dryRun,
+                    restartIde = restartIde,
+                    json = json,
+                )
+            is SelectionAdmission.Rejected -> throw CliktError(selected.reason.name)
+        }
+}
+
+private class VersionsCommand : ManagementNode("versions") {
+    private val json by option("--json", help = "Print the captured build catalog.").flag()
+
+    override fun help(context: Context) = "List stable and the five newest selectable published main builds."
+
+    override fun selection() = ManagementCommand.Versions(json)
+}
+
+private class InstallCommand : ManagementNode("install") {
+    private val target by argument("harness|skill")
+    private val output by
+        option("--output", help = "Select the parent skill directory. The default is ./.agents/skills.")
+    private val mcp by option("--mcp", help = "Install the optional MCP composition.").flag()
+    private val json by option("--json", help = "Print one terminal provisioning result.").flag()
+
+    override fun help(context: Context) =
+        "Install canonical CLI guidance for codex, copilot, or pi, or export its skill."
+
+    override fun selection(): ManagementCommand =
+        when (val selected = admitProvisionTarget(target, output, mcp)) {
+            is ProvisionTargetAdmission.Admitted -> ManagementCommand.Install(selected.target, json)
+            is ProvisionTargetAdmission.Rejected -> throw CliktError(selected.reason)
+        }
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
@@ -263,132 +197,3 @@ internal fun resolveManagementRoot(environment: Map<String, String>): Management
     val home = environment["HOME"] ?: return ManagementRootResolution.Rejected(ManagementRootFailure.HOME_UNAVAILABLE)
     return ManagementRootResolution.Selected.admit(home, environment["KAST_INSTALL_ROOT"])
 }
-
-@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
-private fun perform(command: ManagementCommand) {
-    val environment = System.getenv()
-    if (command is ManagementCommand.PublicQuery) {
-        exitProcess(runInstalledPublicQuery(command.arguments, Path.of("").toAbsolutePath(), environment))
-    }
-    val home = environment["HOME"] ?: throw ManagementRejected("environment", "HOME is unavailable")
-    val root =
-        when (val resolved = resolveManagementRoot(environment)) {
-            is ManagementRootResolution.Selected -> resolved.root
-            is ManagementRootResolution.Rejected -> throw ManagementRejected("environment", resolved.failure.reason)
-        }
-    when (command) {
-        is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
-        is ManagementCommand.Status -> printManagementStatus(root, command.json)
-        is ManagementCommand.Connect -> {
-            if (command.connection == null) println("Supported integrations: codex plugin, copilot, pi")
-            else {
-                val repeated =
-                    connectHarness(
-                        root,
-                        Path.of(home),
-                        command.connection,
-                        command.ownership,
-                        directory = command.directory,
-                        environment = environment,
-                    )
-                println(
-                    if (repeated) "${command.connection.publicName} is already registered"
-                    else "Registered ${command.connection.publicName}"
-                )
-                println("Restart the harness to load it")
-            }
-        }
-        is ManagementCommand.Disconnect -> {
-            val removed = disconnectHarness(root, Path.of(home), command.harness)
-            println(
-                if (removed) "Removed ${command.harness.publicName} registration"
-                else "${command.harness.publicName} was not registered by this installation"
-            )
-        }
-        ManagementCommand.ListPluginHarnesses -> println("Supported plugin harnesses: codex")
-        is ManagementCommand.Plugin -> {
-            val outcome =
-                when (command.harness) {
-                    PluginHarness.CODEX ->
-                        installCodexPlugin(
-                            root,
-                            Path.of(home),
-                            codexHome =
-                                admittedConnectionDirectory(
-                                        environment["CODEX_HOME"] ?: Path.of(home).resolve(".codex").toString()
-                                    )
-                                    .path,
-                        )
-                }
-            if (command.json) println(outcome.asJson())
-            when (outcome) {
-                is PluginInstallOutcome.Installed ->
-                    if (!command.json)
-                        println("Installed Kast plugin for Codex; restart Codex to load its MCP and skill")
-                is PluginInstallOutcome.AlreadyInstalled ->
-                    if (!command.json) println("Kast plugin for Codex is already installed")
-                is PluginInstallOutcome.Rejected -> {
-                    if (!command.json) System.err.println("kast: plugin: ${outcome.asJson()}")
-                    exitProcess(1)
-                }
-            }
-        }
-        is ManagementCommand.Lifecycle -> {
-            val outcome = executeInstallationLifecycle(root, Path.of(home), environment, command.operation)
-            if (command.json) println(outcome.asJson())
-            else
-                when (outcome) {
-                    is LifecycleOutcome.Stopped ->
-                        println("Kast shutdown verified; automatic restart and new tool calls are disabled")
-                    is LifecycleOutcome.Reinstalled ->
-                        println("Reinstalled Kast ${outcome.version}; reconnect affected harnesses")
-                    is LifecycleOutcome.Rejected ->
-                        System.err.println(
-                            "kast: ${outcome.stage}: ${outcome.failure}; ${lifecycleRecovery(outcome.failure)}"
-                        )
-                    is LifecycleOutcome.Pending ->
-                        System.err.println(
-                            "kast: installed ${outcome.version}; ${outcome.stage}: ${outcome.failure}; " +
-                                lifecycleRecovery(outcome.failure)
-                        )
-                }
-            if (outcome is LifecycleOutcome.Rejected || outcome is LifecycleOutcome.Pending) exitProcess(1)
-        }
-        is ManagementCommand.Reset -> {
-            val scope =
-                when (val admitted = PublicResetScope.admit(root, environment)) {
-                    is PublicResetAdmission.Admitted -> admitted.scope
-                    is PublicResetAdmission.Rejected -> throw ManagementRejected("public-reset", admitted.failure.name)
-                }
-            val outcome =
-                when (command.operation) {
-                    ForceResetOperation.UNINSTALL -> resetPublicInstallation(scope)
-                    ForceResetOperation.REINSTALL -> reinstallPublicInstallation(scope, environment)
-                }
-            when (presentForceReset(outcome, command.json)) {
-                ForceResetExit.COMPLETE -> Unit
-                ForceResetExit.INCOMPLETE -> exitProcess(1)
-            }
-        }
-        is ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home), command.controlOnly, environment)
-        ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
-        ManagementCommand.Version -> println(MANAGEMENT_VERSION)
-        ManagementCommand.Help -> Unit
-    }
-}
-
-private fun lifecycleRecovery(failure: LifecycleFailure): String =
-    when (failure) {
-        LifecycleFailure.HOST_RESTART_REQUIRED -> "quit the selected IntelliJ IDEA, then repeat this command"
-        LifecycleFailure.REGISTRATION_REPAIR_REQUIRED -> "repair the recorded harness registration with kast connect"
-        LifecycleFailure.OWNERSHIP_UNPROVEN,
-        LifecycleFailure.FENCE_REJECTED,
-        LifecycleFailure.CHILD_REJECTED,
-        LifecycleFailure.CHILD_DEADLINE_EXCEEDED,
-        LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN,
-        LifecycleFailure.REQUESTS_DID_NOT_RETIRE,
-        LifecycleFailure.HOST_OBSERVATION_REJECTED,
-        LifecycleFailure.INSTALLATION_REJECTED,
-        LifecycleFailure.FILESYSTEM_REJECTED ->
-            "inspect kast status --json; shutdown fencing and recovery evidence are retained"
-    }

@@ -1,10 +1,10 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
@@ -71,67 +71,92 @@ internal fun preflightPublicExecutable(root: Path, environment: Map<String, Stri
     return InstallDestination(path, onPath, existing)
 }
 
-@Suppress("LongMethod", "NestedBlockDepth", "ThrowsCount")
 internal fun commitPublicExecutable(
     root: Path,
     environment: Map<String, String>,
     channel: ReleaseChannel,
+    composition: ManagementPublication = ManagementPublication.Preserve,
 ): InstallDestination {
     val destination = preflightPublicExecutable(root, environment)
     val source = root.resolve("installation/share/kast/libexec/kast-management")
     if (!Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS) || !Files.isExecutable(source))
         throw ManagementRejected("path-commit", "verified native executable is unavailable")
-    val path = destination.path
-    val parent = path.parent
     try {
-        Files.createDirectories(parent)
-        val staged = Files.createTempFile(parent, ".kast-", ".new")
-        val previous =
-            if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) Files.createTempFile(parent, ".kast-", ".old")
-            else null
-        try {
-            Files.copy(source, staged, StandardCopyOption.REPLACE_EXISTING)
-            Files.setPosixFilePermissions(
-                staged,
-                setOf(
-                    PosixFilePermission.OWNER_READ,
-                    PosixFilePermission.OWNER_WRITE,
-                    PosixFilePermission.OWNER_EXECUTE,
-                    PosixFilePermission.GROUP_READ,
-                    PosixFilePermission.GROUP_EXECUTE,
-                    PosixFilePermission.OTHERS_READ,
-                    PosixFilePermission.OTHERS_EXECUTE,
-                ),
-            )
-            if (previous != null) Files.copy(path, previous, StandardCopyOption.REPLACE_EXISTING)
-            val next =
-                ManagementReceipt(
-                    schemaVersion = 2,
-                    installationRoot = root.toString(),
-                    executable = path.toString(),
-                    executableSha256 = sha256(staged),
-                    channel = channel,
-                    registrations = destination.previous?.registrations.orEmpty(),
-                )
-            Files.move(staged, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            try {
-                writeManagementReceipt(root, next)
-            } catch (failure: java.io.IOException) {
-                if (previous != null)
-                    Files.move(previous, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-                else Files.deleteIfExists(path)
-                throw failure
-            }
-        } finally {
-            Files.deleteIfExists(staged)
-            if (previous != null) Files.deleteIfExists(previous)
-        }
-    } catch (failure: ManagementRejected) {
-        throw failure
+        publishPublicExecutable(root, source, destination, channel, composition)
     } catch (_: Exception) {
         throw ManagementRejected("path-commit", "executable or receipt could not be committed")
     }
     return destination
+}
+
+private fun publishPublicExecutable(
+    root: Path,
+    source: Path,
+    destination: InstallDestination,
+    channel: ReleaseChannel,
+    composition: ManagementPublication,
+) {
+    val path = destination.path
+    Files.createDirectories(path.parent)
+    val staged = Files.createTempFile(path.parent, ".kast-", ".new")
+    val previous =
+        if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) Files.createTempFile(path.parent, ".kast-", ".old")
+        else null
+    try {
+        Files.copy(source, staged, StandardCopyOption.REPLACE_EXISTING)
+        Files.setPosixFilePermissions(staged, PosixFilePermissions.fromString("rwxr-xr-x"))
+        if (previous != null) Files.copy(path, previous, StandardCopyOption.REPLACE_EXISTING)
+        val next = nextManagementReceipt(root, destination, staged, channel, composition)
+        Files.move(staged, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        commitExecutableReceipt(root, next, path, previous)
+    } finally {
+        Files.deleteIfExists(staged)
+        if (previous != null) Files.deleteIfExists(previous)
+    }
+}
+
+private fun commitExecutableReceipt(root: Path, next: ManagementReceipt, path: Path, previous: Path?) {
+    try {
+        writeManagementReceipt(root, next)
+    } catch (failure: java.io.IOException) {
+        if (previous != null)
+            Files.move(previous, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        else Files.deleteIfExists(path)
+        throw failure
+    }
+}
+
+private fun nextManagementReceipt(
+    root: Path,
+    destination: InstallDestination,
+    staged: Path,
+    channel: ReleaseChannel,
+    composition: ManagementPublication,
+): ManagementReceipt {
+    val prior = destination.previous
+    val policy =
+        when (composition) {
+            ManagementPublication.Preserve ->
+                prior?.updatePolicy
+                    ?: if (channel == ReleaseChannel.STABLE) UpdatePolicy.TrackStable else UpdatePolicy.TrackMain
+            is ManagementPublication.Selected -> composition.binding.policy
+        }
+    val identity =
+        when (composition) {
+            ManagementPublication.Preserve -> prior?.installedBuild
+            is ManagementPublication.Selected -> composition.binding.identity
+        }
+    return ManagementReceipt(
+        2,
+        root.toString(),
+        destination.path.toString(),
+        sha256(staged),
+        channel,
+        prior?.registrations.orEmpty(),
+        policy,
+        identity,
+        prior?.guidance.orEmpty(),
+    )
 }
 
 internal fun writeManagementReceipt(root: Path, receipt: ManagementReceipt) {

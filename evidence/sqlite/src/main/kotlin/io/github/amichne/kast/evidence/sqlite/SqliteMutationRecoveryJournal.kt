@@ -19,12 +19,28 @@ sealed interface SqliteMutationRecoveryJournalOpenResult {
     data class Rejected(val failure: SqliteMutationRecoveryJournalOpenFailure) : SqliteMutationRecoveryJournalOpenResult
 }
 
+sealed interface MutationRecoverySettlement {
+    data object Settled : MutationRecoverySettlement
+
+    data object Unresolved : MutationRecoverySettlement
+
+    data class Rejected(val failure: MutationRecoveryEvidenceFailure) : MutationRecoverySettlement
+}
+
 /** SQLite owner of atomic clean-slate mutation recovery evidence transitions. */
 class SqliteMutationRecoveryJournal
 private constructor(
     private val connections: InitializedSqliteMutationRecoveryConnections,
     private val faults: MutationRecoveryFaultInjector,
 ) : MutationRecoveryEvidenceStore {
+    /** Settlement reconstructs durable records instead of inferring success from an idle process. */
+    fun settlement(): MutationRecoverySettlement =
+        try {
+            connections.use(Connection::mutationSettlement)
+        } catch (_: SQLException) {
+            MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.STORAGE_UNAVAILABLE)
+        }
+
     override fun prepare(
         record: MutationRecoveryRecord.PreWriteDurable
     ): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = storageResult {
@@ -267,6 +283,40 @@ private constructor(
             )
     }
 }
+
+private fun Connection.mutationSettlement(): MutationRecoverySettlement =
+    createStatement().use { statement ->
+        statement.executeQuery("SELECT plan_binding FROM mutation_recovery").use { rows ->
+            readMutationSettlement(this, rows)
+        }
+    }
+
+private fun readMutationSettlement(connection: Connection, rows: java.sql.ResultSet): MutationRecoverySettlement {
+    while (rows.next()) {
+        val binding =
+            when (val parsed = MutationPlanBinding.parse(rows.getString(1))) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected ->
+                    return MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+            }
+        when (val result = connection.mutationRecordSettlement(binding)) {
+            MutationRecoverySettlement.Settled -> Unit
+            MutationRecoverySettlement.Unresolved,
+            is MutationRecoverySettlement.Rejected -> return result
+        }
+    }
+    return MutationRecoverySettlement.Settled
+}
+
+private fun Connection.mutationRecordSettlement(binding: MutationPlanBinding): MutationRecoverySettlement =
+    when (val loaded = loadMutationRecovery(binding)) {
+        is MutationRecoveryLoadResult.Found ->
+            if (loaded.record is MutationRecoveryRecord.RolledBack) MutationRecoverySettlement.Settled
+            else MutationRecoverySettlement.Unresolved
+        is MutationRecoveryLoadResult.Rejected -> MutationRecoverySettlement.Rejected(loaded.failure)
+        is MutationRecoveryLoadResult.Absent ->
+            MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+    }
 
 private sealed interface SqlTerminalRequirement {
     data object Absent : SqlTerminalRequirement

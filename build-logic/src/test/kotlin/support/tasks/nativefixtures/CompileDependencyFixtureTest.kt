@@ -47,14 +47,14 @@ class CompileDependencyFixtureTest {
         fixture()
         runner().build()
         root.resolve("Dependency.kt").writeText("package fixture\nfun answer(): Int = 43\n")
-        assertCompiled()
+        assertCompiled("source contents")
         marker("compiler-marker.jar", "compiler changed")
-        assertCompiled()
+        assertCompiled("compiler classpath archive")
         marker("dependency-marker.jar", "dependency changed")
-        assertCompiled()
-        assertCompiled("-PextraOption=-java-parameters")
+        assertCompiled("dependency classpath archive")
+        assertCompiled("compiler arguments", "-PextraOption=-java-parameters")
         root.resolve("jdk-release").writeText("different toolchain identity")
-        assertCompiled("-PextraOption=-java-parameters")
+        assertCompiled("JDK release identity", "-PextraOption=-java-parameters")
     }
 
     @Test
@@ -79,8 +79,11 @@ class CompileDependencyFixtureTest {
         assertFalse(Files.exists(root.resolve("build/fixture/effects.jar")))
     }
 
-    private fun assertCompiled(vararg arguments: String) {
-        assertEquals(TaskOutcome.SUCCESS, runner(*arguments).build().task(":compileFixture")?.outcome)
+    private fun assertCompiled(changedInput: String, vararg arguments: String) {
+        val result = runner(*arguments).build()
+        assertEquals(TaskOutcome.SUCCESS, result.task(":compileFixture")?.outcome) {
+            "compileFixture after $changedInput:\n${result.output.takeLast(8_192)}"
+        }
     }
 
     private fun fixture() {
@@ -129,7 +132,8 @@ class CompileDependencyFixtureTest {
 
     private fun runner(vararg arguments: String): GradleRunner = GradleRunner.create()
         .withProjectDir(root.toFile())
-        .withArguments(listOf("first", "second", "--configuration-cache", "--console=plain", "--max-workers=2",
+        // These cases prove declared inputs without asynchronous OS watcher delivery.
+        .withArguments(listOf("first", "second", "--configuration-cache", "--no-watch-fs", "--console=plain", "--max-workers=2",
             "-Dorg.gradle.jvmargs=-Xmx512m -XX:ActiveProcessorCount=2") + arguments)
 
     private fun quote(value: String): String = "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"

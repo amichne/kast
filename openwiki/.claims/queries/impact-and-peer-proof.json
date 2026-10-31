@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0578045c6dcdf528f4042c485768b8c2c9b95c0e779f4d593ad4eb688535e4c5",
+  "pageVersion": "sha256:b7e902ad122dfc78e725e76fccf970f924140330672d412823eb0d89ca969ad4",
   "claims": [
     {
       "id": "claim_d660f92a2d904afb96d1e64ad069e99b",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt",
-          "version": "repo-file-v1:sha256:1eb0e9945415056bd7970fbec11587a700d8fa64fd4738ed12a392a7e35c27a3"
+          "version": "repo-file-v1:sha256:6746064f4210d759ae4208b36d5939fd6f896d9f44dc165499f1d53bc080520b"
         }
       ]
     },
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
-          "version": "repo-file-v1:sha256:b4075058124b94361f5e39775e3c61fea2c7dfd70cd6425d8a93c3bd5710eb40"
+          "version": "repo-file-v1:sha256:5e823ccf2a63a1cf786689892826daf1a4a057afa801cf6d70bafd9997d361a7"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryInvestigationCompletion.kt",
@@ -36,13 +36,13 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteAdmissions.kt",
-          "version": "repo-file-v1:sha256:ef7f8fdb1645360b0f393b80eaca06b49940c039932c1f19e507bc20c3f8a3a7"
+          "version": "repo-file-v1:sha256:4ef9e9fd38daf327418e317c1aa74e99f6aa36ccea816df8b8799bd15f7e6e6d"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

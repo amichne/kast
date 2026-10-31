@@ -11,11 +11,30 @@ import org.junit.jupiter.api.Assertions.assertFalse
 
 @Serializable internal data class PluginTestManifest(val name: String, val version: String)
 
+@Serializable
+internal data class PluginTestCompositionManifest(
+    val name: String,
+    val version: String,
+    val mcpServers: String,
+    val skills: String = "./skills/",
+)
+
 @Serializable internal data class PluginTestMarketplace(val name: String, val plugins: List<PluginTestMarketplaceEntry>)
 
 @Serializable internal data class PluginTestMarketplaceEntry(val name: String, val source: PluginTestSource)
 
 @Serializable internal data class PluginTestSource(val source: String, val path: String)
+
+@Serializable
+internal data class PluginTestCopilotMarketplace(
+    val name: String,
+    val owner: PluginTestOwner,
+    val plugins: List<PluginTestCopilotEntry>,
+)
+
+@Serializable internal data class PluginTestOwner(val name: String)
+
+@Serializable internal data class PluginTestCopilotEntry(val name: String, val source: String)
 
 @Serializable internal data class PluginTestMcp(val mcpServers: PluginTestMcpServers)
 
@@ -64,6 +83,7 @@ internal data class PluginStep(
     val arguments: List<String>,
     val output: String = "",
     val observation: ProcessObservation = ProcessObservation.Exited(0, output),
+    val effect: () -> Unit = {},
 )
 
 internal class PluginScript(vararg steps: PluginStep) {
@@ -72,6 +92,7 @@ internal class PluginScript(vararg steps: PluginStep) {
     fun execute(arguments: List<String>): ProcessObservation {
         val next = remaining.removeFirstOrNull() ?: throw AssertionError("unexpected Codex invocation: $arguments")
         assertEquals(next.arguments, arguments)
+        next.effect()
         return next.observation
     }
 
@@ -124,26 +145,7 @@ internal fun pluginFixture(temporary: Path): Path {
     val launcher = installation.resolve("bin/kast-mcp-complete")
     launcher.toFile().setExecutable(true)
     val bundle = installation.resolve(AGENT_TOOLS_RELATIVE_PATH)
-    val documents =
-        mapOf(
-            ".agents/plugins/marketplace.json" to
-                Json.encodeToString(
-                    PluginTestMarketplace(
-                        "kast",
-                        listOf(PluginTestMarketplaceEntry("kast", PluginTestSource("local", "./plugins/kast"))),
-                    )
-                ),
-            "plugins/kast/.codex-plugin/plugin.json" to Json.encodeToString(PluginTestManifest("kast", "1.2.3")),
-            "plugins/kast/.mcp.json" to
-                Json.encodeToString(
-                    PluginTestMcp(
-                        PluginTestMcpServers(
-                            PluginTestMcpServer(bundledMcpServer().transport.command, bundledMcpServer().transport.args)
-                        )
-                    )
-                ),
-            "plugins/kast/references/onboarding.md" to "Use the installed Kast tools.\n",
-        )
+    val documents = pluginFixtureDocuments()
     (documents + sharedPluginDocuments()).forEach { (relative, content) ->
         val file = bundle.resolve(relative)
         Files.createDirectories(file.parent)
@@ -164,8 +166,44 @@ internal fun pluginFixture(temporary: Path): Path {
         ),
     )
     assertFalse(Files.exists(bundle.resolve("unmanifested")))
+    bundle
+        .resolve("plugins/kast")
+        .toFile()
+        .copyRecursively(temporary.toRealPath().resolve("home/.codex/plugins/cache/kast/kast/1.2.3").toFile())
     return root
 }
+
+private fun pluginFixtureDocuments(): Map<String, String> =
+    mapOf(
+        ".agents/plugins/marketplace.json" to
+            Json.encodeToString(
+                PluginTestMarketplace(
+                    "kast",
+                    listOf(PluginTestMarketplaceEntry("kast", PluginTestSource("local", "./plugins/kast"))),
+                )
+            ),
+        ".github/plugin/marketplace.json" to
+            Json.encodeToString(
+                PluginTestCopilotMarketplace(
+                    "kast",
+                    PluginTestOwner("Amichne"),
+                    listOf(PluginTestCopilotEntry("kast", "./plugins/kast")),
+                )
+            ),
+        "plugins/kast/.codex-plugin/plugin.json" to Json.encodeToString(PluginTestManifest("kast", "1.2.3")),
+        "plugins/kast/.mcp.json" to
+            Json.encodeToString(
+                PluginTestMcp(
+                    PluginTestMcpServers(
+                        PluginTestMcpServer(bundledMcpServer().transport.command, bundledMcpServer().transport.args)
+                    )
+                )
+            ),
+        "plugins/kast/references/onboarding.md" to "Use the installed Kast tools.\n",
+        "plugins/kast/skills/kast/SKILL.md" to Files.readString(Path.of("../../agent-tools/skills/kast/SKILL.md")),
+        "plugins/kast/skills/kast/public-cli.md" to
+            Files.readString(Path.of("../../agent-tools/skills/kast/public-cli.md")),
+    )
 
 private fun sharedPluginDocuments(): Map<String, String> =
     listOf(
@@ -180,3 +218,41 @@ private fun sharedPluginDocuments(): Map<String, String> =
         .associate { relative ->
             "plugins/kast/$relative" to Files.readString(Path.of("../../agent-tools/$relative"))
         }
+
+internal fun pluginFixtureWithMcp(temporary: Path): Path {
+    val root = pluginFixture(temporary)
+    val installation = root.resolve("installation")
+    val base = installation.resolve(AGENT_TOOLS_RELATIVE_PATH)
+    val composition = base.resolve("compositions/mcp")
+    Path.of("../../agent-tools").toFile().copyRecursively(composition.resolve("plugins/kast").toFile())
+    Files.copy(Path.of("../../agent-tools/mcp.json"), composition.resolve("plugins/kast/.mcp.json"))
+    Files.delete(composition.resolve("plugins/kast/mcp.json"))
+    for (relative in listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json")) {
+        Files.createDirectories(composition.resolve(relative).parent)
+        Files.copy(base.resolve(relative), composition.resolve(relative))
+    }
+    for (relative in listOf(".codex-plugin/plugin.json", ".github/plugin/plugin.json")) Files.writeString(
+        composition.resolve("plugins/kast/$relative"),
+        Json.encodeToString(PluginTestCompositionManifest("kast", "1.2.3", "./.mcp.json")),
+    )
+    val manifest = (readBundledManifest(installation) as BundledManifestRead.Read).manifest
+    val files = Files.walk(composition).use { it.filter(Files::isRegularFile).toList() }
+    Files.writeString(
+        installation.resolve("installation.json"),
+        Json.encodeToString(
+            manifest.copy(
+                payloadFiles =
+                    manifest.payloadFiles +
+                        files.map {
+                            BundledPayload(installation.relativize(it).toString(), "sha256:${sha256(it)}", 420)
+                        }
+            )
+        ),
+    )
+    return root
+}
+
+internal fun copyPluginCache(marketplace: Path, cache: Path) {
+    if (Files.exists(cache)) Files.walk(cache).use { it.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+    marketplace.resolve("plugins/kast").toFile().copyRecursively(cache.toFile())
+}

@@ -25,7 +25,13 @@ from reload_hosted import (
 )
 
 
-def fixture(version: str = "1", descriptor_suffix: str = "", schema: str = "same") -> Bundle:
+def fixture(
+    version: str = "1",
+    descriptor_suffix: str = "",
+    schema: str = "same",
+    revision: str = "a",
+    legacy: bool = False,
+) -> Bundle:
     content = io.BytesIO()
     with zipfile.ZipFile(content, "w") as archive:
         archive.writestr(
@@ -33,11 +39,15 @@ def fixture(version: str = "1", descriptor_suffix: str = "", schema: str = "same
             f"<idea-plugin><id>io.github.amichne.kast.ide-hosted</id><version>{version}</version>{descriptor_suffix}</idea-plugin>",
         )
         archive.writestr(
-            "kast-hosted-query.properties", f"version={version}\nschemaDigest={schema}\n"
+            "kast-hosted-query.properties",
+            f"version={version}\nideBuild=262.1\nkotlinBuild=262.1-IJ\nregistryDigest=registry\nschemaDigest={schema}\nsourceRevision={revision * 40}\nsourceTree={'b' * 40}\n",
         )
     result = bundle(
         (
-            Jar(f"kast-ide-hosted-{version}.jar", content.getvalue()),
+            Jar(
+                f"kast-ide-hosted-{version}.jar" if legacy else "kast-ide-hosted.jar",
+                content.getvalue(),
+            ),
             Jar("dependency.jar", b"unchanged"),
         )
     )
@@ -47,6 +57,12 @@ def fixture(version: str = "1", descriptor_suffix: str = "", schema: str = "same
 
 
 class LocalReloadTest(unittest.TestCase):
+    def test_first_stable_layout_migration_needs_a_normal_restart(self) -> None:
+        self.assertEqual(plan(fixture(legacy=True), fixture("2")), Rejected(Failure.LAYOUT_CHANGED))
+
+    def test_source_provenance_does_not_change_reload_compatibility(self) -> None:
+        self.assertIsInstance(plan(fixture(revision="a"), fixture("2", revision="c")), Replacement)
+
     def test_replacement_keeps_installed_paths_and_new_bytes(self) -> None:
         old, new = fixture(), fixture("2")
         result = plan(old, new)

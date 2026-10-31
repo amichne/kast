@@ -118,6 +118,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt
   - id: openwiki-source-368288aea315bf5b4628a899
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
+  - id: openwiki-source-d916546ee08a49976b34f8da
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactCompilerTransferDocument.kt
   - id: openwiki-source-c4f2ea6fc71d7cadb12a1658
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathDocuments.kt
   - id: openwiki-source-11f9ee447344d26046d96f7d
@@ -178,10 +180,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-89238fabaeb4e17c02186073
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Public intent tools
@@ -357,7 +359,7 @@ its tool-only boolean never enters canonical lifecycle requests or close approva
 
 An `IMPACT` source declares producer invocation anchors with exact enclosing and callable references, an expansion domain, `KOTLIN_FORWARD_V1` semantics, a declaration inventory, and explicit representation or boundary models. Native admission revalidates the exact sites and model positions under current authority before execution. `VALUE_PATHS` reports compiler transfers, reviewed model applications and terminal obligations without inferring representation from names.
 
-Public relation and walk steps accept `expansionScope` through the same closed `ExpansionScope` union used by `IMPACT.domain`. `EXPAND_RELATION` defaults to `WORKSPACE`; `WALK` defaults to `RETAINED_SEED`. Omission and explicit null retain those defaults. `SOURCE_DOMAIN` selects source sets, directory containment, production/test policy and generated-source inclusion, and lowers to the existing canonical expansion owner independently of producer selection or later row filters.
+Public relation and walk steps accept `expansionScope` through the same closed `ExpansionScope` union used by `IMPACT.domain`. `EXPAND_RELATION` and exhaustive `WALK` default to `WORKSPACE`. A `WALK` with an explicit depth bound defaults to `RETAINED_SEED`. Omission and explicit null retain those defaults. `SOURCE_DOMAIN` selects source sets, directory containment, production/test policy and generated-source inclusion, and lowers to the existing canonical expansion owner independently of producer selection or later row filters.
 
 `READ_RESULT` with `IMPACT_WITNESS` selects `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS` or `SITE_ACCOUNTING` from the same retained investigation ledger. These pages use the existing result reference, presentation cursor and byte fitter; they do not start semantic providers. Original question, basis, requested domain, counts and unresolved closure remain attached even when a page or selection displays fewer paths. A reusable source recipe must reacquire current references after epoch movement; retained tokens do not become a recipe.
 
@@ -369,14 +371,14 @@ An `IMPACT` source may supply up to 128 exact `requestedSites`; omitted or null 
 
 A guarded cross-root continuation uses the existing reviewed `CONTINUATION` input. The target must be independently admitted from an already registered peer root. Path and finding output use `UNRESOLVED_PEER_CONTINUATION` with required target admission and fixed `PEER_FLOW_NOT_INVESTIGATED` reason. The original `MODELS` row uses `PEER_BOUNDARY_MODEL`, retaining the reviewed rule and the same completed acquisition and site receipts. Raw accounting rejects foreign ordinary source claims and inconsistent peer receipts; decoding these documents does not grant live authority.
 
-Compiler transfers require a closed evidence discriminator: `DIRECT` or
-`NORMAL_BRANCH_RESULT`. A normal branch result retains exact enclosing try and
+Compiler transfers use five closed evidence variants: `DIRECT`, `STRING_CONTENT`,
+`LOOP_ADVANCE`, `SOURCE`, and `NORMAL_BRANCH_RESULT`. A normal branch result retains exact enclosing try and
 originating branch ranges, a `TRY_BODY` or indexed `CATCH_BODY` alternative, and
 the `NORMAL_COMPLETION` condition. Raw admission rejects inconsistent transfer
 roles, owners, ranges or catch indexes. This evidence describes the supported
 static transfer, without asserting runtime path feasibility.
 
-Public contract version 14 requires this evidence and matching generated Pi and
+Public contract version 18 requires this evidence and matching generated Pi and
 Copilot adapter versions. Catalog admission rejects incompatible versions before
 tool registration; clients cannot silently discard the branch proof.
 

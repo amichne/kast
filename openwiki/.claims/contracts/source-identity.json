@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c70c2748ed4caef3d5152af7b39c41ba62701e3dcf53e215703244f394546ff7",
+  "pageVersion": "sha256:229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
   "claims": [
     {
       "id": "claim_f7d072d0792940888833dd8e689c0570",
@@ -50,7 +50,7 @@
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt",
-          "version": "repo-file-v1:sha256:19383354164a5a9e5e62139e4a313206805d0502396a5b4918012cb248c86bf5"
+          "version": "repo-file-v1:sha256:c146c8b996a5713d3375d0f98c0e850d111b21bb6b88c0683f6bf4de9a4190e7"
         },
         {
           "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
@@ -64,7 +64,7 @@
       "evidence": [
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt",
-          "version": "repo-file-v1:sha256:b2d7831effcfdb9c1d5bd92dce48fbcfa2dff2773e64dc90cdf7c0163d930e21"
+          "version": "repo-file-v1:sha256:ee88167947a20685c20b30b0fef48753db01e324ad7f107c51fa8062fccbc621"
         },
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt",
@@ -72,13 +72,13 @@
         },
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt",
-          "version": "repo-file-v1:sha256:8c93dacbf4262f27bc3b93e1ba8f8726e14d978c5ccbecbd9fb375272c367981"
+          "version": "repo-file-v1:sha256:6e8417369106fd7d75c6c8af34650cc8ec9c07971137b8bebe8bcb0b21e46aed"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T02:50:46.064Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

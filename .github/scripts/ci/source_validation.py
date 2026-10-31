@@ -49,6 +49,8 @@ SOURCE_REQUIRED = frozenset(
         ":verifyKnowledgeBase",
         ":hostObservationTest",
         ":componentReleaseTest",
+        ":managedInstallationTest",
+        ":developerPublicationTest",
         ":verifyDocumentationGlossary",
         ":verifyDocumentationMarkdown",
         ":documentationToolingTest",
