@@ -243,6 +243,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
   - id: openwiki-source-a0efdefba63982f6209d2b1d
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - id: openwiki-source-8c7c428faa686e7288a94ae5
+    resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/MutationRecoverySettlement.kt
   - id: openwiki-source-d179efee52270c2b6f0be8ee
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
@@ -288,7 +290,7 @@ sources:
 generated: { by: "codex", at: "2026-10-31T09:43:22.050Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T09:43:22.050Z
+    at: 2026-10-31T09:49:39.493Z
 ---
 
 # Runtime and process hosts

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c36c0222dc4cbb4052a80dd8c80ff2522265f550214334f3740289096cfe3b74",
+  "pageVersion": "sha256:7e3a18e0972dabf6421912ec9f6dffe681e05ce1ab321479c4a2160fc3109391",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -288,7 +288,7 @@
         },
         {
           "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt",
-          "version": "repo-file-v1:sha256:e0527c8e61c44a412701341a2135215259ec042e6afc4b5ab7104fc724d205b5"
+          "version": "repo-file-v1:sha256:f65a4d37d1058dc5e4581de68942a11beb8ab16882aefc8074c729ca93faec3b"
         }
       ]
     },
@@ -427,6 +427,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T09:43:22.050Z"
+    "at": "2026-10-31T09:49:39.493Z"
   }
 }
