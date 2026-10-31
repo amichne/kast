@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e8d74672a8e4206200ef995c45a43e8dfe4c566c08eda01791c2c6c00c69994b",
+  "pageVersion": "sha256:7745c4521051d3858569fde6c1105243a10be401f2e055b3dec1af466dc3f38f",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
-          "version": "repo-file-v1:sha256:caa616d53ffd0a991536c37d180369ee54ceeb8e49472fce95ac338193f8fb72"
+          "version": "repo-file-v1:sha256:970d11ab6c5d8aa17a2d9ae468c840377769ffa91ecf2a261f79f8569a7cf882"
         }
       ]
     },
@@ -39,10 +39,100 @@
           "version": "repo-lines-v1:sha256:76f90fedbe8c8de0bf3a47a3e7ddb9af83003bd8a2cfddfd18beb145871a5bf6:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODkzZmUwM2MxNjIxNDFkNjYxMDlkNmNkMjZhYzBhZWYwNTI3NGExODc5ZjE3ZmY0ZWFjN2Q2NTlkNDQxNWUxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjZhZjkyYWIwNTk3OTgxNmFiMzk3MWI5MWI5YjAyOGY0OTEwYjRiYTgxNDMxOGIwYmVhMTllMTFhZjE4YmM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGZkNGViZjJjNTZkZTNhOTg1MjJhMzg5ZjY0Y2Q0M2ZmNzlkOGM4MGRjNzU4YmVjMjhkN2MyMThkYmU2YjcxNCJ9"
         }
       ]
+    },
+    {
+      "id": "claim_22d3ba222be341a7a9e4e95810ddc46f",
+      "statement": "Pending recovery precedes policy and release resolution. An admitted installed bridge or exact recorded candidate receives recover-only. Recorded admission binds canonical paths, owner, identity, manifest, inventory, modes, and capability. Legacy directories are rejected. Uncertain child invocation never retries. The wrapper preserves terminal results without fresh selection.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
+          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt",
+          "version": "repo-file-v1:sha256:c901213eea2a67df35029e4e0b6b44f4077944f5b395e4d74048fada28086857"
+        }
+      ]
+    },
+    {
+      "id": "claim_8dc609c61bc94d7491d3366ee0faac4a",
+      "statement": "Recorded recovery resumes finalization or restores captured preimages under admitted locks. A reservation without composition aborts only after exact staged inventory and prior-state admission, without Host artifacts or a retirement fence. Before recursive deletion, the Control owner atomically detaches admitted terminal payloads into transaction-bound completed storage. Terminal finalization atomically renames the journal before receipt deletion. Partial deletion cannot poison pending inventory admission. Closed-storage cleanup failure emits a typed diagnostic and does not block a new upgrade. A remaining pending journal still blocks public calls, including empty or dangling paths.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt",
+          "version": "repo-file-v1:sha256:3be1ea90bed8dfdda7e6f7b2d3b6c310d1cce68c02623e07a26e3987e96e13cf"
+        },
+        {
+          "resource": "repo://packaging/installation-recovery.py",
+          "version": "repo-file-v1:sha256:b774448f667de041c255f0f8d8bce22096ed6fe746998e9a97e1c11db9999345"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+        }
+      ]
+    },
+    {
+      "id": "claim_07133c6bee5d415c9b5eeaf65823e060",
+      "statement": "Legacy re-admission preserves an attached profile proof only when the exact process and opaque Host facts remain equal. Missing endpoint evidence needs fresh attachment.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+        },
+        {
+          "resource": "repo://packaging/managed_update_contract.py",
+          "version": "repo-file-v1:sha256:f3d6ae01544b7d40e158886573b87cc095a9671b4aa53b7752756f07a3939b2d"
+        }
+      ]
+    },
+    {
+      "id": "claim_5d825ae8f2d24cfa9b993e01cbe76df4",
+      "statement": "Managed hot reload needs compatible archives, enabled auto reload, and HOST_PREPARED_RELOAD_REFRESH. SETTLE_RELOAD captures the cached main JAR before exchange. The Host-file owner then stamps that exact admitted JAR under its lease. REFRESH dirties the prepared marker only after a successful acknowledgment write. Actual loaded identity remains separate activation proof.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+        },
+        {
+          "resource": "repo://packaging/managed_update_contract.py",
+          "version": "repo-file-v1:sha256:f3d6ae01544b7d40e158886573b87cc095a9671b4aa53b7752756f07a3939b2d"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt",
+          "version": "repo-file-v1:sha256:a73fa41b67393577f715ef39a80d7443f9849ce6ab66b341edbafb19d3363c60"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt",
+          "version": "repo-file-v1:sha256:87cb8e04d3454165974289e7a333ac1d8e53ae20f1502383074a04867273e4f7"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt",
+          "version": "repo-file-v1:sha256:de36c4a62ef75eb15e6aacbe3776c5b604e860837114492290b626a85006ab2b"
+        }
+      ]
+    },
+    {
+      "id": "claim_77827fa2b8e64f6d9229bd4db9266887",
+      "statement": "Hot-reload rollback settles the actual admitted prior or selected Host before file exchange. A loaded selected build needs prepared settlement, a restored-JAR timestamp update, refresh, and fresh prior runtime proof. An actual prior Host uses ordinary settlement and resume without a timestamp update.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-31T10:51:42.239Z"
   }
 }

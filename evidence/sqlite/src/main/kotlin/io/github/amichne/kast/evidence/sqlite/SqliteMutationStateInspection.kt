@@ -3,9 +3,7 @@ package io.github.amichne.kast.evidence.sqlite
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanLookup
-import io.github.amichne.kast.change.verify.HistoricalLiveAddDeclarationReceipt
 import io.github.amichne.kast.change.verify.HistoricalLiveChangeReceipt
-import io.github.amichne.kast.change.verify.HistoricalLiveReplaceBodyReceipt
 import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
@@ -245,34 +243,16 @@ private fun Connection.recoveryRecord(raw: String): MutationRecoveryRecord {
 }
 
 private fun inspectSettlement(record: MutationRecoveryRecord, receipts: Map<String, HistoricalLiveChangeReceipt>) {
-    when (record) {
-        is MutationRecoveryRecord.PreWriteDurable,
-        is MutationRecoveryRecord.RecoveryRequired -> reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
-        is MutationRecoveryRecord.RolledBack ->
-            if (record.binding.value in receipts) reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
-        is MutationRecoveryRecord.AppliedWritesDurable -> {
-            val receipt =
-                receipts[record.binding.value] ?: reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
-            inspectReceiptChain(record, receipt)
+    val lookup =
+        when (val receipt = receipts[record.binding.value]) {
+            null -> LiveChangeReceiptLookup.Missing
+            else -> LiveChangeReceiptLookup.Found(receipt.identity, receipt)
         }
+    when (inspectMutationSettlement(record, lookup)) {
+        MutationRecoverySettlement.Settled -> Unit
+        MutationRecoverySettlement.Unresolved -> reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
+        is MutationRecoverySettlement.Rejected -> reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
     }
-}
-
-private fun inspectReceiptChain(
-    record: MutationRecoveryRecord.AppliedWritesDurable,
-    receipt: HistoricalLiveChangeReceipt,
-) {
-    val recovery =
-        when (receipt) {
-            is HistoricalLiveAddDeclarationReceipt -> receipt.recovery
-            is HistoricalLiveReplaceBodyReceipt -> receipt.recovery
-        }
-    if (
-        recovery.binding.value != record.binding.value ||
-            recovery.preparedDigest.value != record.priorDigest.value ||
-            recovery.appliedDigest.value != record.digest.value
-    )
-        reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
 }
 
 private fun Connection.inspectAttempts(plans: Map<String, LiveChangePlan>, settled: Set<String>) {

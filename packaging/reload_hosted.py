@@ -16,8 +16,6 @@
 from __future__ import annotations
 
 import argparse
-import ctypes
-import fcntl
 import hashlib
 import io
 import json
@@ -35,6 +33,8 @@ from pathlib import Path
 from defusedxml import ElementTree as SafeXML
 from defusedxml.common import DefusedXmlException
 
+sys.dont_write_bytecode = True
+
 PLUGIN_ID = "io.github.amichne.kast.ide-hosted"
 PLUGIN_DIRECTORY = "kast-ide-hosted"
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
@@ -50,6 +50,7 @@ class Failure(StrEnum):
     AUTO_RELOAD_DISABLED = "AUTO_RELOAD_DISABLED"
     CONCURRENT_CHANGE = "CONCURRENT_CHANGE"
     IO_FAILURE = "IO_FAILURE"
+    MANAGED_REPLACEMENT_REQUIRED = "MANAGED_REPLACEMENT_REQUIRED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,12 +66,20 @@ class Jar:
 
 
 @dataclass(frozen=True, slots=True)
+class ReloadCompatibility:
+    ide_build: str
+    kotlin_build: str
+    registry_digest: str
+    schema_digest: str
+
+
+@dataclass(frozen=True, slots=True)
 class Bundle:
     jars: tuple[Jar, ...]
     host_jar: str
     version: str
     descriptor: bytes
-    contract: tuple[str, ...]
+    contract: ReloadCompatibility
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +104,11 @@ def bundle(jars: tuple[Jar, ...]) -> Bundle | Rejected:
         return Rejected(Failure.ARCHIVE_REJECTED)
     if any(Path(name).name != name or not name.endswith(".jar") for name in names):
         return Rejected(Failure.ARCHIVE_REJECTED)
-    hosts = [jar for jar in jars if jar.name.startswith("kast-ide-hosted-")]
+    hosts = [
+        jar
+        for jar in jars
+        if jar.name == "kast-ide-hosted.jar" or jar.name.startswith("kast-ide-hosted-")
+    ]
     if len(hosts) != 1:
         return Rejected(Failure.ARCHIVE_REJECTED)
     host = hosts[0]
@@ -108,11 +121,25 @@ def bundle(jars: tuple[Jar, ...]) -> Bundle | Rejected:
             return Rejected(Failure.ARCHIVE_REJECTED)
         identity = version.text
         version.text = "LOCAL_DEVELOPMENT_VERSION"
-        contract = tuple(
-            sorted(line for line in properties.splitlines() if not line.startswith("version="))
-        )
-        if not contract or not any(line.startswith("schemaDigest=") for line in contract):
+        pairs = tuple(line.split("=", 1) for line in properties.splitlines() if line)
+        if any(len(pair) != 2 for pair in pairs):
             return Rejected(Failure.ARCHIVE_REJECTED)
+        values = dict(pairs)
+        required = {"version", "ideBuild", "kotlinBuild", "registryDigest", "schemaDigest"}
+        if (
+            len(values) != len(pairs)
+            or not required <= values.keys()
+            or not values.keys() <= required | {"sourceRevision", "sourceTree"}
+        ):
+            return Rejected(Failure.ARCHIVE_REJECTED)
+        if any(not value or len(value) > 256 for value in values.values()):
+            return Rejected(Failure.ARCHIVE_REJECTED)
+        contract = ReloadCompatibility(
+            values["ideBuild"],
+            values["kotlinBuild"],
+            values["registryDigest"],
+            values["schemaDigest"],
+        )
         return Bundle(jars, host.name, identity, XML.tostring(descriptor), contract)
     except (KeyError, UnicodeDecodeError, XML.ParseError, DefusedXmlException, zipfile.BadZipFile):
         return Rejected(Failure.ARCHIVE_REJECTED)
@@ -128,14 +155,13 @@ def digest(jars: tuple[Jar, ...]) -> str:
 
 
 def plan(current: Bundle, candidate: Bundle) -> Replacement | Rejected:
+    if current.host_jar != "kast-ide-hosted.jar" or candidate.host_jar != "kast-ide-hosted.jar":
+        return Rejected(Failure.LAYOUT_CHANGED)
     if current.descriptor != candidate.descriptor:
         return Rejected(Failure.DESCRIPTOR_CHANGED)
     if current.contract != candidate.contract:
         return Rejected(Failure.CONTRACT_CHANGED)
-    mapped = tuple(
-        Jar(current.host_jar if jar.name == candidate.host_jar else jar.name, jar.content)
-        for jar in candidate.jars
-    )
+    mapped = candidate.jars
     if {jar.name for jar in mapped} != {jar.name for jar in current.jars}:
         return Rejected(Failure.LAYOUT_CHANGED)
     return Replacement(mapped, candidate.version, digest(current.jars))
@@ -180,60 +206,42 @@ def read_installed(lib: Path) -> Bundle | Rejected:
 
 def exchange(staged: Path, installed: Path) -> Rejected | None:
     """macOS RENAME_SWAP replaces the complete directory in one filesystem operation."""
-    if sys.platform != "darwin":
-        return Rejected(Failure.PLATFORM_UNSUPPORTED)
-    rename = ctypes.CDLL(None, use_errno=True).renamex_np
-    rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
-    rename.restype = ctypes.c_int
-    if rename(os.fsencode(staged), os.fsencode(installed), 2) != 0:
-        return Rejected(Failure.IO_FAILURE)
-    return None
+    from host_directory_exchange import DirectoryExchangeOutcome, exchange_directories
+
+    match exchange_directories(staged, installed):
+        case DirectoryExchangeOutcome.EXCHANGED:
+            return None
+        case DirectoryExchangeOutcome.PLATFORM_UNSUPPORTED:
+            return Rejected(Failure.PLATFORM_UNSUPPORTED)
+        case DirectoryExchangeOutcome.IO_FAILURE:
+            return Rejected(Failure.IO_FAILURE)
 
 
 def apply_replacement(lib: Path, replacement: Replacement, recovery: Path) -> Staged | Rejected:
+    """Internal directory exchange. The managed installation coordinator owns the lock and journal."""
     try:
         recovery.mkdir(mode=0o700, exist_ok=True)
         if not owned(recovery, directory=True):
             return Rejected(Failure.OWNERSHIP_UNPROVEN)
-        with (recovery / "reload.lock").open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            current = read_installed(lib)
-            if isinstance(current, Rejected):
-                return current
-            if digest(current.jars) != replacement.previous_digest:
-                return Rejected(Failure.CONCURRENT_CHANGE)
-            stage = Path(tempfile.mkdtemp(prefix="bundle-", dir=recovery))
-            for jar in replacement.jars:
-                _ = (stage / jar.name).write_bytes(jar.content)
-            rejected = exchange(stage, lib)
-            if rejected is not None:
-                return rejected
-            return Staged(replacement.version, str(stage), digest(replacement.jars))
+        current = read_installed(lib)
+        if isinstance(current, Rejected):
+            return current
+        if digest(current.jars) != replacement.previous_digest:
+            return Rejected(Failure.CONCURRENT_CHANGE)
+        stage = Path(tempfile.mkdtemp(prefix="bundle-", dir=recovery))
+        for jar in replacement.jars:
+            _ = (stage / jar.name).write_bytes(jar.content)
+        rejected = exchange(stage, lib)
+        if rejected is not None:
+            return rejected
+        return Staged(replacement.version, str(stage), digest(replacement.jars))
     except OSError:
         return Rejected(Failure.IO_FAILURE)
 
 
 def reload_archive(archive: Path, plugins: Path) -> Staged | Rejected:
-    if sys.platform != "darwin":
-        return Rejected(Failure.PLATFORM_UNSUPPORTED)
-    try:
-        options = (plugins.parent / "idea.vmoptions").read_text().splitlines()
-        if "-Didea.auto.reload.plugins=true" not in options:
-            return Rejected(Failure.AUTO_RELOAD_DISABLED)
-    except OSError:
-        return Rejected(Failure.AUTO_RELOAD_DISABLED)
-    current = read_installed(plugins / PLUGIN_DIRECTORY / "lib")
-    if isinstance(current, Rejected):
-        return current
-    candidate = read_archive(archive)
-    if isinstance(candidate, Rejected):
-        return candidate
-    replacement = plan(current, candidate)
-    if isinstance(replacement, Rejected):
-        return replacement
-    return apply_replacement(
-        plugins / PLUGIN_DIRECTORY / "lib", replacement, plugins.parent / ".kast-plugin-reload"
-    )
+    del archive, plugins
+    return Rejected(Failure.MANAGED_REPLACEMENT_REQUIRED)
 
 
 def main(arguments: list[str]) -> int:

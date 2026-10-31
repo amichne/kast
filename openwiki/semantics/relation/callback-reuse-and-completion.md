@@ -48,7 +48,7 @@ sources:
 generated: { by: "codex", at: "2026-10-16T21:29:39.165Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Callback reuse and graph completion

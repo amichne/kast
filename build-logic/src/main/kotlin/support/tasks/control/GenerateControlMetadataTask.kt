@@ -40,6 +40,10 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
     @get:Input
     abstract val productVersion: Property<String>
     @get:Input
+    abstract val sourceRevision: Property<String>
+    @get:Input
+    abstract val sourceTree: Property<String>
+    @get:Input
     abstract val ideaBuild: Property<String>
     @get:Input
     abstract val kotlinPluginBuild: Property<String>
@@ -52,6 +56,10 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
         output.resolve("licenses").mkdirs()
+        require(listOf(sourceRevision.get(), sourceTree.get()).all { Regex("[0-9a-f]{40}").matches(it) })
+        output.resolve("build-identity.json").writeText(controlMetadataJson.encodeToString(
+            ControlBuildIdentityDocument.serializer(), ControlBuildIdentityDocument(productVersion.get(), sourceRevision.get(), sourceTree.get()),
+        ))
         val hostedContract = controlMetadataJson.decodeFromString(
             HostedContractDocument.serializer(), hostedContractFile.get().asFile.readText(),
         )
@@ -69,6 +77,9 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         licenseFile.get().asFile.copyTo(output.resolve("licenses/LICENSE"))
     }
 }
+
+@Serializable
+internal data class ControlBuildIdentityDocument(val version: String, val sourceRevision: String, val sourceTree: String)
 
 @Serializable
 internal data class ControlMetadataDocument(

@@ -17,9 +17,6 @@ code_sources:
 - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
 - path: diagnostic/service/src/test/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanServiceTest.kt
 - path: diagnostic/service/src/test/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticServiceTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-e7eea812202bbbd699e894a8
     resource: repo://diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
@@ -30,6 +27,9 @@ sources:
   - id: openwiki-source-4004e44292553832194bb1a8
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Diagnostic scans and progress

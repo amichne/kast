@@ -16,7 +16,7 @@ function readContext(installation: string, cwd: string): ContextResult {
   try {
     const workspace = realpathSync(cwd);
     if (!statSync(workspace).isDirectory()) return { type: "rejected", reason: "INVALID_WORKSPACE" };
-    const plugin = realpathSync(join(installation, "share/kast/agent-tools/plugins/kast"));
+    const plugin = realpathSync(join(installation, "share/kast/agent-tools/compositions/mcp/plugins/kast"));
     const references = join(plugin, "references");
     if (!lstatSync(references).isDirectory()) return { type: "rejected", reason: "RESOURCE_REJECTED" };
     for (const path of [...RESOURCE_NAMES.map(name => join(references, name)), join(plugin, "skills/kast/SKILL.md")]) {
@@ -64,7 +64,7 @@ export default function (pi: ExtensionAPI) {
   const installation = join(homedir(), ".local/share/kast/installation");
   pi.registerMcpServer("kast", {
     command: "uv",
-    args: ["run", "--locked", "--script", join(installation, "share/kast/agent-tools/plugins/kast/skills/kast/scripts/server.py")],
+    args: ["run", "--locked", "--script", join(installation, "share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/server.py")],
     // A user mcp.json entry named kast can override this registration.
     // Covers catalog discovery, the admitted RPC deadline, and reply delivery.
     timeout: 3780,

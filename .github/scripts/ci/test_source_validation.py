@@ -26,6 +26,7 @@ def expected_obligations():
     return {f"{owner}:{task}" for owner in owners for task in ("check", "scopedCheck", "test")} | {
         ":sourceValidationGate", ":check", ":build-logic:check", ":verifyJsonContracts", ":verifyKastArchitecture", ":verifyVerificationGraph",
         ":verifyConfigurationIngress", ":verifyKnowledgeBase", ":hostObservationTest", ":componentReleaseTest",
+        ":managedInstallationTest", ":developerPublicationTest",
         ":verifyDocumentationGlossary", ":documentationToolingTest", ":verifyDocumentationMarkdown",
         ":verifyKotlinSemanticCoverage", ":verifyKotlinSemanticInputs", ":verifyKotlinSemanticInventory",
         ":cli:udsTest", ":cli:queryDeliveryContractTest", ":cli:queryDeliverySchemaTest",

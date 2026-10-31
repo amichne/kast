@@ -42,7 +42,7 @@ async function fixture(t, brief = 'Kast shared context\n') {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'kast pi $ literal ')));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const installation = join(home, '.local/share/kast/installation');
-  const references = join(installation, 'share/kast/agent-tools/plugins/kast/references');
+  const references = join(installation, 'share/kast/agent-tools/compositions/mcp/plugins/kast/references');
   const workspace = join(home, 'workspace $ literal');
   mkdirSync(references, { recursive: true });
   mkdirSync(workspace);
@@ -181,7 +181,7 @@ function assertContinuesWithoutContext(f, reason) {
 test('Pi registers native MCP and reads shared context without a child process', async t => {
   const f = await fixture(t);
   assert.deepEqual(f.servers, [['kast', {
-    command: 'uv', args: ['run', '--locked', '--script', join(f.installation, 'share/kast/agent-tools/plugins/kast/skills/kast/scripts/server.py')], timeout: 3780,
+    command: 'uv', args: ['run', '--locked', '--script', join(f.installation, 'share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/server.py')], timeout: 3780,
   }]]);
   assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }), undefined);
   await f.handlers.get('session_start')({}, f.ctx);
@@ -269,10 +269,10 @@ test('Pi rejects a linked references directory and an invalid workspace', async 
   assertContinuesWithoutContext(f, 'INVALID_WORKSPACE');
 });
 
-// Default delivery must expose the task service, never the raw query grammar.
-test('all plugin MCP entries select the bundled task server and skill', () => {
+// The optional MCP composition keeps the task service contract.
+test('optional plugin MCP entries select the bundled task server and skill', () => {
   const root = new URL('../../../../agent-tools/', import.meta.url);
-  const mcp = JSON.parse(readFileSync(new URL('.mcp.json', root), 'utf8'));
+  const mcp = JSON.parse(readFileSync(new URL('mcp.json', root), 'utf8'));
   assert.deepEqual(Object.keys(mcp.mcpServers), ['kast']);
   assert.match(mcp.mcpServers.kast.args.join(' '), /skills\/kast\/scripts\/server.py/);
   assert.doesNotMatch(mcp.mcpServers.kast.args.join(' '), /kast-mcp-complete/);

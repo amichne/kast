@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:256b4542340aa489bddbdae6e98d0bb1e0b411d15249021ee55ca16fc48fccdc",
+  "pageVersion": "sha256:4b2c7745c822105ea6602e8f94a3978c3aef204d09952c1ea020ee0854fa838a",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
       "statement": "The active Gradle graph includes the existing-IDE hosted runtime and retained topology modules, but does not include the retired importer, coordinator, indexer, isolated server or composition modules.",
       "evidence": [
         {
-          "resource": "repo://settings.gradle.kts#L21-L67",
+          "resource": "repo://settings.gradle.kts#L62-L108",
           "version": "repo-lines-v1:sha256:844bd7a78acaa6abfd1d40e709bbeb1cfff7b3bd71a3c632f7efaabc16600d15:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyODgzMmZhZDlmOWExZmY5NTEwOGYyMTVlYmJhZTZiNmE0ODFmNDVhMDE5NWUxZDU5ZDNjNDI1YjM2M2I1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMDMxN2JhZWIzNjU5Y2I0N2EzMWMwZjI5NTg4MzRlMzRkOWFiNDkzOTM4MzhhY2U1NzFjZWMzMTJiYzc1ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
@@ -18,11 +18,11 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:328e59e2ab47603593ad782a779afcce2e55181d3d9c0fe0079f6c4bb2e7750a"
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
-          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+          "version": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
         }
       ]
     },
@@ -32,29 +32,29 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt",
-          "version": "repo-file-v1:sha256:1e632524f9062db4e621c4ec81f50766e746f43fee1fb86945d58f7e5c9146c7"
+          "version": "repo-file-v1:sha256:12e27674a2a1f6ef2b813416321419c648d6753e095bd14ddc5398ce456452a8"
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429"
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:328e59e2ab47603593ad782a779afcce2e55181d3d9c0fe0079f6c4bb2e7750a"
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         }
       ]
     },
     {
       "id": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-      "statement": "Root check separately enforces semantic resource identity, live FIR inventory accounting, and exact successful execution of the declared native case population.",
+      "statement": "When semantic fixtures are enabled, root check enforces reviewed resource identity, FIR inventory accounting, and exact successful execution of declared native cases.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L558-L594",
-          "version": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L245-L286",
-          "version": "repo-lines-v1:sha256:afb0089e386400680bab0ea2861d3ae0d385c47aec11bcdf235de38b3cbc1fcd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MmZiNTUyMjRhNGU5ZjQzMmMwOGI5NDNkMjlhMTQ2NjYyYjAyMDY1ZmIzNDhhOTVmZGYwN2MyMjEwNmUzOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4ZWQ0MmMyN2RlZWIzZDkzNjYxNDBkMDcwOGY3YzQ4M2I0ZTU2MzdhZmY5MDA1NmNhZDQwMzIwZjdjZDNlMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         }
       ]
     },
@@ -64,17 +64,35 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:328e59e2ab47603593ad782a779afcce2e55181d3d9c0fe0079f6c4bb2e7750a"
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
-          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+          "version": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
+        }
+      ]
+    },
+    {
+      "id": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
+      "statement": "Managed Host bundle refresh admits only NativeHostBundleRefreshRoot.submit with its exact method descriptor and the exact VfsUtil.markDirty and LocalFileSystem.refreshFiles signatures. Other callers, overloads, Gradle import, workspace refresh entry points, and passive-read modules remain rejected.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt#L3-L49",
+          "version": "repo-lines-v1:sha256:63f267fa7ad47810b55f06b2de4c3286fa0f961e4ba9b4caae54f58e5264d850:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L461-L472",
+          "version": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ"
+        },
+        {
+          "resource": "repo://build-logic/src/test/kotlin/support/architecture/WorkspaceRefreshEffectBoundaryTest.kt#L15-L47",
+          "version": "repo-lines-v1:sha256:e30a5dbaa4697055afb92edc597476eea73689d0df33713e9ee404dcd5a201f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZGY0ZWNlNWUxNGU0ODg5ZTE2MDVkZGM0M2I3ZTJiNDhjMTJhNmI5ZDRkZTQ1MmViM2M3NDlhODg2OWU5MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhMDI4NTk1NmQxZWNiMDQyY2MxNzk5ZGZmNTJlN2M0ZTM2ZTc1NDRlNWUxZGNjNDM3Y2M3MDgwNGRmODYxODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyZDY1Y2M5NjJkN2MxMzczZjdmOGI3OGJkOWY1MzU1ZWQ0NDY1NDVhZDczZTY2NWUwMmUyYTFmNWRlZjY4NjMifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-31T05:30:47.008Z"
   }
 }

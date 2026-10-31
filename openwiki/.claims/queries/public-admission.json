@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:abf34b6df01fe3dce46af45491f702cf6e3d1396489db7814e40d843487ea184",
+  "pageVersion": "sha256:cab50c0b9277ffcec0bc398e4ed082839e020baaa5aff6f346dc02cf69716813",
   "claims": [
     {
       "id": "claim_f582456c7d50479bb6b1a848a1c7e9a9",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
-          "version": "repo-file-v1:sha256:69c5689219b01e20fe1167b164f79768ec3247a072bbe8d54e8c55dd97d9fa8c"
+          "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolRefinement.kt",
@@ -22,11 +22,11 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
-          "version": "repo-file-v1:sha256:cea9833965310229b055eae4303785c21cfac914c8b78d87a045aaa3807813df"
+          "version": "repo-file-v1:sha256:e98e9ad3ebb20d3b208beffb110c12d6dd8abb0d49837205db31c00ae1032eb9"
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:7776b0ad3e52506c680940c07b7d321698508d08173843ca439146bd532fab52"
+          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ]
     },
@@ -36,17 +36,17 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
-          "version": "repo-file-v1:sha256:69c5689219b01e20fe1167b164f79768ec3247a072bbe8d54e8c55dd97d9fa8c"
+          "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
-          "version": "repo-file-v1:sha256:7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c"
+          "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T19:07:35.337Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

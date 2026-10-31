@@ -1,4 +1,6 @@
 """Recovery uses only private fixtures; no real installations or processes."""
+import contextlib
+import io
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import json
@@ -206,10 +208,12 @@ class RecoveryTest(unittest.TestCase):
         report = self.prepare()
         bundle = Path(report['recoveryExecutable'])
         self.assertTrue(bundle.is_file())
+        self.assertTrue(bundle.with_name('managed_update_journal.py').is_file())
         result = subprocess.run([sys.executable, str(bundle), 'detach', '--control-only', '--installation', str(self.root)],
                                 env=self.environment, capture_output=True, text=True, timeout=10)
         self.assertEqual('DetachedWithUnresolvedState', json.loads(result.stdout)['status'])
         self.assertFalse((self.outer / 'current').is_symlink())
+        self.assertFalse(bundle.parent.joinpath('__pycache__').exists())
 
     def test_verified_retirement_preserves_state_in_quarantine(self):
         self.prepare()
@@ -901,6 +905,520 @@ class SingleInstallationRecoveryTest(unittest.TestCase):
             r.location(other)
         self.assertTrue(other.is_symlink())
         self.assertTrue((self.bundle / 'receipt.json').is_file())
+
+
+@dataclass(frozen=True)
+class ManagedControlManifestFixture(ControlManifestFixture):
+    controlSha256: str = 'sha256:' + 'b' * 64
+
+
+class ManagedControlRecoveryTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='kast-managed-control-recovery-')
+        self.addCleanup(temporary.cleanup)
+        self.home = Path(temporary.name).resolve()
+        self.outer = self.home / 'kast'
+        self.root = self.outer / 'installation'
+        self.outer.mkdir()
+        self.transaction = self.outer / 'recovery/replacement'
+        self.transaction.mkdir(parents=True)
+        self.stage = self.outer / '.install-selected'
+        specification = importlib.util.spec_from_file_location('kast_managed_control_recovery_fixture', SCRIPT)
+        self.recovery = importlib.util.module_from_spec(specification)
+        sys.modules[specification.name] = self.recovery
+        specification.loader.exec_module(self.recovery)
+
+    def payload(self, path, version, label, control_digest):
+        (path / 'bin').mkdir(parents=True)
+        (path / 'state/mutation').mkdir(parents=True)
+        (path / 'state/mutation/receipt').write_text(label + ' unresolved evidence')
+        executable = path / 'bin/kast-complete'
+        executable.write_text(label)
+        executable.chmod(0o644)
+        manifest = ManagedControlManifestFixture(str(self.root), str(self.root / 'state'),
+            str(self.root / 'config/environment'), str(self.root / 'config/workspaces.json'),
+            (PayloadFileFixture('bin/kast-complete', 'sha256:' + hashlib.sha256(executable.read_bytes()).hexdigest(), 420),),
+            semanticVersion=version, payloadIdentity='sha256:' + control_digest, controlSha256='sha256:' + control_digest)
+        (path / 'installation.json').write_text(json.dumps(asdict(manifest)))
+
+    def test_canonical_types_keep_runtime_identity_and_reject_unknown_phases_and_tags(self):
+        import managed_update_journal as journal
+        r = self.recovery
+        self.assertIs(journal.Replacement, r.Replacement)
+        self.assertIs(journal.Identity, r.Identity)
+        if sys.version_info >= (3, 12):
+            import managed_release
+            self.assertIs(journal.BuildIdentity, managed_release.BuildIdentity)
+        receipt = self.prepare()
+        loaded = journal.admit_replacement(r.load(self.transaction / 'receipt.json', r.Replacement))
+        reservation, composition = journal.managed_parts(loaded)
+        self.assertEqual(receipt.reservation, reservation)
+        self.assertIsInstance(composition.phase, journal.ManagedPhase)
+        self.assertIsInstance(composition.strategy, journal.ManagedStrategy)
+        self.assertIsInstance(journal.admit_host_replacement(composition.host), journal.ManagedHostReplacement)
+        for field, value in (('phase', 'UNSUPPORTED'), ('strategy', 'UNSUPPORTED')):
+            document = json.loads(r.encode(receipt))
+            document['composition'][field] = value
+            with self.assertRaises(r.Rejected):
+                r.decode(r.Replacement, document)
+            with self.assertRaises(r.Rejected):
+                r.replace(composition, **{field: value})
+        with self.assertRaises(r.Rejected):
+            r.ManagedFileAbsent(str(self.home / 'destination'), 'PRESENT')
+        with self.assertRaises(r.Rejected):
+            r.ManagedProfileMissing(str(self.home / 'profile'), 'CREATED')
+        with self.assertRaises(r.Rejected):
+            journal.admit_replacement(object())
+
+    def recovery_bundle(self, path, installation, identity, label):
+        r = self.recovery
+        path.mkdir(parents=True)
+        r.save(path / 'receipt.json', r.Receipt(3, str(installation), identity, None, None, r.Status.ACTIVE))
+        (path / 'evidence').write_text(label)
+
+    def prepare(self, prior_kind='physical', committed=True):
+        r = self.recovery
+        if prior_kind == 'physical':
+            self.payload(self.root, '1.0.0', 'old', 'a' * 64)
+            previous = r.PhysicalPrevious('PHYSICAL', str(self.root), r.Identity.observe(self.root), str(self.transaction / 'payload'), str(self.transaction / 'recovery'))
+            self.recovery_bundle(self.outer / 'recovery/installation', self.root, previous.identity, 'old recovery')
+        elif prior_kind == 'legacy':
+            prior = self.outer / 'versions' / ('1.0.0-' + 'a' * 64)
+            self.payload(prior, '1.0.0', 'old', 'a' * 64)
+            manifest = json.loads((prior / 'installation.json').read_text())
+            # This deliberately legacy ingress fixture needs its recorded versioned root.
+            manifest.update(installationRoot=str(prior), schemaVersion=2)
+            (prior / 'installation.json').write_text(json.dumps(manifest))
+            selector = self.outer / 'current'
+            target = 'versions/' + prior.name
+            selector.symlink_to(target)
+            previous = r.LegacyPrevious('LEGACY', str(prior), r.Identity.observe(prior), str(selector), target, str(self.transaction / 'recovery'))
+            self.recovery_bundle(self.outer / 'recovery' / prior.name, prior, previous.identity, 'old recovery')
+        else:
+            previous = r.NoPrevious('NONE')
+        self.payload(self.stage, '2.0.0', 'selected', 'b' * 64)
+        selected_identity = r.Identity.observe(self.stage)
+        reservation = r.ManagedReservation('12345678-1234-1234-1234-123456789abc', str(self.stage), 'b' * 64, '2.0.0', hashlib.sha256((self.stage / 'installation.json').read_bytes()).hexdigest())
+        selection = self.transaction / 'selection.json'
+        selection.write_text('captured immutable selection')
+        host_files = self.transaction / 'host-preimage'
+        host_files.mkdir()
+        (host_files / 'keep').write_text('Host and profile evidence')
+        absent = r.ManagedFileAbsent(str(self.home / 'unrelated'), 'ABSENT')
+        selected = r.ManagedFilePresent(str(selection), str(selection), hashlib.sha256(selection.read_bytes()).hexdigest(), 384, 'PRESENT')
+        host = r.ManagedHostReplacement(str(self.home / 'plugins'), None, None, str(self.home / 'plugins/kast-ide-hosted'), str(host_files), r.Identity.observe(host_files), 'c' * 64, str(self.transaction / 'host-backup'), r.ManagedHostAbsent('ABSENT'), '2.0.0', 'd' * 64)
+        composition = r.ManagedComposition('RESTORING', 'STOPPED', str(self.home / 'IDEA.app'), str(self.home / 'profile'), selected, absent, absent, absent, host, absent, [r.ManagedProfileMissing(str(self.home / 'missing-profile'), 'MISSING')])
+        receipt = r.Replacement(1, r.ReplacementStage.RECOVERY_REQUIRED, str(self.root), selected_identity, previous, reservation, composition)
+        r.save(self.transaction / 'receipt.json', receipt)
+        if committed:
+            if isinstance(previous, r.PhysicalPrevious):
+                self.root.rename(self.transaction / 'payload')
+                (self.outer / 'recovery/installation').rename(self.transaction / 'recovery')
+            elif isinstance(previous, r.LegacyPrevious):
+                shutil.copytree(self.outer / 'recovery' / Path(previous.installation).name, self.transaction / 'recovery')
+            self.stage.rename(self.root)
+            self.recovery_bundle(self.outer / 'recovery/installation', self.root, selected_identity, 'selected recovery')
+        return receipt
+
+    def test_physical_restore_keeps_selected_bytes_mutation_evidence_and_outer_preimages(self):
+        r = self.recovery
+        receipt = self.prepare()
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+        self.assertEqual('old', (self.root / 'bin/kast-complete').read_text())
+        self.assertEqual('old unresolved evidence', (self.root / 'state/mutation/receipt').read_text())
+        self.assertEqual('selected', (self.transaction / 'rejected-control/bin/kast-complete').read_text())
+        self.assertEqual('selected unresolved evidence', (self.transaction / 'rejected-control/state/mutation/receipt').read_text())
+        self.assertEqual('old recovery', (self.outer / 'recovery/installation/evidence').read_text())
+        self.assertEqual('selected recovery', (self.transaction / 'rejected-recovery/evidence').read_text())
+        self.assertEqual('Host and profile evidence', (self.transaction / 'host-preimage/keep').read_text())
+        self.assertEqual(receipt, r.load(self.transaction / 'receipt.json', r.Replacement))
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+
+    def test_first_install_restore_proves_prior_absence_and_keeps_rejected_payload(self):
+        r = self.recovery
+        receipt = self.prepare(prior_kind='none')
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+        self.assertFalse(self.root.exists())
+        self.assertFalse((self.outer / 'recovery/installation').exists())
+        self.assertTrue((self.transaction / 'rejected-control/installation.json').is_file())
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+
+    def test_control_restoration_never_starts_or_signals_a_process(self):
+        r = self.recovery
+        receipt = self.prepare()
+        with patch.object(subprocess, 'run', side_effect=AssertionError('unexpected child process')), \
+             patch.object(os, 'kill', side_effect=AssertionError('unexpected process signal')):
+            self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+
+    def test_another_process_activation_lock_rejects_without_control_moves(self):
+        r = self.recovery
+        receipt = self.prepare()
+        command = ('import fcntl,os,sys; '
+                   'd=os.open(sys.argv[1],os.O_CREAT|os.O_RDWR,0o600); '
+                   'fcntl.lockf(d,fcntl.LOCK_EX); print("locked",flush=True); '
+                   'sys.stdin.buffer.read(1); os.close(d)')
+        child = subprocess.Popen([sys.executable, '-c', command, str(self.outer / 'activation.lock')],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            self.assertEqual(b'locked\n', child.stdout.readline())
+            with self.assertRaises(r.Rejected):
+                r.rollback_managed_control(self.root, receipt)
+            self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+            self.assertFalse((self.transaction / 'rejected-control').exists())
+        finally:
+            child.communicate(input=b'x', timeout=10)
+        self.assertEqual(0, child.returncode)
+
+    def test_prepared_but_uncommitted_control_remains_retained_until_outer_rollback_proof(self):
+        r = self.recovery
+        receipt = self.prepare(committed=False)
+        r.rollback_managed_control(self.root, receipt)
+        self.assertTrue(self.stage.is_dir())
+        self.assertEqual('old', (self.root / 'bin/kast-complete').read_text())
+        with self.assertRaises(r.Rejected):
+            r.seal_managed_control(self.root, receipt)
+        self.assertTrue(self.stage.is_dir())
+
+    def test_each_interrupted_directory_move_resumes_from_the_recorded_inodes(self):
+        r = self.recovery
+        receipt = self.prepare()
+        move = r.managed_move
+        for interruption in (1, 2, 3, 4):
+            with self.subTest(interruption=interruption):
+                # Each call resumes the same recorded transaction after one durable transition.
+                calls = []
+                def interrupt(source, destination, witness):
+                    calls.append(destination)
+                    move(source, destination, witness)
+                    if len(calls) == 1:
+                        raise OSError('controlled interruption after a directory move')
+                with patch.object(r, 'managed_move', interrupt):
+                    with self.assertRaises(r.Rejected):
+                        r.rollback_managed_control(self.root, receipt)
+                self.assertTrue(self.transaction.is_dir())
+                self.assertEqual('Host and profile evidence', (self.transaction / 'host-preimage/keep').read_text())
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+
+    def test_stale_prior_identity_and_changed_selected_inventory_reject_without_moves(self):
+        r = self.recovery
+        receipt = self.prepare()
+        old = self.transaction / 'payload'
+        old.rename(self.transaction / 'foreign-prior')
+        old.mkdir()
+        with self.assertRaises(r.Rejected):
+            r.rollback_managed_control(self.root, receipt)
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+        old.rmdir()
+        (self.transaction / 'foreign-prior').rename(old)
+        (self.root / 'bin/kast-complete').write_text('changed')
+        with self.assertRaises(r.Rejected):
+            r.rollback_managed_control(self.root, receipt)
+        self.assertEqual('changed', (self.root / 'bin/kast-complete').read_text())
+        self.assertFalse((self.transaction / 'rejected-control').exists())
+
+    def test_legacy_restore_preserves_the_exact_selector_and_rejects_a_foreign_target(self):
+        r = self.recovery
+        receipt = self.prepare(prior_kind='legacy')
+        selector = self.outer / 'current'
+        selector.unlink()
+        selector.symlink_to('versions/foreign')
+        with self.assertRaises(r.Rejected):
+            r.rollback_managed_control(self.root, receipt)
+        self.assertTrue(self.root.is_dir())
+        selector.unlink()
+        selector.symlink_to(receipt.previous.target)
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.rollback_managed_control(self.root, receipt))
+        self.assertFalse(self.root.exists())
+        self.assertEqual(receipt.previous.target, os.readlink(selector))
+        self.assertEqual('old', (Path(receipt.previous.installation) / 'bin/kast-complete').read_text())
+
+    def test_cleanup_needs_outer_proof_and_keeps_the_host_profile_and_selection_records(self):
+        r = self.recovery
+        receipt = self.prepare()
+        r.rollback_managed_control(self.root, receipt)
+        restored = r.replace(receipt, composition=r.replace(receipt.composition, phase='RESTORED'))
+        r.save(self.transaction / 'receipt.json', restored)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, restored))
+        self.assertFalse((self.transaction / 'rejected-control').exists())
+        self.assertFalse((self.transaction / 'rejected-recovery').exists())
+        self.assertTrue((self.transaction / 'host-preimage/keep').is_file())
+        self.assertTrue((self.transaction / 'selection.json').is_file())
+        self.assertEqual(restored, r.load(self.transaction / 'receipt.json', r.Replacement))
+        self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, restored))
+
+    def test_successful_activation_cleans_only_prior_control_after_outer_proof(self):
+        r = self.recovery
+        receipt = self.prepare()
+        activated = r.replace(receipt, composition=r.replace(receipt.composition, phase='ACTIVATION_PROVEN'))
+        r.save(self.transaction / 'receipt.json', activated)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, activated))
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+        self.assertFalse((self.transaction / 'payload').exists())
+        self.assertFalse((self.transaction / 'recovery').exists())
+        self.assertTrue((self.transaction / 'host-preimage/keep').is_file())
+        self.assertTrue((self.transaction / 'selection.json').is_file())
+        self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, activated))
+
+    def test_foreign_new_installation_blocks_absence_cleanup_and_preserves_rejected_bytes(self):
+        r = self.recovery
+        receipt = self.prepare(prior_kind='none')
+        r.rollback_managed_control(self.root, receipt)
+        restored = r.replace(receipt, composition=r.replace(receipt.composition, phase='RESTORED'))
+        r.save(self.transaction / 'receipt.json', restored)
+        self.root.mkdir()
+        (self.root / 'foreign').write_text('preserve')
+        with self.assertRaises(r.Rejected):
+            r.seal_managed_control(self.root, restored)
+        self.assertEqual('preserve', (self.root / 'foreign').read_text())
+        self.assertTrue((self.transaction / 'rejected-control/installation.json').is_file())
+
+    def test_stale_receipt_and_foreign_empty_quarantine_reject_before_the_first_move(self):
+        r = self.recovery
+        receipt = self.prepare()
+        changed = r.replace(receipt, reservation=r.replace(receipt.reservation, transaction='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'))
+        r.save(self.transaction / 'receipt.json', changed)
+        with self.assertRaises(r.Rejected):
+            r.rollback_managed_control(self.root, receipt)
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+        r.save(self.transaction / 'receipt.json', receipt)
+        (self.transaction / 'rejected-control').mkdir()
+        with self.assertRaises(r.Rejected):
+            r.rollback_managed_control(self.root, receipt)
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+        self.assertTrue((self.transaction / 'rejected-control').is_dir())
+
+    def finalizable(self, prior_kind='physical', restored=False):
+        r = self.recovery
+        receipt = self.prepare(prior_kind=prior_kind)
+        if restored:
+            r.rollback_managed_control(self.root, receipt)
+        identity = r.ManagedBuildIdentity('v2.0.0', '2.0.0', 'a' * 40, 'b' * 40, None)
+        binding = r.ManagedBinding(identity, r.ManagedTrackStable('TrackStable'))
+        composition = r.replace(receipt.composition, phase='RESTORED' if restored else 'ACTIVATION_PROVEN',
+                                binding=binding, notices=[r.ManagedNotice.HARNESS_REFRESH_REQUIRED])
+        receipt = r.replace(receipt, composition=composition)
+        r.save(self.transaction / 'receipt.json', receipt)
+        r.seal_managed_control(self.root, receipt)
+        # The separate Host owner owns this fixture directory and seals it before journal cleanup.
+        shutil.rmtree(self.transaction / 'host-preimage')
+        r.save(self.outer / 'shutdown.json', r.ManagedShutdownFence(str(self.root), 1))
+        return receipt
+
+    def test_finalizer_preserves_unknown_entries_and_clears_only_an_exact_fence(self):
+        r = self.recovery
+        receipt = self.finalizable()
+        unknown = self.transaction / 'foreign'
+        unknown.write_text('preserve')
+        with self.assertRaises(r.Rejected) as rejected:
+            r.finalize_managed_journal(self.root, receipt)
+        self.assertEqual(r.Failure.EVIDENCE, rejected.exception.failure)
+        self.assertTrue((self.transaction / 'selection.json').is_file())
+        self.assertTrue((self.outer / 'shutdown.json').is_file())
+        unknown.unlink()
+        r.save(self.outer / 'shutdown.json', r.ManagedShutdownFence(str(self.home / 'foreign-root'), 1))
+        with self.assertRaises(r.Rejected):
+            r.finalize_managed_journal(self.root, receipt)
+        self.assertTrue((self.transaction / 'selection.json').is_file())
+        r.save(self.outer / 'shutdown.json', r.ManagedShutdownFence(str(self.root), 1))
+        self.assertEqual(r.ManagedControlResult.SEALED, r.finalize_managed_journal(self.root, receipt))
+        self.assertFalse(self.transaction.exists())
+        self.assertFalse((self.outer / 'shutdown.json').exists())
+
+    def assert_reservation_abort_keeps_prior(self, kind):
+        r = self.recovery
+        receipt = self.prepare(prior_kind=kind, committed=False)
+        (self.transaction / 'selection.json').unlink()
+        shutil.rmtree(self.transaction / 'host-preimage')
+        receipt = r.replace(receipt, stage=r.ReplacementStage.PREPARED, composition=None)
+        r.save(self.transaction / 'receipt.json', receipt)
+        prior = Path(receipt.previous.installation)
+        witness = r.managed_tree(prior)
+        self.assertEqual(r.ManagedControlResult.RESTORED, r.abort_managed_reservation(self.root, receipt))
+        self.assertEqual(witness, r.managed_tree(prior))
+        self.assertFalse(self.stage.exists())
+        self.assertFalse(self.transaction.exists())
+
+    def test_reservation_abort_preserves_the_current_physical_installation(self):
+        self.assert_reservation_abort_keeps_prior('physical')
+
+    def test_reservation_abort_preserves_the_selected_legacy_installation(self):
+        self.assert_reservation_abort_keeps_prior('legacy')
+
+    def test_terminal_publication_preserves_a_foreign_destination(self):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        foreign = self.transaction.with_name('completed-replacement-' + receipt.reservation.transaction)
+        foreign.mkdir()
+        (foreign / 'foreign').write_text('preserve')
+        with self.assertRaises(r.Rejected):
+            r.finalize_managed_journal(self.root, receipt)
+        self.assertEqual('preserve', (foreign / 'foreign').read_text())
+        self.assertEqual(receipt, r.load(self.transaction / 'receipt.json', r.Replacement))
+
+    def test_terminal_directory_removal_fault_never_leaves_an_empty_pending_journal(self):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        rmdir = os.rmdir
+        calls = []
+        def interrupted(path, *arguments, **options):
+            target = Path(path)
+            if target == self.transaction or target.name.startswith('completed-replacement-'):
+                calls.append(target)
+                raise OSError('controlled terminal directory removal failure')
+            return rmdir(path, *arguments, **options)
+        with patch.object(os, 'rmdir', interrupted):
+            try:
+                r.finalize_managed_journal(self.root, receipt)
+            except r.Rejected:
+                pass
+        self.assertEqual(1, len(calls))
+        if self.transaction.exists():
+            self.assertTrue((self.transaction / 'receipt.json').is_file(),
+                            'a fresh process needs durable proof while the pending path exists')
+
+    def assert_finalization_interruption(self, target_name, after):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        target = self.outer / 'shutdown.json' if target_name == 'fence' else self.transaction / 'receipt.json'
+        unlink = Path.unlink
+        def interrupt(path, *arguments, **options):
+            if path == target:
+                if after:
+                    unlink(path, *arguments, **options)
+                raise OSError('controlled interruption during terminal cleanup')
+            return unlink(path, *arguments, **options)
+        with patch.object(Path, 'unlink', interrupt):
+            with self.assertRaises(r.Rejected):
+                r.finalize_managed_journal(self.root, receipt)
+        if (self.transaction / 'receipt.json').exists():
+            kept = r.load(self.transaction / 'receipt.json', r.Replacement)
+            self.assertEqual(receipt.composition.binding, kept.composition.binding)
+            self.assertEqual([r.ManagedNotice.HARNESS_REFRESH_REQUIRED], kept.composition.notices)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.finalize_managed_journal(self.root, receipt))
+        self.assertFalse(self.root.exists())
+        self.assertFalse(self.transaction.exists())
+        self.assertFalse((self.outer / 'shutdown.json').exists())
+
+    def test_finalization_retries_before_fence_removal(self):
+        self.assert_finalization_interruption('fence', False)
+
+    def test_finalization_retries_after_fence_removal_with_binding_still_durable(self):
+        self.assert_finalization_interruption('fence', True)
+
+    def test_finalization_retry_reads_durable_receipt_before_terminal_publication(self):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        move = r.managed_move
+        def interrupted(source, destination, witness):
+            if source == self.transaction:
+                raise OSError('controlled terminal publication refusal')
+            return move(source, destination, witness)
+        with patch.object(r, 'managed_move', interrupted):
+            with self.assertRaises(r.Rejected):
+                r.finalize_managed_journal(self.root, receipt)
+        fresh = r.load(self.transaction / 'receipt.json', r.Replacement)
+        self.assertEqual(receipt, fresh)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.finalize_managed_journal(self.root, fresh))
+        self.assertFalse(self.transaction.exists())
+
+    def assert_closed_receipt_interruption(self, after):
+        r = self.recovery
+        receipt = self.finalizable(prior_kind='none', restored=True)
+        unlink = os.unlink
+        def interrupted(path, *arguments, **options):
+            if path == 'receipt.json':
+                if after:
+                    unlink(path, *arguments, **options)
+                raise OSError('controlled closed receipt cleanup refusal')
+            return unlink(path, *arguments, **options)
+        output = io.StringIO()
+        with patch.object(os, 'unlink', interrupted), contextlib.redirect_stderr(output):
+            self.assertEqual(r.ManagedControlResult.SEALED, r.finalize_managed_journal(self.root, receipt))
+        self.assertFalse(self.transaction.exists())
+        self.assertFalse((self.outer / 'shutdown.json').exists())
+        self.assertFalse(self.root.exists())
+        self.assertEqual({'event': 'kast_managed_storage_cleanup', 'outcome': 'FAILED',
+                          'reason': r.Failure.FILESYSTEM.value}, json.loads(output.getvalue()))
+
+    def test_finalization_closes_pending_path_before_receipt_cleanup(self):
+        self.assert_closed_receipt_interruption(False)
+
+    def test_finalization_closes_pending_path_before_empty_directory_cleanup(self):
+        self.assert_closed_receipt_interruption(True)
+
+    def assert_partial_terminal_control_deletion_keeps_retry(self, interruption):
+        r = self.recovery
+        receipt = self.prepare()
+        receipt = r.replace(receipt, composition=r.replace(receipt.composition, phase='ACTIVATION_PROVEN'))
+        r.save(self.transaction / 'receipt.json', receipt)
+        remove = shutil.rmtree
+        calls = []
+        def interrupted(path, *arguments, **options):
+            target = Path(path)
+            command = target / 'bin/kast-complete'
+            if command.is_file():
+                calls.append(target)
+                command.unlink()
+                raise interruption('controlled partial retained Control deletion')
+            return remove(path, *arguments, **options)
+        interrupted.avoids_symlink_attacks = remove.avoids_symlink_attacks
+        output = io.StringIO()
+        with patch.object(shutil, 'rmtree', interrupted), contextlib.redirect_stderr(output):
+            try:
+                self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, receipt))
+            except SystemExit:
+                self.assertIs(SystemExit, interruption)
+        if interruption is OSError:
+            self.assertEqual({'event': 'kast_managed_storage_cleanup', 'outcome': 'FAILED',
+                              'reason': r.Failure.FILESYSTEM.value}, json.loads(output.getvalue()))
+        else:
+            self.assertEqual('', output.getvalue())
+        self.assertEqual(1, len(calls))
+        self.assertNotEqual(self.transaction / 'payload', calls[0])
+        self.assertFalse((self.transaction / 'payload').exists())
+        fresh = r.load(self.transaction / 'receipt.json', r.Replacement)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, fresh))
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+        self.assertTrue((self.transaction / 'host-preimage/keep').is_file())
+
+    def test_partial_terminal_control_deletion_does_not_poison_retry_admission(self):
+        self.assert_partial_terminal_control_deletion_keeps_retry(OSError)
+
+    def test_process_interruption_during_terminal_deletion_keeps_retry_admission(self):
+        self.assert_partial_terminal_control_deletion_keeps_retry(SystemExit)
+
+    def test_terminal_control_retirement_preserves_a_foreign_destination(self):
+        r = self.recovery
+        receipt = self.prepare()
+        receipt = r.replace(receipt, composition=r.replace(receipt.composition, phase='ACTIVATION_PROVEN'))
+        r.save(self.transaction / 'receipt.json', receipt)
+        move = r.managed_move
+        destinations = []
+        def collision(source, destination, witness):
+            destination.mkdir()
+            (destination / 'foreign').write_text('preserve')
+            destinations.append(destination)
+            return move(source, destination, witness)
+        with patch.object(r, 'managed_move', collision):
+            with self.assertRaises(r.Rejected) as rejected:
+                r.seal_managed_control(self.root, receipt)
+        self.assertEqual(r.Failure.OWNERSHIP, rejected.exception.failure)
+        self.assertEqual(1, len(destinations))
+        self.assertEqual('preserve', (destinations[0] / 'foreign').read_text())
+        self.assertEqual('old', (self.transaction / 'payload/bin/kast-complete').read_text())
+
+    def test_activated_legacy_cleanup_uses_files_only_and_preserves_host_preimages(self):
+        r = self.recovery
+        receipt = self.prepare(prior_kind='legacy')
+        activated = r.replace(receipt, composition=r.replace(receipt.composition, phase='ACTIVATION_PROVEN'))
+        r.save(self.transaction / 'receipt.json', activated)
+        with patch.object(subprocess, 'run', side_effect=AssertionError('unexpected process')):
+            self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, activated))
+        self.assertFalse(Path(receipt.previous.installation).exists())
+        self.assertFalse((self.outer / 'current').is_symlink())
+        self.assertFalse((self.outer / 'recovery' / Path(receipt.previous.installation).name).exists())
+        self.assertTrue((self.transaction / 'host-preimage/keep').is_file())
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
 
 
 if __name__ == '__main__':

@@ -8,9 +8,23 @@ object InstallationOperationalLimits {
     const val downloadRetries: Long = 5
     const val downloadRetryDelayMillis: Long = 2_000
     const val stateMaximumEntries: Long = 100_000
+    const val hostSettlementTimeoutMillis: Long = 60_000
+    const val hostActivationTimeoutMillis: Long = 120_000
 
     val declarations: List<ConfigurationOperationalLimit> =
         listOf(
+            limit(
+                "installation.host.settlement_timeout",
+                hostSettlementTimeoutMillis,
+                ConfigurationUnit.MILLISECONDS,
+                "hostSettlementTimeoutMillis",
+            ),
+            limit(
+                "installation.host.activation_timeout",
+                hostActivationTimeoutMillis,
+                ConfigurationUnit.MILLISECONDS,
+                "hostActivationTimeoutMillis",
+            ),
             limit(
                 "installation.retirement.child_timeout",
                 retirementChildTimeoutMillis,

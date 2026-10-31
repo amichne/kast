@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7b1a333258af0cee30929537f9010c2aae5da5e80561c87f393afbb287605a4b",
+  "pageVersion": "sha256:eee6bb42a86aba875b3ec55d3dbda22df57741c05f4eacb44a3f27f43ae8bfa9",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
-      "statement": "The native management command uses a closed command model. Public Codex connection forms select its plugin owner, new App Server registration rejects before effects, and legacy variants remain for receipt admission and cleanup.",
+      "statement": "The native management command uses a closed command model. CLI-first setup uses kast install with an explicit optional MCP composition. Retired connect and plugin setup syntax rejects, while legacy receipt variants remain for exact cleanup.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:23280d575cc7e5134cc73708252d30676b152576156cee8801b7acaee99f09df"
+          "version": "repo-file-v1:sha256:f4517c0267ebed7008ecde3a7463a3c663328d2607b9cf98a95ddd0b63dd87a9"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "version": "repo-file-v1:sha256:f1c15ca73702c961374520fcb6a094055acb620c3afc10f9906b9a6d8207ee19"
+          "version": "repo-file-v1:sha256:ec3dce108b7ef0c2a04fb552cff263ba39387d80b2744038f1dcc4738b089714"
         }
       ]
     },
@@ -28,17 +28,45 @@
     },
     {
       "id": "claim_4c1df02651fe4663b0201e017c830aba",
-      "statement": "Codex plugin installation admits bundled payloads, rejects foreign standalone MCP registrations before plugin effects, and inspects exact host identities. It removes only receipt-owned legacy registrations after success while Codex owns configuration and cache.",
+      "statement": "Codex plugin installation admits the manifest-owned selected composition and exact provider identities and resource bytes. It preserves foreign registrations and removes only receipt-owned legacy registrations after success. Codex owns configuration and cache.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
-          "version": "repo-file-v1:sha256:58532558c47f1f133c4cd9207454007dc6d01f3be5671b91625fb16ba109f669"
+          "version": "repo-file-v1:sha256:97436d7aa632398e05c38bf703b357cefc1db3bd20289159dff8303ac87cb714"
+        }
+      ]
+    },
+    {
+      "id": "claim_a99ee4b84c0c458b947eac57a3196f24",
+      "statement": "Guidance installation defaults to CLI-only for Codex, Copilot, and Pi. Explicit MCP composition prepares its dependencies. Standalone skill export rejects changed, extra, and symbolic-link entries while identical export preserves the existing directory.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt",
+          "version": "repo-file-v1:sha256:cb471dcd96443c1ebc20b22b13dda2c746eb422df3e0bf69520acb09a8a47f86"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt",
+          "version": "repo-file-v1:sha256:615f15e2ac5db5ba1909d91fd6829008a4e62300bd86541aa1b65db265a262cc"
+        }
+      ]
+    },
+    {
+      "id": "claim_1ab0e4ea81f1468f992e99a1bf0e55ab",
+      "statement": "Managed upgrade resolves pending recovery before policy or release selection and does not select a fresh release afterward. Receipt admission preserves exact installed identity, policy, and unique guidance ownership.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
+          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt",
+          "version": "repo-file-v1:sha256:dd5afcd94edfb98161cf4ef10d09d89d4780ed410a64516bc10e87c31ac6ed68"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T07:07:29.171Z"
+    "at": "2026-10-31T10:29:42.821Z"
   }
 }

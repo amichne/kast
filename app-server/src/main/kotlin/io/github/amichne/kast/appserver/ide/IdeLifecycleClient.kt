@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.ide
 
-import io.github.amichne.kast.distribution.managed.IdeLaunchFailure
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.distribution.managed.SelectedIdeLayout
@@ -61,6 +60,46 @@ internal constructor(
 
     private val json = Json { encodeDefaults = true }
 
+    /** Installation management uses the same admitted application endpoint without project preparation. */
+    fun manageInstallation(command: IdeLifecycleCommand): IdeLifecycleResult {
+        val inspected = inspectForInstallation()
+        if (inspected !is IdeLifecycleResult.Inspected) return inspected
+        if (command == IdeLifecycleCommand.Inspect) return inspected
+        val (host, capability) =
+            when (command) {
+                is IdeLifecycleCommand.SettleHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
+                is IdeLifecycleCommand.SettleHostForReload ->
+                    command.host to IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
+                is IdeLifecycleCommand.ResumeHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
+                is IdeLifecycleCommand.StopHost -> command.host to IdeLifecycleCapabilityName.HOST_NORMAL_STOP
+                is IdeLifecycleCommand.RefreshHostBundle ->
+                    command.host to IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
+                else -> return blocked(IdeLifecycleFailure.INVALID_REQUEST)
+            }
+        if (inspected.host != host) return blocked(IdeLifecycleFailure.WRONG_HOST)
+        val identity = inspected.runtimeIdentity ?: return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
+        if (identity.ideaHome != inspected.home || identity.hostLifetime != host)
+            return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
+        if (identity.pid <= 0 || identity.processStartEpochMillis <= 0)
+            return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
+        if (capability !in inspected.capabilities) return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
+        return exchange(Path.of(inspected.home), command)
+    }
+
+    /** Prior-release inspection preserves its stated capabilities without granting new management operations. */
+    fun inspectForInstallation(): IdeLifecycleResult {
+        val home =
+            try {
+                selectedHome.toRealPath()
+            } catch (_: java.io.IOException) {
+                return blocked(IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE)
+            }
+        val result = exchange(home, IdeLifecycleCommand.Inspect)
+        return if (result is IdeLifecycleResult.Inspected && (result.home != home.toString() || result.protocol != 1))
+            blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
+        else result
+    }
+
     override fun execute(request: WorkspaceLifecycleRequest, client: String): IdeLifecycleResult =
         when (request) {
             WorkspaceLifecycleRequest.Inspect -> execute(IdeLifecycleCommand.Inspect)
@@ -102,7 +141,7 @@ internal constructor(
         if (host !is IdeLifecycleResult.Inspected) return host
         if (host.home != home.toString()) return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
         if (host.protocol != 1) return blocked(IdeLifecycleFailure.UNSUPPORTED_PROTOCOL)
-        if (!host.capabilities.containsAll(IdeLifecycleCapabilityName.entries))
+        if (!host.capabilities.containsAll(WORKSPACE_CAPABILITIES))
             return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
         if (!host.build.substringAfter('-').startsWith("262."))
             return blocked(IdeLifecycleFailure.UNSUPPORTED_PLATFORM_LINE)
@@ -318,6 +357,18 @@ internal constructor(
     }
 
     private companion object {
+        private val WORKSPACE_CAPABILITIES =
+            setOf(
+                IdeLifecycleCapabilityName.INSPECT,
+                IdeLifecycleCapabilityName.OPEN,
+                IdeLifecycleCapabilityName.PRESENT,
+                IdeLifecycleCapabilityName.SYNC,
+                IdeLifecycleCapabilityName.CONFIGURE_SYNC,
+                IdeLifecycleCapabilityName.RELEASE,
+                IdeLifecycleCapabilityName.CLOSE,
+                IdeLifecycleCapabilityName.STATUS,
+                IdeLifecycleCapabilityName.EXACT_USER_CLOSE,
+            )
         const val LAUNCH_HELPER_SECONDS = 10L
         const val LAUNCH_WAIT_SECONDS = 60L
         const val DISCOVERY_SECONDS = 5L
@@ -334,24 +385,3 @@ private sealed interface IdeLaunchLifetime {
 
     data class Application(val process: Process) : IdeLaunchLifetime
 }
-
-private fun IdeLaunchFailure.lifecycleFailure(): IdeLifecycleFailure =
-    when (this) {
-        IdeLaunchFailure.METADATA_UNAVAILABLE -> IdeLifecycleFailure.LAUNCH_METADATA_UNAVAILABLE
-        IdeLaunchFailure.INVALID_METADATA,
-        IdeLaunchFailure.SAVED_SELECTION_REJECTED -> IdeLifecycleFailure.LAUNCH_METADATA_INVALID
-        IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE -> IdeLifecycleFailure.UNSUPPORTED_PLATFORM_LINE
-        IdeLaunchFailure.MISSING_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_MISSING
-        IdeLaunchFailure.AMBIGUOUS_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_AMBIGUOUS
-        IdeLaunchFailure.INVALID_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_INVALID
-        IdeLaunchFailure.EXECUTABLE_UNAVAILABLE -> IdeLifecycleFailure.LAUNCH_EXECUTABLE_UNAVAILABLE
-    }
-
-private fun java.io.IOException.exchangeCause(): IdeLifecycleExchangeCause =
-    when (this) {
-        is java.nio.channels.ClosedByInterruptException -> IdeLifecycleExchangeCause.INTERRUPTED
-        is java.net.ConnectException -> IdeLifecycleExchangeCause.CONNECTION_FAILED
-        is java.io.EOFException -> IdeLifecycleExchangeCause.TRUNCATED_RESPONSE
-        is java.nio.charset.CharacterCodingException -> IdeLifecycleExchangeCause.INVALID_RESPONSE
-        else -> IdeLifecycleExchangeCause.IO_FAILURE
-    }

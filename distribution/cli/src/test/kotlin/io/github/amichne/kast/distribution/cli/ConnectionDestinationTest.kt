@@ -14,12 +14,14 @@ internal class ConnectionDestinationTest {
 
     @ParameterizedTest
     @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT"])
-    fun `file integrations accept a selected destination`(connection: HarnessConnection) {
+    fun `retired destination setup names the install replacement`(connection: HarnessConnection) {
         val arguments =
             listOf("connect") +
                 connection.publicName.split(' ') +
                 listOf("--destination", temporary.resolve("chosen").toString())
-        assertTrue(parseManagementCommand(arguments) is ManagementParsing.Selected)
+        val result = parseManagementCommand(arguments) as ManagementParsing.Print
+        assertTrue(result.error)
+        assertTrue(result.text.contains("kast install"))
     }
 
     @ParameterizedTest

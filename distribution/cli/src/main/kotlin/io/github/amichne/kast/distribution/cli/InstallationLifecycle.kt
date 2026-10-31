@@ -33,19 +33,36 @@ private constructor(
     private var fenceIdentity: FenceAttributes = FenceAttributes.Rejected
 
     fun shutdown(operation: LifecycleOperation): LifecycleOutcome {
+        when (val retired = retireClients(operation)) {
+            is ClientRetirement.Rejected -> return LifecycleOutcome.Rejected(operation, retired.stage, retired.failure)
+            ClientRetirement.Completed -> Unit
+        }
+        return when (val effect = step(operation, LifecycleStage.HOST, ::retireHost)) {
+            LifecycleEffect.Completed -> LifecycleOutcome.Stopped(operation, installation.toString())
+            is LifecycleEffect.Rejected -> LifecycleOutcome.Rejected(operation, LifecycleStage.HOST, effect.failure)
+        }
+    }
+
+    /** Replacement reuses exact request retirement and chooses its Host strategy separately. */
+    fun fenceAndRetire(operation: LifecycleOperation): LifecycleEffect =
+        when (val retired = retireClients(operation)) {
+            ClientRetirement.Completed -> LifecycleEffect.Completed
+            is ClientRetirement.Rejected -> LifecycleEffect.Rejected(retired.failure)
+        }
+
+    private fun retireClients(operation: LifecycleOperation): ClientRetirement {
         for ((stage, action) in
             listOf<Pair<LifecycleStage, () -> LifecycleEffect>>(
                 LifecycleStage.FENCE to ::fence,
                 LifecycleStage.COORDINATOR to { service(LifecycleServiceAction.DISABLE) },
                 LifecycleStage.REQUESTS to { retireRequests(operation) },
-                LifecycleStage.HOST to ::retireHost,
             )) {
             when (val effect = step(operation, stage, action)) {
                 LifecycleEffect.Completed -> Unit
-                is LifecycleEffect.Rejected -> return LifecycleOutcome.Rejected(operation, stage, effect.failure)
+                is LifecycleEffect.Rejected -> return ClientRetirement.Rejected(stage, effect.failure)
             }
         }
-        return LifecycleOutcome.Stopped(operation, installation.toString())
+        return ClientRetirement.Completed
     }
 
     fun resume(): LifecycleEffect {
@@ -210,6 +227,12 @@ private constructor(
     }
 }
 
+private sealed interface ClientRetirement {
+    data object Completed : ClientRetirement
+
+    data class Rejected(val stage: LifecycleStage, val failure: LifecycleFailure) : ClientRetirement
+}
+
 internal sealed interface LifecycleAdmission {
     data class Admitted(val lifecycle: InstallationLifecycle) : LifecycleAdmission
 
@@ -235,11 +258,16 @@ private fun supportsShutdown(installation: Path, manifest: BundledManifest): Boo
     payloadOwned(installation, manifest, INSTALLATION_SHUTDOWN_CAPABILITY) &&
         readBoundedFile(installation.resolve(INSTALLATION_SHUTDOWN_CAPABILITY), CAPABILITY_BYTES) == "1\n"
 
-internal fun payloadOwned(installation: Path, manifest: BundledManifest, relative: String): Boolean {
+internal fun payloadOwned(
+    installation: Path,
+    manifest: BundledManifest,
+    relative: String,
+    logicalRoot: Path = installation,
+): Boolean {
     val entry = manifest.payloadFiles.singleOrNull { it.path == relative } ?: return false
     val path = installation.resolve(relative)
     return manifest.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
-        manifest.installationRoot == installation.toString() &&
+        manifest.installationRoot == logicalRoot.toString() &&
         Files.isRegularFile(path, NOFOLLOW_LINKS) &&
         path.toRealPath() == path &&
         entry.sha256 == "sha256:${sha256(path)}"

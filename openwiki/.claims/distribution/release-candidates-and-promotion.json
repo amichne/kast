@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a2988134f2828e6e7933e89eceaf5d3de89da3361841c8164a91fe187a15083e",
+  "pageVersion": "sha256:fea58d24890866d4f564c0b643b071c94a721e6270480c2e9cbb0c75e9910c5e",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:6ee4c67802fcb80c26257ef63bcbb3b1020ede08905f7bbc2802e4b069a6d01e"
+          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:ee55daa96e934ea126a402a3522adc4a3ecc8d3b992b04057ac215fcc5015efa"
+          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:6ee4c67802fcb80c26257ef63bcbb3b1020ede08905f7bbc2802e4b069a6d01e"
+          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
         }
       ]
     },
@@ -36,13 +36,37 @@
         },
         {
           "resource": "repo://distribution/release/component_release.py",
-          "version": "repo-file-v1:sha256:986c63881eba9d0834f4387681f57e26a9db70a9fa71e6b97a985b924cfa0de0"
+          "version": "repo-file-v1:sha256:187b8c7d5bf9ad0b58b3b18ccba9d17e92143b424223f0960ec4fd9edbda6661"
+        }
+      ]
+    },
+    {
+      "id": "claim_b9b6adfd6e804bcb8c3776d4a9f73f80",
+      "statement": "The published main catalog keeps at most five immutable releases ordered by proven main ancestry. Guarded publication changes the catalog and latest pointer together after asset admission and rereads after contention.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/developer_catalog.py",
+          "version": "repo-file-v1:sha256:42d55a59436e67eb3ef900dc642cd79865a26bce17ca755e5eb8176f2ea5eaba"
+        },
+        {
+          "resource": "repo://.github/scripts/release/publish_developer.py",
+          "version": "repo-file-v1:sha256:0189fb0af0e77df347a245739ff5df4d2ad6bf9e1b3596dca87037cf4fea3341"
+        }
+      ]
+    },
+    {
+      "id": "claim_49265ebfb2964e7384175f55bac63b1d",
+      "statement": "The managed installer consumes one captured selection and admits exact component records, candidate and promotion digests, archive bytes, original producer identity, and hosted compatibility before composition effects.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_release.py",
+          "version": "repo-file-v1:sha256:4626bb76708c5ad5743dc2296dccd5c61a14bfbc902452b733358c5fd01f5903"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

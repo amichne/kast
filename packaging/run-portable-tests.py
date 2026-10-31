@@ -15,6 +15,8 @@ SKIP_SUMMARY = re.compile(r'\bskipped=([0-9]+)\b')
 
 def expected_skips() -> dict[str, int]:
     permitted = {}
+    if platform.system() != 'Darwin':
+        permitted['test-host-installation.py'] = 2
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         permitted['test-install-checkout.py'] = 15
     return permitted

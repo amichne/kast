@@ -39,7 +39,8 @@ private fun admitCapturedRecovery(
 ): Refinement<ManagedRecoveryRemovalProof, RecoveryRemovalFailure> {
     if (!privateRecoveryDirectory(bundle.parent, uid) || !privateRecoveryDirectory(bundle, uid))
         return rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
-    if (names(bundle) != RECOVERY_FILES) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
+    if (names(bundle) !in setOf(LEGACY_RECOVERY_FILES, RECOVERY_FILES))
+        return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
     if (names(bundle.parent) != setOf("installation")) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
     val installation =
         when (val admitted = admitRecoveryRemovalIdentity(root)) {
@@ -54,7 +55,7 @@ private fun admitCapturedRecovery(
             is Refinement.Refined -> files.value
             is Refinement.Rejected -> return files
         }
-    if (!unchangedAdmission(root, bundle, installation, directoryIdentity, bundleIdentity))
+    if (!unchangedAdmission(root, bundle, installation, directoryIdentity, bundleIdentity, captured.journal))
         return rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
     return Refinement.Refined(
         ManagedRecoveryRemovalProof.Admitted(
@@ -65,6 +66,7 @@ private fun admitCapturedRecovery(
             captured.receipt,
             captured.recovery,
             captured.lifecycle,
+            captured.journal,
         )
     )
 }
@@ -73,6 +75,7 @@ private class CapturedRecoveryBundleFiles(
     val receipt: CapturedRecoveryFile,
     val recovery: CapturedRecoveryFile,
     val lifecycle: CapturedRecoveryFile,
+    val journal: CapturedRecoveryFile?,
 )
 
 private fun captureRecoveryBundleFiles(
@@ -94,7 +97,14 @@ private fun captureRecoveryBundleFiles(
             is Refinement.Refined -> captured.value
             is Refinement.Rejected -> return captured
         }
-    return Refinement.Refined(CapturedRecoveryBundleFiles(receipt, recovery, lifecycle))
+    val journal =
+        if (Files.notExists(bundle.resolve(JOURNAL_SCRIPT), NOFOLLOW_LINKS)) null
+        else
+            when (val captured = captureRecoveryFile(bundle.resolve(JOURNAL_SCRIPT), uid)) {
+                is Refinement.Refined -> captured.value
+                is Refinement.Rejected -> return captured
+            }
+    return Refinement.Refined(CapturedRecoveryBundleFiles(receipt, recovery, lifecycle, journal))
 }
 
 private fun unchangedAdmission(
@@ -103,9 +113,11 @@ private fun unchangedAdmission(
     installation: InstallationFilesystemIdentity,
     directory: InstallationFilesystemIdentity,
     capturedBundle: InstallationFilesystemIdentity,
+    journal: CapturedRecoveryFile?,
 ): Boolean {
     if (directory != recoveryIdentity(bundle.parent) || capturedBundle != recoveryIdentity(bundle)) return false
-    return installation == recoveryIdentity(root) && names(bundle) == RECOVERY_FILES
+    return installation == recoveryIdentity(root) &&
+        names(bundle) == if (journal != null) RECOVERY_FILES else LEGACY_RECOVERY_FILES
 }
 
 /** Delete only captured state after retirement; partial deletion resumes from the same inventory. */
@@ -186,13 +198,13 @@ private fun removeCapturedBundle(
 ): Refinement<Unit, RecoveryRemovalFailure> {
     if (!privateDirectoryIdentity(bundle, uid, proof.bundleIdentity))
         return rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
-    if (names(bundle).any { it !in RECOVERY_FILES }) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
+    val expected = if (proof.journalScript == null) LEGACY_RECOVERY_FILES else RECOVERY_FILES
+    if (names(bundle).any { it !in expected }) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
     val inventory =
         listOf(
             RECOVERY_SCRIPT to proof.recoveryScript,
             LIFECYCLE_SCRIPT to proof.lifecycleScript,
-            RECEIPT to proof.receipt,
-        )
+        ) + listOfNotNull(proof.journalScript?.let { JOURNAL_SCRIPT to it }) + (RECEIPT to proof.receipt)
     when (val admission = revalidateCapturedFiles(bundle, inventory, uid)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admission
@@ -248,7 +260,8 @@ private fun removeCapturedFile(
 ): Refinement<Unit, RecoveryRemovalFailure> {
     val uid = UnixSystem().uid
     if (names(bundle.parent) != setOf("installation")) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
-    if (names(bundle).any { it !in RECOVERY_FILES }) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
+    val expected = if (proof.journalScript == null) LEGACY_RECOVERY_FILES else RECOVERY_FILES
+    if (names(bundle).any { it !in expected }) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
     if (
         !privateDirectoryIdentity(bundle, uid, proof.bundleIdentity) ||
             !privateDirectoryIdentity(bundle.parent, uid, proof.recoveryDirectoryIdentity)
@@ -339,5 +352,7 @@ private inline fun <T> recoveryRemovalBoundary(
 private const val RECEIPT = "receipt.json"
 private const val RECOVERY_SCRIPT = "installation-recovery.py"
 private const val LIFECYCLE_SCRIPT = "installation-lifecycle.py"
-private val RECOVERY_FILES = setOf(RECEIPT, RECOVERY_SCRIPT, LIFECYCLE_SCRIPT)
+private const val JOURNAL_SCRIPT = "managed_update_journal.py"
+private val LEGACY_RECOVERY_FILES = setOf(RECEIPT, RECOVERY_SCRIPT, LIFECYCLE_SCRIPT)
+private val RECOVERY_FILES = LEGACY_RECOVERY_FILES + JOURNAL_SCRIPT
 private const val MAXIMUM_RECOVERY_FILE_BYTES = 1_048_576

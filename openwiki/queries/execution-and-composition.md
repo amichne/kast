@@ -32,7 +32,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:57:31.735Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Query stages and composition
