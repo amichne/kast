@@ -112,9 +112,29 @@ private fun stopPriorHost(
         TargetReadmission.Current -> Unit
         is TargetReadmission.Rejected -> return ManagedHostResponse.Rejected(current.reason)
     }
-    return when (stop(target.launch, target.process)) {
-        LegacyQuitOutcome.REQUESTED -> ManagedHostResponse.LegacyStopRequested(target.process, request.transaction)
+    return legacyQuitResponse(stop(target.launch, target.process), target.process, request)
+}
+
+private fun legacyQuitResponse(
+    outcome: LegacyQuitOutcome,
+    process: ManagedIdeProcess,
+    request: ManagedHostRequest.LegacyStop,
+): ManagedHostResponse {
+    return when (outcome) {
+        LegacyQuitOutcome.REQUESTED -> ManagedHostResponse.LegacyStopRequested(process, request.transaction)
         LegacyQuitOutcome.REJECTED -> ManagedHostResponse.Rejected(ManagedHostFailure.HOST_REJECTED)
+        LegacyQuitOutcome.PROCESS_IDENTITY_CHANGED -> ManagedHostResponse.Rejected(ManagedHostFailure.CONCURRENT_CHANGE)
+        LegacyQuitOutcome.HELPER_START_FAILED ->
+            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_START_FAILED)
+        LegacyQuitOutcome.HELPER_TIMED_OUT -> ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_TIMED_OUT)
+        LegacyQuitOutcome.HELPER_CAPTURE_FAILED ->
+            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_CAPTURE_FAILED)
+        LegacyQuitOutcome.HELPER_OUTPUT_LIMIT_EXCEEDED ->
+            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_OUTPUT_LIMIT_EXCEEDED)
+        LegacyQuitOutcome.HELPER_INTERRUPTED -> ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_INTERRUPTED)
+        LegacyQuitOutcome.HELPER_EXIT_FAILED -> ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_EXIT_FAILED)
+        LegacyQuitOutcome.HELPER_RESPONSE_INVALID ->
+            ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_RESPONSE_INVALID)
     }
 }
 

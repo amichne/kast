@@ -171,6 +171,32 @@ class ManagedHostCliTest {
         assertEquals(1, quits)
     }
 
+    @Test
+    fun `legacy quit helper failure preserves its exact installer reason`() {
+        val fixture = fixture()
+        val request =
+            ManagedHostRequest.LegacyStop(
+                fixture.idea.toString(),
+                fixture.profile.toString(),
+                fixture.process,
+                "update",
+            )
+        val outcome =
+            executeManagedHost(
+                request,
+                fixture.home,
+                processes = { ManagedProcessInventory.Captured(listOf(fixture.process)) },
+                exchange = { _, _ -> error("legacy quit needs no lifecycle exchange") },
+                inspectLegacy = { _, _ ->
+                    LegacyProfileRead.Captured(
+                        LegacyHostProfile(fixture.idea.toString(), fixture.profile.toString(), fixture.process)
+                    )
+                },
+                stopLegacy = { _, _ -> LegacyQuitOutcome.HELPER_EXIT_FAILED },
+            )
+        assertEquals(ManagedHostResponse.Rejected(ManagedHostFailure.LEGACY_QUIT_EXIT_FAILED), outcome)
+    }
+
     private fun fixture(): Fixture {
         val root = temporary.toRealPath()
         val idea = Files.createDirectories(root.resolve("Selected.app/Contents"))
