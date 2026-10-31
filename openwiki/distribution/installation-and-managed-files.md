@@ -11,6 +11,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-069607880d661efb9c5fbc84
+    resource: repo://packaging/host_directory_exchange.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
   - id: openwiki-source-fd4b4980f80cb901046d8f0e
@@ -23,10 +25,10 @@ sources:
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-10-31T10:43:14.711Z" }
+generated: { by: "codex", at: "2026-10-31T10:51:42.239Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T10:43:14.711Z
+    at: 2026-10-31T10:51:42.239Z
 ---
 
 
@@ -97,6 +99,12 @@ Host does not read or delete these backups.
 This exception covers exact legacy baseline, detached, and replaced names with 32-character hexadecimal tokens.
 Pending Host transactions, legacy installation candidates, and unknown retained names still reject the operation.
 An active receipt still needs the exact plugin inventory before replacement.
+
+Terminal Host cleanup first admits the selected or restored files and their active receipt.
+The Host owner then moves each admitted candidate or prior payload outside the pending journal before recursive deletion.
+A no-replace native move preserves foreign destinations, including empty directories.
+Partial deletion cannot block the next terminal admission or release of the reserved Host lock.
+Cleanup failures emit `kast_managed_host_cleanup` with `FAILED` and a finite reason.
 
 ## Recovery and evidence limits
 

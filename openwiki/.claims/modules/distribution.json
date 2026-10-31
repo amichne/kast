@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d0655ecff775df78a29e50d2332b46020f2513c34c029ff4b99d834e22db9f6f",
+  "pageVersion": "sha256:c0ab0729e9377f230a77a47e8d5df261eed1c675bd10f68b629ed1021aea6695",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -80,7 +80,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         }
       ]
     },
@@ -370,7 +370,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         }
       ]
     },
@@ -427,6 +427,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:43:14.711Z"
+    "at": "2026-10-31T10:51:42.239Z"
   }
 }

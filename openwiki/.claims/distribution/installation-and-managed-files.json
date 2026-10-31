@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:336bbea674e26a598bd3b631e885925b86a0b7be917d9d2de6d19a12fff5d9bc",
+  "pageVersion": "sha256:5a496b73a4626999951cb885d59aa29684765a364b5bbb8d9ea82d4c38893150",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         }
       ]
     },
@@ -42,11 +42,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:af7013e68c6096cc9b11edfccbdf00ec14cd4ff423cb22031191c8fd9c02dc97"
+          "version": "repo-file-v1:sha256:08409a133887702db202539b0e095a90b6cac26db5417c203ca07b5097ad4bef"
         }
       ]
     },
@@ -84,7 +84,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -105,10 +105,28 @@
           "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
         }
       ]
+    },
+    {
+      "id": "claim_7f8b703b12a04252b705fcd372bb6440",
+      "statement": "Terminal Host cleanup admits selected or restored Host files and active receipts before moving complete admitted garbage outside the pending journal with a native no-replace operation. Partial recursive deletion preserves terminal retry and reserved-lock release. Foreign destinations remain protected. Cleanup failure emits a typed finite diagnostic.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+        },
+        {
+          "resource": "repo://packaging/host_directory_exchange.py",
+          "version": "repo-file-v1:sha256:7eeb5e9549e60f4e201ecd119655caa9c2a65dd7f11ddcc8380f9acf2a677d03"
+        },
+        {
+          "resource": "repo://packaging/test-host-installation.py",
+          "version": "repo-file-v1:sha256:08409a133887702db202539b0e095a90b6cac26db5417c203ca07b5097ad4bef"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:43:14.711Z"
+    "at": "2026-10-31T10:51:42.239Z"
   }
 }
