@@ -36,7 +36,7 @@ Use the installed catalog for your release. [Generated schemas](/reference/schem
 }
 ```
 
-Contract 17 requires one non-null `terminalStep` object with `type: "EMIT"` or `type: "TRACE"`.
+Contract 18 needs one non-null `terminalStep` object with `type: "EMIT"` or `type: "TRACE"`.
 Put the output projection in `terminalStep.output`. Omitted or null output selects symbol names and locations.
 Keep `retention`, `executionMode`, and `executionBudget` on `RUN`.
 `retention: "RETAIN"` keeps the result for later reads or composition.

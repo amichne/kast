@@ -9,9 +9,9 @@ icon: "code"
 
 <span id="work-on-kast" />
 
-Use this reference to interpret an actual response or construct a tool request.
-Start with [query forms](/reference/api) for inputs and [results](/reference/responses) for outputs.
-Use the installed catalog for your release's schema.
+Use the [native CLI](/reference/cli) to discover commands and query your Kotlin code.
+Run `kast describe` for the installed contract.
+Use [query forms](/reference/api) and [results](/reference/responses) for the underlying input and output documents.
 
 For a first introduction to declarations, relationships, and completion, read [how to understand a Kast answer](/explanation).
 The tables here route you to exact contracts and source owners.
@@ -43,13 +43,15 @@ The compiler-static model does not prove that code ran or that a path can run. I
 
 ## Client contracts
 
-MCP and Tool RPC carry canonical tool documents. The current Codex plugin uses MCP.
+The default agent guidance uses the native CLI.
+MCP is an explicit option. MCP and Tool RPC carry the underlying tool documents.
 
 | Client | Contract authority |
 | --- | --- |
+| [Native CLI](/reference/cli) | `kast describe` and the installed command examples. |
 | [Direct MCP](/reference/mcp-catalog) | Installed `tools/list` entries and input and output schemas. |
 | [Tool RPC](/reference/rpc-catalog) | Installed `catalog`, process commands, and reply variants. |
-| [Codex plugin](/reference/integrations) | MCP tools from the installed plugin. |
+| [Agent guidance](/reference/integrations) | The selected installed skill and optional MCP composition. |
 
 The shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
 

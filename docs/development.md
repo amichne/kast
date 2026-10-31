@@ -280,7 +280,8 @@ It downloads the retained candidate and runs no Gradle or native-image build.
 A separate promotion record binds the build commit to the merged commit and successful main run.
 The immutable developer release contains both records.
 If main advances before publication, the publisher retains the existing latest pointer.
-The public installer's `--developer-latest` flag selects the build named by that pointer.
+`kast versions` lists qualified main builds from the published catalog.
+`kast upgrade --channel main` selects the latest qualified development build.
 
 To retry publication for current main, supply its successful CI run ID:
 

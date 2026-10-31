@@ -1,165 +1,144 @@
 ---
-title: "Connect your agent"
-sidebarTitle: "Transports and custom destinations"
-description: "Connect Codex, Copilot, or Pi and run your first Kotlin query."
+title: "Install agent guidance"
+sidebarTitle: "Agent guidance"
+description: "Give Codex, Copilot, or Pi guidance for the installed Kast CLI. Export the canonical skill or select the optional MCP composition."
 icon: "plug"
 ---
 
-Use this guide to choose a transport, set a custom destination, or recover a connection. [Install Kast](/reference/installation) first.
-
-Make sure that your terminal can run your agent's command. Replace `/path/to/kotlin-repository` with the exact repository or worktree to inspect.
+Kast installs guidance for your agent to use the installed `kast` command.
+These steps assume that Kast already exists on your machine.
+The default composition uses the CLI. MCP remains an explicit option.
 
 <a id="choose-your-agent" />
 
-1. [Choose one client and transport.](#1-choose-the-client-and-transport)
-2. [Prove tool and workspace admission.](#2-establish-tool-and-workspace-admission)
-3. [Set a custom destination only when needed.](#3-set-a-custom-destination-when-needed)
+1. [Install guidance for your agent.](#1-install-guidance-for-your-agent)
+2. [Ask a question in the intended worktree.](#2-ask-about-your-code)
+3. [Export a standalone skill when needed.](#3-export-the-canonical-skill)
 
-## 1. Choose the client and transport
+<span id="1-choose-the-client-and-transport" />
+
+## 1. Install guidance for your agent
 
 <Tabs>
   <Tab title="Codex">
-    The bundled plugin supplies the Kast skill and task MCP tools. The session brief includes absolute paths to the skill and advanced references.
-
+    The bundled plugin supplies the Kast skill and CLI guidance.
+    Codex owns its plugin resources and configuration.
 
     ```shell
-    kast plugin codex
-    cd /path/to/kotlin-repository
-    codex
+    kast install codex
     ```
 
-    Restart Codex after installation. Review and trust its session hook in Codex. Hooks without trust do not inject context.
-
-    `kast connect codex` selects the same plugin. The compatibility form `kast connect codex mcp` also selects the plugin. `kast connect codex app-server` rejects before registration effects. Codex owns its App Server and control socket.
+    Start a fresh Codex session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Copilot">
-    If `kast connect copilot` installed the RPC extension, first remove it with `kast disconnect copilot`.
+    Kast installs the canonical CLI guidance through Copilot's plugin resources.
+    Copilot owns those resources and its configuration.
 
     ```shell
-    copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
-    cd /path/to/kotlin-repository
-    copilot
+    kast install copilot
     ```
 
-    Restart Copilot to load the plugin. Its session hook supplies the same brief and absolute reference paths as Codex.
+    Start a fresh Copilot session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Pi">
+    Kast copies the canonical skill into Pi's native skill directory.
+    Pi discovers that skill for the new session.
+
     ```shell
-    kast connect pi
-    cd /path/to/kotlin-repository
-    pi
+    kast install pi
     ```
 
-    Restart Pi to load the extension. It supplies the shared brief. It registers the server through Pi's native MCP support.
+    Start a fresh Pi session in your Kotlin repository or worktree.
   </Tab>
 </Tabs>
 
-Codex and Copilot context hooks use Python 3.9 or later. They need only the standard library. Pi reads bundled context directly with Node. Context delivery needs no uv process or dependency download. If Pi cannot read context, it reports one warning and keeps native MCP registered.
+Each command examines the installed release and the provider's actual resources.
+A successful installation does not establish that an existing agent session contains the new guidance.
 
-The task server needs uv 0.12.9 or later. It uses Python 3.12 or 3.13. Its locked script can download pinned dependencies on the first run.
+<span id="task-tools" />
+<span id="task-service-builds" />
 
-All default integrations expose `find`, relationship tasks, `source`, `result`, `resume`, and `diagnostics`. Use `schema` and `raw` for advanced existing operations. Source changes need explicit `write:true`.
+### Optional MCP
 
-The task service uses the existing Tool RPC for [IntelliJ preparation](/reference/internals/background-startup) and semantic work. The installed binary and wire shapes stay unchanged.
+Add `--mcp` to select the optional MCP composition:
 
-The optional `kast connect copilot` SDK extension uses the same task catalog. Use either the plugin or the SDK extension.
+```shell
+kast install codex --mcp
+kast install copilot --mcp
+kast install pi --mcp
+```
+
+The task service needs uv and Python 3.12 or 3.13.
+Its script locks own the dependency versions.
+The persistent IntelliJ IDEA Host supplies Kotlin semantics for both the CLI and MCP.
+
+To return to CLI-only guidance, repeat your agent's command without `--mcp`.
+Kast removes only exactly owned MCP resources. Foreign registrations stay unchanged.
 
 <a id="check-that-the-tools-work" />
-
 <a id="run-the-first-query" />
-
 <span id="2-establish-tool-and-workspace-admission" />
+<span id="2-prove-tool-and-workspace-admission" />
 
-## 2. Prove tool and workspace admission
+## 2. Ask about your code
 
-Ask the agent for one Kotlin declaration with signature, location, coverage, and the reported readiness or proof blocker.
-
-For a named function, narrow discovery before relation work.
-
-```text wrap
-Use Kast to find submitOrder in the production Kotlin sources under checkout. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
-```
-
-After you select the declaration, request its callers through the issued exact reference.
+Give your agent the function's file and name.
 
 ```text wrap
-Use the exact reference for the function I selected to find its callers. Show the call sites and searched scope, and report any unfinished work.
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 ```
 
-Queries prepare IDEA on demand. Readiness still needs checks for the exact worktree and loaded Host.
+The agent can inspect the installed contract with `kast describe`.
+See the [CLI reference](/reference/cli) for command forms and the [example questions](/search) for another task.
 
-[Find and trace code](/reference/search) supplies investigation steps. [Lifecycles](/reference/lifecycles) distinguishes registration, session, preparation, and semantic execution.
+Returned evidence applies to its stated worktree, source state, and scope.
+A successful guidance installation does not prove that a semantic query succeeds.
 
 <a id="choose-a-connection-destination" />
+<span id="3-set-a-custom-destination-when-needed" />
 
-## 3. Set a custom destination when needed
+## 3. Export the canonical skill
 
-Supply an absolute destination for the selected integration.
+To export the skill into the current repository, run:
 
 ```shell
-kast connect pi --destination "$HOME/.config/pi/agent"
-kast connect copilot --destination "$HOME/.config/copilot"
+kast install skill
 ```
 
-| Connection | What the directory contains |
-| --- | --- |
-| Pi | `extensions/kast.ts` under the Pi agent home |
-| Copilot | `extensions/kast/extension.mjs` under the Copilot home |
-| Codex plugin | Codex owns its plugin cache and settings. Kast does not select a connection destination. |
+The default parent is `./.agents/skills`. Kast writes the skill under `./.agents/skills/kast`.
 
-Kast saves preferences in `~/.config/kast/config.json`. An explicit destination overrides the recorded preference.
+To select another parent directory, use `--output`:
 
-Without a preference, Kast reads the selected agent's `PI_CODING_AGENT_DIR`, `COPILOT_HOME`, or `CODEX_HOME`. Otherwise, it uses that agent's default home.
+```shell
+kast install skill --output ./guidance
+```
 
-A saved destination does not change the agent's own home selection.
+This command selects `./guidance/kast` as the skill directory.
+`--output` belongs to `install skill`. `--mcp` belongs to agent installation.
 
-If you use a custom home, start the agent with the same home. For Pi, use `PI_CODING_AGENT_DIR="$HOME/.config/pi/agent" pi`.
-
-A destination change admits the new connection and removes the old owned slot in one transaction. Other harness settings keep their existing owner.
+A complete identical skill returns `ALREADY_INSTALLED` without writes.
+A different or incomplete skill returns `SKILL_EXISTS` and keeps every byte.
+Select another output directory or explicitly remove the old skill before another export.
 
 <a id="recover-an-existing-connection" />
-
-## 4. Recover a conflicting connection
-
-Matching registrations stay in place. By default, recovery replaces a conflicting Kast slot with the verified release payload. It keeps the displaced bytes in a private backup.
-
-A failed transaction restores the connection, preferences, checkpoint, and receipt. If the filesystem refuses a write or changes race, a recovery copy can remain. Follow its reported action.
-
-Kast rejects unverified payloads and symbolic-link slots before replacement. `--no-recover` rejects a conflict and leaves it in place. `--force` asks to replace the slot.
-
-`config.last-good.json` supplies a settings checkpoint. If both settings files fail, saved routing receipts can rebuild preferences. Kast keeps rejected copies.
-
-If a receipt lacks routing proof, supply `--destination`. Keep the reported backup until recovery succeeds.
-
+<span id="4-recover-a-conflicting-connection" />
 <a id="disconnect-or-upgrade" />
+<span id="5-reload-clients-after-a-lifecycle-change" />
 
-## 5. Reload clients after a lifecycle change
+## Refresh guidance after a core change
 
-Disconnect an owned registration with its selected agent name.
+Core replacement does not refresh copied skills or cached provider resources.
+If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command:
 
 ```shell
-kast disconnect copilot
+kast install codex
 ```
 
-`kast disconnect codex` removes recorded App Server and MCP integration. Remove the Codex-owned plugin with `codex plugin remove kast@kast`.
+Use `copilot` or `pi` for those agents. Keep `--mcp` if you select the optional MCP composition.
+Then start a fresh agent session.
 
-Restart the affected client to unload its adapter. After an upgrade, restart IDEA and connected clients.
+Standalone skill exports keep the same no-overwrite rule after a core change.
 
-For the bundled Codex plugin, repeat `kast plugin codex`. Disconnection does not itself retire IDEA or the shared daemon.
+<span id="plugin-archives-and-custom-clients" />
 
-## Plugin archives and custom clients
-
-<Accordion title="Release archives and custom clients">
-  Control releases supply a plugin archive and a marketplace archive with SHA-256 checksums. The plugin includes the Kast skill, task service, session context, advanced schema, and named query examples. Replace example references with handles from your current workspace.
-
-  Check the checksums, then extract the marketplace. To install it, use:
-
-  ```shell
-  codex plugin marketplace add /absolute/path/to/extracted-marketplace
-  codex plugin add kast@kast
-  ```
-
-  The source marketplace is available through `codex plugin marketplace add amichne/kast`. Install Kast and a compatible Host first.
-
-  Custom clients can use [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog). See the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
-</Accordion>
+For custom clients, use the [MCP contract](/reference/mcp-catalog) or the [Tool RPC contract](/reference/rpc-catalog).

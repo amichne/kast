@@ -1,71 +1,54 @@
 ---
-title: "Understand a Kotlin change before you make it"
-sidebarTitle: "Why Kast?"
-description: "Give your coding agent compiler-resolved callers, implementations, and supported value paths, with source locations and explicit evidence limits."
+title: "See what your Kotlin change affects"
+sidebarTitle: "Overview"
+description: "Connect Kast to your coding agent. Find callers, trace supported value paths, and inspect problems in your Kotlin project with source locations."
+keywords:
+  - "Kotlin"
+  - "coding agents"
+  - "callers"
+  - "value flow"
 icon: "scan-search"
+hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-import { ValueJourney } from "/snippets/value-journey.jsx"
-
 <span id="what-kast-adds" />
 
-**Which callers and values does this change affect?**
+Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis.
+Use the native `kast` command with Codex, Copilot, or Pi to investigate your Kotlin code.
 
-Kast gives your coding agent Kotlin source relationships from IntelliJ IDEA's compiler analysis.
-It finds callers and implementations, traces supported value transfers, inspects diagnostics, and makes targeted source changes.
-Your agent can request source locations and inspect evidence that states what the answer covers.
-
-## A name match does not explain a value path
-
-Consider this question: **Where can this customer end up?**
-
-A sign-up becomes a customer. A welcome-email draft holds that customer as its recipient.
-The draft can then be part of a returned list, even though the last function never says `Customer`.
-
-Change one expression, and the same list type can hold a draft for a different customer.
-Names and types alone do not explain that difference.
-
-Text search helps an agent find candidate code. Compiler analysis resolves which declaration each call uses, including its overload and receiver.
-Kast combines supported relationships and keeps the evidence behind them.
-
-This is an authored source illustration. It does not run Kotlin or query Kast.
-The list connection needs a reviewed library rule as well as compiler-resolved calls.
-
-<ValueJourney preview={true} />
-
-<span id="use-the-agent-you-already-use" />
-
-## Use the evidence for your next decision
-
-> Use Kast to trace this function's result. Show where it goes and where the evidence stops.
-
-> Use Kast to find the callers of this function before we change it.
-
-> Use Kast to inspect the diagnostics in the code we changed.
-
-Compare the returned locations with your source before an edit.
-A complete result applies to its stated scope and source-analysis model. It does not prove that a path executed or can execute.
-If Kast cannot establish completion, it reports the cause. An unfinished search with no matches does not prove absence.
-
-Read [how an answer works](/explanation) for the concepts behind these distinctions.
-
-<span id="is-kast-for-you" />
-
-## Try it on your project
-
-Use an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+<span id="try-it-on-your-project" />
 
 <span id="choose-your-reader-track" />
 
-<Columns cols={2}>
-  <Card title="Install Kast" icon="arrow-right" href="/start">
-    Connect Codex, Copilot, or Pi and ask your first question.
-  </Card>
-  <Card title="Find your next question" icon="search" href="/search">
-    Trace a feature, inspect problems, or prepare a change.
+<Columns cols={1}>
+  <Card title="Set up Kast" icon="arrow-right" href="/start">
+    Select a development build, install agent guidance, and ask your first question.
   </Card>
 </Columns>
+
+<span id="is-kast-for-you" />
+
+For Apple silicon Macs, Kotlin Gradle projects, and IntelliJ IDEA 262. [Setup requirements](/start#before-you-install).
+
+<span id="use-the-agent-you-already-use" />
+
+<span id="use-the-evidence-for-your-next-decision" />
+
+## Ask about your code
+
+Point your agent at a function you care about.
+
+<Prompt description="Before you change a function" actions={["copy"]}>
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+</Prompt>
+
+Continue the task with your agent, or try [another question](/search).
+Use the [CLI reference](/reference/cli) for terminal commands. MCP is optional.
+
+<span id="a-name-match-does-not-explain-a-value-path" />
+
+For a visual explanation, [follow a value through code](/explanation/value-journey).
 
 <DeeperReading />
