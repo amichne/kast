@@ -8,6 +8,7 @@ import io.github.amichne.kast.change.verify.HistoricalLiveChangeReceipt
 import io.github.amichne.kast.change.verify.HistoricalLiveReplaceBodyReceipt
 import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
+import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
 import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
 import io.github.amichne.kast.kernel.Refinement
@@ -245,34 +246,58 @@ private fun Connection.recoveryRecord(raw: String): MutationRecoveryRecord {
 }
 
 private fun inspectSettlement(record: MutationRecoveryRecord, receipts: Map<String, HistoricalLiveChangeReceipt>) {
-    when (record) {
-        is MutationRecoveryRecord.PreWriteDurable,
-        is MutationRecoveryRecord.RecoveryRequired -> reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
-        is MutationRecoveryRecord.RolledBack ->
-            if (record.binding.value in receipts) reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
-        is MutationRecoveryRecord.AppliedWritesDurable -> {
-            val receipt =
-                receipts[record.binding.value] ?: reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
-            inspectReceiptChain(record, receipt)
+    val lookup =
+        when (val receipt = receipts[record.binding.value]) {
+            null -> LiveChangeReceiptLookup.Missing
+            else -> LiveChangeReceiptLookup.Found(receipt.identity, receipt)
         }
+    when (inspectMutationSettlement(record, lookup)) {
+        MutationRecoverySettlement.Settled -> Unit
+        MutationRecoverySettlement.Unresolved -> reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
+        is MutationRecoverySettlement.Rejected -> reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
     }
 }
+
+/** Both live Host settlement and offline cleanup use the same reconstructed receipt-chain rule. */
+internal fun inspectMutationSettlement(
+    record: MutationRecoveryRecord,
+    receipt: LiveChangeReceiptLookup,
+): MutationRecoverySettlement =
+    when (record) {
+        is MutationRecoveryRecord.PreWriteDurable,
+        is MutationRecoveryRecord.RecoveryRequired -> MutationRecoverySettlement.Unresolved
+        is MutationRecoveryRecord.RolledBack ->
+            when (receipt) {
+                LiveChangeReceiptLookup.Missing -> MutationRecoverySettlement.Settled
+                is LiveChangeReceiptLookup.Found,
+                is LiveChangeReceiptLookup.Rejected ->
+                    MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+            }
+        is MutationRecoveryRecord.AppliedWritesDurable ->
+            when (receipt) {
+                LiveChangeReceiptLookup.Missing -> MutationRecoverySettlement.Unresolved
+                is LiveChangeReceiptLookup.Rejected ->
+                    MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+                is LiveChangeReceiptLookup.Found -> inspectReceiptChain(record, receipt.receipt)
+            }
+    }
 
 private fun inspectReceiptChain(
     record: MutationRecoveryRecord.AppliedWritesDurable,
     receipt: HistoricalLiveChangeReceipt,
-) {
+): MutationRecoverySettlement {
     val recovery =
         when (receipt) {
             is HistoricalLiveAddDeclarationReceipt -> receipt.recovery
             is HistoricalLiveReplaceBodyReceipt -> receipt.recovery
         }
-    if (
+    return if (
         recovery.binding.value != record.binding.value ||
             recovery.preparedDigest.value != record.priorDigest.value ||
             recovery.appliedDigest.value != record.digest.value
     )
-        reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
+        MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+    else MutationRecoverySettlement.Settled
 }
 
 private fun Connection.inspectAttempts(plans: Map<String, LiveChangePlan>, settled: Set<String>) {

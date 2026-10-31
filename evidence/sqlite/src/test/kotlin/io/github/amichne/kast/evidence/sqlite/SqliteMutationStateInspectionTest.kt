@@ -4,10 +4,12 @@ import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanCodec
 import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanIssuance
 import io.github.amichne.kast.change.verify.LiveAddDeclarationReceiptCodec
+import io.github.amichne.kast.change.verify.LiveChangeReceiptIssuance
 import io.github.amichne.kast.evidence.contract.AppliedRecoveryWriteSet
 import io.github.amichne.kast.evidence.contract.HostedWorkspaceStateLocation
 import io.github.amichne.kast.evidence.contract.KastUserStateRoot
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
+import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
 import io.github.amichne.kast.evidence.contract.MutationRecoveryPreparation
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
 import io.github.amichne.kast.evidence.contract.MutationRecoveryStage
@@ -127,25 +129,20 @@ class SqliteMutationStateInspectionTest {
             val plan = receipt.plan
             val identity = (stores.plans.issuePlan(plan) as LiveChangePlanIssuance.Issued).identity
             stores.plans.claimApplication(identity)
-            val source = RecoverySourcePath.parse(plan.writes.entries.single().source.path.value).refined()
-            val preparation =
-                MutationRecoveryPreparation.admit(
-                        MutationPlanBinding.parse(plan.planId.value).refined(),
-                        listOf(
-                            PlannedRecoveryWrite(source, RecoveryPreimage.fromBoundary("prior source".toByteArray()))
-                        ),
+            val applied = persistAppliedJournal(stores, plan)
+            assertEquals(MutationRecoverySettlement.Unresolved, stores.journal.settlement())
+            assertInstanceOf(LiveChangeReceiptIssuance.Issued::class.java, stores.receipts.persistHistorical(receipt))
+            val reopened =
+                assertInstanceOf(
+                        SqliteMutationRecoveryJournalOpenResult.Opened::class.java,
+                        SqliteMutationRecoveryJournal.open(database),
                     )
-                    .refined()
-            val prepared = MutationRecoveryRecord.prepare(preparation)
-            stores.journal.prepare(prepared)
-            val applied =
-                MutationRecoveryRecord.recordApplied(
-                        prepared,
-                        AppliedRecoveryWriteSet.admit(preparation.plannedWrites, listOf(source)).refined(),
-                    )
-                    .refined()
-            stores.journal.recordApplied(prepared, applied)
-            stores.receipts.persistHistorical(receipt)
+                    .journal
+            assertEquals(
+                if (matching) MutationRecoverySettlement.Settled
+                else MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD),
+                reopened.settlement(),
+            )
             val before = Files.readAllBytes(database)
             if (matching) assertInstanceOf(SqliteMutationStateInspectionResult.Settled::class.java, inspect(database))
             else
@@ -154,6 +151,18 @@ class SqliteMutationStateInspectionTest {
                     inspect(database),
                 )
             assertArrayEquals(before, Files.readAllBytes(database))
+            if (matching) {
+                stores.journal.recordTerminal(applied, MutationRecoveryRecord.rolledBack(applied))
+                assertEquals(
+                    MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD),
+                    reopened.settlement(),
+                    "a rollback record cannot contradict a verified applied receipt",
+                )
+                assertEquals(
+                    SqliteMutationStateInspectionResult.Rejected(SqliteMutationStateInspectionFailure.RECORD_REJECTED),
+                    inspect(database),
+                )
+            }
         }
     }
 
@@ -257,6 +266,29 @@ class SqliteMutationStateInspectionTest {
                     MutationRecoveryRecord.recoveryRequired(applied, RecoveryRequirement.ROLLBACK_REJECTED),
                 )
         }
+    }
+
+    private fun persistAppliedJournal(
+        stores: SqliteHostedChangeStores,
+        plan: LiveChangePlan,
+    ): MutationRecoveryRecord.AppliedWritesDurable {
+        val source = RecoverySourcePath.parse(plan.writes.entries.single().source.path.value).refined()
+        val preparation =
+            MutationRecoveryPreparation.admit(
+                    MutationPlanBinding.parse(plan.planId.value).refined(),
+                    listOf(PlannedRecoveryWrite(source, RecoveryPreimage.fromBoundary("prior source".toByteArray()))),
+                )
+                .refined()
+        val prepared = MutationRecoveryRecord.prepare(preparation)
+        stores.journal.prepare(prepared)
+        val applied =
+            MutationRecoveryRecord.recordApplied(
+                    prepared,
+                    AppliedRecoveryWriteSet.admit(preparation.plannedWrites, listOf(source)).refined(),
+                )
+                .refined()
+        stores.journal.recordApplied(prepared, applied)
+        return applied
     }
 
     private fun inspect(database: Path) =
