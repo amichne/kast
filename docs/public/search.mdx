@@ -1,60 +1,50 @@
 ---
-title: "What do you want to understand?"
-sidebarTitle: "Example questions"
-description: "Ask your agent to trace values, find callers, inspect problems, and prepare changes."
+title: "Ask about the code you work on"
+sidebarTitle: "Examples"
+description: "Use Kast with your coding agent to find callers, follow a function's result, or inspect IDEA diagnostics in the Kotlin code you work on."
+keywords:
+  - "examples"
+  - "callers"
+  - "value flow"
+  - "diagnostics"
 icon: "search"
+hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Use these prompts with your [connected agent](/agent-harnesses). Replace the example names with code from your project.
-
-## Where does this value go?
-
-> Use Kast to trace the result of submitOrder. Show the source connections through helpers, fields, and callbacks. Report where the evidence stops.
-
-A value can move through several functions and take different names. Kast can trace those connections and distinguish another value of the same type.
-Inspect each path's classification and the first unsupported transfer.
-An admitted model alone does not establish that the same value reaches the destination.
-
-[Explore a value journey](/explanation/value-journey).
+After [setup](/start), give your agent the function, file, or directory you want to investigate. Use these questions to bring Kast into the task.
 
 ## What depends on this function?
 
-> Use Kast to find submitOrder. If several functions match, show their signatures so I can choose one. Then find its callers.
+<Prompt description="Find callers before an edit" actions={["copy"]}>
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+</Prompt>
 
-Use the returned locations to review the callers of your selected function.
-Keep the search scope and completion status with that list. A partial list does not identify every affected caller.
+## Where does this value go?
 
-## Which implementation matters?
-
-> Use Kast to find implementations of CacheManager in this project. Show their source locations.
-
-The list describes source code. It does not show which implementation a live application uses.
+<Prompt description="Follow a function's result" actions={["copy"]}>
+Use the Kast CLI to trace this function's result. Show where it goes and where the evidence stops.
+</Prompt>
 
 ## What problems does IDEA report?
 
-> Use Kast to inspect the diagnostics in this directory before we change it.
+The optional [MCP composition](/reference/integrations#optional-mcp) exposes a diagnostics task.
 
-Kast returns the problems that IDEA reports for the selected code.
-An empty diagnostic list does not replace a project build or its tests.
+<Prompt description="Inspect the code you changed" actions={["copy"]}>
+Use Kast to inspect IDEA diagnostics in the code we changed.
+</Prompt>
 
-## Can we change this body?
+<span id="which-implementation-matters" />
 
-> Use Kast to replace the selected retryLimit function's body with `{ return 3 }`. Keep its signature unchanged.
+<span id="can-we-change-this-body" />
 
-Kast can replace a supported function body or add a declaration to an existing file.
-For a rename or a multi-file refactor, your agent needs its other edit tools.
-Review the diff and run your project's tests after a change.
+Find [implementations](/reference/search), [make a targeted change](/reference/change), or [explore a value journey](/explanation/value-journey).
 
-## What if Kast cannot finish?
+<span id="what-if-kast-cannot-finish" />
 
-Read the reason in the result. Ask your agent to narrow the question or resolve the problem.
-An unfinished search does not prove that no matches exist.
-If you narrow the scope, the new answer covers that smaller question.
+If Kast cannot finish, ask your agent to explain the reported cause. Use [Help](/troubleshooting) for setup problems.
 
-[Troubleshoot Kast](/troubleshooting) to return to your task.
-
-For exact steps, see [diagnostics](/how-to/inspect-diagnostics), [source changes](/reference/change), and [large results](/how-to/read-retained-evidence).
+Use the [CLI reference](/reference/cli) for declaration, caller, source, and retained-result commands.
 
 <DeeperReading />

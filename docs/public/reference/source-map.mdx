@@ -1,129 +1,57 @@
 ---
 title: "Source map for Kast contracts"
-description: "Trace public documentation to contract owners, focused tests, and source-backed OpenWiki concepts."
+description: "Find the source owners for the native CLI, managed installation, agent guidance, semantic requests, and generated references."
 icon: "map"
 ---
 
-This map records source inspection at `888205ff05af225f1496b25faee3c4cb310f7038`. Each link pins the owner used for this reference rewrite.
+Use this map to trace the CLI-first interface to its source owners.
+The reviewed implementation is [PR #1144](https://github.com/amichne/kast/pull/1144) at `647fffc46f6247fac5b0fc632ae019d157bf9020`.
+Use `kast describe` for the contract in your installed build.
 
-Use the installed catalog for your release. OpenWiki explains the design. Use source, schemas, and focused tests to check the contract.
+## Native CLI
 
-## Public requests
-
-[tools.schema.json](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns the public inputs, their metadata, and their defaults.
-
-[`PublicToolMapping`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt) Turns checked inputs into canonical operations.
-
-[`PublicToolSchemaTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolSchemaTest.kt) Checks valid shapes and rejected inputs.
-
-## Query execution and retention
-
-[`HostedCanonicalQuery`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) Connects the admitted IDEA project to the query runner.
-
-[`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) Owns query runs, their internal semantic continuation, and output-only reads.
-
-[`QueryStateStore`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) Stores retained state and checks each load.
-
-[`QueryCompletionDocument`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt) Defines the fixed model. It names each failure and the evidence a rejection keeps.
-
-[`CompleteOnlyQueryTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt) Checks complete answers and cases where proof is missing.
-
-[`PublicToolCompletionRecoveryTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionRecoveryTest.kt) Checks whether the emitted recovery request can be admitted.
-
-## Callback and deferred ownership
-
-[`CallbackInvocationFlow`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt) Keeps how a value is bound, called, and passed on. It also records scan extent and proof still needed.
-
-[`CompleteStaticCallbackGraph`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt) Checks supported static paths. It does not invent callers from lexical nesting.
-
-[`IntellijCallbackFlowRead`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackFlowRead.kt) Records proof for the formal before it checks the supplier's static activation path.
-
-[`IntellijCallbackFlowScan`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackFlowScan.kt) Keeps immutable aliases proved by the compiler as formals pass values on.
-
-[`DeclaredCallbackInvocationKind`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKind.kt) Keeps declared effects. It rejects evidence that is missing or conflicts with them.
-
-[`CallbackDeferredDependency`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt) Constrains the reviewed supply to `kotlin.lazy`. It does not invent calls.
-
-[`CompleteStaticCallbackGraphTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraphTest.kt) Checks forwarding, missing proof, cycles, and a mismatch in workspaces.
-
-[`CallbackAliasForwardingTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackAliasForwardingTest.kt) Checks linked alias paths. It rejects evidence from a path that is not linked or from another owner.
-
-[`DeclaredCallbackInvocationKindTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKindTest.kt) Checks exact effect kinds and rejects invalid sets of effects.
-
-[`QueryCallbackDeferredDependencyWireTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackDeferredDependencyWireTest.kt) Rejects invented deferred calls. It also rejects binary identities that do not match.
-
-## Value impact
-
-[`ValueFlow`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt) Defines evidence for supported value transfers.
-
-[`IntellijValueFlowNative`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt) Reads native value flow through the compiler.
-
-[`QueryImpactLedger`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt) Keeps the original record of paths and models.
-
-[`QueryImpactSiteAccounting`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt) Keeps two distinct facts: the requested site identity and its relationship status.
-
-[`QueryImpactLedgerTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerTest.kt) Checks the original evidence ledger for an investigation.
-
-[`TryBranchResultPositionTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/TryBranchResultPositionTest.kt) Checks final branch positions and try forms that are not supported.
-
-## Staleness and reacquisition
-
-[`ProjectReadEpochState`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ProjectReadEpochState.kt) Records signals for the model, root, import, PSI, VFS, root model, and indexing.
-
-[`HostedReadFreshnessOwner`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) Checks committed documents and the current read state.
-
-[`ExactRevalidationService`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt) Checks current authority before and after it checks compiler identity again.
-
-[`LocalExactRevalidationTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/symbol/service/src/test/kotlin/io/github/amichne/kast/symbol/service/LocalExactRevalidationTest.kt) Rejects a local reference when its owning file has changed.
-
-[`EpochSignalCharacterizationNegativeTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/EpochSignalCharacterizationNegativeTest.kt) Checks rejected read-epoch evidence.
-
-## Request, connection, and daemon ownership
-
-[`KastToolRpcMain`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) Checks the process input and result schemas around the direct production path.
-
-[`KastToolRpcQuerySession`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) Owns the bounded query session and its state changes. It rejects unrelated output authority.
-
-[`WorkspacePreparations`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) Owns one setup sequence for each root. Its lookup history has a fixed capacity.
-
-[`WorkspaceExecution`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt) Owns hosted permits, queues, and cancellation. It also owns recovery after an uncertain write.
-
-[`MacOsPersistentBrokerServiceHost`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost.kt) Runs startup and stop one at a time. It checks service identity and the socket.
-
-[`InstallationLifecycleFence`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt) Blocks startup during stop, reset, or a payload change.
-
-[`WorkspaceExecutionBudgetTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionBudgetTest.kt) Checks that queue time counts toward the interaction allowance. It also checks recovery settlement.
-
-[`WorkspacePreparationRecoveryTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationRecoveryTest.kt) Checks a new demand without replacing the saved history.
-
-## Changes and recovery
-
-The [authored tool contract](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) defines supported source changes.
-
-[OpenWiki: semantic change lifecycle](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/openwiki/flows/change-lifecycle.md) routes planning, preimage admission, source effect, and recovery.
-
-[The change procedure](/reference/change) interprets the receipt before another write.
+[`KastManagementMain`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt) owns management command admission.
+[`PublicQueryDispatch`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt) delegates semantic commands to the query executable.
+The [CLI reference](/reference/cli) describes common command forms.
 
 ## Installation and transport
 
-[install.sh](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/install.sh) owns public release selection and installer options.
+[`ManagementBuilds`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementBuilds.kt) resolves build selections.
+[`ManagedUpgrade`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt) invokes the selected managed installer.
+[`GuidanceInstallation`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt) owns CLI guidance and optional MCP setup.
 
-[`McpStructuredResults`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) Projects canonical documents and checks their schemas.
+The [installation reference](/reference/installation) describes build policies and activation.
+The [integration reference](/reference/integrations) describes agent guidance and skill export.
 
-The lifecycle section names the Tool RPC process and query-session owners. Their reply type keeps two distinct failures: a rejected document and a failed process.
+<span id="changes-and-recovery" />
+
+## Host activation and recovery
+
+[`ManagedHostBridge`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostBridge.kt) coordinates private Host operations.
+[`HostedApplicationSettlement`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt) owns application settlement.
+[Manage Kast](/reference/management) distinguishes installed files, loaded Host identity, and terminal recovery outcomes.
+
+## Public requests
+
+[`tools.schema.json`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns the public query inputs.
+The CLI, MCP, and Tool RPC preserve the underlying request and outcome contracts.
+[Query forms](/reference/api) describes those inputs.
+
+## Query execution and retention
+
+[`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/647fffc46f6247fac5b0fc632ae019d157bf9020/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) owns semantic query execution and retained reads.
+[Result contracts](/reference/responses) describe output pages, qualifications, and recovery.
+
+<span id="callback-and-deferred-ownership" />
+<span id="value-impact" />
+<span id="staleness-and-reacquisition" />
+<span id="request-connection-and-daemon-ownership" />
+<span id="representative-source-path" />
+
+Use [callback contracts](/reference/callbacks), [program tracing](/reference/program-tracing), [staleness](/reference/staleness), and [lifecycles](/reference/lifecycles) for their semantic scopes.
 
 ## Documentation owners
 
-`docs/public/docs.json` owns routes and navigation. The callable generator owns `reference/callables.openapi.json` and its schema bindings.
-
-[Documentation policy](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/documentation-structure.md) sets the reader tracks and local Vale checks.
-
-[glossary.json](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/glossary.json) owns the terms. They still need reader review. Its [reader view](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/GLOSSARY.md) keeps the same definitions.
-
-## Representative source path
-
-```text
-tools.schema.json -> PublicToolMapping -> HostedCanonicalQuery -> CanonicalQueryProtocol
-```
-
-`READ_RESULT` reads saved output through the protocol owner. It does not repeat discovery. It cannot strengthen the original proof.
+`docs/public/docs.json` owns navigation. `docs/okf-public.json` selects authored pages and generated knowledge views.
+The callable generator owns `reference/callables.openapi.json`.
+The [glossary](/glossary) defines canonical terms.

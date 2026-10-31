@@ -1,60 +1,74 @@
 ---
 title: "Troubleshoot Kast"
-description: "Resolve common setup problems and return to your agent."
+description: "Resolve build selection, Host activation, agent guidance, and query problems with the native Kast CLI."
 icon: "life-buoy"
+sidebarTitle: "Help"
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <a id="inspect-or-update-the-installation" />
 
-Choose the section that matches the problem.
+Use the reported outcome to choose the next action.
 
 <span id="1-identify-the-failed-stage" />
 
-## Your agent has no Kast tools
+## Your agent does not use Kast
 
-Complete the [connection steps](/agent-harnesses), then restart your agent. Select the Kotlin repository or worktree you want to use.
+Install [CLI guidance](/agent-harnesses) for your agent.
+Start a fresh session in the intended Kotlin repository or worktree.
 
-## IntelliJ needs your attention
+If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install` with your agent's name before the fresh session.
+MCP registration is necessary only for the optional MCP composition.
 
-Resolve the trust, project import, or indexing problem that Kast reports in IDEA. Then repeat your question.
-
-If Kast reports an IDEA mismatch, compare your installation with the [supported versions](/start#before-you-install).
-
-## Kast cannot finish a search
-
-Read the reason in the result. Ask your agent to narrow the question to a function, package, or directory.
-
-If Kast reports stale code references, ask your agent to find the code again.
-
-## An edit has an uncertain outcome
-
-Ask your agent to inspect the source and edit record before it repeats the change. Review the diff and run your project's tests.
+## Inspect installation and activation
 
 <span id="2-inspect-the-installation-before-recovery" />
 
-## Inspect or update Kast
-
-To inspect Kast, run:
-
 ```shell
-kast status
+kast status --json
 ```
 
-To update Kast, run:
+Read the installed build, loaded Host identity, update policy, and unresolved replacement state separately.
+Installed files alone do not establish Host activation or workspace readiness.
+
+## Select the development head
 
 ```shell
-kast upgrade
+kast versions
+kast upgrade --channel main
 ```
 
-After an update, restart IDEA and your agent. For the Codex plugin, repeat `kast plugin codex`.
+If activation needs an IDEA restart, repeat the upgrade with `--restart-ide`.
+A pinned build needs an explicit selector before an update.
+
+If the result reports `RECOVERY_REQUIRED`, keep its recovery evidence.
+Use [installation outcomes](/reference/management#lifecycle-result-contract) before another lifecycle action.
+
+## IntelliJ needs your attention
+
+Resolve the trust, project import, or indexing problem that Kast reports in IDEA.
+Then repeat your question in the same worktree.
+
+[Platform requirements](/reference/compatibility) describe the supported IDEA and runtime.
+
+## Kast cannot finish a query
+
+Read the reported cause. Narrow the question to the known function, package, or directory when the cause calls for it.
+An unfinished query with no matches does not prove absence.
+
+If a source reference expires, use the reported recovery action.
+Do not repeat a query only to recover a later output page.
+Use the issued result reference or continuation instead.
+
+## An edit has an uncertain outcome
+
+Inspect the source and change record before another write.
+Review the diff and run your project's tests.
 
 <span id="3-repeat-the-original-operation" />
 
-After recovery, repeat your question in the intended worktree.
-For an uncertain edit, inspect the source before another write.
-
-Use the [detailed troubleshooting guide](/reference/troubleshooting) for contract and saved-state failures.
+Use the [CLI reference](/reference/cli) for command discovery and retained reads.
+The [detailed troubleshooting guide](/reference/troubleshooting) describes contract and saved-state failures.
 
 <DeeperReading />
