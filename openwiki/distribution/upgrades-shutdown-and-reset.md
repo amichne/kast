@@ -48,10 +48,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "codex", at: "2026-10-31T10:29:42.821Z" }
+generated: { by: "codex", at: "2026-10-31T10:43:14.711Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T10:29:42.821Z
+    at: 2026-10-31T10:43:14.711Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -105,6 +105,11 @@ Unknown Host artifacts and changed payloads preserve recovery evidence.
 
 After terminal proof, the owner renames the journal to a completed slot through a no-replace operation.
 This atomic move removes the pending path before it deletes the receipt.
+
+Before recursive deletion, the Control owner also moves each admitted retained payload outside the pending transaction.
+Each destination binds the transaction UUID and source path through a no-replace operation.
+An interruption during deletion leaves detached storage without a partial inventory that can block recovery admission.
+
 A later cleanup failure emits `kast_managed_storage_cleanup` with `FAILED` and its finite reason.
 The remaining closed storage does not block another upgrade.
 A pending journal path still blocks public calls, including an empty directory or dangling symbolic link.

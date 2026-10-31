@@ -23,10 +23,10 @@ sources:
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-10-31T10:43:14.711Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T09:13:30.169Z
+    at: 2026-10-31T10:43:14.711Z
 ---
 
 
@@ -68,6 +68,10 @@ Unknown paths do not become owned because their names resemble Kast artifacts.
 `managed_installation.py` coordinates the existing Control and Host effect owners under the selected management lock.
 It captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
 The typed journal records the selected artifacts and one `STOPPED`, `HOT_RELOAD`, or `NORMAL_RESTART` strategy.
+
+IDEA metadata admission accepts a regular canonical file owned by the current user or root.
+It rejects group-write permissions, world-write permissions, symbolic links, and more than one MiB of metadata.
+Managed records still need the current user as their owner.
 
 The coordinator fences public calls before Host settlement and payload replacement.
 It holds the admitted Host lock during the Control and Host commit sequence.

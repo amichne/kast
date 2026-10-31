@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:66c201a7459a487848ce325de30243e40fb8fb66e761b0a65f43a28f74e29230",
+  "pageVersion": "sha256:336bbea674e26a598bd3b631e885925b86a0b7be917d9d2de6d19a12fff5d9bc",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -88,17 +88,27 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
           "version": "repo-file-v1:sha256:648dccf6e9e4da2927b80b0178b798ceb52a5cb8c9ead97dc87db389811a9d1b"
         }
       ]
+    },
+    {
+      "id": "claim_b9d19821bbde40f99de0cd3221b5da0e",
+      "statement": "IDEA metadata admission accepts canonical regular files owned by root or the current user, rejects group/world write permissions and symlinks, and caps bytes at one MiB. Managed records still need current-user ownership.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T09:13:30.169Z"
+    "at": "2026-10-31T10:43:14.711Z"
   }
 }

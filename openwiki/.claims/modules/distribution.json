@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:40b571970cc2c6c143ccb63d4b0989d79f4ea98019f3b0c1280da7f84915bf9e",
+  "pageVersion": "sha256:d0655ecff775df78a29e50d2332b46020f2513c34c029ff4b99d834e22db9f6f",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -420,13 +420,13 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:29:42.821Z"
+    "at": "2026-10-31T10:43:14.711Z"
   }
 }
