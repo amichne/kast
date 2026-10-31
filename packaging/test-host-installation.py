@@ -428,6 +428,87 @@ class HostInstallationTest(unittest.TestCase):
         self.assertEqual([], list(Path(record.candidate).parent.iterdir()))
         self.assert_control_unchanged()
 
+    def assert_partial_managed_host_cleanup_keeps_retry(self, terminal, interruption):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        with host.managed_lock(record):
+            host.commit_managed(record)
+            if terminal is host.ManagedHostTerminalPhase.RESTORED:
+                host.rollback_managed(record)
+        active = host.inventory(self.plugins / 'kast-ide-hosted')
+        remove = shutil.rmtree
+        calls = []
+        def interrupted(path, *arguments, **options):
+            target = Path(path)
+            files = [entry for entry in target.rglob('*') if entry.is_file()]
+            if files:
+                calls.append(target)
+                files[0].unlink()
+                raise interruption('controlled partial Host deletion')
+            return remove(path, *arguments, **options)
+        interrupted.avoids_symlink_attacks = remove.avoids_symlink_attacks
+        output = io.StringIO()
+        with patch.object(shutil, 'rmtree', interrupted), redirect_stderr(output):
+            try:
+                host.seal_managed(record, terminal)
+            except (OSError, SystemExit):
+                pass
+        self.assertEqual(1, len(calls))
+        self.assertEqual(Path(record.candidate).parent.parent, calls[0].parent)
+        self.assertFalse(Path(record.backup).exists())
+        self.assertFalse(Path(record.candidate).exists())
+        if interruption is OSError:
+            self.assertEqual({'event': 'kast_managed_host_cleanup', 'outcome': 'FAILED',
+                              'reason': host.Failure.FILESYSTEM_REJECTED.value}, json.loads(output.getvalue()))
+        else:
+            self.assertEqual('', output.getvalue())
+        host.finish_managed_lock(record, terminal)
+        self.assertFalse((Path(record.candidate).parent / 'host-lock').exists())
+        self.assertEqual(active, host.inventory(self.plugins / 'kast-ide-hosted'))
+        self.assert_control_unchanged()
+
+    def test_partial_prior_host_deletion_keeps_terminal_retry_and_lock_release(self):
+        self.assert_partial_managed_host_cleanup_keeps_retry(host.ManagedHostTerminalPhase.ACTIVATION_PROVEN, OSError)
+
+    def test_interrupted_candidate_deletion_keeps_terminal_retry_and_lock_release(self):
+        self.assert_partial_managed_host_cleanup_keeps_retry(host.ManagedHostTerminalPhase.RESTORED, SystemExit)
+
+    def test_terminal_host_cleanup_preserves_foreign_completed_storage(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        identity = record.previous.identity
+        destination = Path(record.backup).parent.parent / f'completed-host-prior-{identity.device}-{identity.inode}-{identity.owner}'
+        destination.mkdir()
+        (destination / 'foreign').write_text('preserve')
+        before = host.inventory(Path(record.backup))
+        with self.assertRaises(host.Rejected) as rejected:
+            host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)
+        self.assertEqual('preserve', (destination / 'foreign').read_text())
+        self.assertEqual(before, host.inventory(Path(record.backup)))
+
+    def test_host_retirement_native_move_never_replaces_a_racing_empty_directory(self):
+        import host_directory_exchange as exchange
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        move = exchange.move_directory_noreplace
+        targets = []
+        def collision(source, destination):
+            destination.mkdir()
+            targets.append((destination, destination.stat().st_ino))
+            return move(source, destination)
+        before = host.inventory(Path(record.backup))
+        with patch.object(exchange, 'move_directory_noreplace', collision):
+            with self.assertRaises(host.Rejected) as rejected:
+                host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertEqual(host.Failure.FILESYSTEM_REJECTED, rejected.exception.failure)
+        self.assertEqual(1, len(targets))
+        self.assertEqual(targets[0][1], targets[0][0].stat().st_ino)
+        self.assertEqual([], list(targets[0][0].iterdir()))
+        self.assertEqual(before, host.inventory(Path(record.backup)))
+
     def test_managed_seal_resumes_after_previous_bytes_were_released(self):
         host.install(host.HostInstallRequest(self.payload, self.plugins))
         record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())

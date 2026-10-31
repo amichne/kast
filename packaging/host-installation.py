@@ -1033,11 +1033,11 @@ def seal_managed(record: ManagedHostReplacement, terminal: ManagedHostTerminalPh
     else:
         raise Rejected(Failure.RECOVERY_REQUIRED)
     if os.path.lexists(candidate):
-        admit_managed_candidate(record, candidate)
-        shutil.rmtree(candidate)
+        retire_managed_host(candidate, record.candidateIdentity, record.candidateInventorySha256)
     if os.path.lexists(backup):
-        admit_managed_prior(record, backup)
-        shutil.rmtree(backup)
+        if not isinstance(record.previous, ManagedHostPresent):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        retire_managed_host(backup, record.previous.identity, record.previous.inventorySha256)
     if isinstance(record.previous, ManagedHostPresent):
         preimage = Path(record.previous.receipt)
         if preimage != candidate.parent / 'host-receipt':
@@ -1053,6 +1053,41 @@ def seal_managed(record: ManagedHostReplacement, terminal: ManagedHostTerminalPh
             admit_staged_lock(record, staged_lock)
             staged_lock.unlink()
     sync(candidate.parent)
+
+
+@dataclass(frozen=True)
+class ManagedHostCleanupObservation:
+    reason: Failure
+    event: Literal['kast_managed_host_cleanup'] = 'kast_managed_host_cleanup'
+    outcome: Literal['FAILED'] = 'FAILED'
+
+
+def retire_managed_host(path: Path, identity: Identity, digest: str) -> None:
+    from host_directory_exchange import DirectoryMoveOutcome, move_directory_noreplace
+
+    if Identity.observe(path) != identity or inventory_digest(path) != digest:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    parent = path.parent.parent
+    if parent.resolve() != parent:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    Identity.observe(parent)
+    name = f'completed-{path.name}-{identity.device}-{identity.inode}-{identity.owner}'
+    completed = parent / name
+    if os.path.lexists(completed):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if move_directory_noreplace(path, completed) is not DirectoryMoveOutcome.MOVED:
+        raise Rejected(Failure.FILESYSTEM_REJECTED)
+    sync(path.parent)
+    sync(parent)
+    try:
+        if (not shutil.rmtree.avoids_symlink_attacks or Identity.observe(completed) != identity
+                or inventory_digest(completed) != digest):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        shutil.rmtree(completed)
+        sync(parent)
+    except (OSError, Rejected) as problem:
+        reason = problem.failure if isinstance(problem, Rejected) else Failure.FILESYSTEM_REJECTED
+        print(encode(ManagedHostCleanupObservation(reason)), file=sys.stderr)
 
 
 def bound_staged_lock(record: ManagedHostReplacement) -> bool:
