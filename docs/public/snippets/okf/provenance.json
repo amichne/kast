@@ -324,8 +324,8 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a",
-          "currentVersion": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
@@ -338,8 +338,8 @@
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
           "resource": "repo://build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a",
-          "currentVersion": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
