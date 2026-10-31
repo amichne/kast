@@ -1,9 +1,12 @@
 package support.architecture
 
-/** Explicit lifecycle authority is confined to one adapter and the exact asynchronous native entry points. */
+/** Each native effect stays within its exact lifecycle owner and entry points. */
 internal object HostedWorkspaceRefreshAuthority {
     val owner = JvmClassName("io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort")
     val specOwner = JvmClassName("io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPortKt")
+    val bundleOwner = JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/NativeHostBundleRefreshRoot")
+    private val bundleSubmit = JvmMember.of(bundleOwner.internalName, "submit",
+        "(Lkotlin/jvm/functions/Function0;)Lio/github/amichne/kast/runtime/hosted/lifecycle/HostRefreshSubmission;")
     private const val BUILDER = "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder"
     private val importTargets = setOf(
         JvmMember.of(BUILDER, "<type>", ""),
@@ -18,13 +21,17 @@ internal object HostedWorkspaceRefreshAuthority {
         JvmMember.of(BUILDER, "withCallback", "(Ljava/util/concurrent/CompletableFuture;)L$BUILDER;"),
         JvmMember.of("com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "refreshProject", "(Ljava/lang/String;L$BUILDER;)V"),
     )
+    private val dirtyTree = JvmMember.of("com/intellij/openapi/vfs/VfsUtil", "markDirty",
+        "(ZZ[Lcom/intellij/openapi/vfs/VirtualFile;)Ljava/util/List;")
     private val fileTargets = setOf(JvmMember.of("com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh",
-        "(ZZLjava/lang/Runnable;[Lcom/intellij/openapi/vfs/VirtualFile;)V"),
-        JvmMember.of("com/intellij/openapi/vfs/VfsUtil", "markDirty",
-            "(ZZ[Lcom/intellij/openapi/vfs/VirtualFile;)Ljava/util/List;"),
+        "(ZZLjava/lang/Runnable;[Lcom/intellij/openapi/vfs/VirtualFile;)V"), dirtyTree,
+    )
+    private val bundleTargets = setOf(dirtyTree,
+        JvmMember.of("com/intellij/openapi/vfs/LocalFileSystem", "refreshFiles",
+            "(Ljava/lang/Iterable;ZZLjava/lang/Runnable;)V"),
     )
 
-    /** A scoped policy allowance cannot grant a second native lifecycle or widen its entry points. */
+    /** Scoped caller grants do not authorize other entry points. */
     fun retainsBoundary(effect: EffectObservation): Boolean {
         return when (effect.effect) {
             ForbiddenEffect.GRADLE_IMPORT ->
@@ -32,7 +39,11 @@ internal object HostedWorkspaceRefreshAuthority {
                     effect.caller.owner in setOf(owner, specOwner) && effect.target in importTargets
             ForbiddenEffect.RECURSIVE_VFS_REFRESH ->
                 effect.module == ModuleId.RUNTIME_HOSTED &&
-                    effect.caller.owner == owner && effect.target in fileTargets
+                    when {
+                        effect.caller.owner == owner -> effect.target in fileTargets
+                        effect.caller == bundleSubmit -> effect.target in bundleTargets
+                        else -> false
+                    }
             else -> true
         }
     }

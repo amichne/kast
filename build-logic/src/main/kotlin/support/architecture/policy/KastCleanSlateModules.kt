@@ -466,7 +466,7 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative\$close\$result\$1"),
                 ),
-                ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(HostedWorkspaceRefreshAuthority.owner),
+                ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(HostedWorkspaceRefreshAuthority.owner, HostedWorkspaceRefreshAuthority.bundleOwner),
             ),
         ),
         ModulePolicy(ModuleId.INDEXER, ModuleLifecycle.RETIRED, ModuleRole.INDEXER_HOST, emptySet(), emptySet()),
