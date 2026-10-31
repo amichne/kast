@@ -52,6 +52,205 @@ class ControlFixture:
 
 
 class HostInstallationTest(unittest.TestCase):
+    def signal_payload(self, version):
+        old = self.make_payload(version)
+        with zipfile.ZipFile(old.archive) as archive:
+            data = archive.read('kast-ide-hosted/lib/host.jar')
+        support = io.BytesIO()
+        with zipfile.ZipFile(support, 'w') as archive:
+            archive.writestr('unchanged.txt', b'unchanged support bytes')
+        path = self.root / ('signal-' + version + '.zip')
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('kast-ide-hosted/lib/kast-ide-hosted.jar', data)
+            archive.writestr('kast-ide-hosted/lib/unchanged.jar', support.getvalue())
+        return host.HostedPluginPayload(
+            path, hashlib.sha256(path.read_bytes()).hexdigest(), version, '263.123.1'
+        )
+
+    def signal_record(self):
+        host.install(host.HostInstallRequest(self.signal_payload('2.0.0'), self.plugins))
+        record = host.prepare_managed(
+            host.HostInstallRequest(self.signal_payload('3.0.0'), self.plugins), self.managed_slot()
+        )
+        return record
+
+    def test_reload_signal_preserves_exact_file_facts_and_changes_millisecond_stamp(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            content = marker.read_bytes()
+            os.utime(marker, ns=(1600000000000000000, 1600000000000000000))
+            before = marker.stat()
+            support = Path(record.destination) / 'lib/unchanged.jar'
+            support_before = support.stat().st_mtime_ns
+            evidence = host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            after = marker.stat()
+            self.assertEqual(
+                (
+                    before.st_dev,
+                    before.st_ino,
+                    before.st_uid,
+                    before.st_mode,
+                    before.st_size,
+                    before.st_atime_ns,
+                ),
+                (
+                    after.st_dev,
+                    after.st_ino,
+                    after.st_uid,
+                    after.st_mode,
+                    after.st_size,
+                    after.st_atime_ns,
+                ),
+            )
+            self.assertGreater(
+                evidence.mtimeMillis,
+                max(
+                    evidence.beforeMtimeMillis,
+                    evidence.retainedMtimeMillis,
+                    evidence.observedMillis,
+                ),
+            )
+            self.assertEqual(after.st_mtime_ns // 1000000, evidence.mtimeMillis)
+            self.assertEqual(hashlib.sha256(content).hexdigest(), evidence.sha256)
+            self.assertEqual(content, marker.read_bytes())
+            self.assertEqual(support_before, support.stat().st_mtime_ns)
+            host.admit_managed_candidate(record, Path(record.destination))
+
+    def test_restored_prior_signal_repeats_after_idempotent_file_rollback(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            selected = host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            host.rollback_managed(record)
+            first = host.stamp_reload_signal(lease, host.ReloadSignalTarget.RESTORED_PRIOR)
+            host.rollback_managed(record)
+            second = host.stamp_reload_signal(lease, host.ReloadSignalTarget.RESTORED_PRIOR)
+            self.assertEqual(selected.mtimeMillis, first.retainedMtimeMillis)
+            self.assertGreater(second.mtimeMillis, first.mtimeMillis)
+            self.assertEqual(first.identity, second.identity)
+            self.assertEqual(first.sha256, second.sha256)
+
+    def test_reload_signal_rejects_released_or_missing_lease_before_effects(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+        for stale in (lease, None):
+            with self.subTest(stale=stale), patch.object(host.os, 'utime') as effect:
+                with self.assertRaises(host.ReloadSignalRejected) as rejected:
+                    host.stamp_reload_signal(stale, host.ReloadSignalTarget.SELECTED)
+                self.assertEqual(host.ReloadSignalFailure.LEASE_NOT_HELD, rejected.exception.reason)
+                effect.assert_not_called()
+
+    def test_public_lease_construction_rejects_an_actual_unlocked_lock_descriptor(self):
+        record = self.signal_record()
+        with host.managed_lock(record):
+            host.commit_managed(record)
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.lock'
+        with path.open('r+') as unlocked, patch.object(host.os, 'utime') as effect:
+            self.assertEqual(record.lock.identity.inode, os.fstat(unlocked.fileno()).st_ino)
+            with self.assertRaises(TypeError):
+                host.HeldHostLease(record, unlocked)
+            effect.assert_not_called()
+
+    def test_reload_signal_rejects_symlink_and_changed_hash_before_stamp(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            saved = marker.read_bytes()
+            marker.write_bytes(b'changed unadmitted JAR bytes')
+            with (
+                patch.object(host.os, 'utime') as effect,
+                self.assertRaises(host.ReloadSignalRejected),
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            effect.assert_not_called()
+            marker.write_bytes(saved)
+            retained = marker.with_suffix('.retained')
+            marker.rename(retained)
+            marker.symlink_to(retained)
+            with (
+                patch.object(host.os, 'utime') as effect,
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.MARKER_UNPROVEN, rejected.exception.reason)
+            effect.assert_not_called()
+
+    def test_reload_signal_rejects_timestamp_precision_alias(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            before = marker.stat()
+            real = os.utime
+
+            def aliased(descriptor, *, ns):
+                real(descriptor, ns=(ns[0], before.st_mtime_ns))
+
+            with (
+                patch.object(host.os, 'utime', aliased),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.STAMP_PRECISION, rejected.exception.reason)
+
+    def test_reload_signal_rejects_mode_change_after_descriptor_stamp(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            marker.chmod(0o644)
+            real = os.utime
+
+            def changed(descriptor, *, ns):
+                real(descriptor, ns=ns)
+                os.fchmod(descriptor, 0o600)
+
+            with (
+                patch.object(host.os, 'utime', changed),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.FILE_CHANGED, rejected.exception.reason)
+
+    def test_reload_signal_millisecond_range_is_finite(self):
+        limit = (2**63 - 1) // 1000000
+        self.assertEqual(12, host.next_reload_signal_millis(10, 11, 9))
+        for values in ((limit, 1, 1), (1, limit, 1), (1, 1, -1), (True, 1, 1)):
+            with (
+                self.subTest(values=values),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.next_reload_signal_millis(*values)
+            self.assertEqual(host.ReloadSignalFailure.STAMP_RANGE, rejected.exception.reason)
+
+    def test_reload_signal_rejects_replacement_without_touching_the_new_inode(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            content = marker.read_bytes()
+            real = os.utime
+            replacement = []
+
+            def replaced(descriptor, *, ns):
+                real(descriptor, ns=ns)
+                marker.rename(marker.with_suffix('.displaced'))
+                marker.write_bytes(content)
+                replacement.append(marker.stat().st_mtime_ns)
+
+            with (
+                patch.object(host.os, 'utime', replaced),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.FILE_CHANGED, rejected.exception.reason)
+            self.assertEqual(replacement[0], marker.stat().st_mtime_ns)
+            self.assertEqual(content, marker.read_bytes())
+
     def test_managed_lock_excludes_the_existing_host_installer(self):
         host.install(host.HostInstallRequest(self.payload, self.plugins))
         before = host.inventory(self.plugins / 'kast-ide-hosted')

@@ -23,10 +23,35 @@ class HostInstallationLifecycleContractTest {
         )
 
     @Test
+    fun `old refresh capability decodes without granting prepared refresh`() {
+        val encoded = json.encodeToString(IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH)
+        assertEquals("HOST_RELOAD_REFRESH", json.parseToJsonElement(encoded).jsonPrimitive.content)
+        assertEquals(
+            IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH,
+            json.decodeFromString<IdeLifecycleCapabilityName>(encoded),
+        )
+        assertEquals(
+            "HOST_PREPARED_RELOAD_REFRESH",
+            json
+                .parseToJsonElement(json.encodeToString(IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH))
+                .jsonPrimitive
+                .content,
+        )
+        assertEquals(
+            "HOST_REFRESH_MARKER_UNSIGNALED",
+            json
+                .parseToJsonElement(json.encodeToString(IdeLifecycleFailure.HOST_REFRESH_MARKER_UNSIGNALED))
+                .jsonPrimitive
+                .content,
+        )
+    }
+
+    @Test
     fun `installer commands preserve exact Host and transaction selectors`() {
         val commands =
             listOf(
                 "settle_host" to IdeLifecycleCommand.SettleHost("host", "update"),
+                "settle_host_for_reload" to IdeLifecycleCommand.SettleHostForReload("host", "update"),
                 "resume_host" to IdeLifecycleCommand.ResumeHost("host", "update"),
                 "stop_host" to IdeLifecycleCommand.StopHost("host", "update"),
                 "refresh_host_bundle" to IdeLifecycleCommand.RefreshHostBundle("host", "update"),

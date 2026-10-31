@@ -44,18 +44,56 @@ class InstallationLifecycleCapabilityTest {
         exchangeFixture(IdeLifecycleCommand.RefreshHostBundle("host", "update"), refresh = true, effectExpected = true)
     }
 
-    private fun exchangeFixture(command: IdeLifecycleCommand, refresh: Boolean, effectExpected: Boolean) {
+    @Test
+    fun `legacy refresh capability never grants the prepared marker operation`() {
+        exchangeFixture(
+            IdeLifecycleCommand.RefreshHostBundle("host", "update"),
+            refresh = true,
+            effectExpected = false,
+            prepared = false,
+        )
+    }
+
+    @Test
+    fun `normal settlement remains available without prepared refresh capability`() {
+        exchangeFixture(IdeLifecycleCommand.SettleHost("host", "update"), refresh = false, effectExpected = true)
+    }
+
+    @Test
+    fun `reload settlement requires the prepared capability`() {
+        exchangeFixture(
+            IdeLifecycleCommand.SettleHostForReload("host", "update"),
+            refresh = false,
+            effectExpected = false,
+        )
+        exchangeFixture(
+            IdeLifecycleCommand.SettleHostForReload("host", "update"),
+            refresh = true,
+            effectExpected = true,
+        )
+    }
+
+    private fun exchangeFixture(
+        command: IdeLifecycleCommand,
+        refresh: Boolean,
+        effectExpected: Boolean,
+        prepared: Boolean = refresh,
+    ) {
         val root = Files.createTempDirectory(Path.of("/tmp"), "k").toRealPath()
         val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         val executor = Executors.newSingleThreadExecutor()
         try {
             val home = Files.createDirectory(root.resolve("idea"))
             val identity = identity(home, root)
-            val inspected = inspected(home, identity, refresh)
+            val inspected = inspected(home, identity, refresh, prepared)
             val response =
-                if (command is IdeLifecycleCommand.StopHost)
-                    IdeLifecycleResult.HostStopRequested("host", "update", identity)
-                else IdeLifecycleResult.HostRefreshRequested("host", "update", identity)
+                when (command) {
+                    is IdeLifecycleCommand.StopHost -> IdeLifecycleResult.HostStopRequested("host", "update", identity)
+                    is IdeLifecycleCommand.SettleHost,
+                    is IdeLifecycleCommand.SettleHostForReload ->
+                        IdeLifecycleResult.HostSettled("host", "update", identity)
+                    else -> IdeLifecycleResult.HostRefreshRequested("host", "update", identity)
+                }
             val digest =
                 MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                     "%02x".format(it)
@@ -97,6 +135,7 @@ class InstallationLifecycleCapabilityTest {
         home: Path,
         identity: IdeHostRuntimeIdentity,
         refresh: Boolean,
+        prepared: Boolean,
     ): IdeLifecycleResult.Inspected {
         val compatibility =
             HostedCompatibilityDocument(
@@ -111,8 +150,13 @@ class InstallationLifecycleCapabilityTest {
                 ),
             )
         val capabilities =
-            setOf(IdeLifecycleCapabilityName.INSPECT, IdeLifecycleCapabilityName.HOST_NORMAL_STOP) +
-                if (refresh) setOf(IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH) else emptySet()
+            setOf(
+                IdeLifecycleCapabilityName.INSPECT,
+                IdeLifecycleCapabilityName.HOST_NORMAL_STOP,
+                IdeLifecycleCapabilityName.HOST_SETTLEMENT,
+            ) +
+                (if (refresh) setOf(IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH) else emptySet()) +
+                (if (prepared) setOf(IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH) else emptySet())
         return IdeLifecycleResult.Inspected(
             "host",
             home.toString(),

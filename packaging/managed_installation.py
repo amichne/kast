@@ -35,7 +35,7 @@ from dataclasses import asdict, dataclass, is_dataclass, replace
 from enum import Enum, StrEnum
 from pathlib import Path
 from types import ModuleType
-from typing import Literal, Protocol
+from typing import Literal, Protocol, runtime_checkable
 
 import managed_release as release
 import managed_update_contract as contract
@@ -85,7 +85,7 @@ class HostActionRequest:
     profile: str
     host: str
     transaction: str
-    type: Literal["SETTLE", "STOP", "RESUME", "REFRESH"]
+    type: Literal["SETTLE", "SETTLE_RELOAD", "STOP", "RESUME", "REFRESH"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,10 +165,41 @@ class InterruptState:
     exit_code: int | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class HostLease:
     stack: ExitStack
     record: journal_types.ManagedHostReplacement
+    capability: object
+    transaction: str
+
+    def __init__(self, *_arguments: object, **_keywords: object) -> None:
+        raise TypeError("a Host lease comes only from acquire_host_lease")
+
+
+class ReloadSignalProof(Protocol):
+    @property
+    def type(self) -> Literal["HOST_RELOAD_SIGNAL_STAMPED"]: ...
+
+    @property
+    def mtimeMillis(self) -> int: ...
+
+
+@runtime_checkable
+class ReloadSignalFailureProof(Protocol):
+    @property
+    def stage(self) -> Enum: ...
+
+    @property
+    def reason(self) -> Enum: ...
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class StampedRefresh:
+    settlement: contract.RefreshSettlement
+    signal: ReloadSignalProof
+
+    def __init__(self, *_arguments: object, **_keywords: object) -> None:
+        raise TypeError("a stamped refresh comes only from its checked stamp producer")
 
 
 class ChildRunner(Protocol):
@@ -674,7 +705,7 @@ class NativeComposition:
         self,
         snapshot: contract.Loaded,
         transaction: str,
-        action: Literal["SETTLE", "STOP", "RESUME", "REFRESH"],
+        action: Literal["SETTLE", "SETTLE_RELOAD", "STOP", "RESUME", "REFRESH"],
     ) -> object:
         value, _ = self.bridge(
             HostActionRequest(
@@ -717,32 +748,41 @@ class NativeComposition:
         return result
 
     def settle(self, snapshot: contract.Loaded, transaction: str) -> contract.HeldSettlement:
+        reply = self._settle(
+            contract.SettlementRequest(snapshot, transaction, contract.SettlementAction.ORDINARY)
+        )
+        if not isinstance(reply, contract.HeldSettlement):
+            raise reject(self.stage, contract.Failure.HOST_RESPONSE_INVALID)
+        return reply
+
+    def settle_for_reload(
+        self, snapshot: contract.Loaded, transaction: str
+    ) -> contract.PreparedSettlement:
+        if not snapshot.refreshCapability.prepared or snapshot.identity.autoReload != "ENABLED":
+            raise reject(
+                self.stage,
+                contract.Failure.HOST_REJECTED,
+                contract.HostPollState.REFRESH_UNAVAILABLE.value,
+            )
+        reply = self._settle(
+            contract.SettlementRequest(snapshot, transaction, contract.SettlementAction.RELOAD)
+        )
+        if not isinstance(reply, contract.ReloadAcknowledgment):
+            raise reject(self.stage, contract.Failure.HOST_RESPONSE_INVALID)
+        return contract.PreparedSettlement.from_reload_ack(reply)
+
+    def _settle(
+        self,
+        request: contract.SettlementRequest,
+    ) -> contract.HeldSettlement | contract.ReloadAcknowledgment:
         deadline = time.monotonic() + self.limits.settlement
         while True:
-            result = self.host_action(snapshot, transaction, "SETTLE")
-            if release.mapping(result) and result.get("type") == "host_settled":
-                if (
-                    result.get("host") != snapshot.identity.hostLifetime
-                    or result.get("transaction") != transaction
-                    or contract.parse_runtime(result.get("runtimeIdentity")) != snapshot.identity
-                ):
-                    raise reject(
-                        self.stage,
-                        contract.Failure.CONCURRENT_CHANGE,
-                        contract.HostPollState.SETTLEMENT_CHANGED.value,
-                    )
-                return contract.HeldSettlement(snapshot, transaction)
-            if not release.mapping(result) or result.get("type") != "host_settling":
-                raise reject(self.stage, contract.Failure.HOST_REJECTED)
-            if (
-                result.get("host") != snapshot.identity.hostLifetime
-                or result.get("transaction") != transaction
-            ):
-                raise reject(
-                    self.stage,
-                    contract.Failure.CONCURRENT_CHANGE,
-                    contract.HostPollState.SETTLEMENT_CHANGED.value,
-                )
+            result = self.host_action(request.host, request.transaction, request.action.operation)
+            reply = contract.admit_settlement_reply(request, result)
+            if isinstance(reply, contract.Rejected):
+                raise StageRejected(replace(reply, stage=self.stage))
+            if not isinstance(reply, contract.SettlementProgress):
+                return reply
             if time.monotonic() >= deadline:
                 raise reject(
                     self.stage,
@@ -872,17 +912,41 @@ class NativeComposition:
             "KAST_INSTALL_CONTROL_ONLY": "0",
         }
 
-    def refresh_settlement(self, held: contract.HeldSettlement) -> contract.RefreshSettlement:
-        try:
-            return contract.RefreshSettlement(held.host, held.transaction)
-        except ValueError:
+    def refresh_settlement(self, held: contract.HeldSettlement) -> contract.PreparedSettlement:
+        if not isinstance(held, contract.PreparedSettlement):
             raise reject(
                 self.stage,
                 contract.Failure.HOST_REJECTED,
                 contract.HostPollState.REFRESH_UNAVAILABLE.value,
-            ) from None
+            )
+        return held
 
-    def refresh(self, held: contract.RefreshSettlement) -> contract.RefreshObservation:
+    def stamp_refresh(
+        self, held: contract.HeldSettlement, target: Literal["SELECTED", "RESTORED_PRIOR"]
+    ) -> StampedRefresh:
+        prepared = self.refresh_settlement(held)
+        if self.host_lease is None:
+            raise reject(self.stage, contract.Failure.OWNERSHIP_UNPROVEN)
+        if prepared.transaction != self.host_lease.transaction:
+            raise reject(
+                self.stage,
+                contract.Failure.CONCURRENT_CHANGE,
+                contract.HostPollState.SETTLEMENT_CHANGED.value,
+            )
+        try:
+            evidence = HOST.stamp_reload_signal(
+                self.host_lease.capability, HOST.ReloadSignalTarget(target)
+            )
+        except HOST.ReloadSignalRejected as failure:
+            raise StageRejected(stage_failure(self, failure)) from None
+        print(HOST.encode(evidence).rstrip(), file=sys.stderr)
+        ready = object.__new__(StampedRefresh)
+        object.__setattr__(ready, "settlement", prepared)
+        object.__setattr__(ready, "signal", evidence)
+        return ready
+
+    def refresh(self, ready: StampedRefresh) -> contract.RefreshObservation:
+        held = ready.settlement
         try:
             _ = self.host_action(held.host, held.transaction, "REFRESH")
         except StageRejected as problem:
@@ -1098,9 +1162,12 @@ def rebind_control(adapter: NativeComposition, record: journal_types.Replacement
 def acquire_host_lease(
     adapter: NativeComposition, record: journal_types.Replacement
 ) -> tuple[journal_types.Replacement, journal_types.ManagedComposition]:
-    _, core = journal_types.managed_parts(record)
+    reservation, core = journal_types.managed_parts(record)
     if adapter.host_lease is not None:
-        if adapter.host_lease.record != core.host:
+        if (
+            adapter.host_lease.record != core.host
+            or adapter.host_lease.transaction != reservation.transaction
+        ):
             raise reject(adapter.stage, contract.Failure.CONCURRENT_CHANGE)
         return record, core
     lock = core.host.lock
@@ -1149,11 +1216,16 @@ def acquire_host_lease(
         RECOVERY.save(adapter.root / "recovery/replacement/receipt.json", record)
     stack = ExitStack()
     try:
-        _ = stack.enter_context(HOST.managed_lock(HOST.decode_managed(asdict(core.host))))
+        capability = stack.enter_context(HOST.managed_lock(HOST.decode_managed(asdict(core.host))))
     except BaseException:
         stack.close()
         raise
-    adapter.host_lease = HostLease(stack, core.host)
+    lease = object.__new__(HostLease)
+    object.__setattr__(lease, "stack", stack)
+    object.__setattr__(lease, "record", core.host)
+    object.__setattr__(lease, "capability", capability)
+    object.__setattr__(lease, "transaction", reservation.transaction)
+    adapter.host_lease = lease
     return record, core
 
 
@@ -1312,7 +1384,7 @@ def replace_host(
     adapter: NativeComposition,
     strategy: contract.Strategy,
     host_record: object,
-    held: contract.HeldSettlement | None = None,
+    held: contract.PreparedSettlement | None = None,
 ) -> None:
     adapter.enter(contract.Stage.HOST_REPLACEMENT)
     if strategy != contract.Strategy.HOT_RELOAD:
@@ -1323,8 +1395,13 @@ def replace_host(
         if held is None:
             raise reject(adapter.stage, contract.Failure.OWNERSHIP_UNPROVEN)
         refresh = adapter.refresh_settlement(held)
+        if (
+            adapter.host_lease is None
+            or HOST.admit_signal_lease(adapter.host_lease.capability) != host_record
+        ):
+            raise reject(adapter.stage, contract.Failure.OWNERSHIP_UNPROVEN)
         HOST.commit_managed_reload(host_record)
-        _ = adapter.refresh(refresh)
+        _ = adapter.refresh(adapter.stamp_refresh(refresh, "SELECTED"))
     else:
         HOST.commit_managed(host_record)
 
@@ -1338,7 +1415,7 @@ def install_composition(
     prepared_host: object | None = None
     prepared_files: list[journal_types.ManagedFilePresent] = []
     transaction: str | None = None
-    held: contract.HeldSettlement | None = None
+    held: contract.PreparedSettlement | None = None
     try:
         prior, raw_prior = adapter.inspect(not dry_run)
         if len(raw_prior) > 262_144:
@@ -1459,7 +1536,7 @@ def install_composition(
                 elif strategy == contract.Strategy.HOT_RELOAD and isinstance(
                     prior, contract.Loaded
                 ):
-                    held = adapter.settle(prior, transaction)
+                    held = adapter.settle_for_reload(prior, transaction)
                 elif isinstance(prior, (contract.Loaded, contract.Legacy)):
                     adapter.stop(prior, transaction)
                 else:
@@ -1647,6 +1724,16 @@ def stage_failure(adapter: NativeComposition, failure: BaseException) -> contrac
         if adapter.interrupt.exit_code is None:
             adapter.interrupt.exit_code = 130
         return contract.Rejected(adapter.stage, contract.Failure.CANCELLED)
+    if isinstance(failure, HOST.ReloadSignalRejected) and isinstance(
+        failure, ReloadSignalFailureProof
+    ):
+        print(
+            HOST.encode(HOST.ReloadSignalRejectionEvidence(failure.stage, failure.reason)).rstrip(),
+            file=sys.stderr,
+        )
+        return contract.Rejected(
+            adapter.stage, contract.Failure.RELOAD_SIGNAL_REJECTED, str(failure.reason.value)
+        )
     code = getattr(failure, "failure", None)
     return contract.Rejected(
         adapter.stage,
@@ -1796,12 +1883,14 @@ def restore_transaction(
         ):
             adapter.stop(current, reservation.transaction)
         elif core.strategy == "HOT_RELOAD" and isinstance(current, contract.Loaded):
-            held = adapter.settle(current, reservation.transaction)
             if not isinstance(prior, contract.Loaded):
                 raise reject(adapter.stage, contract.Failure.RECOVERY_UNPROVEN)
             refresh_prior = current.identity.buildIdentity != prior.identity.buildIdentity
             if refresh_prior:
-                refresh = adapter.refresh_settlement(held)
+                refresh = adapter.settle_for_reload(current, reservation.transaction)
+                held = refresh
+            else:
+                held = adapter.settle(current, reservation.transaction)
         if core.strategy == "HOT_RELOAD":
             HOST.rollback_managed_reload(host_record)
         else:
@@ -1811,7 +1900,7 @@ def restore_transaction(
         for preimage in (core.management, core.publicExecutable, core.profileOptions):
             restore_file(preimage, adapter, current_record)
         if refresh is not None:
-            _ = adapter.refresh(refresh)
+            _ = adapter.refresh(adapter.stamp_refresh(refresh, "RESTORED_PRIOR"))
         if isinstance(prior, contract.Stopped):
             actual, _ = adapter.inspect(False)
             if not isinstance(actual, contract.Stopped):

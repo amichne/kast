@@ -27,6 +27,15 @@ internal sealed interface ManagedHostRequest {
     ) : ManagedHostRequest
 
     @Serializable
+    @SerialName("SETTLE_RELOAD")
+    data class SettleReload(
+        override val ideaHome: String,
+        override val profile: String,
+        val host: String,
+        val transaction: String,
+    ) : ManagedHostRequest
+
+    @Serializable
     @SerialName("RESUME")
     data class Resume(
         override val ideaHome: String,

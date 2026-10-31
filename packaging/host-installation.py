@@ -1,7 +1,7 @@
 """Install only the IntelliJ-owned Kast Host plugin through its ordinary restart lifecycle."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
@@ -15,7 +15,10 @@ import shutil
 import stat
 import sys
 import tempfile
+import time
 import uuid
+from io import TextIOBase
+from typing import Literal
 import xml.etree.ElementTree as XML
 import zipfile
 
@@ -29,6 +32,7 @@ class Failure(str, Enum):
     OWNERSHIP_UNPROVEN = 'OWNERSHIP_UNPROVEN'
     FILESYSTEM_REJECTED = 'FILESYSTEM_REJECTED'
     RECOVERY_REQUIRED = 'RECOVERY_REQUIRED'
+    RELOAD_SIGNAL_REJECTED = 'RELOAD_SIGNAL_REJECTED'
 
 
 class HostInstallationStage(str, Enum):
@@ -37,6 +41,9 @@ class HostInstallationStage(str, Enum):
     ACTIVE_DESTINATION = 'ACTIVE_DESTINATION'
     ACTIVE_INVENTORY = 'ACTIVE_INVENTORY'
     RETAINED_RECOVERY = 'RETAINED_RECOVERY'
+    RELOAD_SIGNAL_ADMISSION = 'RELOAD_SIGNAL_ADMISSION'
+    RELOAD_SIGNAL_WRITE = 'RELOAD_SIGNAL_WRITE'
+    RELOAD_SIGNAL_PROOF = 'RELOAD_SIGNAL_PROOF'
 
 
 class Rejected(Exception):
@@ -281,6 +288,73 @@ class ManagedHostTerminalPhase(str, Enum):
     RESTORED = 'RESTORED'
 
 
+class HostLeaseState(str, Enum):
+    HELD = 'HELD'
+    RELEASED = 'RELEASED'
+
+
+@dataclass(frozen=True, init=False)
+class HeldHostLease:
+    record: ManagedHostReplacement
+    _stream: TextIOBase
+    _state: HostLeaseState = field(default=HostLeaseState.HELD, init=False, repr=False)
+
+    def __init__(self, *_arguments, **_keywords):
+        raise TypeError('a held Host lease comes only from managed_lock')
+
+
+def _held_host_lease(record: ManagedHostReplacement, stream: TextIOBase) -> HeldHostLease:
+    lease = object.__new__(HeldHostLease)
+    object.__setattr__(lease, 'record', record)
+    object.__setattr__(lease, '_stream', stream)
+    object.__setattr__(lease, '_state', HostLeaseState.HELD)
+    return lease
+
+
+class ReloadSignalTarget(str, Enum):
+    SELECTED = 'SELECTED'
+    RESTORED_PRIOR = 'RESTORED_PRIOR'
+
+
+class ReloadSignalFailure(str, Enum):
+    LEASE_NOT_HELD = 'LEASE_NOT_HELD'
+    OWNERSHIP_UNPROVEN = 'OWNERSHIP_UNPROVEN'
+    MARKER_UNPROVEN = 'MARKER_UNPROVEN'
+    STAMP_RANGE = 'STAMP_RANGE'
+    STAMP_PRECISION = 'STAMP_PRECISION'
+    FILE_CHANGED = 'FILE_CHANGED'
+    IO_FAILURE = 'IO_FAILURE'
+
+
+class ReloadSignalRejected(Rejected):
+    def __init__(self, reason: ReloadSignalFailure, stage: HostInstallationStage):
+        super().__init__(Failure.RELOAD_SIGNAL_REJECTED, stage)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class ReloadSignalEvidence:
+    target: ReloadSignalTarget
+    identity: Identity
+    mode: int
+    bytes: int
+    sha256: str
+    atimeNs: int
+    beforeMtimeMillis: int
+    retainedMtimeMillis: int
+    observedMillis: int
+    mtimeMillis: int
+    marker: Literal['lib/kast-ide-hosted.jar'] = 'lib/kast-ide-hosted.jar'
+    type: Literal['HOST_RELOAD_SIGNAL_STAMPED'] = 'HOST_RELOAD_SIGNAL_STAMPED'
+
+
+@dataclass(frozen=True)
+class ReloadSignalRejectionEvidence:
+    stage: HostInstallationStage
+    reason: ReloadSignalFailure
+    type: Literal['HOST_RELOAD_SIGNAL_REJECTED'] = 'HOST_RELOAD_SIGNAL_REJECTED'
+
+
 @contextmanager
 def managed_lock(record: ManagedHostReplacement):
     admit_managed_paths(record)
@@ -295,7 +369,7 @@ def managed_lock(record: ManagedHostReplacement):
         os.link(proof.staged, path)
         sync(retained)
     reservation = Path(record.candidate).parent / 'host-lock'
-    with locked_managed_descriptor(record, path):
+    with locked_managed_descriptor(record, path) as stream:
         if not os.path.lexists(reservation):
             admit_canonical_lock(record, path)
             if path.stat().st_nlink != 1 or path.stat().st_size != 0:
@@ -303,7 +377,11 @@ def managed_lock(record: ManagedHostReplacement):
             os.link(path, reservation)
             sync(reservation.parent)
         admit_managed_lock_reservation(record, path, reservation)
-        yield record
+        lease = _held_host_lease(record, stream)
+        try:
+            yield lease
+        finally:
+            object.__setattr__(lease, '_state', HostLeaseState.RELEASED)
 
 
 @contextmanager
@@ -663,6 +741,189 @@ def rollback_managed_reload(record: ManagedHostReplacement) -> None:
                 raise Rejected(Failure.OWNERSHIP_UNPROVEN)
             backup.rename(candidate)
     rollback_managed(record)
+
+
+def admit_signal_lease(lease: HeldHostLease) -> ManagedHostReplacement:
+    if (
+        not isinstance(lease, HeldHostLease)
+        or lease._state is not HostLeaseState.HELD
+        or not isinstance(lease._stream, TextIOBase)
+        or lease._stream.closed
+    ):
+        raise ReloadSignalRejected(
+            ReloadSignalFailure.LEASE_NOT_HELD, HostInstallationStage.RELOAD_SIGNAL_ADMISSION
+        )
+    record = lease.record
+    if record.lock is None:
+        raise ReloadSignalRejected(
+            ReloadSignalFailure.LEASE_NOT_HELD, HostInstallationStage.RELOAD_SIGNAL_ADMISSION
+        )
+    try:
+        observed = os.fstat(lease._stream.fileno())
+    except (OSError, ValueError):
+        raise ReloadSignalRejected(
+            ReloadSignalFailure.LEASE_NOT_HELD, HostInstallationStage.RELOAD_SIGNAL_ADMISSION
+        ) from None
+    if (
+        not stat.S_ISREG(observed.st_mode)
+        or Identity(observed.st_dev, observed.st_ino, observed.st_uid) != record.lock.identity
+    ):
+        raise ReloadSignalRejected(
+            ReloadSignalFailure.LEASE_NOT_HELD, HostInstallationStage.RELOAD_SIGNAL_ADMISSION
+        )
+    root, _, _, _ = admit_managed_paths(record)
+    if Identity.observe(root) != record.pluginRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    retained = root.parent / '.kast-plugin-recovery'
+    admit_managed_retained(record, retained)
+    admit_managed_lock_reservation(
+        record, retained / 'host-install.lock', Path(record.candidate).parent / 'host-lock'
+    )
+    return record
+
+
+def admit_signal_layout(
+    record: ManagedHostReplacement, target: ReloadSignalTarget
+) -> tuple[HostActiveReceipt, Path]:
+    root, candidate, backup, destination = admit_managed_paths(record)
+    if target is ReloadSignalTarget.SELECTED:
+        admit_managed_candidate(record, destination)
+        admit_managed_prior(record, backup)
+        counterpart = backup
+        expected_identity = record.candidateIdentity
+    elif target is ReloadSignalTarget.RESTORED_PRIOR:
+        admit_managed_prior(record, destination)
+        admit_managed_candidate(record, candidate)
+        counterpart = candidate
+        expected_identity = record.previous.identity
+    else:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    admit_managed_rollback_receipt(record, root, candidate, backup, destination)
+    active = admit_active(
+        root, read_active_receipt(root.parent / '.kast-plugin-recovery/host-install.json')
+    )
+    if active.destinationIdentity != expected_identity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return active, counterpart
+
+
+def next_reload_signal_millis(before: int, retained: int, observed: int) -> int:
+    limit = (2**63 - 1) // 1_000_000
+    if (
+        any(
+            type(value) is not int or not -limit <= value < limit
+            for value in (before, retained, observed)
+        )
+        or observed < 0
+    ):
+        raise ReloadSignalRejected(
+            ReloadSignalFailure.STAMP_RANGE, HostInstallationStage.RELOAD_SIGNAL_WRITE
+        )
+    return max(before, retained, observed) + 1
+
+
+def signal_file_key(value: os.stat_result) -> tuple[int, int, int, int, int]:
+    return value.st_dev, value.st_ino, value.st_uid, value.st_mode, value.st_size
+
+
+def signal_file_digest(descriptor: int) -> str:
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    digest, size = hashlib.sha256(), 0
+    while True:
+        block = os.read(descriptor, 65536)
+        if not block:
+            return digest.hexdigest()
+        size += len(block)
+        if size > 1073741824:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        digest.update(block)
+
+
+def stamp_reload_signal(lease: HeldHostLease, target: ReloadSignalTarget) -> ReloadSignalEvidence:
+    stage = HostInstallationStage.RELOAD_SIGNAL_ADMISSION
+    try:
+        record = admit_signal_lease(lease)
+        marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+        try:
+            identity = owned_file(marker)
+        except (Rejected, OSError):
+            raise ReloadSignalRejected(ReloadSignalFailure.MARKER_UNPROVEN, stage) from None
+        descriptor = os.open(marker, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            if Identity(before.st_dev, before.st_ino, before.st_uid) != identity:
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            digest = signal_file_digest(stream.fileno())
+            active, counterpart = admit_signal_layout(record, target)
+            admitted = next(
+                (
+                    item
+                    for item in active.inventory
+                    if isinstance(item, HostFileArtifact) and item.path == 'lib/kast-ide-hosted.jar'
+                ),
+                None,
+            )
+            if (
+                admitted is None
+                or admitted.identity != identity
+                or admitted.sha256 != digest
+                or admitted.bytes != before.st_size
+                or signal_file_key(marker.lstat()) != signal_file_key(before)
+            ):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            retained_marker = counterpart / 'lib/kast-ide-hosted.jar'
+            owned_file(retained_marker)
+            retained_stamp = retained_marker.lstat().st_mtime_ns // 1_000_000
+            observed = time.time_ns() // 1_000_000
+            selected = next_reload_signal_millis(
+                before.st_mtime_ns // 1_000_000, retained_stamp, observed
+            )
+            stage = HostInstallationStage.RELOAD_SIGNAL_WRITE
+            os.utime(stream.fileno(), ns=(before.st_atime_ns, selected * 1_000_000))
+            os.fsync(stream.fileno())
+            stage = HostInstallationStage.RELOAD_SIGNAL_PROOF
+            after = os.fstat(stream.fileno())
+            if after.st_mtime_ns // 1_000_000 != selected:
+                raise ReloadSignalRejected(ReloadSignalFailure.STAMP_PRECISION, stage)
+            if (
+                signal_file_key(after) != signal_file_key(before)
+                or signal_file_digest(stream.fileno()) != digest
+                or signal_file_key(marker.lstat()) != signal_file_key(before)
+            ):
+                raise ReloadSignalRejected(ReloadSignalFailure.FILE_CHANGED, stage)
+            admit_signal_layout(record, target)
+            if retained_marker.lstat().st_mtime_ns // 1_000_000 != retained_stamp:
+                raise ReloadSignalRejected(ReloadSignalFailure.FILE_CHANGED, stage)
+            # Inventory and descriptor hash reads can change atime. Restore it after those reads.
+            os.utime(stream.fileno(), ns=(before.st_atime_ns, after.st_mtime_ns))
+            os.fsync(stream.fileno())
+            final = os.fstat(stream.fileno())
+            if (
+                signal_file_key(final) != signal_file_key(before)
+                or final.st_atime_ns != before.st_atime_ns
+                or final.st_mtime_ns != after.st_mtime_ns
+                or signal_file_key(marker.lstat()) != signal_file_key(final)
+            ):
+                raise ReloadSignalRejected(ReloadSignalFailure.FILE_CHANGED, stage)
+            admit_signal_lease(lease)
+            return ReloadSignalEvidence(
+                target,
+                identity,
+                stat.S_IMODE(final.st_mode),
+                final.st_size,
+                digest,
+                final.st_atime_ns,
+                before.st_mtime_ns // 1_000_000,
+                retained_stamp,
+                observed,
+                final.st_mtime_ns // 1_000_000,
+            )
+    except ReloadSignalRejected:
+        raise
+    except Rejected:
+        raise ReloadSignalRejected(ReloadSignalFailure.OWNERSHIP_UNPROVEN, stage) from None
+    except OSError:
+        raise ReloadSignalRejected(ReloadSignalFailure.IO_FAILURE, stage) from None
 
 
 def rollback_managed(record: ManagedHostReplacement) -> None:

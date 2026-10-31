@@ -23,6 +23,35 @@ class ManagedHostCliTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `encoded reload settlement uses the distinct prepared command and unchanged exact acknowledgment`() {
+        val fixture = fixture()
+        val request =
+            ManagedHostRequest.SettleReload(fixture.idea.toString(), fixture.profile.toString(), "host", "update")
+        val json = Json { encodeDefaults = true }
+        val encoded = json.encodeToString<ManagedHostRequest>(request)
+        val actual = json.parseToJsonElement(encoded).jsonObject
+        assertEquals(setOf("type", "ideaHome", "profile", "host", "transaction"), actual.keys)
+        assertEquals("SETTLE_RELOAD", actual.getValue("type").jsonPrimitive.content)
+        val commands = mutableListOf<IdeLifecycleCommand>()
+        val acknowledgment = IdeLifecycleResult.HostSettled("host", "update", fixture.identity)
+        val result =
+            executeManagedHost(
+                json.decodeFromString<ManagedHostRequest>(encoded),
+                fixture.home,
+                processes = { ManagedProcessInventory.Captured(listOf(fixture.process)) },
+                exchange = { _, command ->
+                    commands += command
+                    if (command == IdeLifecycleCommand.Inspect) fixture.inspected else acknowledgment
+                },
+            )
+        assertEquals(
+            listOf(IdeLifecycleCommand.Inspect, IdeLifecycleCommand.SettleHostForReload("host", "update")),
+            commands,
+        )
+        assertEquals(ManagedHostResponse.Inspected(listOf(fixture.process), acknowledgment), result)
+    }
+
+    @Test
     fun `encoded refresh bridge preserves exact acknowledgment selectors and runtime identity`() {
         val fixture = fixture()
         val request = ManagedHostRequest.Refresh(fixture.idea.toString(), fixture.profile.toString(), "host", "update")

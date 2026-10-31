@@ -31,6 +31,23 @@ class HostRefreshRpcTest {
     private val json = Json { encodeDefaults = true }
 
     @Test
+    fun `settlement captures the marker before replacement and refresh never rereads its scope`(
+        @TempDir temporary: Path
+    ) = runTest {
+        val fixture = Fixture(temporary)
+        assertEquals(1, fixture.scopeReads)
+        assertEquals(HostRefreshStage.CACHE_PREPARATION, fixture.preparationObservations.single().stage)
+        assertEquals(
+            HostRefreshOutcome.MarkerPrepared(fixture.root.preparedMarker.snapshot),
+            fixture.preparationObservations.single().outcome,
+        )
+        fixture.observed = fixture.observed.copy(plugin = temporary.resolve("replacement-scope"))
+        val reply = fixture.reply()
+        assertTrue(reply.result is IdeLifecycleResult.HostRefreshRequested)
+        assertEquals(1, fixture.scopeReads)
+    }
+
+    @Test
     fun `a rejected frame budget never dispatches an SDK effect`(@TempDir temporary: Path) = runTest {
         val fixture = Fixture(temporary)
         val limits =
@@ -58,7 +75,8 @@ class HostRefreshRpcTest {
     fun `loaded option alone never advertises the refresh operation`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         val adapter = HostBundleRefreshAdapter { Refinement.Refined(fixture.observed) }
-        val capability = io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH
+        val capability =
+            io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
         assertTrue(capability in applicationLifecycleCapabilities(fixture.identity, adapter))
         fixture.observed = fixture.observed.copy(plugin = temporary.resolve("foreign"))
         assertFalse(capability in applicationLifecycleCapabilities(fixture.identity, adapter))
@@ -172,20 +190,53 @@ class HostRefreshRpcTest {
     }
 
     @Test
-    fun `another plugin path rejects before the ACK and SDK effect`(@TempDir temporary: Path) = runTest {
-        val fixture = Fixture(temporary)
-        fixture.observed = fixture.observed.copy(plugin = temporary.resolve("foreign"))
-        val reply = fixture.reply()
-        reply.write { result ->
-            assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_REFRESH_SCOPE_MISMATCH), result)
-            Refinement.Refined(Unit)
+    fun `marker preparation failure rejects settlement before a Host acknowledgment`(@TempDir temporary: Path) =
+        runTest {
+            val fixture = Fixture(temporary, IdeLifecycleFailure.HOST_REFRESH_SCOPE_MISMATCH)
+            assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_REFRESH_SCOPE_MISMATCH), fixture.settled)
+            assertEquals(
+                HostRefreshOutcome.Rejected(IdeLifecycleFailure.HOST_REFRESH_SCOPE_MISMATCH),
+                fixture.preparationObservations.single().outcome,
+            )
+            assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.REQUEST_CONFLICT), fixture.reply().result)
+            assertEquals(0, fixture.root.calls)
+            assertEquals(0, fixture.queued.size)
+            assertEquals(
+                IdeLifecycleResult.Blocked(IdeLifecycleFailure.PROJECT_BUSY),
+                fixture.settlement.stop(IdeLifecycleCommand.StopHost("host", "update")),
+            )
         }
-        assertEquals(0, fixture.queued.size)
+
+    @Test
+    fun `a new settlement with the same transaction cannot consume its old ticket`(@TempDir temporary: Path) = runTest {
+        val fixture = Fixture(temporary)
+        fixture.reply().write { Refinement.Refined(Unit) }
+        assertEquals(
+            IdeLifecycleResult.HostResumed("host", "update"),
+            fixture.settlement.resume(IdeLifecycleCommand.ResumeHost("host", "update")),
+        )
+        assertTrue(
+            fixture.settlement.settleForReload(IdeLifecycleCommand.SettleHostForReload("host", "update"))
+                is IdeLifecycleResult.HostSettled
+        )
+        fixture.queued.removeAt(0).invoke()
         assertEquals(0, fixture.root.calls)
         assertEquals(
-            HostRefreshOutcome.Rejected(IdeLifecycleFailure.HOST_REFRESH_SCOPE_MISMATCH),
-            fixture.observations.single().outcome,
+            HostRefreshOutcome.Rejected(IdeLifecycleFailure.REQUEST_CONFLICT),
+            fixture.observations.last().outcome,
         )
+        assertEquals(2, fixture.scopeReads)
+    }
+
+    @Test
+    fun `repeated settlement preserves the prepared marker without a new scope read`(@TempDir temporary: Path) {
+        val fixture = Fixture(temporary)
+        assertTrue(
+            fixture.settlement.settle(IdeLifecycleCommand.SettleHost("host", "update"))
+                is IdeLifecycleResult.HostSettled
+        )
+        assertEquals(1, fixture.scopeReads)
+        assertTrue(fixture.reply().result is IdeLifecycleResult.HostRefreshRequested)
     }
 
     @Test
@@ -238,10 +289,11 @@ class HostRefreshRpcTest {
         assertEquals("RESULT_TOO_LARGE", rejected.getValue("failure").jsonPrimitive.content)
     }
 
-    private class Fixture(temporary: Path) {
+    private class Fixture(temporary: Path, private val preparationFailure: IdeLifecycleFailure? = null) {
         val trace = mutableListOf<String>()
         val queued = mutableListOf<() -> Unit>()
         val observations = mutableListOf<HostRefreshObservation>()
+        val preparationObservations = mutableListOf<HostRefreshObservation>()
         val home = Files.createDirectory(temporary.toRealPath().resolve("idea"))
         val profile = Files.createDirectory(temporary.toRealPath().resolve("profile"))
         val plugins = Files.createDirectory(profile.resolve("plugins"))
@@ -256,20 +308,25 @@ class HostRefreshRpcTest {
                 IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
                 HostAutoReload.ENABLED,
             )
+        var scopeReads = 0
+        val root = QueueRoot(plugin, trace)
+        var observed = HostBundleRefreshObservation(home, profile, plugins, plugin, root)
+        val adapter = HostBundleRefreshAdapter {
+            scopeReads++
+            preparationFailure?.let { Refinement.Rejected(it) } ?: Refinement.Refined(observed)
+        }
         val settlement =
             HostedApplicationSettlement(
                 HostedApplicationAdmission(),
                 identity,
                 { HostNativeSettlement.Settled },
                 { false },
+                { adapter.admit(identity) },
+                preparationObservations::add,
             )
-        val root = QueueRoot(plugin, trace)
-        var observed = HostBundleRefreshObservation(home, profile, plugins, plugin, root)
         private val json = Json { encodeDefaults = true }
 
-        init {
-            settlement.settle(IdeLifecycleCommand.SettleHost("host", "update"))
-        }
+        val settled = settlement.settleForReload(IdeLifecycleCommand.SettleHostForReload("host", "update"))
 
         fun reply(): LifecycleReply {
             val command = IdeLifecycleCommand.RefreshHostBundle("host", "update")
@@ -279,7 +336,6 @@ class HostRefreshRpcTest {
                 hostRefreshReply(
                     decoded as IdeLifecycleCommand.RefreshHostBundle,
                     settlement,
-                    HostBundleRefreshAdapter { Refinement.Refined(observed) },
                     launch = { queued += it },
                     observe = observations::add,
                 )
@@ -288,6 +344,8 @@ class HostRefreshRpcTest {
     }
 
     private class QueueRoot(override val path: Path, private val trace: MutableList<String>) : HostBundleRefreshRoot {
+        override val preparedMarker =
+            (HostRefreshMarker.admit(HostRefreshMarkerSnapshot(100, 100, 10, 10)) as Refinement.Refined).value
         var calls = 0
         var submission: HostRefreshSubmission = HostRefreshSubmission.Submitted
         private var completion: (() -> Unit)? = null

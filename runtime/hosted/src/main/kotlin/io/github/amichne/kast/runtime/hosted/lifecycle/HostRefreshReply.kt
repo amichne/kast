@@ -17,28 +17,36 @@ private val hostRefreshJson = Json { encodeDefaults = true }
 internal fun applicationHostRefreshReply(
     command: IdeLifecycleCommand.RefreshHostBundle,
     settlement: HostedApplicationSettlement,
-    adapter: HostBundleRefreshAdapter,
     scope: CoroutineScope,
 ): LifecycleReply =
     hostRefreshReply(
         command,
         settlement,
-        adapter,
         launch = { action ->
             scope.launch(Dispatchers.IO) { action() }
             Unit
         },
-        observe = { observation ->
-            Logger.getInstance(HostBundleRefreshAdapter::class.java)
-                .info(
-                    "kast_host_refresh " +
-                        hostRefreshJson.encodeToString(HostRefreshObservation.serializer(), observation)
-                )
-        },
+        observe = ::recordHostRefresh,
     )
+
+internal fun recordHostRefresh(observation: HostRefreshObservation) {
+    Logger.getInstance(HostBundleRefreshAdapter::class.java)
+        .info("kast_host_refresh " + hostRefreshJson.encodeToString(HostRefreshObservation.serializer(), observation))
+}
+
+@Serializable
+internal data class HostRefreshMarkerSnapshot(
+    val cachedTimestampMillis: Long,
+    val physicalTimestampMillis: Long,
+    val cachedLength: Long,
+    val physicalLength: Long,
+)
 
 @Serializable
 internal enum class HostRefreshStage {
+    CACHE_PREPARATION,
+    MARKER_COMPARISON,
+    CONTENT_EVENTS,
     ADMISSION,
     DISPATCH,
     COMPLETION,
@@ -54,6 +62,19 @@ internal sealed interface HostRefreshOutcome {
 
     @Serializable @SerialName("COMPLETED") data object Completed : HostRefreshOutcome
 
+    @Serializable
+    @SerialName("MARKER_PREPARED")
+    data class MarkerPrepared(val marker: HostRefreshMarkerSnapshot) : HostRefreshOutcome
+
+    @Serializable
+    @SerialName("MARKER_COMPARED")
+    data class MarkerCompared(val marker: HostRefreshMarkerSnapshot) : HostRefreshOutcome
+
+    @Serializable
+    @SerialName("CONTENT_EVENTS")
+    data class ContentEvents(val before: Int, val after: Int, val marker: HostRefreshMarkerSnapshot) :
+        HostRefreshOutcome
+
     @Serializable @SerialName("REJECTED") data class Rejected(val reason: IdeLifecycleFailure) : HostRefreshOutcome
 }
 
@@ -66,7 +87,6 @@ internal data class HostRefreshObservation(
 internal fun hostRefreshReply(
     command: IdeLifecycleCommand.RefreshHostBundle,
     settlement: HostedApplicationSettlement,
-    adapter: HostBundleRefreshAdapter,
     launch: (() -> Unit) -> Unit,
     observe: (HostRefreshObservation) -> Unit,
 ): LifecycleReply {
@@ -80,11 +100,6 @@ internal fun hostRefreshReply(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return rejected(admitted.failure)
         }
-    val root =
-        when (val admitted = adapter.admit(ticket.identity)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return rejected(admitted.failure)
-        }
     record(HostRefreshStage.ADMISSION, HostRefreshOutcome.Admitted)
     return LifecycleReply.afterAcknowledgment(ticket.acknowledgment) {
         launch {
@@ -92,7 +107,7 @@ internal fun hostRefreshReply(
                 val submitted =
                     settlement.dispatchRefresh(ticket) {
                         record(HostRefreshStage.DISPATCH, HostRefreshOutcome.Started)
-                        root.submit { record(HostRefreshStage.COMPLETION, HostRefreshOutcome.Completed) }
+                        ticket.root.submit { record(HostRefreshStage.COMPLETION, HostRefreshOutcome.Completed) }
                     }
             ) {
                 HostRefreshSubmission.Submitted -> record(HostRefreshStage.DISPATCH, HostRefreshOutcome.Submitted)

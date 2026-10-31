@@ -38,5 +38,10 @@ internal fun applicationLifecycleCapabilities(
     val capabilities = IdeLifecycleCapabilityName.entries.toSet()
     return if (identity.autoReload == HostAutoReload.ENABLED && refresh.admit(identity) is Refinement.Refined)
         capabilities
-    else capabilities - IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH
+    else
+        capabilities -
+            setOf(
+                IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH,
+                IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH,
+            )
 }

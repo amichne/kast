@@ -66,6 +66,10 @@ sealed interface IdeLifecycleCommand : OperationRequest {
     data class SettleHost(val host: String, val transaction: String) : IdeLifecycleCommand
 
     @Serializable
+    @SerialName("settle_host_for_reload")
+    data class SettleHostForReload(val host: String, val transaction: String) : IdeLifecycleCommand
+
+    @Serializable
     @SerialName("resume_host")
     data class ResumeHost(val host: String, val transaction: String) : IdeLifecycleCommand
 
@@ -140,6 +144,7 @@ enum class IdeLifecycleFailure : OperationRejection {
     HOST_REFRESH_ROOT_UNAVAILABLE,
     HOST_REFRESH_SCOPE_MISMATCH,
     HOST_REFRESH_FAILED,
+    HOST_REFRESH_MARKER_UNSIGNALED,
 }
 
 @Serializable
@@ -272,6 +277,7 @@ enum class IdeLifecycleCapabilityName {
     HOST_RUNTIME_IDENTITY,
     HOST_NORMAL_STOP,
     HOST_RELOAD_REFRESH,
+    HOST_PREPARED_RELOAD_REFRESH,
 }
 
 @Serializable data class IdeHostBuildIdentity(val version: String, val sourceRevision: String, val sourceTree: String)

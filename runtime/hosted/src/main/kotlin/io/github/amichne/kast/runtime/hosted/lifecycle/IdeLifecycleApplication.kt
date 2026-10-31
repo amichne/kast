@@ -74,9 +74,16 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                     io.github.amichne.kast.protocol.contract.HostAutoReload.ENABLED
                 else io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED,
         )
+    private val hostRefresh = HostBundleRefreshAdapter(this)
     private val settlement =
-        HostedApplicationSettlement(admission, runtimeIdentity, native::settlement, native::hasActivePreparation)
-    private val hostRefresh = HostBundleRefreshAdapter()
+        HostedApplicationSettlement(
+            admission,
+            runtimeIdentity,
+            native::settlement,
+            native::hasActivePreparation,
+            prepareRefresh = { hostRefresh.admit(runtimeIdentity) },
+            observe = ::recordHostRefresh,
+        )
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =
         scope.launch(Dispatchers.IO) {
@@ -204,7 +211,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             if (!lifecycleHostModeSupported()) {
                 LifecycleReply.immediate(IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE))
             } else if (command is IdeLifecycleCommand.RefreshHostBundle) {
-                applicationHostRefreshReply(command, settlement, hostRefresh, scope)
+                applicationHostRefreshReply(command, settlement, scope)
             } else {
                 val result = submit(command)
                 if (result is IdeLifecycleResult.HostStopRequested)
@@ -220,6 +227,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         if (received is IdeLifecycleCommand.Inspect)
             return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)
+        if (received is IdeLifecycleCommand.SettleHostForReload) return settlement.settleForReload(received)
         if (received is IdeLifecycleCommand.ResumeHost) return settlement.resume(received)
         if (received is IdeLifecycleCommand.StopHost) return settlement.stop(received)
         if (received is IdeLifecycleCommand.Status) {

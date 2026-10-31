@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import unittest
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
+from typing import cast
 
 import managed_release as release
 import managed_update_contract as contract
@@ -60,7 +62,34 @@ class BridgeFixture:
     legacyProfile: LegacyProfileFixture | None = None
 
 
+@dataclass(frozen=True)
+class SettlementReplyFixture:
+    host: str
+    transaction: str
+    runtimeIdentity: contract.RuntimeIdentity
+    type: str = "host_settled"
+
+
 class ManagedUpdateContractTest(unittest.TestCase):
+    def reload_ack(
+        self, loaded: contract.Loaded, transaction: str
+    ) -> contract.ReloadAcknowledgment:
+        request = contract.SettlementRequest(loaded, transaction, contract.SettlementAction.RELOAD)
+        reply = json.loads(
+            json.dumps(
+                asdict(
+                    SettlementReplyFixture(
+                        loaded.identity.hostLifetime, transaction, loaded.identity
+                    )
+                )
+            )
+        )
+        admitted = contract.admit_settlement_reply(request, reply)
+        if not isinstance(admitted, contract.ReloadAcknowledgment):
+            self.fail("matching reload acknowledgement rejected")
+        self.assertIs(request, admitted.request)
+        return admitted
+
     def setUp(self) -> None:
         self.process = contract.ProcessIdentity(
             123, 456, "/Applications/IDE.app/Contents/MacOS/idea"
@@ -91,7 +120,7 @@ class ManagedUpdateContractTest(unittest.TestCase):
             ),
         )
         self.loaded = contract.Loaded(
-            self.process, self.runtime, self.hosted, contract.HostRefreshCapability.AVAILABLE
+            self.process, self.runtime, self.hosted, contract.HostRefreshCapability.PREPARED
         )
 
     def test_strategy_needs_loaded_auto_reload_and_compatible_layout(self) -> None:
@@ -137,23 +166,28 @@ class ManagedUpdateContractTest(unittest.TestCase):
                 "262.1",
                 CompatibilityFixture(self.hosted),
                 self.runtime,
-                capabilities=("HOST_RELOAD_REFRESH",),
+                capabilities=("HOST_PREPARED_RELOAD_REFRESH",),
             ),
         )
         loaded = self.parse_fixture(value)
         self.assertEqual(self.loaded, loaded)
         if not isinstance(loaded, contract.Loaded):
             self.fail("new capability must preserve Loaded")
-        self.assertIs(contract.HostRefreshCapability.AVAILABLE, loaded.refreshCapability)
+        self.assertIs(contract.HostRefreshCapability.PREPARED, loaded.refreshCapability)
         self.assertEqual(self.runtime, loaded.identity)
         self.assertIs(contract.Strategy.HOT_RELOAD, contract.choose_strategy(loaded, True, False))
         self.assertIs(
             contract.Strategy.NORMAL_RESTART, contract.choose_strategy(loaded, False, True)
         )
         held = contract.HeldSettlement(loaded, "transaction")
-        self.assertEqual(loaded, contract.RefreshSettlement(held.host, held.transaction).host)
+        self.assertEqual(
+            loaded,
+            contract.PreparedSettlement.from_reload_ack(
+                self.reload_ack(held.host, held.transaction)
+            ).host,
+        )
         with self.assertRaises(ValueError):
-            _ = contract.RefreshSettlement(
+            _ = self.reload_ack(
                 replace(loaded, refreshCapability=contract.HostRefreshCapability.UNAVAILABLE),
                 "transaction",
             )
@@ -173,6 +207,90 @@ class ManagedUpdateContractTest(unittest.TestCase):
         ):
             with self.subTest(failure=failure), self.assertRaises(ValueError):
                 _ = contract.RefreshTransition(failure)
+
+    def test_legacy_refresh_capability_never_grants_prepared_reload(self) -> None:
+        legacy = replace(self.loaded, refreshCapability=contract.HostRefreshCapability.AVAILABLE)
+        strategy = contract.choose_strategy(legacy, True, False)
+        self.assertEqual(
+            contract.Rejected(contract.Stage.PREPARATION, contract.Failure.RESTART_REQUIRED),
+            strategy,
+        )
+        self.assertIs(
+            contract.Strategy.NORMAL_RESTART, contract.choose_strategy(legacy, True, True)
+        )
+        with self.assertRaises(ValueError):
+            _ = self.reload_ack(legacy, "held")
+
+    def test_capability_and_transaction_alone_cannot_mint_prepared_settlement(self) -> None:
+        factory = cast(Callable[..., object], contract.PreparedSettlement.from_reload_ack)
+        with self.assertRaises(TypeError):
+            _ = factory(self.loaded, "no-acknowledgement")
+        reply = SettlementReplyFixture(
+            self.loaded.identity.hostLifetime, "checked", self.loaded.identity
+        )
+        ordinary = contract.admit_settlement_reply(
+            contract.SettlementRequest(self.loaded, "checked", contract.SettlementAction.ORDINARY),
+            json.loads(json.dumps(asdict(reply))),
+        )
+        with self.assertRaises(TypeError):
+            _ = factory(ordinary)
+        request = contract.SettlementRequest(
+            self.loaded, "checked", contract.SettlementAction.RELOAD
+        )
+        admitted = contract.admit_settlement_reply(request, json.loads(json.dumps(asdict(reply))))
+        if not isinstance(admitted, contract.ReloadAcknowledgment):
+            self.fail("matching reload ACK rejected")
+        prepared = contract.PreparedSettlement.from_reload_ack(admitted)
+        self.assertIs(admitted, prepared.acknowledgement)
+        for changed in (
+            replace(reply, host="wrong-host"),
+            replace(reply, transaction="wrong-transaction"),
+            replace(
+                reply, runtimeIdentity=replace(self.loaded.identity, hostLifetime="wrong-runtime")
+            ),
+        ):
+            with self.subTest(changed=changed):
+                self.assertIsInstance(
+                    contract.admit_settlement_reply(
+                        request, json.loads(json.dumps(asdict(changed)))
+                    ),
+                    contract.Rejected,
+                )
+
+    def test_prepared_and_legacy_capability_facts_survive_decode_independently(self) -> None:
+        for names, expected in (
+            ((), contract.HostRefreshCapability.UNAVAILABLE),
+            (("HOST_RELOAD_REFRESH",), contract.HostRefreshCapability.AVAILABLE),
+            (("HOST_PREPARED_RELOAD_REFRESH",), contract.HostRefreshCapability.PREPARED),
+            (
+                ("HOST_RELOAD_REFRESH", "HOST_PREPARED_RELOAD_REFRESH"),
+                contract.HostRefreshCapability.LEGACY_AND_PREPARED,
+            ),
+        ):
+            with self.subTest(names=names):
+                value = BridgeFixture(
+                    (self.process,),
+                    InspectionFixture(
+                        self.runtime.hostLifetime,
+                        self.runtime.ideaHome,
+                        "262.1",
+                        CompatibilityFixture(self.hosted),
+                        self.runtime,
+                        capabilities=names,
+                    ),
+                )
+                loaded = self.parse_fixture(value)
+                if not isinstance(loaded, contract.Loaded):
+                    self.fail("capability fixture rejected")
+                self.assertIs(expected, loaded.refreshCapability)
+                self.assertEqual(self.runtime, loaded.identity)
+                self.assertEqual(
+                    expected.prepared,
+                    contract.choose_strategy(loaded, True, False) == contract.Strategy.HOT_RELOAD,
+                )
+                if not expected.prepared:
+                    with self.assertRaises(ValueError):
+                        _ = self.reload_ack(loaded, "held")
 
     def test_selected_identity_and_contract_both_need_equality(self) -> None:
         identity = release.BuildIdentity("v1.2.3", "1.2.3", "a" * 40, "b" * 40)

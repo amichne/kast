@@ -44,6 +44,7 @@ internal fun executeManagedHost(
                 is ManagedHostRequest.LegacyStop -> stopPriorHost(target, request, processes, inspectLegacy, stopLegacy)
                 is ManagedHostRequest.Inspect -> inspectRunningHost(target, request, processes, exchange, inspectLegacy)
                 is ManagedHostRequest.Settle,
+                is ManagedHostRequest.SettleReload,
                 is ManagedHostRequest.Resume,
                 is ManagedHostRequest.Stop,
                 is ManagedHostRequest.Refresh -> changeRunningHost(target, request, processes, exchange)
@@ -184,6 +185,8 @@ private fun changeRunningHost(
     val command =
         when (request) {
             is ManagedHostRequest.Settle -> IdeLifecycleCommand.SettleHost(request.host, request.transaction)
+            is ManagedHostRequest.SettleReload ->
+                IdeLifecycleCommand.SettleHostForReload(request.host, request.transaction)
             is ManagedHostRequest.Resume -> IdeLifecycleCommand.ResumeHost(request.host, request.transaction)
             is ManagedHostRequest.Stop -> IdeLifecycleCommand.StopHost(request.host, request.transaction)
             is ManagedHostRequest.Refresh -> IdeLifecycleCommand.RefreshHostBundle(request.host, request.transaction)
@@ -248,14 +251,8 @@ private fun readmitTarget(
 
 private fun matchesManagedHostResult(command: IdeLifecycleCommand, result: IdeLifecycleResult): Boolean =
     when (command) {
-        is IdeLifecycleCommand.SettleHost ->
-            when (result) {
-                is IdeLifecycleResult.HostSettled ->
-                    result.host == command.host && result.transaction == command.transaction
-                is IdeLifecycleResult.HostSettling ->
-                    result.host == command.host && result.transaction == command.transaction
-                else -> false
-            }
+        is IdeLifecycleCommand.SettleHost -> matchesSettlementResult(command.host, command.transaction, result)
+        is IdeLifecycleCommand.SettleHostForReload -> matchesSettlementResult(command.host, command.transaction, result)
         is IdeLifecycleCommand.ResumeHost ->
             result is IdeLifecycleResult.HostResumed &&
                 result.host == command.host &&
@@ -268,5 +265,12 @@ private fun matchesManagedHostResult(command: IdeLifecycleCommand, result: IdeLi
             result is IdeLifecycleResult.HostRefreshRequested &&
                 result.host == command.host &&
                 result.transaction == command.transaction
+        else -> false
+    }
+
+private fun matchesSettlementResult(host: String, transaction: String, result: IdeLifecycleResult): Boolean =
+    when (result) {
+        is IdeLifecycleResult.HostSettled -> result.host == host && result.transaction == transaction
+        is IdeLifecycleResult.HostSettling -> result.host == host && result.transaction == transaction
         else -> false
     }

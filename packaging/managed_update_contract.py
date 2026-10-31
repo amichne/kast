@@ -23,6 +23,7 @@ class Failure(StrEnum):
     HOST_REJECTED = "HOST_REJECTED"
     HOST_SETTLEMENT_TIMEOUT = "HOST_SETTLEMENT_TIMEOUT"
     HOST_ACTIVATION_TIMEOUT = "HOST_ACTIVATION_TIMEOUT"
+    RELOAD_SIGNAL_REJECTED = "RELOAD_SIGNAL_REJECTED"
     FILESYSTEM_REJECTED = "FILESYSTEM_REJECTED"
     CONTROL_REJECTED = "CONTROL_REJECTED"
     HOST_REPLACEMENT_REJECTED = "HOST_REPLACEMENT_REJECTED"
@@ -121,6 +122,12 @@ class Stopped:
 class HostRefreshCapability(StrEnum):
     UNAVAILABLE = "UNAVAILABLE"
     AVAILABLE = "HOST_RELOAD_REFRESH"
+    PREPARED = "HOST_PREPARED_RELOAD_REFRESH"
+    LEGACY_AND_PREPARED = "LEGACY_AND_PREPARED"
+
+    @property
+    def prepared(self) -> bool:
+        return self in (HostRefreshCapability.PREPARED, HostRefreshCapability.LEGACY_AND_PREPARED)
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,12 +159,62 @@ class HeldSettlement:
             raise ValueError("a held settlement needs its exact bounded transaction")
 
 
+class SettlementAction(StrEnum):
+    ORDINARY = "SETTLE"
+    RELOAD = "SETTLE_RELOAD"
+
+    @property
+    def operation(self) -> Literal["SETTLE", "SETTLE_RELOAD"]:
+        return "SETTLE_RELOAD" if self is SettlementAction.RELOAD else "SETTLE"
+
+
 @dataclass(frozen=True, slots=True)
-class RefreshSettlement(HeldSettlement):
+class SettlementRequest:
+    host: Loaded
+    transaction: str
+    action: SettlementAction
+
     def __post_init__(self) -> None:
-        HeldSettlement.__post_init__(self)
-        if self.host.refreshCapability != HostRefreshCapability.AVAILABLE:
-            raise ValueError("refresh needs the settled Host's explicit capability")
+        object.__setattr__(self, "action", SettlementAction(self.action))
+        if (
+            not self.transaction
+            or len(self.transaction) > 128
+            or any(character.isspace() for character in self.transaction)
+        ):
+            raise ValueError(
+                "a settlement request needs its closed operation and bounded transaction"
+            )
+        if self.action is SettlementAction.RELOAD and (
+            not self.host.refreshCapability.prepared or self.host.identity.autoReload != "ENABLED"
+        ):
+            raise ValueError("reload settlement needs the Host's explicit prepared capability")
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ReloadAcknowledgment:
+    request: SettlementRequest
+
+    def __init__(self, *_arguments: object, **_keywords: object) -> None:
+        raise TypeError("reload acknowledgements come only from settlement reply admission")
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class PreparedSettlement(HeldSettlement):
+    acknowledgement: ReloadAcknowledgment
+
+    def __init__(self, acknowledgement: object) -> None:
+        if not isinstance(acknowledgement, ReloadAcknowledgment):
+            raise TypeError("a prepared settlement needs its checked reload acknowledgement")
+        object.__setattr__(self, "acknowledgement", acknowledgement)
+        object.__setattr__(self, "host", acknowledgement.request.host)
+        object.__setattr__(self, "transaction", acknowledgement.request.transaction)
+
+    @classmethod
+    def from_reload_ack(cls, acknowledgement: ReloadAcknowledgment) -> PreparedSettlement:
+        return cls(acknowledgement)
+
+
+type RefreshSettlement = PreparedSettlement
 
 
 class HostPollState(StrEnum):
@@ -169,7 +226,7 @@ class HostPollState(StrEnum):
     UNAVAILABLE = "HOST_HANDSHAKE_UNAVAILABLE"
     SETTLING = "HOST_STILL_SETTLING"
     ACK_INVALID = "HOST_REFRESH_ACK_INVALID"
-    REFRESH_UNAVAILABLE = "HOST_RELOAD_REFRESH_UNAVAILABLE"
+    REFRESH_UNAVAILABLE = "HOST_PREPARED_RELOAD_REFRESH_UNAVAILABLE"
     SETTLEMENT_CHANGED = "SETTLEMENT_IDENTITY_CHANGED"
 
 
@@ -231,6 +288,35 @@ type RefreshObservation = RefreshRequested | RefreshTransition
 
 
 type Snapshot = Stopped | Loaded | Legacy
+
+
+class SettlementProgress(StrEnum):
+    PENDING = "PENDING"
+
+
+def admit_settlement_reply(
+    request: SettlementRequest, reply: object
+) -> HeldSettlement | ReloadAcknowledgment | SettlementProgress | Rejected:
+    if not release.mapping(reply) or reply.get("type") not in ("host_settled", "host_settling"):
+        return Rejected(Stage.HOST_SETTLEMENT, Failure.HOST_REJECTED)
+    if (
+        reply.get("host") != request.host.identity.hostLifetime
+        or reply.get("transaction") != request.transaction
+    ):
+        return Rejected(
+            Stage.HOST_SETTLEMENT, Failure.CONCURRENT_CHANGE, HostPollState.SETTLEMENT_CHANGED.value
+        )
+    if reply["type"] == "host_settling":
+        return SettlementProgress.PENDING
+    if parse_runtime(reply.get("runtimeIdentity")) != request.host.identity:
+        return Rejected(
+            Stage.HOST_SETTLEMENT, Failure.CONCURRENT_CHANGE, HostPollState.SETTLEMENT_CHANGED.value
+        )
+    if request.action is SettlementAction.ORDINARY:
+        return HeldSettlement(request.host, request.transaction)
+    acknowledgement = object.__new__(ReloadAcknowledgment)
+    object.__setattr__(acknowledgement, "request", request)
+    return acknowledgement
 
 
 def parse_process(value: object) -> ProcessIdentity | Failure:
@@ -336,7 +422,12 @@ def parse_inspection(value: object, home: str, profile: str) -> Snapshot | Rejec
                 ):
                     return failure
                 refresh = (
-                    HostRefreshCapability.AVAILABLE
+                    HostRefreshCapability.LEGACY_AND_PREPARED
+                    if "HOST_RELOAD_REFRESH" in capabilities
+                    and "HOST_PREPARED_RELOAD_REFRESH" in capabilities
+                    else HostRefreshCapability.PREPARED
+                    if "HOST_PREPARED_RELOAD_REFRESH" in capabilities
+                    else HostRefreshCapability.AVAILABLE
                     if "HOST_RELOAD_REFRESH" in capabilities
                     else HostRefreshCapability.UNAVAILABLE
                 )
@@ -430,8 +521,8 @@ def choose_strategy(
     match snapshot:
         case Stopped():
             return Strategy.STOPPED
-        case Loaded(identity=identity, refreshCapability=HostRefreshCapability.AVAILABLE) if (
-            reload_compatible and identity.autoReload == "ENABLED"
+        case Loaded(identity=identity, refreshCapability=capability) if (
+            capability.prepared and reload_compatible and identity.autoReload == "ENABLED"
         ):
             return Strategy.HOT_RELOAD
         case Loaded() | Legacy():
