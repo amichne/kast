@@ -32,6 +32,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt
+  - id: openwiki-source-3ca2bb7453e21d39c96827be
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
   - id: openwiki-source-5a685931788e905bc230c148
@@ -46,10 +48,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "codex", at: "2026-10-31T09:13:30.169Z" }
+generated: { by: "codex", at: "2026-10-31T10:29:42.821Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T09:13:30.169Z
+    at: 2026-10-31T10:29:42.821Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -81,7 +83,13 @@ Uncertain retirement or retained storage remains visible for the next recovery d
 
 `ManagedUpgrade` examines pending replacement records and the shutdown fence before policy or release resolution.
 A pending transaction invokes the admitted installed bridge with `--recover-only` and the selected output options.
-An absent or rejected bridge returns finite `RECOVERY_REQUIRED` without release access or another child.
+If installed admission fails, `RecordedRecoveryInstaller` admits only the candidate identity from the replacement receipt.
+Admission binds canonical paths, the current owner, manifest digest, exact payload inventory, file modes, and installer capability.
+The candidate can occupy its recorded stage, the installation directory, or the journal quarantine.
+Legacy version directories never supply this recovery capability.
+This capability invokes only `--recover-only` without release access or fresh selection.
+Rejected admission returns finite `RECOVERY_REQUIRED` without a child.
+An uncertain child invocation never triggers another recovery invocation.
 The wrapper returns the recovery child's terminal result and does not continue into a new selection.
 
 The outer recovery owner reads the captured journal and exact prior composition.

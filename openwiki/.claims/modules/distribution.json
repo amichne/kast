@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7e3a18e0972dabf6421912ec9f6dffe681e05ce1ab321479c4a2160fc3109391",
+  "pageVersion": "sha256:40b571970cc2c6c143ccb63d4b0989d79f4ea98019f3b0c1280da7f84915bf9e",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:f2628fbf9a5c955de2e73ac7590c39d797fbdc83087f4876f26532f727ca572e"
+          "version": "repo-file-v1:sha256:0e03f62754a40e35ca38e7468f3307d1a7b12b4504f07d56024a94c2dc4e6db7"
         }
       ]
     },
@@ -108,7 +108,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:f2628fbf9a5c955de2e73ac7590c39d797fbdc83087f4876f26532f727ca572e"
+          "version": "repo-file-v1:sha256:0e03f62754a40e35ca38e7468f3307d1a7b12b4504f07d56024a94c2dc4e6db7"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
@@ -416,7 +416,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:5db730d8178a184ef15d1cc1f64f4ff4c2ff3960fdce7c69a6aac423f863aea4"
+          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -427,6 +427,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T09:49:39.493Z"
+    "at": "2026-10-31T10:29:42.821Z"
   }
 }
