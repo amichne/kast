@@ -226,7 +226,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt",
-            "sha256": "b9f8d0dfa349485f1cadeb16a4ffc6ca5c86bb4add9a06d9e6e6617136b625ea"
+            "sha256": "1526f0c660ab1499a6eb9916a76cc5a04db3a61ac1d145cf563949ed1d57f373"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",
@@ -234,7 +234,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "f3f858de247a63dd0aeb34c933e09fd0903b0da83a139659321853d55ab821f9"
+            "sha256": "3176fd190ae5d6d9f8e839017fd50c0bbfd85b6138ccb0fcf8123f11e53b8082"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
