@@ -1,155 +1,123 @@
 ---
 title: "Manage Kast"
-description: "Inspect, stop, reinstall, upgrade, connect, disconnect, or uninstall the owned installation."
+description: "Inspect installed and loaded builds, update from the main channel, and interpret installation and recovery outcomes."
 icon: "folder-open"
 ---
 
-Use these steps to change the owned installation. Before a lifecycle action, save project work and finish active calls.
+Use the installed `kast` CLI to inspect and update Kast.
+Save project work before an update. Start fresh agent sessions after a successful update.
 
-1. [Inspect the installation.](#1-inspect-the-installation)
-2. [Choose upgrade or recorded-version recovery.](#2-upgrade-a-compatible-installation)
-3. [Use force reset only for its stated scope.](#4-reset-only-after-ownership-recovery-fails)
+1. [Inspect installed and loaded builds.](#1-inspect-the-installation)
+2. [Update from the development channel.](#2-upgrade-a-compatible-installation)
+3. [Read the terminal outcome.](#lifecycle-result-contract)
+4. [Resolve unfinished recovery.](#4-reset-only-after-ownership-recovery-fails)
 
 <a id="inspect-the-installation" />
 
 ## 1. Inspect the installation
 
 ```shell
-kast status
+kast status --json
 ```
 
-Read registrations and live service state on their own. Registration shows an installed integration. It does not prove a ready workspace or live semantic authority.
+Status keeps the installed build, loaded Host, update policy, and unfinished transaction separate.
+It reads passive runtime evidence without starting Java or a Host lifecycle action.
+An unavailable loaded identity does not prove that no Host runs.
+
+Installed files do not prove that IDEA loaded them.
+Host activation does not prove project readiness or semantic completion.
 
 <a id="upgrade" />
 
 ## 2. Upgrade a compatible installation
 
-Wait for active calls to finish. Start the upgrade after you save source work.
+List selectable builds and preview the latest development build:
 
 ```shell
-kast upgrade
+kast versions
+kast upgrade --channel main --dry-run
 ```
 
-Upgrade stops owned services and interrupts sessions. After success, restart IDEA and clients. Then start fresh sessions and calls. Upgrade does not start a Codex broker. Its MCP session starts IntelliJ preparation when the client connects. If the Codex plugin is installed, run `kast plugin codex` to refresh its cached files.
+A successful preview returns `PLANNED`. It makes no installation changes and does not restart IDEA.
 
-<Accordion title="Upgrade Control without replacing Host">
-  Control supplies the command, coordinator, agent adapters, and sessions. Host supplies the IDEA plugin and semantic runtime.
+Apply the update:
 
-  ```shell
-  kast upgrade --control-only
-  ```
+```shell
+kast upgrade --channel main
+```
 
-  This command needs a running compatible Host. It keeps IDEA and its plugin files. Control sessions can stop during the upgrade.
+If the running Host needs a normal IDEA restart, permit it explicitly:
 
-  Kast checks the Host contract before shutdown and after startup. If it fails, Kast restores the previous Control or reports the need for recovery.
+```shell
+kast upgrade --channel main --restart-ide
+```
 
-  [Compatibility](/reference/compatibility) checks protocol, registry, schema, supported features, and IDEA admission. Equal version numbers alone do not prove that components work together.
-</Accordion>
+Without that permission, a necessary restart returns `RESTART_REQUIRED` before installation changes.
+Kast admits the selected artifacts before replacement.
+A compatible running Host can use reload instead of a normal restart.
 
-<Accordion title="Load a Host update">
-  For Host-only installation, use the public installer with `--host-only --version <host-version>`. Restart IDEA to load the plugin.
-
-  Hosted changes use a private local endpoint and native workspace admission. Installation does not create approval keys.
-
-</Accordion>
+For another IDEA installation, add `--idea-home` with the exact app path.
+Use the [selection reference](/reference/installation#pin-a-published-build) for exact version and commit pins.
 
 <a id="stop-and-reinstall" />
+<span id="3-stop-and-reinstall-a-recorded-version" />
 
-## 3. Stop and reinstall a recorded version
-
-Before stop, quit the selected IDEA instance. Close affected agent connections. Then request retirement and recovery of the recorded version.
-
-```shell
-kast stop --json
-kast reinstall --json
-```
-
-`stop` fences new calls and automatic restart before retirement. It disables the coordinator. It waits up to 30 seconds for recorded calls and MCP sessions.
-
-The installed payload, settings, and registrations stay in place. `--force` asks to retire recorded tool processes. Their process identities have to pass admission first.
-
-Before a signal, Kast checks PID start time, main class, and installed library digests. If IDEA is live, it returns `HOST_RESTART_REQUIRED`.
-
-If shutdown rejects, keep the fence. Payload replacement cannot continue through failed shutdown.
-
-After shutdown succeeds, `reinstall` installs the recorded version. It removes the exact owned shutdown fence. It restores supported integrations. It does not start a coordinator. Recorded Codex registrations migrate through the plugin owner.
-
-If payload completion fails, Kast keeps the fence and reports its stage. Inspect `kast status --json` before another recovery try.
-
-The published installer can resume a valid shutdown. Routine replacement first retires the prior installation. It then checks which state to keep.
-
-If retirement or payload replacement fails, recovery can restore the predecessor. The result reports that recovery outcome.
+## 3. Read the update outcome
 
 ### Lifecycle result contract
 
-JSON stdout reports `STOPPED`, `REINSTALLED`, `REJECTED`, or `REINSTALLATION_PENDING`. Stage evidence goes to stderr. A failed result exits with code 1. Force reinstall reports `RESET_INSTALLED` after payload and fence work is complete. That result claims no service generation or readiness.
+Add `--json` to get one structured terminal result.
+Stage evidence goes to stderr.
 
-The installed `management-lifecycle.schema.json` owns exact variants. Older payloads without fence capability reject before lifecycle effects.
+| Outcome | Meaning | Exit |
+| --- | --- | --- |
+| `ACTIVATED` | Selected files and each affected running Host match the selected build and contract. | Zero |
+| `INSTALLED_NOT_RUNNING` | The planned stopped-IDE path completed. No affected IDEA instance runs. | Zero |
+| `REJECTED` | Preparation rejected before retirement or active installation changes. | Nonzero |
+| `ROLLED_BACK` | The exact prior installation or prior absence returned with the necessary runtime and profile facts. | Nonzero |
+| `RECOVERY_REQUIRED` | Settlement, activation, or restoration remains unproved. Kast keeps its fence and recovery evidence. | Nonzero |
+
+A failed promised reload or restart cannot become `INSTALLED_NOT_RUNNING` merely because IDEA stopped.
+A successful file replacement alone does not prove `ACTIVATED`.
 
 ### Workspace recovery after replacement
 
-A later authorized demand can check a missing or mismatched Host again. After a Host update, restart IDEA before new semantic admission.
+For `INSTALLED_NOT_RUNNING`, start IDEA before a fresh agent session.
+For `ACTIVATED`, start a fresh agent session in the intended repository or worktree.
 
-Setup history does not prove readiness forever. Its lookup store has a fixed size. It can reclaim older final records while keeping results that are still held.
-
-A reclaimed ID returns `UNKNOWN_OPERATION`. That result cannot tell an expired record apart from an ID that Kast never issued.
-
-A recovery step does not replay a write. [Lifecycles](/reference/lifecycles) explains project setup and how requests end.
+An update does not replay an interrupted source change.
+Inspect the source and change record before another write.
 
 <a id="force-reset" />
+<span id="4-reset-only-after-ownership-recovery-fails" />
 
-## 4. Reset only after ownership recovery fails
+## 4. Resolve unfinished recovery
 
-Force reset erases installed state and has no rollback after erasure. Use it only when that reset scope matches your recovery need.
+If the result is `RECOVERY_REQUIRED`, keep the reported recovery evidence.
+Resolve the named failure before another update.
 
 ```shell
-kast uninstall --force --json
-kast reinstall --force --json
+kast status --json
+kast upgrade --channel main --json
 ```
 
-Reset fences startup and moves the installation aside. It then retires processes within its scope. If retirement fails, it keeps a recovery path.
+When an unfinished transaction exists, the next upgrade recovers its recorded build selection.
+That recovery does not resolve a newer build.
+Kast does not discard unknown or corrupt evidence to manufacture success.
 
-Shared IDEA and Gradle processes remain under your control. The outer lock files stay in place.
+<span id="reset-outcomes" />
 
-Reset removes `$HOME/.kast` state, `$HOME/.local/share/.kast-*` artifacts, and the public command.
-
-It unlinks symlinks without reading their targets. It rejects filesystem roots, HOME, and ancestors of HOME as targets to delete.
-
-Force reinstall selects the latest release from the saved channel. It installs Control and Host and repairs valid recorded connections.
-
-Success returns `RESET_INSTALLED`, version, installation path, and command path. Restart IDEA and affected clients after success.
-
-The public installer uses this reset with `--force`. A developer installation requests it by default after archive admission.
-
-`--dry-run` keeps files and registrations. A version-pinned installation can use newer recovery code whose checksum passed admission. It still keeps the selected installation version.
-
-### Reset outcomes
-
-The closed variants include `REMOVED`, `RESET_INSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, and `RESET_REJECTED`.
-
-If installation fails, the result is `RESET_REJECTED`. If payload or fence work fails after staging, it is `RESET_REINSTALLATION_PENDING`. Failed outcomes exit with code 1.
-
-If a result reports `recoveryPath`, keep that path. Check the named failed stage before another reset.
+A rollback restores the prior update policy.
+Interrupted agent sessions stay stopped after restoration.
+Neither restored files nor removal of temporary files proves that the prior Host runs again.
 
 ## Change agents
 
-```shell
-kast connect pi
-kast disconnect copilot
-```
+Use [agent setup](/reference/integrations) to install guidance for the selected agent.
+If the update reports `HARNESS_REFRESH_REQUIRED`, repeat that setup before a fresh session.
 
-Restart a disconnected client to unload its integration. Other clients and the shared daemon keep their own lifecycle.
+<span id="uninstall" />
+<span id="explicit-workspace-control-in-the-hosted-app-server" />
 
-## Uninstall
-
-```shell
-kast uninstall
-```
-
-If removal fails, keep ownership and recovery evidence. Resolve its named cause before another try.
-
-## Explicit workspace control in the hosted App Server
-
-Hosted `workspace_lifecycle` can inspect, present, release, or close a project. Direct MCP and Tool RPC omit that tool.
-
-Before a project action, check the installed schema and the authority it needs. Disconnect, release, and project closure have different effects.
+Installation, agent guidance, and project readiness describe separate facts.
+Use [Lifecycles](/reference/lifecycles) for project admission and request completion.

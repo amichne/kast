@@ -15,7 +15,8 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <span id="what-kast-adds" />
 
-Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis. Connect it to Codex, Copilot, or Pi, then ask about the code you already work on.
+Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis.
+Use the native `kast` command with Codex, Copilot, or Pi to investigate your Kotlin code.
 
 <span id="try-it-on-your-project" />
 
@@ -23,7 +24,7 @@ Kast gives your coding agent source relationships from IntelliJ IDEA's compiler 
 
 <Columns cols={1}>
   <Card title="Set up Kast" icon="arrow-right" href="/start">
-    Install Kast, restart your tools, and ask your first question.
+    Select a development build, install agent guidance, and ask your first question.
   </Card>
 </Columns>
 
@@ -40,10 +41,11 @@ For Apple silicon Macs, Kotlin Gradle projects, and IntelliJ IDEA 262. [Setup re
 Point your agent at a function you care about.
 
 <Prompt description="Before you change a function" actions={["copy"]}>
-Use Kast to find the callers of this function. Show the source locations and explain how they use it.
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
 
 Continue the task with your agent, or try [another question](/search).
+Use the [CLI reference](/reference/cli) for terminal commands. MCP is optional.
 
 <span id="a-name-match-does-not-explain-a-value-path" />
 

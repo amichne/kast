@@ -5,7 +5,9 @@ icon: "plug"
 keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
 ---
 
-The bundled plugin exposes one task MCP server over stdio.
+MCP is an optional composition selected with `kast install codex --mcp`, `kast install copilot --mcp`, or `kast install pi --mcp`.
+The default agent guidance uses the native [Kast CLI](/reference/cli).
+The optional composition exposes one task MCP server over stdio.
 Codex, Copilot, and Pi use the same task catalog.
 The client starts the process in the exact repository or worktree.
 The server uses the installed Tool RPC without changes to its binary or wire shapes.
@@ -67,6 +69,5 @@ Cancellation stops the child, but submission or effects can remain uncertain. Ne
 ## Source and integration
 
 The plugin owns `skills/kast/scripts/tasks.py` and `service.py`.
-The Copilot SDK adapter consumes the same catalog and service.
 The [integration guide](/reference/integrations) describes setup and dependencies.
 The [Tool RPC reference](/reference/rpc-catalog) describes the unchanged underlying transport.

@@ -1,97 +1,107 @@
 ---
 title: "Set up Kast"
 sidebarTitle: "Set up"
-description: "Install the stable Kast release, connect Codex, Copilot, or Pi, and ask a useful question about a function in your own Kotlin project."
+description: "Select the latest Kast development build, install CLI guidance for your agent, and ask a useful question about your Kotlin project."
 keywords:
-  - "install"
+  - "CLI"
   - "Codex"
   - "Copilot"
   - "Pi"
   - "IntelliJ IDEA"
-icon: "download"
+icon: "terminal"
 hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Connect Kast to the agent you already use. These steps install the stable release.
+Use Kast through its native CLI with the agent you already use.
+These steps assume that `kast` is installed and available in your terminal.
 
-## Before you install
+## Before you start
 
-Use an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR. Install your chosen agent CLI and Python 3.9–3.14, available as `python3`.
+<span id="before-you-install" />
 
-## 1. Install Kast
+Use an Apple silicon Mac and a Kotlin Gradle project.
+Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Install your chosen agent CLI.
+
+1. Select the development build.
+2. Install your agent's CLI guidance.
+3. Ask about your code.
+
+## 1. Select the development build
+
+<span id="1-install-kast" />
+
+Use the latest qualified build from main:
+
+```shell
+kast upgrade --channel main
+```
+
+The `main` channel tracks qualified development builds.
+The installer reports the selected build and its activation outcome.
+If it reports a restart requirement, repeat the command with `--restart-ide` to permit a normal IDEA restart.
+
+[Installation and activation](/reference/installation) explains build selection, pins, and recovery outcomes.
+
+## 2. Install agent guidance
 
 <span id="choose-your-agent" />
-
 <span id="1-connect-your-agent" />
+<span id="2-restart-intellij-idea" />
+<span id="2-restart-your-tools" />
+<span id="3-connect-your-agent" />
 
 <Tabs sync={false}>
   <Tab title="Codex">
-    Run this command to install Kast and its Codex plugin:
-
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --install-codex-plugin
+    ```shell
+    kast install codex
     ```
   </Tab>
   <Tab title="Copilot">
-    Install Kast:
-
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --skip-codex-plugin
+    ```shell
+    kast install copilot
     ```
-
-    After installation succeeds, add its Copilot plugin:
-
-    ```shell wrap
-    copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
-    ```
-
-    If you already use the optional Kast RPC extension, follow the [migration instructions](/agent-harnesses) first.
   </Tab>
   <Tab title="Pi">
-    Install Kast:
-
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --skip-codex-plugin
+    ```shell
+    kast install pi
     ```
-
-    After installation succeeds, connect Pi:
-
-    ```shell wrap
-    "${XDG_CONFIG_HOME:-$HOME/.local/bin}/kast" connect pi
-    ```
-
-    This path works for a fresh installation. For an existing installation, use the command path the installer prints.
   </Tab>
 </Tabs>
 
-## 2. Restart your tools
+These commands install guidance for the native CLI.
+MCP is optional. The default guidance needs no MCP registration or session hook.
 
-<span id="2-restart-intellij-idea" />
-
-<span id="3-connect-your-agent" />
-
-Restart IntelliJ IDEA to load Kast. Start a fresh agent session in the same Kotlin repository or worktree. In Codex, review and trust the Kast session context hook.
+Start a fresh agent session in the same Kotlin repository or worktree.
+If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
 
 ## 3. Ask about your code
 
 <span id="3-ask-your-agent" />
-
 <span id="4-establish-readiness" />
-
 <span id="what-your-first-result-establishes" />
 
 Give your agent the function's file and name.
 
 <Prompt description="Find the callers of your function" actions={["copy"]}>
-Use Kast to find the callers of this function. Show the source locations and explain how they use it.
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
 
-Kast prepares the project as needed. The first query can wait for Gradle import and indexing. Your agent can use the returned locations to continue your task.
+The persistent Host in IDEA supplies compiler analysis for CLI calls.
+Kast prepares the project as needed. The first query can wait for Gradle import and indexing.
+Use the returned locations to continue your task.
 
-If setup stops, use [Help](/troubleshooting). For another task, try [example questions](/search).
+To inspect the CLI yourself, use:
 
-[Installation options](/reference/installation) include developer builds and another IDEA installation.
+```shell
+kast describe query --section input
+kast describe query --section examples
+```
+
+Those commands read the installed contract. They do not establish a semantic connection.
+
+Try [example questions](/search), read the [CLI reference](/reference/cli), or use [Help](/troubleshooting).
 
 <DeeperReading />

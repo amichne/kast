@@ -3,31 +3,38 @@
 **See what your Kotlin change affects.**
 
 Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis.
-Connect it to Codex, Copilot, or Pi, then ask about the code you already work on.
+Use the native `kast` command to find declarations, inspect callers, and read source in your Kotlin project.
 
-## Get started with Codex
+## Get started
 
-Use an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA `262.*`
-with its bundled Kotlin plugin and Java 25 JBR.
-Install Codex CLI and Python 3.9 or later, available as `python3`.
+These steps assume that the Kast CLI is installed.
+Use an Apple silicon Mac and a Kotlin Gradle project.
+Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
-Install the stable release and its Codex plugin:
+Select the latest qualified development build:
 
 ```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --install-codex-plugin
+kast upgrade --channel main
 ```
 
-Restart IntelliJ IDEA. Start a fresh Codex session in the same Kotlin repository or worktree.
-Review and trust the Kast session context hook.
+Install CLI guidance for your agent:
+
+```shell
+kast install codex
+```
+
+Use `copilot` or `pi` instead of `codex` for another agent.
+Start a fresh agent session in the same Kotlin repository or worktree.
 
 Give your agent the function's file and name, then ask:
 
-> Use Kast to find the callers of this function. Show the source locations and explain how they use it.
+> Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 
-Kast prepares the project as needed. The first query can wait for Gradle import and indexing.
-Continue your task with the returned source locations.
+The persistent Host in IntelliJ IDEA supplies compiler analysis for CLI calls.
+The default agent setup supplies CLI guidance. MCP is optional.
 
-[Set up Copilot or Pi](https://kast.michne.com/start/) ·
+[Set up Kast](https://kast.michne.com/start/) ·
+[CLI reference](https://kast.michne.com/reference/cli/) ·
 [Help](https://kast.michne.com/troubleshooting/)
 
 ## More

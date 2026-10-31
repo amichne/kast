@@ -78,47 +78,27 @@ write approval for both.
 
 ## Copilot CLI
 
-Register the verified bundled adapter at user scope:
+Install CLI guidance for Copilot:
 
 ```shell
-kast connect copilot
-copilot --experimental
+kast install copilot
 ```
 
-For a custom Copilot home, set `COPILOT_HOME` or pass
-`kast connect copilot --destination /absolute/copilot/home`.
-
-The extension obtains the live catalog and registers each tool with the Copilot
-SDK. All tools use Copilot's normal permission policy. The extension does not
-request permission to bypass tool prompts when it loads. No Copilot MCP server is needed.
+Start a fresh Copilot session in the intended Kotlin repository or worktree.
+Add `--mcp` only for the optional MCP composition.
 
 ## Pi
 
-`kast connect pi` installs the context extension with native MCP support.
-It registers `kast-mcp-complete` through Pi's `registerMcpServer` API.
-Pi owns tool discovery, permissions, and connection lifetime.
-The extension reads the shared brief at session start and adds it to the system prompt before each model request.
-It reads local resources with Node and starts no uv or Python process.
-An absent or invalid context resource produces one warning while native MCP stays registered.
-It does not use Tool RPC.
-See [the shared context guide](../agent-tools/README.md) for plugin installation and runtime needs.
-
-Register the bundled Pi adapter:
+Install the canonical CLI skill through Pi's native skill directory:
 
 ```shell
-kast connect pi
+kast install pi
 ```
 
-The first connection respects `PI_CODING_AGENT_DIR`. You can also select its
-agent home with `kast connect pi --destination /absolute/pi/agent`.
-The Pi and Copilot connection commands accept `--destination` and keep the selected directory
-in `~/.config/kast/config.json` for reconnect, upgrade, and disconnect. Start the
-harness with the same home setting so it discovers the installed connection.
-
-By default, connecting recovers a conflicting Kast slot from the verified release
-and retains a private backup of the displaced bytes. Failed transactions restore
-the prior connection and Kast configuration. Use `--no-recover` to reject a
-conflict without replacement.
+Start a fresh Pi session in the intended Kotlin repository or worktree.
+Use `kast install pi --mcp` for optional MCP registration.
+Pi owns tool discovery, permissions, and connection lifetime for that composition.
+See [the agent guidance guide](../agent-tools/README.md) for resource ownership and runtime needs.
 
 The optional source adapter at `pi/extension.ts` still supports Tool RPC.
 It registers the live RPC catalog in Pi.
@@ -130,7 +110,8 @@ command, so one Kast installation serves different repositories and worktrees.
 ## Client-owned query delivery
 
 `pi/extension.ts` and `copilot/extension.mjs` own the behavior in this section.
-The installed Pi extension uses native MCP instead.
+The default agent guidance uses the native CLI.
+The optional Pi MCP extension uses native MCP instead of these source adapters.
 
 Pi and Copilot invoke `query_symbols` once at the model boundary. Their shared
 portable delivery rule may then make output-only `RESUME` or retained

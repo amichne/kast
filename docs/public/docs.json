@@ -78,6 +78,7 @@
             "group": "Interface reference",
             "pages": [
               "reference",
+              "reference/cli",
               "glossary"
             ]
           },

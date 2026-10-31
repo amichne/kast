@@ -1,6 +1,6 @@
 ---
 title: "Platform and compatibility"
-description: "Use the supported IDEA installation and the tool contract from your Kast session."
+description: "Use the supported IDEA installation and distinguish installed build identity, loaded Host identity, and semantic evidence."
 icon: "shield-check"
 ---
 
@@ -12,20 +12,41 @@ Your project's JDK does not replace the IDEA runtime.
 
 ## Tool contracts
 
+Use the installed Kast skill and the schema from your current session.
 MCP clients get the tool contract from `tools/list`. Tool RPC clients use `catalog`.
-Use the schema from your session and copy issued references unchanged.
+Copy issued references unchanged.
 
-Before it admits work, Kast examines the runtime protocol, operation registry, and wire schema. It also examines supported features and IDEA/Kotlin support.
+Before semantic work, Kast examines the runtime protocol, operation registry, and wire schema.
+It also examines supported features and IDEA/Kotlin support.
+Equal component versions alone do not establish compatibility.
 
 <a id="current-release-pair" />
 <span id="recorded-release-pair" />
+<span id="install-the-latest-release" />
 
-## Install the latest release
+## Select a development build
 
-The [installer](/start) selects the latest stable release for Control and Host.
-Control provides the command and agent adapters. Host provides the IDEA plugin.
+The [setup guide](/start) assumes that the `kast` CLI is installed.
+Use the main channel for the latest published development build:
 
-After an update, restart IDEA and your agent. Ask a fresh question in your repository or worktree.
+```shell
+kast versions
+kast upgrade --channel main
+```
 
-Codex uses the bundled Kast plugin over MCP. Codex owns its App Server and control socket.
-Use [integration options](/reference/integrations) for custom connections.
+Control supplies the command and agent resources. Host supplies the IDEA plugin and semantic runtime.
+Kast admits their contracts and build identities before replacement.
+An exact version or commit selector records a pin. Use the [selection reference](/reference/installation#pin-a-published-build) for details.
+
+## Loaded Host identity
+
+```shell
+kast status --json
+```
+
+Installed build identity describes disk contents. Loaded Host identity describes the admitted running IDEA process.
+An update reports `ACTIVATED` only after the affected running Host matches the selected build and contract.
+`INSTALLED_NOT_RUNNING` describes the planned stopped-IDE path. It does not claim that IDEA loaded Host.
+
+A loaded Host does not prove readiness in a particular project or worktree.
+A successful query keeps its own scope and completion evidence.

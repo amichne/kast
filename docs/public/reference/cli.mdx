@@ -1,0 +1,92 @@
+---
+title: "Query Kotlin with the CLI"
+sidebarTitle: "Native CLI"
+description: "Discover the installed Kast CLI contract, find a Kotlin declaration, inspect its callers, and reuse issued source and result references."
+icon: "terminal"
+keywords:
+  - "CLI"
+  - "query"
+  - "callers"
+  - "source"
+---
+
+Use the native `kast` command for Kotlin queries in one exact repository or worktree.
+The persistent IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
+
+## Discover the installed contract
+
+```shell
+kast describe
+kast describe query --section input
+kast describe query --section examples
+```
+
+These commands read packaged contracts without workspace preparation.
+Use the installed examples before unfamiliar arguments.
+
+## Find a declaration
+
+Replace `submitOrder` and `checkout` with your function name and its directory.
+Run the command from the intended Kotlin repository or worktree:
+
+```shell
+kast query --name submitOrder --in checkout --source-set main \
+  --fields name,signature,location --retain
+```
+
+Use `--workspace PATH` when your current directory differs from the target worktree.
+
+Examine the owner, signature, and location before you select an exact reference.
+An exact name can match several overloads.
+The `--in` option limits discovery. It does not limit later relationship expansion.
+
+## Inspect callers and source
+
+Set `SYMBOL_REF` to the exact reference from the selected declaration.
+Keep its value unchanged:
+
+```shell
+kast query --ref "$SYMBOL_REF" --relation callers --fields name,location
+kast source read --ref "$SYMBOL_REF"
+```
+
+A caller result describes source relationships. It does not prove that those calls ran.
+Keep the result's scope and qualifications with your conclusion.
+
+## Read retained output
+
+Use the result reference and cursors from the response:
+
+```shell
+kast result read --ref "$RESULT_REF" --cursor 100 --evidence-cursor 0
+kast result resume --continuation "$OUTPUT_TOKEN"
+```
+
+The cursor values are examples. Replace them with both issued cursors from your response.
+Use `result resume` only with an issued output continuation.
+The CLI returns one page. It does not drain later pages or repeat the semantic query.
+
+An expired or foreign reference rejects. Find the declaration again only when the reported recovery calls for discovery.
+
+## Submit a full request
+
+Save a public argument document from the installed examples as `query.json`:
+
+```shell
+kast query --request query.json
+kast query --request - < query.json
+```
+
+The document contains the public `request` field, without an RPC envelope.
+Do not combine `--request` with semantic flags or `--verbose`.
+
+## Read the outcome
+
+Semantic commands emit JSON on stdout. Progress and diagnostics use stderr.
+Read the outer outcome and its qualifications before a semantic conclusion.
+An unfinished search with no matches does not prove absence.
+
+`--max-results` limits presentation. It does not establish semantic completion.
+A complete page can still have an issued continuation.
+
+Use [query contracts](/reference/api), [result contracts](/reference/responses), and [source identity](/reference/symbols) for detailed evidence rules.

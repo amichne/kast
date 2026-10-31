@@ -1,68 +1,75 @@
 ---
-title: "Manage your agent connection"
-sidebarTitle: "Agent connections"
-description: "Add a Codex plugin after installation, reconnect Pi, or migrate a Copilot connection. Use the setup page for your first Kast installation."
+title: "Give your agent Kast guidance"
+sidebarTitle: "Agent guidance"
+description: "Install CLI guidance for Codex, Copilot, or Pi after Kast exists on your machine. Refresh the guidance after a core change."
 keywords:
   - "Codex"
   - "Copilot"
   - "Pi"
-  - "integration"
+  - "CLI"
 icon: "plug"
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-For your first installation, [set up Kast](/start). Use this page to change an existing agent connection.
+Kast gives your agent guidance for the installed `kast` command.
+These steps assume that Kast already exists on your machine.
 
 <span id="choose-your-agent" />
-
 <span id="1-connect-your-agent" />
+
+## Select your agent
 
 <Tabs sync={false}>
   <Tab title="Codex">
-    If you skipped the installer's Codex plugin option, run:
+    Install the CLI guidance:
 
     ```shell
-    kast plugin codex
+    kast install codex
     ```
 
-    Restart Codex in your Kotlin repository or worktree. Review and trust its Kast session context hook.
+    Start a fresh Codex session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Copilot">
-    If the optional RPC extension occupies the Kast slot, remove that connection first:
+    Install the CLI guidance:
 
     ```shell
-    kast disconnect copilot
+    kast install copilot
     ```
 
-    Install the bundled plugin:
-
-    ```shell wrap
-    copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
-    ```
-
-    Restart Copilot in your Kotlin repository or worktree.
+    Start a fresh Copilot session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Pi">
-    Connect Pi:
+    Install the CLI guidance:
 
     ```shell
-    kast connect pi
+    kast install pi
     ```
 
-    Restart Pi in your Kotlin repository or worktree.
+    Start a fresh Pi session in your Kotlin repository or worktree.
   </Tab>
 </Tabs>
 
-If your shell cannot find `kast`, use the command path the installer printed. The installer does not change your shell profile.
+The default composition uses the CLI. It installs no MCP registration or Python hook.
+For optional MCP, add `--mcp` to your agent's command.
+The [integration reference](/reference/integrations#optional-mcp) gives its runtime needs.
+
+## Refresh guidance
+
+Core replacement does not refresh copied skills or cached provider resources.
+If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before a fresh session.
+Keep `--mcp` if you select the optional MCP composition.
+
+To export the canonical skill, use `kast install skill`.
+The default parent is `./.agents/skills`. Existing different or incomplete skills stay unchanged.
+See [skill exports](/reference/integrations#3-export-the-canonical-skill) for the output option and rejection outcomes.
 
 <span id="run-the-first-query" />
 <span id="2-request-a-declaration" />
-
 <span id="ask-a-question" />
-
 <span id="3-compare-the-evidence" />
 
-Continue with [a question about your code](/start#3-ask-about-your-code). For custom clients, use the [integration reference](/reference/integrations).
+Continue with [a question about your code](/start#3-ask-about-your-code).
+Use the [CLI reference](/reference/cli) for exact commands.
 
 <DeeperReading />

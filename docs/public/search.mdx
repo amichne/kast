@@ -18,16 +18,18 @@ After [setup](/start), give your agent the function, file, or directory you want
 ## What depends on this function?
 
 <Prompt description="Find callers before an edit" actions={["copy"]}>
-Use Kast to find the callers of this function. Show the source locations and explain how they use it.
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
 
 ## Where does this value go?
 
 <Prompt description="Follow a function's result" actions={["copy"]}>
-Use Kast to trace this function's result. Show where it goes and where the evidence stops.
+Use the Kast CLI to trace this function's result. Show where it goes and where the evidence stops.
 </Prompt>
 
 ## What problems does IDEA report?
+
+The optional [MCP composition](/reference/integrations#optional-mcp) exposes a diagnostics task.
 
 <Prompt description="Inspect the code you changed" actions={["copy"]}>
 Use Kast to inspect IDEA diagnostics in the code we changed.
@@ -42,5 +44,7 @@ Find [implementations](/reference/search), [make a targeted change](/reference/c
 <span id="what-if-kast-cannot-finish" />
 
 If Kast cannot finish, ask your agent to explain the reported cause. Use [Help](/troubleshooting) for setup problems.
+
+Use the [CLI reference](/reference/cli) for declaration, caller, source, and retained-result commands.
 
 <DeeperReading />

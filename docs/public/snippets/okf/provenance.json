@@ -953,6 +953,10 @@
       "purpose": "reader-task-or-contract"
     },
     {
+      "route": "reference/cli",
+      "purpose": "reader-task-or-contract"
+    },
+    {
       "route": "reference/compatibility",
       "purpose": "reader-task-or-contract"
     },
