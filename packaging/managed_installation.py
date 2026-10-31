@@ -1228,6 +1228,20 @@ def already_current(
     return terminal_outcome(files, current, strategy, ())
 
 
+def replace_host(
+    adapter: NativeComposition, strategy: contract.Strategy, host_record: object
+) -> None:
+    adapter.enter(contract.Stage.HOST_REPLACEMENT)
+    if strategy != contract.Strategy.HOT_RELOAD:
+        current, _ = adapter.inspect(False)
+        if not isinstance(current, contract.Stopped):
+            raise reject(adapter.stage, contract.Failure.CONCURRENT_CHANGE)
+    if strategy == contract.Strategy.HOT_RELOAD:
+        HOST.commit_managed_reload(host_record)
+    else:
+        HOST.commit_managed(host_record)
+
+
 def install_composition(
     adapter: NativeComposition,
     composition: release.AdmittedComposition,
@@ -1411,11 +1425,7 @@ def install_composition(
                 rebind_control(adapter, record)
                 record, core = advance(record, core, journal_types.ManagedPhase.CONTROL_COMMITTED)
                 RECOVERY.save(journal / "receipt.json", record)
-                adapter.enter(contract.Stage.HOST_REPLACEMENT)
-                if strategy == contract.Strategy.HOT_RELOAD:
-                    HOST.commit_managed_reload(host_record)
-                else:
-                    HOST.commit_managed(host_record)
+                replace_host(adapter, strategy, host_record)
                 record, core = advance(record, core, journal_types.ManagedPhase.HOST_COMMITTED)
                 RECOVERY.save(journal / "receipt.json", record)
                 adapter.enter(contract.Stage.HOST_ACTIVATION)

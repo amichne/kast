@@ -733,6 +733,82 @@ class FilesystemCoordinatorTest(unittest.TestCase):
             )
         )
 
+    def host_before_replacement(self) -> object:
+        host = install.HOST.decode_managed(asdict(self.host))
+        install.HOST.rollback_managed(host)
+        self.record = replace(
+            self.record,
+            composition=replace(
+                journal.managed_parts(self.record)[1],
+                phase=journal.ManagedPhase.CONTROL_COMMITTED,
+            ),
+        )
+        install.RECOVERY.save(self.slot / "receipt.json", self.record)
+        return host
+
+    def test_host_replacement_keeps_the_real_host_inventory_receipt_and_prior_bytes(self) -> None:
+        host = self.host_before_replacement()
+        runner = RawRunner([self.stopped])
+        self.adapter.runner = runner
+        install.replace_host(self.adapter, contract.Strategy.STOPPED, host)
+        runner.finished()
+        receipt = install.HOST.read_active_receipt(
+            self.idea.profile / ".kast-plugin-recovery/host-install.json"
+        )
+        active = install.HOST.admit_active(self.plugins, receipt)
+        self.assertEqual("2.0.0", active.version)
+        self.assertEqual(active.inventory, install.HOST.inventory(self.plugins / "kast-ide-hosted"))
+        self.assertTrue((self.slot / "host-prior").is_dir())
+        self.assertTrue((self.slot / "host-receipt").is_file())
+        self.assertTrue((self.root / "shutdown.json").is_file())
+        self.assertEqual(
+            self.record,
+            journal.admit_replacement(
+                install.RECOVERY.load(self.slot / "receipt.json", install.RECOVERY.Replacement)
+            ),
+        )
+
+    def assert_concurrent_host_replacement_rejected(self, strategy: contract.Strategy) -> None:
+        host = self.host_before_replacement()
+        destination = self.plugins / "kast-ide-hosted"
+        before = install.HOST.inventory(destination)
+        destination_identity = journal.Identity.observe(destination)
+        candidate_identity = journal.Identity.observe(Path(self.host.candidate))
+        control_identity = journal.Identity.observe(self.installation)
+        receipt_path = self.idea.profile / ".kast-plugin-recovery/host-install.json"
+        receipt = receipt_path.read_bytes()
+        record = (self.slot / "receipt.json").read_bytes()
+        runner = RawRunner([self.loaded_frame()])
+        self.adapter.runner = runner
+        rejection = None
+        try:
+            install.replace_host(self.adapter, strategy, host)
+        except install.StageRejected as problem:
+            rejection = problem.failure
+        self.assertEqual(
+            before,
+            install.HOST.inventory(destination),
+            "a new Host incarnation reached file replacement after Control committed",
+        )
+        self.assertEqual(destination_identity, journal.Identity.observe(destination))
+        self.assertEqual(candidate_identity, journal.Identity.observe(Path(self.host.candidate)))
+        self.assertEqual(control_identity, journal.Identity.observe(self.installation))
+        self.assertEqual(receipt, receipt_path.read_bytes())
+        self.assertEqual(record, (self.slot / "receipt.json").read_bytes())
+        self.assertFalse((self.slot / "host-prior").exists())
+        self.assertTrue((self.root / "shutdown.json").is_file())
+        self.assertEqual(
+            contract.Rejected(contract.Stage.HOST_REPLACEMENT, contract.Failure.CONCURRENT_CHANGE),
+            rejection,
+        )
+        runner.finished()
+
+    def test_stopped_concurrent_start_after_control_commit_preserves_host(self) -> None:
+        self.assert_concurrent_host_replacement_rejected(contract.Strategy.STOPPED)
+
+    def test_restart_concurrent_start_after_control_commit_preserves_host(self) -> None:
+        self.assert_concurrent_host_replacement_rejected(contract.Strategy.NORMAL_RESTART)
+
     def test_concurrent_start_during_stopped_strategy_never_changes_host_or_control(self) -> None:
         current_host = install.HOST.inventory(self.plugins / "kast-ide-hosted")
         current_control = journal.Identity.observe(self.installation)
