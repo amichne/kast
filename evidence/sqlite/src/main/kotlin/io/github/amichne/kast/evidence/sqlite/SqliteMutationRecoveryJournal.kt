@@ -22,14 +22,6 @@ sealed interface SqliteMutationRecoveryJournalOpenResult {
     data class Rejected(val failure: SqliteMutationRecoveryJournalOpenFailure) : SqliteMutationRecoveryJournalOpenResult
 }
 
-sealed interface MutationRecoverySettlement {
-    data object Settled : MutationRecoverySettlement
-
-    data object Unresolved : MutationRecoverySettlement
-
-    data class Rejected(val failure: MutationRecoveryEvidenceFailure) : MutationRecoverySettlement
-}
-
 /** SQLite owner of atomic clean-slate mutation recovery evidence transitions. */
 class SqliteMutationRecoveryJournal
 private constructor(

@@ -3,12 +3,9 @@ package io.github.amichne.kast.evidence.sqlite
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanLookup
-import io.github.amichne.kast.change.verify.HistoricalLiveAddDeclarationReceipt
 import io.github.amichne.kast.change.verify.HistoricalLiveChangeReceipt
-import io.github.amichne.kast.change.verify.HistoricalLiveReplaceBodyReceipt
 import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
-import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
 import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
 import io.github.amichne.kast.kernel.Refinement
@@ -256,48 +253,6 @@ private fun inspectSettlement(record: MutationRecoveryRecord, receipts: Map<Stri
         MutationRecoverySettlement.Unresolved -> reject(SqliteMutationStateInspectionFailure.UNSETTLED_MUTATION)
         is MutationRecoverySettlement.Rejected -> reject(SqliteMutationStateInspectionFailure.RECORD_REJECTED)
     }
-}
-
-/** Both live Host settlement and offline cleanup use the same reconstructed receipt-chain rule. */
-internal fun inspectMutationSettlement(
-    record: MutationRecoveryRecord,
-    receipt: LiveChangeReceiptLookup,
-): MutationRecoverySettlement =
-    when (record) {
-        is MutationRecoveryRecord.PreWriteDurable,
-        is MutationRecoveryRecord.RecoveryRequired -> MutationRecoverySettlement.Unresolved
-        is MutationRecoveryRecord.RolledBack ->
-            when (receipt) {
-                LiveChangeReceiptLookup.Missing -> MutationRecoverySettlement.Settled
-                is LiveChangeReceiptLookup.Found,
-                is LiveChangeReceiptLookup.Rejected ->
-                    MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
-            }
-        is MutationRecoveryRecord.AppliedWritesDurable ->
-            when (receipt) {
-                LiveChangeReceiptLookup.Missing -> MutationRecoverySettlement.Unresolved
-                is LiveChangeReceiptLookup.Rejected ->
-                    MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
-                is LiveChangeReceiptLookup.Found -> inspectReceiptChain(record, receipt.receipt)
-            }
-    }
-
-private fun inspectReceiptChain(
-    record: MutationRecoveryRecord.AppliedWritesDurable,
-    receipt: HistoricalLiveChangeReceipt,
-): MutationRecoverySettlement {
-    val recovery =
-        when (receipt) {
-            is HistoricalLiveAddDeclarationReceipt -> receipt.recovery
-            is HistoricalLiveReplaceBodyReceipt -> receipt.recovery
-        }
-    return if (
-        recovery.binding.value != record.binding.value ||
-            recovery.preparedDigest.value != record.priorDigest.value ||
-            recovery.appliedDigest.value != record.digest.value
-    )
-        MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
-    else MutationRecoverySettlement.Settled
 }
 
 private fun Connection.inspectAttempts(plans: Map<String, LiveChangePlan>, settled: Set<String>) {
