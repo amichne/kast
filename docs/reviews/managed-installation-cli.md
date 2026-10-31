@@ -34,8 +34,9 @@ code_sources:
 
 # Managed installation candidate
 
-This report supports review and qualification of the managed installation candidate.
-It describes uncommitted candidate changes on the recorded base revision.
+This historical report records the initial candidate review on October 30.
+It describes the implementation against the recorded base revision.
+Later source and native results belong to the dated acceptance evidence attached to the pull request.
 It does not record a published release or an active public bootstrap change.
 The current `install.sh` and its stable installation instructions remain unchanged.
 

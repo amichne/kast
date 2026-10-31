@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:42a99db67481ca2337be3d151779ba2a9c66dbc82244375e6133180ecaacbf2a",
+  "pageVersion": "sha256:9a5d7ec5bb2ce4d3885d9d1d56987078b3c364a8f2abd8e09f82ff59cacaa2dc",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -76,7 +76,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -94,7 +94,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:118390379f2db62945cd6f91d096a9aeb26afc5c94f94a761f8826fe1664a561"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         }
       ]
     },
@@ -104,7 +104,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:118390379f2db62945cd6f91d096a9aeb26afc5c94f94a761f8826fe1664a561"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
@@ -140,7 +140,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:118390379f2db62945cd6f91d096a9aeb26afc5c94f94a761f8826fe1664a561"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
@@ -158,7 +158,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://packaging/installer_fixture.py",
@@ -420,13 +420,13 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:bf2ea84dd77f058f38018e391a5493275d7aa5157a52a35872b6909c9d1ec900"
+          "version": "repo-file-v1:sha256:6da4d27ef7d5fd12bc8b622d14a91b288ac20dfe46d745809d391433a20471a1"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-10-31T05:05:54.659Z"
   }
 }

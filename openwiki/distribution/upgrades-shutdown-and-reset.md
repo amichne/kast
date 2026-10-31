@@ -36,10 +36,18 @@ sources:
     resource: repo://packaging/installation-recovery.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+  - id: openwiki-source-5e407ffc0053b191a3e609bc
+    resource: repo://packaging/managed_update_contract.py
+  - id: openwiki-source-8fae9d27fc5ee242f935c4cf
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
+  - id: openwiki-source-5bce5e00d8d37b48b461a27e
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
+  - id: openwiki-source-93a63f2900e2bb9b08843608
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
+generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-10-31T05:05:54.659Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -84,6 +92,43 @@ This preserves the fence if finalization fails after the shutdown record disappe
 Ordinary upgrade preserves owned settings and history. It does not use force reset to bypass failed ownership admission.
 The exceptional reset path remains separate from the recorded transaction.
 
+## Re-admit legacy Host evidence
+
+Legacy inspection keeps the attached profile proof with its exact process incarnation and opaque Host identity.
+Re-admission compares the PID, start time, executable, Host identity, IDEA home, IDEA build, and complete compatibility digest.
+A matching response keeps the earlier profile proof.
+A changed or missing captured fact rejects as a concurrent change.
+The opaque legacy identity remains separate from the runtime identity contract.
+
+Without a captured endpoint, re-admission requests explicit `ATTACH` and compares the admitted snapshot.
+Bare `REJECT_UNPROVEN` needs the earlier attached proof before it can preserve profile authority.
+The coordinator repeats admission under its management lock before preparation and before the fence.
+A running legacy Host without restart permission rejects before journal creation or retirement.
+
+## Request a scoped VFS refresh
+
+Hot reload needs compatible archives, enabled native auto reload, and the live `HOST_RELOAD_REFRESH` capability.
+The coordinator keeps the settled Host and transaction in an immutable value.
+After the Host exchange, it requests `REFRESH` through the application lifecycle.
+The Host accepts only its own settled transaction and selected plugin root.
+The reply owner queues the SDK refresh only after the acknowledgment frame writes successfully.
+Only a fresh selected runtime handshake establishes activation.
+
+Only `WRONG_HOST`, `HOST_UNAVAILABLE`, `PLUGIN_UNAVAILABLE`, and `EXCHANGE_DEADLINE_EXCEEDED` can defer refresh rejection to the existing bounded runtime wait.
+That wait still needs exact selected build, contract, process, and Host lifetime evidence.
+The caller sends one refresh request.
+
+## Settle the actual Host during rollback
+
+Hot-reload recovery first admits the actual Host as the recorded prior or selected build.
+It settles that Host before the rollback exchange.
+If the selected build remains loaded, recovery restores prior bytes and requests a refresh from that settled Host.
+Recovery then needs the prior build and a fresh Host lifetime.
+If the original Host remains loaded, recovery restores bytes and resumes that same held Host.
+Resume targets the held lifetime, including a fresh Host with the prior build.
+
+Unknown builds, changed processes, and unproved restoration keep `RECOVERY_REQUIRED` fenced.
+
 ## Force reset has separate proofs
 
 Force reset bypasses old payload and receipt admission for the selected deletion scope.
@@ -104,6 +149,8 @@ Actual launchd retirement and IDEA restart behavior need their separate native p
 
 - [ForceInstallationResetTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationResetTest.kt)
 - [ForceReinstallationTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ForceReinstallationTest.kt)
+- [test-managed-installation.py](../../packaging/test-managed-installation.py)
+- [HostRefreshRpcTest.kt](../../runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostRefreshRpcTest.kt)
 
 ## Source owners
 

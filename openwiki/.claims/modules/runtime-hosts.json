@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:efc290a33a79968246b3bbb1a2cd9651d51e8641da3d62b1311bd955fc15ad7e",
+  "pageVersion": "sha256:92a569dce787dbecdf87925b127c2d10094c93b1f868604ce09caa3f4798fd0e",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -60,7 +60,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:8da07a9a9babc397b2eaaffeb9aa92d02b479c4c2d22e6576dc648b81abf3cc6"
+          "version": "repo-file-v1:sha256:9caa8cd25d9fccd0938b5a9126869311e66d336b043574345b3df3bf82e352ab"
         }
       ]
     },
@@ -301,10 +301,28 @@
           "version": "repo-file-v1:sha256:4f3e7d944d248804d908f7914651a99b606cb481686db98679f3c43ea55178c4"
         }
       ]
+    },
+    {
+      "id": "claim_73fb6533076d4a198198a97beacd822b",
+      "statement": "Managed Host refresh admits only the exact settled Host and transaction with enabled auto-reload and idle native work. The SDK adapter admits the loaded plugin root and requests recursive VFS refresh only after the acknowledgment write succeeds. The acknowledgment does not prove replacement loading.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt#L37-L109",
+          "version": "repo-lines-v1:sha256:c3a414303d458935e86f64968ec493b8dfc125e6670a23dea7fc7c157b8c806c:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxYmI4NzE4YzQ5NjZiODYzM2Y5ODY4OWZjZWMxZjViNDNiNmY1YTdmMjE5ZjEzMmE4NzBhN2NiZWFhOTM5ZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjZmI3ZjU3MTI0NmI4MWI0ZDg1MDk2YTUxNGM1Zjk0NWI5NGM3ZGUwODg2MjgyOTQxMDNjNDM1MWNiMmFmMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt#L75-L114",
+          "version": "repo-lines-v1:sha256:6a954eb6f23623a2e28d3fca9424909c93c2fe3c562883ea05f7a5f910fa97d6:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhYTkwNGZkOTZlMmZlNjY1Yzc1MmFlNDdlOGViMjdjZGFkYjQ3NTRlOTEyMjZkOTZiYzc5OTJhMDAyNDEzYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2YmRlNWJjMmZkMTc0ODE3NWU1MjBjMmUwMTFlZGYzYzUxZTRmODhmOTYzMTFlMjRmZTQwODBkYWY3ZDI2YjgifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt#L13-L32",
+          "version": "repo-lines-v1:sha256:bf0d2b45da9d17dd3946034dcfa28fb41e61f76d8b44394976935a8d2faeb8fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMDQ2NDJiMjNiNWE2Y2RlMmM0NGRhYjkxMjhhZTUyM2Y3NjhkZTI4NmViMjU1MGYwMGFlOTc2NzZhZjZlZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0MGFiNTAyYzZjNmU3ZjI3NGQwN2FmZDA3YmY1YzEzZmQxYWE3Mjc4NWFiNGFmZTkzZThmZDg5Nzg3YzgwMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQzMjEzYjBmMGM1NjExNTFmNGIzYzViZjNkMGYxN2Y1ZjUyODljZGI1OWJiZmExNDI4YTBhZGNkZjM3ZDNiOGUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-10-31T05:05:54.659Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bbd3fa66f6fe242260fc6b57b3496147ce1a5ecd64ff683271cc4856a2f4dc60",
+  "pageVersion": "sha256:00bbdc9030582bcc00de718bedd9f6372c1c58dade746bbdb0614327e229e7dc",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -36,7 +36,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -46,11 +46,11 @@
     },
     {
       "id": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-      "statement": "Root check separately enforces semantic resource identity, live FIR inventory accounting, and exact successful execution of the declared native case population.",
+      "statement": "When semantic fixtures are enabled, root check enforces reviewed resource identity, FIR inventory accounting, and exact successful execution of declared native cases.",
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -75,6 +75,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-10-31T05:05:54.659Z"
   }
 }

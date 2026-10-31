@@ -55,6 +55,8 @@ sources:
     resource: repo://build.gradle.kts
   - id: openwiki-source-b5958cf441728188e2493589
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
+  - id: openwiki-source-0934da5590f6da4c7a9cd885
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationMigration.kt
   - id: openwiki-source-82001d1847d4403e8e24787a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - id: openwiki-source-5f9ee1677dd5352d4bd1273d
@@ -63,6 +65,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - id: openwiki-source-db07d240b5fb033a752d32dc
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
@@ -71,6 +75,8 @@ sources:
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - id: openwiki-source-681368e4942d2fb35f298a68
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
+  - id: openwiki-source-a788214182281b80d302305d
+    resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/ReadLimitConfigurationTest.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
@@ -79,10 +85,10 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-10-31T05:05:54.659Z
 ---
 
 # Installation configuration
@@ -107,6 +113,18 @@ Installation admits only an explicit `private` selection.
 It migrates an admitted saved `codex-control` selection to `private` with finite provenance.
 Unknown, empty, or explicit shared selections reject before installation effects.
 Codex keeps its own App Server and discovery endpoint. Installation does not start a broker.
+
+The installer accepts the saved `KAST_READ_MODEL_MODULES` assignment only from an admitted `0.50.2` installation.
+It accepts one ASCII-decimal value from `1` through `2,147,483,646`.
+The prior manifest must name that version, the selected installation root, and its own configuration path.
+The installer removes this assignment before current configuration admission and keeps its typed migration fact.
+Migration rejects duplicates, invalid values, and manifests from other versions.
+The runtime catalogue rejects the removed key.
+
+Staging regenerates migrated configuration from current declarations.
+Unchanged Control-only settings keep the existing exact-copy path.
+Managed preparation preserves `CONFIGURATION_SOURCE_REJECTED`, `CONFIGURATION_RESOLUTION_REJECTED`, and `CONFIGURATION_OWNER_REJECTED` as distinct adapter failures.
+The migration record contains only the known key, source version, and admitted count.
 
 See [distribution](../modules/distribution.md).
 

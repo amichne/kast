@@ -263,8 +263,14 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
   - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
+  - id: openwiki-source-8fae9d27fc5ee242f935c4cf
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
+  - id: openwiki-source-5bce5e00d8d37b48b461a27e
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+  - id: openwiki-source-93a63f2900e2bb9b08843608
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
   - id: openwiki-source-eed0394918ec9e3d4c1a1c51
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
@@ -273,10 +279,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-10-31T05:05:54.659Z
 ---
 
 # Runtime and process hosts
@@ -401,6 +407,15 @@ and mutation planning do not use this capability. The
 the identity checks and returned handle metadata.
 
 The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. A dead endpoint with the same root and socket can be reclaimed after a plugin upgrade without matching its old capability catalog; the absent PID, exclusive lock and unchanged file identities still govern retirement. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` requires the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
+
+Managed installation uses the application service with zero projects.
+`HostedApplicationSettlement` admits Host refresh only for the exact settled Host and transaction, enabled auto-reload, and idle native work.
+The adapter admits the loaded plugin root from the actual IDEA home and profile.
+`LifecycleReply` dispatches the refresh only after the complete acknowledgment write succeeds.
+The SDK adapter marks that root dirty and requests recursive asynchronous VFS refresh.
+The acknowledgment does not prove a loaded replacement.
+The installer still needs fresh selected-runtime evidence.
+Plugin-owned native qualification remains pending.
 
 App Server qualifies its complete tool catalog from the bounded packaged provider
 contract and canonical registry. It has no Kast process executor or CLI version

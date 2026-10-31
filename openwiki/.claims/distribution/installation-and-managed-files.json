@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2aa18206fdef27167ce5864e6337c4100aff1f711b1ad03a3da3e6bae7a37c84",
+  "pageVersion": "sha256:0289f7484e9775550035b5348bb17d8ecc1420fb072e3cd8e01403c155c14c94",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:118390379f2db62945cd6f91d096a9aeb26afc5c94f94a761f8826fe1664a561"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -70,7 +70,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt",
-          "version": "repo-file-v1:sha256:fa08cf032e27c470c78aef3c8ed65a5fd91d73f0df656777e1fc28ba142eab96"
+          "version": "repo-file-v1:sha256:b6f8170f7768349bc70fbb4718657d95b993e86d1b8002352e91aa976b90f548"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L341-L362",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:bf2ea84dd77f058f38018e391a5493275d7aa5157a52a35872b6909c9d1ec900"
+          "version": "repo-file-v1:sha256:6da4d27ef7d5fd12bc8b622d14a91b288ac20dfe46d745809d391433a20471a1"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -99,6 +99,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-10-31T05:05:54.659Z"
   }
 }

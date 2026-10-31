@@ -51,10 +51,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-10-31T05:05:54.659Z
 ---
 
 # Verified module architecture
@@ -142,6 +142,9 @@ no host package. Fresh-pair assembly composes both artifacts as an installation
 convenience; exact hosted contract equality governs communication.
 
 ## Kotlin semantic coverage gates
+
+Semantic fixtures are disabled by default.
+Set `KAST_SEMANTIC_FIXTURES=true` for native semantic fixtures and their inventory and coverage gates.
 
 Root `check` includes three separate semantic coverage gates.
 `verifyKotlinSemanticInputs` compares the required resource population and reviewed carrier hashes.
