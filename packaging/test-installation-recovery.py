@@ -1346,6 +1346,67 @@ class ManagedControlRecoveryTest(unittest.TestCase):
     def test_finalization_closes_pending_path_before_empty_directory_cleanup(self):
         self.assert_closed_receipt_interruption(True)
 
+    def assert_partial_terminal_control_deletion_keeps_retry(self, interruption):
+        r = self.recovery
+        receipt = self.prepare()
+        receipt = r.replace(receipt, composition=r.replace(receipt.composition, phase='ACTIVATION_PROVEN'))
+        r.save(self.transaction / 'receipt.json', receipt)
+        remove = shutil.rmtree
+        calls = []
+        def interrupted(path, *arguments, **options):
+            target = Path(path)
+            command = target / 'bin/kast-complete'
+            if command.is_file():
+                calls.append(target)
+                command.unlink()
+                raise interruption('controlled partial retained Control deletion')
+            return remove(path, *arguments, **options)
+        interrupted.avoids_symlink_attacks = remove.avoids_symlink_attacks
+        output = io.StringIO()
+        with patch.object(shutil, 'rmtree', interrupted), contextlib.redirect_stderr(output):
+            try:
+                self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, receipt))
+            except SystemExit:
+                self.assertIs(SystemExit, interruption)
+        if interruption is OSError:
+            self.assertEqual({'event': 'kast_managed_storage_cleanup', 'outcome': 'FAILED',
+                              'reason': r.Failure.FILESYSTEM.value}, json.loads(output.getvalue()))
+        else:
+            self.assertEqual('', output.getvalue())
+        self.assertEqual(1, len(calls))
+        self.assertNotEqual(self.transaction / 'payload', calls[0])
+        self.assertFalse((self.transaction / 'payload').exists())
+        fresh = r.load(self.transaction / 'receipt.json', r.Replacement)
+        self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, fresh))
+        self.assertEqual('selected', (self.root / 'bin/kast-complete').read_text())
+        self.assertTrue((self.transaction / 'host-preimage/keep').is_file())
+
+    def test_partial_terminal_control_deletion_does_not_poison_retry_admission(self):
+        self.assert_partial_terminal_control_deletion_keeps_retry(OSError)
+
+    def test_process_interruption_during_terminal_deletion_keeps_retry_admission(self):
+        self.assert_partial_terminal_control_deletion_keeps_retry(SystemExit)
+
+    def test_terminal_control_retirement_preserves_a_foreign_destination(self):
+        r = self.recovery
+        receipt = self.prepare()
+        receipt = r.replace(receipt, composition=r.replace(receipt.composition, phase='ACTIVATION_PROVEN'))
+        r.save(self.transaction / 'receipt.json', receipt)
+        move = r.managed_move
+        destinations = []
+        def collision(source, destination, witness):
+            destination.mkdir()
+            (destination / 'foreign').write_text('preserve')
+            destinations.append(destination)
+            return move(source, destination, witness)
+        with patch.object(r, 'managed_move', collision):
+            with self.assertRaises(r.Rejected) as rejected:
+                r.seal_managed_control(self.root, receipt)
+        self.assertEqual(r.Failure.OWNERSHIP, rejected.exception.failure)
+        self.assertEqual(1, len(destinations))
+        self.assertEqual('preserve', (destinations[0] / 'foreign').read_text())
+        self.assertEqual('old', (self.transaction / 'payload/bin/kast-complete').read_text())
+
     def test_activated_legacy_cleanup_uses_files_only_and_preserves_host_preimages(self):
         r = self.recovery
         receipt = self.prepare(prior_kind='legacy')

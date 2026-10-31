@@ -1075,11 +1075,9 @@ def seal_managed_control(root, receipt):
                 removals.append((transaction / 'recovery', managed_recovery(transaction / 'recovery', prior_root, previous.identity)))
             if not shutil.rmtree.avoids_symlink_attacks:
                 raise Rejected(Failure.FILESYSTEM)
+            transaction_id = admit_managed_transaction(receipt)
             for path, witness in removals:
-                if managed_tree(path) != witness:
-                    raise Rejected(Failure.OWNERSHIP)
-                shutil.rmtree(path)
-                sync(path.parent)
+                retire_managed_storage(root.parent, path, witness, transaction_id)
             if legacy_selector is not None:
                 selector, identity = legacy_selector
                 if not selector.is_symlink() or Identity.observe(selector) != identity or os.readlink(selector) != previous.target:
@@ -1144,6 +1142,26 @@ class ManagedStorageCleanupObservation:
     outcome: typing.Literal['FAILED'] = 'FAILED'
 
 
+def retire_managed_storage(outer: Path, path: Path, witness: ManagedTreeWitness, transaction_id: uuid.UUID) -> None:
+    """Detach admitted terminal garbage before recursive deletion can change its inventory."""
+    relative = path.relative_to(outer).as_posix()
+    suffix = hashlib.sha256(relative.encode()).hexdigest()
+    completed = outer / 'recovery' / ('completed-control-' + str(transaction_id) + '-' + suffix)
+    managed_move(path, completed, witness)
+    cleanup_retired_storage(completed, witness)
+
+
+def cleanup_retired_storage(completed: Path, witness: ManagedTreeWitness) -> None:
+    try:
+        if not shutil.rmtree.avoids_symlink_attacks or managed_tree(completed) != witness:
+            raise Rejected(Failure.OWNERSHIP)
+        shutil.rmtree(completed)
+        sync(completed.parent)
+    except (OSError, Rejected) as problem:
+        reason = problem.failure if isinstance(problem, Rejected) else Failure.FILESYSTEM
+        print(json.dumps(asdict(ManagedStorageCleanupObservation(reason))), file=sys.stderr)
+
+
 def admit_managed_transaction(receipt: Replacement) -> uuid.UUID:
     reservation = receipt.reservation
     if reservation is None:
@@ -1169,14 +1187,7 @@ def close_managed_journal(transaction: Path, receipt: Replacement, transaction_i
         raise Rejected(Failure.RECEIPT)
     managed_move(transaction, completed, witness)
     # Closed storage does not block admission of the next transaction.
-    try:
-        if not shutil.rmtree.avoids_symlink_attacks or managed_tree(completed) != witness:
-            raise Rejected(Failure.OWNERSHIP)
-        shutil.rmtree(completed)
-        sync(completed.parent)
-    except (OSError, Rejected) as problem:
-        reason = problem.failure if isinstance(problem, Rejected) else Failure.FILESYSTEM
-        print(json.dumps(asdict(ManagedStorageCleanupObservation(reason))), file=sys.stderr)
+    cleanup_retired_storage(completed, witness)
 
 
 def abort_managed_reservation(root: Path, receipt: Replacement) -> ManagedControlResult:

@@ -290,6 +290,25 @@ def read_record(path: Path, limit: int = 65_536) -> bytes:
     return data
 
 
+def read_idea_metadata(path: Path) -> bytes:
+    if path.resolve() != path:
+        raise OSError("IDEA metadata path rejected")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if (
+            path.is_symlink()
+            or not stat.S_ISREG(info.st_mode)
+            or info.st_uid not in {0, os.getuid()}
+            or info.st_mode & 0o022
+        ):
+            raise OSError("IDEA metadata ownership rejected")
+        data = stream.read(1_048_577)
+    if len(data) > 1_048_576:
+        raise OSError("IDEA metadata limit exceeded")
+    return data
+
+
 def text_field(value: object) -> str:
     if not isinstance(value, str) or len(value) > 4096:
         raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
@@ -492,7 +511,7 @@ def select_idea(explicit: str | None, home: Path, root: Path) -> SelectedIdea | 
         )
     idea = Path(physical.pop())
     try:
-        document = release.document(read_record(idea / "Resources/product-info.json", 1_048_576))
+        document = release.document(read_idea_metadata(idea / "Resources/product-info.json"))
         if not release.mapping(document):
             raise ValueError()
         data, build = document.get("dataDirectoryName"), document.get("buildNumber")

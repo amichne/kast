@@ -2519,5 +2519,78 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         self.assert_restored()
 
 
+class IdeaMetadataTest(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory(prefix="kast-idea-metadata-")
+        self.addCleanup(temporary.cleanup)
+        self.home = Path(temporary.name).resolve()
+        self.idea = self.home / "IDEA.app/Contents"
+        self.metadata = self.idea / "Resources/product-info.json"
+        self.metadata.parent.mkdir(parents=True)
+        _ = self.metadata.write_text(
+            '{"dataDirectoryName":"IntelliJIdea2026.2","buildNumber":"262.1"}'
+        )
+        self.metadata.chmod(0o644)
+        java = self.idea / "jbr/Contents/Home/bin/java"
+        java.parent.mkdir(parents=True)
+        _ = java.write_text("java")
+        java.chmod(0o755)
+        (self.idea / "plugins/Kotlin").mkdir(parents=True)
+
+    def selected_with_owner(self, owner: int) -> install.SelectedIdea | contract.Rejected:
+        real_stat = os.fstat
+
+        def file_stat(descriptor: int) -> os.stat_result:
+            values = list(real_stat(descriptor))
+            values[4] = owner
+            return os.stat_result(values)
+
+        with (
+            patch.object(install.os, "fstat", file_stat),
+            patch.object(install.os, "getuid", return_value=501),
+        ):
+            return install.select_idea(str(self.idea), self.home, self.home / "managed")
+
+    def test_readable_root_owned_idea_metadata_is_admitted(self) -> None:
+        selected = self.selected_with_owner(0)
+        self.assertIsInstance(selected, install.SelectedIdea)
+        self.assertEqual(
+            install.SelectedIdea(
+                self.idea,
+                self.home / "Library/Application Support/JetBrains/IntelliJIdea2026.2",
+                self.idea / "jbr/Contents/Home",
+                "262",
+                "262.1",
+            ),
+            selected,
+        )
+
+    def test_metadata_exception_does_not_weaken_managed_record_ownership(self) -> None:
+        with patch.object(install.os, "getuid", return_value=os.getuid() + 1):
+            with self.assertRaises(OSError):
+                _ = install.read_record(self.metadata)
+
+    def test_metadata_owner_and_write_permissions_reject_foreign_control(self) -> None:
+        for owner, mode in ((502, 0o644), (0, 0o664), (501, 0o666)):
+            with self.subTest(owner=owner, mode=mode):
+                self.metadata.chmod(mode)
+                self.assertEqual(
+                    contract.Rejected(
+                        contract.Stage.PREPARATION, contract.Failure.IDEA_UNAVAILABLE
+                    ),
+                    self.selected_with_owner(owner),
+                )
+
+    def test_metadata_symlink_and_oversize_are_rejected(self) -> None:
+        target = self.metadata.with_name("target.json")
+        _ = self.metadata.rename(target)
+        self.metadata.symlink_to(target)
+        self.assertIsInstance(self.selected_with_owner(0), contract.Rejected)
+        self.metadata.unlink()
+        _ = self.metadata.write_bytes(b"x" * 1_048_577)
+        self.metadata.chmod(0o644)
+        self.assertIsInstance(self.selected_with_owner(0), contract.Rejected)
+
+
 if __name__ == "__main__":
     _ = unittest.main()
