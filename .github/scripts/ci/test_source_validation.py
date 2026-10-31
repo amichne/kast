@@ -44,6 +44,20 @@ def graph_output(tasks):
     return "\n".join(f"{task} SKIPPED" for task in sorted(tasks))
 
 
+def scripted_runs(results):
+    remaining = iter(results)
+
+    def run(command, **kwargs):
+        result = next(remaining)
+        output = kwargs.get("stdout")
+        if hasattr(output, "write"):
+            output.write(result.stdout)
+            return subprocess.CompletedProcess(command, result.returncode)
+        return result
+
+    return run
+
+
 class SourceValidationTest(unittest.TestCase):
     def setUp(self):
         enabled = patch.dict(os.environ, {"KAST_SEMANTIC_FIXTURES": "true"})
@@ -77,10 +91,10 @@ class SourceValidationTest(unittest.TestCase):
                 tempfile.TemporaryDirectory() as temporary,
                 patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-                patch.object(source.subprocess, "run", side_effect=[
+                patch.object(source.subprocess, "run", side_effect=scripted_runs([
                     subprocess.CompletedProcess([], 0, "preflight passed"),
                     subprocess.CompletedProcess([], 0, graph_output(required)),
-                ]),
+                ])),
                 patch.object(source.subprocess, "Popen") as executed,
                 redirect_stdout(io.StringIO()),
             ):
@@ -213,10 +227,10 @@ class SourceValidationTest(unittest.TestCase):
                 with (
                     patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                     patch.object(source, "source_identity", side_effect=[identity, after]) as admitted,
-                    patch.object(source.subprocess, "run", side_effect=[
+                    patch.object(source.subprocess, "run", side_effect=scripted_runs([
                         subprocess.CompletedProcess([], 0, "preflight passed"),
                         subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
-                    ]) as planned,
+                    ])) as planned,
                     patch.object(source.subprocess, "Popen", return_value=process) as executed,
                     redirect_stdout(io.StringIO()),
                 ):
@@ -233,12 +247,38 @@ class SourceValidationTest(unittest.TestCase):
                 process.wait.assert_called_once_with()
                 self.assertEqual(expected.value, json.loads((destination / "source-execution.json").read_text())["outcome"])
 
+    def test_graph_progress_reaches_its_artifact_before_the_child_exits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary)
+            graph_log = destination / "task-graph.log"
+            child = (
+                "from pathlib import Path; import sys; "
+                "print('graph progress', flush=True); "
+                f"assert Path({str(graph_log)!r}).read_text() == 'graph progress\\n'; "
+                "sys.exit(7)"
+            )
+            with (
+                patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
+                patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
+                patch.object(source, "PREFLIGHT", (sys.executable, "-c", "print('preflight')")),
+                patch.object(source, "COMMAND", (sys.executable, "-c", child)),
+                redirect_stdout(io.StringIO()),
+            ):
+                evidence = source.run(ROOT, destination)
+            self.assertEqual(7, evidence.exitCode)
+            self.assertEqual(source.Outcome.GRAPH_REJECTED, evidence.outcome)
+            self.assertEqual("graph progress\n", graph_log.read_text())
+            self.assertFalse((destination / "gradle.log").exists())
+
     def test_rejected_graph_never_starts_source_execution(self):
         with (
             patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             tempfile.TemporaryDirectory() as temporary,
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-            patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "BUILD SUCCESSFUL")),
+            patch.object(source.subprocess, "run", side_effect=scripted_runs([
+                subprocess.CompletedProcess([], 0, "preflight passed"),
+                subprocess.CompletedProcess([], 0, "BUILD SUCCESSFUL"),
+            ])),
             patch.object(source.subprocess, "Popen") as executed,
         ):
             evidence = source.run(ROOT, Path(temporary))
