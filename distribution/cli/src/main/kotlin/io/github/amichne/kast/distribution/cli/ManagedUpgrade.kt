@@ -101,24 +101,59 @@ private fun recoverManagedUpgrade(
     command: ManagementCommand.Upgrade,
     environment: Map<String, String>,
     execution: ManagedUpgradeExecution,
-): ManagedUpgradeOutcome {
-    return try {
+): ManagedUpgradeOutcome =
+    when (val installed = installedRecoveryBridge(root)) {
+        is InstalledRecoveryBridge.Admitted -> {
+            val options = listOf("--recover-only", "--install-root", root.toString()) + upgradeOutputOptions(command)
+            try {
+                when (
+                    val outcome =
+                        invokeUpgradeInstaller(
+                            installed.bridge,
+                            options,
+                            installed.installation,
+                            home,
+                            environment,
+                            execution,
+                        )
+                ) {
+                    is ManagedUpgradeOutcome.Rejected -> ManagedUpgradeOutcome.RecoveryRequired(outcome.reason)
+                    is ManagedUpgradeOutcome.ChildExited,
+                    is ManagedUpgradeOutcome.RecoveryRequired -> outcome
+                }
+            } catch (_: SecurityException) {
+                recoveryBridgeUnavailable()
+            }
+        }
+        InstalledRecoveryBridge.Unavailable ->
+            when (val admitted = RecordedRecoveryInstaller.admit(root, home)) {
+                is RecordedRecoveryInstallerAdmission.Admitted ->
+                    admitted.installer.recover(command, environment, execution)
+                is RecordedRecoveryInstallerAdmission.Rejected ->
+                    ManagedUpgradeOutcome.RecoveryRequired(admitted.reason)
+            }
+    }
+
+private sealed interface InstalledRecoveryBridge {
+    data class Admitted(val installation: Path, val bridge: Path) : InstalledRecoveryBridge
+
+    data object Unavailable : InstalledRecoveryBridge
+}
+
+private fun installedRecoveryBridge(root: Path): InstalledRecoveryBridge =
+    try {
         val installation = selectedInstallation(root)
-        val bridge = admittedInstallerBridge(installation) ?: return recoveryBridgeUnavailable()
-        val options = listOf("--recover-only", "--install-root", root.toString()) + upgradeOutputOptions(command)
-        when (val outcome = invokeUpgradeInstaller(bridge, options, installation, home, environment, execution)) {
-            is ManagedUpgradeOutcome.Rejected -> ManagedUpgradeOutcome.RecoveryRequired(outcome.reason)
-            is ManagedUpgradeOutcome.ChildExited,
-            is ManagedUpgradeOutcome.RecoveryRequired -> outcome
+        when (val bridge = admittedInstallerBridge(installation)) {
+            null -> InstalledRecoveryBridge.Unavailable
+            else -> InstalledRecoveryBridge.Admitted(installation, bridge)
         }
     } catch (_: ManagementRejected) {
-        recoveryBridgeUnavailable()
+        InstalledRecoveryBridge.Unavailable
     } catch (_: IOException) {
-        recoveryBridgeUnavailable()
+        InstalledRecoveryBridge.Unavailable
     } catch (_: SecurityException) {
-        recoveryBridgeUnavailable()
+        InstalledRecoveryBridge.Unavailable
     }
-}
 
 private fun recoveryBridgeUnavailable(): ManagedUpgradeOutcome.RecoveryRequired =
     ManagedUpgradeOutcome.RecoveryRequired(BuildSelectionFailure.INSTALLER_CONTRACT_UNSUPPORTED)

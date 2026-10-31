@@ -258,11 +258,16 @@ private fun supportsShutdown(installation: Path, manifest: BundledManifest): Boo
     payloadOwned(installation, manifest, INSTALLATION_SHUTDOWN_CAPABILITY) &&
         readBoundedFile(installation.resolve(INSTALLATION_SHUTDOWN_CAPABILITY), CAPABILITY_BYTES) == "1\n"
 
-internal fun payloadOwned(installation: Path, manifest: BundledManifest, relative: String): Boolean {
+internal fun payloadOwned(
+    installation: Path,
+    manifest: BundledManifest,
+    relative: String,
+    logicalRoot: Path = installation,
+): Boolean {
     val entry = manifest.payloadFiles.singleOrNull { it.path == relative } ?: return false
     val path = installation.resolve(relative)
     return manifest.schemaVersion == INSTALLATION_MANIFEST_SCHEMA_VERSION &&
-        manifest.installationRoot == installation.toString() &&
+        manifest.installationRoot == logicalRoot.toString() &&
         Files.isRegularFile(path, NOFOLLOW_LINKS) &&
         path.toRealPath() == path &&
         entry.sha256 == "sha256:${sha256(path)}"
