@@ -118,11 +118,17 @@ class Stopped:
             raise ValueError("a stopped snapshot cannot contain a process")
 
 
+class HostRefreshCapability(StrEnum):
+    UNAVAILABLE = "UNAVAILABLE"
+    AVAILABLE = "HOST_RELOAD_REFRESH"
+
+
 @dataclass(frozen=True, slots=True)
 class Loaded:
     process: ProcessIdentity
     identity: RuntimeIdentity
     contract: release.HostedContract
+    refreshCapability: HostRefreshCapability = HostRefreshCapability.UNAVAILABLE
 
     def __post_init__(self) -> None:
         if (
@@ -130,6 +136,41 @@ class Loaded:
             or self.process.processStartEpochMillis != self.identity.processStartEpochMillis
         ):
             raise ValueError("a loaded Host must match the captured process incarnation")
+
+
+@dataclass(frozen=True, slots=True)
+class HeldSettlement:
+    host: Loaded
+    transaction: str
+
+    def __post_init__(self) -> None:
+        if (
+            not self.transaction
+            or len(self.transaction) > 128
+            or any(character.isspace() for character in self.transaction)
+        ):
+            raise ValueError("a held settlement needs its exact bounded transaction")
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshSettlement(HeldSettlement):
+    def __post_init__(self) -> None:
+        HeldSettlement.__post_init__(self)
+        if self.host.refreshCapability != HostRefreshCapability.AVAILABLE:
+            raise ValueError("refresh needs the settled Host's explicit capability")
+
+
+class HostPollState(StrEnum):
+    NOT_OBSERVED = "HOST_NOT_OBSERVED"
+    PRIOR_HOST = "PRIOR_HOST_STILL_LOADED"
+    HELD_HOST = "HELD_HOST_STILL_LOADED"
+    OTHER_BUILD = "UNEXPECTED_LOADED_BUILD"
+    CONTRACT_MISMATCH = "SELECTED_HOST_CONTRACT_MISMATCH"
+    UNAVAILABLE = "HOST_HANDSHAKE_UNAVAILABLE"
+    SETTLING = "HOST_STILL_SETTLING"
+    ACK_INVALID = "HOST_REFRESH_ACK_INVALID"
+    REFRESH_UNAVAILABLE = "HOST_RELOAD_REFRESH_UNAVAILABLE"
+    SETTLEMENT_CHANGED = "SETTLEMENT_IDENTITY_CHANGED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -262,7 +303,17 @@ def parse_inspection(value: object, home: str, profile: str) -> Snapshot | Rejec
                 and identity.processStartEpochMillis == process.processStartEpochMillis
                 and identity.hostLifetime == result.get("host")
             ):
-                return Loaded(process, identity, contract)
+                capabilities = result.get("capabilities", [])
+                if not release.sequence(capabilities) or not all(
+                    isinstance(item, str) for item in capabilities
+                ):
+                    return failure
+                refresh = (
+                    HostRefreshCapability.AVAILABLE
+                    if "HOST_RELOAD_REFRESH" in capabilities
+                    else HostRefreshCapability.UNAVAILABLE
+                )
+                return Loaded(process, identity, contract, refresh)
     legacy = value.get("legacyProfile")
     if (
         release.mapping(legacy)
@@ -352,7 +403,9 @@ def choose_strategy(
     match snapshot:
         case Stopped():
             return Strategy.STOPPED
-        case Loaded(identity=identity) if reload_compatible and identity.autoReload == "ENABLED":
+        case Loaded(identity=identity, refreshCapability=HostRefreshCapability.AVAILABLE) if (
+            reload_compatible and identity.autoReload == "ENABLED"
+        ):
             return Strategy.HOT_RELOAD
         case Loaded() | Legacy():
             return (

@@ -90,7 +90,9 @@ class ManagedUpdateContractTest(unittest.TestCase):
                 "change.recover",
             ),
         )
-        self.loaded = contract.Loaded(self.process, self.runtime, self.hosted)
+        self.loaded = contract.Loaded(
+            self.process, self.runtime, self.hosted, contract.HostRefreshCapability.AVAILABLE
+        )
 
     def test_strategy_needs_loaded_auto_reload_and_compatible_layout(self) -> None:
         self.assertEqual(
@@ -110,6 +112,50 @@ class ManagedUpdateContractTest(unittest.TestCase):
             self.assertEqual(contract.Failure.RESTART_REQUIRED, rejected.reason)
             self.assertEqual(
                 contract.Strategy.NORMAL_RESTART, contract.choose_strategy(loaded, compatible, True)
+            )
+
+    def test_old_host_capabilities_need_restart_even_with_loaded_auto_reload(self) -> None:
+        prior = contract.parse_inspection(
+            self.inspection(self.runtime), self.runtime.ideaHome, self.runtime.profile
+        )
+        if not isinstance(prior, contract.Loaded):
+            self.fail("the actual prior capability set must remain a loaded Host")
+        self.assertEqual(
+            contract.Rejected(contract.Stage.PREPARATION, contract.Failure.RESTART_REQUIRED),
+            contract.choose_strategy(prior, True, False),
+        )
+        self.assertEqual(
+            contract.Strategy.NORMAL_RESTART, contract.choose_strategy(prior, True, True)
+        )
+
+    def test_new_refresh_capability_is_preserved_outside_runtime_identity(self) -> None:
+        value = BridgeFixture(
+            (self.process,),
+            InspectionFixture(
+                self.runtime.hostLifetime,
+                self.runtime.ideaHome,
+                "262.1",
+                CompatibilityFixture(self.hosted),
+                self.runtime,
+                capabilities=("HOST_RELOAD_REFRESH",),
+            ),
+        )
+        loaded = self.parse_fixture(value)
+        self.assertEqual(self.loaded, loaded)
+        if not isinstance(loaded, contract.Loaded):
+            self.fail("new capability must preserve Loaded")
+        self.assertIs(contract.HostRefreshCapability.AVAILABLE, loaded.refreshCapability)
+        self.assertEqual(self.runtime, loaded.identity)
+        self.assertIs(contract.Strategy.HOT_RELOAD, contract.choose_strategy(loaded, True, False))
+        self.assertIs(
+            contract.Strategy.NORMAL_RESTART, contract.choose_strategy(loaded, False, True)
+        )
+        held = contract.HeldSettlement(loaded, "transaction")
+        self.assertEqual(loaded, contract.RefreshSettlement(held.host, held.transaction).host)
+        with self.assertRaises(ValueError):
+            _ = contract.RefreshSettlement(
+                replace(loaded, refreshCapability=contract.HostRefreshCapability.UNAVAILABLE),
+                "transaction",
             )
 
     def test_selected_identity_and_contract_both_need_equality(self) -> None:
@@ -141,7 +187,7 @@ class ManagedUpdateContractTest(unittest.TestCase):
                 contract.Rejected,
             )
         self.assertEqual(
-            self.loaded,
+            replace(self.loaded, refreshCapability=contract.HostRefreshCapability.UNAVAILABLE),
             contract.parse_inspection(
                 self.inspection(self.runtime), self.runtime.ideaHome, self.runtime.profile
             ),
