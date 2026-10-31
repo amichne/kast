@@ -560,6 +560,13 @@ class BlockedInspectionFixture:
 
 
 @dataclass(frozen=True)
+class RejectedHostFixture:
+    result: BlockedInspectionFixture
+    reason: str = "HOST_REJECTED"
+    type: str = "REJECTED"
+
+
+@dataclass(frozen=True)
 class InspectionFixture:
     processes: tuple[contract.ProcessIdentity, ...] = ()
     result: (
@@ -1044,6 +1051,209 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         self.assertEqual(["SETTLE", "REFRESH"], runner.requests)
         self.assertTrue((self.slot / "host-receipt").is_file())
 
+    def selected_composition(self) -> install.release.AdmittedComposition:
+        return install.release.AdmittedComposition(
+            self.identity,
+            journal.TrackStable(),
+            self.installation,
+            self.selected_archive,
+            self.home / "host.zip",
+            self.home / "control-record",
+            self.home / "host-record",
+            "e" * 64,
+            "f" * 64,
+            self.compatibility,
+            "9" * 64,
+        )
+
+    def frame_for_loaded(self, loaded: contract.Loaded) -> bytes:
+        return install.encoded(
+            InspectionFixture(
+                (loaded.process,),
+                InspectionResultFixture(
+                    loaded.identity.hostLifetime,
+                    loaded.identity,
+                    InspectionCompatibilityFixture(loaded.contract),
+                ),
+            )
+        )
+
+    def test_forward_autonomous_reload_reaches_the_actual_selected_runtime_oracle(self) -> None:
+        host = self.host_before_replacement()
+        prior = self.parsed_loaded(
+            self.loaded_frame("prior-host", self.prior_receipt.installedBuild)
+        )
+        selected_frame = self.loaded_frame("autonomously-selected-host")
+        selected = self.parsed_loaded(selected_frame)
+        transaction = journal.managed_parts(self.record)[0].transaction
+        runner = HostActionRunner(
+            [
+                ExpectedHostCall(
+                    "REFRESH",
+                    install.encoded(RejectedHostFixture(BlockedInspectionFixture("WRONG_HOST"))),
+                    prior.identity.hostLifetime,
+                    transaction,
+                ),
+                ExpectedHostCall("INSPECT", selected_frame),
+            ]
+        )
+        self.adapter.runner = runner
+        install.replace_host(
+            self.adapter,
+            contract.Strategy.HOT_RELOAD,
+            host,
+            contract.HeldSettlement(prior, transaction),
+        )
+        actual = self.adapter.wait_selected(
+            self.selected_composition(), prior, contract.Strategy.HOT_RELOAD
+        )
+        self.assertEqual(selected, actual)
+        runner.finished()
+        self.assertEqual(["REFRESH", "INSPECT"], runner.requests)
+        self.assertTrue((self.root / "shutdown.json").is_file())
+
+    def test_refresh_transition_keeps_the_exact_failure_and_needs_runtime_proof(self) -> None:
+        prior = self.parsed_loaded(
+            self.loaded_frame("prior-host", self.prior_receipt.installedBuild)
+        )
+        held = contract.RefreshSettlement(prior, "held-transaction")
+        for code in (
+            "WRONG_HOST",
+            "HOST_UNAVAILABLE",
+            "PLUGIN_UNAVAILABLE",
+            "EXCHANGE_DEADLINE_EXCEEDED",
+        ):
+            with self.subTest(code=code):
+                runner = HostActionRunner(
+                    [
+                        ExpectedHostCall(
+                            "REFRESH",
+                            install.encoded(RejectedHostFixture(BlockedInspectionFixture(code))),
+                            prior.identity.hostLifetime,
+                            held.transaction,
+                        ),
+                        ExpectedHostCall("INSPECT", self.frame_for_loaded(prior)),
+                    ]
+                )
+                self.adapter.runner = runner
+                evidence = io.StringIO()
+                with contextlib.redirect_stderr(evidence):
+                    observation = self.adapter.refresh(held)
+                expected = contract.Rejected(
+                    self.adapter.stage, contract.Failure.HOST_REJECTED, code
+                )
+                self.assertEqual(contract.RefreshTransition(expected), observation)
+                self.assertEqual(
+                    {"type": "HOST_REFRESH_TRANSITION", "failure": asdict(expected)},
+                    json.loads(evidence.getvalue().splitlines()[-1]),
+                )
+                with patch.object(install.time, "monotonic", side_effect=[0.0, 1.0]):
+                    with self.assertRaises(install.StageRejected) as rejected:
+                        _ = self.adapter.wait_selected(
+                            self.selected_composition(), prior, contract.Strategy.HOT_RELOAD
+                        )
+                self.assertEqual(
+                    contract.Failure.HOST_ACTIVATION_TIMEOUT, rejected.exception.failure.reason
+                )
+                runner.finished()
+                self.assertTrue((self.root / "shutdown.json").is_file())
+                self.assertTrue((self.slot / "receipt.json").is_file())
+
+    def test_refresh_does_not_defer_unknown_capability_scope_or_ownership_failures(self) -> None:
+        loaded = self.parsed_loaded(self.loaded_frame())
+        held = contract.RefreshSettlement(loaded, "held-transaction")
+        for code in (
+            "CAPABILITY_MISMATCH",
+            "HOST_IDENTITY_MISMATCH",
+            "PROFILE_MISMATCH",
+            "REQUEST_CONFLICT",
+            "INVALID_REQUEST",
+            "UNKNOWN_NEW_FAILURE",
+        ):
+            with self.subTest(code=code):
+                runner = HostActionRunner(
+                    [
+                        ExpectedHostCall(
+                            "REFRESH",
+                            install.encoded(RejectedHostFixture(BlockedInspectionFixture(code))),
+                            loaded.identity.hostLifetime,
+                            held.transaction,
+                        )
+                    ]
+                )
+                self.adapter.runner = runner
+                with self.assertRaises(install.StageRejected) as rejected:
+                    _ = self.adapter.refresh(held)
+                self.assertEqual(code, rejected.exception.failure.adapterCode)
+                runner.finished()
+
+    def test_stale_refresh_target_never_admits_wrong_selected_runtime(self) -> None:
+        prior = self.parsed_loaded(
+            self.loaded_frame("prior-host", self.prior_receipt.installedBuild)
+        )
+        selected = self.parsed_loaded(self.loaded_frame())
+        wrong_process = replace(selected.process, processStartEpochMillis=999)
+        cases = (
+            (
+                replace(
+                    selected,
+                    identity=replace(
+                        selected.identity,
+                        buildIdentity=contract.RuntimeBuild("9.0.0", "e" * 40, "f" * 40),
+                    ),
+                ),
+                contract.Failure.HOST_ACTIVATION_TIMEOUT,
+            ),
+            (
+                replace(
+                    selected,
+                    contract=replace(selected.contract, wireSchemaDigest="sha256:" + "f" * 64),
+                ),
+                contract.Failure.HOST_ACTIVATION_TIMEOUT,
+            ),
+            (
+                replace(
+                    selected,
+                    process=wrong_process,
+                    identity=replace(selected.identity, processStartEpochMillis=999),
+                ),
+                contract.Failure.CONCURRENT_CHANGE,
+            ),
+            (
+                replace(
+                    selected,
+                    identity=replace(selected.identity, hostLifetime=prior.identity.hostLifetime),
+                ),
+                contract.Failure.CONCURRENT_CHANGE,
+            ),
+        )
+        for current, expected in cases:
+            with self.subTest(expected=expected, current=current):
+                runner = HostActionRunner(
+                    [
+                        ExpectedHostCall(
+                            "REFRESH",
+                            install.encoded(
+                                RejectedHostFixture(BlockedInspectionFixture("WRONG_HOST"))
+                            ),
+                            prior.identity.hostLifetime,
+                            "held-transaction",
+                        ),
+                        ExpectedHostCall("INSPECT", self.frame_for_loaded(current)),
+                    ]
+                )
+                self.adapter.runner = runner
+                _ = self.adapter.refresh(contract.RefreshSettlement(prior, "held-transaction"))
+                with patch.object(install.time, "monotonic", side_effect=[0.0, 1.0]):
+                    with self.assertRaises(install.StageRejected) as rejected:
+                        _ = self.adapter.wait_selected(
+                            self.selected_composition(), prior, contract.Strategy.HOT_RELOAD
+                        )
+                self.assertEqual(expected, rejected.exception.failure.reason)
+                runner.finished()
+                self.assertTrue((self.root / "shutdown.json").is_file())
+                self.assertTrue((self.slot / "receipt.json").is_file())
+
     def test_missing_refresh_capability_rejects_before_host_exchange(self) -> None:
         host = self.host_before_replacement()
         loaded = self.parsed_loaded(self.loaded_frame())
@@ -1119,7 +1329,7 @@ class FilesystemCoordinatorTest(unittest.TestCase):
                 )
                 self.adapter.runner = runner
                 with self.assertRaises(install.StageRejected):
-                    self.adapter.refresh(held)
+                    _ = self.adapter.refresh(held)
                 runner.finished()
 
     def test_hot_recovery_original_host_resumes_without_refresh(self) -> None:
@@ -1236,6 +1446,76 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         runner.finished()
         self.assertEqual(["INSPECT", "SETTLE", "REFRESH", "INSPECT"], runner.requests)
         self.assert_restored()
+
+    def test_autonomous_prior_reload_reaches_the_actual_restored_runtime_oracle(self) -> None:
+        _ = self.hot_recovery()
+        selected_frame = self.loaded_frame("selected-host")
+        selected = self.parsed_loaded(selected_frame)
+        restored_frame = self.loaded_frame(
+            "autonomously-restored", self.prior_receipt.installedBuild
+        )
+        restored = self.parsed_loaded(restored_frame)
+        transaction = journal.managed_parts(self.record)[0].transaction
+        runner = HostActionRunner(
+            [
+                ExpectedHostCall("INSPECT", selected_frame),
+                ExpectedHostCall(
+                    "SETTLE",
+                    self.acknowledgement(selected, "host_settled", transaction),
+                    selected.identity.hostLifetime,
+                    transaction,
+                ),
+                ExpectedHostCall(
+                    "REFRESH",
+                    install.encoded(RejectedHostFixture(BlockedInspectionFixture("WRONG_HOST"))),
+                    selected.identity.hostLifetime,
+                    transaction,
+                ),
+                ExpectedHostCall("INSPECT", restored_frame),
+            ]
+        )
+        self.adapter.runner = runner
+        outcome = install.restore_transaction(self.adapter, self.record, self.failure)
+        if not isinstance(outcome, contract.RolledBack):
+            self.fail(f"actual autonomous restoration rejected: {outcome}")
+        self.assertEqual(restored, outcome.restored.runtime)
+        runner.finished()
+        self.assertEqual(["INSPECT", "SETTLE", "REFRESH", "INSPECT"], runner.requests)
+        self.assert_restored()
+
+    def test_stale_rollback_refresh_without_actual_restoration_keeps_the_fence(self) -> None:
+        _ = self.hot_recovery()
+        selected_frame = self.loaded_frame("selected-host")
+        selected = self.parsed_loaded(selected_frame)
+        transaction = journal.managed_parts(self.record)[0].transaction
+        runner = HostActionRunner(
+            [
+                ExpectedHostCall("INSPECT", selected_frame),
+                ExpectedHostCall(
+                    "SETTLE",
+                    self.acknowledgement(selected, "host_settled", transaction),
+                    selected.identity.hostLifetime,
+                    transaction,
+                ),
+                ExpectedHostCall(
+                    "REFRESH",
+                    install.encoded(RejectedHostFixture(BlockedInspectionFixture("WRONG_HOST"))),
+                    selected.identity.hostLifetime,
+                    transaction,
+                ),
+                ExpectedHostCall("INSPECT", selected_frame),
+            ]
+        )
+        self.adapter.runner = runner
+        with patch.object(install.time, "monotonic", side_effect=[0.0, 0.0, 1.0]):
+            outcome = install.restore_transaction(self.adapter, self.record, self.failure)
+        if not isinstance(outcome, contract.RecoveryRequired):
+            self.fail("a stale refresh target cannot prove that the prior Host loaded")
+        self.assertEqual(contract.Failure.RECOVERY_UNPROVEN, outcome.recovery.reason)
+        self.assertEqual(contract.HostPollState.HELD_HOST.value, outcome.recovery.adapterCode)
+        self.assertTrue((self.root / "shutdown.json").is_file())
+        self.assertTrue((self.slot / "receipt.json").is_file())
+        runner.finished()
 
     def test_hot_recovery_refresh_needs_a_fresh_prior_handshake(self) -> None:
         _ = self.hot_recovery()

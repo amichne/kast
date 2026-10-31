@@ -882,8 +882,17 @@ class NativeComposition:
                 contract.HostPollState.REFRESH_UNAVAILABLE.value,
             ) from None
 
-    def refresh(self, held: contract.RefreshSettlement) -> None:
-        _ = self.host_action(held.host, held.transaction, "REFRESH")
+    def refresh(self, held: contract.RefreshSettlement) -> contract.RefreshObservation:
+        try:
+            _ = self.host_action(held.host, held.transaction, "REFRESH")
+        except StageRejected as problem:
+            try:
+                observation = contract.RefreshTransition(problem.failure)
+            except ValueError:
+                raise problem from None
+            print(encoded(observation).decode().rstrip(), file=sys.stderr)
+            return observation
+        return contract.RefreshRequested()
 
     def resume_held(self, loaded: contract.Loaded, held: contract.HeldSettlement) -> None:
         if loaded.identity.hostLifetime != held.host.identity.hostLifetime:
@@ -1315,7 +1324,7 @@ def replace_host(
             raise reject(adapter.stage, contract.Failure.OWNERSHIP_UNPROVEN)
         refresh = adapter.refresh_settlement(held)
         HOST.commit_managed_reload(host_record)
-        adapter.refresh(refresh)
+        _ = adapter.refresh(refresh)
     else:
         HOST.commit_managed(host_record)
 
@@ -1802,7 +1811,7 @@ def restore_transaction(
         for preimage in (core.management, core.publicExecutable, core.profileOptions):
             restore_file(preimage, adapter, current_record)
         if refresh is not None:
-            adapter.refresh(refresh)
+            _ = adapter.refresh(refresh)
         if isinstance(prior, contract.Stopped):
             actual, _ = adapter.inspect(False)
             if not isinstance(actual, contract.Stopped):

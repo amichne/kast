@@ -203,6 +203,33 @@ class Rejected:
     type: Literal["REJECTED"] = "REJECTED"
 
 
+class RefreshTransitionCode(StrEnum):
+    WRONG_HOST = "WRONG_HOST"
+    HOST_UNAVAILABLE = "HOST_UNAVAILABLE"
+    PLUGIN_UNAVAILABLE = "PLUGIN_UNAVAILABLE"
+    EXCHANGE_DEADLINE_EXCEEDED = "EXCHANGE_DEADLINE_EXCEEDED"
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshRequested:
+    type: Literal["HOST_REFRESH_REQUESTED"] = "HOST_REFRESH_REQUESTED"
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshTransition:
+    failure: Rejected
+    type: Literal["HOST_REFRESH_TRANSITION"] = "HOST_REFRESH_TRANSITION"
+
+    def __post_init__(self) -> None:
+        if self.failure.reason != Failure.HOST_REJECTED or self.failure.adapterCode not in tuple(
+            RefreshTransitionCode
+        ):
+            raise ValueError("only a known Host transition can defer refresh to runtime admission")
+
+
+type RefreshObservation = RefreshRequested | RefreshTransition
+
+
 type Snapshot = Stopped | Loaded | Legacy
 
 

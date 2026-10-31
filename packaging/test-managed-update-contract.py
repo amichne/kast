@@ -158,6 +158,22 @@ class ManagedUpdateContractTest(unittest.TestCase):
                 "transaction",
             )
 
+    def test_refresh_transition_rejects_unknown_or_non_host_failures(self) -> None:
+        for failure in (
+            contract.Rejected(contract.Stage.HOST_REPLACEMENT, contract.Failure.CONCURRENT_CHANGE),
+            contract.Rejected(
+                contract.Stage.HOST_REPLACEMENT,
+                contract.Failure.HOST_REJECTED,
+                "CAPABILITY_MISMATCH",
+            ),
+            contract.Rejected(
+                contract.Stage.HOST_REPLACEMENT, contract.Failure.HOST_REJECTED, "NEW_FAILURE"
+            ),
+            contract.Rejected(contract.Stage.HOST_REPLACEMENT, contract.Failure.HOST_REJECTED),
+        ):
+            with self.subTest(failure=failure), self.assertRaises(ValueError):
+                _ = contract.RefreshTransition(failure)
+
     def test_selected_identity_and_contract_both_need_equality(self) -> None:
         identity = release.BuildIdentity("v1.2.3", "1.2.3", "a" * 40, "b" * 40)
         self.assertTrue(contract.matches_selected(self.loaded, identity, self.hosted))
