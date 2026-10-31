@@ -289,8 +289,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "00bbdc9030582bcc00de718bedd9f6372c1c58dade746bbdb0614327e229e7dc",
-      "claimsSha256": "d54984dfc5b678c64b08ff971242d6f753a4df9a871c515f2dadf64f6a059e38",
+      "sha256": "4b2c7745c822105ea6602e8f94a3978c3aef204d09952c1ea020ee0854fa838a",
+      "claimsSha256": "53d357e5bbbf0388eac5e849f50a8a70b7b7125eade6b63e7c12b7dfa14b4b18",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -361,6 +361,27 @@
           "recordedVersion": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb",
           "currentVersion": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb",
           "status": "MATCHED"
+        },
+        {
+          "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt#L3-L49",
+          "recordedVersion": "repo-lines-v1:sha256:63f267fa7ad47810b55f06b2de4c3286fa0f961e4ba9b4caae54f58e5264d850:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ",
+          "currentVersion": "repo-file-v1:sha256:1526f0c660ab1499a6eb9916a76cc5a04db3a61ac1d145cf563949ed1d57f373",
+          "status": "NOT_ASSESSED"
+        },
+        {
+          "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L461-L472",
+          "recordedVersion": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ",
+          "currentVersion": "repo-file-v1:sha256:3176fd190ae5d6d9f8e839017fd50c0bbfd85b6138ccb0fcf8123f11e53b8082",
+          "status": "NOT_ASSESSED"
+        },
+        {
+          "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
+          "resource": "repo://build-logic/src/test/kotlin/support/architecture/WorkspaceRefreshEffectBoundaryTest.kt#L15-L47",
+          "recordedVersion": "repo-lines-v1:sha256:e30a5dbaa4697055afb92edc597476eea73689d0df33713e9ee404dcd5a201f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZGY0ZWNlNWUxNGU0ODg5ZTE2MDVkZGM0M2I3ZTJiNDhjMTJhNmI5ZDRkZTQ1MmViM2M3NDlhODg2OWU5MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhMDI4NTk1NmQxZWNiMDQyY2MxNzk5ZGZmNTJlN2M0ZTM2ZTc1NDRlNWUxZGNjNDM3Y2M3MDgwNGRmODYxODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyZDY1Y2M5NjJkN2MxMzczZjdmOGI3OGJkOWY1MzU1ZWQ0NDY1NDVhZDczZTY2NWUwMmUyYTFmNWRlZjY4NjMifQ",
+          "currentVersion": "repo-file-v1:sha256:5102efe05cf13b10a792f9b0636e991dfe1a73214d4532af777c8b6d8e244db6",
+          "status": "NOT_ASSESSED"
         }
       ]
     },

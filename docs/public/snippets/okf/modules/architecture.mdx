@@ -85,7 +85,12 @@ The [installed knowledge contract](https://github.com/amichne/kast/blob/main/ope
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
 
-The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unapproved native import entry points and cache/index rebuilding.
+The explicit workspace refresh adapter owns native Gradle model reload and its existing VFS refresh entry points.
+`NativeHostBundleRefreshRoot.submit` separately owns the exact `VfsUtil.markDirty` and `LocalFileSystem.refreshFiles` signatures for managed Host refresh.
+Architecture admission compares that caller's complete method descriptor and each target signature.
+Other methods, overloads, Gradle import calls, and workspace refresh entry points reject for this owner.
+Passive reads and general hosted callers receive neither capability.
+Architecture regression tests preserve these restrictions.
 
 The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Project close retains its exact local confirmation and scoped native lifecycle owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
 
