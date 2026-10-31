@@ -39,7 +39,6 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 /** Control survives zero open projects; semantic state never leaves its project service. */
@@ -77,6 +76,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         )
     private val settlement =
         HostedApplicationSettlement(admission, runtimeIdentity, native::settlement, native::hasActivePreparation)
+    private val hostRefresh = HostBundleRefreshAdapter()
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =
         scope.launch(Dispatchers.IO) {
@@ -129,35 +129,34 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                                         try {
                                             client.use {
                                                 withTimeout(LifecycleConnectionAttempt.LIMIT_MILLIS) {
-                                                    val result =
+                                                    val reply =
                                                         when (
                                                             val frame = runInterruptible {
                                                                 HostedFrames.read(Channels.newInputStream(client))
                                                             }
                                                         ) {
                                                             is Refinement.Rejected ->
-                                                                IdeLifecycleResult.Blocked(
-                                                                    IdeLifecycleFailure.INVALID_REQUEST
+                                                                LifecycleReply.immediate(
+                                                                    IdeLifecycleResult.Blocked(
+                                                                        IdeLifecycleFailure.INVALID_REQUEST
+                                                                    )
                                                                 )
                                                             is Refinement.Refined -> parse(frame.value, connection)
                                                         }
-                                                    connection.enter(LifecycleConnectionStage.WRITE_FRAME)
-                                                    runInterruptible {
-                                                        HostedFrames.write(
-                                                            Channels.newOutputStream(client),
-                                                            json.encodeToString(
-                                                                IdeLifecycleResult.serializer(),
-                                                                result,
-                                                            ),
-                                                        )
-                                                    }
-                                                    if (result is IdeLifecycleResult.HostStopRequested) {
-                                                        // The acknowledgment precedes the ordinary IDE action. It never
-                                                        // proves process exit.
-                                                        ApplicationManager.getApplication().invokeLater {
-                                                            ApplicationManager.getApplication().exit()
+                                                    val written = reply.write { result ->
+                                                        connection.enter(LifecycleConnectionStage.WRITE_FRAME)
+                                                        runInterruptible {
+                                                            HostedFrames.write(
+                                                                Channels.newOutputStream(client),
+                                                                json.encodeToString(
+                                                                    IdeLifecycleResult.serializer(),
+                                                                    result,
+                                                                ),
+                                                            )
                                                         }
                                                     }
+                                                    if (written is Refinement.Rejected)
+                                                        observeLifecycleReplyRejection(written.failure)
                                                 }
                                             }
                                         } catch (_: TimeoutCancellationException) {
@@ -199,34 +198,27 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         )
     }
 
-    private fun parse(raw: String, connection: LifecycleConnectionAttempt): IdeLifecycleResult =
-        try {
-            val command = json.decodeFromString<IdeLifecycleCommand>(raw)
+    private fun parse(raw: String, connection: LifecycleConnectionAttempt): LifecycleReply =
+        decodeLifecycleReply(raw, json) { command ->
             connection.dispatch(command)
-            submit(command)
-        } catch (_: SerializationException) {
-            IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST)
-        } catch (_: IllegalArgumentException) {
-            IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST)
+            if (!lifecycleHostModeSupported()) {
+                LifecycleReply.immediate(IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE))
+            } else if (command is IdeLifecycleCommand.RefreshHostBundle) {
+                applicationHostRefreshReply(command, settlement, hostRefresh, scope)
+            } else {
+                val result = submit(command)
+                if (result is IdeLifecycleResult.HostStopRequested)
+                    LifecycleReply.afterAcknowledgment(result) {
+                        ApplicationManager.getApplication().invokeLater { ApplicationManager.getApplication().exit() }
+                    }
+                else LifecycleReply.immediate(result)
+            }
         }
 
     private fun submit(received: IdeLifecycleCommand): IdeLifecycleResult {
-        if (
-            com.intellij.idea.AppMode.isRemoteDevHost() ||
-                com.intellij.util.PlatformUtils.isJetBrainsClient() ||
-                com.intellij.util.PlatformUtils.isGateway()
-        )
-            return IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE)
         native.observeProjects()
         if (received is IdeLifecycleCommand.Inspect)
-            return IdeLifecycleResult.Inspected(
-                state.host.toString(),
-                home.toString(),
-                ApplicationInfo.getInstance().build.asString(),
-                native.inspectProjects(),
-                io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.document,
-                runtimeIdentity = runtimeIdentity,
-            )
+            return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)
         if (received is IdeLifecycleCommand.ResumeHost) return settlement.resume(received)
         if (received is IdeLifecycleCommand.StopHost) return settlement.stop(received)

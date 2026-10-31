@@ -29,6 +29,7 @@ class HostInstallationLifecycleContractTest {
                 "settle_host" to IdeLifecycleCommand.SettleHost("host", "update"),
                 "resume_host" to IdeLifecycleCommand.ResumeHost("host", "update"),
                 "stop_host" to IdeLifecycleCommand.StopHost("host", "update"),
+                "refresh_host_bundle" to IdeLifecycleCommand.RefreshHostBundle("host", "update"),
             )
         for ((name, command) in commands) {
             val encoded = json.parseToJsonElement(json.encodeToString<IdeLifecycleCommand>(command)).jsonObject
@@ -53,6 +54,7 @@ class HostInstallationLifecycleContractTest {
             listOf(
                 "host_settled" to IdeLifecycleResult.HostSettled("host", "update", identity),
                 "host_stop_requested" to IdeLifecycleResult.HostStopRequested("host", "update", identity),
+                "host_refresh_requested" to IdeLifecycleResult.HostRefreshRequested("host", "update", identity),
             )) {
             val encoded = json.parseToJsonElement(json.encodeToString<IdeLifecycleResult>(result)).jsonObject
             assertEquals(type, encoded.getValue("type").jsonPrimitive.content)

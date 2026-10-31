@@ -72,6 +72,10 @@ sealed interface IdeLifecycleCommand : OperationRequest {
     @Serializable
     @SerialName("stop_host")
     data class StopHost(val host: String, val transaction: String) : IdeLifecycleCommand
+
+    @Serializable
+    @SerialName("refresh_host_bundle")
+    data class RefreshHostBundle(val host: String, val transaction: String) : IdeLifecycleCommand
 }
 
 @Serializable
@@ -133,6 +137,9 @@ enum class IdeLifecycleFailure : OperationRejection {
     DEADLINE_EXCEEDED,
     HOST_FENCED,
     MUTATION_RECOVERY_REQUIRED,
+    HOST_REFRESH_ROOT_UNAVAILABLE,
+    HOST_REFRESH_SCOPE_MISMATCH,
+    HOST_REFRESH_FAILED,
 }
 
 @Serializable
@@ -170,6 +177,15 @@ sealed interface IdeLifecycleResult : OperationResult {
     @SerialName("host_settled")
     data class HostSettled(val host: String, val transaction: String, val runtimeIdentity: IdeHostRuntimeIdentity) :
         IdeLifecycleResult
+
+    /** Admission and acknowledgment precede the scoped refresh. This result does not prove a loaded build. */
+    @Serializable
+    @SerialName("host_refresh_requested")
+    data class HostRefreshRequested(
+        val host: String,
+        val transaction: String,
+        val runtimeIdentity: IdeHostRuntimeIdentity,
+    ) : IdeLifecycleResult
 
     @Serializable
     @SerialName("host_resumed")
@@ -255,6 +271,7 @@ enum class IdeLifecycleCapabilityName {
     HOST_SETTLEMENT,
     HOST_RUNTIME_IDENTITY,
     HOST_NORMAL_STOP,
+    HOST_RELOAD_REFRESH,
 }
 
 @Serializable data class IdeHostBuildIdentity(val version: String, val sourceRevision: String, val sourceTree: String)

@@ -45,7 +45,8 @@ internal fun executeManagedHost(
                 is ManagedHostRequest.Inspect -> inspectRunningHost(target, request, processes, exchange, inspectLegacy)
                 is ManagedHostRequest.Settle,
                 is ManagedHostRequest.Resume,
-                is ManagedHostRequest.Stop -> changeRunningHost(target, request, processes, exchange)
+                is ManagedHostRequest.Stop,
+                is ManagedHostRequest.Refresh -> changeRunningHost(target, request, processes, exchange)
             }
     }
 
@@ -185,6 +186,7 @@ private fun changeRunningHost(
             is ManagedHostRequest.Settle -> IdeLifecycleCommand.SettleHost(request.host, request.transaction)
             is ManagedHostRequest.Resume -> IdeLifecycleCommand.ResumeHost(request.host, request.transaction)
             is ManagedHostRequest.Stop -> IdeLifecycleCommand.StopHost(request.host, request.transaction)
+            is ManagedHostRequest.Refresh -> IdeLifecycleCommand.RefreshHostBundle(request.host, request.transaction)
             else -> return ManagedHostResponse.Rejected(ManagedHostFailure.INVALID_REQUEST)
         }
     when (val current = readmitTarget(target, processes)) {
@@ -199,6 +201,9 @@ private fun changeRunningHost(
             if (result.runtimeIdentity != inspected.runtimeIdentity)
                 return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, result)
         is IdeLifecycleResult.HostStopRequested ->
+            if (result.runtimeIdentity != inspected.runtimeIdentity)
+                return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, result)
+        is IdeLifecycleResult.HostRefreshRequested ->
             if (result.runtimeIdentity != inspected.runtimeIdentity)
                 return ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, result)
         else -> Unit
@@ -257,6 +262,10 @@ private fun matchesManagedHostResult(command: IdeLifecycleCommand, result: IdeLi
                 result.transaction == command.transaction
         is IdeLifecycleCommand.StopHost ->
             result is IdeLifecycleResult.HostStopRequested &&
+                result.host == command.host &&
+                result.transaction == command.transaction
+        is IdeLifecycleCommand.RefreshHostBundle ->
+            result is IdeLifecycleResult.HostRefreshRequested &&
                 result.host == command.host &&
                 result.transaction == command.transaction
         else -> false

@@ -12,6 +12,8 @@ import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -19,6 +21,51 @@ import org.junit.jupiter.api.io.TempDir
 
 class ManagedHostCliTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `encoded refresh bridge preserves exact acknowledgment selectors and runtime identity`() {
+        val fixture = fixture()
+        val request = ManagedHostRequest.Refresh(fixture.idea.toString(), fixture.profile.toString(), "host", "update")
+        val json = Json { encodeDefaults = true }
+        val parsed = json.decodeFromString<ManagedHostRequest>(json.encodeToString<ManagedHostRequest>(request))
+        val commands = mutableListOf<IdeLifecycleCommand>()
+        val acknowledgment = IdeLifecycleResult.HostRefreshRequested("host", "update", fixture.identity)
+        val result =
+            executeManagedHost(
+                parsed,
+                fixture.home,
+                processes = { ManagedProcessInventory.Captured(listOf(fixture.process)) },
+                exchange = { _, command ->
+                    commands += command
+                    if (command == IdeLifecycleCommand.Inspect) fixture.inspected else acknowledgment
+                },
+            )
+        assertEquals(
+            listOf(IdeLifecycleCommand.Inspect, IdeLifecycleCommand.RefreshHostBundle("host", "update")),
+            commands,
+        )
+        assertEquals(ManagedHostResponse.Inspected(listOf(fixture.process), acknowledgment), result)
+        val actual = json.parseToJsonElement(json.encodeToString<ManagedHostRequest>(request)).jsonObject
+        assertEquals(setOf("type", "ideaHome", "profile", "host", "transaction"), actual.keys)
+        assertEquals("REFRESH", actual.getValue("type").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `refresh acknowledgment from another Host lifetime rejects`() {
+        val fixture = fixture()
+        val acknowledgment =
+            IdeLifecycleResult.HostRefreshRequested("host", "update", fixture.identity.copy(hostLifetime = "foreign"))
+        val result =
+            executeManagedHost(
+                ManagedHostRequest.Refresh(fixture.idea.toString(), fixture.profile.toString(), "host", "update"),
+                fixture.home,
+                processes = { ManagedProcessInventory.Captured(listOf(fixture.process)) },
+                exchange = { _, command ->
+                    if (command == IdeLifecycleCommand.Inspect) fixture.inspected else acknowledgment
+                },
+            )
+        assertEquals(ManagedHostResponse.Rejected(ManagedHostFailure.HOST_IDENTITY_MISMATCH, acknowledgment), result)
+    }
 
     @Test
     fun `zero-project Host inspection binds process incarnation and selected profile`() {

@@ -70,6 +70,8 @@ internal constructor(
                 is IdeLifecycleCommand.SettleHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
                 is IdeLifecycleCommand.ResumeHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
                 is IdeLifecycleCommand.StopHost -> command.host to IdeLifecycleCapabilityName.HOST_NORMAL_STOP
+                is IdeLifecycleCommand.RefreshHostBundle ->
+                    command.host to IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH
                 else -> return blocked(IdeLifecycleFailure.INVALID_REQUEST)
             }
         if (inspected.host != host) return blocked(IdeLifecycleFailure.WRONG_HOST)

@@ -45,6 +45,15 @@ internal sealed interface ManagedHostRequest {
     ) : ManagedHostRequest
 
     @Serializable
+    @SerialName("REFRESH")
+    data class Refresh(
+        override val ideaHome: String,
+        override val profile: String,
+        val host: String,
+        val transaction: String,
+    ) : ManagedHostRequest
+
+    @Serializable
     @SerialName("START")
     data class Start(override val ideaHome: String, override val profile: String) : ManagedHostRequest
 

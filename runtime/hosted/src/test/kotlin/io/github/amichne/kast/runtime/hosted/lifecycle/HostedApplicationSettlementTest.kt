@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -20,6 +22,101 @@ class HostedApplicationSettlementTest {
             "host",
             IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
         )
+
+    @Test
+    fun `refresh requires the exact acknowledged transaction and loaded option`() {
+        var native = HostNativeSettlement.Settled
+        var preparation = false
+        val admission = HostedApplicationAdmission()
+        val enabled = identity.copy(autoReload = HostAutoReload.ENABLED)
+        val owner = HostedApplicationSettlement(admission, enabled, { native }, { preparation })
+        val command = IdeLifecycleCommand.RefreshHostBundle("host", "update")
+        assertEquals(Refinement.Rejected(IdeLifecycleFailure.REQUEST_CONFLICT), owner.admitRefresh(command))
+        owner.settle(IdeLifecycleCommand.SettleHost("host", "update"))
+        assertEquals(
+            Refinement.Rejected(IdeLifecycleFailure.WRONG_HOST),
+            owner.admitRefresh(command.copy(host = "foreign")),
+        )
+        assertEquals(
+            Refinement.Rejected(IdeLifecycleFailure.REQUEST_CONFLICT),
+            owner.admitRefresh(command.copy(transaction = "foreign")),
+        )
+        preparation = true
+        assertEquals(Refinement.Rejected(IdeLifecycleFailure.PROJECT_BUSY), owner.admitRefresh(command))
+        preparation = false
+        native = HostNativeSettlement.UnresolvedMutation
+        assertEquals(Refinement.Rejected(IdeLifecycleFailure.MUTATION_RECOVERY_REQUIRED), owner.admitRefresh(command))
+        native = HostNativeSettlement.Settled
+        val ticket = (owner.admitRefresh(command) as Refinement.Refined).value
+        var effects = 0
+        native = HostNativeSettlement.Busy
+        assertEquals(
+            HostRefreshSubmission.Rejected(IdeLifecycleFailure.PROJECT_BUSY),
+            owner.dispatchRefresh(ticket) {
+                effects++
+                HostRefreshSubmission.Submitted
+            },
+        )
+        assertEquals(0, effects)
+        val disabled =
+            HostedApplicationSettlement(
+                HostedApplicationAdmission(),
+                identity,
+                { HostNativeSettlement.Settled },
+                { false },
+            )
+        disabled.settle(IdeLifecycleCommand.SettleHost("host", "update"))
+        assertEquals(Refinement.Rejected(IdeLifecycleFailure.CAPABILITY_MISMATCH), disabled.admitRefresh(command))
+    }
+
+    @Test
+    fun `an active semantic lease prevents a refresh ticket even with idle native work`() {
+        val admission = HostedApplicationAdmission()
+        val lease = (admission.enter() as HostedApplicationAdmission.Admission.Admitted).lease
+        val owner =
+            HostedApplicationSettlement(
+                admission,
+                identity.copy(autoReload = HostAutoReload.ENABLED),
+                { HostNativeSettlement.Settled },
+                { false },
+            )
+        assertEquals(
+            IdeLifecycleResult.HostSettling("host", "update"),
+            owner.settle(IdeLifecycleCommand.SettleHost("host", "update")),
+        )
+        val command = IdeLifecycleCommand.RefreshHostBundle("host", "update")
+        assertEquals(Refinement.Rejected(IdeLifecycleFailure.REQUEST_CONFLICT), owner.admitRefresh(command))
+        lease.close()
+        owner.settle(IdeLifecycleCommand.SettleHost("host", "update"))
+        assertTrue(owner.admitRefresh(command) is Refinement.Refined)
+    }
+
+    @Test
+    fun `another settlement owner cannot consume a ticket from an identical runtime identity`() {
+        val enabled = identity.copy(autoReload = HostAutoReload.ENABLED)
+        val first =
+            HostedApplicationSettlement(
+                HostedApplicationAdmission(),
+                enabled,
+                { HostNativeSettlement.Settled },
+                { false },
+            )
+        val second =
+            HostedApplicationSettlement(
+                HostedApplicationAdmission(),
+                enabled,
+                { HostNativeSettlement.Settled },
+                { false },
+            )
+        first.settle(IdeLifecycleCommand.SettleHost("host", "update"))
+        second.settle(IdeLifecycleCommand.SettleHost("host", "update"))
+        val ticket =
+            (first.admitRefresh(IdeLifecycleCommand.RefreshHostBundle("host", "update")) as Refinement.Refined).value
+        assertEquals(
+            HostRefreshSubmission.Rejected(IdeLifecycleFailure.WRONG_HOST),
+            second.dispatchRefresh(ticket) { error("foreign ticket reached SDK effects") },
+        )
+    }
 
     @Test
     fun `client completion does not establish native preparation or mutation settlement`() {
