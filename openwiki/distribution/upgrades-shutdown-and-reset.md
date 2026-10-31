@@ -46,10 +46,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
+generated: { by: "codex", at: "2026-10-31T09:13:30.169Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T07:55:41.140Z
+    at: 2026-10-31T09:13:30.169Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -87,9 +87,19 @@ The wrapper returns the recovery child's terminal result and does not continue i
 The outer recovery owner reads the captured journal and exact prior composition.
 It resumes terminal finalization or restores the recorded preimages under the selected locks.
 A missing bridge can use only the recorded release and digest for recovery.
-An unresolved effect keeps recovery evidence and the shutdown fence.
-The journal path itself blocks public calls until final removal, including an empty directory or dangling symbolic link.
-This preserves the fence if finalization fails after the shutdown record disappears.
+An unresolved active transaction keeps its recovery evidence and existing fence.
+
+Recovery first examines a reservation without a composition.
+The owner admits the exact staged Control, its complete inventory, and the unchanged prior installation or absence.
+Host artifacts and retirement fences reject this preparation-only path.
+A successful abort returns `REJECTED` with `CANCELLED`.
+Unknown Host artifacts and changed payloads preserve recovery evidence.
+
+After terminal proof, the owner renames the journal to a completed slot through a no-replace operation.
+This atomic move removes the pending path before it deletes the receipt.
+A later cleanup failure emits `kast_managed_storage_cleanup` with `FAILED` and its finite reason.
+The remaining closed storage does not block another upgrade.
+A pending journal path still blocks public calls, including an empty directory or dangling symbolic link.
 
 Ordinary upgrade preserves owned settings and history. It does not use force reset to bypass failed ownership admission.
 The exceptional reset path remains separate from the recorded transaction.

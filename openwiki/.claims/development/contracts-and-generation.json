@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b7f6b806bef91732f68b47adecd3fa0a1ce56f7c5b3c9259fa7e6169e2f7ad4f",
+  "pageVersion": "sha256:f368c16dc1f6a9b19bc1fd9eeef167fdf1f337475a27341c8d0ec44d3045d059",
   "claims": [
     {
       "id": "claim_33e6522130644483961b71cc571e663b",
@@ -26,7 +26,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
-          "version": "repo-file-v1:sha256:c02631db961bff2b7a1f42b302e4111651c51b9b2fa9eedae6e660ce210eb094"
+          "version": "repo-file-v1:sha256:0e48e737e95b2c7dc8b3351ab9c246d3054efda61b3f7f7cfdd954e808a0c6bb"
         }
       ]
     },
@@ -47,6 +47,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-10-31T09:13:30.169Z"
   }
 }

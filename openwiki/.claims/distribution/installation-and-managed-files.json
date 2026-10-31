@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ef14fd9faa467cd7fc5d57d52ea663ee4b3a771f5b2eca23498c39829484d39a",
+  "pageVersion": "sha256:66c201a7459a487848ce325de30243e40fb8fb66e761b0a65f43a28f74e29230",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
+          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -99,6 +99,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T07:55:41.140Z"
+    "at": "2026-10-31T09:13:30.169Z"
   }
 }

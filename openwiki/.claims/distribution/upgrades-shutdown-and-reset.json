@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:351aac9682d4a7fcf0d99ad54273be271ba22210fec554ce97a367834157258c",
+  "pageVersion": "sha256:f9e907ec32543f47890601384b8b327d643a14dedeeee2074342dc4e07ba26fc",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -52,7 +52,7 @@
     },
     {
       "id": "claim_8dc609c61bc94d7491d3366ee0faac4a",
-      "statement": "Recorded recovery resumes finalization or restores captured preimages under admitted locks. A remaining replacement journal blocks public calls even after shutdown-fence removal, including empty or dangling paths.",
+      "statement": "Recorded recovery resumes finalization or restores captured preimages under admitted locks. A reservation without a composition can abort only after exact staged inventory and prior-state admission, without Host artifacts or a retirement fence. Terminal finalization atomically renames the journal before receipt deletion. Closed-storage cleanup failure emits a typed diagnostic and does not block a new upgrade. A remaining pending journal still blocks public calls, including empty or dangling paths.",
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt",
@@ -60,11 +60,11 @@
         },
         {
           "resource": "repo://packaging/installation-recovery.py",
-          "version": "repo-file-v1:sha256:e1d9c9c0e611f37122384b5bba25111c4f50e6530313355daa072b8776931938"
+          "version": "repo-file-v1:sha256:4eeb18f3817529b831fcff447bc1071ce7dc71d3b1fac89b06e15b8ff19310a5"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
+          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
         }
       ]
     },
@@ -74,7 +74,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
+          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -92,7 +92,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
+          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -122,13 +122,13 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
+          "version": "repo-file-v1:sha256:890d615c74a9192cd5badc93041e1474950590bedef380fd7951dc07145d83a9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T07:55:41.140Z"
+    "at": "2026-10-31T09:13:30.169Z"
   }
 }

@@ -84,7 +84,7 @@ sources:
 generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T07:55:41.140Z
+    at: 2026-10-31T09:13:30.169Z
 ---
 
 # Protocol
