@@ -9,7 +9,7 @@ enum class ObservedProcessState {
 /** A zombie cannot execute an operation even while its ProcessHandle remains alive. */
 fun admitObservedProcessState(code: Int, output: String): ObservedProcessState {
     val state = output.trim()
-    if (code != 0 || !Regex("[IRSTUZ][+<>AELNSsVWX]*").matches(state)) return ObservedProcessState.UNAVAILABLE
+    if (code != 0 || !Regex("[IRSTUZ][+<>AELNSslVWX]*").matches(state)) return ObservedProcessState.UNAVAILABLE
     return when (state.first()) {
         'Z' -> ObservedProcessState.EXITED
         'R',
