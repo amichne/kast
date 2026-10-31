@@ -81,10 +81,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
+generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T05:05:54.659Z
+    at: 2026-10-31T07:55:41.140Z
 ---
 
 # Protocol
@@ -187,7 +187,9 @@ protocol identity change even without a JSON shape change.
 
 The application lifecycle defines `refresh_host_bundle` for managed installation.
 Its `host_refresh_requested` response acknowledges a request.
-The live capability is `HOST_RELOAD_REFRESH`.
+`settle_host_for_reload` prepares the exact cached main JAR before file exchange.
+The live capability is `HOST_PREPARED_RELOAD_REFRESH`.
+Ordinary settlement remains independent of reload preparation.
 `CanonicalHostedContract` fingerprints this request and response with the existing lifecycle types.
 The response carries the settled runtime identity. Loaded replacement identity remains separate evidence.
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e5d1b6d9e837c3b5515156b15ac6564af7ffe47feb5f2245f72be386f2419de9",
+  "pageVersion": "sha256:1c0a52be294864976326fb67ee8723ce7b1d2c84e039a4e38b4de671dd449a7f",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -144,19 +144,11 @@
     },
     {
       "id": "claim_1d170c7470524dbfa32d4577b8f71cfa",
-      "statement": "Managed installation has a typed refresh_host_bundle request and host_refresh_requested acknowledgment with HOST_RELOAD_REFRESH capability. Canonical hosted compatibility fingerprints these lifecycle request and result descriptors.",
+      "statement": "Managed installation defines typed settle_host_for_reload and refresh_host_bundle requests. HOST_PREPARED_RELOAD_REFRESH admits prepared-marker refresh, while ordinary settlement remains independent. The host_refresh_requested acknowledgment keeps the settled runtime identity. Canonical hosted compatibility fingerprints the lifecycle request and result descriptors.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt#L182-L189",
-          "version": "repo-lines-v1:sha256:5d765597ece69e0995ad15e6d5cdae4d193c0a8e250f8e8bbaeb426a724e0fd9:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGFjNDRjNmU0ZTBkNDNjMGUxMjZhNjZlOTQwZTYzMDI3OTIzMTgzMzk0ZGNmMjlmMTM4ZWI4YmY3ZDcyN2JjZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjUwODJjZTUxZTM4NmY5MDMzMTdiYTJhOGVlOGQzOTUwODM4ODFlOWI2MzAzMzIwYzUwNTAwMWVhZjAxN2MwYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzNlYWNkNjg5YjY2N2E3ZjZhOGFhYzU0ODc4N2FiYmY0NDM0Yjg4ZjgzZDM2OGQ4ZjIwODdiMDZlZTBiNzZkZiJ9"
-        },
-        {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt#L268-L275",
-          "version": "repo-lines-v1:sha256:6c08a58138df4ef81f743cff7aede475e2185e94a6bf0173fa79467b65843b70:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMjkyMDcwODI1NTY2ZGM3ZGNmOWViNWJjN2RkZTk3ZGY3MDZiOGQ4Y2FiODlkNDkyMDVmMDE2YWU5YjY1OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzI4Yzg0NjE4NmM2ZDU2YjdiYTMxODJhZmRiMDM1NjRiYzcxNGRkMDQyYWRmYjRjMjQwN2ExYjc2MDg1MjYzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzdkM2U0NmIyYTEzNWM3MDM1MjI3ZTExNGI5ODA2OThiZTRmMDllMTA4NzNjMDhlNzM1ZTQ3NDM5MzRjZjIyZiJ9"
-        },
-        {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt#L74-L78",
-          "version": "repo-lines-v1:sha256:73aa140ed25d83992892bf29d676339b6182d380f55665bbaea1c60e0e3e296f:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU1NDU4YzRjMTQyYzU4MzhmYjJiYjZiZThjODBjYThjNmQwNzk1ZTRhZWEwNDM3YjJiOTMwYTExOGE0ZDM4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzY4NDNiNWQzMDM2ZThjZjA5Yjg4ZTdhZjQwMWNiYTc4NDUzZGVhMjZlZTU5ZDYxMDYzMDEwYjY3ZTgzZWE1ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzYwNzliZDZkZmE3ZWI1NzA3Y2I3Njk0NGUwOWJiNTFhODJkZGRlMTQzZTRjZmE2YzQ1OGY5NDA0N2IwMWNmYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzkyYjY3NDVjMWM1MWMwMDk5MjlhNzVhYThiY2M0N2M1NzM3NzZkZGQ1YjZlMWJkM2ZkMmNmN2FjMmU5MjE2MSJ9"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt",
+          "version": "repo-file-v1:sha256:a1bb570346384c58e153f1dcea6e5540f20c2da74b90e96f3737ec0d9aa00c3a"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
@@ -167,6 +159,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T05:05:54.659Z"
+    "at": "2026-10-31T07:55:41.140Z"
   }
 }

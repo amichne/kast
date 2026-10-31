@@ -32,6 +32,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt
+  - id: openwiki-source-6fea3b3b86300de08664c4ee
+    resource: repo://packaging/host-installation.py
   - id: openwiki-source-5a685931788e905bc230c148
     resource: repo://packaging/installation-recovery.py
   - id: openwiki-source-1380068036b00bec817a6579
@@ -44,10 +46,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
+generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T05:05:54.659Z
+    at: 2026-10-31T07:55:41.140Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -107,11 +109,16 @@ A running legacy Host without restart permission rejects before journal creation
 
 ## Request a scoped VFS refresh
 
-Hot reload needs compatible archives, enabled native auto reload, and the live `HOST_RELOAD_REFRESH` capability.
-The coordinator keeps the settled Host and transaction in an immutable value.
-After the Host exchange, it requests `REFRESH` through the application lifecycle.
-The Host accepts only its own settled transaction and selected plugin root.
-The reply owner queues the SDK refresh only after the acknowledgment frame writes successfully.
+Hot reload needs compatible archives, enabled native auto reload, and the live `HOST_PREPARED_RELOAD_REFRESH` capability.
+`SETTLE_RELOAD` prepares the exact cached `lib/kast-ide-hosted.jar` before file exchange.
+The checked acknowledgment keeps the Host, transaction, and prepared marker together.
+Ordinary `SETTLE` remains independent of reload preparation and supports normal stop.
+
+After exchange, the Host-file owner advances only the modification time of the admitted main JAR under its existing lease.
+It preserves the file's inode, owner, bytes, mode, and access time.
+The coordinator then requests `REFRESH` for that prepared transaction.
+The reply owner dispatches the SDK effect only after the acknowledgment frame writes successfully.
+The SDK dirties the exact prepared marker and records bounded content-event counts.
 Only a fresh selected runtime handshake establishes activation.
 
 Only `WRONG_HOST`, `HOST_UNAVAILABLE`, `PLUGIN_UNAVAILABLE`, and `EXCHANGE_DEADLINE_EXCEEDED` can defer refresh rejection to the existing bounded runtime wait.
@@ -122,6 +129,7 @@ The caller sends one refresh request.
 
 Hot-reload recovery first admits the actual Host as the recorded prior or selected build.
 It settles that Host before the rollback exchange.
+A loaded selected build needs `SETTLE_RELOAD` and a modification-time update after restoration.
 If the selected build remains loaded, recovery restores prior bytes and requests a refresh from that settled Host.
 Recovery then needs the prior build and a fresh Host lifetime.
 If the original Host remains loaded, recovery restores bytes and resumes that same held Host.

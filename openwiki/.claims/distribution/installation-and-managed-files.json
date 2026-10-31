@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0289f7484e9775550035b5348bb17d8ecc1420fb072e3cd8e01403c155c14c94",
+  "pageVersion": "sha256:ef14fd9faa467cd7fc5d57d52ea663ee4b3a771f5b2eca23498c39829484d39a",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
+          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
+          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
         }
       ]
     },
@@ -42,11 +42,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
+          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:e1a43dec97a7d2b2f30890b5ca846d5ae582419aba73296bd45f5d46f80d5bcd"
+          "version": "repo-file-v1:sha256:af7013e68c6096cc9b11edfccbdf00ec14cd4ff423cb22031191c8fd9c02dc97"
         }
       ]
     },
@@ -84,11 +84,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
+          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:6da4d27ef7d5fd12bc8b622d14a91b288ac20dfe46d745809d391433a20471a1"
+          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -99,6 +99,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T05:05:54.659Z"
+    "at": "2026-10-31T07:55:41.140Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:53760fe1abec4a6b0c467a24e164f3a7b6089ead187e0837326fb795b21fd60b",
+  "pageVersion": "sha256:351aac9682d4a7fcf0d99ad54273be271ba22210fec554ce97a367834157258c",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -64,7 +64,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:6da4d27ef7d5fd12bc8b622d14a91b288ac20dfe46d745809d391433a20471a1"
+          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
         }
       ]
     },
@@ -74,57 +74,61 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:6da4d27ef7d5fd12bc8b622d14a91b288ac20dfe46d745809d391433a20471a1"
+          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
         },
         {
-          "resource": "repo://packaging/managed_update_contract.py#L398-L424",
-          "version": "repo-lines-v1:sha256:29c86bcae0ff8dc8949a9fd47646cb06ecf20ae9b134ac5a170ba4debd1a0bbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkMzc1Yzc4YjhjMzM5MzgxYmVkYjkwZmRiNDgyMGIzZjBlMjNmOWRmMmFiZmZiZGE4NTFlMTQ0MjRkZWQwYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NTEwZmM1ZWMzOGQ3MTA0ZmY3Mjc4ODVlNTE3OTE3OGI0MWNiMTExMTg2ZmY4Y2VhZjU5MzFmZjhlMmRhODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkMGNiMGIyNjk1MjhhN2NhNjM0YmU5ZTI2OTRlYTgzOGExY2Q2YTNmODg4MTI1M2M3NjI4Y2Y5YTdmMGRlOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3YzYzMmY4ZDZmM2ExODFhYjg0Y2FkZTg5Y2ExMTg0MDI4YjNhZjQ5MDk0ODM1ZTkxZDkwYjc0NWRkOTg0N2UifQ"
+          "resource": "repo://packaging/managed_update_contract.py",
+          "version": "repo-file-v1:sha256:f3d6ae01544b7d40e158886573b87cc095a9671b4aa53b7752756f07a3939b2d"
         }
       ]
     },
     {
       "id": "claim_5d825ae8f2d24cfa9b993e01cbe76df4",
-      "statement": "Managed hot reload needs compatible archives, enabled auto reload, and HOST_RELOAD_REFRESH. The existing lifecycle queues scoped SDK refresh only after a successful acknowledgment write.",
+      "statement": "Managed hot reload needs compatible archives, enabled auto reload, and HOST_PREPARED_RELOAD_REFRESH. SETTLE_RELOAD captures the cached main JAR before exchange. The Host-file owner then stamps that exact admitted JAR under its lease. REFRESH dirties the prepared marker only after a successful acknowledgment write. Actual loaded identity remains separate activation proof.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_installation.py#L1311-L1329",
-          "version": "repo-lines-v1:sha256:778db5fdc1bb993566c8adb41ad68fcea7a1b394882299db756c14624fc22057:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzOTQxY2U2ZjAxYTI1ZjM2N2ZhNmRkYTg5OWUyYzA4MzgxMGIwZGNhMDIzZjk5YWU1ZWFkOGIyZmExNzcwY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNWI4Y2IzNzI5ZjgwZGNjYmIzNGUyZjdjMzliYzI3ODZlZDE1MWRkNjY5OTcxYjllZTliMzVjYjU5NTMwYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5ZTI2NGIzMmJhZDkzN2UxNTIwZDdjY2E3ODRjYTFjMTAwZmU0OTMyYjc4MWU5ZThhZDA5NDNiMGZlMTg5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkNmQ2ZDgzNmZlNzViMzRiNDI1ZGI0MjUzZDA5ZTllMjZlODMwYjNjY2ZlMmE1NzA2MzhlMzkyNTA4ODJlMDgifQ"
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
         },
         {
-          "resource": "repo://packaging/managed_update_contract.py#L427-L442",
-          "version": "repo-lines-v1:sha256:da459f10b8b506ca0b3eac14dc20ba4d31a3f6a9861513cb3beeb8a5b0124cc0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0M2Q0NTFhYWRhZGU4MDAyNzE1YTk2NWU1NWIyOWRjZTdkMzA1MjlkY2MyY2YwN2Y2ZGIwNTdlNmJlMzk5ZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEwZTMzMTZlMGM2ZTlhOTE4YmQ1NWExNmU0MjE3YjQ0MTk2ZjI3MzFhYjNjZDBlZjkxZDdhYTUwMDFiZGY2ODAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0YWIxNWRhMTk2YjQzNzczNWU0NTY2M2IwNzMwNDBkNDUwZTM4ZmVmNTBjZDJhOWI1OTYyNDg0ODk3NWIxM2QifQ"
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt#L39-L109",
-          "version": "repo-lines-v1:sha256:d2e4457df595119d095512fde4731f182e1809fa42dd174bb4ca2731d1cc6c0d:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMTYzZjc3ODZjNDJjYTg4OTI3MGY3NTNhNzgwNjI2NDI2YzAzZjk3M2EwNWFkZWFlZGQ0ZmE0ZDI3MGYwZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExZDI5NzQ1YmIyOWMyYTBhNzM2YWEzZjkyNGYwYzU4ZDg2MDg1M2FmNDkyYTZmYjU2YWE4Y2E4ZWFhYjRhZWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://packaging/managed_update_contract.py",
+          "version": "repo-file-v1:sha256:f3d6ae01544b7d40e158886573b87cc095a9671b4aa53b7752756f07a3939b2d"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt#L74-L114",
-          "version": "repo-lines-v1:sha256:28fbe744ff4683311afb4b39a6aaaac63b686bc011b6c03c0abc0b34a1d22485:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmYTBhMDcxMjI5NmIwMGRhNWExMTQ3YTkyZDcyYTU1YzYxZGY4NGRlOTM5OGU0NDY0OWYzZjQ4MmEyNDk4MzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2YmRlNWJjMmZkMTc0ODE3NWU1MjBjMmUwMTFlZGYzYzUxZTRmODhmOTYzMTFlMjRmZTQwODBkYWY3ZDI2YjgifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt",
+          "version": "repo-file-v1:sha256:a73fa41b67393577f715ef39a80d7443f9849ce6ab66b341edbafb19d3363c60"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt#L14-L32",
-          "version": "repo-lines-v1:sha256:94747f97ac57fbd7354f77e62d03f05a14c3a8f0737ba2012ab6283d339dd442:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4NGFmMjVkYTg2NmExZWFiMTI5NDdkOTdjZGRkYzA1OWRmNjdlN2VmZmVjODU0ZjY4OGViNTQ4N2YzNTliZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0YjZlOWY4ZjUzNDg4NTdlNmQ5MzA4OTdlYzE4ZDZjMmQ2MDY3MjA1MjUyYThmMDM4YTI4OTI1NjNiNTg4NGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQzMjEzYjBmMGM1NjExNTFmNGIzYzViZjNkMGYxN2Y1ZjUyODljZGI1OWJiZmExNDI4YTBhZGNkZjM3ZDNiOGUifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt",
+          "version": "repo-file-v1:sha256:87cb8e04d3454165974289e7a333ac1d8e53ae20f1502383074a04867273e4f7"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt",
+          "version": "repo-file-v1:sha256:de36c4a62ef75eb15e6aacbe3776c5b604e860837114492290b626a85006ab2b"
         }
       ]
     },
     {
       "id": "claim_77827fa2b8e64f6d9229bd4db9266887",
-      "statement": "Hot-reload rollback settles the actual admitted prior or selected Host before file exchange. A different loaded build needs refresh and fresh prior runtime proof. Resume targets the held Host lifetime.",
+      "statement": "Hot-reload rollback settles the actual admitted prior or selected Host before file exchange. A loaded selected build needs prepared settlement, a restored-JAR timestamp update, refresh, and fresh prior runtime proof. An actual prior Host uses ordinary settlement and resume without a timestamp update.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_installation.py#L1730-L1901",
-          "version": "repo-lines-v1:sha256:e4947e65d76fff99b59eb8ef86f4e636733cb5f164452e956800c3c002a20c94:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxNmQ1ODNkMGM1ODU2MWY2NWZlMTQwMmY5NzY0NjczNGNmZjhhZGEyNjQ3ZjVkMmMxNDFhMGU0MjNlYjA3ZjExIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmMTg4NTI0NWUyZmE3MjE4ZGI3YzcwNmQ0NWVmYjUzNWM3YTQ4NzRmNDI5MzFhOTBmOGM0ZGNiZjk5NTQxN2I3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlMjZmMjg0YzgyMzE5NGQzMzEyNDNlYjhjZWU2MmFjZWViYTZmMzU5M2NlY2FiNGFmNzBiZTIzNjYzOGQ5MGUyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyYzJmYjMwMmY3MWEyZGI1ODgyNmZmNGQ5MDczMjUxMGI5YzdiNjA4YjkyNmNlYjRkZjhhMTQ4ZDlkYWE2YWRjIn0"
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:e5f36700cad077aa6ed1e3e4c9beb3f3c3ff2ca7519e26b32b796949bba5a108"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L897-L910",
-          "version": "repo-lines-v1:sha256:963b3b860843b7977241503d6f8fa6de4f2b14383bc2ab0afa6ea32b931c2429:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3ZjIwOGI2ZTJiYTA2YmZmMWE5MTE4MDQ2ZGNiYzJiOWI4MjZkMTIwZTBmZTM5MWU4ZWI3YTIyYmEwOTlkYTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkMGE5ODM4MDE4YmVmY2RkMzNlZWU2N2FiYWZiMWY3OWI5ODM1ZTM3NjJiMzEzMjVmZWU2YWJlMzYzOGFlYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFmYWMxNDczYzM4ZGExMjQ1Zjk2M2U4Njk5Zjc0NmQyYjIyOTk4ODkxNDhiZDY1YzYyYjFhYzJhNDVjNTJiNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNmU1ZTQ0ZmJmOTQ1OTIxZWFkNzM4M2Y2MTU2ODcwYzIyOTNkNmQ3YzI4N2JlYWJmNzQ4NjgxNTc4NjIwZDgifQ"
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:ec511908bf51216511e6039924ae3c08e9b381ed8c0775dbafe0a7bcf7680836"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T05:05:54.659Z"
+    "at": "2026-10-31T07:55:41.140Z"
   }
 }

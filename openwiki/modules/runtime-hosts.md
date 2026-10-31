@@ -279,10 +279,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
+generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T05:05:54.659Z
+    at: 2026-10-31T07:55:41.140Z
 ---
 
 # Runtime and process hosts
@@ -411,8 +411,11 @@ The plugin additionally owns one `IdeLifecycleApplication` service and user-scop
 Managed installation uses the application service with zero projects.
 `HostedApplicationSettlement` admits Host refresh only for the exact settled Host and transaction, enabled auto-reload, and idle native work.
 The adapter admits the loaded plugin root from the actual IDEA home and profile.
+Reload settlement captures the exact cached `lib/kast-ide-hosted.jar` before file exchange.
+Ordinary settlement remains independent of reload preparation.
 `LifecycleReply` dispatches the refresh only after the complete acknowledgment write succeeds.
-The SDK adapter marks that root dirty and requests recursive asynchronous VFS refresh.
+The SDK adapter dirties the prepared marker and requests recursive asynchronous VFS refresh.
+Bounded diagnostics count content events from refresh for that exact marker.
 The acknowledgment does not prove a loaded replacement.
 The installer still needs fresh selected-runtime evidence.
 Plugin-owned native qualification remains pending.
