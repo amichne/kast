@@ -328,7 +328,7 @@ sources:
 generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T09:13:30.169Z
+    at: 2026-10-31T09:43:22.050Z
 ---
 
 # Distribution and packaging

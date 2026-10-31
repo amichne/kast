@@ -243,6 +243,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
   - id: openwiki-source-a0efdefba63982f6209d2b1d
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - id: openwiki-source-d179efee52270c2b6f0be8ee
+    resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt
+  - id: openwiki-source-a27a8f11a4689cb821b5f6e8
+    resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-1905c35a82810ccf74696707
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
@@ -267,6 +271,8 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
   - id: openwiki-source-5bce5e00d8d37b48b461a27e
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
+  - id: openwiki-source-64703967945cd84894f27ab4
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
@@ -279,10 +285,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
+generated: { by: "codex", at: "2026-10-31T09:43:22.050Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T07:55:41.140Z
+    at: 2026-10-31T09:43:22.050Z
 ---
 
 # Runtime and process hosts
@@ -407,6 +413,12 @@ and mutation planning do not use this capability. The
 the identity checks and returned handle metadata.
 
 The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. A dead endpoint with the same root and socket can be reclaimed after a plugin upgrade without matching its old capability catalog; the absent PID, exclusive lock and unchanged file identities still govern retirement. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` requires the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
+
+Host settlement reads the reconstructed mutation journal and decoded receipts in one SQLite snapshot.
+An applied record settles only when its receipt preserves the exact binding and recovery digest chain.
+Missing or mismatched receipts for applied writes keep settlement blocked.
+Pending writes and contradictory rollback receipts also keep settlement blocked.
+Live settlement and offline inspection share that admission rule.
 
 Managed installation uses the application service with zero projects.
 `HostedApplicationSettlement` admits Host refresh only for the exact settled Host and transaction, enabled auto-reload, and idle native work.
