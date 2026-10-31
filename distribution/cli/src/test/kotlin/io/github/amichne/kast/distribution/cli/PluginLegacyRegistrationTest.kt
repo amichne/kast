@@ -16,6 +16,64 @@ class PluginLegacyRegistrationTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `plugin removal keeps a different transport from the merged MCP list`() {
+        val root = pluginFixture(temporary)
+        val home = temporary.toRealPath().resolve("home")
+        val command = root.resolve("installation/bin/kast-mcp-complete")
+        recordLegacyMcp(root, command, home.resolve(".codex"))
+        assertEquals(
+            PluginInstallOutcome.AlreadyInstalled(PluginHarness.CODEX),
+            cleanupLegacyMcp(root, home, bundledMcpServer()),
+        )
+        assertEquals(emptyList<ManagedRegistration>(), (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
+    }
+
+    @Test
+    fun `plugin removal rejects when the exact prior transport remains`() {
+        val root = pluginFixture(temporary)
+        val home = temporary.toRealPath().resolve("home")
+        val command = root.resolve("installation/bin/kast-mcp-complete")
+        recordLegacyMcp(root, command, home.resolve(".codex"))
+        val prior = (readReceipt(root) as ReceiptRead.Read).receipt
+        assertEquals(
+            PluginInstallOutcome.RecoveryRequired(
+                PluginInstallStage.LEGACY_REGISTRATION_REMOVAL,
+                PluginInstallFailure.LegacyRegistrationRejected,
+            ),
+            cleanupLegacyMcp(root, home, CodexServer("kast", CodexTransport("stdio", command.toString()))),
+        )
+        assertEquals(prior.registrations, (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
+    }
+
+    private fun cleanupLegacyMcp(root: Path, home: Path, remaining: CodexServer): PluginInstallOutcome {
+        val command = root.resolve("installation/bin/kast-mcp-complete")
+        val manual = mcpServers(CodexServer("kast", CodexTransport("stdio", command.toString())))
+        val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
+        val provider =
+            PluginScript(
+                PluginStep(listOf("codex", "mcp", "list", "--json"), manual),
+                PluginStep(marketplaceList, marketplaces(marketplace)),
+                PluginStep(pluginList, plugins(plugin(marketplace))),
+            )
+        val legacy =
+            PluginScript(
+                PluginStep(listOf("codex", "mcp", "list", "--json"), manual),
+                PluginStep(listOf("codex", "mcp", "remove", "kast")),
+                PluginStep(listOf("codex", "mcp", "list", "--json"), mcpServers(remaining)),
+            )
+        val outcome =
+            installCodexPlugin(
+                root,
+                home,
+                provider::execute,
+                executeLegacyCodexAt = { _, arguments -> legacy.execute(arguments) },
+            )
+        provider.assertConsumed()
+        legacy.assertConsumed()
+        return outcome
+    }
+
+    @Test
     fun `foreign environment and working directory reject even with the same Bash command`() {
         val root = pluginFixture(temporary)
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
@@ -148,6 +206,10 @@ class PluginLegacyRegistrationTest {
         val command = root.resolve("installation/bin/kast-mcp-complete")
         recordLegacyMcp(root, command, codexHome)
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
+        marketplace
+            .resolve("plugins/kast")
+            .toFile()
+            .copyRecursively(codexHome.resolve("plugins/cache/kast/kast/1.2.3").toFile(), overwrite = true)
         val executor =
             PluginScript(
                 PluginStep(
@@ -193,17 +255,11 @@ class PluginLegacyRegistrationTest {
         val launcher = legacyAppServerRegistration(root, home)
         Files.writeString(launcher, "foreign replacement")
         val receipt = Files.readAllBytes(receiptPath(root)).toList()
-        val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
-        val executor =
-            PluginScript(
-                PluginStep(listOf("codex", "mcp", "list", "--json"), mcpServers()),
-                PluginStep(marketplaceList, marketplaces(marketplace)),
-                PluginStep(pluginList, plugins(plugin(marketplace))),
-            )
+        val executor = PluginScript(PluginStep(listOf("codex", "mcp", "list", "--json"), mcpServers()))
 
         assertEquals(
             PluginInstallOutcome.Rejected(
-                PluginInstallStage.LEGACY_REGISTRATION_REMOVAL,
+                PluginInstallStage.LEGACY_REGISTRATION_INSPECTION,
                 PluginInstallFailure.LegacyRegistrationRejected,
             ),
             installCodexPlugin(root, home, executor::execute),

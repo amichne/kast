@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
+from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 import argparse
@@ -17,6 +18,8 @@ import tempfile
 import uuid
 import xml.etree.ElementTree as XML
 import zipfile
+
+sys.dont_write_bytecode = True
 
 
 class Failure(str, Enum):
@@ -226,6 +229,628 @@ class HostReport:
     hostedPluginVersion: str
     plugin: str
     restartRequired: bool = True
+
+
+@dataclass(frozen=True)
+class ManagedHostAbsent:
+    type: str = 'ABSENT'
+
+
+@dataclass(frozen=True)
+class ManagedHostPresent:
+    identity: Identity
+    inventorySha256: str
+    receipt: str
+    receiptIdentity: Identity
+    receiptSha256: str
+    type: str = 'PRESENT'
+
+
+@dataclass(frozen=True)
+class ManagedHostExistingLock:
+    identity: Identity
+    type: str = 'EXISTING'
+
+
+@dataclass(frozen=True)
+class ManagedHostStagedLock:
+    identity: Identity
+    staged: str
+    retainedIdentity: Identity | None = None
+    type: str = 'STAGED'
+
+
+@dataclass(frozen=True)
+class ManagedHostReplacement:
+    pluginRoot: str
+    pluginRootIdentity: Identity | None
+    retainedRootIdentity: Identity | None
+    destination: str
+    candidate: str
+    candidateIdentity: Identity
+    candidateInventorySha256: str
+    backup: str
+    previous: ManagedHostAbsent | ManagedHostPresent
+    version: str
+    sha256: str
+    lock: ManagedHostExistingLock | ManagedHostStagedLock | None = None
+
+
+class ManagedHostTerminalPhase(str, Enum):
+    ACTIVATION_PROVEN = 'ACTIVATION_PROVEN'
+    RESTORED = 'RESTORED'
+
+
+@contextmanager
+def managed_lock(record: ManagedHostReplacement):
+    admit_managed_paths(record)
+    retained = Path(record.pluginRoot).parent / '.kast-plugin-recovery'
+    admit_managed_retained(record, retained)
+    path = retained / 'host-install.lock'
+    proof = record.lock
+    if proof is None:
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    if isinstance(proof, ManagedHostStagedLock) and not os.path.lexists(path):
+        admit_staged_lock(record, Path(proof.staged))
+        os.link(proof.staged, path)
+        sync(retained)
+    reservation = Path(record.candidate).parent / 'host-lock'
+    with locked_managed_descriptor(record, path):
+        if not os.path.lexists(reservation):
+            admit_canonical_lock(record, path)
+            if path.stat().st_nlink != 1 or path.stat().st_size != 0:
+                raise Rejected(Failure.RECOVERY_REQUIRED)
+            os.link(path, reservation)
+            sync(reservation.parent)
+        admit_managed_lock_reservation(record, path, reservation)
+        yield record
+
+
+@contextmanager
+def locked_managed_descriptor(record: ManagedHostReplacement, path: Path):
+    admit_canonical_lock(record, path)
+    descriptor = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, 'r+') as lock:
+        value = os.fstat(lock.fileno())
+        if Identity(value.st_dev, value.st_ino, value.st_uid) != record.lock.identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        admit_managed_retained(record, path.parent)
+        admit_canonical_lock(record, path)
+        yield lock
+
+
+def bind_managed_lock(record: ManagedHostReplacement, retained_identity: Identity) -> ManagedHostReplacement:
+    admit_managed_paths(record)
+    retained = Path(record.pluginRoot).parent / '.kast-plugin-recovery'
+    if Identity.observe(retained) != retained_identity or stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if record.retainedRootIdentity is not None and retained_identity != record.retainedRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if isinstance(record.lock, ManagedHostExistingLock):
+        if record.retainedRootIdentity is None:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        return record
+    if not isinstance(record.lock, ManagedHostStagedLock):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    if record.lock.retainedIdentity is not None and record.lock.retainedIdentity != retained_identity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return replace(record, lock=replace(record.lock, retainedIdentity=retained_identity))
+
+
+def finish_managed_lock(record: ManagedHostReplacement, terminal: ManagedHostTerminalPhase) -> None:
+    admit_managed_paths(record)
+    proof = record.lock
+    if not isinstance(proof, (ManagedHostExistingLock, ManagedHostStagedLock)):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    staged = Path(record.candidate).parent / 'host-lock'
+    retained = Path(record.pluginRoot).parent / '.kast-plugin-recovery'
+    canonical = retained / 'host-install.lock'
+    if os.path.lexists(staged):
+        admit_managed_lock_link(record, staged)
+    if os.path.lexists(canonical):
+        admit_managed_retained(record, retained)
+        admit_canonical_lock(record, canonical)
+        with locked_managed_descriptor(record, canonical):
+            expected_links = 2 if os.path.lexists(staged) else 1
+            if canonical.stat().st_nlink != expected_links:
+                raise Rejected(Failure.RECOVERY_REQUIRED)
+            seal_managed(record, terminal)
+            if terminal is ManagedHostTerminalPhase.RESTORED and isinstance(proof, ManagedHostStagedLock):
+                canonical.unlink()
+            if os.path.lexists(staged):
+                admit_managed_lock_link(record, staged)
+                staged.unlink()
+            sync(retained)
+            sync(staged.parent)
+            return
+    elif isinstance(proof, ManagedHostExistingLock):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    elif terminal is not ManagedHostTerminalPhase.RESTORED:
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    else:
+        seal_managed(record, terminal)
+    if os.path.lexists(staged):
+        admit_managed_lock_link(record, staged)
+        staged.unlink()
+        sync(staged.parent)
+
+
+def admit_managed_lock_link(record: ManagedHostReplacement, path: Path) -> None:
+    if (record.lock is None or path != Path(record.candidate).parent / 'host-lock'
+            or owned_file(path, private=True) != record.lock.identity or path.stat().st_size != 0):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_managed_lock_reservation(record: ManagedHostReplacement, canonical: Path, reservation: Path) -> None:
+    admit_managed_lock_link(record, reservation)
+    admit_canonical_lock(record, canonical)
+    if canonical.stat().st_nlink != 2 or canonical.stat().st_size != 0:
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+
+
+def admit_unreserved_host_lock(lock) -> None:
+    value = os.fstat(lock.fileno())
+    if (value.st_uid != os.getuid() or not stat.S_ISREG(value.st_mode)
+            or value.st_nlink != 1):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+
+
+def admit_staged_lock(record: ManagedHostReplacement, path: Path) -> None:
+    proof = record.lock
+    if (not isinstance(proof, ManagedHostStagedLock)
+            or path != Path(record.candidate).parent / 'host-lock'
+            or owned_file(path, private=True) != proof.identity or path.stat().st_size != 0):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_canonical_lock(record: ManagedHostReplacement, path: Path) -> None:
+    if record.lock is None or owned_file(path, private=True) != record.lock.identity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if isinstance(record.lock, ManagedHostStagedLock) and path.stat().st_size != 0:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_managed_retained(record: ManagedHostReplacement, retained: Path) -> None:
+    expected = record.retainedRootIdentity
+    if expected is None and isinstance(record.lock, ManagedHostStagedLock):
+        expected = record.lock.retainedIdentity
+    if expected is None:
+        if os.path.lexists(retained):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    elif Identity.observe(retained) != expected or stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def inventory_digest(directory: Path) -> str:
+    return hashlib.sha256(json.dumps([asdict(item) for item in inventory(directory)],
+                                    sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def prepare_managed(request: HostInstallRequest, recovery: Path) -> ManagedHostReplacement:
+    """Stage Host bytes under the existing replacement journal, without profile effects.
+
+    The installation coordinator owns its stable lock and persists this value
+    in that journal before commit_managed. This function creates no journal.
+    """
+    root = request.plugin_root
+    admit_root(root)
+    if recovery.name != 'replacement' or recovery.parent.name != 'recovery':
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    Identity.observe(recovery)
+    if recovery.resolve() != recovery:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    candidate, backup = recovery / 'host-candidate', recovery / 'host-prior'
+    preimage = recovery / 'host-receipt'
+    lock_stage = recovery / 'host-lock'
+    if any(os.path.lexists(path) for path in (candidate, backup, preimage, lock_stage)):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    previous_receipt = admit_installation_target(root)
+    destination = root / 'kast-ide-hosted'
+    previous: ManagedHostAbsent | ManagedHostPresent = ManagedHostAbsent()
+    if os.path.lexists(destination):
+        if previous_receipt is None:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        active_path = root.parent / '.kast-plugin-recovery/host-install.json'
+        active = admit_active(root, read_active_receipt(active_path))
+        if inventory(destination) != active.inventory:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        previous_identity = Identity.observe(destination)
+        previous_inventory = inventory_digest(destination)
+    elif previous_receipt is not None:
+        # A missing recorded Host is unresolved state, not admitted absence.
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    with tempfile.TemporaryDirectory(prefix='.host-preparation-', dir=recovery) as temporary:
+        staged = validate_payload(request.payload, Path(temporary))
+        staged_receipt = Path(temporary) / 'receipt'
+        if previous_receipt is not None:
+            with staged_receipt.open('xb') as saved:
+                saved.write(previous_receipt)
+                saved.flush()
+                os.fsync(saved.fileno())
+            staged_receipt.chmod(0o600)
+            previous = ManagedHostPresent(previous_identity, previous_inventory, str(preimage),
+                                          owned_file(staged_receipt, private=True),
+                                          hashlib.sha256(previous_receipt).hexdigest())
+        retained = root.parent / '.kast-plugin-recovery'
+        canonical_lock = retained / 'host-install.lock'
+        if os.path.lexists(canonical_lock):
+            lock_proof = ManagedHostExistingLock(owned_file(canonical_lock, private=True))
+            if canonical_lock.stat().st_nlink != 1 or canonical_lock.stat().st_size != 0:
+                raise Rejected(Failure.RECOVERY_REQUIRED)
+        else:
+            staged_lock = Path(temporary) / 'lock'
+            staged_lock.touch(mode=0o600, exist_ok=False)
+            lock_proof = ManagedHostStagedLock(owned_file(staged_lock, private=True), str(lock_stage))
+        record = ManagedHostReplacement(
+            str(root), Identity.observe(root) if os.path.lexists(root) else None,
+            Identity.observe(retained) if os.path.lexists(retained) else None,
+            str(destination), str(candidate), Identity.observe(staged), inventory_digest(staged), str(backup),
+            previous, request.payload.version, request.payload.sha256, lock_proof,
+        )
+        if any(os.path.lexists(path) for path in (candidate, backup, preimage, lock_stage)):
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+        candidate_published = receipt_published = lock_published = False
+        try:
+            staged.rename(candidate)
+            candidate_published = True
+            if isinstance(previous, ManagedHostPresent):
+                os.link(staged_receipt, preimage)
+                receipt_published = True
+            if isinstance(lock_proof, ManagedHostStagedLock):
+                os.link(staged_lock, lock_stage)
+                lock_published = True
+            sync(recovery)
+            return record
+        except (OSError, Rejected):
+            discard_unrecorded_managed(record, candidate_published, receipt_published, lock_published)
+            raise
+
+
+def discard_unrecorded_managed(record: ManagedHostReplacement, candidate_published: bool,
+                              receipt_published: bool, lock_published: bool) -> None:
+    """Discard only this call's complete staged artifacts after their exact readmission."""
+    candidate = Path(record.candidate)
+    if candidate_published:
+        admit_managed_candidate(record, candidate)
+    if receipt_published:
+        previous = record.previous
+        if (not isinstance(previous, ManagedHostPresent)
+                or owned_file(Path(previous.receipt), private=True) != previous.receiptIdentity
+                or hashlib.sha256(Path(previous.receipt).read_bytes()).hexdigest() != previous.receiptSha256):
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+    if lock_published:
+        admit_staged_lock(record, Path(record.lock.staged))
+    if candidate_published:
+        shutil.rmtree(candidate)
+    if receipt_published:
+        Path(record.previous.receipt).unlink()
+    if lock_published:
+        Path(record.lock.staged).unlink()
+
+
+def admit_managed_paths(record: ManagedHostReplacement) -> tuple[Path, Path, Path, Path]:
+    root, candidate, backup, destination = (Path(record.pluginRoot), Path(record.candidate),
+                                            Path(record.backup), Path(record.destination))
+    recovery = candidate.parent
+    if (recovery.name != 'replacement' or recovery.parent.name != 'recovery'
+            or candidate.name != 'host-candidate' or backup != recovery / 'host-prior'
+            or destination != root / 'kast-ide-hosted' or recovery.resolve() != recovery):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    admit_root(root)
+    Identity.observe(recovery)
+    return root, candidate, backup, destination
+
+
+def admit_managed_prior(record: ManagedHostReplacement, path: Path) -> None:
+    previous = record.previous
+    if (not isinstance(previous, ManagedHostPresent) or Identity.observe(path) != previous.identity
+            or inventory_digest(path) != previous.inventorySha256):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_managed_candidate(record: ManagedHostReplacement, path: Path) -> None:
+    if Identity.observe(path) != record.candidateIdentity or inventory_digest(path) != record.candidateInventorySha256:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_managed_prepared(record: ManagedHostReplacement) -> None:
+    """Readmit candidate, prior, profile roots, and the bound Host lock before Control effects."""
+    root, candidate, backup, destination = admit_managed_paths(record)
+    if record.pluginRootIdentity is None:
+        if os.path.lexists(root):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    elif Identity.observe(root) != record.pluginRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    retained = root.parent / '.kast-plugin-recovery'
+    admit_managed_retained(record, retained)
+    admit_managed_candidate(record, candidate)
+    if os.path.lexists(backup):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    if isinstance(record.previous, ManagedHostPresent):
+        admit_managed_prior(record, destination)
+        preimage = Path(record.previous.receipt)
+        if (owned_file(preimage, private=True) != record.previous.receiptIdentity
+                or hashlib.sha256(preimage.read_bytes()).hexdigest() != record.previous.receiptSha256
+                or (retained / 'host-install.json').read_bytes() != preimage.read_bytes()):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    elif os.path.lexists(destination):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    elif os.path.lexists(retained / 'host-install.json'):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if isinstance(record.lock, ManagedHostExistingLock) or bound_staged_lock(record):
+        admit_canonical_lock(record, retained / 'host-install.lock')
+
+
+def commit_managed(record: ManagedHostReplacement) -> HostActiveReceipt:
+    """Exchange admitted files only after the outer coordinator proves Host settlement or exit."""
+    admit_managed_prepared(record)
+    root, candidate, backup, destination = admit_managed_paths(record)
+    retained = root.parent / '.kast-plugin-recovery'
+    if record.pluginRootIdentity is None:
+        root.mkdir()
+    if not os.path.lexists(retained):
+        retained.mkdir(mode=0o700)
+    if isinstance(record.previous, ManagedHostPresent):
+        destination.rename(backup)
+    candidate.rename(destination)
+    sync(root)
+    active = HostActiveReceipt(HostReceiptType.HOST_ACTIVE, str(destination), Identity.observe(root),
+                               record.candidateIdentity, record.version, record.sha256, inventory(destination))
+    write_receipt(retained / 'host-install.json', active)
+    admit_managed_candidate(record, destination)
+    return active
+
+
+def commit_managed_reload(record: ManagedHostReplacement) -> HostActiveReceipt:
+    """Exchange complete admitted Host directories without an absent-destination interval."""
+    from host_directory_exchange import DirectoryExchangeOutcome, exchange_directories
+
+    admit_managed_prepared(record)
+    root, candidate, backup, destination = admit_managed_paths(record)
+    retained = root.parent / '.kast-plugin-recovery'
+    if (not isinstance(record.previous, ManagedHostPresent)
+            or record.pluginRootIdentity is None or record.retainedRootIdentity is None
+            or Identity.observe(root) != record.pluginRootIdentity
+            or Identity.observe(retained) != record.retainedRootIdentity
+            or os.path.lexists(backup)):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    admit_managed_candidate(record, candidate)
+    admit_managed_prior(record, destination)
+    preimage = Path(record.previous.receipt)
+    if (preimage != candidate.parent / 'host-receipt'
+            or owned_file(preimage, private=True) != record.previous.receiptIdentity
+            or hashlib.sha256(preimage.read_bytes()).hexdigest() != record.previous.receiptSha256
+            or (retained / 'host-install.json').read_bytes() != preimage.read_bytes()):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    exchanged = exchange_directories(candidate, destination)
+    if exchanged is not DirectoryExchangeOutcome.EXCHANGED:
+        raise Rejected(Failure.FILESYSTEM_REJECTED)
+    # A crash here leaves the exact prior inode at candidate, which rollback_managed_reload admits.
+    admit_managed_prior(record, candidate)
+    candidate.rename(backup)
+    sync(root)
+    active = HostActiveReceipt(HostReceiptType.HOST_ACTIVE, str(destination), Identity.observe(root),
+                               record.candidateIdentity, record.version, record.sha256, inventory(destination))
+    write_receipt(retained / 'host-install.json', active)
+    admit_managed_candidate(record, destination)
+    return active
+
+
+def rollback_managed_reload(record: ManagedHostReplacement) -> None:
+    """Admit both atomic-swap states before the ordinary exact-preimage restoration."""
+    from host_directory_exchange import DirectoryExchangeOutcome, exchange_directories
+
+    root, candidate, backup, destination = admit_managed_paths(record)
+    if not isinstance(record.previous, ManagedHostPresent):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    admit_managed_rollback_receipt(record, root, candidate, backup, destination)
+    if Identity.observe(destination) == record.candidateIdentity:
+        admit_managed_candidate(record, destination)
+        prior = candidate if os.path.lexists(candidate) else backup
+        admit_managed_prior(record, prior)
+        if prior == candidate and os.path.lexists(backup):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        if exchange_directories(prior, destination) is not DirectoryExchangeOutcome.EXCHANGED:
+            raise Rejected(Failure.FILESYSTEM_REJECTED)
+        if prior == backup:
+            backup.rename(candidate)
+    else:
+        admit_managed_prior(record, destination)
+        if os.path.lexists(backup):
+            admit_managed_candidate(record, backup)
+            if os.path.lexists(candidate):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            backup.rename(candidate)
+    rollback_managed(record)
+
+
+def rollback_managed(record: ManagedHostReplacement) -> None:
+    """Restore the admitted prior Host or prior absence. Previous bytes stay until this proof succeeds."""
+    root, candidate, backup, destination = admit_managed_paths(record)
+    admit_managed_rollback_receipt(record, root, candidate, backup, destination)
+    retained = root.parent / '.kast-plugin-recovery'
+    receipt_path = retained / 'host-install.json'
+    if os.path.lexists(destination):
+        if Identity.observe(destination) == record.candidateIdentity:
+            admit_managed_candidate(record, destination)
+            if os.path.lexists(candidate):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            destination.rename(candidate)
+        elif isinstance(record.previous, ManagedHostPresent):
+            admit_managed_prior(record, destination)
+        else:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if isinstance(record.previous, ManagedHostPresent):
+        if os.path.lexists(backup):
+            admit_managed_prior(record, backup)
+            if os.path.lexists(destination):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            backup.rename(destination)
+        admit_managed_prior(record, destination)
+        preimage = Path(record.previous.receipt)
+        if (preimage != candidate.parent / 'host-receipt'
+                or owned_file(preimage, private=True) != record.previous.receiptIdentity
+                or hashlib.sha256(preimage.read_bytes()).hexdigest() != record.previous.receiptSha256):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        write_receipt_bytes(receipt_path, preimage.read_bytes())
+        admit_active(root, read_active_receipt(receipt_path))
+    else:
+        if os.path.lexists(destination) or os.path.lexists(backup):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        if os.path.lexists(receipt_path):
+            active = read_active_receipt(receipt_path)
+            if active.destinationIdentity != record.candidateIdentity or active.sha256 != record.sha256:
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            receipt_path.unlink()
+        if (record.retainedRootIdentity is None and os.path.lexists(retained)
+                and not bound_staged_lock(record)):
+            retained.rmdir()
+        if record.pluginRootIdentity is None and os.path.lexists(root):
+            root.rmdir()
+    if os.path.lexists(root):
+        sync(root)
+
+
+def admit_managed_rollback_receipt(record: ManagedHostReplacement, root: Path, candidate: Path,
+                                   backup: Path, destination: Path) -> None:
+    retained = root.parent / '.kast-plugin-recovery'
+    receipt_path = retained / 'host-install.json'
+    if os.path.lexists(receipt_path):
+        owned_file(receipt_path)
+        receipt_bytes = receipt_path.read_bytes()
+        previous_bytes = None
+        if isinstance(record.previous, ManagedHostPresent):
+            preimage = Path(record.previous.receipt)
+            if (preimage != candidate.parent / 'host-receipt'
+                    or owned_file(preimage, private=True) != record.previous.receiptIdentity
+                    or hashlib.sha256(preimage.read_bytes()).hexdigest() != record.previous.receiptSha256):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            previous_bytes = preimage.read_bytes()
+        if receipt_bytes != previous_bytes:
+            candidates = [path for path in (destination, candidate, backup)
+                          if os.path.lexists(path) and Identity.observe(path) == record.candidateIdentity]
+            if len(candidates) != 1:
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            selected = candidates[0]
+            admit_managed_candidate(record, selected)
+            expected = HostActiveReceipt(HostReceiptType.HOST_ACTIVE, str(destination), Identity.observe(root),
+                                        record.candidateIdentity, record.version, record.sha256, inventory(selected))
+            if receipt_bytes != encode(expected).encode():
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    elif isinstance(record.previous, ManagedHostPresent):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def seal_managed(record: ManagedHostReplacement, terminal: ManagedHostTerminalPhase) -> None:
+    """Release only exact preimages after the coordinator admits activation or restored prior state."""
+    root, candidate, backup, destination = admit_managed_paths(record)
+    retained = root.parent / '.kast-plugin-recovery'
+    receipt_path = retained / 'host-install.json'
+    if record.pluginRootIdentity is not None and Identity.observe(root) != record.pluginRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if record.retainedRootIdentity is not None and Identity.observe(retained) != record.retainedRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if terminal is ManagedHostTerminalPhase.ACTIVATION_PROVEN:
+        admit_managed_candidate(record, destination)
+        active = admit_active(root, read_active_receipt(receipt_path))
+        if (active.destinationIdentity != record.candidateIdentity or active.version != record.version
+                or active.sha256 != record.sha256 or inventory(destination) != active.inventory):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    elif terminal is ManagedHostTerminalPhase.RESTORED:
+        if isinstance(record.previous, ManagedHostPresent):
+            admit_managed_prior(record, destination)
+            active = admit_active(root, read_active_receipt(receipt_path))
+            if (active.destinationIdentity != record.previous.identity
+                    or hashlib.sha256(receipt_path.read_bytes()).hexdigest() != record.previous.receiptSha256):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        elif (os.path.lexists(destination) or os.path.lexists(receipt_path)
+                or (record.pluginRootIdentity is None and os.path.lexists(root))):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        elif record.retainedRootIdentity is None and os.path.lexists(retained):
+            admit_restored_lock_metadata(record, retained)
+    else:
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    if os.path.lexists(candidate):
+        admit_managed_candidate(record, candidate)
+        shutil.rmtree(candidate)
+    if os.path.lexists(backup):
+        admit_managed_prior(record, backup)
+        shutil.rmtree(backup)
+    if isinstance(record.previous, ManagedHostPresent):
+        preimage = Path(record.previous.receipt)
+        if preimage != candidate.parent / 'host-receipt':
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        if os.path.lexists(preimage):
+            if (owned_file(preimage) != record.previous.receiptIdentity
+                    or hashlib.sha256(preimage.read_bytes()).hexdigest() != record.previous.receiptSha256):
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            preimage.unlink()
+    if isinstance(record.lock, ManagedHostStagedLock) and record.lock.retainedIdentity is None:
+        staged_lock = Path(record.lock.staged)
+        if os.path.lexists(staged_lock):
+            admit_staged_lock(record, staged_lock)
+            staged_lock.unlink()
+    sync(candidate.parent)
+
+
+def bound_staged_lock(record: ManagedHostReplacement) -> bool:
+    return isinstance(record.lock, ManagedHostStagedLock) and record.lock.retainedIdentity is not None
+
+
+def admit_restored_lock_metadata(record: ManagedHostReplacement, retained: Path) -> None:
+    if not bound_staged_lock(record):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    admit_managed_retained(record, retained)
+    entries = {path.name for path in retained.iterdir()}
+    if not entries.issubset({'host-install.lock'}):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if entries:
+        admit_canonical_lock(record, retained / 'host-install.lock')
+
+
+def decode_managed(value: object) -> ManagedHostReplacement:
+    """Decode the Host field of the existing replacement journal without a second receipt owner."""
+    if not isinstance(value, dict) or set(value) != set(ManagedHostReplacement.__dataclass_fields__):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    previous = value['previous']
+    if not isinstance(previous, dict):
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    try:
+        if previous.get('type') == 'ABSENT' and set(previous) == {'type'}:
+            prior = ManagedHostAbsent()
+        elif previous.get('type') == 'PRESENT' and set(previous) == set(ManagedHostPresent.__dataclass_fields__):
+            prior = ManagedHostPresent(**(previous | {'identity': parse_identity(previous['identity']),
+                                                      'receiptIdentity': parse_identity(previous['receiptIdentity'])}))
+        else:
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+        lock_value = value['lock']
+        if lock_value is None:
+            lock = None
+        elif isinstance(lock_value, dict) and lock_value.get('type') == 'EXISTING' and set(lock_value) == {'type', 'identity'}:
+            lock = ManagedHostExistingLock(parse_identity(lock_value['identity']))
+        elif isinstance(lock_value, dict) and lock_value.get('type') == 'STAGED' and set(lock_value) == {'type', 'identity', 'staged', 'retainedIdentity'}:
+            lock = ManagedHostStagedLock(parse_identity(lock_value['identity']), lock_value['staged'],
+                                        None if lock_value['retainedIdentity'] is None else parse_identity(lock_value['retainedIdentity']))
+            if Path(lock.staged) != Path(value['candidate']).parent / 'host-lock':
+                raise Rejected(Failure.RECOVERY_REQUIRED)
+        else:
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+        record = ManagedHostReplacement(**(value | {
+            'pluginRootIdentity': None if value['pluginRootIdentity'] is None else parse_identity(value['pluginRootIdentity']),
+            'retainedRootIdentity': None if value['retainedRootIdentity'] is None else parse_identity(value['retainedRootIdentity']),
+            'candidateIdentity': parse_identity(value['candidateIdentity']), 'previous': prior, 'lock': lock,
+        }))
+        strings = (record.pluginRoot, record.destination, record.candidate, record.backup, record.version,
+                   record.candidateInventorySha256, record.sha256)
+        if any(not isinstance(item, str) or not 1 <= len(item) <= 4096 for item in strings):
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+        if not all(re.fullmatch('[0-9a-f]{64}', item) for item in (record.candidateInventorySha256, record.sha256)):
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+        admit_managed_paths(record)
+        return record
+    except (KeyError, TypeError, ValueError):
+        raise Rejected(Failure.RECOVERY_REQUIRED) from None
 
 
 @dataclass(frozen=True)
@@ -562,6 +1187,7 @@ def remove_host_files(root):
         if Identity(observed.st_dev, observed.st_ino, observed.st_uid) != lock_identity:
             raise Rejected(Failure.OWNERSHIP_UNPROVEN)
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        admit_unreserved_host_lock(lock)
         receipt_identity = owned_file(receipt_path, private=True)
         receipt = read_active_receipt(receipt_path)
         receipt = admit_active(root, receipt)
@@ -663,6 +1289,7 @@ def install(request):
             if os.fstat(lock.fileno()).st_uid != os.getuid():
                 raise Rejected(Failure.OWNERSHIP_UNPROVEN)
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            admit_unreserved_host_lock(lock)
             receipt_path = retained / 'host-install.json'
             previous_receipt = admit_installation_target(root)
             destination = root / 'kast-ide-hosted'

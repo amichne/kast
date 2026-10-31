@@ -9,4 +9,5 @@ object ControlDistributionLimits {
     const val maximumPayloadFiles: Int = maximumEntryCount
     const val maximumPayloadBytes: Long = 1_073_741_824L
     const val maximumManifestBytes: Int = 64 * 1_024 * 1_024
+    const val maximumReplacementReceiptBytes: Int = 2 * 1_024 * 1_024
 }

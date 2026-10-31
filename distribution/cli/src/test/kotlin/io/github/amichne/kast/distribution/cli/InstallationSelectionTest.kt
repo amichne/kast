@@ -40,11 +40,14 @@ class InstallationSelectionTest {
     }
 
     @Test
-    fun `upgrade parser retains explicit control ownership`() {
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Upgrade(true)),
-            parseManagementCommand(listOf("upgrade", "--control-only")),
-        )
+    fun `upgrade rejects retired control-only syntax and admits managed upgrade`() {
+        val rejected =
+            assertInstanceOf(
+                ManagementParsing.Print::class.java,
+                parseManagementCommand(listOf("upgrade", "--control-only")),
+            )
+        assertEquals(true, rejected.error)
+        assertEquals(ManagementParsing.Selected(ManagementCommand.Upgrade()), parseManagementCommand(listOf("upgrade")))
     }
 
     @Test

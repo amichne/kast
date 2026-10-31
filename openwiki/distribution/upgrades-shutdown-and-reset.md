@@ -20,6 +20,8 @@ code_sources:
 sources:
   - id: openwiki-source-977a0730acc279a32f98ae18
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
+  - id: openwiki-source-c58b3f38ca46d44dd30a8771
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - id: openwiki-source-6f0b647814adafaaa5d5c5f2
@@ -28,10 +30,16 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetFence.kt
   - id: openwiki-source-5eb124d96b8eb114e88aabe7
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
-generated: { by: "codex", at: "2026-10-16T06:54:44.448Z" }
+  - id: openwiki-source-b30c7b16cf2f49971ca55950
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt
+  - id: openwiki-source-5a685931788e905bc230c148
+    resource: repo://packaging/installation-recovery.py
+  - id: openwiki-source-1380068036b00bec817a6579
+    resource: repo://packaging/managed_installation.py
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T06:54:44.448Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -58,6 +66,23 @@ Shared IDEA and Gradle processes remain outside Kast's force-retirement ownershi
 Installation recovery preserves the failure stage and the result of restoration.
 A failed payload completion keeps the shutdown fence and its exact failure evidence.
 Uncertain retirement or retained storage remains visible for the next recovery decision.
+
+## Recovery precedes release selection
+
+`ManagedUpgrade` examines pending replacement records and the shutdown fence before policy or release resolution.
+A pending transaction invokes the admitted installed bridge with `--recover-only` and the selected output options.
+An absent or rejected bridge returns finite `RECOVERY_REQUIRED` without release access or another child.
+The wrapper returns the recovery child's terminal result and does not continue into a new selection.
+
+The outer recovery owner reads the captured journal and exact prior composition.
+It resumes terminal finalization or restores the recorded preimages under the selected locks.
+A missing bridge can use only the recorded release and digest for recovery.
+An unresolved effect keeps recovery evidence and the shutdown fence.
+The journal path itself blocks public calls until final removal, including an empty directory or dangling symbolic link.
+This preserves the fence if finalization fails after the shutdown record disappears.
+
+Ordinary upgrade preserves owned settings and history. It does not use force reset to bypass failed ownership admission.
+The exceptional reset path remains separate from the recorded transaction.
 
 ## Force reset has separate proofs
 

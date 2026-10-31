@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
-import com.intellij.ide.AppLifecycleListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
@@ -46,6 +45,7 @@ import kotlinx.serialization.json.Json
 /** Control survives zero open projects; semantic state never leaves its project service. */
 @Service(Service.Level.APP)
 class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
+    internal val admission = HostedApplicationAdmission()
     private val json = Json { encodeDefaults = true }
     private val state = IdeLifecycleState(UUID.randomUUID())
     private val native =
@@ -62,6 +62,21 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     internal fun hasActivePreparation(): Boolean = native.hasActivePreparation()
 
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
+    private val runtimeIdentity =
+        io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity(
+            ideaHome = home.toString(),
+            profile = Path.of(PathManager.getConfigPath()).toRealPath().toString(),
+            pid = ProcessHandle.current().pid(),
+            processStartEpochMillis = ProcessHandle.current().info().startInstant().orElseThrow().toEpochMilli(),
+            hostLifetime = state.host.toString(),
+            buildIdentity = io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.buildIdentity,
+            autoReload =
+                if (System.getProperty("idea.auto.reload.plugins") == "true")
+                    io.github.amichne.kast.protocol.contract.HostAutoReload.ENABLED
+                else io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED,
+        )
+    private val settlement =
+        HostedApplicationSettlement(admission, runtimeIdentity, native::settlement, native::hasActivePreparation)
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =
         scope.launch(Dispatchers.IO) {
@@ -83,6 +98,11 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                         root,
                         IdeReadHostLifetime.fromBoundary(state.host),
                         advertisement = HostedEndpointAdvertisement.LIFECYCLE,
+                        application =
+                            io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement(
+                                runtimeIdentity,
+                                io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.document,
+                            ),
                     )
             ) {
                 is Refinement.Rejected -> observe(IdeLifecycleResult.Blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE))
@@ -130,6 +150,13 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                                                                 result,
                                                             ),
                                                         )
+                                                    }
+                                                    if (result is IdeLifecycleResult.HostStopRequested) {
+                                                        // The acknowledgment precedes the ordinary IDE action. It never
+                                                        // proves process exit.
+                                                        ApplicationManager.getApplication().invokeLater {
+                                                            ApplicationManager.getApplication().exit()
+                                                        }
                                                     }
                                                 }
                                             }
@@ -198,7 +225,11 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                 ApplicationInfo.getInstance().build.asString(),
                 native.inspectProjects(),
                 io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.document,
+                runtimeIdentity = runtimeIdentity,
             )
+        if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)
+        if (received is IdeLifecycleCommand.ResumeHost) return settlement.resume(received)
+        if (received is IdeLifecycleCommand.StopHost) return settlement.stop(received)
         if (received is IdeLifecycleCommand.Status) {
             if (received.host != state.host.toString())
                 return IdeLifecycleResult.Blocked(IdeLifecycleFailure.WRONG_HOST)
@@ -245,7 +276,14 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             is LifecycleSubmission.Existing -> submission.result
             is LifecycleSubmission.Start -> {
                 observe(submission.pending)
-                executeEffect(admitted, request)
+                when (val entry = admission.enter()) {
+                    HostedApplicationAdmission.Admission.Fenced -> {
+                        val rejected = IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_FENCED)
+                        state.complete(request, rejected)
+                        return rejected
+                    }
+                    is HostedApplicationAdmission.Admission.Admitted -> executeEffect(admitted, request, entry.lease)
+                }
                 submission.pending
             }
         }
@@ -261,7 +299,11 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
 
     // Native failures become finite lifecycle outcomes with bounded stage evidence.
     @Suppress("TooGenericExceptionCaught")
-    private fun executeEffect(admitted: IdeLifecycleCommand, request: LifecycleRequest) {
+    private fun executeEffect(
+        admitted: IdeLifecycleCommand,
+        request: LifecycleRequest,
+        lease: HostedApplicationAdmission.Lease,
+    ) {
         // Application scope owns native work. Peer cancellation never cancels the operation.
         val admittedAtNanos = System.nanoTime()
         scope.launch {
@@ -284,8 +326,12 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                     )
                     IdeLifecycleResult.Blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
                 }
-            state.complete(request, result)
-            observe(result)
+            try {
+                state.complete(request, result)
+                observe(result)
+            } finally {
+                lease.close()
+            }
         }
     }
 
@@ -311,6 +357,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         job.cancel()
     }
 
+    internal fun canUnloadHost(): Boolean = settlement.canUnload()
+
     private companion object {
         val TOKEN = Regex("[A-Za-z0-9._:-]{1,128}")
     }
@@ -329,28 +377,3 @@ private data class LifecycleObservation(
     val failure: IdeLifecycleFailure?,
     val stage: IdeLifecycleStage?,
 )
-
-class IdeLifecycleStartup : AppLifecycleListener, com.intellij.ide.plugins.DynamicPluginListener {
-    override fun appStarted() {
-        ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java)
-    }
-
-    override fun pluginLoaded(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
-        if (pluginDescriptor.pluginId.idString == PLUGIN_ID) appStarted()
-    }
-
-    override fun checkUnloadPlugin(pluginDescriptor: com.intellij.ide.plugins.IdeaPluginDescriptor) {
-        if (pluginDescriptor.pluginId.idString != PLUGIN_ID) return
-        if (
-            ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java).hasActivePreparation()
-        ) {
-            throw com.intellij.ide.plugins.CannotUnloadPluginException(
-                "Kast workspace preparation must finish before plugin reload"
-            )
-        }
-    }
-
-    private companion object {
-        const val PLUGIN_ID = "io.github.amichne.kast.ide-hosted"
-    }
-}

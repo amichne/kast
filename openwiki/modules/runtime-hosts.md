@@ -229,8 +229,6 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - id: openwiki-source-6b063183ca57510a100a1579
     resource: repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
-  - id: openwiki-source-d719877f4ac62761c9b248b1
-    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
   - id: openwiki-source-3adda3013ad0805c51b3ac26
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt
   - id: openwiki-source-aa73ce5eea589b2954d82387
@@ -275,10 +273,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-15T03:39:16.872Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Runtime and process hosts
@@ -307,7 +305,8 @@ cannot change these files. Every later connection repeats admission.
 
 The hosted provider admits public intent tools and supported changes through the existing IDEA plugin. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
 
-Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools separately reject shutdown or reset markers, including unproven absence, before workspace discovery or dispatch. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
+Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools reject shutdown, reset, or replacement-journal markers and unproven absence before workspace discovery or dispatch.
+An empty journal directory or dangling symbolic link still blocks calls until final removal. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
 
 App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory.
 

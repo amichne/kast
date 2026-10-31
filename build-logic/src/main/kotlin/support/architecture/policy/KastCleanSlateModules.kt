@@ -33,6 +33,12 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/AdmittedCliSkill"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/GuidanceProviderExecutionKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ManagedUpgradeKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/PiSkillReplacementKt\$finishPiStage\$1\$1"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/SkillExportKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/SkillExportKt\$discardSkillStage\$1\$1"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationRegistrationKt"),
                 // Existing registration mutation and rollback effects, split into their owning files.
                 JvmClassName("io/github/amichne/kast/distribution/cli/IntegrationDisconnectionKt"),
@@ -377,6 +383,7 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/cli/ide/RetiredApprovalArtifacts"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion"),
+                    JvmClassName("io/github/amichne/kast/cli/installation/ManagedControlAdapter"),
                     JvmClassName(
                         "io/github/amichne/kast/cli/installation/InstallationWorkflow",
                     ),
@@ -455,6 +462,7 @@ internal object KastCleanSlateModules {
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
                 ForbiddenEffect.GRADLE_IMPORT to setOf(HostedWorkspaceRefreshAuthority.owner, HostedWorkspaceRefreshAuthority.specOwner),
                 ForbiddenEffect.PROJECT_OPEN to setOf(
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlementKt"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative\$close\$result\$1"),
                 ),

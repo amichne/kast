@@ -232,6 +232,12 @@
             },
             "lifecycleScript": {
               "$ref": "#/$defs/CapturedRecoveryFile"
+            },
+            "journalScript": {
+              "oneOf": [
+                {"$ref": "#/$defs/CapturedRecoveryFile"},
+                {"type": "null"}
+              ]
             }
           }
         },

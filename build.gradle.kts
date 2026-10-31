@@ -95,6 +95,14 @@ val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
 }
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
+val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
+    commandLine("git", "rev-parse", "HEAD")
+    workingDir(rootDir)
+}.standardOutput.asText.map(String::trim))
+val releaseSourceTree = providers.exec {
+    commandLine("git", "rev-parse", "HEAD^{tree}")
+    workingDir(rootDir)
+}.standardOutput.asText.map(String::trim)
 tasks.named("generateKastDocumentation") {
     dependsOn(":distribution:cli:generateManagementVersion")
 }
@@ -108,6 +116,8 @@ val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("g
     configurationCatalogueFile.set(generatedConfigurationCatalogue)
     providerCatalogueFile.set(generatedProviderCatalogue)
     productVersion.set(controlVersion)
+    sourceRevision.set(releaseSourceRevision)
+    sourceTree.set(releaseSourceTree)
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
     outputDirectory.set(generatedControlMetadata)
@@ -157,6 +167,8 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
     from("packaging/install-completion-v1") { into("share/kast") }
+    from("packaging/managed-install-v1") { into("share/kast") }
+    from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py")) { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
@@ -222,10 +234,6 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     maximumInstalledBytes.set(192L * 1024L * 1024L)
 }
 
-val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
-    commandLine("git", "rev-parse", "HEAD")
-    workingDir(rootDir)
-}.standardOutput.asText.map(String::trim))
 tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
     dependsOn(assembleKastControlDist, "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
     component.set(ReleaseComponent.CONTROL)
@@ -420,14 +428,14 @@ val installerRemovalTest = tasks.register<VerificationReportTask>("installerRemo
 val installationSystemPythonTest = tasks.register<VerificationReportTask>("installationSystemPythonTest") {
     group = "verification"
     description = "Proves offline recovery works with macOS system Python, independently of the development interpreter."
-    inputs.files("packaging/installation-recovery.py", "packaging/installation-lifecycle.py", "packaging/test-installation-recovery.py")
+    inputs.files("packaging/installation-recovery.py", "packaging/installation-lifecycle.py", "packaging/managed_update_journal.py", "packaging/test-installation-recovery.py")
     executableFile.set(layout.file(providers.provider { java.io.File("/usr/bin/python3") }))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-installation-recovery.py").asFile.absolutePath))
 }
 
 val installationRecoveryTest = tasks.register<VerificationReportTask>("installationRecoveryTest") {
     group = "verification"
-    inputs.files("packaging/installation-recovery.py", "packaging/test-installation-recovery.py")
+    inputs.files("packaging/installation-recovery.py", "packaging/managed_update_journal.py", "packaging/test-installation-recovery.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-installation-recovery.py").asFile.absolutePath))
 }
@@ -444,7 +452,7 @@ val priorInstallationCleanupTest = tasks.register<VerificationReportTask>("prior
     group = "verification"
     description = "Proves exact user review and selected-installation protection for historical cleanup."
     inputs.files("packaging/prune-prior-installations.py", "packaging/installation-lifecycle.py",
-        "packaging/installation-recovery.py", "packaging/test-prune-prior-installations.py")
+        "packaging/installation-recovery.py", "packaging/managed_update_journal.py", "packaging/test-prune-prior-installations.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-prune-prior-installations.py").asFile.absolutePath))
 }

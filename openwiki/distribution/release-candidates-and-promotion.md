@@ -22,16 +22,22 @@ code_sources:
 sources:
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
+  - id: openwiki-source-939501634c56c6ffea2fec6b
+    resource: repo://.github/scripts/release/developer_catalog.py
+  - id: openwiki-source-f02c30e87f3db4d071a7be5b
+    resource: repo://.github/scripts/release/publish_developer.py
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-b0e51d5f05a72ea5b0fff73c
     resource: repo://distribution/release/component_release.py
   - id: openwiki-source-8ac360e10edcbd99c75fa338
     resource: repo://distribution/release/component-release.schema.json
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+  - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
+    resource: repo://packaging/managed_release.py
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T21:29:39.165Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Release candidates and promotion
@@ -84,6 +90,23 @@ Archive admission then examines the component's expected contents.
 `assembleRelease` composes a fresh pair for an ordinary installation.
 Hosted contract equality and platform admission govern mixed-version compatibility.
 Matching component release numbers alone do not establish a usable pair.
+
+## Bounded published main discovery
+
+The developer catalog contains at most five already published immutable releases.
+Each entry keeps the main revision, original build revision, source tree, platform, release tag, version, and candidate and promotion digests.
+Main ancestry orders the entries. Job completion time and numeric version do not determine order.
+An out-of-order publication cannot replace a newer selection.
+
+Publication admits immutable release assets before it changes the catalog and latest pointer together.
+The commit uses a guarded fast-forward update and rereads the current catalog after contention.
+Conflicting identity, unproven ancestry, changed assets, and exhausted contention return finite failures.
+An older main revision remains a selector only while it appears in this bounded discovery window.
+
+The management command captures one admitted selection before the installer downloads artifacts.
+`managed_release.py` admits that selection, exact component records, candidate and promotion digests, archive bytes, and hosted compatibility.
+A main selection keeps original producer provenance through reuse after merge.
+It does not rerun latest selection after capture.
 
 ## Proof limits
 

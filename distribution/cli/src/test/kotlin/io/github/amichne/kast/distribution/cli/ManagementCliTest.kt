@@ -46,22 +46,21 @@ class ManagementCliTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `Codex connection selects only the native plugin owner`() {
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Plugin(PluginHarness.CODEX, false)),
-            parseManagementCommand(listOf("connect", "codex")),
-        )
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Plugin(PluginHarness.CODEX, false)),
-            parseManagementCommand(listOf("connect", "codex", "mcp")),
-        )
-        assertTrue((parseManagementCommand(listOf("connect", "codex", "app-server")) as ManagementParsing.Print).error)
-        assertTrue((parseManagementCommand(listOf("connect", "codex", "--force")) as ManagementParsing.Print).error)
-        assertTrue((parseManagementCommand(listOf("connect", "codex", "other")) as ManagementParsing.Print).error)
-        assertTrue((parseManagementCommand(listOf("connect", "pi", "mcp")) as ManagementParsing.Print).error)
-        assertTrue(
-            (parseManagementCommand(listOf("connect", "copilot", "app-server")) as ManagementParsing.Print).error
-        )
+    fun `retired connection syntax rejects and names the install replacement`() {
+        for (arguments in
+            listOf(
+                listOf("connect", "codex"),
+                listOf("connect", "codex", "mcp"),
+                listOf("connect", "codex", "app-server"),
+                listOf("connect", "codex", "--force"),
+                listOf("connect", "codex", "other"),
+                listOf("connect", "pi", "mcp"),
+                listOf("connect", "copilot", "app-server"),
+            )) {
+            val result = parseManagementCommand(arguments) as ManagementParsing.Print
+            assertTrue(result.error)
+            assertTrue(result.text.contains("kast install"))
+        }
     }
 
     @Test
@@ -71,14 +70,11 @@ class ManagementCliTest {
             ManagementParsing.Selected(ManagementCommand.Status(true)),
             parseManagementCommand(listOf("status", "--json")),
         )
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Connect(HarnessConnection.PI)),
-            parseManagementCommand(listOf("connect", "pi")),
-        )
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Connect(null)),
-            parseManagementCommand(listOf("connect")),
-        )
+        for (arguments in listOf(listOf("connect", "pi"), listOf("connect"))) {
+            val result = parseManagementCommand(arguments) as ManagementParsing.Print
+            assertTrue(result.error)
+            assertTrue(result.text.contains("kast install"))
+        }
         assertTrue((parseManagementCommand(listOf("serve")) as ManagementParsing.Print).error)
         assertTrue((parseManagementCommand(listOf("call", "query_symbols")) as ManagementParsing.Print).error)
         assertTrue((parseManagementCommand(listOf("--version")) as ManagementParsing.Print).text.isNotBlank())

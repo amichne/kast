@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:256b4542340aa489bddbdae6e98d0bb1e0b411d15249021ee55ca16fc48fccdc",
+  "pageVersion": "sha256:bbd3fa66f6fe242260fc6b57b3496147ce1a5ecd64ff683271cc4856a2f4dc60",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
       "statement": "The active Gradle graph includes the existing-IDE hosted runtime and retained topology modules, but does not include the retired importer, coordinator, indexer, isolated server or composition modules.",
       "evidence": [
         {
-          "resource": "repo://settings.gradle.kts#L21-L67",
+          "resource": "repo://settings.gradle.kts#L62-L108",
           "version": "repo-lines-v1:sha256:844bd7a78acaa6abfd1d40e709bbeb1cfff7b3bd71a3c632f7efaabc16600d15:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyODgzMmZhZDlmOWExZmY5NTEwOGYyMTVlYmJhZTZiNmE0ODFmNDVhMDE5NWUxZDU5ZDNjNDI1YjM2M2I1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMDMxN2JhZWIzNjU5Y2I0N2EzMWMwZjI5NTg4MzRlMzRkOWFiNDkzOTM4MzhhY2U1NzFjZWMzMTJiYzc1ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
@@ -18,11 +18,11 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:328e59e2ab47603593ad782a779afcce2e55181d3d9c0fe0079f6c4bb2e7750a"
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
-          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+          "version": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
         }
       ]
     },
@@ -32,15 +32,15 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt",
-          "version": "repo-file-v1:sha256:1e632524f9062db4e621c4ec81f50766e746f43fee1fb86945d58f7e5c9146c7"
+          "version": "repo-file-v1:sha256:12e27674a2a1f6ef2b813416321419c648d6753e095bd14ddc5398ce456452a8"
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429"
+          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:328e59e2ab47603593ad782a779afcce2e55181d3d9c0fe0079f6c4bb2e7750a"
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         }
       ]
     },
@@ -49,12 +49,12 @@
       "statement": "Root check separately enforces semantic resource identity, live FIR inventory accounting, and exact successful execution of the declared native case population.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L558-L594",
-          "version": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L245-L286",
-          "version": "repo-lines-v1:sha256:afb0089e386400680bab0ea2861d3ae0d385c47aec11bcdf235de38b3cbc1fcd:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MmZiNTUyMjRhNGU5ZjQzMmMwOGI5NDNkMjlhMTQ2NjYyYjAyMDY1ZmIzNDhhOTVmZGYwN2MyMjEwNmUzOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4ZWQ0MmMyN2RlZWIzZDkzNjYxNDBkMDcwOGY3YzQ4M2I0ZTU2MzdhZmY5MDA1NmNhZDQwMzIwZjdjZDNlMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         }
       ]
     },
@@ -64,17 +64,17 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:328e59e2ab47603593ad782a779afcce2e55181d3d9c0fe0079f6c4bb2e7750a"
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
-          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+          "version": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

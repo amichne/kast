@@ -17,6 +17,8 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -69,6 +71,7 @@ private constructor(
             observer: HostedEndpointObserver = HostedEndpointObserver { _, _ -> },
             limits: ReadLimits = ReadLimits.Default,
             advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
+            application: io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement? = null,
         ): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
             val socket = directory.resolve("host.sock")
             val descriptor = directory.resolve("endpoint.json")
@@ -140,6 +143,7 @@ private constructor(
                                         ProcessHandle.current().pid(),
                                         host.value.toString(),
                                         advertisement,
+                                        application,
                                     )
                                 ),
                             StandardOpenOption.CREATE_NEW,
@@ -178,6 +182,7 @@ internal enum class HostedEndpointAdvertisement {
 }
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 internal data class HostedEndpointDescriptorDocument(
     val type: String,
     val protocol: Int,
@@ -187,6 +192,8 @@ internal data class HostedEndpointDescriptorDocument(
     val host: String,
     val querySchema: String,
     val operations: List<String>,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val application: io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement? = null,
 ) {
     companion object {
         fun create(
@@ -195,6 +202,7 @@ internal data class HostedEndpointDescriptorDocument(
             pid: Long,
             host: String,
             advertisement: HostedEndpointAdvertisement,
+            application: io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement? = null,
         ) =
             HostedEndpointDescriptorDocument(
                 "KAST_IDE_ENDPOINT",
@@ -211,6 +219,7 @@ internal data class HostedEndpointDescriptorDocument(
                     HostedEndpointAdvertisement.SEMANTIC -> HostedEndpointCapabilities.operations
                     HostedEndpointAdvertisement.LIFECYCLE -> listOf("WORKSPACE_LIFECYCLE")
                 },
+                application,
             )
     }
 }

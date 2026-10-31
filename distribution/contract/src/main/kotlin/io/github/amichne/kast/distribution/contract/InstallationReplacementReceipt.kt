@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.contract
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -46,4 +47,6 @@ data class InstallationReplacementReceipt(
     val installation: String,
     val installationIdentity: InstallationFilesystemIdentity,
     val previous: PreviousInstallationPayload,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val reservation: ManagedControlReservation? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val composition: ManagedCompositionRecord? = null,
 )

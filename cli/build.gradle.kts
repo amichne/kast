@@ -405,7 +405,7 @@ val taskAccessTest =
             .withPathSensitivity(PathSensitivity.RELATIVE)
         inputs.file(repositoryRoot.file("copilot/task-extension.mjs")).withPathSensitivity(PathSensitivity.RELATIVE)
         inputs.file(repositoryRoot.file("pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
-        inputs.file(repositoryRoot.file("agent-tools/.mcp.json")).withPathSensitivity(PathSensitivity.RELATIVE)
+        inputs.file(repositoryRoot.file("agent-tools/mcp.json")).withPathSensitivity(PathSensitivity.RELATIVE)
         workingDir(repositoryRoot.dir("packaging/task-access"))
         commandLine("uv", "run", "--locked", "pytest")
     }

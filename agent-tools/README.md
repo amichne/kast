@@ -1,73 +1,71 @@
-# Kast agent tools
+# Kast agent guidance
 
-This plugin supplies the Kast skill and task tools for Codex, Copilot, and Pi.
-The only bundled MCP entry exposes the task catalog in `skills/kast/scripts/tasks.py`.
-It does not expose `query_symbols`, `check_diagnostics`, or mutation names as separate MCP tools.
-The installed tool RPC keeps its existing binary and wire contracts.
+The default plugin supplies canonical guidance for the native `kast` command.
+It does not register MCP or install Python hooks.
+The persistent IntelliJ IDEA Host owns Kotlin semantics for CLI and MCP.
 
-## Connect an agent
+## Install guidance
 
-Install Kast and restart IntelliJ IDEA before a semantic query.
-Start your agent from the exact Kotlin repository or worktree.
-
-For Codex, run `kast plugin codex` and restart Codex.
-Review and trust the plugin hook. Hooks without trust do not deliver the brief.
-For this checkout, use `codex plugin marketplace add .` and `codex plugin add kast@kast`.
-
-For Copilot, install the bundled plugin:
+After core installation, select one harness:
 
 ```sh
-copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
+kast install codex
+kast install copilot
+kast install pi
 ```
 
-If the RPC extension already occupies the Kast slot, remove it with `kast disconnect copilot` first.
-Restart Copilot after installation.
-The optional `kast connect copilot` SDK extension uses the same task catalog and service.
-Use one Copilot integration at a time.
+Codex and Copilot own their plugin resources and configuration.
+Pi discovers the copied skill through its native skill directory.
+Each command examines the selected installed release and the provider's actual resources.
+Start a fresh agent session after setup.
 
-For Pi, run `kast connect pi` and restart Pi.
-The installed extension registers the bundled task server through `registerMcpServer`.
-Pi owns discovery, permissions, and the connection lifetime.
-Use a Pi version with native MCP support.
-The extension supplies the brief and the absolute path to the bundled skill.
+To select optional MCP resources, add `--mcp`:
 
-## Runtime and task contracts
+```sh
+kast install codex --mcp
+kast install copilot --mcp
+kast install pi --mcp
+```
 
-The task server needs uv 0.12.9 or later. It uses Python 3.12 or 3.13.
-Its locked script can download pinned dependencies on the first run.
-Codex and Copilot launch that script from the plugin root.
-Pi and the Copilot SDK extension use the installed plugin directory.
+The optional task service needs uv and Python 3.12 or 3.13.
+Its script locks own the dependency versions.
+CLI-only setup removes only exactly owned MCP resources.
+Foreign registrations remain unchanged.
 
-The context hooks remain passive and offline. They use Python 3.9 or later. They need only the standard library.
-Pi reads context directly with Node.
-Context delivery does not start semantic work. The installed RPC prepares the exact project when a task needs it.
-Preparation can save editor buffers and refresh the imported project.
-An invalid context resource rejects without a partial brief.
+## Export the canonical skill
 
-Use `find` before relationship tasks and preserve the selected issued reference.
-Use `source` with its default `ANCHOR` before a body region.
-Use `walk` for an explicit depth and `trace` for the fixed affected-use topology.
-Use `result` and `resume` for existing output.
-The [bundled skill](skills/kast/SKILL.md) explains task choices, scope, qualifiers, recovery, and CLI fallback.
+```sh
+kast install skill
+kast install skill --output ./guidance
+```
 
-For an advanced existing operation, read `schema` and then use `raw`.
-Catalog-declared writes need `write:true` and a user-requested source change.
-The installed catalog admits requests for contract 17 or 18. Other versions reject.
-Canonical RPC text, structured evidence, references, cursors, and failure tags remain intact.
-Cancellation stops the child. Submission or effects can remain uncertain, so the service never retries automatically.
+The output directory is the parent of `kast/`.
+The default parent is `./.agents/skills`.
+A complete identical skill returns `ALREADY_INSTALLED` without writes.
+A different or incomplete skill returns `SKILL_EXISTS` and keeps every byte.
+Select another output directory or explicitly remove the old skill before another export.
 
-`onboarding.template.md` owns the shared brief. `skills/kast/SKILL.md` owns the detailed task workflow.
-`packaging/generate-public-query.py` owns the advanced query references from the canonical schema.
-The service and native adapter consume one task catalog, without separate query constructors.
-The historical direct adapters remain compatibility source and are not the packaged defaults.
+Core replacement does not refresh copied skills or cached provider resources.
+If the result reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install <harness>` before a fresh session.
+Standalone exports keep their no-overwrite contract.
+
+## Contract and recovery
+
+Use `kast describe` for the installed CLI contract.
+The [canonical skill](skills/kast/SKILL.md) owns scope, issued references, qualifications, cancellation, and recovery guidance.
+The [public CLI guide](skills/kast/public-cli.md) supplies shell examples.
+
+Optional MCP exposes the task catalog in `skills/kast/scripts/tasks.py`.
+The installed tool RPC keeps its binary and wire contracts.
+A successful provider installation does not establish content in an existing agent session.
 
 ## Development evidence
 
+Run `./gradlew -p build-logic test --tests '*GenerateAgentToolsTaskTest'` for composition and resource admission.
+Run `./gradlew :distribution:cli:test --tests '*GuidanceInstallationTest'` for provider resources and exact ownership.
+Run `node --test cli/src/test/js/native-onboarding.test.mjs` for the optional Pi adapter.
 Run the task suite from `packaging/task-access` with `uv run --locked pytest`.
-Run `node --test cli/src/test/js/native-onboarding.test.mjs` for Pi registration and context cases.
-Run `python3 packaging/test-agent-onboarding.py` for Codex and Copilot hook envelopes.
-These tests prove adapter behavior, not a complete live-host or model comparison.
-The [original experiment](../experiments/task-access/README.md) records separate Terra and Luna exercises.
+These tests do not establish a live semantic query or model behavior.
 
 ## Pi inventory example
 
@@ -91,7 +89,3 @@ if (exit_code !== 0 || truncated !== false) {
 Counts cover only supplied output.
 Failed or truncated inventories grant no path or count claims.
 The example stays outside the startup brief and receives separate executable assertions.
-
-The source plugin version is `0.0.0`. Release assembly supplies the Control version.
-Tool failures keep their canonical rejection and recovery evidence.
-Local admission failures use `ACCESS_REJECTED` with `isError:true`. Canonical RPC outcomes keep their original tags.

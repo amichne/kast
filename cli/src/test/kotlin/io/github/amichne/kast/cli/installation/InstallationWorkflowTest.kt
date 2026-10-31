@@ -391,6 +391,7 @@ private fun writeControlFiles(
     Files.createDirectories(control.resolve("lib"))
     val bin = Files.createDirectories(control.resolve("bin"))
     Files.copy(Path.of("../packaging/installation-recovery.py"), metadata.resolve("installation-recovery.py"))
+    Files.copy(Path.of("../packaging/managed_update_journal.py"), metadata.resolve("managed_update_journal.py"))
     val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
     val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
     Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.distribution.contract.InstallationReplacementReceipt
 import io.github.amichne.kast.distribution.contract.InstallationReplacementStage
@@ -43,7 +44,7 @@ internal fun observePendingInstallationReplacement(root: Path): PendingInstallat
     }
 }
 
-private const val MAXIMUM_REPLACEMENT_RECEIPT_BYTES = 65_536
+private const val MAXIMUM_REPLACEMENT_RECEIPT_BYTES = ControlDistributionLimits.maximumReplacementReceiptBytes
 
 private data class ReplacementSlots(val root: Path, val directory: Path, val installation: Path)
 

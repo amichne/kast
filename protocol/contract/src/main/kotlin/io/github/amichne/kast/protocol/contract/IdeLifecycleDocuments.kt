@@ -60,6 +60,18 @@ sealed interface IdeLifecycleCommand : OperationRequest {
     ) : IdeLifecycleCommand
 
     @Serializable @SerialName("status") data class Status(val host: String, val requestId: String) : IdeLifecycleCommand
+
+    @Serializable
+    @SerialName("settle_host")
+    data class SettleHost(val host: String, val transaction: String) : IdeLifecycleCommand
+
+    @Serializable
+    @SerialName("resume_host")
+    data class ResumeHost(val host: String, val transaction: String) : IdeLifecycleCommand
+
+    @Serializable
+    @SerialName("stop_host")
+    data class StopHost(val host: String, val transaction: String) : IdeLifecycleCommand
 }
 
 @Serializable
@@ -119,6 +131,8 @@ enum class IdeLifecycleFailure : OperationRejection {
     UNSUPPORTED_PLATFORM_LINE,
     UNSUPPORTED_HOST_MODE,
     DEADLINE_EXCEEDED,
+    HOST_FENCED,
+    MUTATION_RECOVERY_REQUIRED,
 }
 
 @Serializable
@@ -145,6 +159,28 @@ sealed interface IdeLifecycleResult : OperationResult {
         val protocol: Int = 1,
         val background: IdeBackgroundPresentation = IdeBackgroundPresentation.BEST_EFFORT,
         val capabilities: Set<IdeLifecycleCapabilityName> = IdeLifecycleCapabilityName.entries.toSet(),
+        val runtimeIdentity: IdeHostRuntimeIdentity? = null,
+    ) : IdeLifecycleResult
+
+    @Serializable
+    @SerialName("host_settling")
+    data class HostSettling(val host: String, val transaction: String) : IdeLifecycleResult
+
+    @Serializable
+    @SerialName("host_settled")
+    data class HostSettled(val host: String, val transaction: String, val runtimeIdentity: IdeHostRuntimeIdentity) :
+        IdeLifecycleResult
+
+    @Serializable
+    @SerialName("host_resumed")
+    data class HostResumed(val host: String, val transaction: String) : IdeLifecycleResult
+
+    @Serializable
+    @SerialName("host_stop_requested")
+    data class HostStopRequested(
+        val host: String,
+        val transaction: String,
+        val runtimeIdentity: IdeHostRuntimeIdentity,
     ) : IdeLifecycleResult
 
     @Serializable
@@ -216,4 +252,33 @@ enum class IdeLifecycleCapabilityName {
     CLOSE,
     STATUS,
     EXACT_USER_CLOSE,
+    HOST_SETTLEMENT,
+    HOST_RUNTIME_IDENTITY,
+    HOST_NORMAL_STOP,
 }
+
+@Serializable data class IdeHostBuildIdentity(val version: String, val sourceRevision: String, val sourceTree: String)
+
+/** The loaded plugin captures these facts once per application-level Host lifetime. */
+@Serializable
+data class IdeHostRuntimeIdentity(
+    val ideaHome: String,
+    val profile: String,
+    val pid: Long,
+    val processStartEpochMillis: Long,
+    val hostLifetime: String,
+    val buildIdentity: IdeHostBuildIdentity,
+    val autoReload: HostAutoReload = HostAutoReload.DISABLED,
+)
+
+@Serializable
+enum class HostAutoReload {
+    ENABLED,
+    DISABLED,
+}
+
+@Serializable
+data class IdeHostApplicationAdvertisement(
+    val runtimeIdentity: IdeHostRuntimeIdentity,
+    val compatibility: HostedCompatibilityDocument,
+)

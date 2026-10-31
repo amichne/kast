@@ -11,9 +11,6 @@ code_sources:
 - path: topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/GraphIndex.kt
 - path: evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology/SqliteTopologyRelationCompiler.kt
 - path: topology/service/src/test/kotlin/io/github/amichne/kast/topology/service/TopologyGraphServiceTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-4f02279174e4a786c385c95b
     resource: repo://evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology/SqliteTopologyRelationCompiler.kt
@@ -22,6 +19,9 @@ sources:
   - id: openwiki-source-e80fc4972b493f50257598c0
     resource: repo://topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/TopologyGraphService.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Detached topology graph queries

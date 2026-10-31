@@ -130,7 +130,7 @@ class PayloadAdmissionTest(unittest.TestCase):
         payload.mkdir(parents=True)
         names = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
                  *(f"kast-{name}-v{VERSION}.zip" for name in ("plugin", "marketplace")),
-                 f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
+                 f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
                  f"kast-module-knowledge-v{VERSION}.json", f"kast-sbom-v{VERSION}.cdx.json")
         for name in names[:-1]:
             (payload / name).write_bytes(name.encode())

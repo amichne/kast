@@ -1,0 +1,44 @@
+[project]
+name = "kast-managed-installation"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["defusedxml==0.7.1", "types-defusedxml==0.7.0.20260504"]
+
+[dependency-groups]
+dev = ["ruff==0.14.0", "pyright[nodejs]==1.1.407", "pytest==9.0.3"]
+
+[tool.uv]
+package = false
+no-build = true
+required-version = ">=0.12.9"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
+extraPaths = ["."]
+reportUnusedCallResult = "error"
+reportMatchNotExhaustive = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+include = ["**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.per-file-target-version]
+"managed_update_journal.py" = "py39"
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
+pythonpath = ["."]
+python_files = ["test-managed-*.py"]
+testpaths = ["."]

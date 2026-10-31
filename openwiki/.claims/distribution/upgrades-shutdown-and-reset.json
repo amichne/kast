@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e8d74672a8e4206200ef995c45a43e8dfe4c566c08eda01791c2c6c00c69994b",
+  "pageVersion": "sha256:727f715ad505c5d5dddff33b8f9abf77017ac7b65027917cedccea5d929e4d8b",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
-          "version": "repo-file-v1:sha256:caa616d53ffd0a991536c37d180369ee54ceeb8e49472fce95ac338193f8fb72"
+          "version": "repo-file-v1:sha256:970d11ab6c5d8aa17a2d9ae468c840377769ffa91ecf2a261f79f8569a7cf882"
         }
       ]
     },
@@ -39,10 +39,38 @@
           "version": "repo-lines-v1:sha256:76f90fedbe8c8de0bf3a47a3e7ddb9af83003bd8a2cfddfd18beb145871a5bf6:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODkzZmUwM2MxNjIxNDFkNjYxMDlkNmNkMjZhYzBhZWYwNTI3NGExODc5ZjE3ZmY0ZWFjN2Q2NTlkNDQxNWUxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjZhZjkyYWIwNTk3OTgxNmFiMzk3MWI5MWI5YjAyOGY0OTEwYjRiYTgxNDMxOGIwYmVhMTllMTFhZjE4YmM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGZkNGViZjJjNTZkZTNhOTg1MjJhMzg5ZjY0Y2Q0M2ZmNzlkOGM4MGRjNzU4YmVjMjhkN2MyMThkYmU2YjcxNCJ9"
         }
       ]
+    },
+    {
+      "id": "claim_22d3ba222be341a7a9e4e95810ddc46f",
+      "statement": "Pending recovery precedes policy and release resolution. The installed bridge receives recover-only and the wrapper preserves its terminal result without fresh selection. Missing or rejected bridge admission returns finite RECOVERY_REQUIRED.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
+          "version": "repo-file-v1:sha256:5db730d8178a184ef15d1cc1f64f4ff4c2ff3960fdce7c69a6aac423f863aea4"
+        }
+      ]
+    },
+    {
+      "id": "claim_8dc609c61bc94d7491d3366ee0faac4a",
+      "statement": "Recorded recovery resumes finalization or restores captured preimages under admitted locks. A remaining replacement journal blocks public calls even after shutdown-fence removal, including empty or dangling paths.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt",
+          "version": "repo-file-v1:sha256:3be1ea90bed8dfdda7e6f7b2d3b6c310d1cce68c02623e07a26e3987e96e13cf"
+        },
+        {
+          "resource": "repo://packaging/installation-recovery.py",
+          "version": "repo-file-v1:sha256:e1d9c9c0e611f37122384b5bba25111c4f50e6530313355daa072b8776931938"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:bf2ea84dd77f058f38018e391a5493275d7aa5157a52a35872b6909c9d1ec900"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

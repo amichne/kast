@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:51fc593ddb9d9ae427501535a4ebb4087ff117b1e2285a4c13a0d70993a62105",
+  "pageVersion": "sha256:85369ec631623adcf4059d8ba4d96879b79f37f1db4c2559ec20c7f74762e549",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/code_kb.py",
-          "version": "repo-file-v1:sha256:58a71742e8489fbd54236314b7546f991c6dad602ad31ba96cc5ca86f6b90301"
+          "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429"
+          "version": "repo-file-v1:sha256:4d98c379f5681f8a911a1b4ef64a37c1fbab2778aedaccade15b9c63919ee12a"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:1acd5c3bae46ffe33e524049b44788eb99de1b2328c2722143c8acc39abfb463"
+          "version": "repo-file-v1:sha256:6e0a0abfe51dcab0d3cb0c19810525ddcfde6ceab41ee06defb0838aa121d356"
         }
       ]
     },
@@ -32,13 +32,13 @@
       "evidence": [
         {
           "resource": "repo://AGENTS.md",
-          "version": "repo-file-v1:sha256:e6c490d707cc364aad74f245a88dbe457606f65abdf53a9c2a1eebbec2af4a04"
+          "version": "repo-file-v1:sha256:cd1f73e1cb1dbebd6829775e1d6a70a615b07ea0a0edb990cd1ebb775319c8c1"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

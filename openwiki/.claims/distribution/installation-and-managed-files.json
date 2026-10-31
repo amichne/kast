@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:13956c1ee0d253eaf37a5ccc1a2cdcbce7a5669dab7d92034944aa2ae65ee827",
+  "pageVersion": "sha256:2aa18206fdef27167ce5864e6337c4100aff1f711b1ad03a3da3e6bae7a37c84",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:1739e0793cc20af80010fdeb2acb77a48de98d806d1ac080bd69fbbe3d4613b7"
+          "version": "repo-file-v1:sha256:118390379f2db62945cd6f91d096a9aeb26afc5c94f94a761f8826fe1664a561"
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
         }
       ]
     },
@@ -41,20 +41,12 @@
       "statement": "Host preflight examines the existing target. Host installation and removal preserve exact legacy Control history names without traversing them, while pending Host transactions and unknown recovery entries still reject.",
       "evidence": [
         {
-          "resource": "repo://packaging/host-installation.py#L428-L462",
-          "version": "repo-lines-v1:sha256:5a42224a50633efbbf6b38bc27e4d4192c1c14da72ef21da75df3744d800b1a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NzQ4M2FhODZhNjM2MTkwMzBmOTNhNjNkNzBjYTVhNTg5MTdmZTAxYWY0N2IwMjk2N2UzNDc0ZjhjNDQ0MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkMjAzMmM4YTkxMzliMjllZWIxZGUxMmZkOWFhYWQ1NTYyZTM0MmUzNGYzOGE5ZDZhNzlhMWFjYjEzNzg0MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhOWM5NmM1MjhjYjRhZTkzYjNmZjI2MTM5NjA5OGIyYzVlMzIwMTE3Y2RmOWFjN2M0NTY2NzFjN2E3Y2RjMjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhNThjZjM4ZGUyYzhjMmRlMTI0NWJhNzkyMmRiMzIxZmQ5NWM0MjUxZWUzZjU3MDJkMzgxZTg2M2ZiODE1NDkifQ"
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
         },
         {
-          "resource": "repo://packaging/host-installation.py#L516-L536",
-          "version": "repo-lines-v1:sha256:f2b45bb2a2d38c6fca8b08cef23cd079002f47be4bfe1818be92348210e32d33:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1NDUzMTkxOWIxMDA5N2RkOWQxNWY4NzQxN2VkNjBlZWJmZmJkZWZiNmM0YzhiMDBjYTBiM2U0MDllZDdlZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlNTk1NmViZTJkZWM1ZTUxMWU0MmFiZjRkMzA3ZDlmYTkzMWJkOWM3OGI5ZWE3Mjc2NDlkM2U2ODM3MmVlMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRlOTY2Nzc4ODg2ZGZkNWIxZmRiOWYyOTNjNWYyNjlhZmUzZjg5MmM4ZGVhYTkxZTdhN2IyYjRiMTdjZjQzODkifQ"
-        },
-        {
-          "resource": "repo://packaging/host-installation.py#L645-L667",
-          "version": "repo-lines-v1:sha256:ea8f2ab0c43cd5f0e7ec340249d799fd894f83e2acb98488595a75ced698d719:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNzU3MDg2ZjRiMDQ1NTljMzJlMWFhMTU1MmM5NDJkYmZjNThiYWM2YmFkYWEzYWQzOGQ1NGJmYzVkOGJhY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZTBmOTI4OGU0ZDMxNWZhZDViYzQ3M2EyYjgwZjkwYjUwYjc2YzA1YjFkMzVhMDk2OGVjMmI3NDcwOTVhM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5ZDg4NjlkYzllMTBlYzEzN2NiMWM5MTViZDExZTQ3M2EyYTIxZmJiMTliMDZmNGY4ZTYzODAzOGZhZTk0ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5ZWRlZjY4ZDg2NGZkMjExNTRlMmYxMzE1OTE0MWViM2MzOTM0NGI3ZjRkNDE3ZjYxZDNiY2YxNDQzMjkxMTAifQ"
-        },
-        {
-          "resource": "repo://packaging/test-host-installation.py#L316-L395",
-          "version": "repo-lines-v1:sha256:3c3db83f3b5c2a8c6b502983225b89e7d54035d3cb8297056efbf8aeb3735c2c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjMmMzYTc3Y2ViYWZiODc0OTRkM2ZlZDU5YmViY2Y2NGY3MjAyNzg4NjAxNWU3ZmRhZGE1ODJkNTdhYWVlYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNTgwODFiZDNjM2U4Y2EzZWY0MjU3MWI2NDkyZjU3N2I0MDkwNGVhNjQwMDk2ZTQzZDY2ZmQ1Njc3ZmI0MmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzNjEwZmFmYWMxNzFiNzhjYmEzMDE0ZDMzNTUwYTE2Y2VlZjEyN2RiZWI1Mjg1ZmUxYTQxNjQ1Njc1Y2E3N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkYmNlZjhlNzgyYWEyMThmNjliZGZlMjliZTI4Y2FmNjA0ODNmMjE3Njk3ODVlYzFlOTM2YWEyOTUzNjMyYWMifQ"
+          "resource": "repo://packaging/test-host-installation.py",
+          "version": "repo-file-v1:sha256:e1a43dec97a7d2b2f30890b5ca846d5ae582419aba73296bd45f5d46f80d5bcd"
         }
       ]
     },
@@ -63,12 +55,12 @@
       "statement": "A stopped installation without a workspace registry can pass retirement admission when its current broker stores have exact integer layout versions, empty record directories, empty locks, and private ownership. Records, unknown artifacts, live evidence, and unsafe paths still reject.",
       "evidence": [
         {
-          "resource": "repo://packaging/installation-lifecycle.py#L702-L809",
-          "version": "repo-lines-v1:sha256:3d02398a8acc48c75f1aebbcb1dba33527d7faff9d14d8d1721cf26040fe8f87:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwNGU4YzU2NjdjYmYyZDY1NDQxMzI3YTczZmYzYWIyOGExODczYzNiYzBjZmUzNmY4ZWQyY2UyZDRiNzBmYWRmIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1NzBkYTAzMmZiZmRiZDFiNDI0ZTgxNGMyMTJhZTU4NDg0ZTc2ZjU3ZGM1NmRiZmQxM2JmODAzNzM2ZDMyNGIyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0MTBmMTYzOTIyNWIzMjBmYjdiY2YxNmI1MzlhMTEzNmNmYjM3MzcyMjRmOGVmM2I3MGQ2OThiOWFlOWJmMjQwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyYjVkYmI0OTEyNjliYmY1NWNkNDI2YTA3NzdkNTRmNmNmZmYyZmFhNTY2Zjc1ZDZlMjBjMzdiY2EzY2I2YzI5In0"
+          "resource": "repo://packaging/installation-lifecycle.py",
+          "version": "repo-file-v1:sha256:fbb582bf5e954ca9bf3184183068f0cd429116d35e54cecddf275f327a266dd3"
         },
         {
-          "resource": "repo://packaging/test-installation-lifecycle.py#L26-L158",
-          "version": "repo-lines-v1:sha256:6498bdc3619969c3c717b12eadd9395cf537a9a457cb0270b4b04d15d4e79b8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2NjIzNzFkNTk0NGNhODM5ZmEzMmJhYWQ0YTUyZWI1YTQ3Y2NhNzkyZDM3ZGM4ZTI4NDhkNWRmMWE3NTNhMzRiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNzY0ZGQ3NjYyNmU1MjkyMDQyODcxN2VmNzMyZGYwOTUxNDRmYmNlOTQzMjUwOWZhYjAyN2NmNjBjZDllMmZjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIxZmY4MTI4NTU2ZDlkZmZhYjBjOGNlMzVkZjMxNDA1OGYxN2JmMzY5NDRjNGU4YTkyMjBkNGIzOGM0MmQxNmUzIn0"
+          "resource": "repo://packaging/test-installation-lifecycle.py",
+          "version": "repo-file-v1:sha256:7980639380aedb7bac8f1d0164d05947f33effa86f56f31627d894097a9d88db"
         }
       ]
     },
@@ -81,14 +73,32 @@
           "version": "repo-file-v1:sha256:fa08cf032e27c470c78aef3c8ed65a5fd91d73f0df656777e1fc28ba142eab96"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L335-L356",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L341-L362",
           "version": "repo-lines-v1:sha256:bebeb5e46379b47d12600b4a0fe72932032f3a5fdfa2621dd47e228f9b92302f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzY0MmIzMDg1MTZjMDA2N2JjZGM3ZWEzNDk4MzE1Yjc3MWM3YWM3NDg2ODM1MDkxZmU4ZWU2ZDlmZDQzMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjZThkMTM3ZmE0NGFjNjY0OGIzYTRhNmY1NmY1MGJhYmE2NzczNDE0NWQwNDc0YTRlNTU1Njk3ZmQyNmJlYzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhMjg5ODc2NDdmMzYzZWFjMDU1YTQzODhmYTg0NDRkYTY3MTM2Y2Q0NDhjZWI3ZjUxNGZmMDU4ZTUwMjE0YTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_41fc68777f5c43989b02b4e0d1839807",
+      "statement": "The managed composition coordinator captures exact file and Host preimages in a typed journal, fences calls before settlement, and coordinates Control and Host commits under admitted locks. A stopped Host stays stopped. Recovery uses recorded selection and keeps an unresolved transaction fenced.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:4b086f13514018e734f370a689c8dbdf2c55c293264f507a16c04c5f473e85a1"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:bf2ea84dd77f058f38018e391a5493275d7aa5157a52a35872b6909c9d1ec900"
+        },
+        {
+          "resource": "repo://packaging/managed_update_journal.py",
+          "version": "repo-file-v1:sha256:648dccf6e9e4da2927b80b0178b798ceb52a5cb8c9ead97dc87db389811a9d1b"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T07:07:29.171Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

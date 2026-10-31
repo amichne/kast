@@ -29,7 +29,10 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
-tasks.named<Test>("test") { useJUnitPlatform() }
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
 
 val generateVersion =
     tasks.register<Copy>("generateManagementVersion") {
