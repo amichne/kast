@@ -393,6 +393,30 @@ val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginR
 }
 tasks.named("check") { dependsOn(localPluginReloadTest) }
 
+val managedInstallationTest = tasks.register<VerificationReportTask>("managedInstallationTest") {
+    group = "verification"
+    description = "Proves immutable selection, managed replacement, and recorded recovery."
+    sourceFiles.from(fileTree("packaging") { include("*.py", "*.sh", "pyproject.toml", "uv.lock") })
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
+        "packaging/test-managed-installation.py", "packaging/test-managed-release.py",
+        "packaging/test-managed-update-contract.py", "-q"))
+}
+
+val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {
+    group = "verification"
+    description = "Proves qualified publication and concurrent discovery admission."
+    sourceFiles.from(fileTree(".github/scripts/release") { include("*.py", "pyproject.toml", "uv.lock") })
+    sourceFiles.from(fileTree(".github/scripts/ci") { include("*.py") })
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", ".github/scripts/release", "pytest",
+        ".github/scripts/release/test_build_candidate.py",
+        ".github/scripts/release/test_developer_catalog.py",
+        ".github/scripts/release/test_developer_publication.py", "-q"))
+}
+
+tasks.named("check") { dependsOn(managedInstallationTest, developerPublicationTest) }
+
 val testCheckoutInstaller = tasks.register<VerificationReportTask>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout and release bootstrap boundaries without touching machine state."
