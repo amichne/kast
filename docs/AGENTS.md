@@ -4,9 +4,10 @@ title: "Kast docs"
 description: "This directory owns the Mintlify site, contributor guides, and glossary rules. Reports keep the source revision and scope of each result."
 resource: "repo://docs"
 tags: [kast, navigation]
-timestamp: "2026-10-31T12:39:38Z"
-source_revision: 647fffc46f6247fac5b0fc632ae019d157bf9020
+timestamp: "2026-11-01T04:52:09Z"
+source_revision: 99139245144ceee756556037c058e0f3b8c22983
 code_sources:
+  - path: install.sh
   - path: docs/development.md
   - path: docs/documentation-structure.md
   - path: docs/glossary.json
@@ -66,8 +67,9 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
 - The value explorer and README preview share `docs/tooling/value-journey` as their source. Run `npm run build --prefix docs/tooling/value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
-- Public setup assumes that `kast` is installed. Use `kast upgrade --channel main` and `kast install` for the default CLI-guidance path.
-- Keep MCP setup explicit with `--mcp`. Do not restore retired bootstrap or connection commands in current setup pages.
+- Public setup starts with the remote installer's `--developer-latest --skip-codex-plugin` options. Use `kast upgrade --channel main --restart-ide` for updates.
+- Use `kast install` for CLI guidance. Keep MCP setup explicit with `--mcp`. Do not restore retired connection commands.
+- Replace Kast-owned assets when necessary, even if active Kast sessions end. Keep the latest qualified development build as the installation target.
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.
