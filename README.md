@@ -7,15 +7,20 @@ Use the native `kast` command to find declarations, inspect callers, and read so
 
 ## Get started
 
-These steps assume that the Kast CLI is installed.
 Use an Apple silicon Mac and a Kotlin Gradle project.
 Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Install uv 0.12.9 or later.
+Use Python 3.12 or 3.13.
 
-Select the latest qualified development build:
+Install the latest qualified development build from a terminal:
 
 ```shell
-kast upgrade --channel main
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
+
+You need no checkout or existing `kast` command.
+The installer replaces Kast-owned assets and can end active Kast sessions.
+Restart IntelliJ IDEA to load the installed Host.
 
 Install CLI guidance for your agent:
 

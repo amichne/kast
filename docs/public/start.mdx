@@ -15,7 +15,7 @@ hideFooterPagination: true
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
 Use Kast through its native CLI with the agent you already use.
-These steps assume that `kast` is installed and available in your terminal.
+Install Kast from a terminal, then install guidance for your agent.
 
 ## Before you start
 
@@ -24,24 +24,41 @@ These steps assume that `kast` is installed and available in your terminal.
 Use an Apple silicon Mac and a Kotlin Gradle project.
 Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 Install your chosen agent CLI.
+Install uv 0.12.9 or later.
+Use Python 3.12 or 3.13.
 
-1. Select the development build.
+1. Install or update Kast.
 2. Install your agent's CLI guidance.
 3. Ask about your code.
 
-## 1. Select the development build
+## 1. Install or update Kast
 
 <span id="1-install-kast" />
+<span id="1-select-the-development-build" />
 
-Use the latest qualified build from main:
+Save your project work before installation.
+For an initial installation, run:
 
 ```shell
-kast upgrade --channel main
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
 
-The `main` channel tracks qualified development builds.
-The installer reports the selected build and its activation outcome.
-If it reports a restart requirement, repeat the command with `--restart-ide` to permit a normal IDEA restart.
+You need no checkout or existing `kast` command.
+`--developer-latest` selects the latest qualified development build and resets stale Kast state.
+`--skip-codex-plugin` skips the optional MCP setup. Step 2 installs CLI guidance for your agent.
+
+The installer replaces Kast-owned assets and can end active Kast sessions.
+Restart IDEA after installation to load the installed Host.
+If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
+
+If `kast` already exists, update it with:
+
+```shell
+kast upgrade --channel main --restart-ide
+```
+
+The `main` channel tracks qualified development builds. `--restart-ide` permits a normal IDEA restart when necessary.
+Active Kast sessions can end during the update. Start a fresh agent session afterward.
 
 [Installation and activation](/reference/installation) explains build selection, pins, and recovery outcomes.
 

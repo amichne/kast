@@ -326,6 +326,19 @@ dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
 A successful CLI build does not establish that IDEA imported the Gradle model.
 
+### Installer policy
+
+Keep the public installation path simple: select the latest qualified development build and replace Kast-owned assets.
+Kast owns all directories for its installed assets, including Control, Host, and bundled agent guidance.
+Replace stale contents within those directories.
+End active Kast sessions when necessary to complete replacement.
+Keep source workspaces, the IDEA application, and unrelated agent assets outside that ownership.
+
+Artifact identity, checksums, contracts, and finite failure outcomes remain necessary.
+A rollback or recovery result does not complete an update to the latest build.
+After recovery succeeds, resolve the latest build again and complete its installation and Host activation.
+The [installation reference](public/reference/installation.mdx) owns remote installation commands and current restart behavior.
+
 ### Install a local build
 For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
 

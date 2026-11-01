@@ -40,19 +40,14 @@ kast upgrade --channel main --dry-run
 
 A successful preview returns `PLANNED`. It makes no installation changes and does not restart IDEA.
 
-Apply the update:
-
-```shell
-kast upgrade --channel main
-```
-
-If the running Host needs a normal IDEA restart, permit it explicitly:
+Apply the latest development build and permit a normal IDEA restart when necessary:
 
 ```shell
 kast upgrade --channel main --restart-ide
 ```
 
-Without that permission, a necessary restart returns `RESTART_REQUIRED` before installation changes.
+Active Kast sessions can end during replacement. Start fresh sessions after the update.
+If you omit `--restart-ide`, a necessary restart returns `RESTART_REQUIRED` before installation changes.
 Kast admits the selected artifacts before replacement.
 A compatible running Host can use reload instead of a normal restart.
 
@@ -98,12 +93,14 @@ Resolve the named failure before another update.
 
 ```shell
 kast status --json
-kast upgrade --channel main --json
+kast upgrade --channel main --restart-ide --json
 ```
 
 When an unfinished transaction exists, the next upgrade recovers its recorded build selection.
 That recovery does not resolve a newer build.
 Kast does not discard unknown or corrupt evidence to manufacture success.
+After recovery succeeds, repeat the update command to select the latest development build.
+A restored prior build does not complete that update.
 
 <span id="reset-outcomes" />
 

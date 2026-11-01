@@ -1,7 +1,7 @@
 ---
-title: "Update Kast"
-sidebarTitle: "Build selection and updates"
-description: "Select a published main build, preview a Kast update, and choose how IntelliJ IDEA loads the selected Host."
+title: "Install and update Kast"
+sidebarTitle: "Installation and updates"
+description: "Install Kast from a remote script, select the latest published main build, and load its Host through a compatible reload or an IDEA restart."
 icon: "download"
 keywords:
   - "upgrade"
@@ -9,13 +9,14 @@ keywords:
   - "Kotlin"
 ---
 
-Use the installed `kast` CLI to update Kast and its IDEA plugin.
+Use the remote installer for an initial installation, then use `kast upgrade` for updates.
 The normal setup path tracks the latest published development build with `--channel main`.
 
 1. [Examine the prerequisites.](#before-you-install)
-2. [Select and preview a build.](#1-install-the-selected-release)
-3. [Examine the loaded Host.](#2-load-the-plugin-and-inspect-state)
-4. [Ask a question in your project.](#3-establish-a-semantic-connection)
+2. [Install Kast remotely.](#remote-initial-install)
+3. [Select and preview an update.](#1-install-the-selected-release)
+4. [Examine the loaded Host.](#2-load-the-plugin-and-inspect-state)
+5. [Ask a question in your project.](#3-establish-a-semantic-connection)
 
 ## Before you install
 
@@ -26,9 +27,38 @@ Your project's JDK does not replace the IDEA runtime.
 Install uv 0.12.9 or later. Use Python 3.12 or 3.13.
 The task service can download Python and pinned dependencies on its first run.
 
-Save your project work before an update.
+Save your project work before installation or an update.
 
 <a id="install" />
+
+## Remote initial install
+
+Run this command from a terminal:
+
+```shell wrap
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+```
+
+You need no checkout or existing `kast` command.
+`--developer-latest` selects the latest qualified development build from the published channel, independent of a local checkout or installed version.
+It installs the matched Control and Host artifacts and resets stale Kast state automatically.
+`--skip-codex-plugin` skips the optional MCP setup.
+After installation, use [agent setup](/reference/integrations) for CLI guidance.
+
+Kast owns its installation directory, Host directory, and bundled agent assets.
+The installer replaces those assets. Active Kast sessions can end during replacement.
+Restart IDEA to load the installed Host.
+Start a fresh agent session.
+The installation does not preserve an older build to keep a session active.
+
+The installation directory is `$HOME/.local/share/kast`.
+The command path is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, or `$HOME/.local/bin/kast` otherwise.
+If the shell cannot find `kast`, add the reported command directory to `PATH`.
+The installer does not edit shell profiles.
+
+For another IDEA installation, append `--idea-home "/Applications/IntelliJ IDEA.app"` after the installer options.
+Keep Bash's `--` separator before those options.
+To preview installation without changes, append `--dry-run`. To inspect structured diagnostics, append `--verbose`.
 
 ## 1. Install the selected release
 
@@ -50,20 +80,15 @@ kast upgrade --channel main --dry-run
 A successful preview returns `PLANNED`.
 It admits the selected artifacts without installation changes or an IDEA restart.
 
-Apply the selected channel:
-
-```shell
-kast upgrade --channel main
-```
-
-Kast uses a compatible reload when the running Host permits it.
-If IDEA needs a normal restart, permit that restart explicitly:
+Apply the latest development build and permit a normal IDEA restart when necessary:
 
 ```shell
 kast upgrade --channel main --restart-ide
 ```
 
-A necessary restart without that option returns `RESTART_REQUIRED` before installation changes.
+Kast uses a compatible reload when the running Host permits it.
+Active Kast sessions can end so that the selected build can replace the prior build.
+If you omit `--restart-ide`, a necessary restart returns `RESTART_REQUIRED` before installation changes.
 If IDEA is already stopped, Kast can install the selected build without starting IDEA.
 Read the [update outcome](/reference/management#lifecycle-result-contract) before you start another session.
 
