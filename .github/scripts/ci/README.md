@@ -140,12 +140,19 @@ Other values reject the Gradle invocation.
 Gradle logs the disabled state, and source execution reports list `skippedTasks` under schema version 2.
 The switch does not remove fixture sources or their case manifest.
 
-## Main self-hosted runner
+## Candidate runner routing
 
-The repository variable `KAST_SELF_HOSTED_RUNNER=true` routes final main product qualification to `kast-main` on macOS ARM64.
-Only main push and manual main runs use this route.
-Pull requests and merge groups keep `macos-15`.
-Set the variable to `false` to restore hosted execution for main.
+A reused candidate runs the final `Kotlin product` job on `ubuntu-latest`.
+That job downloads and retains the qualified payload without executing its macOS binaries.
+Reuse admission still requires a successful same-repository pull request and an identical source tree.
+The retained record keeps the original platform, toolchain, version, producer and payload digests.
+
+A fresh candidate still needs macOS to exercise the assembled Mac product and seal its identity.
+Linux cannot execute those binaries.
+Pull requests and merge groups use hosted `macos-15`.
+Main pushes and manual main runs use the self-hosted `kast-main` runner when `KAST_SELF_HOSTED_RUNNER=true`.
+Otherwise they use hosted `macos-15`.
+The reused-candidate Linux route takes precedence over that variable.
 
 The runner service keeps its checkout under its own work directory.
 Final product qualification consumes release archives and does not run Gradle.
@@ -159,6 +166,10 @@ Install the hook outside the runner application directory.
 Set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
 Restart the service after a hook change.
 Keep the installed hook synchronized with its reviewed source.
+
+Reuse admission runs only after a main push.
+Product validation in pull-request and manual runs uses fresh candidates.
+Verify actual Linux retention with the successful main push job and its candidate artifact after merge.
 
 Run the focused checks from the repository root:
 

@@ -457,6 +457,32 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_candidate_retention_routes_reuse_to_linux_before_fresh_mac_selection(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
+        product = workflow.split("\n  kotlin:\n", 1)[1].split("\n  source:\n", 1)[0]
+        # Bind the workflow's explicit expression, as with the other inventory guards.
+        # Hosted execution must separately establish which runner actually ran it.
+        runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
+        self.assertEqual(
+            "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
+            "github.ref == 'refs/heads/main' && "
+            "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
+            "vars.KAST_SELF_HOSTED_RUNNER == 'true' && "
+            "fromJSON('[\"self-hosted\", \"macOS\", \"ARM64\", \"kast-main\"]') || 'macos-15' }}",
+            runner,
+        )
+        self.assertIn(
+            "needs.source-work.outputs.candidate == 'REUSED' || "
+            "(needs.native.result == 'success' && needs.assembly.result == 'success')",
+            product,
+        )
+        for step in ("Exercise the assembled Mac product", "Seal tested candidate identity"):
+            with self.subTest(step=step):
+                self.assertIn(
+                    f"- name: {step}\n        if: needs.source-work.outputs.candidate != 'REUSED'\n",
+                    product,
+                )
+
     def test_cache_producers_provision_validation_tools_before_gradle(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
         for job in ("source-work", "native"):

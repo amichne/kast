@@ -280,7 +280,8 @@ It downloads the retained candidate and runs no Gradle or native-image build.
 A separate promotion record binds the build commit to the merged commit and successful main run.
 The immutable developer release contains both records.
 If main advances before publication, the publisher retains the existing latest pointer.
-The public installer's `--developer-latest` flag selects the build named by that pointer.
+`kast versions` lists qualified main builds from the published catalog.
+`kast upgrade --channel main` selects the latest qualified development build.
 
 To retry publication for current main, supply its successful CI run ID:
 
@@ -324,6 +325,19 @@ tampering; do not treat them as evidence for release provenance. For an intentio
 dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
 A successful CLI build does not establish that IDEA imported the Gradle model.
+
+### Installer policy
+
+Keep the public installation path simple: select the latest qualified development build and replace Kast-owned assets.
+Kast owns all directories for its installed assets, including Control, Host, and bundled agent guidance.
+Replace stale contents within those directories.
+End active Kast sessions when necessary to complete replacement.
+Keep source workspaces, the IDEA application, and unrelated agent assets outside that ownership.
+
+Artifact identity, checksums, contracts, and finite failure outcomes remain necessary.
+A rollback or recovery result does not complete an update to the latest build.
+After recovery succeeds, resolve the latest build again and complete its installation and Host activation.
+The [installation reference](public/reference/installation.mdx) owns remote installation commands and current restart behavior.
 
 ### Install a local build
 For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.

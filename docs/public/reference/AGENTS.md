@@ -4,8 +4,8 @@ title: "Public reference engineering rules"
 description: "Defines authored reference pages and the generators for callable contracts and shared OKF views."
 resource: "repo://docs/public/reference"
 tags: [kast, navigation]
-timestamp: "2026-10-28T14:45:36Z"
-source_revision: 8f26ece219d8736d497ba20ebafd9aadb175369e
+timestamp: "2026-10-31T12:39:38Z"
+source_revision: 647fffc46f6247fac5b0fc632ae019d157bf9020
 code_sources:
   - path: cli/build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
@@ -18,6 +18,8 @@ code_sources:
 # Public reference ownership
 
 - The MCP and tool RPC contract pages and transport model pages are authored content.
+- `cli.mdx` owns common native CLI examples. The installed `kast describe` output owns the current command contract.
+- `installation.mdx` and `management.mdx` describe managed build selection and activation. `integrations.mdx` owns CLI guidance and explicit optional MCP setup.
 - `docs/okf-public.json` selects public views of shared OpenWiki OKF concepts.
   `docs/tooling/okf_public.py` owns those page shells and `snippets/okf/`.
   Change shared prose through OpenWiki, then regenerate the public projection.

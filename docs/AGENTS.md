@@ -4,15 +4,17 @@ title: "Kast docs"
 description: "This directory owns the Mintlify site, contributor guides, and glossary rules. Reports keep the source revision and scope of each result."
 resource: "repo://docs"
 tags: [kast, navigation]
-timestamp: "2026-10-26T13:43:05Z"
-source_revision: 3ff8661a429fa510692345f08db80c9554fadee5
+timestamp: "2026-11-01T04:52:09Z"
+source_revision: 99139245144ceee756556037c058e0f3b8c22983
 code_sources:
+  - path: install.sh
   - path: docs/development.md
   - path: docs/documentation-structure.md
   - path: docs/glossary.json
   - path: docs/hosted-read-configuration.md
   - path: docs/installation-recovery.md
   - path: docs/public/docs.json
+  - path: docs/public/reference/cli.mdx
   - path: docs/public/sidebar-toggle.js
   - path: docs/public/snippets/deeper-reading.mdx
   - path: docs/public/reference/source-map.mdx
@@ -44,6 +46,7 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - [topology-impact.md](topology-impact.md) - rules for dependency impact, report fields, and the off switch.
 - [tool-rpc.md](tool-rpc.md) - tool RPC and harness extension behavior.
 - [source-map.mdx](public/reference/source-map.mdx) - source owners and their focused tests.
+- [cli.mdx](public/reference/cli.mdx) - native CLI discovery, queries, source reads, and retained output.
 - [installation-recovery.md](installation-recovery.md) - offline installation recovery.
 - [hosted-read-configuration.md](hosted-read-configuration.md) - read grants, retention, and limits.
 
@@ -64,6 +67,9 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
 - The value explorer and README preview share `docs/tooling/value-journey` as their source. Run `npm run build --prefix docs/tooling/value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
+- Public setup starts with the remote installer's `--developer-latest --skip-codex-plugin` options. Use `kast upgrade --channel main --restart-ide` for updates.
+- Use `kast install` for CLI guidance. Keep MCP setup explicit with `--mcp`. Do not restore retired connection commands.
+- Replace Kast-owned assets when necessary, even if active Kast sessions end. Keep the latest qualified development build as the installation target.
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.
