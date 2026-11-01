@@ -1,0 +1,50 @@
+{
+  "experiments/host-observation/EVALUATION_CHECKLIST.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "retained result"
+        ]
+      },
+      "Suggestions": [
+        "retained result"
+      ],
+      "Span": [
+        68,
+        79
+      ],
+      "Check": "Kast.Terminology",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'retained result' instead of the recorded incorrect form 'saved result'. Examine its scope.",
+      "Severity": "error",
+      "Match": "saved result",
+      "Line": 279
+    }
+  ],
+  "experiments/host-observation/PI_EVALUATION.md": [
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "retained result"
+        ]
+      },
+      "Suggestions": [
+        "retained result"
+      ],
+      "Span": [
+        6,
+        17
+      ],
+      "Check": "Kast.Terminology",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'retained result' instead of the recorded incorrect form 'saved result'. Examine its scope.",
+      "Severity": "error",
+      "Match": "saved result",
+      "Line": 364
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "baselineFiles": 308,
+  "comparisonFiles": 105,
+  "assessedComparisonFiles": 105,
+  "unassessedComparisonFiles": [],
+  "moreReviewedFiles": [
+    "docs/public/architecture/change-lifecycle.mdx",
+    "docs/public/architecture/topology.mdx",
+    "docs/public/explanation/query-lifecycle.mdx",
+    "docs/public/reference/callbacks.mdx",
+    "docs/public/reference/composition.mdx",
+    "docs/public/reference/evidence-boundaries.mdx",
+    "docs/public/reference/internals/architecture.mdx",
+    "docs/public/reference/internals/background-startup.mdx",
+    "docs/public/reference/staleness.mdx",
+    "docs/public/reference/symbols.mdx"
+  ],
+  "baselineProseFindings": 74,
+  "baselineTerminologyFindings": 2,
+  "remainingLocatedReviewDecisions": 54,
+  "baselineLocatedProseReviewDecisions": 74,
+  "baselineLocatedTerminologyReviewDecisions": 2
+}

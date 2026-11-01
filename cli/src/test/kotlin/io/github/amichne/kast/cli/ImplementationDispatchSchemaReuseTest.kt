@@ -58,13 +58,14 @@ class ImplementationDispatchSchemaReuseTest {
     private val json = Json { encodeDefaults = true }
     private val schema by lazy { installedPublicToolOutputSchema(PublicToolIdentity.QUERY_SYMBOLS) }
     private val independent by lazy {
-        independentImpactSchema(ImpactImplementationDispatchDocument.serializer())
+        independentFactoredImpactSchema(ImpactImplementationDispatchDocument.serializer())
     }
 
     @Test
     fun `shared impact definitions retain their independent complete serializer shapes`() {
         val assertions = LocalSchemaAssertions(schema)
         assertions.assertLocalReferences()
+        val independentSchemas = IndependentImpactSchemas()
         val serializers =
             mapOf(
                 "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
@@ -86,7 +87,7 @@ class ImplementationDispatchSchemaReuseTest {
         for ((name, serializer) in serializers) {
             assertions.assertDefinitionEquivalent(
                 name,
-                independentImpactSchema(serializer),
+                independentSchemas.graph(serializer),
             )
         }
     }

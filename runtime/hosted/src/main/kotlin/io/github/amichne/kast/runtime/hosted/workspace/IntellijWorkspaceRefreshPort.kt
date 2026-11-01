@@ -272,7 +272,7 @@ internal class IntellijWorkspaceRefreshPort(
                     complete(outcome)
                 }
             callback = preparedCallback
-            val spec = quietWorkspaceImport(project, preparedCallback)
+            val spec = quietWorkspaceImport(project, preparedCallback.nativeCompletion)
             importTicket.set(modelInputs.beginOwnedImport())
             boundary.mayHaveStarted()
             when (link) {
@@ -300,7 +300,7 @@ internal fun WorkspaceRefreshEffectResult.refreshObservation(): String =
 /** One policy for initial linking and subsequent reload; never changes IDE preferences. */
 internal fun quietWorkspaceImport(
     project: Project,
-    callback: com.intellij.openapi.externalSystem.service.project.ExternalProjectRefreshCallback,
+    completion: java.util.concurrent.CompletableFuture<Void>,
 ): ImportSpecBuilder =
     ImportSpecBuilder(project, IntellijWorkspaceRefreshPort.GRADLE)
         .use(ProgressExecutionMode.IN_BACKGROUND_ASYNC)
@@ -308,7 +308,7 @@ internal fun quietWorkspaceImport(
         .withActivateToolWindowOnStart(false)
         .withActivateToolWindowOnFailure(false)
         .dontNavigateToError()
-        .withCallback(callback)
+        .withCallback(completion)
 
 private fun PublicFailure.startResult(): WorkspaceRefreshEffectResult =
     when (this) {

@@ -73,6 +73,24 @@ class ManifestDocument:
     schemaVersion: int = 1
 
 
+def manifest_without_introduction(manifest: Manifest) -> str:
+    document = asdict(ManifestDocument(manifest.views, manifest.authored))
+    for view in document["views"]:
+        view.pop("introduction", None)
+    return json.dumps(document)
+
+
+def test_absent_introduction_fixture_preserves_authored_routes() -> None:
+    manifest = Manifest(
+        (View("reference/example", 'title: "Example"', (PAGE,), (), (), ()),),
+        (Authored("start", "reader-navigation"),),
+    )
+    document = json.loads(manifest_without_introduction(manifest))
+    assert document["authored"] == [{"route": "start", "purpose": "reader-navigation"}]
+    assert "introduction" not in document["views"][0]
+    assert parse_manifest(manifest_without_introduction(manifest)) == manifest
+
+
 def claims_document(page: str, version: str) -> str:
     value = ClaimsDocument(
         "sha256:" + hashlib.sha256(page.encode()).hexdigest(),
@@ -134,6 +152,43 @@ def test_source_drift_stays_qualified_in_page_and_report(tmp_path: Path) -> None
     assert evidence.status is EvidenceStatus.CHANGED
     assert evidence.currentVersion != evidence.recordedVersion
     assert "does not prove current behavior" in result.artifacts[0].text
+
+
+def test_reader_introduction_precedes_shared_content_without_changing_it(tmp_path: Path) -> None:
+    manifest, tracked = fixture(tmp_path)
+    original = project(tmp_path, manifest, tracked)
+    assert isinstance(original, Projection)
+    introduction = "Use [current query forms](/reference/api) for public requests."
+    document = asdict(ManifestDocument(manifest.views))
+    document["views"][0]["introduction"] = introduction
+    parsed = parse_manifest(json.dumps(document))
+    assert isinstance(parsed, Manifest)
+    result = project(tmp_path, parsed, tracked)
+    assert isinstance(result, Projection)
+    artifacts = {item.path: item.text for item in result.artifacts}
+    shell = artifacts["docs/public/reference/example.mdx"]
+    assert shell.index(introduction) < shell.index('<a id="legacy-section" />')
+    assert shell.index(introduction) < shell.index("<OkfConcept0 />")
+    assert artifacts["docs/public/snippets/okf/contracts/example.mdx"] == original.artifacts[0].text
+    assert result.report.concepts == original.report.concepts
+
+
+@pytest.mark.parametrize("introduction", ["", " \n", None, False, 3, [], {}])
+def test_reader_introduction_rejects_empty_or_nontext_values(
+    tmp_path: Path, introduction: object
+) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    document = asdict(ManifestDocument(manifest.views))
+    document["views"][0]["introduction"] = introduction
+    assert parse_manifest(json.dumps(document)) == Failure(Code.INPUT, "docs/okf-public.json")
+
+
+def test_reader_introduction_does_not_admit_unknown_view_fields(tmp_path: Path) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    document = asdict(ManifestDocument(manifest.views))
+    document["views"][0]["introduction"] = "Use the current reference."
+    document["views"][0]["unknown"] = "unsupported field"
+    assert parse_manifest(json.dumps(document)) == Failure(Code.INPUT, "docs/okf-public.json")
 
 
 @pytest.mark.parametrize("missing", [PAGE, CLAIMS, SOURCE])
@@ -240,9 +295,7 @@ def test_cli_write_then_check_rejects_an_independent_output_edit(tmp_path: Path)
     metadata = tmp_path / "docs/public/.mintlify/product-brief.md"
     metadata.parent.mkdir(parents=True)
     metadata.write_text("Private product context, not a public route.\n")
-    (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(asdict(ManifestDocument(manifest.views)))
-    )
+    (tmp_path / "docs/okf-public.json").write_text(manifest_without_introduction(manifest))
     git = shutil.which("git")
     assert git is not None
     subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
@@ -275,9 +328,7 @@ def test_public_inventory_needs_a_deliberate_owner_for_new_pages(
     manifest, _tracked = fixture(tmp_path)
     (tmp_path / "docs/public").mkdir(parents=True)
     (tmp_path / f"docs/public/unowned.{suffix}").write_text("No declared owner.\n")
-    (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(asdict(ManifestDocument(manifest.views)))
-    )
+    (tmp_path / "docs/okf-public.json").write_text(manifest_without_introduction(manifest))
     git = shutil.which("git")
     assert git is not None
     subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
@@ -298,9 +349,7 @@ def test_write_creates_or_restores_declared_generated_route(
 ) -> None:
     manifest, _tracked = fixture(tmp_path)
     (tmp_path / "docs/public").mkdir(parents=True)
-    (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(asdict(ManifestDocument(manifest.views)))
-    )
+    (tmp_path / "docs/okf-public.json").write_text(manifest_without_introduction(manifest))
     git = shutil.which("git")
     assert git is not None
     subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
@@ -335,8 +384,8 @@ def test_write_does_not_invent_a_missing_authored_page(tmp_path: Path) -> None:
     manifest, _tracked = fixture(tmp_path)
     (tmp_path / "docs/public").mkdir(parents=True)
     (tmp_path / "docs/okf-public.json").write_text(
-        json.dumps(
-            asdict(ManifestDocument(manifest.views, (Authored("start", "reader-navigation"),)))
+        manifest_without_introduction(
+            Manifest(manifest.views, (Authored("start", "reader-navigation"),))
         )
     )
     git = shutil.which("git")

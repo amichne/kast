@@ -1,0 +1,22 @@
+{
+  "outcome": "PASS",
+  "sourceRevision": "d7b34409abf424b03d652eebbfe1035ac65a4f88",
+  "treeState": "Production source unchanged; evidence-only edits present",
+  "command": "ORG_GRADLE_PROJECT_hostedIdeaHome='/Users/amichne/Applications/IntelliJ IDEA.app/Contents' mise exec -- python3 distribution/release/run_product_gate.py",
+  "selectedPublishedStableVersion": "0.50.2",
+  "durationSeconds": 562,
+  "actionableTasks": 641,
+  "executedTasks": 237,
+  "cachedTasks": 1,
+  "upToDateTasks": 403,
+  "includedTasks": [
+    ":sourceValidationGate",
+    ":publicLauncherTest",
+    ":installedProductTest",
+    ":productBuildGate"
+  ],
+  "semanticFixtures": "SKIPPED_BY_DEFAULT",
+  "log": "/tmp/kast-cli-product-gate.log",
+  "logSha256": "4e3adb5c8ce8cdbc45860805e6d5cedc13c3f8880ee8c8168d2b3e629c0875fa",
+  "prePushRerun": "PENDING_FINAL_CLEAN_HEAD"
+}

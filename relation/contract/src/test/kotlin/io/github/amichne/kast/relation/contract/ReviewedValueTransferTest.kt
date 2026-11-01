@@ -31,7 +31,10 @@ class ReviewedValueTransferTest {
         assertSame(fixture.field, (transfer.target.valuePath.segments.last() as ValuePathSegment.Field).field)
         assertEquals(source.callStack, transfer.target.callStack)
         assertEquals(listOf(frame), transfer.target.callStack.frames)
-        assertEquals(ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT, transfer.semantics)
+        assertEquals(
+            ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+            (transfer.relation as ReviewedValueRelation.CallbackCorrespondence).semantics,
+        )
     }
 
     @Test
@@ -183,7 +186,7 @@ class ReviewedValueTransferTest {
         val fixture = ReviewedValueFixture()
         val artifactUrl = "jar:///" + "dependency/".repeat(300) + "library.jar!/kotlin/collections/CollectionsKt.class"
         val file = SymbolDiscoveryFileIdentity.External(DetachedVirtualFileUrl.parse(artifactUrl).flowRefined())
-        val selected = ReviewedIterableMapCallable.admit(fixture.target(file = file), fixture.position(0)).flowRefined()
+        val selected = ReviewedLibraryCallable.admit(fixture.target(file = file), fixture.position(0)).flowRefined()
         val binding = fixture.binding(selected = selected).flowRefined()
         val source = fixture.source(owner = ValueExecutionOwner.reviewedCallback(binding))
         val transfer = ReviewedValueTransfer.callbackResult(source, binding).flowRefined()

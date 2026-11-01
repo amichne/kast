@@ -1,0 +1,25 @@
+- name: canonical product names
+  input: Kast uses Kotlin and Gradle with IntelliJ IDEA. Codex, Claude Code, GitHub, Mintlify, and Develocity keep their names.
+  want: ''
+- name: product capitalization
+  input: Use kast with kotlin and gradle.
+  contains: Vale.Terms
+- name: deprecated result alias
+  input: Read the saved result.
+  contains: Kast.Terminology
+- name: approved result name
+  input: Read the retained result.
+  want: ''
+- name: prose mechanics do not leak
+  input: The the server starts,, then stops.
+  want: ''
+- name: code literals remain exact
+  input: 'Use `kast`, `CALLEES`, and `saved result` as literal examples.'
+  want: ''
+- name: frontmatter is metadata
+  input: "---\ntags: [kast]\n---\n\nKast reads Kotlin.\n"
+  want: ''
+- name: native MDX children
+  format: mdx
+  input: '<Aside title="kast">Read the saved result.</Aside>'
+  contains: Kast.Terminology

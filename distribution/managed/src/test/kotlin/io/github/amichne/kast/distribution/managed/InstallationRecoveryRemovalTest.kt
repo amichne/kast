@@ -13,6 +13,40 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstallationRecoveryRemovalTest {
     @Test
+    fun `captured journal module protects its bytes before recovery removal`(@TempDir temporary: Path) {
+        val root = installation(temporary)
+        val proof = assertInstanceOf<ManagedRecoveryRemovalProof.Admitted>(refined(admitRecoveryRemoval(root)))
+        assertTrue(proof.journalScript != null)
+        retire(root)
+        val bundle = root.parent.resolve("recovery/installation")
+        Files.writeString(bundle.resolve("managed_update_journal.py"), "changed journal")
+        assertEquals(
+            RecoveryRemovalOutcome.Rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN),
+            removeRetiredRecovery(root, proof),
+        )
+        assertTrue(Files.exists(bundle.resolve("receipt.json")))
+        assertTrue(Files.exists(bundle.resolve("installation-recovery.py")))
+    }
+
+    @Test
+    fun `legacy recovery proof never authorizes a later journal module`(@TempDir temporary: Path) {
+        val root = installation(temporary)
+        val bundle = root.parent.resolve("recovery/installation")
+        Files.delete(bundle.resolve("managed_update_journal.py"))
+        val proof = assertInstanceOf<ManagedRecoveryRemovalProof.Admitted>(refined(admitRecoveryRemoval(root)))
+        assertEquals(null, proof.journalScript)
+        retire(root)
+        Files.writeString(bundle.resolve("managed_update_journal.py"), "later module")
+        assertEquals(
+            RecoveryRemovalOutcome.Rejected(RecoveryRemovalFailure.FOREIGN_CONTENT),
+            removeRetiredRecovery(root, proof),
+        )
+        assertTrue(Files.exists(bundle.resolve("receipt.json")))
+        Files.delete(bundle.resolve("managed_update_journal.py"))
+        assertEquals(RecoveryRemovalOutcome.Removed, removeRetiredRecovery(root, proof))
+    }
+
+    @Test
     fun `preexisting recovery siblings reject admission before retirement`(@TempDir temporary: Path) {
         val root = installation(temporary)
         val sibling = Files.createDirectory(root.parent.resolve("recovery/foreign"))
@@ -167,6 +201,7 @@ class InstallationRecoveryRemovalTest {
         val scripts = Files.createDirectories(root.resolve("share/kast"))
         Files.writeString(scripts.resolve("installation-recovery.py"), "fixture recovery")
         Files.writeString(scripts.resolve("installation-lifecycle.py"), "fixture lifecycle")
+        Files.writeString(scripts.resolve("managed_update_journal.py"), "fixture journal")
         assertEquals(InstallationRecoveryPreparation.Prepared, prepareInstallationRecovery(root))
         return root
     }
@@ -174,6 +209,7 @@ class InstallationRecoveryRemovalTest {
     private fun retire(root: Path) {
         Files.delete(root.resolve("share/kast/installation-recovery.py"))
         Files.delete(root.resolve("share/kast/installation-lifecycle.py"))
+        Files.delete(root.resolve("share/kast/managed_update_journal.py"))
         Files.delete(root.resolve("share/kast"))
         Files.delete(root.resolve("share"))
         Files.delete(root)

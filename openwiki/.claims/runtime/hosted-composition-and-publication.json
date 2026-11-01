@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6ed150f959887b857013304a879a6152a8549e341ea5b1d9c9ffe683bde090cb",
+  "pageVersion": "sha256:f5f8a537871aad787ae91e5de39da90058172cbccc99f5984a87df6241bacd3c",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -8,21 +8,21 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
-          "version": "repo-file-v1:sha256:0d20471ff7dd6740f4f22621c4c19ea2677e0987a8ea458f7fd2b90f44cf3d95"
+          "version": "repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536"
         },
         {
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
-          "version": "repo-file-v1:sha256:5ffa5cbec74786e8702f0dbd21e881083b13c9996b9783958054759c922c7d80"
+          "version": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6"
         }
       ]
     },
     {
       "id": "claim_ee41761235244553bcf1a058d83d8d5c",
-      "statement": "Hosted connection admission bounds concurrent jobs and uses one bounded rejection exchange when capacity is unavailable.",
+      "statement": "Hosted connection admission bounds concurrent jobs with configured permits. After accept, the listener waits for a permit before another dispatch. Each connection releases its permit in finally.",
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
-          "version": "repo-file-v1:sha256:34eb8f85b44bae9f8686ab4875992f1a0b4088ca892ef189b1669a628b25b846"
+          "version": "repo-file-v1:sha256:3fb9afbed6eb82e167c2ed5e14ccbaa573014e06dd43255aa3bb8464cb9e230d"
         }
       ]
     },
@@ -32,21 +32,21 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt",
-          "version": "repo-file-v1:sha256:3382cb70a19b0ef3652426972f6efb993986c2f121ecd5d8b3c0f897accb1ef5"
+          "version": "repo-file-v1:sha256:5e4d434f12b0575cc088a766af2981a35170a0e27f36a458a08fa76d7a0ee4a5"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt",
-          "version": "repo-file-v1:sha256:ace0a8de562298f2de4f6307121a922b5b96af9ec95a635f440f3a405fdb3044"
+          "version": "repo-file-v1:sha256:d8adf4d2d9a76a973604afd06efdfb37fa54c316f9d033aabf80e05e1673889d"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt",
-          "version": "repo-file-v1:sha256:29ca2358617f039ff68feb5eec35b99a9a09f5d2fc42a2d27c3c3175dd89a3cc"
+          "version": "repo-file-v1:sha256:f32da97a8099656b1705681bdf3500140f8c4f46182f3722621d17362e36e623"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-18T02:29:42.742Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

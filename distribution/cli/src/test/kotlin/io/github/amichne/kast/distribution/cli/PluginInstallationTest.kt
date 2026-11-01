@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -145,10 +146,10 @@ class PluginInstallationTest {
     }
 
     @Test
-    fun `changed MCP launcher rejects before plugin registration`() {
+    fun `CLI guidance admission does not need an MCP launcher`() {
         val root = pluginFixture(temporary)
         Files.writeString(root.resolve("installation/bin/kast-mcp-complete"), "foreign executable")
-        assertPayloadRejection(root)
+        assertInstanceOf(PluginObservation.Observed::class.java, AdmittedPluginBundle.admit(root))
     }
 
     @Test
@@ -183,7 +184,10 @@ class PluginInstallationTest {
                 PluginStep(pluginList, plugins()),
             )
         assertEquals(
-            PluginInstallOutcome.Rejected(PluginInstallStage.VERIFICATION, PluginInstallFailure.VerificationRejected),
+            PluginInstallOutcome.RecoveryRequired(
+                PluginInstallStage.VERIFICATION,
+                PluginInstallFailure.VerificationRejected,
+            ),
             installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
         )
         executor.assertConsumed()
@@ -201,7 +205,7 @@ class PluginInstallationTest {
                 PluginStep(pluginAdd, observation = ProcessObservation.Exited(23, "")),
             )
         assertEquals(
-            PluginInstallOutcome.Rejected(
+            PluginInstallOutcome.RecoveryRequired(
                 PluginInstallStage.PLUGIN_INSTALLATION,
                 PluginInstallFailure.ProcessExited(23),
             ),

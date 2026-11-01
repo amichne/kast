@@ -56,13 +56,14 @@ val assembleRelease = tasks.register<Sync>("assembleRelease") {
     group = "distribution"
     description =
         "Assembles a tested fresh-install pair; component versions may differ."
-    dependsOn(controlArchive, pluginArchive, agentPluginArchive, marketplaceArchive, hostRecord, "verifyDistributionContent")
+    dependsOn(controlArchive, pluginArchive, agentPluginArchive, marketplaceArchive, controlRecord, hostRecord, "verifyDistributionContent")
     into(releaseDirectory)
     from(controlArchive.flatMap(Tar::getArchiveFile))
     from(pluginArchive)
     from(agentPluginArchive.flatMap(Zip::getArchiveFile))
     from(marketplaceArchive.flatMap(Zip::getArchiveFile))
     from(layout.buildDirectory.dir("generated/host-release"))
+    from(layout.buildDirectory.dir("generated/control-release"))
     from(layout.projectDirectory.file("packaging/host-installation.py"))
     doLast {
         destinationDir.listFiles { file -> file.isFile && !file.name.endsWith(".sha256") }

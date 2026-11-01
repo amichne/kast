@@ -135,11 +135,13 @@ class PublicQueryGenerationTest(unittest.TestCase):
         self.assertEqual("PACKAGE", source["scope"]["type"])
         self.assertIn("INTERFACE", self.authority["tools"][0]["invalidExamples"]["interfaceIsNotAKind"]["value"]["request"]["source"]["declarationKinds"])
 
-    def test_onboarding_enum_values_follow_the_authority(self):
+    def test_advanced_reference_enum_values_follow_the_authority(self):
         self.authority["$defs"]["SearchSource"]["properties"]["nameMatch"]["enum"] = ["EXACT", "NEW_MATCH", None]
         generated = generator.render_tools(self.authority)
+        schema = json.loads(generated[ROOT / "agent-tools/references/query-schema.json"])
+        self.assertEqual(["EXACT", "NEW_MATCH", None], schema["$defs"]["SearchSource"]["properties"]["nameMatch"]["enum"])
         brief = generated[ROOT / "agent-tools/references/onboarding.md"]
-        self.assertIn("EXACT|NEW_MATCH", brief)
+        self.assertIn("Use `find`", brief)
         self.assertNotIn("EXACT|FUZZY", brief)
 
     def test_adapter_versions_follow_the_same_authority(self):

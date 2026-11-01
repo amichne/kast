@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import validation_outcome as outcome
 from test_required_checks import docs_only_results
-from validation_scope import ALL_CHECKS, DOCUMENTATION_CHECKS, SOURCE_CHECKS, Reason, Scope, Selection
+from validation_scope import ALL_CHECKS, DOCUMENTATION_CHECKS, SOURCE_CHECKS, NativeCompilation, Reason, Scope, Selection
 
 REPOSITORY = "amichne/kast"
 SOURCE = "b" * 40
@@ -42,6 +42,25 @@ def producer():
 
 
 class ValidationOutcomeTest(unittest.TestCase):
+    def test_native_disabled_full_gate_cannot_seal_product_authority(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", portable="run", scope="SOURCE_FULL")
+        needs["source"]["result"] = needs["portable"]["result"] = "success"
+        with patch.object(outcome, "select", return_value=Selection(ALL_CHECKS, Reason.FULL_EVENT)):
+            saved = outcome.record_gate(
+                REPOSITORY, SOURCE, TREE, "", 456, 123, 1, "workflow_dispatch", needs,
+                native_compilation=NativeCompilation.DISABLED,
+            )
+            self.assertEqual(
+                replace(record(), scope=Scope.SOURCE_FULL, outcome=outcome.Outcome.SOURCE_VALIDATED,
+                        baseRevision="", event="workflow_dispatch"), saved,
+            )
+            self.assertEqual(outcome.Failure.SELECTION_MISMATCH,
+                             outcome.record_gate(REPOSITORY, SOURCE, TREE, "", 456, 123, 1,
+                                                 "workflow_dispatch", needs))
+        for changed in ({"outcome": "PRODUCT_VALIDATED"}, {"scope": "FULL"}):
+            self.assertEqual(outcome.Failure.INVALID_RECORD, outcome.decode(asdict(saved) | changed))
+
     def test_source_success_has_a_distinct_non_product_outcome(self):
         document = asdict(record()) | {"outcome": "SOURCE_VALIDATED", "scope": "SOURCE"}
         decoded = outcome.decode(document)

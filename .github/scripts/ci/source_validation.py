@@ -28,6 +28,7 @@ COMMAND = (
     "sourceValidationGate",
     "--console=plain",
     "--profile",
+    "--info",
 )
 PREFLIGHT = (
     "python3",
@@ -48,6 +49,8 @@ SOURCE_REQUIRED = frozenset(
         ":verifyKnowledgeBase",
         ":hostObservationTest",
         ":componentReleaseTest",
+        ":managedInstallationTest",
+        ":developerPublicationTest",
         ":verifyDocumentationGlossary",
         ":verifyDocumentationMarkdown",
         ":documentationToolingTest",
@@ -59,7 +62,7 @@ SOURCE_REQUIRED = frozenset(
         ":symbol:intellij:semanticCoverageFixtureTest",
         ":relation:intellij:dependencyFixtureTest",
         ":runtime:hosted:dependencyFixtureTest",
-        ":cli:nativeTest",
+        ":cli:udsTest",
         ":cli:queryDeliveryContractTest",
         ":cli:queryDeliverySchemaTest",
         ":cli:verifyMintlifyCallableReference",
@@ -249,16 +252,19 @@ def run(
     outcome = Outcome.PROCESS_FAILED
     invocations = 0
     if code == 0:
-        planned = subprocess.run(
-            [*command, "--dry-run"],
-            cwd=root,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=False,
-        )
-        (destination / "task-graph.log").write_text(planned.stdout)
-        graph = inspect_graph(planned.stdout, required, skipped)
+        graph_log = destination / "task-graph.log"
+        print("source-validation: task-graph started", flush=True)
+        with graph_log.open("w") as log:
+            planned = subprocess.run(
+                [*command, "--dry-run"],
+                cwd=root,
+                text=True,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+        print(f"source-validation: task-graph exited {planned.returncode}", flush=True)
+        graph = inspect_graph(graph_log.read_text(), required, skipped)
         code = planned.returncode
         outcome = Outcome.GRAPH_REJECTED
     if code == 0 and graph.accepted:

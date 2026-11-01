@@ -27,11 +27,17 @@ class GenerateControlMetadataTaskTest {
             configurationCatalogueFile.set(catalogue.toFile())
             providerCatalogueFile.set(catalogue.toFile())
             productVersion.set("1.0.0")
+            sourceRevision.set("c".repeat(40))
+            sourceTree.set("d".repeat(40))
             ideaBuild.set("262.9437.185")
             kotlinPluginBuild.set("262.9437.185-IJ")
             outputDirectory.set(output.toFile())
         }
         task.generate()
+        val identity = Json.parseToJsonElement(Files.readString(output.resolve("build-identity.json"))).jsonObject
+        assertEquals(setOf("version", "sourceRevision", "sourceTree"), identity.keys)
+        assertEquals("c".repeat(40), identity.getValue("sourceRevision").jsonPrimitive.content)
+        assertEquals("d".repeat(40), identity.getValue("sourceTree").jsonPrimitive.content)
         val manifest = Json.parseToJsonElement(Files.readString(output.resolve("ide-host.json"))).jsonObject
         assertEquals(setOf("schemaVersion", "productVersion", "execution", "ideaBuild", "kotlinPluginBuild", "requiredHostedContract"), manifest.keys)
         assertEquals("existing_ide", manifest.getValue("execution").jsonPrimitive.content)

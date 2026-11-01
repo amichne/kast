@@ -20,7 +20,8 @@ RETRY = '44444444-4444-4444-8444-444444444444'
 def transport(connection=CONNECTION):
     # Independent producer order, excluding pre-invocation idle ACCEPT.
     result = []
-    for stage, elapsed, count in ((h.TransportStage.REQUEST_READ, 11, 19),
+    for stage, elapsed, count in ((h.TransportStage.CONNECTION_ADMISSION, 3, 0),
+        (h.TransportStage.REQUEST_READ, 11, 19),
         (h.TransportStage.SEMANTIC_ADMISSION, 12, 0), (h.TransportStage.EXECUTION, 130, 0),
         (h.TransportStage.ENCODING, 14, 29), (h.TransportStage.REPLY_WRITE, 15, 31),
         (h.TransportStage.CONNECTION_RELEASE, 16, 0)):
@@ -83,7 +84,7 @@ class HostedTimingTest(unittest.TestCase):
         result = h.join_timing(window(), READ)
         self.assertIsInstance(result, h.JoinedTiming)
         self.assertEqual((CONNECTION, READ, (READ,)), (result.connectionId, result.readId, result.readIds))
-        self.assertEqual([11, 12, 130, 14, 15, 16],
+        self.assertEqual([3, 11, 12, 130, 14, 15, 16],
                          [record.elapsedNanos for record in result.transport if record.outcome != 'STARTED'])
         self.assertEqual(90, result.smartModeWaits[1].wait.elapsedNanos)
 
@@ -258,12 +259,13 @@ class HostedTimingTest(unittest.TestCase):
     def test_timing_vocabulary_matches_authoritative_kotlin_boundaries(self):
         root = Path(__file__).resolve().parents[2]
         hosted = root / 'runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted'
-        for name, vocabulary, filename in (
-            ('HostedTransportStage', h.TransportStage, 'HostedTransportObservation.kt'),
-            ('HostedEndpointOutcome', h.TransportOutcome, 'HostedEndpointService.kt'),
-            ('HostedEndpointFailure', h.EndpointFailure, 'HostedEndpointProtocol.kt'),
-            ('HostedSmartModeWaitOutcome', h.SmartModeOutcome, 'HostedSmartModeWait.kt')):
-            source = (hosted / filename).read_text()
+        contract = root / 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract'
+        for name, vocabulary, source_path in (
+            ('HostedTransportStage', h.TransportStage, hosted / 'HostedTransportObservation.kt'),
+            ('HostedEndpointOutcome', h.TransportOutcome, hosted / 'HostedEndpointService.kt'),
+            ('HostedEndpointFailure', h.EndpointFailure, contract / 'HostedEndpointFailure.kt'),
+            ('HostedSmartModeWaitOutcome', h.SmartModeOutcome, hosted / 'HostedSmartModeWait.kt')):
+            source = source_path.read_text()
             body = re.search(r'enum class ' + name + r'\s*\{([^}]+)\}', source).group(1)
             self.assertEqual(set(re.findall(r'\b([A-Z][A-Z_]*)\s*,', body)), {item.value for item in vocabulary})
 

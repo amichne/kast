@@ -1,0 +1,42 @@
+[
+  {
+    "name": "cross-process-read",
+    "command": [
+      "/private/tmp/kcv1h-a3b5uat/.local/bin/kast",
+      "result",
+      "read",
+      "--ref",
+      "result:v1:a5d03927-fe66-4f07-ac2d-cae7da90cdeb",
+      "--fields",
+      "name,signature,location"
+    ],
+    "workingDirectory": "/private/tmp/kast-public-cli-v1-a3b5uat_/workspace",
+    "exitCode": 0,
+    "stdoutFile": "/private/tmp/kast-public-cli-v1-a3b5uat_/evidence/cross-process-read.stdout",
+    "stderrFile": "/private/tmp/kast-public-cli-v1-a3b5uat_/evidence/cross-process-read.stderr",
+    "expectedHost": "d0fa38e6-2249-45c3-895d-a570159d1a92",
+    "expectedHostPid": 23194,
+    "status": "PASS_PRELIMINARY_CANDIDATE"
+  },
+  {
+    "name": "callers-query",
+    "command": [
+      "/private/tmp/kcv1h-a3b5uat/.local/bin/kast",
+      "query",
+      "--name",
+      "submitOrder",
+      "--relation",
+      "callers",
+      "--fields",
+      "name,signature,location",
+      "--retain"
+    ],
+    "workingDirectory": "/private/tmp/kast-public-cli-v1-a3b5uat_/workspace",
+    "exitCode": 0,
+    "stdoutFile": "/private/tmp/kast-public-cli-v1-a3b5uat_/evidence/callers-query.stdout",
+    "stderrFile": "/private/tmp/kast-public-cli-v1-a3b5uat_/evidence/callers-query.stderr",
+    "expectedHost": "d0fa38e6-2249-45c3-895d-a570159d1a92",
+    "expectedHostPid": 23194,
+    "status": "PASS_PRELIMINARY_CANDIDATE"
+  }
+]

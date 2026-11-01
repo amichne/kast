@@ -170,6 +170,9 @@ private fun PublicToolDocument.admitOutputAllowance(): Refinement<Unit, PublicTo
 }
 
 object PublicToolContract {
+    /** Public flag adapters use the same optional symbol presentation as omitted output. */
+    fun defaultQuerySymbolFields(): List<QuerySymbolFieldDocument> = PublicToolDefaults.output.fields.values
+
     internal val json = Json {
         ignoreUnknownKeys = false
         coerceInputValues = false

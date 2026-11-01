@@ -180,10 +180,11 @@ class InstallationRecoveryReceiptTest {
     private fun installation(temporary: Path): Path {
         val installation = Files.createDirectory(temporary.toRealPath().resolve("installation"))
         val scripts = Files.createDirectories(installation.resolve("share/kast"))
-        for (name in listOf("installation-recovery.py", "installation-lifecycle.py")) Files.writeString(
-            scripts.resolve(name),
-            "fixture",
-        )
+        for (name in listOf("installation-recovery.py", "installation-lifecycle.py", "managed_update_journal.py")) Files
+            .writeString(
+                scripts.resolve(name),
+                "fixture",
+            )
         return installation
     }
 }

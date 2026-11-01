@@ -18,9 +18,6 @@ code_sources:
 - path: traversal/service/src/test/kotlin/io/github/amichne/kast/traversal/service/ExhaustiveTraversalTest.kt
 - path: traversal/service/src/test/kotlin/io/github/amichne/kast/traversal/service/TraversalReplayTest.kt
 - path: traversal/service/src/test/kotlin/io/github/amichne/kast/traversal/service/TraversalExpansionDomainTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-3654a7136517bb563193f636
     resource: repo://traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt
@@ -33,6 +30,9 @@ sources:
   - id: openwiki-source-f9e7416f74a1fd27f46c81b3
     resource: repo://traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/RelationBackedTraversal.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Traversal frontiers and continuations

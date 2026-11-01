@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7c2ea239208070c53525132362a4537edb6244f565ee2efa55aee96b92cd268c",
+  "pageVersion": "sha256:1c12595a424c9ed024456f480f30966e5569d0364acd303cba782f0bd0f9c9c8",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -62,11 +62,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt",
-          "version": "repo-file-v1:sha256:fa08cf032e27c470c78aef3c8ed65a5fd91d73f0df656777e1fc28ba142eab96"
+          "version": "repo-file-v1:sha256:b6f8170f7768349bc70fbb4718657d95b993e86d1b8002352e91aa976b90f548"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:1739e0793cc20af80010fdeb2acb77a48de98d806d1ac080bd69fbbe3d4613b7"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         }
       ]
     },
@@ -83,19 +83,19 @@
           "version": "repo-lines-v1:sha256:7d52dfe7512590d3fd37b2e7d31aa086c69e4c7901c5d040599006c8f61fdfce:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzMmQ5OGFlOGM5MGJhZjEwN2Q0ZDNkNmE1ZDllMWVhYWFkZGEwYjhmZTQ5MmQ2YzNhMmViYjBjMDJjOGJhYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMDZhZTA3MjU3MTZlOWViNjlkODA0MjdlNGM5MDE3MTg1NzliYTgxYTNlNGZlOTZjYmVkMjc2NDY1YjllNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MDNkM2FlZWY3NjI4NjQ5OGY1MTAyOTc5YTE4MmFlYWI1YzI5Y2NhY2QwNmM1NmU4YmY0MDZiZDI4MjRmNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwZDNmZjdiZTYxOGZjNTYyYTZkNTgwYjRkOTg2MTFlM2M2YTFmMzk3YjJiMDViY2ZkMzM3MWZmMWFlZDVlNjQifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt#L161-L195",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt#L186-L220",
           "version": "repo-lines-v1:sha256:f4de54db6f423e3ed47369bcc341af8b2f9ff1a1b186f96ff1d7f5149f7356cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyN2Y2NGJmMzFjYjQ1YjM0MTM1MzE2NWVhMWE0ZDVjYzE5YWY3M2U0M2U2MDE3YmYzMzQwNGZiODIyNTNjZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBkZjMxYjAyZjEyOTJlZmFjMzVjZDFlZWJlYWY4MTFjNDVlNTA2M2Y3YmQ4Yzc4NTVjZTQ5ZjgxOGIxMDg4NjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4MjhmY2UxMTQ0YjM0MzljMDcwMDdkZGEyZjhiOGZjN2JlNGQwOGMwM2YwOTNhZWUwMTI3NmViNmZmZWI2M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjYjJhYWJlZThhNDBiZTQ1NzcwZGNiZDlkNjA4NDg2MDMyZGI1N2QzYWQ2Yzk1YzM2NmUzOWNmODNhM2Q5ZDgifQ"
         },
         {
-          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L204-L210",
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L203-L209",
           "version": "repo-lines-v1:sha256:33bce05c7924ed1a17566fac29887cff1b1f4ff1c57e3a413f9341d1e2e08a3d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjRjYjU5OGMwNDNlMzA5ZTE0YTMyZTBlYjVjZDdjODc4MDA4MGUyMTc5N2FjNjc5Zjc0MmJkMDBjZGRmZjYyYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2QxYjVlZWYyNmY2M2ZkZGUzMGI1MzkxOWFhZjA5YzJiOTY3MWQwZmFlZjhmNmFiYTBkZmUyYjg3NzUyOTRmMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGM0NDQxNDQ1YTZmOTg2ZGMzNzk2MGZhNWMzM2RiNTQ1NmQ2ZTMxYWQxZmY4YWJlZjA3MzBhNjYzNjkwYjNjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjA1ZjQzZDU1ZTY1NzllOGZkY2NiM2FmMjk3NGJjZjcwNDBlODYxNWYxODk0MTA4MGVlNTZkMjBmZDkwMjkwNCJ9"
         },
         {
-          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L84-L92",
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L83-L91",
           "version": "repo-lines-v1:sha256:ca8b1a8c021864546d6acb94a7efc0e735534bbad61e9c48aae36bc5cb02a54e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTRkYTYyZDI0YzE4MTZjNzQ1OWIzNzRkNzQ1MWJiYTdlNDZjZmI4MzZkNWU3ZDA4MjkzOTgzODI2ZGQ4YjRkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2QxMmJjMjllM2JkMmJkZDg4NDI0Y2YzZjE3YTgwODQxMjg4ZjVmZjRmMGFlZDBlYjUzZWE3NTZmZmMyN2EyNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGM0NDQxNDQ1YTZmOTg2ZGMzNzk2MGZhNWMzM2RiNTQ1NmQ2ZTMxYWQxZmY4YWJlZjA3MzBhNjYzNjkwYjNjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmRlZmNmY2U1NzQ4ZmExMGY0YzZmOGNhNDJmMTliOWJkZTdjMjY1YTIwMjFkZDQ5Mjg0OTk3MzlkYzdlN2ViZSJ9"
         },
         {
-          "resource": "repo://install.sh#L604-L617",
+          "resource": "repo://install.sh#L626-L639",
           "version": "repo-lines-v1:sha256:06243be3a54d13e0ef3c5c6f3f8c06ca25b46c730f94e907f2daceb16571ba4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMmViMzUwMjFiOTY3MTI5NjM3M2EyMWNiMjg4ZGViNGY3MjViMjVmZmQ2NTliNzY4MGVlMjQ1NDFkZDRjOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyZTFhZGRiZGZkN2IwY2ZlOGFhYzVkNGE3MGFlOTYxMDNjY2NhZWM5YWM3ZDlkYTg5NGRkZmNmMDc0MGE3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzN2FhZDE0MjFjYzU4MGE3ZTIxZGM2YTg2ZmY0N2M3ZmVmNzVkMzE3MGQwNTQxZTdhZDA0ODljNjZjM2VjYjUifQ"
         },
         {
@@ -109,8 +109,8 @@
       "statement": "Checkout Control-only assembly selects only the Control artifact and clears any inherited Host version selector before public installation; Host and paired checkout assembly retain their generated Host version.",
       "evidence": [
         {
-          "resource": "repo://packaging/install-checkout.sh#L86-L113",
-          "version": "repo-lines-v1:sha256:0caef1e9235ac06e22c3e08a1f1300f308bf4d6a8a7f8a4e5585a7f195271e41:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwZWZmYTRjNTljOTM0NGY0N2M3MTc4NTkxMWNlYzEwY2JhMDU5OTk3YzJmOThlMDU4YjFhYzI2ZDljYThiNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkZTk3ZWZiYTc1YTVhZGU0MzUwYmUyOGQ5NWJlNDEwMDg1ODU0Nzg5NjQ5ZTQwYjE2ZjM0YTcxNjAzODFmNzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NTMzNTQ4M2U1NTliNDdkNGU2YmRjNDVjMmViYzM0MDAyODFiZDI0YzcyNmNjMDk5ZWM2YWQ5NGJlNWY5YjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://packaging/install-checkout.sh#L94-L123",
+          "version": "repo-lines-v1:sha256:1a4c6edadfcc406eadc97cbee169c5902a360b072ae77c98dc2358423b20e0f0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjNDkxMTE5NGUzMWRjOGZhMmQ2ODZhMWJkNmM1MzBiNDQ4ZTQ4OGIyZTlmZmI3MjQxNTdmZmNhZTc1MWUzNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmMjk1MWU2Y2MwZWY0MmI3MTFjODNhZjlmOWExN2E0M2I4ZDdhYjhhYTRkZmVlYTk5NjZmMDQ3Y2YyZmIzOWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlYTA0YzkzOTBiNjU4OGM1MTg3ZjY0ZDBjMGE4NzRjYWExZmY3NzFhYTE2ZDZhNjM0MGVhYWY2OGJiMmViNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkZTk3ZWZiYTc1YTVhZGU0MzUwYmUyOGQ5NWJlNDEwMDg1ODU0Nzg5NjQ5ZTQwYjE2ZjM0YTcxNjAzODFmNzUifQ"
         }
       ]
     },
@@ -119,8 +119,8 @@
       "statement": "The local adapter delegates Java selection to the public installer's admitted IntelliJ home. The unused KAST_LOCAL_JAVA_EXECUTABLE and KAST_LOCAL_JAVA_HOME inputs are absent from installLocal and the catalogue; every configuration source rejects them as UNKNOWN_KEY. The assembled-product acceptance runner retains KAST_ACCEPTANCE_JAVA_EXECUTABLE.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L254-L294",
-          "version": "repo-lines-v1:sha256:499fb1769181925802016dccbf5c762d8dca34b3cebf9a04cbc8c3937a7bb446:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZGM3OWM2ZjgxZDZlZDM2NTEzN2JlNGMyNzM4MGEyNGE4ZmI0YzUyNjk1ZDMzYjFkMzRlNzg1MzIzOGVjOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NDkyYzhhODE3ZWQ1MGU1NjYwNzhiZDQ4MmUxMjUzYTdmNDBiYzc5YTI5MWFiZjgzMjkzYWJhYjdhMzQxMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2ZTg4YzRmNGYyY2JlNTU5MDUyYjExMjdkMDVjZDlmZThkM2VjMDFiZTBmMWY0MDgyNjMxNmFkZjM2YjlhMmYifQ"
+          "resource": "repo://build.gradle.kts#L304-L343",
+          "version": "repo-lines-v1:sha256:d890641fe9f563dadf81523caa05750e56b0a33fb3bbc0a96a524ea298468819:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZGM3OWM2ZjgxZDZlZDM2NTEzN2JlNGMyNzM4MGEyNGE4ZmI0YzUyNjk1ZDMzYjFkMzRlNzg1MzIzOGVjOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NDkyYzhhODE3ZWQ1MGU1NjYwNzhiZDQ4MmUxMjUzYTdmNDBiYzc5YTI5MWFiZjgzMjkzYWJhYjdhMzQxMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3YzEwN2NkYTEwMzM4OTg2ZDcwMTg0YzgzYmMyMDA2MzczNmU3NTdiMDBjZDVhZGFhMjRiMjI3YThiZDNjNGEifQ"
         },
         {
           "resource": "repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt",
@@ -128,31 +128,57 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:126f31c715881a1cfc91f229be70c920ee5afeee80b8d3c2937c77aeec6617fa"
+          "version": "repo-file-v1:sha256:08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b"
         },
         {
           "resource": "repo://packaging/install-local.sh",
-          "version": "repo-file-v1:sha256:90b826a059fb270ff5be4ea884e1d57e79d429c3b45e6835bf4a744eddb5ed10"
+          "version": "repo-file-v1:sha256:f96143c9c2d4a45101f533e52f6f3976ac79d91cb2f8dbfd9bc291b43419d371"
         }
       ]
     },
     {
       "id": "claim_0645aca128944a82a9153ba627038211",
-      "statement": "Checkout installation admits the selected IDEA bundled JBR executable and Java release feature at least 25 before Gradle, and installed launchers recheck their recorded selected JBR before child startup. Both require exactly one JAVA_VERSION declaration with a fully quoted numeric feature, reject duplicates and incomplete declarations before execution, select Java only for their own children rather than ambient Java, and retain repair guidance.",
+      "statement": "The checkout installer admits the selected IDEA JBR before Gradle. Admission needs an executable and one fully quoted JAVA_VERSION declaration with a numeric feature of at least 25. Installed JVM launchers repeat that admission before a child starts. Invalid runtimes reject with repair guidance. Native query launchers omit JVM setup. Neither JVM path selects ambient Java.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt#L3-L27",
-          "version": "repo-lines-v1:sha256:7b8fc97d7b46afba6e4fd3e86884c06ba0e3db885bb552d3ea7961e55dd28f7b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0NDIxZmE3NDg4OGY2MmViOWM1NjhlYWRjNmYwMTBjZGIxZmE5MmVjNTA5NzVjMjE4MzI3ODlkYTgzNzVhMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1NTY5NjJlYzY1YmI1NzJjNGJjY2VkNWQzMzVjODI0YWYzNjZjOWVkNWMyZjE1ZTdkNzQwZmM3NjJkZTk0NWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt#L14-L35",
+          "version": "repo-lines-v1:sha256:e3dfa2e3555a12f55e7ae7bc725e6d5a05c03d19166042345103ad70feb60582:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4YWFkNzgyMzFhNzhkMDdjZWRmYzFkZDEyODUwYzM2NDA3ZTk3YWViZjAyMTIzODVlNzI1YzEwZGYzZjlhOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YTcxNTI1NzJlZTg0ZjEwOTA2Yzc0YjlmMmE5MjQzNGRkYWIwZTNjNDI4MTNiMDRlNTk3ZWZjZWM5NTFiMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljOTJhN2Y4N2EyMWZiOTc5Y2U3YjZkOWU1MjRkNDk5N2U0NGNmZjU4NjI2MzFlMWE0NDhhZGNiMWI2N2YyMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkNWUwZTg5ZTZmNTA4MWU3OTkxMmMyZDkyOTk3YjM5NDhjMTRkYWVlMTc1NzI0NTYxMTk2NDYxNTMzYmRlYjkifQ"
         },
         {
-          "resource": "repo://packaging/install-checkout.sh#L41-L61",
-          "version": "repo-lines-v1:sha256:4d776884372669a52a70e958b3d78c4f8478612446d82e3ba4071243cb74edf6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyOGNiZDIxNzcxYTc0ODAwZGU2NmY2MzMxYThiNWY1YTc3OTY3OTJkMDQyMWQ1N2ZiMjBjYjA4NjI2YzBmMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNmRjNGQxNTAzNGY0YzRiM2RhOTk5MGVkOTdlMTM0ZmJiODExMzJmNWM0Njk0ZWI4M2Q1ZDlkNzFmMjJkZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZjk4ZDcyZDlmZjllNTYzZGQ1Y2UyNjExMGFiOWZkNzFkOGRiZTQ1YzJkNGVlZWZiY2E3NDY3Yzg1Zjg3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYWVkYWZhZDNjOTgzYWY0ZDJmYThjMmNjYjAwYjI2ODkxOTE4OWNjNjBiMDI2ODcwMTM3ZmI0OTRiYzA0NjYifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L459-L464",
+          "version": "repo-lines-v1:sha256:1f386eb60471f34cf5ee2a37335a019e5bcf803d403bf942a15dbcbf825934c1:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWNiNmE1MWYxNWJkODUwOWMxNmUzOGI2ODU5ODcxZmU5ZTFkYjc2MWU3M2Q5NTExZmFhODU0NTNiODcxOGRmNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjZmMjhhODNjMWVkZmE2Yzk0MzEyY2UwN2ZmNzYzZWQyMDcxZjk1Y2U2NGQ2ZjJmYjNmYWIwM2NlMGQ3N2UyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDIxZGU5MDAxZmMzN2ZjYjFmODYzNzAxZDI1M2EzYmJhZTUxM2RkNmE1M2Y5ZWEzZjZjOWQwYjEyYTE1MDE5YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGYwZjlmOWYwZTE5MWY4NTlkNzVkNDUzZWQ2OGUyZTVmOWE2MGRiM2Y0ZWE3NjkwYjQ3OTc3MzI2MmU3NGZkNSJ9"
+        },
+        {
+          "resource": "repo://packaging/install-checkout.sh#L41-L72",
+          "version": "repo-lines-v1:sha256:f095d2fc0c7d848613e9d03a60dac93854184c495e72cea1e82740d82c6f52c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyOGNiZDIxNzcxYTc0ODAwZGU2NmY2MzMxYThiNWY1YTc3OTY3OTJkMDQyMWQ1N2ZiMjBjYjA4NjI2YzBmMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNmRjNGQxNTAzNGY0YzRiM2RhOTk5MGVkOTdlMTM0ZmJiODExMzJmNWM0Njk0ZWI4M2Q1ZDlkNzFmMjJkZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZjk4ZDcyZDlmZjllNTYzZGQ1Y2UyNjExMGFiOWZkNzFkOGRiZTQ1YzJkNGVlZWZiY2E3NDY3Yzg1Zjg3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjM2Q2Y2IwNmMwNzMzYWRmOGEzOTc5OTNhMTFiZjIwZDAzZjkyOTI5YjY4OGNjMDE0ZmFkMTA5MjM1MTFiZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f8582d48be544137998c4526f3e2a38d",
+      "statement": "An admitted v0.50.2 installation can migrate one valid KAST_READ_MODEL_MODULES assignment through current typed configuration. Runtime admission still rejects that key. Managed preparation keeps source, resolution, and owner failures distinct.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationMigration.kt#L21-L99",
+          "version": "repo-lines-v1:sha256:921fb1940e0ab8c88631b8b7de49fe0373c62e28e0003865b2a42dbe7d287f13:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxNmU1MzM4MDNhMWI4MWNmODc5ZDg5Mzk1NDliMGU0NjQxZjYyZGNkZmE5ZTZhY2E2YTIxOGM4Njg5OGQ0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L432-L455",
+          "version": "repo-lines-v1:sha256:32dbdb67bd38a72fa86ede66410cd588d6d28a29e6d9ecd1387054201469100f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkODVjYzFiODRjOGY4YWI3NGE1MzA1MDNiMDdiZDNhY2ZmZjU5YzY2NjA2YTdmZjJiOGE2N2Q0MDcyZDY3MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGQ3NTk1MGRmMGZmOWEzZWU5NjYzOWRjYzhmZjVlYWVkYjQwZDY4MmJlYTkyNjIyYjUyMGRkODg3ZDkzZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAyMWRlOTAwMWZjMzdmY2IxZjg2MzcwMWQyNTNhM2JiYWU1MTNkZDZhNTNmOWVhM2Y2YzlkMGIxMmExNTAxOWEifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt#L77-L90",
+          "version": "repo-lines-v1:sha256:9228ea0ab0dcbc6ffba577f3fc8647fd79e5cf8c459a73018766194c260a2684:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1YWExNmRhMzY3ZmU4MTllZDdiYWVjNzE3NDViMDQ4Y2NiYmU0ZjE4YTE0ZWVjODQ4YjQ2NmIyMGJiZDJkZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMDEwNWUwYTY4NTIxYzNkMzMyNjE1MzkwZTg1OWUzOWNmMjQxMjc0YTdkNzgxZDE5NmEzYWRhMDdiMTBmZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzNzM0Y2U5MTJiZWU3MTBiNmZiN2VjYzE3NjcxZGM3NzhiZDk5MjhkZjg2NzE1OTM5ZTA5ZWFkMzY1NzIxZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOWUyZmEwOTRhNWE0MGJlZDk4ZmJjOGQ2ZmVlMDg0ZTdjZTM5OWNiMThiZTYzMWJlMWIyZDdlMzU4MzFiYWUifQ"
+        },
+        {
+          "resource": "repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/ReadLimitConfigurationTest.kt#L8-L16",
+          "version": "repo-lines-v1:sha256:addc72af37d069a17b2786685b78e031e4c45ba51e33300fa751c63c72e9c78c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGNmMDllYjBjNTc0NGZiOTczMzFiOThmZjNmYmYwNWE2MDJiYTNmN2Y2N2U1ZGE1YmU5MDk1MDMzZjYyNTgyNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWFjOWUyZDUyZjRiOTNiNzcxMGVlODYxY2E3NjgyMjBjOTgzMDlhZDdjYTQ5NTE0ODZkMTRkNDBhZjQ2Y2NkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmRlNjk4ODdhMGE5NzRiNDNlYWI5ZmFmNDUxZDU1NmI1Nzc5ZTlkMGM0ZDJmZmY5MWFiMTI2YTA1OTFkYjRlOSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-31T05:05:54.659Z"
   }
 }

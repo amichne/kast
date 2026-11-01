@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:603c776ff14c91de79621295b47cd3725beabd46deeb5a91d1cd478cd31ad259",
+  "pageVersion": "sha256:2aa48f35e46d81ecc32a3549b12b783d70dc2409fc209c7427fe5bc8ae193891",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
-      "statement": "Hosted listener concurrency is bounded by configured connection permits, released in finally; excess connections receive one bounded capacity rejection without queuing semantic work.",
+      "statement": "Hosted listener concurrency uses configured connection permits and releases each permit in finally. After accept, the listener waits for admission before it starts another dispatch, preserving bounded backpressure.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L17-L70",
-          "version": "repo-lines-v1:sha256:9d889eae001852176e47d9d447f3a051e442b38dfe2b5c760d730bb496309f3c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNDlmMjgxOTgyNDZkOGY4M2E1YTQzNDkyNDkxZTJlMDg4OTU1MTlhMTgwMDgzOGQ0OGExMTAwYjc0YjI3ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhNjgyZmMwYmQ0ZTExNTQxODk0ZGIxMWU4NTI2Mjg3ODRjNDk2ODI4ZjkyZDYyY2M0ZDVjMzVkNDZkMTI4N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZjgyNmMxMGQxYjk3OTNkZWY3ZDI4ZjE3ZjIxMjFiOGU3MmQxZThiMzMzZjMwMTMyNjgzZTgyMzRjYjM3MGUifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
+          "version": "repo-file-v1:sha256:3fb9afbed6eb82e167c2ed5e14ccbaa573014e06dd43255aa3bb8464cb9e230d"
         }
       ]
     },
@@ -17,7 +17,7 @@
       "statement": "Peer disconnection or extra input terminates hosted dispatch with explicit IO_UNAVAILABLE or INVALID_REQUEST rejection instead of a semantic success.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L73-L97",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L63-L87",
           "version": "repo-lines-v1:sha256:1694c5f9f367336e6c1daf7e0fa656cd12a57eb7a59d8a578326a66cfeeef677:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MjNiYzFjMzY2ZGJmYjJiZjhiZjJmMmNjNzdlNDQzMGJkMmM3Y2NjZDI2MTliZTRjNmJkYTdjYThhMWRiYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZGM0MzY3ODU0MjFjYjc2MmVkYjMwNmVmZWVmOTZmMDM3OTY1Y2JiMDRmZmRmOWMzM2MxMzVlMjJjZmMzZWMifQ"
         }
       ]
@@ -38,15 +38,11 @@
     },
     {
       "id": "claim_67be8cb0c81940eb80cb5cb3c842eb4d",
-      "statement": "Installed direct tool admission rejects shutdown/reset markers and unproven absence while reset owner startup may establish readiness behind the tool fence; focused tests distinguish held and released activation locks and reject foreign, malformed and oversized records.",
+      "statement": "Installed direct tool admission rejects shutdown, reset, or replacement-journal markers and unproven absence before preparation or dispatch. Empty and dangling journal paths still block calls until final removal.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt#L33-L102",
-          "version": "repo-lines-v1:sha256:7c6e36e9d116f0a8d5bbc085ffe7917d9fad41a28227c68ef9d1fde96fc99675:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0Y2I3MWJlZjY0MDkzODdjODYwMGRjMTY5NDFlNGM4YWZkOWZmYzA4MmVmNTMwNDQwMDgyYTFjMGQyODdlYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt#L9-L30",
-          "version": "repo-lines-v1:sha256:2e07a10630c0953a3261defd23e480c564ab59ab3d3309d02905e9c85de0b7b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlY2FkYzM0NzE5YThmZjIzODQ0MTc3OWM3ODQ5MDBlZjI4OGFjYTRmOTFjNmNhNDEyNWU0NDkyMWQ0MjdmMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRjNjc4Njk3NTBhYWUzOGZiZTM3MmM1NGMxOGQ4ZTc4YjgxZWMzZmVmNmQ1N2IzZWQwMDY5ZjU2M2Y5ZjIwMGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt",
+          "version": "repo-file-v1:sha256:3be1ea90bed8dfdda7e6f7b2d3b6c310d1cce68c02623e07a26e3987e96e13cf"
         }
       ]
     },
@@ -56,15 +52,15 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt",
-          "version": "repo-file-v1:sha256:f63dec3e8c5e3bae745d95ddec455aca01e45fa10bb0022b051b904a5cc3a654"
+          "version": "repo-file-v1:sha256:cc500f00d97140833999e5d322b9c3ebad820d3624a4bc0ed83fb978852636e8"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
-          "version": "repo-file-v1:sha256:0d20471ff7dd6740f4f22621c4c19ea2677e0987a8ea458f7fd2b90f44cf3d95"
+          "version": "repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:076b0c640562e834f1375b616db3325d37cf0b210899c9792c0bbd27528360d4"
+          "version": "repo-file-v1:sha256:a1d7a4801919a63ad8a263e0249860ef06c3b2855213c51981bb1f3ba15aadcc"
         }
       ]
     },
@@ -78,7 +74,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
-          "version": "repo-file-v1:sha256:f5d150cef45346c61ca4f8443a6cadf6953db485f0d1818bdc0c4a03102e7879"
+          "version": "repo-file-v1:sha256:98318c1ea12d2513b141a8d55f4267f7d1e434ab199172bda9bc1c07d69a8dc5"
         }
       ]
     },
@@ -95,7 +91,7 @@
           "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L63-L81",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L65-L83",
           "version": "repo-lines-v1:sha256:04bc291eddf6cce084a9e62f8d64f4d0414623329d356c290eb45551709b808b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMWI5OTVhZjI2YzA2ZjhhZmY1MmIwZThjMjBlZTc5ZmM1NzVhZmQ3MGQ3MjU2Njk0ZjNlMzcxMDYyNjRkMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiMDNiYTMzNGMzODQ3NWEwYjY0ZTk3NjIwYTU5NDZmNWFiZjk0MWJiYjZkYzQzYjQ2NWZiZDJmOWQzNTFiODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5NTQxYWFkNjRiZjg3YTE4Mjg4YTNlMTRkZGE4NzdkZjM1MzZlMmUzZjk1ZTI2N2QzOTg1NjBhM2U3ODFlYmQifQ"
         },
         {
@@ -114,7 +110,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
-          "version": "repo-file-v1:sha256:f5d150cef45346c61ca4f8443a6cadf6953db485f0d1818bdc0c4a03102e7879"
+          "version": "repo-file-v1:sha256:98318c1ea12d2513b141a8d55f4267f7d1e434ab199172bda9bc1c07d69a8dc5"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt",
@@ -142,11 +138,11 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json",
-          "version": "repo-file-v1:sha256:62e54b5342a58a350de92e5a64831a02aa8fd59c6cebdbe6c2e01df463212e1e"
+          "version": "repo-file-v1:sha256:ca9ef63062af047e868ca5cc45b8a26ae8e6ad47826ec66b6f461fae5ab5ca4b"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
-          "version": "repo-file-v1:sha256:06b52850e8e65b4542b1a3c2f9fed0159422b2a64c2209505560f880a0d51302"
+          "version": "repo-file-v1:sha256:5a305db0539143d5521a46bf53baa317d17069cbe20f61542c657ee9fd505b40"
         }
       ]
     },
@@ -166,11 +162,11 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt",
-          "version": "repo-file-v1:sha256:2b629b69114c67a243305059e5cdc006e99358a01c5f7aaff4fb96e36921cc77"
+          "version": "repo-file-v1:sha256:84c98e717fcea9c4e511044f1a262906e84f5bf1388f76e82304601dd9c92def"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:f5523937140873d2d926397d83eb47156a1d6069ebfced5f6cf0d5fd6beb2295"
+          "version": "repo-file-v1:sha256:e927156fa4f1cc2d0c52b77d1a14663fa71d590219cffe7ba38ac233ac6cf86f"
         }
       ]
     },
@@ -202,7 +198,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:f5523937140873d2d926397d83eb47156a1d6069ebfced5f6cf0d5fd6beb2295"
+          "version": "repo-file-v1:sha256:e927156fa4f1cc2d0c52b77d1a14663fa71d590219cffe7ba38ac233ac6cf86f"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt",
@@ -216,7 +212,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:497d22bd86e098909883a3ad292fbc638090d3179b698b49c623e74065d3c62a"
+          "version": "repo-file-v1:sha256:5fde124fec23f8c2343bdd243d00aff6fc6aac7104219189ce6727d6a5912464"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
@@ -234,11 +230,11 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteCompletion.kt",
-          "version": "repo-file-v1:sha256:b55bf9ecef56c0f9dfde4c0f022ea7e879cd40068a5a7a3974c296d3913479f9"
+          "version": "repo-file-v1:sha256:feb9536a5add7c968f73e4c96076a8b795f309f3c07010130ffb0afb77add05a"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteReadPort.kt",
-          "version": "repo-file-v1:sha256:e0ffe62c5306edbf69344d154d4c1114b28e132fceced24820607f6cd17fef11"
+          "version": "repo-file-v1:sha256:10a1daa344c0e4876b1bc4e31d0f332168700d8047ea61fceb2592635ae5174c"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt",
@@ -270,11 +266,11 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
-          "version": "repo-file-v1:sha256:9d0d26ef8af91b550fab17a584dd653fe1b3f883e9b034ac84095281f1791690"
+          "version": "repo-file-v1:sha256:2aa11fa926f4b5bd4189ea046117d2da556bf0ab1190c4ec4a79df5f946b1ede"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
+          "version": "repo-file-v1:sha256:1df157cf5c203646259b39917285272889f22d82eb4659e741df289197f17035"
         }
       ]
     },
@@ -305,10 +301,50 @@
           "version": "repo-file-v1:sha256:4f3e7d944d248804d908f7914651a99b606cb481686db98679f3c43ea55178c4"
         }
       ]
+    },
+    {
+      "id": "claim_73fb6533076d4a198198a97beacd822b",
+      "statement": "Managed Host reload settlement admits the exact settled Host and transaction with enabled auto-reload and idle native work, then captures the cached main-JAR marker before exchange. Ordinary settlement remains independent. After a successful acknowledgment write, the SDK adapter dirties that prepared marker and records bounded refresh content-event counts. The acknowledgment does not prove replacement loading.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt",
+          "version": "repo-file-v1:sha256:a73fa41b67393577f715ef39a80d7443f9849ce6ab66b341edbafb19d3363c60"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt",
+          "version": "repo-file-v1:sha256:87cb8e04d3454165974289e7a333ac1d8e53ae20f1502383074a04867273e4f7"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt",
+          "version": "repo-file-v1:sha256:de36c4a62ef75eb15e6aacbe3776c5b604e860837114492290b626a85006ab2b"
+        }
+      ]
+    },
+    {
+      "id": "claim_fb9f0acae091460694b8f5270e0605a6",
+      "statement": "Live Host settlement and offline mutation inspection share one reconstructed settlement rule. Applied writes need a decoded receipt with the exact binding, prepared digest, and applied digest. Pending or missing evidence, mismatched chains, and contradictory rollback receipts cannot establish settlement. Live inspection reads the records and receipts in one SQLite transaction.",
+      "evidence": [
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/MutationRecoverySettlement.kt",
+          "version": "repo-file-v1:sha256:d7f7d9b0fe478fdf0e65c28e3aac62a5dae0b887d3dfb2d4c1c74ca4286910ef"
+        },
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt",
+          "version": "repo-file-v1:sha256:74942146bb342e6bff39cba2c63b83543f82eb44831af1d3fe5ead8c263309b4"
+        },
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt",
+          "version": "repo-file-v1:sha256:f65a4d37d1058dc5e4581de68942a11beb8ab16882aefc8074c729ca93faec3b"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt",
+          "version": "repo-file-v1:sha256:d41882611a41e42c7eea14b4a259e2a0fe54b87a196a64049da4dc770eee4c10"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-18T02:29:42.742Z"
+    "at": "2026-10-31T09:49:39.493Z"
   }
 }

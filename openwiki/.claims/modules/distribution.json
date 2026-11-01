@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:61c1f7a1f3892a405e01831e7538f9d78a4ba709c19325ff964a1dcb58b5ae9b",
+  "pageVersion": "sha256:c0ab0729e9377f230a77a47e8d5df261eed1c675bd10f68b629ed1021aea6695",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
-      "statement": "Kast admits bundled context resources and MCP configuration under the registration lock, rejects foreign standalone MCP entries before plugin effects, and removes exact receipt-owned legacy registrations after success while Codex owns its cache and removal.",
+      "statement": "Kast admits the manifest-owned selected guidance composition and exact provider resources under its setup lock. CLI-only is the default. Explicit MCP composition adds transport preparation. Exact legacy ownership permits cleanup after success while providers own plugin configuration and cache.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:3358969b7fed3f71e64ad11f1b7003eb8baafd2f4f6ed31057cf1af637f23e65"
+          "version": "repo-file-v1:sha256:63192b73621d69224301e9658aa30f7c4fd192304924389c5e19e3a4249c6a23"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
-          "version": "repo-file-v1:sha256:58532558c47f1f133c4cd9207454007dc6d01f3be5671b91625fb16ba109f669"
+          "version": "repo-file-v1:sha256:97436d7aa632398e05c38bf703b357cefc1db3bd20289159dff8303ac87cb714"
         }
       ]
     },
@@ -31,8 +31,8 @@
       "statement": "Verified shutdown fences new work, disables the coordinator, retires requests and then the selected host, stopping on a finite stage-qualified rejection before reporting Stopped.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt#L35-L49",
-          "version": "repo-lines-v1:sha256:871159117824a395982a436c4f382339c6ecc6eadc64573d13cb1c8f1fc28235:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyMWZkMjI1MWJmZjA5OWUyMDQxNTE0YWYyNTAxNTRjZGU0MzNjOGE1NGIxY2RhNzg5NzFlMjQ4YzRjZTExY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZjRkNDI5ZGY4ZTZmN2Q0YjQ2MzRmYzNlMGViNWU5ZDA3YmM4Mzk0N2ZkZjViZWE0M2I5OThmZTk0YjI4OWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkMTJmOWIzOTViMjc4OTFmMmRhNGE0YTgzNDFjN2MxOWJlNTI4MmMwNThkMWY3NzM4MjBiM2M3OWVmZDNkNzIifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
+          "version": "repo-file-v1:sha256:0e03f62754a40e35ca38e7468f3307d1a7b12b4504f07d56024a94c2dc4e6db7"
         }
       ]
     },
@@ -76,11 +76,11 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429"
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         }
       ]
     },
@@ -94,7 +94,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:1739e0793cc20af80010fdeb2acb77a48de98d806d1ac080bd69fbbe3d4613b7"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         }
       ]
     },
@@ -104,11 +104,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:1739e0793cc20af80010fdeb2acb77a48de98d806d1ac080bd69fbbe3d4613b7"
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:b1194829567a0af1e4ebe2c45fa8d54564be88c994ca47836bcbc3b2e571cdc5"
+          "version": "repo-file-v1:sha256:0e03f62754a40e35ca38e7468f3307d1a7b12b4504f07d56024a94c2dc4e6db7"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
@@ -125,12 +125,12 @@
           "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
         },
         {
-          "resource": "repo://install.sh#L602-L626",
-          "version": "repo-lines-v1:sha256:61b79c53302dbd050f51a56b9467d1271544d67aad22237e5c8febf726ae7526:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYTE4NWY2MGNlZWUwNGJmOTI0OTI0YWQ1NzRjYzZiM2M5MGRhNDI0ZGI2YjBjOGNjMDZiNGJhNjI2YmE2NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZmM5MGZmOGE0NDE0YzU0NDFkMGY2NzdjNWNiZmRhMzhiNDc0ZTUxYmZkNTU5YTU1NTlkZTBmODc3MDU1MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1ZjYzMTQ1NzAyOWY2ZjgxNzc0M2VkMTQ2MmJlMjg1YTFmYmNjMjM2ZWVlMTQwMmQ4NjQ4NjkwODJkOTk2N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYzRiNDU2M2QwODdmM2Y1ZjI2ZWEwOWI0YTBkMDkxZDc5ZTkzMjg3NTc5ZDY2MDFiZTMyMDdjMTJkMmI2MmQifQ"
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
-          "version": "repo-file-v1:sha256:615de2683178bcc0a6ad55bee3233ba041f2f8db34094491771f36a5cf6c1978"
+          "version": "repo-file-v1:sha256:0909040f3a209e31f54b7087ee19d2983b983bffa36dc615c3bc8932d64539c7"
         }
       ]
     },
@@ -139,16 +139,16 @@
       "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L928-L946",
-          "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt#L35-L49",
-          "version": "repo-lines-v1:sha256:dec0b8190c9cbf52b5b0f1b50a2c2ef28a73332862ac5cf860caede83c51e7c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTMwNTkyNDcxZGI4ZWIyY2E3ZGM2YjBjMGYzNzg3ZGNhOGVkMDIwNDJiMDViMDBjNzhiZTU5MDYzMGU2YTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0OGU0OTZhMDQzZjFhYTMyNmI1MjNmOGQwOGQ4ZTg1NWJjZjM3N2ZlMDI2OGUwNDU1NTc0MWM0NjFkYjFkNzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyMWJjYTM4NTI0ZTYwYmQ1MDI5ZGViYTAyMTA0ZDg0YWIyMDA2YWFlMDBmZDFiODJhN2YxYzgzY2M1ZDMzZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3M2MxYzJkZWJjM2I1NDFhMmQzODZiZWM2ZWQzNDU4NDJmZjg2ZjIwMDc2NDk5MTJmM2ZmMzI1Yzg3MWZlN2QifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
+          "version": "repo-file-v1:sha256:970d11ab6c5d8aa17a2d9ae468c840377769ffa91ecf2a261f79f8569a7cf882"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt#L39-L53",
-          "version": "repo-lines-v1:sha256:7781a8a7c1b0a5b596d81ff33ba2c3ef8f50099c4b75ce898dfb968595f3a599:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ZTZlMmJiOGFjZWQ4NTA5ZTM5Nzk4YzRjMDJhMjhkZTFkZDYzNWU0NDQzYWUzZjM3NTBhODk2ZTkyNmQ1ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3Mzg3YzFmMTNiYTMyYmY3ZDM4NmIxMmE0NDAwMmU1NWUyYmVmYmNkYmZkN2RlMzc1OGU4OWJmYWRlZTZhYTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5ZDJmNjQxODNiZjVhY2FhMzY5YzAzZWFhNzRiNGNmODA4N2FhZjQ2MjYwOTk4ZGI0N2MwMmFiYmM1OWEwZWQifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt",
+          "version": "repo-file-v1:sha256:1d5a5df1f4a619357efc4d036709d49e64e92100b1cd9f9068339c453a9e4131"
         }
       ]
     },
@@ -157,16 +157,16 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L270-L292",
-          "version": "repo-lines-v1:sha256:c63ebb273fccf68e2a3c0f1cbab575687a341afc2488c43a61044c28d63cfb1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2ZDE3ZjYwNzhkNzM1YTY5MmM1OWM5MTAwOWE2NDYwZmYzZTQxZjZjZDU5MzBjOGFiYmU3ZDFmMmU1NTI0MTgifQ"
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
         },
         {
           "resource": "repo://packaging/installer_fixture.py",
           "version": "repo-file-v1:sha256:82f00cd72889105c170a2dd2bd2b326775607ef7634b0ba6cfc2619ea772c67c"
         },
         {
-          "resource": "repo://packaging/run-installed-product.py#L179-L219",
-          "version": "repo-lines-v1:sha256:aaac73ce77b6635d91f47ad958eec0d56473829859b30bbd34056c129652484c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhODQ1ZGExZTk1NDU1ZDAyY2QyY2M0OTJlOGRhYTZmMDI0MmUwZjc0Y2IwZTM5OTA2MDcxYmRiZTIzYzIwYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNDVlYmUyOTI0M2ZkMWY0Y2FiMzM2ZTI5NTYwZDc4MzRlNmE3YTQ3NmMzYWEwM2JmZGE5NjViNmQzMTQ5MTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkN2UxNDE2ZTFhMDU4ZmQzZGIyYTIyMWYzZjIxZGIyNTM3Zjc3OWIxOGExZGIzNjAwNTA5ZjBlMjZiNzNlZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4NzhlYjQyOTc4MDFjZTFlY2I0OGJmNmIxYzk3YTZmNDQ5ZTI4M2Y5ODQxYTUxZTJlMjNjMmQ0NjEyODY5NjEifQ"
+          "resource": "repo://packaging/run-installed-product.py",
+          "version": "repo-file-v1:sha256:88e53e97ec515d58577c6d0af5a5aac042130e31bebacee284d9a9c4a208ff07"
         }
       ]
     },
@@ -237,7 +237,7 @@
           "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L247-L256",
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L281-L290",
           "version": "repo-lines-v1:sha256:d811038e2cba936aa0ecce9441c55f0d5f33324348177499340e667efd462fcd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxYzgxZmE5YzQxMjAzNTI4ZTBhODdmY2UzM2I1Yjg5ZWM0ZGIxMTFmMTQzMDBkNDRjNjRmNDJjNjhhMjA1MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1NDEyYzc0OTRlMDgxYmQzZDg4N2QzNWU5ZTE3NzJjYTFmZWFhNWZhZGQ2MTc4MWY5MDQwOWE1MzJkZmJhMjgifQ"
         }
       ]
@@ -248,25 +248,25 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:126f31c715881a1cfc91f229be70c920ee5afeee80b8d3c2937c77aeec6617fa"
+          "version": "repo-file-v1:sha256:08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:08ffb3ff790abc83aa7ab5408bb417b6150c434fcf434b5574b3acf28b8ca511"
+          "version": "repo-file-v1:sha256:8618bfa9029949869f6f05c1aaf9b93d0de9dc746c903e242b64b6c6c66aae12"
         }
       ]
     },
     {
       "id": "claim_fc2e6da4c90e48b38aef801aa45c09fd",
-      "statement": "Checkout installation requires the selected IDEA bundled executable JBR with Java 25 or newer before Gradle or staging and scopes its runtime to child processes; installed launchers retain and recheck that runtime without an ambient Java fallback. Both require exactly one fully quoted JAVA_VERSION declaration and reject duplicates and incomplete declarations before execution, including a valid declaration beside a malformed duplicate.",
+      "statement": "Checkout installation requires the selected IDEA bundled executable JBR with Java 25 or newer before Gradle or staging and scopes its runtime to child processes; installed JVM launchers retain and recheck that runtime without an ambient Java fallback. Both require exactly one fully quoted JAVA_VERSION declaration and reject duplicates and incomplete declarations before execution, including a valid declaration beside a malformed duplicate.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt#L3-L27",
-          "version": "repo-lines-v1:sha256:7b8fc97d7b46afba6e4fd3e86884c06ba0e3db885bb552d3ea7961e55dd28f7b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0NDIxZmE3NDg4OGY2MmViOWM1NjhlYWRjNmYwMTBjZGIxZmE5MmVjNTA5NzVjMjE4MzI3ODlkYTgzNzVhMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1NTY5NjJlYzY1YmI1NzJjNGJjY2VkNWQzMzVjODI0YWYzNjZjOWVkNWMyZjE1ZTdkNzQwZmM3NjJkZTk0NWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt",
+          "version": "repo-file-v1:sha256:287f1684f71ccab0de4cc6a4506d5a9edf0293d99e7b73d583fb8b469db7b9a0"
         },
         {
-          "resource": "repo://packaging/install-checkout.sh#L41-L61",
-          "version": "repo-lines-v1:sha256:4d776884372669a52a70e958b3d78c4f8478612446d82e3ba4071243cb74edf6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyOGNiZDIxNzcxYTc0ODAwZGU2NmY2MzMxYThiNWY1YTc3OTY3OTJkMDQyMWQ1N2ZiMjBjYjA4NjI2YzBmMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNmRjNGQxNTAzNGY0YzRiM2RhOTk5MGVkOTdlMTM0ZmJiODExMzJmNWM0Njk0ZWI4M2Q1ZDlkNzFmMjJkZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZjk4ZDcyZDlmZjllNTYzZGQ1Y2UyNjExMGFiOWZkNzFkOGRiZTQ1YzJkNGVlZWZiY2E3NDY3Yzg1Zjg3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmYWVkYWZhZDNjOTgzYWY0ZDJmYThjMmNjYjAwYjI2ODkxOTE4OWNjNjBiMDI2ODcwMTM3ZmI0OTRiYzA0NjYifQ"
+          "resource": "repo://packaging/install-checkout.sh",
+          "version": "repo-file-v1:sha256:cd31d920299d5d70782ef8a4d31bd05aac9f8c007adc70d72956305b620d2c6f"
         }
       ]
     },
@@ -288,7 +288,7 @@
         },
         {
           "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt",
-          "version": "repo-file-v1:sha256:ae8b873726b5ecd29ba9174969dcdb21514eae1c77ad3cd9951127b9236193fc"
+          "version": "repo-file-v1:sha256:f65a4d37d1058dc5e4581de68942a11beb8ab16882aefc8074c729ca93faec3b"
         }
       ]
     },
@@ -298,15 +298,15 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/required_checks.py",
-          "version": "repo-file-v1:sha256:6f31412efded5cec8244a5b81a6053f43258630e91226a56230818a27543e90e"
+          "version": "repo-file-v1:sha256:100f22e0148cf302d2cd6508a0920a13c5698e0c313f5c49ff4a1f8386e7e25e"
         },
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L267-L299",
-          "version": "repo-lines-v1:sha256:319d0398c0254f2e7abc30ef7d3d1de9369de0a4ff7d3afda83abe4aa3a81fdf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4YTNhMzUyYmNlZGZkMDJiMjk5NmZkM2IzMTFiMjJlOTA1NzBiYmIxZTk1MDhjZTViOGU5N2VlZDQwNzE0MzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0ZDI0NTM4ZGIxZGE1NjBhMzdkMmFmZDhlODIwYWRjODY3N2Q3MGJhMTkyMzczZTdlNjMxNjkwMmI0MmY2Y2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUxMTEyNTY1NjQ2MTE3NzYzYmFkNzIzZmMyZWUyMTI0MGFkMGIzNGJhYTZiMzA4YTJhYzgwMmM5OTk1ODcxMmIifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:ee55daa96e934ea126a402a3522adc4a3ecc8d3b992b04057ac215fcc5015efa"
+          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
         }
       ]
     },
@@ -315,16 +315,16 @@
       "statement": "Successful main product validation promotes retained candidate bytes to the developer channel without another build. The publisher examines producer and digest provenance, admits exact retries, and preserves latest when main advances. Documentation-only validation completes without product publication.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L352-L416",
-          "version": "repo-lines-v1:sha256:d4ce5400a6fa8aee476b33a488678d7088541ea64e6ef7d4978ffa5229c5b026:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNzcxNjJjYTJhMjhhOTA1OGI1ZDhlZjc1YWUxZWFjNDJlZjQ4NTJiZmJmZjA1MTg1NGMyYjgwZWQwZTM2YzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1YTYxNzMxZGQ2MDcwMjhjZWVjZjZhYTQ1NmQwZDY4N2Y3MTM2N2RjMjRmODQyNWY0YmQ3NTRkYzFjMGE4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg4MTY4M2Y0YmVhMjQxYjM1NmRlNzg5NmJiZGMxOTU2ZTFjNDY2NzNkYzUwOWQxYTgwNmU1YjUxZjkyZDIxMDAifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
-          "version": "repo-file-v1:sha256:e19984dcb008a19be5cba9f34ee40127ed0eb5b2f884eedaa02d4c9f8be35530"
+          "version": "repo-file-v1:sha256:4178a6f69f95c8bd10a75fd36e027aabd3c48922213c90cd66f494f916960267"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:2b5a1099e58dfefc1f907439077f028ccddb48435dfe1bb923612c09b10c93e6"
+          "version": "repo-file-v1:sha256:d8c43b0610255ca0907167c14ad51d2e5d448a1e3c67010a07af5935f05e6348"
         }
       ]
     },
@@ -337,12 +337,12 @@
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L107-L160",
-          "version": "repo-lines-v1:sha256:8221bdffc600c9e78e22a4d63f330dacb29767b84b0af658e423ce89bc892fee:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
         },
         {
-          "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
-          "version": "repo-lines-v1:sha256:4c50b499168d0b433385a80d4300a31eeaa3d60ed70b0f130f1fc4b88eca881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2U1NWRkZDFkOTkxNzk2M2Y4MjlkMWQ3YjM0Zjc5ZWVhMjIwMTg4OWI2MDUzOTdhNWFlYjI4NjRkY2Q5MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5MjViZjc2MGUyNjQ3MGE1MzJmMmVmOGZkOTI2NGM4YjY0ZTNjOTE0YTc1YTM0NGQ5YWU2ZTdlNWM2ZTc1OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+          "resource": "repo://distribution/cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:4d9e01dd3fb1e084f8994a1991f3b736a79da2429b3453c9eb04412c5f9a2472"
         }
       ]
     },
@@ -351,16 +351,16 @@
       "statement": "Candidate versions use the CI run number within the installer's 32-bit semantic-version range, while the identity record retains the full run ID and producer attempt.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L133-L175",
-          "version": "repo-lines-v1:sha256:f75d6ff2626eba0dd5d9846c8dfa19e66d0ec80d6e0dc24a341feea8dd15e776:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L167-L182",
-          "version": "repo-lines-v1:sha256:2d0f8a7fd33a835be9ddc72604d3abbf02eebc63141cd05c98ee7fe302e929e8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNzllOTFhYTVhNWNhNmQzODZkMWYyODY2MDY3MTE5Y2MyOWY1NzkxMDRlZmQ1OTEyODZlZmNhOGZjNWNiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzJiOTg3MjYzZGYyMTYzZTcyNmQ0OGI5MmY2Zjk2NTE0OGNiNmI2ZDI4MzE3OTE1MTRjOTM5ZjgzN2ExNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZGM0MWU2YzIzZjk2ODY0NDY4MWFmYzE0MTA2MjU2Mzk5NmMwY2MyN2UxMWM2MWY3ZTA4NWE5OWYzOTM4NjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNTkxMGRmYzViM2FjNjAwODQ1YTdkMTVmOTRmNWRjZjc2YzY1ZDA5NDNiMWRmZTBkYmQ2NjhjZDlhM2IxMTgifQ"
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt#L33-L50",
-          "version": "repo-lines-v1:sha256:6db2f6dba5c14a620f16d2fe377c5320fa4a99bfd31938f55f8f4d17e3efda21:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNGMyMzRlZTg1YTM5NzhlODMyNzRhZjZjNzIzYmI3NmU1YzkyMTlkYmRlMGQ5YTNjNWUxMzYzNWMyZjliZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzYTI3ZWVjZTU3ZGI5M2VjMDhiNWY0YzE2OTVjMzFjMjZkZTkzZjg4YjcwYWMyZWNiZDAyNjQ3NTBiYjU0MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3NzI2ZjQxMTdhMmM0Mzg3NzkwNGQyYjdkZTFlYmQ2MTk3OTc5MjhmM2MwZDgzZjMxZTVlNTNjNWYxNGEwNGUifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
+          "version": "repo-file-v1:sha256:77adc2a8db820519452a4d4c34d3fe87fe5ec16d26177231d33f6b030d547d2a"
         }
       ]
     },
@@ -370,7 +370,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
         }
       ]
     },
@@ -383,7 +383,7 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L676-L733",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L745-L802",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
@@ -394,21 +394,39 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:6801025d5bb075ab4b1a67a09880b1fd64d478a9d8d40b60dab3d52618c361e4"
+          "version": "repo-file-v1:sha256:45bbc3d40344af8397d169870747ef66c576c16e0e9e1f9d665409917a010ffc"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt#L154-L184",
-          "version": "repo-lines-v1:sha256:36c3ab9e9a16d50ac5617fd157fb75e419bbefae834908f8379d1ba4f5063da3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlYWU3MjhjNDMxMjYxNzg5YjExZjIxZTUyZDI5ZjlkYzYyMjBmODNhNjFlNGUzNjI5MTE0MDk5NjRhNGQxNWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5NTU1M2NlMThjMmYzODgxNjYyY2Q1NzE0MDk4ZTI3YTc1YTNhOTc2YmY3ZmRiOWM4NzZhNzkyYTE1MDRjMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
+          "version": "repo-file-v1:sha256:04fcc18051e608a391a77604574b1442ff5c961aef861c2c164c3b1b4a2752eb"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt",
           "version": "repo-file-v1:sha256:07f243ac1e4445290b192a6f4932bdfe555352078524b19dcbddf66aefd6fba6"
         }
       ]
+    },
+    {
+      "id": "claim_6aa736adc7734b8d8b08addaaa0c3476",
+      "statement": "Managed composition captures typed preimages and coordinates existing Control and Host owners under admitted locks. Pending recovery precedes selection, uses its recorded transaction, and preserves unresolved fencing. The bounded main catalog keeps original candidate provenance and main-ancestry order.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/developer_catalog.py",
+          "version": "repo-file-v1:sha256:42d55a59436e67eb3ef900dc642cd79865a26bce17ca755e5eb8176f2ea5eaba"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
+          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-31T10:51:42.239Z"
   }
 }

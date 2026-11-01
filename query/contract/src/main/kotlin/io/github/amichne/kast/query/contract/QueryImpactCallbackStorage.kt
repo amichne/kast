@@ -1,6 +1,8 @@
 package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
+import io.github.amichne.kast.relation.contract.ReviewedCallbackParent
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueCaptureInvocation
@@ -35,23 +37,25 @@ internal fun ReviewedCallbackValueBinding.storageBytes(g: QueryImpactRetainedGra
                         .saturatedAdd(g.node(occurrence.range) { 0L })
                 }
             )
-            .saturatedAdd(g.node(selected) { target.storageBytes(g) })
             .saturatedAdd(
-                g.node(artifact) {
-                    g.text(artifact.binaryArtifact.value)
-                        .saturatedAdd(g.text(artifact.sourceArtifact.value))
-                        .saturatedAdd(g.text(artifact.sourceEntry))
-                        .saturatedAdd(g.text(artifact.sourceEntrySha256))
-                        .saturatedAdd(g.text(artifact.facadeSha256))
-                        .saturatedAdd(g.text(artifact.implementationSha256))
-                        .saturatedAdd(g.collection(artifact.sourceSections) { g.node(it) { 0L } })
+                when (val evidence = invocationEvidence) {
+                    ReviewedCallbackInvocationEvidence.Unestablished -> 0L
+                    is ReviewedCallbackInvocationEvidence.Declared ->
+                        g.node(evidence) { evidence.binding.storageBytes(g) }
                 }
             )
+            .saturatedAdd(parent.storageBytes(g))
+            .saturatedAdd(g.node(selected) { target.storageBytes(g) })
+            .saturatedAdd(artifact.storageBytes(g))
     }
 
 internal fun ReviewedValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        source.storageBytes(g).saturatedAdd(target.storageBytes(g)).saturatedAdd(binding.storageBytes(g))
+        source
+            .storageBytes(g)
+            .saturatedAdd(target.storageBytes(g))
+            .saturatedAdd(binding.storageBytes(g))
+            .saturatedAdd(relation.storageBytes(g))
     }
 
 internal fun ValueCaptureInvocation.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -75,4 +79,10 @@ private fun RelationCallableBody.storageBytes(g: QueryImpactRetainedGraph): Long
                     is RelationCallableBody.Anonymous -> signature.storageBytes(g)
                 }
             )
+    }
+
+private fun ReviewedCallbackParent.storageBytes(g: QueryImpactRetainedGraph): Long =
+    when (this) {
+        ReviewedCallbackParent.Declaration -> 0L
+        is ReviewedCallbackParent.DeclaredCallback -> g.node(this) { binding.storageBytes(g) }
     }

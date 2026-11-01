@@ -93,7 +93,7 @@ internal object InstallationWorkflow {
         return ControlInstallationRecovery.rollbackActivatedControl(plan, failure)
     }
 
-    private fun verify(request: InstallationRequest): PlanVerification {
+    internal fun verify(request: InstallationRequest): PlanVerification {
         val controlRoot = request.controlRoot.value
         if (!physicalDirectory(controlRoot)) return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
         if (
@@ -361,7 +361,7 @@ internal object InstallationWorkflow {
         }
     }
 
-    private fun stage(
+    internal fun stage(
         plan: VerifiedInstallationPlan,
         configuration: InstallationConfigurationSelection,
     ): StageResult {
@@ -378,6 +378,7 @@ internal object InstallationWorkflow {
             writeLauncher(plan, staged, "kast-codex")
             writeLauncher(plan, staged, "kast-mcp")
             writeLauncher(plan, staged, "kast-tool-rpc")
+            writeLauncher(plan, staged, "kast-query")
             writeInstallationConfiguration(
                 plan = plan,
                 stagedConfiguration = staged.resolve("config/environment"),
@@ -439,7 +440,10 @@ internal object InstallationWorkflow {
                 plan.request.controlOnly == InstallationSwitch.ENABLED &&
                 plan.request.publicEndpoint == InstallationPublicEndpointSelection.Unspecified
         ) {
-            if (configuration.preservesEndpoint()) {
+            if (
+                configuration.preservesEndpoint() &&
+                    configuration.migration == InstallationConfigurationMigration.Unchanged
+            ) {
                 Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
                 return
             }
@@ -454,6 +458,8 @@ internal object InstallationWorkflow {
 
     private fun writeLauncher(plan: VerifiedInstallationPlan, staged: Path, executable: String) {
         val launcher = staged.resolve("bin/$executable-complete")
+        val javaEnvironment =
+            if (executable == "kast-query") "" else installationJavaRuntimeEnvironment(plan.request.javaHome)
         val dispatch =
             if (executable == "kast") {
                 """
@@ -481,7 +487,7 @@ internal object InstallationWorkflow {
             |fi
             |control_executable="${'$'}script_dir/$executable"
             |[ -x "${'$'}control_executable" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
-            |${installationJavaRuntimeEnvironment(plan.request.javaHome)}
+            |$javaEnvironment
             |unset KAST_SESSION_ROOT
             |if [ -e "${'$'}installation_root/.recovery-detached" ]; then
             |  case "${'$'}{1-} ${'$'}{2-}" in
@@ -611,7 +617,7 @@ internal object InstallationWorkflow {
             manifest.payloadIdentity == "sha256:${plan.payloadDigest.value}"
     }
 
-    private fun selectedInstallation(plan: VerifiedInstallationPlan): PriorSelection =
+    internal fun selectedInstallation(plan: VerifiedInstallationPlan): PriorSelection =
         if (Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)) selectedPhysicalInstallation(plan)
         else selectedLegacyInstallation(plan)
 
@@ -652,7 +658,7 @@ internal object InstallationWorkflow {
         return PriorSelection.Selected(resolved)
     }
 
-    private fun qualifyCandidate(plan: VerifiedInstallationPlan, root: Path): InstallationChildOutcome =
+    internal fun qualifyCandidate(plan: VerifiedInstallationPlan, root: Path): InstallationChildOutcome =
         executeInstallationChild(
             InstallationChildStage.CANDIDATE_QUALIFICATION,
             listOf(root.resolve("bin/kast-complete").toString(), "--version"),
@@ -688,7 +694,7 @@ internal object InstallationWorkflow {
         }
     }
 
-    private fun previousPayload(
+    internal fun previousPayload(
         plan: VerifiedInstallationPlan,
         prior: Path?,
         transaction: Path,
@@ -712,7 +718,7 @@ internal object InstallationWorkflow {
                 )
         }
 
-    private fun commitReplacement(
+    internal fun commitReplacement(
         context: ReplacementActivation,
         staged: Path,
         baseline: InstallationRecoveryBaseline?,
@@ -772,6 +778,20 @@ internal object InstallationWorkflow {
         phase: ReplacementCommitPhase,
         failure: InstallationFailure,
     ): ActivationResult {
+        val composition = context.receipt.composition
+        if (composition != null) {
+            writeInstallationReplacementReceipt(
+                context.transaction,
+                context.receipt.copy(
+                    stage = InstallationReplacementStage.RECOVERY_REQUIRED,
+                    composition =
+                        composition.copy(
+                            phase = io.github.amichne.kast.distribution.contract.ManagedCompositionPhase.RESTORING
+                        ),
+                ),
+            )
+            return ActivationResult.RecoveryRequired
+        }
         return try {
             rollbackPayload(context, phase)
             if (phase == ReplacementCommitPhase.PAYLOAD_COMMITTED) rollbackRecovery(context)
@@ -819,25 +839,25 @@ private enum class ReplacementCommitPhase {
     PAYLOAD_COMMITTED,
 }
 
-private data class ReplacementActivation(
+internal data class ReplacementActivation(
     val plan: VerifiedInstallationPlan,
     val transaction: Path,
     val receipt: InstallationReplacementReceipt,
 )
 
-private sealed interface PlanVerification {
+internal sealed interface PlanVerification {
     data class Verified(val plan: VerifiedInstallationPlan) : PlanVerification
 
     data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : PlanVerification
 }
 
-private sealed interface StageResult {
+internal sealed interface StageResult {
     data class Complete(val root: Path) : StageResult
 
     data class Rejected(val failure: InstallationFailure) : StageResult
 }
 
-private sealed interface PriorSelection {
+internal sealed interface PriorSelection {
     data object Absent : PriorSelection
 
     data class Selected(val root: Path) : PriorSelection
@@ -845,7 +865,7 @@ private sealed interface PriorSelection {
     data object Rejected : PriorSelection
 }
 
-private sealed interface ActivationResult {
+internal sealed interface ActivationResult {
     data object RecoveryRequired : ActivationResult
 
     data object Complete : ActivationResult
@@ -886,16 +906,11 @@ internal fun readInstallationBounded(path: Path, limit: Long): String? =
         null
     }
 
-private fun digest(path: Path): Sha256? =
+internal fun digest(path: Path): Sha256? =
     try {
         val digest = MessageDigest.getInstance("SHA-256")
         Files.newInputStream(path, StandardOpenOption.READ).use { input ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            while (true) {
-                val count = input.read(buffer)
-                if (count < 0) break
-                digest.update(buffer, 0, count)
-            }
+            updateInstallationDigest(input, digest)
         }
         Sha256.parse(digest.digest().hex()).let { refinement ->
             when (refinement) {
@@ -907,6 +922,15 @@ private fun digest(path: Path): Sha256? =
         null
     }
 
+private fun updateInstallationDigest(input: java.io.InputStream, digest: MessageDigest) {
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    while (true) {
+        val count = input.read(buffer)
+        if (count < 0) return
+        digest.update(buffer, 0, count)
+    }
+}
+
 private fun sha256(bytes: ByteArray): Sha256 =
     when (val value = Sha256.parse(MessageDigest.getInstance("SHA-256").digest(bytes).hex())) {
         is io.github.amichne.kast.kernel.Refinement.Refined -> value.value
@@ -916,7 +940,11 @@ private fun sha256(bytes: ByteArray): Sha256 =
 private fun ByteArray.hex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
 private fun verifyControlLayout(root: Path): ControlInventoryAdmission {
-    if (listOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc").any { !regularExecutable(root.resolve("bin/$it")) })
+    if (
+        listOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc", "kast-query").any {
+            !regularExecutable(root.resolve("bin/$it"))
+        }
+    )
         return ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY)
     val required =
         listOf(
@@ -947,7 +975,7 @@ private fun prepareOwnedDirectory(path: Path): Boolean {
     }
 }
 
-private fun payloadFiles(root: Path): List<PayloadFile> {
+internal fun payloadFiles(root: Path): List<PayloadFile> {
     val inventory =
         when (val admitted = ControlPayloadInventory.admit(root)) {
             is ControlInventoryAdmission.Admitted -> admitted

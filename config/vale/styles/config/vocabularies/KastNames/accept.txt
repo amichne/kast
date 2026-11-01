@@ -1,0 +1,10 @@
+# Product and platform names only. Domain aliases remain glossary-owned.
+Kast
+Kotlin
+Gradle
+IntelliJ IDEA
+Mintlify
+GitHub
+Codex
+Claude Code
+Develocity

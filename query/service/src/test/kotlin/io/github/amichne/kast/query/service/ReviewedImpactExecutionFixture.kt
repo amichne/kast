@@ -17,8 +17,8 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapArtifact
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapCallable
+import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
+import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
@@ -246,10 +246,10 @@ internal class ReviewedImpactExecutionFixture(generation: Long = 1) {
                 occurrence = RelationOccurrence.fromBoundary(file, 20, 140).reviewedValue(),
                 supplier = RelationCallableBody.Named.fromCompiler(owner.evidence).reviewedValue(),
                 selected =
-                    ReviewedIterableMapCallable.admit(target, ValueArgumentPosition.parse(0).reviewedValue())
+                    ReviewedLibraryCallable.admit(target, ValueArgumentPosition.parse(0).reviewedValue())
                         .reviewedValue(),
                 artifact =
-                    ReviewedIterableMapArtifact.admit(
+                    ReviewedLibraryArtifact.admit(
                             DependencyArtifactDigest.parse(
                                     "bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3"
                                 )

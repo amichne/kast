@@ -1,22 +1,24 @@
 {
   "name": "kast",
   "version": "0.0.0",
-  "description": "Compiler-grounded Kotlin queries, usage patterns, and examples with Kast.",
+  "description": "Canonical CLI guidance for the installed native Kast command.",
   "author": {
     "name": "Amichne"
   },
   "homepage": "https://kast.michne.com/",
   "repository": "https://github.com/amichne/kast",
   "license": "GPL-3.0-only",
-  "hooks": "./hooks/hooks.json",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Kast",
     "shortDescription": "Compiler-grounded Kotlin tools",
-    "longDescription": "Find declarations, inspect callers and relationships, and examine compiler diagnostics with Kast and compact context at session start.",
+    "longDescription": "Find Kotlin declarations, inspect callers and relationships, and examine compiler diagnostics through the installed native Kast command.",
     "developerName": "Amichne",
     "category": "Coding",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "defaultPrompt": "Use Kast to find a declaration and inspect its callers."
-  }
+  },
+  "skills": "./skills/"
 }

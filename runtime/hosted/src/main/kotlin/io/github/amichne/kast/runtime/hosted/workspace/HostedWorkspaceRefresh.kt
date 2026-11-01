@@ -33,6 +33,10 @@ internal class HostedWorkspaceRefresh(
     private val query: HostedQueryService,
     scope: CoroutineScope,
 ) : Disposable {
+    private val hostAdmission =
+        com.intellij.openapi.application.ApplicationManager.getApplication()
+            .getService(io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication::class.java)
+            .admission
     private val modelChanges = HostedGradleChangeTracker(project, root)
     private val modelInputs = WorkspaceRefreshModelBoundary(modelChanges.revision)
     private val port = IntellijWorkspaceRefreshPort(project, root, query, modelInputs)
@@ -49,22 +53,32 @@ internal class HostedWorkspaceRefresh(
         )
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
-    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit = service.refreshForRead { status ->
-        complete(
-            when (status) {
-                WorkspaceRefreshStatus.Complete -> HostedVfsRefreshOutcome.READY
-                is WorkspaceRefreshStatus.Failed ->
-                    when (status.reason) {
-                        WorkspaceRefreshFailure.DISPOSED -> HostedVfsRefreshOutcome.PROJECT_DISPOSED
-                        WorkspaceRefreshFailure.ROOT_UNAVAILABLE -> HostedVfsRefreshOutcome.ROOT_UNAVAILABLE
-                        WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS
-                        WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
-                        else -> HostedVfsRefreshOutcome.FAILED
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit {
+        val admitted = hostAdmission.enter()
+        if (admitted is io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission.Admission.Fenced) {
+            complete(HostedVfsRefreshOutcome.FAILED)
+            return {}
+        }
+        check(admitted is io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission.Admission.Admitted)
+        return admitted.lease.use {
+            service.refreshForRead { status ->
+                complete(
+                    when (status) {
+                        WorkspaceRefreshStatus.Complete -> HostedVfsRefreshOutcome.READY
+                        is WorkspaceRefreshStatus.Failed ->
+                            when (status.reason) {
+                                WorkspaceRefreshFailure.DISPOSED -> HostedVfsRefreshOutcome.PROJECT_DISPOSED
+                                WorkspaceRefreshFailure.ROOT_UNAVAILABLE -> HostedVfsRefreshOutcome.ROOT_UNAVAILABLE
+                                WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS
+                                WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
+                                else -> HostedVfsRefreshOutcome.FAILED
+                            }
+                        is WorkspaceRefreshStatus.Rejected -> HostedVfsRefreshOutcome.FAILED
+                        is WorkspaceRefreshStatus.Pending -> error("Only terminal refresh outcomes reach a waiter")
                     }
-                is WorkspaceRefreshStatus.Rejected -> HostedVfsRefreshOutcome.FAILED
-                is WorkspaceRefreshStatus.Pending -> error("Only terminal refresh outcomes reach a waiter")
+                )
             }
-        )
+        }
     }
 
     suspend fun initialImport(requestId: String, deadline: WorkspacePreparationDeadline): WorkspaceRefreshResult =
@@ -85,6 +99,22 @@ internal class HostedWorkspaceRefresh(
         }
 
     fun execute(command: WorkspaceRefreshCommand): WorkspaceRefreshResponse {
+        if (command !is WorkspaceRefreshCommand.Status) {
+            return when (val admitted = hostAdmission.enter()) {
+                io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission.Admission.Fenced ->
+                    WorkspaceRefreshResponse(
+                        root.value,
+                        query.hostLifetime.value.toString(),
+                        WorkspaceRefreshResult.Rejected(PublicFailure.ADMISSION_REJECTED),
+                    )
+                is io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission.Admission.Admitted ->
+                    admitted.lease.use { executeAdmitted(command) }
+            }
+        }
+        return executeAdmitted(command)
+    }
+
+    private fun executeAdmitted(command: WorkspaceRefreshCommand): WorkspaceRefreshResponse {
         val result =
             when (command) {
                 is WorkspaceRefreshCommand.Configure -> configure(command.rule)

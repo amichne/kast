@@ -3,28 +3,49 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactActualExecutionDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationCountKnowledgeDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedArtifactsDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCallbackParentDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedFunctionDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedSourceLinesDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedInvocationEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueSemanticsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
+import io.github.amichne.kast.relation.contract.ReviewedCallbackInvocationEvidence
+import io.github.amichne.kast.relation.contract.ReviewedCallbackParent
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapArtifact
-import io.github.amichne.kast.relation.contract.ReviewedIterableMapCallable
-import io.github.amichne.kast.relation.contract.ReviewedMapSourceSection
+import io.github.amichne.kast.relation.contract.ReviewedLibraryCallable
+import io.github.amichne.kast.relation.contract.ReviewedLibraryRule
+import io.github.amichne.kast.relation.contract.ReviewedValueSemantics
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 internal fun ReviewedValueTransfer.impactDocument(): ImpactProjected<ImpactReviewedValueTransferDocument> =
-    source.impactDocument().impactZip(target.impactDocument()).impactZip(binding.impactDocument()).impactMap {
+    source.impactDocument().impactZip(target.impactDocument()).impactZip(relationshipDocument()).impactMap {
         (sites, binding) ->
         ImpactReviewedValueTransferDocument(sites.first, sites.second, binding)
+    }
+
+internal fun ReviewedValueTransfer.relationshipDocument(): ImpactProjected<ImpactReviewedValueRelationshipDocument> =
+    binding.impactDocument().impactZip(relation.impactDocument()).impactMap { (authority, relation) ->
+        ImpactReviewedValueRelationshipDocument(authority, relation)
+    }
+
+internal fun ReviewedValueSemantics.impactDocument(): ImpactReviewedValueSemanticsDocument =
+    when (this) {
+        ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT ->
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT
+        ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT ->
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT
+        ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT
+        ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER ->
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER
+        ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER
     }
 
 internal fun ReviewedCallbackValueBinding.impactDocument(): ImpactProjected<ImpactReviewedValueBindingDocument> =
@@ -34,87 +55,110 @@ internal fun ReviewedCallbackValueBinding.impactDocument(): ImpactProjected<Impa
             .impactZip(occurrence.range.impactDocument())
             .impactZip(selected.impactDocument(basis))
             .impactZip(artifact.impactDocument())
-            .impactMap { (supply, artifact) ->
-                ImpactReviewedValueBindingDocument(
-                    rule = ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1,
-                    basis = host.basis,
-                    enclosing = host,
-                    body = supply.first.first,
-                    supplierRange = supply.first.second,
-                    selected = supply.second,
-                    artifacts = artifact,
-                    semantics = ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
-                    actualExecution = ImpactActualExecutionDocument.NOT_ESTABLISHED,
-                    invocationCount = ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
-                )
+            .impactThen { (supply, artifact) ->
+                invocationEvidence.impactDocument().impactZip(parent.impactDocument()).impactMap { (invocation, parent)
+                    ->
+                    ImpactReviewedValueBindingDocument(
+                        rule = this.artifact.rule.impactDocument(),
+                        basis = host.basis,
+                        enclosing = host,
+                        body = supply.first.first,
+                        supplierRange = supply.first.second,
+                        selected = supply.second,
+                        artifacts = artifact,
+                        actualExecution = ImpactActualExecutionDocument.NOT_ESTABLISHED,
+                        invocationCount = ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
+                        invocationEvidence = invocation,
+                        parent = parent,
+                    )
+                }
             }
     }
 
-private fun ReviewedIterableMapCallable.impactDocument(
+private fun ReviewedLibraryCallable.impactDocument(
     basis: SemanticReadIdentity
 ): ImpactProjected<ImpactReviewedFunctionDocument> {
     val signature =
         target.signature as? CanonicalCompilerSignature.Function
             ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
-    val receiver =
-        signature.receiver as? CanonicalCompilerReceiver.Present
-            ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
     return ValueDeclarationIdentity.fromCompiler(target).impactDocument(basis).impactThen { declaration ->
-        signature.qualifiedIdentity.value.impactText().impactZip(receiver.type.value.impactText()).impactThen {
-            (name, receiver) ->
-            signature.contextReceivers
-                .impactEach { it.value.impactText() }
-                .impactZip(signature.valueParameters.impactEach { it.value.impactText() })
-                .impactZip(
-                    QueryDiscoveryCountDocument.parse(signature.typeParameterCount.value.toLong())
-                        .impactFailure(ImpactPathProjectionFailure::Count)
-                )
-                .impactZip(position.value.impactOffset())
-                .impactMap { (types, position) ->
-                    ImpactReviewedFunctionDocument(
-                        declaration,
-                        name,
-                        receiver,
-                        types.first.first,
-                        types.first.second,
-                        types.second,
-                        position,
+        signature.qualifiedIdentity.value
+            .impactText()
+            .impactZip(signature.receiver.declaredReceiverDocument())
+            .impactThen { (name, receiver) ->
+                signature.contextReceivers
+                    .impactEach { it.value.impactText() }
+                    .impactZip(signature.valueParameters.impactEach { it.value.impactText() })
+                    .impactZip(
+                        QueryDiscoveryCountDocument.parse(signature.typeParameterCount.value.toLong())
+                            .impactFailure(ImpactPathProjectionFailure::Count)
                     )
-                }
-        }
+                    .impactZip(position.value.impactOffset())
+                    .impactMap { (types, position) ->
+                        ImpactReviewedFunctionDocument(
+                            declaration,
+                            name,
+                            receiver,
+                            types.first.first,
+                            types.first.second,
+                            types.second,
+                            position,
+                        )
+                    }
+            }
     }
 }
 
-private fun ReviewedIterableMapArtifact.impactDocument(): ImpactProjected<ImpactReviewedArtifactsDocument> =
-    binaryArtifact.value.impactText().impactZip(sourceArtifact.value.impactText()).impactThen { (binary, source) ->
-        sourceEntry.impactText().impactZip(sourceEntrySha256.impactText()).impactThen { (entry, entryHash) ->
-            facadeSha256
-                .impactText()
-                .impactZip(implementationSha256.impactText())
-                .impactZip(sourceLines(ReviewedMapSourceSection.MAP))
-                .impactZip(sourceLines(ReviewedMapSourceSection.MAP_TO))
-                .impactMap { (classes, mapToLines) ->
-                    ImpactReviewedArtifactsDocument(
-                        binary,
-                        source,
-                        entry,
-                        entryHash,
-                        classes.first.first,
-                        classes.first.second,
-                        classes.second,
-                        mapToLines,
-                    )
-                }
-        }
+internal fun ReviewedLibraryRule.impactDocument(): ImpactReviewedValueRuleDocument =
+    when (this) {
+        ReviewedLibraryRule.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_RUN_RECEIVER_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_RUN_RECEIVER_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_WITH_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_WITH_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_APPLY_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_APPLY_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_FILTER_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_MAP_VALUES_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_VALUES_V1
+        ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_ITERABLE_MAP_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_TO_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1 ->
+            ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_FIRST_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_FIRST_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_SECOND_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_SECOND_V1
     }
 
-private fun ReviewedIterableMapArtifact.sourceLines(
-    section: ReviewedMapSourceSection
-): ImpactProjected<ImpactReviewedSourceLinesDocument> =
-    when (val source = sourceSections.singleOrNull { it == section }) {
-        null -> Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
-        else ->
-            source.firstLine.impactOffset().impactZip(source.lastLine.impactOffset()).impactMap { (start, end) ->
-                ImpactReviewedSourceLinesDocument(start, end)
+private fun ReviewedCallbackInvocationEvidence.impactDocument():
+    ImpactProjected<ImpactReviewedInvocationEvidenceDocument> =
+    when (this) {
+        ReviewedCallbackInvocationEvidence.Unestablished ->
+            Refinement.Refined(ImpactReviewedInvocationEvidenceDocument.Unestablished)
+        is ReviewedCallbackInvocationEvidence.Declared ->
+            binding.impactDocument().impactMap { ImpactReviewedInvocationEvidenceDocument.Declared(it) }
+    }
+
+private fun ReviewedCallbackParent.impactDocument(): ImpactProjected<ImpactReviewedCallbackParentDocument> =
+    when (this) {
+        ReviewedCallbackParent.Declaration -> Refinement.Refined(ImpactReviewedCallbackParentDocument.Declaration)
+        is ReviewedCallbackParent.DeclaredCallback ->
+            binding.impactDocument().impactMap {
+                ImpactReviewedCallbackParentDocument.DeclaredCallback(it)
             }
     }

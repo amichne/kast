@@ -2,18 +2,17 @@ package io.github.amichne.kast.runtime.hosted.workspace
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.externalSystem.model.DataNode
-import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager
 import com.intellij.openapi.externalSystem.service.internal.ExternalSystemResolveProjectTask
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
-import com.intellij.openapi.externalSystem.service.project.ExternalProjectRefreshCallback
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -22,7 +21,9 @@ internal class WorkspaceRefreshImportCallback(
     private val project: Project,
     private val root: CanonicalWorkspaceRoot,
     complete: (WorkspaceRefreshEffectResult) -> Unit,
-) : ExternalProjectRefreshCallback, Disposable {
+) : Disposable {
+    // IntelliJ keeps its callback in build history. Its future adapter releases our dependent after completion.
+    val nativeCompletion = CompletableFuture<Void>()
     private var abortedBeforeStart = false
     private val manager = ExternalSystemProgressNotificationManager.getInstance()
     private val listener: ExternalSystemTaskNotificationListener =
@@ -48,6 +49,7 @@ internal class WorkspaceRefreshImportCallback(
         WorkspaceRefreshImportCompletion(
             complete = { result ->
                 if (result != WorkspaceRefreshEffectResult.RETIRED) {
+                    nativeCompletion.cancel(false)
                     manager.removeNotificationListener(listener)
                     if (!Disposer.isDisposed(this)) Disposer.dispose(this)
                 }
@@ -60,30 +62,28 @@ internal class WorkspaceRefreshImportCallback(
         )
 
     init {
+        nativeCompletion.whenComplete { _, failure ->
+            completion.finished(
+                when {
+                    project.isDisposed -> WorkspaceRefreshEffectResult.DISPOSED
+                    failure != null -> WorkspaceRefreshEffectResult.FAILED
+                    // This is the same model source that ExternalSystemUtil reads before its success callback.
+                    ProjectDataManager.getInstance()
+                        .getExternalProjectData(project, IntellijWorkspaceRefreshPort.GRADLE, root.value)
+                        ?.externalProjectStructure == null -> WorkspaceRefreshEffectResult.FAILED
+                    else -> WorkspaceRefreshEffectResult.SUCCEEDED
+                }
+            )
+        }
         manager.addNotificationListener(listener)
         if (!Disposer.tryRegister(project, this)) dispose()
-    }
-
-    override fun onSuccess(id: ExternalSystemTaskId, externalProject: DataNode<ProjectData>?) {
-        completion.finished(
-            when {
-                project.isDisposed -> WorkspaceRefreshEffectResult.DISPOSED
-                externalProject == null -> WorkspaceRefreshEffectResult.FAILED
-                else -> WorkspaceRefreshEffectResult.SUCCEEDED
-            }
-        )
-    }
-
-    override fun onFailure(id: ExternalSystemTaskId, errorMessage: String, errorDetails: String?) {
-        completion.finished(
-            if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED else WorkspaceRefreshEffectResult.FAILED
-        )
     }
 
     fun failedStartCall(result: WorkspaceRefreshEffectResult) = completion.finished(result)
 
     fun abortBeforeStart() {
         abortedBeforeStart = true
+        nativeCompletion.cancel(false)
         manager.removeNotificationListener(listener)
         if (!Disposer.isDisposed(this)) Disposer.dispose(this)
     }

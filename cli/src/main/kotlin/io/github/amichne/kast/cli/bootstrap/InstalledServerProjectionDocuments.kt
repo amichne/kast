@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
+import io.github.amichne.kast.cli.rpc.QueryCostPlanReply
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -62,6 +63,10 @@ internal fun installedPublicToolSemanticResultSchema(identity: PublicToolIdentit
 
 internal fun installedPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
     installedToolOutputSchemas.computeIfAbsent(identity) { buildInstalledPublicToolOutputSchema(it) }
+
+/** Planning returns canonical requests whose recursive output definitions must remain locally resolvable. */
+internal fun queryPlanOutputSchema(): JsonObject =
+    generatedOutputSchema(QueryCostPlanReply.serializer()).withLocalOutputDefinitions()
 
 private fun buildInstalledPublicToolOutputSchema(identity: PublicToolIdentity): JsonObject =
     unionSchema(
@@ -142,6 +147,16 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "finiteFailureEvidence" to textSchema("Finite failure evidence."),
             "compilerQualifiedIdentity" to textSchema("Compiler qualified identity."),
             "compilerIdentity" to compilerIdentitySchema(),
+            "ideHostRuntimeIdentity" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity.serializer()),
+            "ideLifecycleFailure" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.serializer()),
+            "ideLifecycleExchangeFailure" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeFailure.serializer()
+                ),
+            "ideProjectTarget" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeProjectTarget.serializer()),
             "workspaceInspectionObstruction" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.WorkspaceInspectionObstruction.serializer()
@@ -159,6 +174,12 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "impactSemanticBasis" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.serializer()
+                ),
+            "impactSourceRange" to
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument.serializer()),
+            "impactDeclaredCallbackTarget" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackTargetDocument.serializer()
                 ),
             "impactDeclarationReference" to
                 generatedOutputSchema(
@@ -182,6 +203,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument.serializer()),
             "impactCallTarget" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument.serializer()),
+            "impactValueConditionOrigin" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocument.serializer()
+                ),
             "impactValueRole" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument.serializer()),
             "callbackGraphCause" to
@@ -196,17 +221,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument.serializer()
                 ),
-            "impactReviewedValueBinding" to
-                generatedOutputSchema(
-                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument.serializer()
-                ),
             "impactDeclaredCallbackValueBinding" to
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument.serializer()
-                ),
-            "impactReviewedValueTransfer" to
-                generatedOutputSchema(
-                    io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument.serializer()
                 ),
             "impactFlowDomain" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactFlowDomainDocument.serializer()),
@@ -255,6 +272,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
             "sourceRange" to sourceRangeSchema(),
+            "sourceRangeCli" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.SourceRangeCliDocument.serializer()
+                ),
             "symbol" to symbolSchema(),
             "symbolDiscovery" to symbolDiscoverySchema(),
             "relationFact" to relationFactSchema(),
@@ -275,8 +296,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
         )
         .apply {
             for ((name, serializer) in
-                io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers) {
-                check(name !in this) { "Duplicate canonical callback schema address: $name" }
+                io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers +
+                    CanonicalReviewedSchemaDocuments.serializers) {
+                check(name !in this) { "Duplicate canonical schema address: $name" }
                 this[name] = generatedOutputSchema(serializer)
             }
             for ((name, definition) in

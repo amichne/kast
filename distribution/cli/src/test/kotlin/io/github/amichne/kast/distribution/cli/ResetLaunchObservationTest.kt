@@ -9,6 +9,8 @@ import kotlinx.serialization.json.jsonArray
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 
 class ResetLaunchObservationTest {
@@ -64,6 +66,7 @@ class ResetLaunchObservationTest {
     }
 
     @Test
+    @EnabledOnOs(OS.MAC)
     fun `native launch adapter reports absence and a rejected home without erasing the cause`() {
         val label = ResetServiceLabel.selected(temporary.resolve("installation"))
         val observations = mutableListOf<ResetLaunchObservation>()

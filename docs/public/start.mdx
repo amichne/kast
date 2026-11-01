@@ -1,56 +1,107 @@
 ---
-title: "Install Kast"
-description: "Connect Kast to Codex and ask your first Kotlin question."
-icon: "download"
+title: "Set up Kast"
+sidebarTitle: "Set up"
+description: "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project."
+keywords:
+  - "CLI"
+  - "Codex"
+  - "Copilot"
+  - "Pi"
+  - "IntelliJ IDEA"
+icon: "terminal"
+hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-## Before you install
+Use the native `kast` CLI with Codex, Copilot, or Pi.
+
+## Before you start
+
+<span id="before-you-install" />
 
 You need:
 
 - An Apple silicon Mac.
 - A Kotlin Gradle project.
 - IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-- Codex CLI and Python 3.9 or later on `PATH`.
+- The Codex, Copilot, or Pi CLI.
+- Python 3.12 or 3.13 available as `python3` on `PATH`.
 
-Run `codex --version` and `python3 --version` to see their installed versions.
-For Copilot or Pi, use the [agent guide](/agent-harnesses) after installation.
+For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv 0.12.9 or later.
 
-<Steps>
-  <Step title="Install Kast">
-    <span id="1-install-kast" />
+## 1. Install or update Kast
 
-    Run this command:
+<span id="1-install-kast" />
+<span id="1-select-the-development-build" />
 
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
+Save your project work. Installation can end active Kast sessions.
+For an initial installation, run:
+
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+```
+
+This command needs no checkout or existing `kast` installation. It selects the latest qualified development build and resets stale Kast state. The agent guidance is installed in step 2.
+
+Restart IDEA after installation to load the Kast Host.
+If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
+
+<Accordion title="If Kast is already installed">
+  Update to the latest qualified development build:
+
+  ```shell
+  kast upgrade --channel main --restart-ide
+  ```
+
+  `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
+</Accordion>
+
+## 2. Install agent guidance
+
+<span id="choose-your-agent" />
+<span id="1-connect-your-agent" />
+<span id="2-restart-intellij-idea" />
+<span id="2-restart-your-tools" />
+<span id="3-connect-your-agent" />
+
+<Tabs sync={false}>
+  <Tab title="Codex">
+    ```shell
+    kast install codex
     ```
+  </Tab>
+  <Tab title="Copilot">
+    ```shell
+    kast install copilot
+    ```
+  </Tab>
+  <Tab title="Pi">
+    ```shell
+    kast install pi
+    ```
+  </Tab>
+</Tabs>
 
-    Accept the default Codex plugin installation.
-  </Step>
-  <Step title="Restart IDEA and Codex">
-    <span id="2-restart-intellij-idea" />
-    <span id="3-connect-your-agent" />
+These commands install guidance for the native CLI.
 
-    Restart IDEA to load its Kast plugin. Restart Codex and select your Kotlin repository or worktree.
-    Review and trust the Kast session context hook in Codex.
-  </Step>
-  <Step title="Ask your first question">
-    <span id="3-ask-your-agent" />
-    <span id="4-establish-readiness" />
+Start a fresh agent session in the same Kotlin repository or worktree.
+If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
 
-    > Use Kast to find a Kotlin function in this workspace. Show its signature and source location.
+## 3. Ask about your code
 
-    Kast prepares the project in IDEA. If trust or import needs your attention, the result tells you what went wrong.
-    Open the returned source location and compare the function with the answer.
-  </Step>
-</Steps>
+<span id="3-ask-your-agent" />
+<span id="4-establish-readiness" />
+<span id="what-your-first-result-establishes" />
 
-Use [the first-query exercise](/tutorials/first-query) for a small example with a known caller.
-If setup stops, use [Troubleshoot Kast](/troubleshooting).
+Give your agent the function's file and name.
 
-[Installation options](/reference/installation) · [Connect another agent](/agent-harnesses)
+<Prompt description="Find the callers of your function" actions={["copy"]}>
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+</Prompt>
+
+The first query can wait for Gradle import and indexing. Use the returned source locations to inspect the answer.
+
+Try [example questions](/search), read the [CLI reference](/reference/cli), or use [Help](/troubleshooting).
 
 <DeeperReading />

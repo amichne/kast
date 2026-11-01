@@ -1,0 +1,6 @@
+{"type":"STARTED","operation":"STOP","stage":"FENCE","component":"kast-lifecycle"}
+{"type":"COMPLETED","operation":"STOP","stage":"FENCE","component":"kast-lifecycle"}
+{"type":"STARTED","operation":"STOP","stage":"COORDINATOR","component":"kast-lifecycle"}
+{"type":"STARTED","action":"DISABLE","purpose":"SERVICE","stage":"START","component":"kast-lifecycle-child"}
+{"type":"EXITED","action":"DISABLE","purpose":"SERVICE","exitCode":1,"stage":"WAIT","component":"kast-lifecycle-child"}
+{"type":"REJECTED","operation":"STOP","stage":"COORDINATOR","failure":"CHILD_REJECTED","component":"kast-lifecycle"}

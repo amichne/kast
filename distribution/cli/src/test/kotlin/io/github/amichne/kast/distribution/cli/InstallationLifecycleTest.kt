@@ -14,6 +14,44 @@ class InstallationLifecycleTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `managed retirement preserves a running Host for the selected replacement strategy`() {
+        val fixture = fixture()
+        val events = mutableListOf<LifecycleObservation>()
+        val admission =
+            InstallationLifecycle.admit(
+                fixture.root,
+                fixture.home,
+                emptyMap(),
+                LifecycleExecution(
+                    child = LifecycleChildExecutor { _, _, _ -> LifecycleChildObservation.Exited(0) },
+                    processes =
+                        object : LifecycleProcesses {
+                            override fun observe(pid: Long): LifecycleProcessObservation =
+                                error("unexpected process inspection")
+
+                            override fun retire(
+                                process: OwnedLifecycleProcess,
+                                operation: LifecycleOperation,
+                                allowance: Duration,
+                            ): LifecycleEffect = error("unexpected signal")
+
+                            override fun selectedHost(executable: Path): LifecycleEffect =
+                                error("Host strategy belongs to the replacement owner")
+                        },
+                    observe = events::add,
+                ),
+            )
+        assertTrue(admission is LifecycleAdmission.Admitted)
+        val retired = (admission as LifecycleAdmission.Admitted).lifecycle.fenceAndRetire(LifecycleOperation.REINSTALL)
+        assertEquals(LifecycleEffect.Completed, retired)
+        assertEquals(
+            listOf(LifecycleStage.FENCE, LifecycleStage.COORDINATOR, LifecycleStage.REQUESTS),
+            events.filter { it.outcome == LifecycleObservationOutcome.COMPLETED }.map { it.stage },
+        )
+        assertTrue(Files.exists(fixture.root.resolve(SHUTDOWN_FENCE)))
+    }
+
+    @Test
     fun `shutdown fences first and retains payload config and registrations`() {
         val fixture = fixture()
         val events = mutableListOf<LifecycleObservation>()
@@ -26,6 +64,9 @@ class InstallationLifecycleTest {
             )
             assertEquals(fixture.installation, directory)
             assertEquals(fixture.home.toString(), environment["HOME"])
+            assertEquals("'-Duser.home=${fixture.home}'", environment["JAVA_TOOL_OPTIONS"])
+            assertTrue("JAVA_OPTS" !in environment)
+            assertTrue("JDK_JAVA_OPTIONS" !in environment)
             assertTrue(Files.isRegularFile(fixture.root.resolve(SHUTDOWN_FENCE)))
             LifecycleChildObservation.Exited(0)
         }
@@ -34,7 +75,11 @@ class InstallationLifecycleTest {
             executeInstallationLifecycle(
                 fixture.root,
                 fixture.home,
-                emptyMap(),
+                mapOf(
+                    "JAVA_OPTS" to "-Duser.home=/foreign",
+                    "JAVA_TOOL_OPTIONS" to "-Duser.home=/foreign",
+                    "JDK_JAVA_OPTIONS" to "-Duser.home=/foreign",
+                ),
                 LifecycleOperation.STOP,
                 LifecycleExecution(child = child, processes = processes(), observe = events::add),
             )

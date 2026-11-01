@@ -103,7 +103,7 @@ class InstalledCoordinatorEndpointTest {
         (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
 
     private fun withPayload(test: (Path, Path) -> Unit) {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-c-").toRealPath()
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-c-").toRealPath()
         try {
             for (directory in listOf("bin", "lib", "share")) Files.createDirectory(root.resolve(directory))
             val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")

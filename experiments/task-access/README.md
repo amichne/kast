@@ -1,36 +1,9 @@
-# Task access candidate
+# Task access experiment
 
-This local experiment exposes Kast through a skill and task commands.
-It uses the installed tool RPC with `--catalog=COMPLETE`.
-The binary, IDEA plugin, MCP server, and wire contracts stay unchanged.
-
-The current candidate supports installed contract 17. Other contract versions reject locally.
-The installed catalog admits each request before its semantic call.
-The command preserves the original reply, including failures, qualifiers, references, and cursors.
-
-## Use
-
-Give the agent [SKILL.md](SKILL.md), then use the command from the target repository.
-Python 3.12 or 3.13 and uv are necessary.
-
-```sh
-uv run --locked --script experiments/task-access/access.py find QueryCompletionDocument --kind interface --directory protocol --source-set main
-uv run --locked --script experiments/task-access/access.py --help
-```
-
-Add `--emit-request` to examine the request without a semantic call.
-Use `--rpc PATH` for another existing installation.
-Use `--workspace PATH` to select the exact repository.
-Use `--save NEW_FILE` to keep the original reply.
-
-The task commands cover discovery, direct relationships, trace, traversal, source, diagnostics, and output recovery.
-The `raw` command preserves access to advanced existing operations.
-Catalog-declared writes need `--write` and a user-requested source change.
-
-Exit 0 means an admitted request preview, schema read, or complete RPC envelope.
-Exit 1 preserves an incomplete or rejected RPC reply.
-Exit 2 reports a local input, catalog, process, or reply failure.
-A complete envelope alone does not establish the answer's scope or completeness.
+The candidate now lives in the [bundled Kast skill](../../agent-tools/skills/kast/SKILL.md).
+The [agent integration guide](../../agent-tools/README.md) describes its default MCP and native adapter routes.
+The implementation uses the existing tool RPC. Its tests live in `packaging/task-access`.
+The records in this document describe the original contract-17 candidate before promotion.
 
 ## Pi sessions
 
@@ -92,7 +65,7 @@ Skill discovery in a host and production deployment remain outside this experime
 ## Local checks
 
 ```sh
-uv run --locked --script experiments/task-access/setup.py
+uv run --locked --script packaging/task-access/setup.py
 ```
 
 The setup procedure examines locks, Ruff format, Ruff lint, strict Pyright, pytest, and the standalone command entry.
