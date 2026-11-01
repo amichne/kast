@@ -11,9 +11,9 @@ import { TraceReuseDiagram } from "/snippets/diagrams/trace-reuse.jsx"
 import { ReferenceReuseDiagram } from "/snippets/diagrams/reference-reuse.jsx"
 import { ImpactReuseDiagram } from "/snippets/diagrams/impact-reuse.jsx"
 
-Kast shares work when the source owner can prove that reuse is sound. It keeps the original scope, identity, and evidence.
+Kast shares work when the source owner proves that the original scope, identity, and evidence remain valid.
 
-Each form of reuse has its own rules. A file inventory does not prove a relationship. A shared read cannot erase a separate path.
+A file inventory does not prove a relationship. Shared reads must preserve each path's evidence.
 
 | Mechanism | Reused or avoided work | Proof that stays necessary |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ Kast then scans the bounded VFS inventory. It skips source work for ordinary fil
 The set proves which files Kast can skip. The VFS inventory still examines excluded children. For each candidate, the compiler must prove that the requested declaration exists.
 
 <Accordion title="Exceptions and rejection rules">
-  Invalid files keep the original admission path. Files too large for code intelligence keep it too. These files cannot vanish from coverage.
+  Invalid files and files too large for code intelligence keep the original admission path. Coverage still accounts for them.
 
   If the index cannot supply a sound route for a name, Kast uses exhaustive discovery. Examples include spaced backtick names and implicit `Companion` discovery.
 
@@ -52,7 +52,7 @@ Several routes can reach the same callable. Kast groups matching callable arriva
 
 <TraceReuseDiagram />
 
-The group keeps evidence for each reference, caller, and implementation use. Exact capabilities must match before Kast shares expansion. Each arrival keeps its evidence.
+Exact capabilities must match before Kast shares expansion. The group preserves each arrival's reference, caller, and implementation evidence.
 
 This path stops after its fixed caller layer. Use `WALK` to choose another depth.
 
@@ -64,7 +64,7 @@ One invocation owns the inventory slot. Its key includes current authority, subj
 
 <ReferenceReuseDiagram />
 
-With a matching key, Kast can examine capacity. The key does not prove an answer. The receiving relation must still prove its own meaning.
+A matching key permits a capacity check. The receiving relation must still establish its own meaning from the retained locators.
 
 <AccordionGroup>
   <Accordion title="What enters the slot">
@@ -81,7 +81,7 @@ With a matching key, Kast can examine capacity. The key does not prove an answer
 
 ## IMPACT shares reads and keeps every route
 
-Two routes can reach the same exact value site. Kast can reuse a settled one-hop read at that site. This includes finite rejection evidence.
+Two routes can reach the same exact value site. Kast can reuse a settled one-hop read at that site.
 
 Each route still keeps its own producer and ordered history. The interpreter expands the reused transfers for each route.
 
@@ -94,7 +94,7 @@ If a read is unfinished, Kast continues it under the existing grant. A saved pre
 The original ledger keeps branches, terminals, models, and unresolved obligations. Completion needs the whole ledger. A preview can show just one path.
 
 <Info>
-  Fewer native reads do not mean fewer semantic paths. A merge of reads cannot replace proof for each route.
+  Shared reads must preserve proof for each route.
 </Info>
 
 For reuse across source states, continue with [retention and invalidation](/reference/staleness#incremental-facts-need-new-authority).

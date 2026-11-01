@@ -1,7 +1,7 @@
 ---
 title: "Set up Kast"
 sidebarTitle: "Set up"
-description: "Select the latest Kast development build, install CLI guidance for your agent, and ask a useful question about your Kotlin project."
+description: "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project."
 keywords:
   - "CLI"
   - "Codex"
@@ -14,53 +14,48 @@ hideFooterPagination: true
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Use Kast through its native CLI with the agent you already use.
-Install Kast from a terminal, then install guidance for your agent.
+Use the native `kast` CLI with Codex, Copilot, or Pi.
 
 ## Before you start
 
 <span id="before-you-install" />
 
-Use an Apple silicon Mac and a Kotlin Gradle project.
-Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-Install your chosen agent CLI.
-Install uv 0.12.9 or later.
-Use Python 3.12 or 3.13.
+You need:
 
-1. Install or update Kast.
-2. Install your agent's CLI guidance.
-3. Ask about your code.
+- An Apple silicon Mac.
+- A Kotlin Gradle project.
+- IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+- The Codex, Copilot, or Pi CLI.
+- Python 3.12 or 3.13 available as `python3` on `PATH`.
+
+For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv 0.12.9 or later.
 
 ## 1. Install or update Kast
 
 <span id="1-install-kast" />
 <span id="1-select-the-development-build" />
 
-Save your project work before installation.
+Save your project work. Installation can end active Kast sessions.
 For an initial installation, run:
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
 
-You need no checkout or existing `kast` command.
-`--developer-latest` selects the latest qualified development build and resets stale Kast state.
-`--skip-codex-plugin` skips the optional MCP setup. Step 2 installs CLI guidance for your agent.
+This command needs no checkout or existing `kast` installation. It selects the latest qualified development build and resets stale Kast state. The agent guidance is installed in step 2.
 
-The installer replaces Kast-owned assets and can end active Kast sessions.
-Restart IDEA after installation to load the installed Host.
+Restart IDEA after installation to load the Kast Host.
 If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
 
-If `kast` already exists, update it with:
+<Accordion title="If Kast is already installed">
+  Update to the latest qualified development build:
 
-```shell
-kast upgrade --channel main --restart-ide
-```
+  ```shell
+  kast upgrade --channel main --restart-ide
+  ```
 
-The `main` channel tracks qualified development builds. `--restart-ide` permits a normal IDEA restart when necessary.
-Active Kast sessions can end during the update. Start a fresh agent session afterward.
-
-[Installation and activation](/reference/installation) explains build selection, pins, and recovery outcomes.
+  `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
+</Accordion>
 
 ## 2. Install agent guidance
 
@@ -89,7 +84,6 @@ Active Kast sessions can end during the update. Start a fresh agent session afte
 </Tabs>
 
 These commands install guidance for the native CLI.
-MCP is optional. The default guidance needs no MCP registration or session hook.
 
 Start a fresh agent session in the same Kotlin repository or worktree.
 If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
@@ -106,18 +100,7 @@ Give your agent the function's file and name.
 Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
 
-The persistent Host in IDEA supplies compiler analysis for CLI calls.
-Kast prepares the project as needed. The first query can wait for Gradle import and indexing.
-Use the returned locations to continue your task.
-
-To inspect the CLI yourself, use:
-
-```shell
-kast describe query --section input
-kast describe query --section examples
-```
-
-Those commands read the installed contract. They do not establish a semantic connection.
+The first query can wait for Gradle import and indexing. Use the returned source locations to inspect the answer.
 
 Try [example questions](/search), read the [CLI reference](/reference/cli), or use [Help](/troubleshooting).
 

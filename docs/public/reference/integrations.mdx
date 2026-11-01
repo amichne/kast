@@ -5,15 +5,9 @@ description: "Give Codex, Copilot, or Pi guidance for the installed Kast CLI. Ex
 icon: "plug"
 ---
 
-Kast installs guidance for your agent to use the installed `kast` command.
-These steps assume that Kast already exists on your machine.
-The default composition uses the CLI. MCP remains an explicit option.
+After [installing Kast](/start), add CLI guidance for your agent. Add `--mcp` only if you need the optional MCP service.
 
 <a id="choose-your-agent" />
-
-1. [Install guidance for your agent.](#1-install-guidance-for-your-agent)
-2. [Ask a question in the intended worktree.](#2-ask-about-your-code)
-3. [Export a standalone skill when needed.](#3-export-the-canonical-skill)
 
 <span id="1-choose-the-client-and-transport" />
 
@@ -22,38 +16,26 @@ The default composition uses the CLI. MCP remains an explicit option.
 <Tabs>
   <Tab title="Codex">
     The bundled plugin supplies the Kast skill and CLI guidance.
-    Codex owns its plugin resources and configuration.
 
     ```shell
     kast install codex
     ```
-
-    Start a fresh Codex session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Copilot">
-    Kast installs the canonical CLI guidance through Copilot's plugin resources.
-    Copilot owns those resources and its configuration.
-
     ```shell
     kast install copilot
     ```
-
-    Start a fresh Copilot session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Pi">
-    Kast copies the canonical skill into Pi's native skill directory.
-    Pi discovers that skill for the new session.
-
     ```shell
     kast install pi
     ```
-
-    Start a fresh Pi session in your Kotlin repository or worktree.
   </Tab>
 </Tabs>
 
-Each command examines the installed release and the provider's actual resources.
-A successful installation does not establish that an existing agent session contains the new guidance.
+Start a fresh agent session in your Kotlin repository or worktree to load the guidance.
+
+Codex and Copilot own their plugin resources and configuration. Pi stores the Kast skill in its native skill directory.
 
 <span id="task-tools" />
 <span id="task-service-builds" />
@@ -68,12 +50,9 @@ kast install copilot --mcp
 kast install pi --mcp
 ```
 
-The task service needs uv and Python 3.12 or 3.13.
-Its script locks own the dependency versions.
-The persistent IntelliJ IDEA Host supplies Kotlin semantics for both the CLI and MCP.
+The MCP service needs uv 0.12.9 or later and Python 3.12 or 3.13. It can download Python and pinned dependencies on its first run. The persistent IntelliJ IDEA Host supplies compiler analysis for both the CLI and MCP.
 
-To return to CLI-only guidance, repeat your agent's command without `--mcp`.
-Kast removes only exactly owned MCP resources. Foreign registrations stay unchanged.
+To return to CLI guidance, repeat your agent's command without `--mcp`. Kast removes the MCP resources it owns. It keeps other registrations.
 
 <a id="check-that-the-tools-work" />
 <a id="run-the-first-query" />
@@ -91,8 +70,7 @@ Use the Kast CLI to find the callers of this function. Show the source locations
 The agent can inspect the installed contract with `kast describe`.
 See the [CLI reference](/reference/cli) for command forms and the [example questions](/search) for another task.
 
-Returned evidence applies to its stated worktree, source state, and scope.
-A successful guidance installation does not prove that a semantic query succeeds.
+Each answer applies to its stated worktree, source state, and scope.
 
 <a id="choose-a-connection-destination" />
 <span id="3-set-a-custom-destination-when-needed" />
@@ -116,9 +94,7 @@ kast install skill --output ./guidance
 This command selects `./guidance/kast` as the skill directory.
 `--output` belongs to `install skill`. `--mcp` belongs to agent installation.
 
-A complete identical skill returns `ALREADY_INSTALLED` without writes.
-A different or incomplete skill returns `SKILL_EXISTS` and keeps every byte.
-Select another output directory or explicitly remove the old skill before another export.
+An identical skill returns `ALREADY_INSTALLED` without writes. A different or incomplete skill returns `SKILL_EXISTS` and leaves the destination unchanged. Select another output directory or explicitly remove the old skill before another export.
 
 <a id="recover-an-existing-connection" />
 <span id="4-recover-a-conflicting-connection" />
@@ -127,7 +103,7 @@ Select another output directory or explicitly remove the old skill before anothe
 
 ## Refresh guidance after a core change
 
-Core replacement does not refresh copied skills or cached provider resources.
+A Kast update does not refresh copied skills or cached provider resources.
 If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command:
 
 ```shell

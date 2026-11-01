@@ -12,20 +12,13 @@ keywords:
 Use the remote installer for an initial installation, then use `kast upgrade` for updates.
 The normal setup path tracks the latest published development build with `--channel main`.
 
-1. [Examine the prerequisites.](#before-you-install)
-2. [Install Kast remotely.](#remote-initial-install)
-3. [Select and preview an update.](#1-install-the-selected-release)
-4. [Examine the loaded Host.](#2-load-the-plugin-and-inspect-state)
-5. [Ask a question in your project.](#3-establish-a-semantic-connection)
-
 ## Before you install
 
 Use an Apple silicon Mac and a Kotlin Gradle project.
 Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 Your project's JDK does not replace the IDEA runtime.
 
-Install uv 0.12.9 or later. Use Python 3.12 or 3.13.
-The task service can download Python and pinned dependencies on its first run.
+Use Python 3.12 or 3.13, available as `python3` on `PATH`. For upgrades, install uv 0.12.9 or later. The [optional MCP service](/reference/integrations#optional-mcp) uses the same runtime versions.
 
 Save your project work before installation or an update.
 
@@ -39,17 +32,9 @@ Run this command from a terminal:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
 
-You need no checkout or existing `kast` command.
-`--developer-latest` selects the latest qualified development build from the published channel, independent of a local checkout or installed version.
-It installs the matched Control and Host artifacts and resets stale Kast state automatically.
-`--skip-codex-plugin` skips the optional MCP setup.
-After installation, use [agent setup](/reference/integrations) for CLI guidance.
+This command needs no checkout or existing `kast` installation. `--developer-latest` selects the latest qualified development build from the published channel. It installs matching Control and Host artifacts and resets stale Kast state. `--skip-codex-plugin` skips the optional MCP setup. After installation, use [agent setup](/reference/integrations) for CLI guidance.
 
-Kast owns its installation directory, Host directory, and bundled agent assets.
-The installer replaces those assets. Active Kast sessions can end during replacement.
-Restart IDEA to load the installed Host.
-Start a fresh agent session.
-The installation does not preserve an older build to keep a session active.
+The installer replaces Kast-owned installation files, Host files, and bundled agent assets. Replacement can end active Kast sessions. Restart IDEA to load the installed Host. Start a fresh agent session.
 
 The installation directory is `$HOME/.local/share/kast`.
 The command path is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, or `$HOME/.local/bin/kast` otherwise.
@@ -68,8 +53,7 @@ List the published builds:
 kast versions
 ```
 
-The catalog includes the five newest selectable main builds.
-Each main entry shows its revision, version, and platform targets.
+The catalog lists up to five selectable main builds. Each entry shows its revision, version, and platform targets.
 
 Preview the latest development build:
 
@@ -133,8 +117,7 @@ kast status --json
 `updatePolicy` describes future selection. `unresolvedTransaction` reports unfinished installation work.
 Status starts no Java process and requests no Host lifecycle action.
 
-An installed build does not prove that IDEA loaded that Host.
-A loaded Host does not prove project readiness or semantic completion.
+Compare `installedBuild` with `applicationHost` to distinguish installed files from the loaded Host. A query supplies separate evidence for project readiness and completion.
 
 <span id="coordinator-endpoint" />
 
@@ -149,6 +132,5 @@ Start IDEA when the outcome is `INSTALLED_NOT_RUNNING`.
 Start a fresh agent session in the intended Kotlin repository or worktree.
 Ask [a question about your code](/start#3-ask-about-your-code).
 
-A successful installation does not prove a semantic answer.
-Keep the returned scope and completion evidence with that answer.
+Keep the returned scope and completion evidence with the answer.
 Use [Manage Kast](/reference/management) for update outcomes and recovery.

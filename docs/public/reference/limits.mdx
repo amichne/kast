@@ -8,9 +8,9 @@ Execution allowances limit resource use. They do not change the requested source
 
 ## Execution modes
 
-Public `RUN` defaults to `RUNNER_CONTROLLED`. This mode bypasses semantic work, internal result, checkpoint-byte, and continuation-store capacity quotas.
-It has no implicit semantic deadline. An explicit `maxElapsedMs` sets a timeout that includes model capture. `maxWorkUnits` rejects in this mode.
-Caller cancellation or disconnection stops execution. A runner can impose its own deadline.
+Public `RUN` defaults to `RUNNER_CONTROLLED`. It bypasses quotas for semantic work, internal results, checkpoint bytes, and continuation-store capacity.
+
+This mode has no implicit semantic deadline. An explicit `maxElapsedMs` sets a timeout that includes model capture. `maxWorkUnits` rejects in this mode. Caller cancellation or disconnection stops execution. A runner can impose its own deadline.
 
 Output stays finite: `maxResults` and `maxReturnedBytes` limit each presentation page. Preparation and transport frames keep their limits.
 Retained output still needs its issued authority and lifetime. Quota bypass does not renew an external token's TTL or prove semantic completion.
@@ -19,8 +19,9 @@ Explicit `BOUNDED` selects the configured time and work grants below. [Program t
 
 ## Execution budget
 
-`executionBudget` accepts these optional fields. The table lists configured defaults for `BOUNDED` queries; presentation defaults also apply to `RUNNER_CONTROLLED`.
-If a field is omitted or `null`, bounded execution uses the default setting. Positive bounded requests cannot exceed operator or transport limits.
+`executionBudget` accepts these optional fields. The table lists configured defaults for `BOUNDED` queries. Presentation defaults also apply to `RUNNER_CONTROLLED`.
+
+For bounded execution, an omitted or `null` field uses its default setting. Positive requests cannot exceed operator or transport limits.
 
 | Field | Query default | Meaning |
 | --- | --: | --- |
@@ -66,13 +67,18 @@ The [settings guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-
 | `KAST_READ_QUERY_CONTINUATION_TTL_MILLIS` | 600,000 ms | Continuation lifetime. |
 
 The checkpoint limit cannot exceed the store limit. Charged bytes use a conservative count. They do not measure the heap. Larger response pages do not raise these quotas.
-`RUNNER_CONTROLLED` bypasses the byte and entry quotas, not the external continuation lifetime. Public `RESUME` shows existing output. It cannot continue semantic work that has not finished.
+
+In `RUNNER_CONTROLLED`, Kast bypasses byte and entry quotas. External continuations keep their original lifetime.
+
+Public `RESUME` shows existing output. It cannot continue unfinished semantic work.
 
 ## MCP concurrency
 
-An MCP connection admits one active semantic invocation at a time. A second tool invocation while a runner-controlled call is active returns `MCP_REJECTED` with `error.code: INVOCATION_IN_PROGRESS`.
-Wait for the current response or cancel the current query before another tool call. This is a transport rejection, not a query completion failure.
-[Results](/reference/responses#procedures-and-source-evidence) describes its envelope.
+An MCP connection admits one active semantic invocation at a time.
+
+If a runner-controlled call is active, a second tool invocation returns `MCP_REJECTED` with `error.code: INVOCATION_IN_PROGRESS`.
+
+Before another tool call, wait for the current response or cancel the current query. The rejection concerns transport admission. It does not establish a query completion failure. [Results](/reference/responses#procedures-and-source-evidence) describes its envelope.
 
 ## Completion failures
 

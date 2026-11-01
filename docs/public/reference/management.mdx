@@ -7,11 +7,6 @@ icon: "folder-open"
 Use the installed `kast` CLI to inspect and update Kast.
 Save project work before an update. Start fresh agent sessions after a successful update.
 
-1. [Inspect installed and loaded builds.](#1-inspect-the-installation)
-2. [Update from the development channel.](#2-upgrade-a-compatible-installation)
-3. [Read the terminal outcome.](#lifecycle-result-contract)
-4. [Resolve unfinished recovery.](#4-reset-only-after-ownership-recovery-fails)
-
 <a id="inspect-the-installation" />
 
 ## 1. Inspect the installation
@@ -98,7 +93,7 @@ kast upgrade --channel main --restart-ide --json
 
 When an unfinished transaction exists, the next upgrade recovers its recorded build selection.
 That recovery does not resolve a newer build.
-Kast does not discard unknown or corrupt evidence to manufacture success.
+Unknown or corrupt recovery evidence blocks the update.
 After recovery succeeds, repeat the update command to select the latest development build.
 A restored prior build does not complete that update.
 
@@ -116,5 +111,4 @@ If the update reports `HARNESS_REFRESH_REQUIRED`, repeat that setup before a fre
 <span id="uninstall" />
 <span id="explicit-workspace-control-in-the-hosted-app-server" />
 
-Installation, agent guidance, and project readiness describe separate facts.
-Use [Lifecycles](/reference/lifecycles) for project admission and request completion.
+See [Lifecycles](/reference/lifecycles) for project admission and request completion.
