@@ -364,6 +364,7 @@ class Verdict(Record):
         "COMMAND_FAILED",
         "UNQUALIFIED_ORACLE",
         "RUN_FAILED",
+        "SOURCE_ARTIFACTS_UNAVAILABLE",
     ]
 
 
