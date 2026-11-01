@@ -220,6 +220,8 @@ private constructor(
     val representation: QueryImpactRepresentation,
     val terminal: QueryImpactTerminal,
 ) {
+    val classification: QueryImpactClassification = steps.classifyImpact()
+
     val retainedBytes: Long
         get() = retainedStorageBytes()
 

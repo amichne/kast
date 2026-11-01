@@ -278,8 +278,21 @@ class MintlifyCallableReferenceTest {
         assertEquals(listOf("query.run", "source.read"), actions.map { it.getValue("title").jsonPrimitive.content })
         val outcomes = actions.first().getValue("anyOf").jsonArray.first().jsonObject.getValue("anyOf").jsonArray
         assertEquals(
-            listOf("complete", "qualified", "rejected"),
+            listOf("QUERY_PRESENTATION_HEADER", "complete", "qualified", "rejected"),
             outcomes.map { it.jsonObject.getValue("title").jsonPrimitive.content },
+        )
+        val header = outcomes.first().resolveSchema(reference).jsonObject
+        assertEquals(
+            listOf("complete", "qualified", "rejected"),
+            header
+                .getValue("properties")
+                .jsonObject
+                .getValue("status")
+                .resolveSchema(reference)
+                .jsonObject
+                .getValue("enum")
+                .jsonArray
+                .map { it.jsonPrimitive.content },
         )
     }
 

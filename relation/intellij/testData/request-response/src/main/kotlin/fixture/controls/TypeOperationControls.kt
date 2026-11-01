@@ -84,3 +84,28 @@ fun safeGenericInnerCast(value: GenericOuter<String>.Member) {
     val result = /*<input>*/value/*</input>*/ as? GenericOuter<Int>.Member
     /*<use>*/result/*</use>*/
 }
+
+fun unknownSafeCast(value: Any) {
+    val result = /*<input>*/value/*</input>*/ as? CastValue
+    /*<use>*/result/*</use>*/
+}
+
+fun nullUnsafeCast() {
+    val result = /*<input>*/null/*</input>*/ as String
+    /*<use>*/result/*</use>*/
+}
+
+fun nullSafeCast() {
+    val result = /*<input>*/null/*</input>*/ as? String
+    /*<use>*/result/*</use>*/
+}
+
+fun nestedNullThenUnsafeCast(value: CastValue) {
+    val result = /*<cast>*/(value as? OtherCastValue) as String/*</cast>*/
+    /*<use>*/result/*</use>*/
+}
+
+fun nestedNullThenNullableCast(value: CastValue) {
+    val result = /*<cast>*/(value as? OtherCastValue) as String?/*</cast>*/
+    /*<use>*/result/*</use>*/
+}

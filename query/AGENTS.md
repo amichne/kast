@@ -19,6 +19,8 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidence.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPreview.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOriginalEvidenceSummary.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt
@@ -51,6 +53,8 @@ Owns query plans, semantic execution, strict completion, and retained output und
 - [QueryStateStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) - checkpoint ownership, retained evidence, quotas, and external token lifetimes.
 - [QueryStorageAllowance.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryStorageAllowance.kt) - finite or unlimited internal storage allowances.
 - [QueryInvocationProjection.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt) - final retention and issuance after invocation completion.
+- [QueryInvocationPreview.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPreview.kt) - pure preview fitting after the invocation owner issues row identities.
+- [QueryOriginalEvidenceSummary.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOriginalEvidenceSummary.kt) - pure counts and finite reasons from original evidence before presentation selection.
 - [RetainedQueryPresentation.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt) - immutable result and witness pages without semantic replay.
 - [QueryImpactLedger.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt) - branch conservation and unresolved obligations.
 
@@ -77,5 +81,6 @@ Owns query plans, semantic execution, strict completion, and retained output und
 - A fresh `RUN` can select `RUNNER_CONTROLLED`. Its invocation keeps acquired evidence past the token lifetime until completion or cancellation.
 - External tokens still expire. Output pages remain finite. Internal storage quotas do not stop `RUNNER_CONTROLLED` execution.
 - Keep output cursors, exact references, result references, and internal execution checkpoints distinct.
+- Capture the original evidence summary before presentation selection. A summary does not prove that the client received its full evidence.
 - For public syntax, read the app-server query guide. Its schema owns defaults and generated syntax.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

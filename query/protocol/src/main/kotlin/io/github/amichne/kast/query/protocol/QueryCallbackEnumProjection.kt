@@ -50,6 +50,15 @@ internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallba
             QueryCallbackFlowCauseDocument.UNSUPPORTED_CALLBACK_SUPPLY
         CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE ->
             QueryCallbackFlowCauseDocument.ANONYMOUS_IDENTITY_UNAVAILABLE
+        CallbackInvocationFlowCause.SUPPLIER_TARGET_MISMATCH -> QueryCallbackFlowCauseDocument.SUPPLIER_TARGET_MISMATCH
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_UNAVAILABLE ->
+            QueryCallbackFlowCauseDocument.SUPPLIER_INVOCATION_UNAVAILABLE
+        CallbackInvocationFlowCause.SUPPLIER_INVOCATION_MISMATCH ->
+            QueryCallbackFlowCauseDocument.SUPPLIER_INVOCATION_MISMATCH
+        CallbackInvocationFlowCause.SUPPLIER_BINDING_REJECTED ->
+            QueryCallbackFlowCauseDocument.SUPPLIER_BINDING_REJECTED
+        CallbackInvocationFlowCause.SUPPLIER_ARGUMENT_UNAVAILABLE ->
+            QueryCallbackFlowCauseDocument.SUPPLIER_ARGUMENT_UNAVAILABLE
         CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING ->
             QueryCallbackFlowCauseDocument.UNRESOLVED_ARGUMENT_MAPPING
         CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE ->

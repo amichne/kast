@@ -148,7 +148,7 @@ internal class QueryImpactSourceAcquisition(
         val observed =
             when (val read = compiler.seed(request)) {
                 is ValueProducerSeedRead.Seeded -> read
-                is ValueProducerSeedRead.Rejected -> return impactFailure(read.cause.impactFailure(), position)
+                is ValueProducerSeedRead.Rejected -> return read.producerFailure(position)
                 is ValueProducerSeedRead.ContractRejected -> return impactFailure(read.cause.impactFailure(), position)
             }
         if (!request.budget.resources.permitsWork(observed.examinedWorkUnits.value))

@@ -36,6 +36,7 @@ class ImpactPresentationFailureSchemaTest {
                 "COUNT",
                 "BUDGET",
                 "DOMAIN_PROJECTION_REJECTED",
+                "CLASSIFICATION_MISMATCH",
             ),
             variants
                 .map {
@@ -84,6 +85,7 @@ class ImpactPresentationFailureSchemaTest {
                 ImpactPresentationFailureDocument.Budget(ImpactPresentationBudgetCause.NOT_POSITIVE),
                 ImpactPresentationFailureDocument.Accounting(ImpactAccountingFailure.PAGE_COUNT_MISMATCH),
                 ImpactPresentationFailureDocument.DomainProjectionRejected,
+                ImpactPresentationFailureDocument.ClassificationMismatch,
             )
         return cases
     }

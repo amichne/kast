@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+import io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
@@ -77,43 +78,81 @@ internal class QueryOutcomeProjection(
                     return rejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
                 QueryResultRestoration.StaleBasis -> return rejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS)
             }
-        val presentation =
-            when (val admitted = RetainedQueryPresentation.create(restored, request, maximumResults)) {
+        val selected =
+            when (val admitted = prepareRetainedRead(request, restored, maximumResults)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return rejected(admitted.failure)
             }
-        val evidence =
-            when (val selected = retainedEvidence(request, presentation.result, maximumResults)) {
-                is Refinement.Refined -> selected.value
-                is Refinement.Rejected -> return rejected(selected.failure)
-            }
-        val outcome =
-            project(
-                request = restored.request,
-                lease = lease,
-                result = evidence.result,
-                coverage = presentation.coverage,
-                continuationState = presentation.producerProgress,
-                output = request.output,
-                presentedRetention = QueryResultRetention.Retained(request.result),
-                presentedRowIds = presentation.rowIds,
-                originalPathRowIds = presentation.originalPathRowIds,
-                protectedResult = request.result,
-                presentationWindow = presentation.window,
-                progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
-                presentationOrigin =
-                    when (val original = restored.result.coverage) {
-                        is QueryCoverage.Complete -> original.resultCount.value
-                        is QueryCoverage.Qualified -> original.knownMinimum.value
-                    },
+        val outcome = projectRetainedRead(lease, restored, selected)
+        val completed =
+            completionEvidenceRead(
+                withEvidenceWindow(outcome, selected.evidence.window),
+                restored.request,
+                restored.result,
+                state,
             )
-        return completionEvidenceRead(
-            withEvidenceWindow(outcome, evidence.window),
-            restored.request,
-            restored.result,
-            state,
-        )
+        return withRetainedReadMetadata(completed, request.detail, selected.originalSummary)
     }
+
+    private data class RetainedReadSelection(
+        val request: QueryRunRequest.ReadResult,
+        val presentation: RetainedQueryPresentation,
+        val evidence: QueryEvidencePresentation,
+        val originalSummary: QueryOriginalEvidenceSummaryDocument,
+    )
+
+    private fun prepareRetainedRead(
+        request: QueryRunRequest.ReadResult,
+        restored: QueryResultRestoration.Restored,
+        maximumResults: ResultLimit,
+    ): Refinement<RetainedReadSelection, QueryExecutionRejectionDocument> {
+        val detail = request.detail
+        if (detail != null && detail.result != request.result)
+            return Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
+        val selectedRequest =
+            when (val admitted = RetainedQueryPresentation.detailPresentation(restored, request)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val selectedMaximum = if (detail == null) maximumResults else (ResultLimit.parse(1) as Refinement.Refined).value
+        val presentation =
+            when (val admitted = RetainedQueryPresentation.create(restored, selectedRequest, selectedMaximum)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val summary = presentation.result.originalEvidenceSummary()
+        val evidence =
+            when (val admitted = retainedEvidence(selectedRequest, presentation.result, selectedMaximum)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        return Refinement.Refined(RetainedReadSelection(selectedRequest, presentation, evidence, summary))
+    }
+
+    private fun projectRetainedRead(
+        lease: SemanticReadAuthority,
+        restored: QueryResultRestoration.Restored,
+        selected: RetainedReadSelection,
+    ): QueryPublishedPage =
+        project(
+            request = restored.request,
+            lease = lease,
+            result = selected.evidence.result,
+            coverage = selected.presentation.coverage,
+            continuationState = selected.presentation.producerProgress,
+            output = selected.request.output,
+            presentedRetention = QueryResultRetention.Retained(selected.request.result),
+            presentedRowIds = selected.presentation.rowIds,
+            originalPathRowIds = selected.presentation.originalPathRowIds,
+            protectedResult = selected.request.result,
+            presentationWindow = selected.presentation.window,
+            progressOrigin = QueryProgressOrigin.RETAINED_RESULT,
+            presentationOrigin =
+                when (val original = restored.result.coverage) {
+                    is QueryCoverage.Complete -> original.resultCount.value
+                    is QueryCoverage.Qualified -> original.knownMinimum.value
+                },
+        )
 
     private fun retainedEvidence(
         request: QueryRunRequest.ReadResult,

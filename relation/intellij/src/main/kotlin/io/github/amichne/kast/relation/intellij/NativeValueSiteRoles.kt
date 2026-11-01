@@ -19,72 +19,98 @@ import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtForExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
-import org.jetbrains.kotlin.psi.KtValueArgument
 
 /** Native binding and type proof for one restored exact role; lexical shape alone never establishes a value. */
 internal fun nativeValueSiteRole(
     element: PsiElement,
     claim: ValueSiteRoleClaim,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    executionOwner: ValueExecutionOwner,
+    execution: NativeValueExecution,
     componentPermit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val observation = prepared.projection.observation
-    return when (claim) {
-        ValueSiteRoleClaim.ExpressionResult ->
-            if (element is KtDestructuringDeclarationEntry)
-                componentResultRole(
-                    entry = element,
+    callbackContext: IntellijCallbackFlowContext,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    if (element is KtForExpression && (claim is ValueSiteRoleClaim.LoopResult || claim is ValueSiteRoleClaim.Receiver))
+        nativeLoopSiteRole(element, claim, execution.owner, prepared.scope, prepared.projection, componentPermit)
+    else
+        when (claim) {
+            is ValueSiteRoleClaim.LoopResult -> roleRejected()
+            ValueSiteRoleClaim.ExpressionResult ->
+                if (element is KtDestructuringDeclarationEntry)
+                    componentResultRole(
+                        entry = element,
+                        prepared = prepared,
+                        executionOwner = execution.owner,
+                        permit = componentPermit,
+                        callbackContext = callbackContext,
+                    )
+                else expressionRole(element, prepared.projection.observation)
+            ValueSiteRoleClaim.LocalBinding ->
+                localBindingRole(
+                    element = element,
                     prepared = prepared,
-                    executionOwner = executionOwner,
+                    executionOwner = execution.owner,
+                    permit = componentPermit,
+                    callbackContext = callbackContext,
+                )
+            ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, prepared.projection.observation)
+            ValueSiteRoleClaim.LocalRead ->
+                localReadRole(
+                    element = element,
+                    owner = execution.nativeOwner,
+                    observation = prepared.projection.observation,
+                    executionOwner = execution.owner,
                     permit = componentPermit,
                 )
-            else expressionRole(element, observation)
-        ValueSiteRoleClaim.LocalBinding -> localBindingRole(element, observation)
-        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, observation)
-        ValueSiteRoleClaim.LocalRead -> localReadRole(element, prepared.owner, observation)
-        ValueSiteRoleClaim.Return ->
-            returnRole(
-                element = element,
-                observation = observation,
-                workAllowance = prepared.scope.request.budget.resources.workAllowance,
-                executionOwner = executionOwner,
-            )
-        is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
-        is ValueSiteRoleClaim.Receiver -> receiverRole(element, prepared, executionOwner)
-    }
-}
+            ValueSiteRoleClaim.Return ->
+                returnRole(
+                    element = element,
+                    observation = prepared.projection.observation,
+                    workAllowance = prepared.scope.request.budget.resources.workAllowance,
+                    executionOwner = execution.owner,
+                )
+            is ValueSiteRoleClaim.Argument ->
+                nativeArgumentSiteRole(element, prepared, execution.owner, callbackContext)
+            is ValueSiteRoleClaim.Receiver ->
+                receiverRole(
+                    element = element,
+                    prepared = prepared,
+                    executionOwner = execution.owner,
+                    permit = componentPermit,
+                    callbackContext = callbackContext,
+                )
+        }
 
 private fun componentResultRole(
     entry: KtDestructuringDeclarationEntry,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     executionOwner: ValueExecutionOwner,
     permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    callbackContext: IntellijCallbackFlowContext,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (!entry.isNativeComponent()) return roleRejected()
-    val declaration = entry.parent as? KtDestructuringDeclaration ?: return roleRejected()
-    val targets =
+    val target =
         when (
             val admitted =
-                nativeDestructuringTargets(
-                    declaration = declaration,
-                    enclosing = executionOwner.enclosing,
-                    scope = prepared.scope,
-                    projection = prepared.projection,
+                componentSiteTarget(
+                    entry = entry,
+                    prepared = prepared,
+                    executionOwner = executionOwner,
                     permit = permit,
+                    callbackContext = callbackContext,
                 )
         ) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    val target = targets.singleOrNull { it.first === entry }?.second ?: return roleRejected()
-    if (target is NativeComponentTarget.Source) {
+    if (target is NativeComponentTarget.Callable) {
         when (val allowed = permit()) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return allowed
@@ -106,6 +132,31 @@ private fun componentResultRole(
     return Refinement.Refined(ValueRole.ExpressionResult)
 }
 
+private fun componentSiteTarget(
+    entry: KtDestructuringDeclarationEntry,
+    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    callbackContext: IntellijCallbackFlowContext,
+): Refinement<NativeComponentTarget, ValueFlowUnsupportedCause> =
+    when (val declaration = entry.parent) {
+        is KtDestructuringDeclaration ->
+            when (
+                val admitted =
+                    NativeDestructuringAdmission.readReviewed(
+                        declaration = declaration,
+                        scope = prepared.scope,
+                        projection = prepared.projection,
+                        permit = permit,
+                        reviewed = NativeReviewedComponentScope.Available(executionOwner, callbackContext),
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value.target(entry)
+                is Refinement.Rejected -> admitted
+            }
+        else -> roleRejected()
+    }
+
 private fun expressionRole(
     element: PsiElement,
     observation: IntellijReadObservation,
@@ -116,11 +167,33 @@ private fun expressionRole(
 
 private fun localBindingRole(
     element: PsiElement,
-    observation: IntellijReadObservation,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element.nativeLocalBindingMutability() is Refinement.Refined && element.hasNativeLocalDeclaration(observation))
+    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    callbackContext: IntellijCallbackFlowContext,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    if (element is KtDestructuringDeclarationEntry) {
+        when (
+            val admitted =
+                componentResultRole(
+                    entry = element,
+                    prepared = prepared,
+                    executionOwner = executionOwner,
+                    permit = permit,
+                    callbackContext = callbackContext,
+                )
+        ) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return admitted
+        }
+    }
+    return if (
+        element.nativeLocalBindingMutability() is Refinement.Refined &&
+            element.hasNativeLocalDeclaration(prepared.projection.observation)
+    )
         Refinement.Refined(ValueRole.LocalBinding)
     else roleRejected()
+}
 
 private fun propertyRole(
     element: PsiElement,
@@ -136,9 +209,25 @@ private fun localReadRole(
     element: PsiElement,
     owner: PsiElement,
     observation: IntellijReadObservation,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    if (element.isMutableLocalReference(observation)) {
+        return when (
+            val version =
+                nativeLocalValueVersion(
+                    definition = element,
+                    execution = executionOwner,
+                    observation = observation,
+                    permit = permit,
+                )
+        ) {
+            is Refinement.Refined -> Refinement.Refined(ValueRole.LocalRead)
+            is Refinement.Rejected -> version
+        }
+    }
     if (element is KtThisExpression) {
-        val function = owner as? KtNamedFunction ?: return roleRejected()
+        val function = owner as? KtFunction ?: return roleRejected()
         if (valueNativeOwnership(element, function) != NativeValueOwnership.ADMITTED) return roleRejected()
         return when (val receiver = nativeThisReceiverKind(function, element, observation)) {
             is Refinement.Refined -> Refinement.Refined(ValueRole.LocalRead)
@@ -148,6 +237,17 @@ private fun localReadRole(
     return if (element is KtExpression && element.hasNativeLocalReference(observation))
         Refinement.Refined(ValueRole.LocalRead)
     else roleRejected()
+}
+
+private fun PsiElement.isMutableLocalReference(observation: IntellijReadObservation): Boolean {
+    if (this !is org.jetbrains.kotlin.psi.KtNameReferenceExpression) return false
+    val reference = references.filterIsInstance<KtReference>().singleOrNull() ?: return false
+    return when (val declaration = resolveLocalValueReference(reference, observation)) {
+        is NativeLocalValueReferenceResolution.Resolved ->
+            declaration.declaration.nativeLocalBindingMutability() ==
+                Refinement.Refined(NativeLocalBindingMutability.MUTABLE)
+        NativeLocalValueReferenceResolution.Unresolved -> false
+    }
 }
 
 private fun returnRole(
@@ -181,52 +281,59 @@ private fun returnRole(
     }
 }
 
-private fun argumentRole(
-    element: PsiElement,
-    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    val expression = element as? KtExpression ?: return roleRejected()
-    val argument = element.parent as? KtValueArgument ?: return roleRejected()
-    return nativeValueArgument(
-        expression = expression,
-        argument = argument,
-        scope = prepared.scope,
-        projection = prepared.projection,
-        executionOwner = executionOwner,
-    )
-}
-
 private fun receiverRole(
     element: PsiElement,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    callbackContext: IntellijCallbackFlowContext,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
-    if (element is KtDestructuringDeclarationEntry && element.isNativeSingleComponent())
-        return when (val target = nativeComponentTarget(element, prepared.projection)) {
-            is Refinement.Rejected -> target
-            is Refinement.Refined ->
-                when (val selected = target.value) {
-                    is NativeComponentTarget.Field -> roleRejected()
-                    is NativeComponentTarget.Source ->
-                        nativeComponentReceiver(
-                            entry = element,
-                            target = selected,
-                            executionOwner = executionOwner,
-                            scope = prepared.scope,
-                            projection = prepared.projection,
-                        )
-                }
-        }
+    if (element is KtDestructuringDeclarationEntry)
+        return componentReceiverRole(
+            element = element,
+            prepared = prepared,
+            executionOwner = executionOwner,
+            permit = permit,
+            callbackContext = callbackContext,
+        )
     val expression = element as? KtExpression ?: return roleRejected()
+    val binary = expression.parent as? org.jetbrains.kotlin.psi.KtBinaryExpression
+    if (binary != null) return nativeReviewedTupleRole(expression, binary, executionOwner, callbackContext)
     val qualified = element.parent as? KtQualifiedExpression ?: return roleRejected()
-    return nativeValueReceiver(
-        expression = expression,
-        qualified = qualified,
-        scope = prepared.scope,
-        projection = prepared.projection,
-        executionOwner = executionOwner,
-    )
+    return nativeQualifiedReceiverSiteRole(expression, qualified, prepared, executionOwner, callbackContext)
+}
+
+private fun componentReceiverRole(
+    element: KtDestructuringDeclarationEntry,
+    prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+    executionOwner: ValueExecutionOwner,
+    permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
+    callbackContext: IntellijCallbackFlowContext,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    return when (
+        val target =
+            componentSiteTarget(
+                entry = element,
+                prepared = prepared,
+                executionOwner = executionOwner,
+                permit = permit,
+                callbackContext = callbackContext,
+            )
+    ) {
+        is Refinement.Rejected -> target
+        is Refinement.Refined ->
+            when (val selected = target.value) {
+                is NativeComponentTarget.Field -> roleRejected()
+                is NativeComponentTarget.Callable ->
+                    nativeComponentReceiver(
+                        entry = element,
+                        target = selected,
+                        executionOwner = executionOwner,
+                        scope = prepared.scope,
+                        projection = prepared.projection,
+                    )
+            }
+    }
 }
 
 private fun KtExpression.hasNativeType(observation: IntellijReadObservation): Boolean =
@@ -266,6 +373,7 @@ private fun KtExpression.isReturnedExpression(): Boolean =
     when (val container = parent) {
         is KtReturnExpression -> container.returnedExpression === this
         is KtNamedFunction -> container.bodyExpression === this
+        is KtPropertyAccessor -> container.isGetter && container.bodyExpression === this
         else -> false
     }
 

@@ -70,7 +70,8 @@ class TopologyImpactTaskTest {
     fun `disable switch replaces previous success without interpreting selection`() {
         fixture()
         runner("-PkastTopologyModules=:symbol:contract").build()
-        runner("-PkastTopologyEnabled=false", "-PkastTopologyModules=:unknown").build()
+        val disabled = runner("-PkastTopologyEnabled=false", "-PkastTopologyModules=:unknown").build()
+        assertFalse(disabled.tasks.any { it.path.endsWith(":collectModuleBuildFacts") })
         assertEquals(setOf("status", "schemaVersion"), report().keys)
         assertEquals("DISABLED", report().getValue("status").jsonPrimitive.content)
     }
@@ -95,26 +96,25 @@ class TopologyImpactTaskTest {
             "rootProject.name = 'topology-impact-fixture'\n" +
                 "include ':kernel', ':symbol:contract', ':query:contract', ':source:contract'\n",
         )
-        directory.resolve("build.gradle").writeText(
-            """
-            plugins { id 'kast.architecture' }
-            [':kernel', ':symbol:contract', ':query:contract', ':source:contract'].each {
-                project(it) { apply plugin: 'java-library' }
-            }
-            project(':symbol:contract') { dependencies { api project(':kernel') } }
-            project(':query:contract') { dependencies { implementation project(':symbol:contract') } }
-            project(':source:contract') { dependencies { testImplementation project(':symbol:contract') } }
-            """.trimIndent(),
+        directory.resolve("build.gradle").writeText("plugins { id 'kast.architecture' }\n")
+        val scripts = mapOf(
+            "kernel" to "",
+            "symbol/contract" to "dependencies { api project(':kernel') }",
+            "query/contract" to "dependencies { implementation project(':symbol:contract') }",
+            "source/contract" to "dependencies { testImplementation project(':symbol:contract') }",
         )
-        listOf("kernel", "symbol/contract", "query/contract", "source/contract").forEach {
-            directory.resolve(it).createDirectories()
+        scripts.forEach { (path, dependencies) ->
+            val module = directory.resolve(path).createDirectories()
+            module.resolve("build.gradle").writeText(
+                "plugins { id 'java-library'; id 'java-test-fixtures'; id 'kast.module-facts' }\n" + dependencies,
+            )
         }
     }
 
     private fun runner(vararg properties: String): GradleRunner = GradleRunner.create()
         .withProjectDir(directory.toFile())
         .withPluginClasspath()
-        .withArguments("topologyImpact", "--configuration-cache", "--console=plain", "--no-watch-fs", *properties)
+        .withArguments("topologyImpact", "--isolated-projects", "--configuration-cache", "--console=plain", "--no-watch-fs", *properties)
 
     private fun report() = Json.parseToJsonElement(
         directory.resolve("build/reports/topology/topology-impact.json").readText(),

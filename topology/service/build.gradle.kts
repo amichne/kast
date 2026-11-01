@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.topology"
+group = "${providers.gradleProperty("GROUP").get()}.topology"
 
 base {
     archivesName.set("topology-service")

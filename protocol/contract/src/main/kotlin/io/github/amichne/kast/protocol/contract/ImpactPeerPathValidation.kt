@@ -114,7 +114,9 @@ private fun ImpactPathTerminalDocument.isOnBasis(basis: ImpactSemanticBasisDocum
                 is ImpactReadRejectionDocument.Contract -> rejected.source.isOnBasis(basis)
             }
         is ImpactPathTerminalDocument.SupportedDomainEnd ->
-            observation.source.isOnBasis(basis) && observation.domain.subject.basis == basis
+            observation.source.isOnBasis(basis) &&
+                observation.domain.subject.basis == basis &&
+                observation.stringConstructions.admitsConstructions(observation.source)
         is ImpactPathTerminalDocument.ExplicitScopeExclusion -> site.isOnBasis(basis)
         is ImpactPathTerminalDocument.ExecutionStop ->
             when (val stopped = stop) {

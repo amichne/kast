@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
@@ -28,6 +29,7 @@ internal class NativeValueFlowTransfers(
     private val scope: CompiledRelationScope,
     private val observation: IntellijReadObservation,
 ) {
+    val stringConstructions = mutableListOf<io.github.amichne.kast.relation.contract.ValueStringConstruction>()
     private val emitted = mutableListOf<ValueTransfer>()
     private val reviewed = mutableListOf<ReviewedValueTransfer>()
     val reviewedEdges: List<ReviewedValueTransfer>
@@ -80,14 +82,19 @@ internal class NativeValueFlowTransfers(
         role: ValueRole,
         kind: ValueTransferKind,
         evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
+        localVersion: ValueLocalVersion = ValueLocalVersion.Unversioned,
     ) {
-        when (val result = target(element, role)) {
+        when (val result = target(element, role, localVersion)) {
             is Refinement.Refined -> emitTarget(result.value, kind, evidence)
             is Refinement.Rejected -> unresolvedAt(result.failure, element)
         }
     }
 
-    private fun target(element: PsiElement, role: ValueRole): Refinement<ValueSite, ValueFlowUnsupportedCause> {
+    private fun target(
+        element: PsiElement,
+        role: ValueRole,
+        localVersion: ValueLocalVersion,
+    ): Refinement<ValueSite, ValueFlowUnsupportedCause> {
         when (valueNativeOwnership(element, owner)) {
             NativeValueOwnership.ADMITTED -> Unit
             NativeValueOwnership.NESTED -> return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
@@ -110,6 +117,8 @@ internal class NativeValueFlowTransfers(
                     executionOwner = request.source.executionOwner,
                     valuePath = request.source.valuePath,
                     callStack = request.source.callStack,
+                    conditions = request.source.conditions,
+                    localVersion = localVersion,
                 )
         ) {
             is Refinement.Refined -> result
@@ -163,6 +172,45 @@ internal class NativeValueFlowTransfers(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
         }
+    }
+
+    fun unresolvedStringConversion(
+        failure: NativeStringConversionFailure,
+        expression: org.jetbrains.kotlin.psi.KtExpression,
+    ) {
+        when (failure) {
+            is NativeStringConversionFailure.Unavailable -> unresolvedAt(failure.cause, expression.parent)
+            is NativeStringConversionFailure.Selected ->
+                when (
+                    val obligation =
+                        ValueFlowObligation.fromStringConversion(
+                            request.source,
+                            failure.cause,
+                            failure.selection,
+                            sourceValueRange(expression.parent),
+                            sourceValueRange(expression),
+                        )
+                ) {
+                    is Refinement.Refined ->
+                        when (recordEvidence(obligation.value)) {
+                            is Refinement.Refined -> Unit
+                            is Refinement.Rejected -> unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+                        }
+                    is Refinement.Rejected -> unresolvedAt(failure.cause, expression.parent)
+                }
+        }
+    }
+
+    fun unresolvedCallbackInput(
+        failure: NativeCallbackInputFailure,
+        element: PsiElement,
+    ): Refinement<Unit, ValueFlowRejection> {
+        val obligation =
+            when (val admitted = nativeCallbackInputObligation(request.source, failure, element)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+            }
+        return recordEvidence(obligation)
     }
 
     fun unresolvedImplementation(

@@ -5,7 +5,7 @@ plugins {
     id("kast.role.intellij-read")
 }
 
-group = "${rootProject.group}.source"
+group = "${providers.gradleProperty("GROUP").get()}.source"
 
 base {
     archivesName.set("source-intellij")

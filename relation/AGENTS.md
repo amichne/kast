@@ -4,8 +4,8 @@ title: "Kast relation"
 description: "Defines one-hop semantic relationships, callback evidence, and value-flow facts with compiler-backed IntelliJ adapters."
 resource: "repo://relation"
 tags: [kast, navigation]
-timestamp: "2026-10-18T22:46:32Z"
-source_revision: e37b2d25a75abc47a4d8487e579f97ec36ca8cad
+timestamp: "2026-10-26T11:36:07Z"
+source_revision: 371fb8bfcb7c2c22a12ab373b3d7c49d1fbb528a
 code_sources:
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteCallbackSourceRelation.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteNamedCallbackSourceReference.kt
@@ -59,6 +59,8 @@ Defines one-hop semantic relationships, callback evidence, and value-flow facts 
 
 - Gradle projects: `:relation:contract`, `:relation:service`, and `:relation:intellij`.
 - Native fixtures live in `intellij/src/nativeTest`; their evidence differs from ordinary JVM tests.
+- `:relation:intellij:compileDeclaredEffectFixture` owns the immutable dependency archive for relation and hosted fixtures. Each case copies that archive into its temporary directory.
+- `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation.
 - [RelationServiceTest.kt](service/src/test/kotlin/io/github/amichne/kast/relation/service/RelationServiceTest.kt) - relation admission and finite outcomes.
 
 ## Navigation Hints

@@ -3,7 +3,7 @@ plugins {
     id("kast.role.contract")
 }
 
-group = "${rootProject.group}.source"
+group = "${providers.gradleProperty("GROUP").get()}.source"
 
 base {
     archivesName.set("source-contract")

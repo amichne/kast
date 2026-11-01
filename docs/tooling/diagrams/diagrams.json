@@ -1,0 +1,86 @@
+[
+  {
+    "name": "authority",
+    "label": "From the agent question to compiler evidence",
+    "page": "reference/internals/architecture.mdx",
+    "component": "AuthorityDiagram"
+  },
+  {
+    "name": "background-preparation",
+    "label": "Prepare the selected IDEA project",
+    "page": "reference/internals/background-startup.mdx",
+    "component": "BackgroundPreparationDiagram"
+  },
+  {
+    "name": "callback-route",
+    "label": "Trace the supplied callback to its call",
+    "page": "reference/program-tracing.mdx",
+    "component": "CallbackRouteDiagram"
+  },
+  {
+    "name": "change-lifecycle",
+    "label": "Apply an admitted change or keep its recovery evidence",
+    "page": "architecture/change-lifecycle.mdx",
+    "component": "ChangeLifecycleDiagram"
+  },
+  {
+    "name": "exact-name-discovery",
+    "label": "Exclude files before expensive source work",
+    "page": "architecture/query-reuse.mdx",
+    "component": "ExactNameDiscoveryDiagram"
+  },
+  {
+    "name": "impact-reuse",
+    "label": "Share a value read and keep each route",
+    "page": "architecture/query-reuse.mdx",
+    "component": "ImpactReuseDiagram"
+  },
+  {
+    "name": "incremental-facts",
+    "label": "Reuse a completed fact under current authority",
+    "page": "reference/staleness.mdx",
+    "component": "IncrementalFactsDiagram"
+  },
+  {
+    "name": "query-lifecycle",
+    "label": "Run one question and deliver its evidence",
+    "page": "explanation/query-lifecycle.mdx",
+    "component": "QueryLifecycleDiagram"
+  },
+  {
+    "name": "query-publication",
+    "label": "Publish a page and its next handle together",
+    "page": "explanation/query-lifecycle.mdx",
+    "component": "QueryPublicationDiagram"
+  },
+  {
+    "name": "reference-reuse",
+    "label": "Reuse a reference inventory with matching authority",
+    "page": "architecture/query-reuse.mdx",
+    "component": "ReferenceReuseDiagram"
+  },
+  {
+    "name": "request-lifecycle",
+    "label": "From a Tool RPC request to its reply",
+    "page": "reference/lifecycles.mdx",
+    "component": "RequestLifecycleDiagram"
+  },
+  {
+    "name": "retention",
+    "label": "Refresh an exact reference",
+    "page": "reference/staleness.mdx",
+    "component": "RetentionDiagram"
+  },
+  {
+    "name": "topology",
+    "label": "The owners of a Kast request",
+    "page": "architecture/topology.mdx",
+    "component": "TopologyDiagram"
+  },
+  {
+    "name": "trace-reuse",
+    "label": "Share a caller read and keep each arrival",
+    "page": "architecture/query-reuse.mdx",
+    "component": "TraceReuseDiagram"
+  }
+]

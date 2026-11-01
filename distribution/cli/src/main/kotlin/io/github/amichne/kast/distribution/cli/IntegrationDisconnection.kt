@@ -69,7 +69,12 @@ private fun disconnectCodexEntry(
         throw ManagementRejected("disconnect", "Codex name belongs to another configuration")
     if (observed != null) {
         val remove = execute(listOf("codex", "mcp", "remove", "kast"))
-        if (remove !is ProcessObservation.Exited || remove.code != 0 || codexRegistration(execute) != null)
+        // A provider can expose another transport after it removes the exact prior registration.
+        if (
+            remove !is ProcessObservation.Exited ||
+                remove.code != 0 ||
+                codexRegistration(execute)?.let { ownsCodex(it, destination) } == true
+        )
             throw ManagementRejected("disconnect", "Codex removal was not verified")
     }
 }

@@ -1,0 +1,47 @@
+{
+  "tools": [
+    "Ardia",
+    "agent-browser"
+  ],
+  "publishedOrigin": "https://kast.michne.com",
+  "localOrigin": "http://localhost:3000",
+  "screenshots": [
+    {
+      "path": "/tmp/kast-published-home.png",
+      "sha256": "f8b8af83996206d764a28f2354a5fcf9a20243208f1f052d47421e2fbbffae86"
+    },
+    {
+      "path": "/tmp/kast-local-home.png",
+      "sha256": "9143e067ebdf4820362180ad737cd10a563e2922eebee6f802d3f539ae7be782"
+    },
+    {
+      "path": "/tmp/kast-local-explanation.png",
+      "sha256": "0ec628df9e3870759a9499866c13da74a8b12b45b4959a70865df297fc976579"
+    },
+    {
+      "path": "/tmp/kast-local-tutorial-mobile.png",
+      "sha256": "ee34b4bf14c1702fc341442dda8a919ccf3764a89f295bff7abc75c2a7e2f8eb"
+    },
+    {
+      "path": "/tmp/kast-local-responses-dark.png",
+      "sha256": "1296fddb7da482f5055a1f50543bc7f4c899ff47e3f6f9e69465d91b4631e1bd"
+    },
+    {
+      "path": "/tmp/kast-local-query-introduction.png",
+      "sha256": "a9b8e321de441920f5b067000c36cd39bbd2ac36306301ccd43ea147a5eee96b"
+    }
+  ],
+  "observations": [
+    "Published homepage and installation page rendered.",
+    "Local homepage and explanation showed headings, source, and next links.",
+    "Mobile tutorial at 390x844 showed readable text, source block and scrollable table.",
+    "Mobile native navigation opened; Escape returned to the page after the transition.",
+    "Dark theme rendered the Results page.",
+    "Generated query page placed the current public terminalStep note before shared source content."
+  ],
+  "limits": [
+    "Sampled pages only.",
+    "No comprehensive accessibility audit.",
+    "Local rendering is not deployment proof."
+  ]
+}

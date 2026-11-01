@@ -2,6 +2,8 @@
 """Exact diffs select checks monotonically; uncertainty cannot omit verification."""
 
 import io
+import json
+import os
 import re
 import subprocess
 import sys
@@ -13,13 +15,17 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import unquote
 
+import verification_plan
 from validation_scope import (
     ALL_CHECKS,
     DOCUMENTATION_PATHS,
     PRODUCT_MODULES,
     Check,
+    NativeCompilation,
     Reason,
     Selection,
+    SCOPE_CHECKS,
+    Scope,
     classify_diff,
     classify_paths,
     main,
@@ -27,12 +33,56 @@ from validation_scope import (
 )
 
 DOCS = frozenset({Check.DOCUMENTATION})
-PRODUCT = frozenset({Check.PRODUCT, Check.PORTABLE})
+PRODUCT = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
+SOURCE_ONLY = frozenset({Check.SOURCE, Check.PORTABLE})
 PAGE = "docs/public/reference/api.mdx"
 SOURCE = "cli/src/main/kotlin/Management.kt"
 
 
 class ValidationScopeTest(unittest.TestCase):
+    def test_native_toggle_preserves_all_other_obligations_for_each_scope(self):
+        for scope, checks in SCOPE_CHECKS.items():
+            selected = Selection(checks, Reason.CHANGED_INPUTS)
+            with self.subTest(scope=scope):
+                self.assertIs(selected, selected.with_native_compilation(NativeCompilation.ENABLED))
+                disabled = selected.with_native_compilation(NativeCompilation.DISABLED)
+                self.assertEqual(checks - {Check.PRODUCT, Check.GATE_GRAPH}, disabled.checks)
+                self.assertEqual(disabled.checks, SCOPE_CHECKS[disabled.scope])
+                self.assertNotIn(disabled.scope, (Scope.FULL, Scope.PRODUCT))
+
+    def test_disabled_native_compilation_keeps_every_source_check(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "outputs"
+            with (
+                patch.dict(os.environ, {"KAST_NATIVE_COMPILATION": "false"}),
+                patch("validation_scope.select", return_value=Selection(ALL_CHECKS, Reason.FULL_EVENT)),
+                patch.object(sys, "argv", ["validation_scope.py", "--event", "workflow_dispatch",
+                                          "--github-output", str(output)]),
+                redirect_stdout(io.StringIO()),
+            ):
+                main()
+            self.assertEqual(
+                "source=run\nproduct=skip\nportable=run\ndocumentation=run\ngate_graph=skip\nscope=SOURCE_FULL\n",
+                output.read_text(),
+            )
+
+    def test_unknown_native_toggle_rejects_before_selection_or_output(self):
+        for value in ("", "False", "TRUE", "0", "typo"):
+            with tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "outputs"
+                with (
+                    self.subTest(value=value),
+                    patch.dict(os.environ, {"KAST_NATIVE_COMPILATION": value}),
+                    patch("validation_scope.select", return_value=Selection(ALL_CHECKS, Reason.FULL_EVENT)) as select_checks,
+                    patch.object(sys, "argv", ["validation_scope.py", "--event", "workflow_dispatch",
+                                              "--github-output", str(output)]),
+                    redirect_stdout(io.StringIO()),
+                    self.assertRaises(ValueError),
+                ):
+                    main()
+                select_checks.assert_not_called()
+                self.assertFalse(output.exists())
+
     def test_kotlin_shaped_paths_cannot_bypass_protected_or_unknown_roots(self):
         for prefix in (
             ".github/tools",
@@ -79,31 +129,93 @@ class ValidationScopeTest(unittest.TestCase):
     def test_audited_independent_pages_select_only_documentation(self):
         self.assertEqual(DOCS, classify_paths((PAGE, "docs/public/explanation/query-lifecycle.mdx")))
 
-    def test_openwiki_inputs_retain_knowledge_base_validation(self):
+    def test_reader_journey_inputs_keep_their_documentation_consumers_without_a_product(self):
+        paths = (
+            ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
+            "app-server/docs/public-query-contract.md", "docs/development.md",
+            "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+            "docs/static-query-execution.md", "docs/okf-public.json",
+            "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+            "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
+            "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
+            "docs/public/explanation/value-journey-evidence.mdx",
+            "config/vale/readability/audit.py", "config/vale/readability/audit.py.lock",
+            "config/vale/readability/test_audit.py", "config/vale/readability/pytest.ini",
+            "config/vale/readability/pyrightconfig.json", "config/vale/readability/prose.ini",
+            "config/vale/readability/styles/Prose/Complexity.yml",
+            "config/vale/readability/starter-compatibility/styles/config/vocabularies/Docs/accept.txt",
+            "config/vale/styles/config/vocabularies/Kast/accept.txt",
+            "config/vale/styles/config/vocabularies/KastNames/accept.txt",
+            "docs/reviews/readability-audit/README.md",
+            "docs/reviews/readability-audit/after/prose.json",
+            "docs/reviews/readability-audit/after/prose.stderr.txt",
+            "experiments/host-observation/README.md",
+            "experiments/host-observation/EVALUATION_CHECKLIST.md",
+            "experiments/host-observation/HOSTED_ENDPOINT.md",
+            "experiments/host-observation/PI_EVALUATION.md",
+            "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+            "experiments/representation-impact/README.md",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertEqual(DOCS, classify_paths((path,)))
+        self.assertEqual(DOCS, classify_paths(paths + (PAGE,)))
+
+    def test_documentation_neighbors_cannot_inherit_reviewed_ownership(self):
         for path in (
-            "docs/public/docs.json",
-            "docs/public/reference/change.mdx",
-            "docs/public/reference/responses.mdx",
-            "docs/public/reference/symbols.mdx",
-            "docs/public/search.mdx",
+            ".github/scripts/ci/new.py", "docs/tooling/new.py",
+            "config/vale/readability/new.py", "config/vale/readability/src/main/kotlin/Probe.kt",
+            "docs/reviews/readability-audit/build.gradle.kts",
+            "experiments/host-observation/protocol.py", "experiments/host-observation/new.md",
+            "config/vale/styles/Kast/Terminology.yml",
         ):
             with self.subTest(path=path):
                 self.assertEqual(ALL_CHECKS, classify_paths((path,)))
 
-    def test_product_linked_docs_keep_product_and_portable_checks(self):
+    def test_openwiki_inputs_retain_knowledge_base_validation(self):
         for path in (
-            "docs/public/start.mdx",
-            "docs/public/reference/installation.mdx",
-            "docs/public/reference/compatibility.mdx",
+            "docs/public/reference/change.mdx",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(ALL_CHECKS, classify_paths((path,)))
+
+    def test_documentation_consumers_cover_navigation_and_generated_examples(self):
+        for path in ("docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
+                     "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx", "docs/public/search.mdx",
+                     "docs/public/snippets/value-journey.jsx", "docs/tooling/value-journey/src/trace.ts"):
+            self.assertEqual(DOCS, classify_paths((path,)))
+
+    def test_generated_callable_schema_keeps_product_and_portable_checks(self):
+        for path in (
             "docs/public/reference/callables.openapi.json",
         ):
             with self.subTest(path=path):
                 self.assertEqual(ALL_CHECKS, classify_paths((path,)))
 
     def test_product_sources_and_packaging_do_not_need_mintlify_or_graph_inspection(self):
-        for path in (SOURCE, "query/protocol/src/test/kotlin/QueryTest.kt"):
+        for path in (SOURCE, "distribution/cli/src/main/kotlin/Command.kt"):
             with self.subTest(path=path):
                 self.assertEqual(PRODUCT, classify_paths((path,)))
+
+    def test_source_checks_keep_semantic_adapters_and_contracts_without_candidate_assembly(self):
+        for path in (
+            "query/contract/src/main/kotlin/Query.kt",
+            "query/protocol/src/test/kotlin/QueryTest.kt",
+            "relation/intellij/src/main/kotlin/Adapter.kt",
+            "runtime/hosted/src/main/kotlin/Hosted.kt",
+            "source/service/src/main/kotlin/SourceService.kt",
+        ):
+            self.assertEqual(SOURCE_ONLY, classify_paths((path,)))
+
+    def test_native_and_installation_inputs_keep_qualification(self):
+        for path in (
+            "kernel/src/main/kotlin/Outcome.kt",
+            "evidence/sqlite/src/main/kotlin/Database.kt",
+            "change/recovery/src/main/kotlin/Recovery.kt",
+            "relation/contract/src/main/kotlin/Binding.kt",
+            "cli/src/main/kotlin/installation/Install.kt",
+        ):
+            self.assertEqual(PRODUCT, classify_paths((path,)))
 
     def test_build_wiring_and_unclassified_paths_keep_every_check(self):
         for path in (
@@ -121,7 +233,6 @@ class ValidationScopeTest(unittest.TestCase):
             "docs/public/images/observer.png",
             "new-config.json",
             "docs/public/reference/new-page.mdx",
-            "README.md",
             "install.sh",
             "packaging/test-install-local.py",
             "packaging/portable.Dockerfile",
@@ -195,7 +306,7 @@ class ValidationScopeTest(unittest.TestCase):
                 main()
             choose.assert_called_once_with("push", "a" * 40, "b" * 40)
             self.assertEqual(
-                "product=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\nscope=DOCUMENTATION\n",
+                "source=skip\nproduct=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\nscope=DOCUMENTATION\n",
                 output.read_text(),
             )
 
@@ -226,12 +337,69 @@ class ExactDiffTest(unittest.TestCase):
         self.git("commit", "-qm", message)
         return self.git("rev-parse", "HEAD")
 
+    def test_collected_roots_bind_real_diff_plans_and_reject_stale_graphs(self):
+        repository = Path(__file__).resolve().parents[3]
+        graph = json.loads((repository / verification_plan.GRAPH).read_text())
+        for path in [item["path"] for item in graph["inputs"]] + [verification_plan.GRAPH, verification_plan.MANIFEST]:
+            self.write(path, (repository / path).read_text())
+        fixture = "workspace/contract/src/testFixtures/kotlin/WorkspaceFixture.kt"
+        adapter = "relation/intellij/src/nativeTest/kotlin/ReceiverTest.kt"
+        self.write(fixture, "class WorkspaceFixture\n")
+        self.write(adapter, "class ReceiverTest\n")
+        base = self.commit("collected roots")
+        self.git("rm", fixture)
+        self.write(adapter, "class RevisedReceiverTest\n")
+        head = self.commit("fixture deletion and adapter case")
+        result = select("pull_request", base, head, self.root, affected=True)
+        self.assertEqual(PRODUCT, result.checks)
+        self.assertIsInstance(result.plan, verification_plan.Plan)
+        self.assertEqual(tuple(sorted((fixture, adapter))), result.plan.changedPaths)
+        self.assertIn(":app-server", result.plan.consumers)
+        self.assertIn(":relation:intellij", result.plan.owners)
+        self.assertEqual(self.git("rev-parse", "HEAD^{tree}"), result.plan.sourceTree)
+        self.assertEqual(base, result.plan.comparisonBasis)
+        self.write("build.gradle.kts", "// changed graph declaration\n")
+        stale = self.commit("stale graph")
+        result = select("pull_request", head, stale, self.root, affected=True)
+        self.assertEqual(ALL_CHECKS, result.checks)
+        self.assertEqual(verification_plan.Failure.STALE_GRAPH, result.reason)
+        self.assertIsNone(result.plan)
+
+    def test_plan_rejection_preserves_the_finite_failure_in_scope_diagnostics(self):
+        self.write(SOURCE, "class Management\n")
+        head = self.commit("product source")
+        for failure in verification_plan.Failure:
+            with self.subTest(failure=failure), patch("verification_plan.plan", return_value=failure):
+                self.assertEqual(
+                    Selection(ALL_CHECKS, failure),
+                    select("pull_request", self.base, head, self.root, affected=True),
+                )
+
+    def test_readme_and_documentation_tooling_bypass_module_planning_for_prs_and_pushes(self):
+        self.write("README.md", "# Reader journey\n")
+        self.write("docs/tooling/okf_public.py", "# documentation projector\n")
+        self.write("config/vale/readability/test_audit.py", "# audit contract\n")
+        head = self.commit("documentation consumers")
+        for event in ("pull_request", "push"):
+            with self.subTest(event=event):
+                result = select(event, self.base, head, self.root, affected=True)
+                self.assertEqual(Selection(DOCS, Reason.CHANGED_INPUTS), result)
+        self.write("install.sh", "# installation effect\n")
+        mixed = self.commit("installer change")
+        self.assertEqual(ALL_CHECKS, select("pull_request", self.base, mixed, self.root, affected=True).checks)
+
     def test_docs_only_push_uses_the_whole_range(self):
         self.write(PAGE, "# Revised API\n")
         self.commit("first page edit")
         self.write("docs/public/reference/search.mdx", "# Other\n")
         head = self.commit("second page edit")
         self.assertEqual(DOCS, select("push", self.base, head, self.root).checks)
+
+    def test_source_pr_defers_candidate_but_main_push_keeps_qualification(self):
+        self.write("query/service/src/main/kotlin/QueryService.kt", "class QueryService\n")
+        head = self.commit("source change")
+        self.assertEqual(SOURCE_ONLY, select("pull_request", self.base, head, self.root).checks)
+        self.assertEqual(PRODUCT, select("push", self.base, head, self.root).checks)
 
     def test_push_includes_product_changes_before_the_final_docs_commit(self):
         self.write(SOURCE, "class Management\n")
@@ -289,6 +457,76 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_candidate_retention_routes_reuse_to_linux_before_fresh_mac_selection(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
+        product = workflow.split("\n  kotlin:\n", 1)[1].split("\n  source:\n", 1)[0]
+        # Bind the workflow's explicit expression, as with the other inventory guards.
+        # Hosted execution must separately establish which runner actually ran it.
+        runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
+        self.assertEqual(
+            "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
+            "github.ref == 'refs/heads/main' && "
+            "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
+            "vars.KAST_SELF_HOSTED_RUNNER == 'true' && "
+            "fromJSON('[\"self-hosted\", \"macOS\", \"ARM64\", \"kast-main\"]') || 'macos-15' }}",
+            runner,
+        )
+        self.assertIn(
+            "needs.source-work.outputs.candidate == 'REUSED' || "
+            "(needs.native.result == 'success' && needs.assembly.result == 'success')",
+            product,
+        )
+        for step in ("Exercise the assembled Mac product", "Seal tested candidate identity"):
+            with self.subTest(step=step):
+                self.assertIn(
+                    f"- name: {step}\n        if: needs.source-work.outputs.candidate != 'REUSED'\n",
+                    product,
+                )
+
+    def test_cache_producers_provision_validation_tools_before_gradle(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
+        for job in ("source-work", "native"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1].split("\n  native:\n", 1)[0]
+            with self.subTest(job=job):
+                self.assertIn("uses: actions/setup-python@", body)
+                self.assertIn("uv==0.12.9", body)
+                self.assertLess(body.index("uses: actions/setup-python@"),
+                                body.index("uses: gradle/actions/setup-gradle@"))
+                self.assertLess(body.index("uv==0.12.9"),
+                                body.index("uses: gradle/actions/setup-gradle@"))
+
+    def test_cache_producers_are_independent_main_jobs_without_product_publication(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
+        self.assertIn("branches: [main]", workflow)
+        self.assertIn("schedule:", workflow)
+        self.assertIn("workflow_dispatch:", workflow)
+        for job in ("source-work", "native"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1].split("\n  native:\n", 1)[0]
+            self.assertIn("if: github.ref == 'refs/heads/main'", body)
+            self.assertIn("cache-read-only: false", body)
+            self.assertIn("cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}", body)
+            self.assertNotIn("needs:", body)
+        for forbidden in ("nativeCompile", "native_handoff.py", "build_candidate.py", "contents: write"):
+            self.assertNotIn(forbidden, workflow)
+        self.assertIn("run: python3 .github/scripts/ci/source_validation.py", workflow)
+        for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
+            self.assertIn(f"--tests '*{case}'", workflow)
+
+    def test_frozen_pr1130_diff_selects_documentation_without_qualification(self):
+        # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).
+        inventory = Path(__file__).parent / "fixtures/pr1130-paths.txt"
+        paths = tuple(inventory.read_text().splitlines())
+        self.assertEqual(113, len(paths))
+        self.assertEqual(113, len(set(paths)))
+        self.assertFalse(any(path.endswith((".kt", ".kts")) for path in paths))
+        self.assertEqual(DOCS, classify_paths(paths))
+        raw = b"".join(
+            f":100644 100644 {'a' * 40} {'b' * 40} M\0{path}\0".encode() for path in paths
+        )
+        self.assertEqual(DOCS, classify_diff(raw))
+        for unexpected in (SOURCE, "install.sh", "settings.gradle.kts", ".github/workflows/ci.yml"):
+            self.assertEqual(ALL_CHECKS, classify_paths(paths + (unexpected,)))
+
     def test_documentation_allowlist_excludes_every_openwiki_referenced_path(self):
         root = Path(__file__).resolve().parents[3]
         self.assert_openwiki_dependencies_excluded(root)

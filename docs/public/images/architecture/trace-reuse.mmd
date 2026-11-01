@@ -1,0 +1,10 @@
+flowchart TD
+  S["Seed"] --> I["Implementations or overrides"]
+  S --> A["Direct-use arrivals"]
+  I --> B["Implementation-use arrivals"]
+  A --> G["Group matching exact<br/>callable capabilities"]
+  B --> G
+  G --> C["One further CALLERS<br/>read per group"]
+  C --> O(["Final declarations<br/>all arrival evidence"])
+  class G proof
+  class O result

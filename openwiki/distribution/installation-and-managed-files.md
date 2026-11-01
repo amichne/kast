@@ -11,18 +11,24 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-069607880d661efb9c5fbc84
+    resource: repo://packaging/host_directory_exchange.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
   - id: openwiki-source-fd4b4980f80cb901046d8f0e
     resource: repo://packaging/installation-lifecycle.py
+  - id: openwiki-source-1380068036b00bec817a6579
+    resource: repo://packaging/managed_installation.py
+  - id: openwiki-source-b1af9cf4e2649975cc7bdf86
+    resource: repo://packaging/managed_update_journal.py
   - id: openwiki-source-2a77c42fb15d42188a60711b
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-10-16T07:07:29.171Z" }
+generated: { by: "codex", at: "2026-10-31T10:51:42.239Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T07:07:29.171Z
+    at: 2026-10-31T10:51:42.239Z
 ---
 
 
@@ -49,7 +55,8 @@ Version equality alone does not establish that compatibility.
 Plan mode reports the admitted plan without activation effects.
 An applied replacement coordinates prior retirement, saved configuration, recovery snapshots, and payload installation.
 
-It reports installation without service activation. The plugin's MCP session owns IntelliJ preparation.
+The private Control workflow reports payload installation without service activation.
+The managed composition coordinator owns Host settlement, replacement, and activation for a complete update.
 Saved shared endpoints migrate to private settings. Explicit shared selections reject before effects.
 
 The managed root contains one ordinary `installation` directory.
@@ -57,6 +64,22 @@ The native public command and private transport payloads keep separate locations
 `ManagedInstallationOwnedTree` admits exact destructive-recovery trees under the physical selected installation.
 Its admission rejects aliases and symlink substitutions before deletion.
 Unknown paths do not become owned because their names resemble Kast artifacts.
+
+## Managed composition transaction
+
+`managed_installation.py` coordinates the existing Control and Host effect owners under the selected management lock.
+It captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
+The typed journal records the selected artifacts and one `STOPPED`, `HOT_RELOAD`, or `NORMAL_RESTART` strategy.
+
+IDEA metadata admission accepts a regular canonical file owned by the current user or root.
+It rejects group-write permissions, world-write permissions, symbolic links, and more than one MiB of metadata.
+Managed records still need the current user as their owner.
+
+The coordinator fences public calls before Host settlement and payload replacement.
+It holds the admitted Host lock during the Control and Host commit sequence.
+A stopped Host stays stopped. A loaded Host needs the selected activation proof before terminal receipts and journal removal.
+Recovery uses the recorded composition and preimages. An unresolved recovery keeps the fence and returns `RECOVERY_REQUIRED`.
+A recovery-only invocation does not select a new release.
 
 ## Independent Host receipts
 
@@ -76,6 +99,12 @@ Host does not read or delete these backups.
 This exception covers exact legacy baseline, detached, and replaced names with 32-character hexadecimal tokens.
 Pending Host transactions, legacy installation candidates, and unknown retained names still reject the operation.
 An active receipt still needs the exact plugin inventory before replacement.
+
+Terminal Host cleanup first admits the selected or restored files and their active receipt.
+The Host owner then moves each admitted candidate or prior payload outside the pending journal before recursive deletion.
+A no-replace native move preserves foreign destinations, including empty directories.
+Partial deletion cannot block the next terminal admission or release of the reserved Host lock.
+Cleanup failures emit `kast_managed_host_cleanup` with `FAILED` and a finite reason.
 
 ## Recovery and evidence limits
 

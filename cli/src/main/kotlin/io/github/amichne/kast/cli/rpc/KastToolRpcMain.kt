@@ -7,10 +7,12 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
+import io.github.amichne.kast.cli.direct.DirectCatalogArguments
 import io.github.amichne.kast.cli.direct.DirectToolStage
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.observeDirectToolStage
+import io.github.amichne.kast.cli.direct.selectDirectCatalog
 import io.github.amichne.kast.cli.mcp.McpChangePhase
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.kernel.Refinement
@@ -32,41 +34,46 @@ object KastToolRpcMain {
     @JvmStatic
     fun main(args: Array<String>) =
         observeDirectToolStage(DirectToolStage.MAIN) {
-            if (args.contentEquals(arrayOf("plan-query"))) {
-                val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
-                println(toolRpcJson.encodeToString<QueryCostPlanReply>(planToolQuery(bytes)))
-                System.out.flush()
-            } else {
-                runInstalled(args)
+            when (val selection = selectDirectCatalog(args.toList())) {
+                is Refinement.Rejected -> printReply(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND))
+                is Refinement.Refined -> {
+                    val selected = selection.value
+                    if (selected.command == listOf("plan-query")) {
+                        val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
+                        println(toolRpcJson.encodeToString<QueryCostPlanReply>(planToolQuery(bytes, selected.catalog)))
+                        System.out.flush()
+                    } else runInstalled(selected)
+                }
             }
         }
 
-    private fun runInstalled(args: Array<String>) {
+    private fun runInstalled(selected: DirectCatalogArguments) {
+        val command = selected.command
         val directory = Path.of("").toAbsolutePath()
         val home = Path.of(System.getProperty("user.home"))
         val session =
             observeDirectToolStage(DirectToolStage.SESSION_COMPOSITION) {
-                KastDirectToolSession.installed(directory, home, System.getenv())
+                KastDirectToolSession.installed(directory, home, System.getenv(), selected.catalog)
             }
         val bridge =
             observeDirectToolStage(DirectToolStage.BRIDGE_COMPOSITION) {
                 session?.let(::KastToolRpcBridge)
             }
-        if (args.contentEquals(arrayOf("query-session"))) {
+        if (command == listOf("query-session")) {
             runQuerySession(session, bridge)
             return
         }
         val response =
             when {
                 session == null || bridge == null -> ToolRpcReply.Rejected(ToolRpcFailure.CATALOG_UNAVAILABLE)
-                args.contentEquals(arrayOf("catalog")) -> bridge.catalog()
-                args.size == 2 && args[0] == "call" -> {
+                command == listOf("catalog") -> bridge.catalog()
+                command.size == 2 && command[0] == "call" -> {
                     val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
                     if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
                         ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
                     else if (session.admission() != InstalledToolAdmission.AVAILABLE)
                         ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
-                    else invokeObserved(bridge, args[1], bytes)
+                    else invokeObserved(session, bridge, command[1], bytes)
                 }
                 else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
             }
@@ -79,8 +86,8 @@ object KastToolRpcMain {
             session.admission() != InstalledToolAdmission.AVAILABLE ->
                 printReply(ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED))
             else ->
-                OneShotInvocationRecord.begin()?.use {
-                    KastToolRpcQuerySession(bridge::callAdmitted).run(System.`in`, ::printReply)
+                session.beginInvocation(InvocationRecordKind.RPC)?.use {
+                    KastToolRpcQuerySession(session.queryCatalog, bridge::callAdmitted).run(System.`in`, ::printReply)
                 } ?: printReply(ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE))
         }
     }
@@ -94,10 +101,15 @@ object KastToolRpcMain {
         System.out.flush()
     }
 
-    private fun invokeObserved(bridge: KastToolRpcBridge, name: String, bytes: ByteArray): ToolRpcReply =
+    private fun invokeObserved(
+        session: KastDirectToolSession,
+        bridge: KastToolRpcBridge,
+        name: String,
+        bytes: ByteArray,
+    ): ToolRpcReply =
         when (val input = decodeToolRpcInput(bytes)) {
             is Refinement.Refined ->
-                OneShotInvocationRecord.begin()?.use { bridge.call(name, input.value) }
+                session.beginInvocation(InvocationRecordKind.RPC)?.use { bridge.call(name, input.value) }
                     ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
             is Refinement.Rejected -> ToolRpcReply.Rejected(input.failure)
         }
@@ -134,7 +146,7 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
                 when (
                     val admission =
                         observeDirectToolStage(DirectToolStage.REQUEST_ADMISSION) {
-                            PublicToolContract.admit(identity, arguments)
+                            PublicToolContract.admit(identity, arguments, session.queryCatalog)
                         }
                 ) {
                     is Refinement.Refined -> admission.value
@@ -148,6 +160,8 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
     fun callAdmitted(request: AdmittedPublicTool): ToolRpcReply {
         if (session.admission() != InstalledToolAdmission.AVAILABLE)
             return ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
+        if (request.catalog != session.queryCatalog)
+            return ToolRpcReply.Rejected.publicInput(PublicToolInputFailure.SchemaMismatch)
         if (!session.supports(request.identity.toolName)) return ToolRpcReply.Rejected(ToolRpcFailure.UNKNOWN_TOOL)
         return invoke(request.identity.toolName) { session.invokeAdmitted(request) }
     }
@@ -168,38 +182,38 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
             } catch (_: RuntimeException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVOCATION_FAILED)
             }
-        return observeDirectToolStage(DirectToolStage.RESULT_PROJECTION) { present(name, exit) }
+        return observeDirectToolStage(DirectToolStage.RESULT_PROJECTION) { presentToolRpcExit(name, exit) }
     }
+}
 
-    private fun present(name: String, exit: CliExit): ToolRpcReply {
-        val document =
-            try {
-                toolRpcJson.parseToJsonElement(exit.document.value) as? JsonObject
-                    ?: return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
-            } catch (_: SerializationException) {
-                return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
-            }
-        val admitted =
-            when (exit) {
-                // Legacy CLI boundary documents have their own closed serializers, outside semantic schemas.
-                is CliExit.BoundaryRejected,
-                is CliExit.PublicInputRejected -> true
-                is CliExit.Complete,
-                is CliExit.Qualified,
-                is CliExit.OperationRejected ->
-                    McpStructuredResults.validatesSemantic(name, document) &&
-                        McpStructuredResults.matchesExit(exit, document)
-                is CliExit.Delegated -> false
-            }
-        if (!admitted) return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
-        return when (exit) {
-            is CliExit.Complete -> ToolRpcReply.Complete(document)
-            is CliExit.Qualified -> ToolRpcReply.Qualified(document)
-            is CliExit.OperationRejected,
-            is CliExit.BoundaryRejected -> ToolRpcReply.RejectedDocument(document)
-            is CliExit.PublicInputRejected -> ToolRpcReply.Rejected.publicInput(exit.failure)
-            is CliExit.Delegated -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
+internal fun presentToolRpcExit(name: String, exit: CliExit): ToolRpcReply {
+    val document =
+        try {
+            toolRpcJson.parseToJsonElement(exit.document.value) as? JsonObject
+                ?: return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
+        } catch (_: SerializationException) {
+            return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
         }
+    val admitted =
+        when (exit) {
+            // Legacy CLI boundary documents have their own closed serializers, outside semantic schemas.
+            is CliExit.BoundaryRejected,
+            is CliExit.PublicInputRejected -> true
+            is CliExit.Complete,
+            is CliExit.Qualified,
+            is CliExit.OperationRejected ->
+                McpStructuredResults.validatesSemantic(name, document) &&
+                    McpStructuredResults.matchesExit(exit, document)
+            is CliExit.Delegated -> false
+        }
+    if (!admitted) return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
+    return when (exit) {
+        is CliExit.Complete -> ToolRpcReply.Complete(document)
+        is CliExit.Qualified -> ToolRpcReply.Qualified(document)
+        is CliExit.OperationRejected,
+        is CliExit.BoundaryRejected -> ToolRpcReply.RejectedDocument(document)
+        is CliExit.PublicInputRejected -> ToolRpcReply.Rejected.publicInput(exit.failure)
+        is CliExit.Delegated -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
     }
 }
 
@@ -238,6 +252,8 @@ internal sealed interface ToolRpcReply {
                 Rejected(
                     when (detail) {
                         is QuerySessionRejectionDetail.RequestConstraint,
+                        is QuerySessionRejectionDetail.OutputAllowance,
+                        is QuerySessionRejectionDetail.DetailSelector,
                         is QuerySessionRejectionDetail.SourceAnchor -> ToolRpcFailure.INVALID_ARGUMENTS
                         is QuerySessionRejectionDetail.NewRun,
                         is QuerySessionRejectionDetail.SourceRead,

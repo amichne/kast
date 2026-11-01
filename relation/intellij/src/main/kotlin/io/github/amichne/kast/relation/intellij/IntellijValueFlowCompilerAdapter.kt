@@ -216,10 +216,11 @@ class IntellijValueFlowCompilerAdapter(
             return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
         if (
             request.source.role == ValueRole.LocalBinding &&
-                source !is KtProperty &&
-                source.nativeLocalBindingMutability() is Refinement.Rejected
-        )
-            return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
+                request.source.localVersion == io.github.amichne.kast.relation.contract.ValueLocalVersion.Unversioned
+        ) {
+            if (source !is KtProperty && source.nativeLocalBindingMutability() is Refinement.Rejected)
+                return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
+        }
         return IntellijValueFlowNative(
                 request,
                 execution.nativeOwner,

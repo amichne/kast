@@ -1,19 +1,17 @@
 ---
-title: "Recorded query walkthrough"
-description: "Inspect historical requests and observed results, with their source revision and limits."
+title: "Query walkthrough"
+description: "Find a declaration, inspect its implementations, and trace callers with fresh references."
 icon: "notebook-text"
 ---
 
-This page keeps past query evidence at `56df091`. Its counts and handles belong to the recorded workspace state.
+These examples show request syntax. They are not recorded results.
+Use your project names and fresh references from each query.
 
-The examples now use contract 17 and explicit EMIT terminals.
-They show current syntax, not the captured request bytes. No calls were rerun. The linked capture keeps the old requests and results unchanged.
-
-[Capture details](/reference/schemas#recorded-walkthrough) names the revision, Host, epoch, and environment. [The first-query tutorial](/tutorials/first-query) supplies a current exercise.
+For a small exercise with known source, use [the first-query tutorial](/tutorials/first-query).
 
 ## Start from remembered text
 
-This `SEARCH_TEXT` request illustrates current inputs. The historical recording predates text discovery.
+This `SEARCH_TEXT` request finds functions that contain the word `launchd`.
 
 ```json
 {
@@ -41,9 +39,9 @@ One ASCII identifier word is supported. A relation query must prove calls after 
 
 <a id="1-find-a-declaration-and-inspect-its-source" />
 
-## Recorded declaration lookup
+## Find a declaration
 
-Call `01-discovery` found one `QueryStepSyntax` with exhaustive coverage, signature, and source context.
+This example selects `QueryStepSyntax` in the Kast source. Replace the name and directory for your project.
 
 ```json
 {
@@ -71,13 +69,13 @@ Call `01-discovery` found one `QueryStepSyntax` with exhaustive coverage, signat
 }
 ```
 
-`CLASS` includes this interface. It belongs to the supported class-like request family. Its identity comes from the captured source, not today's checkout.
+`CLASS` includes interfaces. Select the exact match by its signature and source location.
 
 <a id="2-follow-its-implementations" />
 
-## Recorded implementation query
+## Find implementations
 
-Call `02-implementations-a` returned ten `IMPLEMENTATIONS` matches with a complete scan. It retained that result as composition input A.
+Copy the selected declaration's issued `ref` into this request.
 
 ```json
 {
@@ -98,13 +96,13 @@ Call `02-implementations-a` returned ten `IMPLEMENTATIONS` matches with a comple
 }
 ```
 
-Each row kept its exact declaration and relationship proof. [Composition examples](/reference/query-pipelines) compares this set with a distinct name search.
+Each row identifies an implementation. [Combine query results](/reference/query-pipelines) shows how to compare this set with another query.
 
 <a id="3-trace-callers-to-a-chosen-depth" />
 
-## Recorded caller walk
+## Trace callers
 
-Call `15-caller-walk` started from `QueryPlanCompiler.exactStage`. It returned `QueryPlanCompiler.admit` at depth 1 within the requested two-hop graph.
+Use an exact function reference to trace callers through two levels.
 
 ```json
 {
@@ -123,10 +121,9 @@ Call `15-caller-walk` started from `QueryPlanCompiler.exactStage`. It returned `
 }
 ```
 
-The recorded result had complete coverage and no continuation. Depth described the requested graph extent. It did not describe runtime stack depth.
+The depth limits the source relationships that the query follows. It does not describe a runtime stack.
 
-## Interpretation limits
+## Read the result
 
-The recording is older than compact output and current complete-only execution. Its semantic continuation is historical. It is not how public `RESUME` works today.
-
-New investigations need current handles and installed schemas. [Staleness](/reference/staleness) defines reuse, and [Program tracing](/reference/program-tracing) defines source-path claims.
+Examine completion and scope before a conclusion. An unfinished query does not prove absence.
+Use [Staleness](/reference/staleness) for reference lifetimes and [Program tracing](/reference/program-tracing) for source-path limits.

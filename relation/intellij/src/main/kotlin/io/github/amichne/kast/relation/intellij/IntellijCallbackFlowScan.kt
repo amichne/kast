@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.CompleteCallbackForwardingGraph
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -39,6 +40,7 @@ internal class IntellijCallbackFlowScan(
     private val context: IntellijCallbackFlowContext,
     private val prepared: PreparedCallbackFlow,
     private val summaries: CallbackParameterSummaries,
+    private val selectedFrames: List<ValueCallFrame> = emptyList(),
 ) {
     private val routes = CallbackValueRoutes(context)
     private val invocations = mutableListOf<CallbackParameterInvocation>()
@@ -212,7 +214,7 @@ internal class IntellijCallbackFlowScan(
         }
         when (
             val forwarded =
-                IntellijCallbackForwardingReader(context)
+                IntellijCallbackForwardingReader(context, selectedFrames)
                     .read(frame.prepared, expression, value.parent as KtValueArgument, route.transfers)
         ) {
             is CallbackForwardingRead.Unavailable -> obligations += forwarded.cause

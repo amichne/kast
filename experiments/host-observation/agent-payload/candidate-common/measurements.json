@@ -1,0 +1,128 @@
+{
+  "qualification": "ACTUAL_INSTALLED_PI_CONVERTER_ON_ACTUAL_MCP_CATALOG_NOT_TASK_REPLAY",
+  "pi": {
+    "version": "1.4.0",
+    "root": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-coding-agent"
+  },
+  "ai": {
+    "version": "1.4.0",
+    "converter": "/Users/amichne/.pi/agent/install/releases/1.4.0/node_modules/@earendil-works/pi-ai/dist/api/openai-responses-shared.js",
+    "sha256": "eed025a4821b1e017dd024b930caf8fa11c7fe053a81efe11bd7d846fdc641d3"
+  },
+  "conversionOptions": {
+    "strict": false,
+    "supportsStrictMode": true,
+    "supportsOpenAIGrammarTools": false
+  },
+  "serialization": "JSON.stringify, no whitespace, UTF-8",
+  "catalog": {
+    "unicodeCharacters": 898412,
+    "utf8Bytes": 898412,
+    "sha256": "baeb6b8afe116e08c9952c0a8f7ea16496da187c35980862789a1b664815758f"
+  },
+  "allProviderDeclarations": {
+    "unicodeCharacters": 14888,
+    "utf8Bytes": 14888,
+    "sha256": "3b68fa9651cb0a49798404ab6cb022a1dfcc95c91ede6fcf1509c21e3ccd2405"
+  },
+  "tools": [
+    {
+      "name": "add_declaration",
+      "inputSchema": {
+        "unicodeCharacters": 707,
+        "utf8Bytes": 707,
+        "sha256": "f59ff3376313f0a4800df11f977e06a0603fcf0c562a1cd09b0a154bd4e3f848"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 7912,
+        "utf8Bytes": 7912,
+        "sha256": "e8809e0ecab84b69ea7cba9ce658cf50c6222a87df6372b3af2889a73ab82e16"
+      },
+      "converted": {
+        "unicodeCharacters": 1225,
+        "utf8Bytes": 1225,
+        "sha256": "e8f0d05679abffe2c0d5c20ae6b69c27836c6268b57f6909c8d3f5e139452e2c"
+      }
+    },
+    {
+      "name": "check_diagnostics",
+      "inputSchema": {
+        "unicodeCharacters": 2465,
+        "utf8Bytes": 2465,
+        "sha256": "63450e8de2a036d2de5252ed9648841aeff0c35c86ad1dc22721058062b1b5ea"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 32444,
+        "utf8Bytes": 32444,
+        "sha256": "2e2c4d9bb8fc7d6e13f6bb57b1900c5ba576c85dd83992468dae69d437c63fdb"
+      },
+      "converted": {
+        "unicodeCharacters": 2916,
+        "utf8Bytes": 2916,
+        "sha256": "293e74d00ea9cad04c6e206c63cefce429aeffca48eacb6143605dbfbb65508e"
+      }
+    },
+    {
+      "name": "health_check",
+      "inputSchema": {
+        "unicodeCharacters": 104,
+        "utf8Bytes": 104,
+        "sha256": "e33890085a6600a91a4b24bae27490f40005c63609ec907443384ab591332298"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 7870,
+        "utf8Bytes": 7870,
+        "sha256": "844d81bda70f887d39bbbaf78e51b127f5d64ece0e6deb8292e724fbd8d9ffb8"
+      },
+      "converted": {
+        "unicodeCharacters": 306,
+        "utf8Bytes": 306,
+        "sha256": "bf376bac8c2ec0943b94ae1f48957cedbff990ab043f077957d4552841c382b2"
+      }
+    },
+    {
+      "name": "query_symbols",
+      "inputSchema": {
+        "unicodeCharacters": 8992,
+        "utf8Bytes": 8992,
+        "sha256": "19a657536074c10918b10d9c536506509f1eaa0575fc7b38df45001ad136b88b"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 826800,
+        "utf8Bytes": 826800,
+        "sha256": "2b765af23b975c94ab553a257686ccbda9b86b74194abb4980058e079069d096"
+      },
+      "converted": {
+        "unicodeCharacters": 9401,
+        "utf8Bytes": 9401,
+        "sha256": "560f877bfb0d74ee72382201565a3a1d9cb5710aa3c374252dde9d2d68196be1"
+      }
+    },
+    {
+      "name": "replace_body",
+      "inputSchema": {
+        "unicodeCharacters": 670,
+        "utf8Bytes": 670,
+        "sha256": "c9ef48d40682121721ae010b6fdc0d9bb787c07e22aa3a1005348253461b47d8"
+      },
+      "outputSchema": {
+        "unicodeCharacters": 7912,
+        "utf8Bytes": 7912,
+        "sha256": "e8809e0ecab84b69ea7cba9ce658cf50c6222a87df6372b3af2889a73ab82e16"
+      },
+      "converted": {
+        "unicodeCharacters": 1034,
+        "utf8Bytes": 1034,
+        "sha256": "eb140a21f25ee4bb270fe53ab5535e737c38a2f4119d5bfd4a5e4a5bd7add981"
+      }
+    }
+  ],
+  "taskInputTokens": null,
+  "cacheAccounting": null,
+  "discoveryCalls": null,
+  "recoveryCalls": null,
+  "semanticInvocations": 0,
+  "modelFacingResults": null,
+  "nativeCodemodeReplay": "NOT_RUN",
+  "expandingAdapterReplay": "BLOCKED_ADAPTER_IDENTITY_UNAVAILABLE"
+}

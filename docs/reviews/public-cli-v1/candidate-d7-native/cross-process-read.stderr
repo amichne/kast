@@ -1,0 +1,10 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/kcv1g-a3b5uat
+{"requestId":"6f90b2fb-1ccd-4e9c-b026-42009eb0dc5a","outcome":{"type":"pending","stage":"OPENING"},"event":"workspace-preparation","preparation":{"stage":"OPENING","elapsedMillis":4,"limitMillis":1020000,"remainingMillis":1019996,"limitingOwner":"PREPARATION_OWNER"}}
+{"requestId":"6f90b2fb-1ccd-4e9c-b026-42009eb0dc5a","outcome":{"type":"completed"},"event":"workspace-preparation","preparation":{"stage":"ADMISSION","elapsedMillis":605,"limitMillis":1020000,"remainingMillis":1019395,"limitingOwner":"PREPARATION_OWNER"}}
+{"hostPid":60244,"operation":"STATUS","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":969,"maximumBytes":2147483646,"outcome":"ADMITTED"}}
+{"hostPid":60244,"operation":"STATUS","evidence":{"type":"HOST_RESPONSE_BODY","announcedBytes":969,"drainedBytes":969,"outcome":"DRAINED"}}
+{"hostPid":60244,"operation":"STATUS","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"RECEIVED"}}
+{"hostPid":60244,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":3192,"maximumBytes":2147483646,"outcome":"ADMITTED"}}
+{"hostPid":60244,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_BODY","announcedBytes":3192,"drainedBytes":3192,"outcome":"DRAINED"}}
+{"hostPid":60244,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"SEMANTIC"}}
+19:15:53.657 [kast-public-query] WARN  c.n.s.keyword.UnknownKeywordFactory -- Unknown keyword discriminator - you should define your own Meta Schema. If the keyword is irrelevant for validation, just use a NonValidationKeyword or if it should generate annotations AnnotationKeyword

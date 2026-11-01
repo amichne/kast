@@ -68,6 +68,27 @@ class ValueImplementationObligationOracleTest {
     }
 
     @Test
+    fun `incomplete callback diagnostic keeps the qualified inventory and basis`() {
+        val case = obligationCase()
+        val failure = ValueCallbackInputFailure.ImplementationIncomplete.fromCompiler(case.dispatch).flowRefined()
+        assertSame(case.dispatch, failure.dispatch)
+        assertSame(case.compiled.batch, failure.dispatch.batch)
+        assertEquals(true, failure.matchesBasis(case.site.basis))
+        assertEquals(false, failure.matchesBasis(obligationArgument(obligationCall(generation = 2)).basis))
+    }
+
+    @Test
+    fun `exhausted inventory cannot enter the incomplete callback diagnostic`() {
+        val case = obligationCase()
+        val exhausted =
+            ValueImplementationDispatch.fromCompiler(RelationCompilation.complete(case.compiled.batch)).flowRefined()
+        assertEquals(
+            Refinement.Rejected(ValueCallbackInputFailure.ImplementationIncomplete.AdmissionFailure.EXHAUSTED_DISPATCH),
+            ValueCallbackInputFailure.ImplementationIncomplete.fromCompiler(exhausted),
+        )
+    }
+
+    @Test
     fun `ordinary obligations do not manufacture implementation evidence`() {
         val case = obligationCase()
         val ordinary = ValueFlowObligation(case.site, ValueFlowUnsupportedCause.UNMODELED_CALL)

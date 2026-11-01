@@ -9,10 +9,10 @@ import subprocess
 import tempfile
 import sys
 import unittest
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 import build_candidate as candidate
-from validation_outcome import DocumentationValidated, Outcome, ProductValidated, ValidationRecord
+from validation_outcome import DocumentationValidated, Outcome, ProductValidated, SourceValidated, ValidationRecord
 from validation_scope import Scope
 
 REPOSITORY = "amichne/kast"
@@ -130,7 +130,7 @@ class PayloadAdmissionTest(unittest.TestCase):
         payload.mkdir(parents=True)
         names = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
                  *(f"kast-{name}-v{VERSION}.zip" for name in ("plugin", "marketplace")),
-                 f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
+                 f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
                  f"kast-module-knowledge-v{VERSION}.json", f"kast-sbom-v{VERSION}.cdx.json")
         for name in names[:-1]:
             (payload / name).write_bytes(name.encode())
@@ -185,6 +185,24 @@ class PayloadAdmissionTest(unittest.TestCase):
         self.assertEqual(2, observe.call_count)
         self.assertEqual(2, tree.call_count)
         download.assert_called_once_with(REPOSITORY, asdict(main), MERGED, destination)
+
+    def test_source_validation_rejects_before_candidate_download_or_promotion_record(self):
+        destination = Path(self.temporary.name) / "source-download"
+        promotion = Path(self.temporary.name) / "source-promotion.json"
+        main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
+        for scope in (Scope.SOURCE, Scope.SOURCE_FULL):
+            source = SourceValidated(replace(validation_record(), scope=scope, outcome=Outcome.SOURCE_VALIDATED))
+            with self.subTest(scope=scope), \
+                patch.object(candidate, "observe", side_effect=[asdict(main), asdict(Run())]), \
+                patch.object(candidate, "admit_validation", return_value=source), \
+                patch.object(candidate, "download", return_value=self.value) as download, \
+                patch.object(candidate, "tree", return_value=TREE), \
+                patch.object(candidate.legacy, "digest", return_value="f" * 64), \
+                self.assertRaises(candidate.Rejected) as rejected:
+                candidate.promote(REPOSITORY, MERGED, 456, destination, promotion)
+            self.assertEqual("SOURCE_NOT_QUALIFIED", rejected.exception.failure.value)
+            download.assert_not_called()
+            self.assertFalse(promotion.exists())
 
     def test_boolean_attempt_in_promotion_rejects_before_external_observation(self):
         promotion = Path(self.temporary.name) / "promotion.json"

@@ -1,0 +1,23 @@
+{
+  "type": "ASSESSED",
+  "schemaVersion": 1,
+  "documents": 105,
+  "counts": {
+    "warning": 289
+  },
+  "rules": {
+    "Slopsentral.Grade": 57,
+    "Slopsentral.Diction": 120,
+    "Slopsentral.LongSentence": 104,
+    "Slopsentral.Claims": 8
+  },
+  "reportPath": "build/reports/documentation/readability-before-pinned.json",
+  "reportSha256": "f616b2a5daf6aad9b337a981285c9c345d9bf09d935ee03bd418cbd25eb87b29",
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "scope": "Immutable copies of the 105 baseline files and baseline glossary. Original paths are prefixed by build/reports/documentation/readability-before-pinned-inputs/.",
+  "note": "Installed skill 4.0.4 emits schema v1 and accepts --glossary. Repository prose describes a newer schema-v2 tool. This run follows actual local tool behavior."
+}

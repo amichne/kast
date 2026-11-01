@@ -31,6 +31,20 @@ sealed interface ImpactFlowObligationEvidenceDocument {
     @Serializable @SerialName("NONE") data object None : ImpactFlowObligationEvidenceDocument
 
     @Serializable
+    @SerialName("STRING_CONVERSION")
+    data class StringConversion(
+        val compilerIdentity: ProtocolText,
+        val signature: ProtocolText,
+        val origin: ImpactStringConversionOriginDocument,
+        val entryRange: ImpactSourceRangeDocument,
+        val inputRange: ImpactSourceRangeDocument,
+    ) : ImpactFlowObligationEvidenceDocument
+
+    @Serializable
+    @SerialName("CALLBACK_INPUT")
+    data class CallbackInput(val failure: ImpactCallbackInputFailureDocument) : ImpactFlowObligationEvidenceDocument
+
+    @Serializable
     @SerialName("EXPRESSION")
     data class Expression(
         @ProtocolStringConstraint(pattern = "^[A-Z][A-Za-z0-9_]{0,127}$", minimumLength = 1, maximumLength = 128)

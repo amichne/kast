@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 569.3229166666667 404.80000000000007" width="569.3229166666667" height="404.80000000000007" style="--bg:#171816;--fg:#F0F1EB;--accent:#8FA7FF;--muted:#B3B9AC;background:var(--bg)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 579.3229166666667 432.80000000000007" width="579.3229166666667" height="432.80000000000007" style="--bg:#171816;--fg:#F0F1EB;--line:#697265;--accent:#8FA7FF;--muted:#B3B9AC;--surface:#22251F;--border:#515B4B;background:var(--bg)">
 <style>
 
-  text { font-family: 'system-ui, sans-serif', system-ui, sans-serif; }
+  text { font-family: 'SUSE', system-ui, sans-serif; }
   svg {
     /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
     --_text:          var(--fg);
@@ -19,54 +19,54 @@
   }
 </style>
 <defs>
-  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+  <marker id="retention-arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
     <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
-  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+  <marker id="retention-arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
     <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
   </marker>
 </defs>
-<polyline class="edge" data-from="E" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="356.18899999999996,56.900000000000006 356.18899999999996,88.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="C" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="314.12333333333333,125.80000000000001 314.12333333333333,145.8 293.2775,145.8 293.2775,157.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="C" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="254.66983333333332,194.70000000000002 254.66983333333332,214.70000000000002 201.92174999999997,214.70000000000002 201.92174999999997,226.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="S" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="163.6845833333333,263.6 163.6845833333333,283.6 122.1145,283.6 122.1145,295.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="A" data-to="X" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Mismatch" points="398.2546666666666,125.80000000000001 398.2546666666666,145.8 469.7229166666667,145.8 469.7229166666667,335.9000000000001 437.1455833333333,335.9000000000001 437.1455833333333,347.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="C" data-to="X" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Changed identity" points="331.8851666666667,194.70000000000002 331.8851666666667,283.6000000000001 384.63325,283.6000000000001 384.63325,335.9000000000001 397.57383333333337,335.9000000000001 397.57383333333337,347.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
-<polyline class="edge" data-from="S" data-to="X" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="State moved" points="240.15891666666667,263.6 240.15891666666667,283.6000000000001 281.72900000000004,283.6000000000001 281.72900000000004,335.9000000000001 358.0020833333333,335.9000000000001 358.0020833333333,347.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="E" data-to="A" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="364.18899999999996,60.900000000000006 364.18899999999996,96.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
+<polyline class="edge" data-from="A" data-to="C" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="322.12333333333333,133.8 322.12333333333333,157.8 301.2775,157.8 301.2775,169.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
+<polyline class="edge" data-from="C" data-to="S" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="262.6698333333333,206.70000000000002 262.6698333333333,230.70000000000002 207.92174999999997,230.70000000000002 207.92174999999997,242.70000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
+<polyline class="edge" data-from="S" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="169.6845833333333,279.6 169.6845833333333,303.6 126.1145,303.6 126.1145,315.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
+<polyline class="edge" data-from="A" data-to="X" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Mismatch" points="406.2546666666666,133.8 406.2546666666666,157.8 479.7229166666667,157.8 479.7229166666667,359.9000000000001 447.1455833333333,359.9000000000001 447.1455833333333,371.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
+<polyline class="edge" data-from="C" data-to="X" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Changed identity" points="339.8851666666667,206.70000000000002 339.8851666666667,303.6000000000001 394.63325,303.6000000000001 394.63325,359.9000000000001 407.57383333333337,359.9000000000001 407.57383333333337,371.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
+<polyline class="edge" data-from="S" data-to="X" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="State moved" points="246.15891666666667,279.6 246.15891666666667,303.6000000000001 289.72900000000004,303.6000000000001 289.72900000000004,359.9000000000001 368.0020833333333,359.9000000000001 368.0020833333333,371.9000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#retention-arrowhead)" />
 <g class="edge-label" data-from="A" data-to="X" data-label="Mismatch">
-  <rect x="438.2229166666667" y="290.6000000000001" width="62.2" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="469.32291666666674" y="305.75000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Mismatch</text>
+  <rect x="448.2229166666667" y="310.6000000000001" width="62.2" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="479.32291666666674" y="325.75000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Mismatch</text>
 </g>
 <g class="edge-label" data-from="C" data-to="X" data-label="Changed identity">
-  <rect x="336.63325" y="290.6000000000001" width="95.46400000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="384.36525" y="305.75000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Changed identity</text>
+  <rect x="346.63325" y="310.6000000000001" width="95.46400000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="394.36525" y="325.75000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Changed identity</text>
 </g>
 <g class="edge-label" data-from="S" data-to="X" data-label="State moved">
-  <rect x="244.22899999999998" y="290.6000000000001" width="74.08000000000001" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
-  <text x="281.269" y="305.75000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">State moved</text>
+  <rect x="252.22900000000004" y="310.6000000000001" width="74.08000000000001" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="289.26900000000006" y="325.75000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">State moved</text>
 </g>
 <g class="node" data-id="E" data-label="Earlier exact reference" data-shape="rectangle">
-  <rect x="266.301" y="20" width="179.77599999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="356.18899999999996" y="38.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Earlier exact reference</text>
+  <rect x="274.301" y="24" width="179.77599999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="364.18899999999996" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Earlier exact reference</text>
 </g>
 <g class="node" data-id="A" data-label="Admit current workspace and owner" data-shape="rectangle">
-  <rect x="229.992" y="88.9" width="252.394" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="356.18899999999996" y="107.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Admit current workspace and owner</text>
+  <rect x="237.992" y="96.9" width="252.394" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="364.18899999999996" y="115.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Admit current workspace and owner</text>
 </g>
 <g class="node" data-id="C" data-label="Compiler revalidates declaration" data-shape="rectangle">
-  <rect x="177.4545" y="157.8" width="231.646" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="293.2775" y="176.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Compiler revalidates declaration</text>
+  <rect x="185.4545" y="169.8" width="231.646" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="301.2775" y="188.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Compiler revalidates declaration</text>
 </g>
 <g class="node" data-id="S" data-label="Reexamine current source state" data-shape="rectangle">
-  <rect x="87.21024999999999" y="226.70000000000002" width="229.423" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="201.92174999999997" y="245.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Reexamine current source state</text>
+  <rect x="93.21024999999999" y="242.70000000000002" width="229.423" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="207.92174999999997" y="261.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Reexamine current source state</text>
 </g>
 <g class="node" data-id="R" data-label="Issue fresh exact reference" data-shape="rectangle">
-  <rect x="20" y="295.6" width="204.229" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="122.1145" y="314.05" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Issue fresh exact reference</text>
+  <rect x="24" y="315.6" width="204.229" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="126.1145" y="334.05" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Issue fresh exact reference</text>
 </g>
 <g class="node" data-id="X" data-label="Reject reacquisition" data-shape="rectangle">
-  <rect x="318.43033333333335" y="347.9000000000001" width="158.287" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
-  <text x="397.57383333333337" y="366.3500000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Reject reacquisition</text>
+  <rect x="328.43033333333335" y="371.9000000000001" width="158.287" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="407.57383333333337" y="390.3500000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Reject reacquisition</text>
 </g>
 </svg>

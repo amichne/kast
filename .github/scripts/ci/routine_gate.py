@@ -5,11 +5,12 @@ from pathlib import Path
 import json
 import re
 import subprocess
+from validation_scope import NATIVE_INPUT_MODULES, PRODUCT_MODULES
 
 ROOT = Path(__file__).resolve().parents[3]
 PRODUCT_GATE_COMMAND = ["python3", "distribution/release/run_product_gate.py"]
 REQUIRED = frozenset({
-    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:nativeTest", ":app-server:test",
+    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:udsTest", ":app-server:test",
     ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
     ":topology:contract:test", ":topology:build:test", ":topology:service:test", ":topology:intellij:test",
     ":evidence:topology-sqlite:test",
@@ -17,11 +18,21 @@ REQUIRED = frozenset({
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
     ":localInstallationTest", ":installerFixtureTest",
     ":documentationToolingTest", ":verifyDocumentationGlossary", ":verifyDocumentationMarkdown",
-})
+    ":sourceValidationGate",
+}) | frozenset(f":{module.replace('/', ':')}:{task}" for module in PRODUCT_MODULES for task in ("check", "scopedCheck"))
 
 
 class Failure(str, Enum):
     REQUIRED_PROOF_MISSING = "REQUIRED_PROOF_MISSING"
+    NATIVE_INPUT_INVENTORY_MISMATCH = "NATIVE_INPUT_INVENTORY_MISMATCH"
+
+
+def inspect_native_inputs(output):
+    owners = frozenset(path.replace(":", "/") for path in re.findall(
+        r"^:([^ ]+):compileKotlin SKIPPED$", output, re.MULTILINE))
+    return [dict(condition=Failure.NATIVE_INPUT_INVENTORY_MISMATCH.value,
+                 missing=sorted(owners - NATIVE_INPUT_MODULES), stale=sorted(NATIVE_INPUT_MODULES - owners))] \
+        if owners != NATIVE_INPUT_MODULES else []
 
 
 def inspect(output):
@@ -39,6 +50,15 @@ def main():
         print(result.stdout)
         return result.returncode
     report = inspect(result.stdout)
+    native_command = ["./gradlew", "-Pversion=0.0.0", ":distribution:cli:nativeCompile", "--dry-run", "--console=plain"]
+    native = subprocess.run(native_command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, check=False)
+    if native.returncode:
+        print(native.stdout)
+        return native.returncode
+    report["findings"].extend(inspect_native_inputs(native.stdout))
+    report["status"] = "rejected" if report["findings"] else "complete"
+    report["nativeInputCommand"] = native_command
     report["command"] = command
     report["sourceRevision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     destination = ROOT / "build/reports/ci/routine-gate.json"

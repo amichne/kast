@@ -1,0 +1,17 @@
+{
+  "schema": "kast.public-cli.native-environment.v1",
+  "baseline": "7135d0f2a847a28b919bdba84bbbc8253f8d885a",
+  "candidateSource": "Task tree during implementation, not final commit",
+  "fixture": "/private/tmp/kast-public-cli-v1-a3b5uat_",
+  "candidateHome": "/private/tmp/kcv1h-a3b5uat",
+  "ideaHome": "/Users/amichne/Applications/IntelliJ IDEA.app/Contents",
+  "ideaBuild": "262.10968.63",
+  "hostArchiveSha256": "70b73ebbc3161c9cb3a31dbca17c142cd0612a3f4524f4de6e75896382722e98",
+  "hostPid": 23194,
+  "hostIdentity": "d0fa38e6-2249-45c3-895d-a570159d1a92",
+  "endpointStatus": "PUBLISHED",
+  "gradleImportMillis": 8634,
+  "semanticQueryStatus": "PRELIMINARY_NATIVE_SMOKE_PASSED",
+  "samplesPerRoutePlanned": 3,
+  "controlArchiveSha256": "fafaa7af935f188174e6ca17dd526df084d482227266cfef1fdf70412dbe5777"
+}

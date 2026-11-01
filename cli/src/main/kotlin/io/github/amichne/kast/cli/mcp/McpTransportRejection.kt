@@ -9,6 +9,14 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 internal sealed interface McpTransportRejection {
     @Serializable
+    @SerialName("OUTPUT_LIMIT")
+    data class OutputLimit(
+        val limitBytes: Int,
+        val semantic: io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocument,
+        @Required val status: McpRejectedStatus = McpRejectedStatus.REJECTED,
+    ) : McpTransportRejection
+
+    @Serializable
     @SerialName("MCP_REJECTED")
     data class CallFailure(
         val error: McpCallError,

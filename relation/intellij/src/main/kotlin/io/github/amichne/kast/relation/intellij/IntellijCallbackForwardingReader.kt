@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
+import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
@@ -36,7 +37,10 @@ private data class NativeForwardingTarget(
 )
 
 /** Compiler mapping is read only after the exact incoming parameter reference has been confirmed. */
-internal class IntellijCallbackForwardingReader(private val context: IntellijCallbackFlowContext) {
+internal class IntellijCallbackForwardingReader(
+    private val context: IntellijCallbackFlowContext,
+    private val selectedFrames: List<ValueCallFrame> = emptyList(),
+) {
     fun read(
         source: PreparedCallbackFlow,
         expression: KtNameReferenceExpression,
@@ -65,13 +69,19 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
                         }
                     )
             }
+        val selected = selectedFrames.filter { candidate ->
+            candidate.invocation.enclosing.valueIdentity == source.target.valueIdentity &&
+                candidate.invocation.range == context.range(call.valueInvocationExpression())
+        }
+        if (selected.size > 1) return unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        val frame = selected.singleOrNull()
         val target =
-            when (val admitted = mappedTarget(mapped)) {
+            when (val admitted = mappedTarget(mapped, frame)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return unavailable(admitted.failure)
             }
         val binding =
-            when (val admitted = argumentBinding(source, call, target)) {
+            when (val admitted = argumentBinding(source = source, call = call, target = target, frame = frame)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return unavailable(admitted.failure)
             }
@@ -84,10 +94,17 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
         )
     }
 
-    private fun mappedTarget(mapped: NativeArgument): Refinement<NativeForwardingTarget, CallbackInvocationFlowCause> {
+    private fun mappedTarget(
+        mapped: NativeArgument,
+        frame: ValueCallFrame?,
+    ): Refinement<NativeForwardingTarget, CallbackInvocationFlowCause> {
         val function =
-            mapped.declaration as? KtNamedFunction
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
+            when (val selected = selectedFunction(mapped, frame)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return selected
+            }
+        if (selectedFrames.isNotEmpty() && function.bodyExpression == null)
+            return Refinement.Rejected(CallbackInvocationFlowCause.NO_INVOCATION_PROVEN)
         val file =
             function.containingFile.virtualFile
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
@@ -98,6 +115,8 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
+        if (frame != null && target != frame.callee.enclosing)
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val parameter =
             function.valueParameters.getOrNull(mapped.position.value)
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
@@ -117,31 +136,68 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
         )
     }
 
+    private fun selectedFunction(
+        mapped: NativeArgument,
+        frame: ValueCallFrame?,
+    ): Refinement<KtNamedFunction, CallbackInvocationFlowCause> {
+        val declared =
+            mapped.declaration as? KtNamedFunction
+                ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
+        if (frame == null) return Refinement.Refined(declared)
+        val declaredEndpoint =
+            when (val restored = context.target(declared)) {
+                is Refinement.Refined -> restored.value
+                is Refinement.Rejected -> return restored
+            }
+        if (declaredEndpoint.valueIdentity != frame.invocation.callable.valueIdentity)
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        val function =
+            when (val restored = context.declaration(frame.callee.enclosing)) {
+                is IntellijRelationSubjectLookup.Found -> restored.declaration as? KtNamedFunction
+                is IntellijRelationSubjectLookup.Rejected -> null
+            } ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        return Refinement.Refined(function)
+    }
+
     private fun argumentBinding(
         source: PreparedCallbackFlow,
         call: KtCallElement,
         target: NativeForwardingTarget,
+        frame: ValueCallFrame?,
     ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowCause> {
         val range =
             context.range(call.valueInvocationExpression())
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val invocation =
-            when (val admitted = ValueInvocation.fromCompiler(source.target, range, target.endpoint)) {
+            when (
+                val admitted =
+                    ValueInvocation.fromCompiler(source.target, range, frame?.invocation?.callable ?: target.endpoint)
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             }
+        if (frame != null && frame.invocation != invocation)
+            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val owner =
             context.owner(call)
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
         return when (
             val admitted =
-                CallbackArgumentBinding.fromCompiler(
-                    invocation = invocation,
-                    invocationOwner = owner,
-                    position = target.position,
-                    parameter = target.parameterOccurrence,
-                )
+                if (frame == null)
+                    CallbackArgumentBinding.fromCompiler(
+                        invocation = invocation,
+                        invocationOwner = owner,
+                        position = target.position,
+                        parameter = target.parameterOccurrence,
+                    )
+                else
+                    CallbackArgumentBinding.fromCompiler(
+                        frame = frame,
+                        invocationOwner = owner,
+                        position = target.position,
+                        parameter = target.parameterOccurrence,
+                    )
         ) {
             is Refinement.Refined -> admitted
             is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)

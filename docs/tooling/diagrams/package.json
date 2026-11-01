@@ -2,7 +2,14 @@
   "name": "kast-architecture-diagrams",
   "private": true,
   "type": "module",
-  "scripts": { "render": "node render.mjs" },
-  "engines": { "node": ">=24.21.0" },
-  "dependencies": { "beautiful-mermaid": "1.1.3" }
+  "scripts": {
+    "render": "node render.mjs",
+    "check": "node render.mjs --check"
+  },
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "dependencies": {
+    "beautiful-mermaid": "1.1.3"
+  }
 }

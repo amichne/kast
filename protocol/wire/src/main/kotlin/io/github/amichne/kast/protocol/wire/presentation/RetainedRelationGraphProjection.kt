@@ -29,6 +29,7 @@ internal fun projectRetainedRelationGraph(
             projectSymbolGraph(basis, items, originalItems, observations, output, projection)
         is QueryResultItemCliDocument.ReferenceOccurrence ->
             projectReferenceGraph(basis, items, observations, projection)
+        is QueryResultItemCliDocument.DeferredDetail,
         is QueryResultItemCliDocument.ExactSymbolNode,
         is QueryResultItemCliDocument.ReferenceEdge,
         is QueryResultItemCliDocument.Occurrence,

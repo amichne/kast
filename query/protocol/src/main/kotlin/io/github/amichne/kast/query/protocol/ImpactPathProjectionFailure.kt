@@ -23,5 +23,7 @@ sealed interface ImpactPathProjectionFailure {
 
     data class Budget(val cause: PositiveLimitFailure) : ImpactPathProjectionFailure
 
+    data object CLASSIFICATION_MISMATCH : ImpactPathProjectionFailure
+
     data object DOMAIN_PROJECTION_REJECTED : ImpactPathProjectionFailure
 }

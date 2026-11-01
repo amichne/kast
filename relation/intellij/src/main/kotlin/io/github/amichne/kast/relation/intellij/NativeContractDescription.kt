@@ -8,13 +8,13 @@ import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
 /** Compiler-admitted contract descriptions declare effects without executing their builder references. */
 internal fun nativeContractDescriptionReference(
-    expression: KtNameReferenceExpression,
+    expression: KtExpression,
     function: KtFunction,
     observation: IntellijReadObservation,
 ): Boolean {

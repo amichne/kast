@@ -6,7 +6,7 @@ icon: "file-pen-line"
 
 <a id="exact-inputs-for-tool-authors" />
 
-Use these steps after you have authority for one source change. Kast can add a declaration to an existing file. It can also replace a supported function body.
+Use these steps when you have authority for one source change. Kast can add a declaration to an existing file or replace a supported function body.
 
 1. [Select the target and scope.](#1-select-the-target-and-scope)
 2. [Prove the source effect.](#2-establish-the-source-effect)
@@ -32,7 +32,7 @@ Use Kast to replace the chosen function's body with { return 3 }. Keep its signa
 
 The target is a named, non-inline Kotlin function. It needs a block body and no contract. Kast rejects expression bodies and ownership that is not supported.
 
-The tools do not create files, rename symbols, replace arbitrary ranges, or do multi-file refactors.
+The tools cannot create files, rename symbols, replace arbitrary ranges, or make multi-file refactors.
 
 <a id="read-the-receipt" />
 
@@ -54,7 +54,7 @@ IDEA diagnostics and checks after a write cover only the receipt's scope. After 
 
 ## 3. Use the supported input form
 
-These examples use placeholders for current exact references. Pass issued handles unchanged.
+These examples use placeholders. Replace them with current exact references, and pass each issued handle unchanged.
 
 ### Add a declaration
 

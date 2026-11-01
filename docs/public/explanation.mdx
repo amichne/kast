@@ -1,40 +1,112 @@
 ---
-title: "Where an answer comes from"
-sidebarTitle: "Architecture overview"
-description: "Follow a Kotlin question through compiler authority, query execution, safe reuse, and controlled source changes."
+title: "How to understand a Kast answer"
+sidebarTitle: "Understand an answer"
+description: "Understand declarations, source relationships, value paths, and the limits of a completed query before exploring Kast's architecture."
 icon: "workflow"
 ---
 
-Kast turns a question about Kotlin source into scoped compiler evidence. The agent chooses the question and interprets the answer.
+Kast uses IntelliJ IDEA's compiler analysis to answer questions about your Kotlin source. A useful answer identifies code and explains its relationships, scope, and evidence limits.
 
-Start with the query lifecycle for the whole path. Use the other pages to examine one owner or proof rule.
+## Start with a declaration and a source question
+
+Suppose you want to change `message` and need its callers:
+
+```kotlin
+fun message(): String = "Ready"
+fun display(): String = message()
+fun unrelated(): String = "Ready"
+```
+
+The example declares three functions. `display` calls `message`. `unrelated` contains the same text but does not call `message`. Kast resolves the call to its declaration.
+
+A symbol identifies a code element in compiler analysis.
+Kast issues an **exact reference** for a selected declaration, so the next query can use that identity.
+The name `message` alone cannot distinguish declarations with different owners or signatures.
+[Symbol identity](/reference/symbols) explains exact references and their source fields.
+
+## Relationships answer different questions
+
+A caller relationship identifies code that calls a declaration.
+An implementation relationship identifies a declaration that implements a contract.
+A value path connects supported transfers of a selected value, such as a return, argument, or field read.
+A list of callers alone does not explain where a returned value goes.
+
+The [customer example](/explanation/value-journey) shows a returned customer inside an email draft, then inside a possible list element.
+The customer, draft, and list remain distinct objects.
+Compiler-resolved calls and fields supply part of the evidence. A reviewed library rule supplies the connection from `map`'s callback result to an output element.
+
+A callback is a function value supplied to other code.
+The code that supplies it, the body that invokes it, and the calls inside it have distinct roles.
+Its location inside another function does not prove that the enclosing function directly calls everything in the callback.
+[Program tracing](/reference/program-tracing) develops these distinctions with Kotlin examples.
+
+## Follow the evidence through the result
+
+Kast uses the saved project and imported model in IDEA. It finds candidates, resolves identities and relationships, then returns the requested fields and evidence. That evidence belongs to the queried source state. A later edit can make it stale. A fresh query can establish current evidence without updating retained rows. [The query lifecycle](/explanation/query-lifecycle) explains this sequence.
+
+Read a result in this order:
+
+1. Identify the selected declaration and the directory, package, or source sets covered by the question.
+2. Examine completion, failures, omissions, and stated qualifications.
+3. Inspect the returned source locations and the relationship each item establishes.
+4. Read more output when the response supplies a continuation or retained-result cursor.
+
+A preview can omit stored rows even when the query is complete. Reading every retained row after a rejection does not make the answer complete. [Results](/reference/responses) defines completion, presentation, and recovery.
+
+## What completion does and does not mean
+
+Public queries use `COMPLETE_ONLY` under the **compiler-static model**, named `COMPILER_RESOLVED_STATIC_V1` in the contract.
+Completion means that the query met that model's proof rules for its declared scope.
+A finished scan alone does not establish every required proof.
+
+Some source traces keep callback execution gaps as explicit evidence under `SOURCE_RELATIONSHIPS`.
+Other relationship and impact operations need stronger proof before completion.
+The [result interpretation](/reference/responses#run-completion) states which rule applies.
+
+No source result proves that a path executed or can execute in a running application.
+Compiler evidence, reviewed library rules, and admitted models keep their different qualifications.
+A modeled value transfer alone does not establish value correspondence.
+Evidence stops at an unsupported transfer. The connection remains unproved.
+
+For the small example, a completed caller query can establish the call from `display` to `message` within its scope.
+It does not prove that `display` ran.
+Your application's tests and runtime evidence answer different questions.
+
+## Use source changes with their receipts
+
+Kast can add a declaration to an existing file or replace a supported function body.
+It checks the selected source before the write and returns the outcome with a change receipt.
+That receipt describes a scoped source effect. It does not replace your project's build or behavior tests.
+
+If the outcome is uncertain, preserve the recovery evidence and inspect current source before another write.
+The [source-change guide](/reference/change) gives the supported targets and procedure.
+
+## Explore the mechanisms
+
+These pages explain implementation decisions and result limits.
 
 <Columns cols={2}>
   <Card title="Follow one value" icon="route" href="/explanation/value-journey">
-    Step through source and see why a value can move—or why missing proof stops it.
+    Trace a value through source, then change the example to see a different route.
   </Card>
   <Card title="How a query runs" icon="workflow" href="/explanation/query-lifecycle">
-    Follow admission, semantic work, completion, and output delivery.
+    See how a question reaches IDEA and how the answer reaches your agent.
   </Card>
   <Card title="Who proves a fact" icon="shield-check" href="/reference/internals/architecture">
-    Separate index candidates, compiler identity, and scoped completion.
+    See which facts come from the index and which need the compiler.
   </Card>
   <Card title="How query work is reused" icon="repeat" href="/architecture/query-reuse">
-    Compare file exclusion, TRACE grouping, reference inventories, and IMPACT reads.
+    See when Kast can skip files or share work between routes.
   </Card>
   <Card title="When evidence expires" icon="history" href="/reference/staleness">
-    Distinguish fresh declaration identity, retained answers, and reusable semantic facts.
+    See which results you can reuse after the source changes.
   </Card>
   <Card title="Where state lives" icon="network" href="/architecture/topology">
-    Find the adapters, IDEA Host, and owners of temporary and stored state.
+    Find the parts that connect your agent to IDEA and store its results.
   </Card>
   <Card title="How source changes work" icon="file-pen-line" href="/architecture/change-lifecycle">
-    Follow an exact target through a plan, source effect, receipt, and recovery.
+    See how Kast plans an edit and records its result.
   </Card>
 </Columns>
 
-<Info>
-  A complete answer meets the compiler-static proof rules for its declared scope. It does not prove runtime execution.
-</Info>
-
-For hands-on use, start with [the first-query exercise](/tutorials/first-query). [Reference](/reference) defines the exact fields and result kinds.
+Try [your first query](/tutorials/first-query) on a small file. Use [Reference](/reference) for exact fields and result kinds.

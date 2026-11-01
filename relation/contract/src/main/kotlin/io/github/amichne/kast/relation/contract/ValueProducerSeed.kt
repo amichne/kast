@@ -93,6 +93,20 @@ enum class ValueProducerSeedRejection {
     ANCHOR_MISMATCH,
     CALLABLE_MISMATCH,
     OWNER_MISMATCH,
+    OWNER_UNAVAILABLE,
+    NESTED_EXECUTION,
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
+    EXTERNAL_CALL,
+    UNMODELED_CALL,
+    MUTABLE_CONTROL_FLOW,
+    UNSUPPORTED_EXPRESSION,
+    UNRESOLVED_REFERENCE,
+    UNSUPPORTED_PROPERTY,
+    UNSUPPORTED_RETURN,
+    ACCESS_PATH_DEPTH_EXCEEDED,
+    CALL_CONTEXT_DEPTH_EXCEEDED,
+    RECURSIVE_SOURCE_CALL,
     AUTHORITY_MOVED,
     NATIVE_UNAVAILABLE,
     GRANT_TOO_SMALL,
@@ -105,7 +119,10 @@ enum class ValueProducerSeedRejection {
 sealed interface ValueProducerSeedRead {
     data class Seeded(val seed: ValueProducerSeed, val examinedWorkUnits: RelationWorkCount) : ValueProducerSeedRead
 
-    data class Rejected(val cause: ValueProducerSeedRejection) : ValueProducerSeedRead
+    data class Rejected(
+        val cause: ValueProducerSeedRejection,
+        val diagnostic: ValueProducerSeedDiagnostic = ValueProducerSeedDiagnostic.NotAcquired,
+    ) : ValueProducerSeedRead
 
     data class ContractRejected(val cause: ValueProducerSeedFailure) : ValueProducerSeedRead
 }

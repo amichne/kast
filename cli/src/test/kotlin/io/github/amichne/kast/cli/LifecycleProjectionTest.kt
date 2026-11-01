@@ -5,6 +5,13 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.protocol.contract.HostAutoReload
+import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
+import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCommand
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeFailure
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeStage
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
@@ -14,6 +21,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
@@ -77,12 +85,14 @@ class LifecycleProjectionTest {
                 "protocol",
                 "background",
                 "capabilities",
+                "runtimeIdentity",
             ),
             inspection.keys,
         )
         assertEquals("inspected", inspection["type"]!!.jsonPrimitive.content)
         assertEquals(1, inspection["protocol"]!!.jsonPrimitive.int)
         assertEquals("best_effort", inspection["background"]!!.jsonPrimitive.content)
+        assertEquals(JsonNull, inspection.getValue("runtimeIdentity"))
         val compatibility = inspection.getValue("compatibility").jsonObject
         assertEquals("0.49.0", compatibility.getValue("hostedPluginVersion").jsonPrimitive.content)
         assertEquals(
@@ -90,6 +100,106 @@ class LifecycleProjectionTest {
             compatibility.getValue("hostedContract").jsonObject.getValue("type").jsonPrimitive.content,
         )
     }
+
+    @Test
+    fun `inspection emits the captured loaded identity without changing compatibility evidence`() {
+        val identity = loadedIdentity()
+        val original = inspected()
+        val encoded = json.encodeToJsonElement<IdeLifecycleResult>(original.copy(runtimeIdentity = identity)).jsonObject
+        val runtime = encoded.getValue("runtimeIdentity").jsonObject
+        assertEquals(
+            setOf(
+                "ideaHome",
+                "profile",
+                "pid",
+                "processStartEpochMillis",
+                "hostLifetime",
+                "buildIdentity",
+                "autoReload",
+            ),
+            runtime.keys,
+        )
+        assertEquals("/idea", runtime.getValue("ideaHome").jsonPrimitive.content)
+        assertEquals("/profile", runtime.getValue("profile").jsonPrimitive.content)
+        assertEquals("42", runtime.getValue("pid").jsonPrimitive.content)
+        assertEquals("100", runtime.getValue("processStartEpochMillis").jsonPrimitive.content)
+        assertEquals("host", runtime.getValue("hostLifetime").jsonPrimitive.content)
+        assertEquals("ENABLED", runtime.getValue("autoReload").jsonPrimitive.content)
+        val build = runtime.getValue("buildIdentity").jsonObject
+        assertEquals(setOf("version", "sourceRevision", "sourceTree"), build.keys)
+        assertEquals("0.49.0", build.getValue("version").jsonPrimitive.content)
+        assertEquals("a".repeat(40), build.getValue("sourceRevision").jsonPrimitive.content)
+        assertEquals("b".repeat(40), build.getValue("sourceTree").jsonPrimitive.content)
+        assertEquals(json.encodeToJsonElement(original.compatibility), encoded.getValue("compatibility"))
+    }
+
+    @Test
+    fun `local schema definitions preserve loaded identity and reject null process identity`() {
+        val graph =
+            (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
+                .factory
+        val schema =
+            installedServerProjection(graph.surface)
+                .hostedBootstrap
+                .tools
+                .single { it.name == "workspace_lifecycle" }
+                .outputSchema
+                .jsonObject
+        assertTrue(
+            schema
+                .getValue("\$defs")
+                .jsonObject
+                .keys
+                .containsAll(setOf("ideHostRuntimeIdentity", "ideLifecycleFailure", "ideProjectTarget"))
+        )
+        val validator =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(schema.toString())
+        val valid = json.encodeToString(Completed(inspected().copy(runtimeIdentity = loadedIdentity())))
+        assertTrue(validator.validate(valid, InputFormat.JSON).isEmpty())
+        val invalid = valid.replace("\"pid\":42", "\"pid\":null")
+        assertNotEquals(valid, invalid)
+        assertTrue(validator.validate(invalid, InputFormat.JSON).isNotEmpty())
+    }
+
+    @Test
+    fun `shared exchange failure schema preserves command stage and closed cause`() {
+        val schema =
+            installedServerOutputSchema(io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_LIFECYCLE)
+        assertTrue("ideLifecycleExchangeFailure" in schema.getValue("\$defs").jsonObject)
+        val validator =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(schema.toString())
+        val blocked =
+            IdeLifecycleResult.Blocked(
+                IdeLifecycleFailure.HOST_UNAVAILABLE,
+                exchange =
+                    IdeLifecycleExchangeFailure(
+                        IdeLifecycleExchangeCommand.SETTLE_HOST_FOR_RELOAD,
+                        IdeLifecycleExchangeStage.READ_BODY,
+                        IdeLifecycleExchangeCause.TRUNCATED_RESPONSE,
+                        elapsedMillis = 10,
+                        limitMillis = 100,
+                    ),
+            )
+        for (encoded in listOf(json.encodeToString(Completed(blocked)), json.encodeToString(Rejected(blocked)))) {
+            assertTrue(validator.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
+            for (field in listOf("SETTLE_HOST_FOR_RELOAD", "READ_BODY", "TRUNCATED_RESPONSE")) {
+                val invalid = encoded.replace(field, "UNKNOWN_VALUE")
+                assertNotEquals(encoded, invalid)
+                assertTrue(validator.validate(invalid, InputFormat.JSON).isNotEmpty(), invalid)
+            }
+        }
+    }
+
+    private fun loadedIdentity() =
+        IdeHostRuntimeIdentity(
+            ideaHome = "/idea",
+            profile = "/profile",
+            pid = 42,
+            processStartEpochMillis = 100,
+            hostLifetime = "host",
+            buildIdentity = IdeHostBuildIdentity("0.49.0", "a".repeat(40), "b".repeat(40)),
+            autoReload = HostAutoReload.ENABLED,
+        )
 
     @Test
     fun `configured lifecycle result retains the exact target and rule shape`() {

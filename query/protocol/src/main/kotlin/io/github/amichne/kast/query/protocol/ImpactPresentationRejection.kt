@@ -29,6 +29,8 @@ internal fun ImpactPathProjectionFailure.presentationRejection(): QueryRunReject
                 ImpactPresentationFailureDocument.DomainFingerprint(cause.presentationCause())
             is ImpactPathProjectionFailure.Count -> ImpactPresentationFailureDocument.Count(cause.presentationCause())
             is ImpactPathProjectionFailure.Budget -> ImpactPresentationFailureDocument.Budget(cause.presentationCause())
+            ImpactPathProjectionFailure.CLASSIFICATION_MISMATCH ->
+                ImpactPresentationFailureDocument.ClassificationMismatch
             ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED ->
                 ImpactPresentationFailureDocument.DomainProjectionRejected
         }

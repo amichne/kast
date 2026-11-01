@@ -1,0 +1,1133 @@
+[
+  {
+    "type": "function",
+    "name": "kast_query_symbols",
+    "description": "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload before relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve original authority and freshness. This session exposes the common query grammar. Start a COMPLETE session for advanced operations.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "verbose": {
+          "type": "boolean"
+        },
+        "request": {
+          "$ref": "#/$defs/Action"
+        }
+      },
+      "required": [
+        "verbose",
+        "request"
+      ],
+      "additionalProperties": false,
+      "$defs": {
+        "Search": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "SEARCH_DECLARATIONS"
+              ]
+            },
+            "declarationName": {
+              "type": "string"
+            },
+            "nameMatch": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "EXACT",
+                "FUZZY",
+                null
+              ]
+            },
+            "declarationKinds": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "CLASS",
+                  "FUNCTION",
+                  "PROPERTY",
+                  "TYPE_ALIAS"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 4
+            },
+            "scope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Scope"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "declarationName",
+            "nameMatch",
+            "declarationKinds",
+            "scope"
+          ],
+          "additionalProperties": false
+        },
+        "Output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Symbols"
+            },
+            {
+              "$ref": "#/$defs/Occurrences"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ReadOutput": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Symbols"
+            },
+            {
+              "$ref": "#/$defs/Occurrences"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Symbols": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "SYMBOLS"
+              ]
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE",
+                  "SOURCE"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 4
+            }
+          },
+          "required": [
+            "type",
+            "fields"
+          ],
+          "additionalProperties": false
+        },
+        "Occurrences": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "OCCURRENCES"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        "Relation": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "EXPAND_RELATION"
+              ]
+            },
+            "relation": {
+              "type": "string",
+              "enum": [
+                "REFERENCES",
+                "CALLERS",
+                "CALLEES",
+                "IMPLEMENTATIONS",
+                "INHERITORS",
+                "OVERRIDES",
+                "TYPE_USES"
+              ]
+            },
+            "expansionScope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Expansion"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "relation",
+            "expansionScope"
+          ],
+          "additionalProperties": false
+        },
+        "ExecutionBudget": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "maxResults": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "maxReturnedBytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 9223372036854775807,
+              "description": "Query minimum: 4096 UTF-8 bytes."
+            }
+          },
+          "required": [
+            "maxResults",
+            "maxReturnedBytes"
+          ],
+          "additionalProperties": false
+        },
+        "ResultRef": {
+          "type": "string",
+          "pattern": "^result:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "Run": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RUN"
+              ]
+            },
+            "source": {
+              "$ref": "#/$defs/Source"
+            },
+            "steps": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/$defs/Step"
+              },
+              "minItems": 0,
+              "maxItems": 1000
+            },
+            "terminalStep": {
+              "$ref": "#/$defs/Terminal"
+            },
+            "retention": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "DISCARD",
+                "RETAIN",
+                null
+              ]
+            },
+            "executionBudget": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ExecutionBudget"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "executionMode": {
+              "anyOf": [
+                {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "RUNNER_CONTROLLED",
+                    null
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "source",
+            "steps",
+            "terminalStep",
+            "retention",
+            "executionBudget",
+            "executionMode"
+          ],
+          "additionalProperties": false
+        },
+        "Resume": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RESUME"
+              ]
+            },
+            "continuation": {
+              "type": "string",
+              "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "executionBudget": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ExecutionBudget"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "continuation",
+            "executionBudget"
+          ],
+          "additionalProperties": false
+        },
+        "ReadResultAction": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "READ_RESULT"
+              ]
+            },
+            "result": {
+              "$ref": "#/$defs/ResultRef"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "output": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ReadOutput"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "executionBudget": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ExecutionBudget"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "evidence_cursor": {
+              "anyOf": [
+                {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Detail"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "result",
+            "cursor",
+            "output",
+            "executionBudget",
+            "evidence_cursor",
+            "detail"
+          ],
+          "additionalProperties": false
+        },
+        "Scope": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "DIRECTORY"
+                  ]
+                },
+                "relativeDirectoryPath": {
+                  "type": "string"
+                },
+                "includeSubdirectories": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "sourceSetNames": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "maxItems": 1000
+                }
+              },
+              "required": [
+                "type",
+                "relativeDirectoryPath",
+                "includeSubdirectories",
+                "sourceSetNames"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "PACKAGE"
+                  ]
+                },
+                "packageName": {
+                  "type": "string"
+                },
+                "includeSubpackages": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "sourceSetNames": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "maxItems": 1000
+                }
+              },
+              "required": [
+                "type",
+                "packageName",
+                "includeSubpackages",
+                "sourceSetNames"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Search"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "AT_LOCATION"
+                  ]
+                },
+                "file": {
+                  "type": "string"
+                },
+                "offset": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "type",
+                "file",
+                "offset"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "SYMBOL_REFS"
+                  ]
+                },
+                "symbolRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^exact:v[1-9][0-9]*:"
+                  },
+                  "minItems": 1,
+                  "maxItems": 1000
+                }
+              },
+              "required": [
+                "type",
+                "symbolRefs"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "Step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Relation"
+            }
+          ]
+        },
+        "Action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Run"
+            },
+            {
+              "$ref": "#/$defs/Resume"
+            },
+            {
+              "$ref": "#/$defs/ReadResultAction"
+            },
+            {
+              "$ref": "#/$defs/ReadSource"
+            }
+          ]
+        },
+        "Expansion": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "WORKSPACE"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "RETAINED_SEED"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "SOURCE_DOMAIN"
+                  ]
+                },
+                "sourceSets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "maxItems": 64
+                },
+                "directory": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "includeSubdirectories": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "sourcePolicy": {
+                  "type": "string",
+                  "enum": [
+                    "PRODUCTION_ONLY",
+                    "TEST_ONLY",
+                    "PRODUCTION_AND_TEST"
+                  ]
+                },
+                "generatedSources": {
+                  "type": "string",
+                  "enum": [
+                    "EXCLUDE",
+                    "INCLUDE"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "sourceSets",
+                "directory",
+                "includeSubdirectories",
+                "sourcePolicy",
+                "generatedSources"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "ReadSource": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "READ_SOURCE"
+              ]
+            },
+            "candidateRef": {
+              "type": "string",
+              "pattern": "^(?:(?:candidate|exact):(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})|source-selector-v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64})$"
+            },
+            "region": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "ANCHOR",
+                "CALLABLE_BODY",
+                "CLASS_BODY",
+                "FILE",
+                "ENCLOSING_DECLARATION",
+                "ENCLOSING_CALLABLE_BODY",
+                "ENCLOSING_CLASS_BODY",
+                null
+              ]
+            },
+            "text": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Text"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "executionBudget": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ExecutionBudget"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "candidateRef",
+            "region",
+            "text",
+            "executionBudget"
+          ],
+          "additionalProperties": false
+        },
+        "Terminal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emit"
+            },
+            {
+              "$ref": "#/$defs/Trace"
+            }
+          ]
+        },
+        "Emit": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "EMIT"
+              ]
+            },
+            "output": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Output"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "output"
+          ],
+          "additionalProperties": false
+        },
+        "TraceOutput": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Symbols"
+            }
+          ]
+        },
+        "Trace": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "TRACE"
+              ]
+            },
+            "expansionScope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Expansion"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "output": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TraceOutput"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "expansionScope",
+            "output"
+          ],
+          "additionalProperties": false
+        },
+        "Text": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "COMPLETE"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "NONE"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "WINDOW"
+                  ]
+                },
+                "beforeLines": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000
+                },
+                "afterLines": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000
+                }
+              },
+              "required": [
+                "type",
+                "beforeLines",
+                "afterLines"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "EXCERPT"
+                  ]
+                },
+                "maxLines": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 1000
+                }
+              },
+              "required": [
+                "type",
+                "maxLines"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "Detail": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "result": {
+              "$ref": "#/$defs/ResultRef"
+            },
+            "section": {
+              "type": "string",
+              "enum": [
+                "CANONICAL_ENTRY_JSON"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "enum": [
+                "ROW",
+                "EVIDENCE"
+              ]
+            },
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "EXACT_SYMBOL",
+                "OCCURRENCE",
+                "REFERENCE_OCCURRENCE",
+                "TRAVERSAL_RECORD",
+                "BINDING_ROW",
+                "VALUE_PATH",
+                "IMPACT_WITNESS",
+                "FAILURE",
+                "OMISSION",
+                "WALK_OBSERVATION",
+                "REFERENCE_OBSERVATION",
+                "DISCOVERY_OBSERVATION",
+                "RELATION_OBSERVATION"
+              ]
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "result",
+            "section",
+            "target",
+            "ordinal",
+            "kind",
+            "sha256",
+            "offset"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "kast_check_diagnostics",
+    "description": "Check compiler diagnostics for a file or recursively beneath a directory in the session workspace. Use '.' explicitly for the workspace root. This is not symbol search and does not build the project. Results retain incomplete-coverage evidence; an incomplete empty result does not establish that the scope is clean. Requires the saved, indexed IntelliJ state.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
+        "relativePath": {
+          "type": "string",
+          "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal."
+        },
+        "maxDiagnostics": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+        },
+        "continuation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
+        },
+        "executionBudget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionBudget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "verbose",
+        "relativePath",
+        "maxDiagnostics",
+        "continuation",
+        "executionBudget"
+      ],
+      "additionalProperties": false,
+      "$defs": {
+        "ExecutionBudget": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "RUNNER_CONTROLLED has no implicit semantic work or time limit. It accepts an explicit timeout and output page controls. Legacy BOUNDED mode uses configured grants and ceilings.",
+          "properties": {
+            "maxElapsedMs": {
+              "description": "Explicit timeout in milliseconds for RUNNER_CONTROLLED execution, including model capture. Omission adds no timeout. Legacy BOUNDED mode uses KAST_READ_SEMANTIC_MILLIS and host clamps.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 9223372036854775807
+            },
+            "maxWorkUnits": {
+              "description": "Accounted work allowance. Query omission uses KAST_READ_SEMANTIC_WORK. Time and response size do not change this allowance.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 9223372036854775807
+            },
+            "maxResults": {
+              "description": "In BOUNDED mode, this caps results. In RUNNER_CONTROLLED mode, this caps each output page.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "maxReturnedBytes": {
+              "description": "Query minimum: 4096 UTF-8 bytes. Omission uses KAST_READ_SEMANTIC_RETURNED_BYTES.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 9223372036854775807
+            }
+          },
+          "required": [
+            "maxElapsedMs",
+            "maxWorkUnits",
+            "maxResults",
+            "maxReturnedBytes"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "kast_add_declaration",
+    "description": "Add one declaration at an exact top-level Kotlin target. A class or object target inserts into its existing body. A function, property, or type alias target inserts after that declaration. Kast plans and applies the change, examines the resulting source, and reports a verified receipt or finite failure with recovery evidence. Preserve the returned result. A cancelled or missing response does not prove that no write occurred.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
+        "exactTarget": {
+          "type": "string",
+          "description": "Opaque exact-symbol reference to a top-level Kotlin declaration. Member and local targets reject. Copy the issued reference unchanged."
+        },
+        "declaration": {
+          "type": "string",
+          "description": "Kotlin declaration text to add at the exact target."
+        }
+      },
+      "required": [
+        "verbose",
+        "exactTarget",
+        "declaration"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "kast_replace_body",
+    "description": "Replace only the block body of one existing, non-inline named Kotlin function selected by an exact Kast symbol reference. Kast plans, applies, verifies, and reports a verified receipt or finite failure with recovery evidence. The signature and surrounding source are preserved.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+        },
+        "exactTarget": {
+          "type": "string",
+          "description": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+        },
+        "body": {
+          "type": "string",
+          "description": "One complete Kotlin block body, including braces. Syntax errors and trailing input are rejected."
+        }
+      },
+      "required": [
+        "verbose",
+        "exactTarget",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  }
+]

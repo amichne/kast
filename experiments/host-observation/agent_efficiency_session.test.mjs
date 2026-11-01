@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { admitSessionPlan, finalizedUsage, usageQualification } from './agent_efficiency_session.mjs';
+import { admitSessionPlan, finalizedUsage, usageQualification, measureLoadedDeclarations, measureResultExposure } from './agent_efficiency_session.mjs';
 
 const plan = () => ({version:1,workspaceRoot:'/tmp/project',outputRoot:'/tmp/result',
   piPackageRoot:'/tmp/pi',piVersion:'1.3.0',authPath:'/tmp/auth.json',
@@ -8,6 +8,30 @@ const plan = () => ({version:1,workspaceRoot:'/tmp/project',outputRoot:'/tmp/res
   exposure:'codemode',mcpCommand:'/tmp/kast-mcp',onboarding:'',skills:[],
   prompt:'Find the caller.',maximumRequests:20,maximumReportedTokens:150000,
   maximumPayloadBytes:1048576,maximumOutputTokens:6000,maximumTools:40,wallSeconds:180});
+
+test('declaration accounting counts replacements and separates Unicode from UTF-8', () => {
+  const first={type:'function',name:'query',description:'λ',parameters:{type:'object'}};
+  const replacement={...first,description:'λ🙂'};
+  const loaded=measureLoadedDeclarations({tools:[first],input:[{type:'additional_tools',tools:[replacement]}]});
+  assert.equal(loaded.declarations.length,2);
+  assert.equal(loaded.declarations[0].utf8Bytes,Buffer.byteLength(JSON.stringify(first)));
+  assert.equal(loaded.declarations[1].unicodeCharacters,Array.from(JSON.stringify(replacement)).length);
+  assert.notEqual(loaded.declarations[0].sha256,loaded.declarations[1].sha256);
+  assert.equal(loaded.totalUtf8Bytes,loaded.declarations.reduce((sum,item)=>sum+item.utf8Bytes,0));
+  assert.deepEqual(measureLoadedDeclarations({input:[]}).declarations,[]);
+});
+
+test('result accounting keeps canonical, full MCP, and provider exposure separate', () => {
+  const canonical={operation:'query.run',status:'rejected',failure:'λ'};
+  const mcp={content:[{type:'text',text:JSON.stringify(canonical)}],structuredContent:canonical,isError:true};
+  const output='escaped "λ" result';
+  const actual=measureResultExposure({structuredContent:mcp},{input:[{type:'function_call_output',call_id:'call1',output}]});
+  assert.equal(actual.canonicalUtf8Bytes,Buffer.byteLength(JSON.stringify(canonical)));
+  assert.equal(actual.mcpResultUtf8Bytes,Buffer.byteLength(JSON.stringify(mcp)));
+  assert.equal(actual.modelResults[0].outputUtf8Bytes,Buffer.byteLength(output));
+  assert.notEqual(actual.modelResults[0].serializedItemUtf8Bytes,actual.modelResults[0].outputUtf8Bytes);
+  assert.equal(measureResultExposure({},{}).canonicalUtf8Bytes,null);
+});
 
 test('control cannot receive Kast instructions or experimental skills', () => {
   assert.equal(admitSessionPlan(plan()).type,'admitted');

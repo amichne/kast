@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionPathCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRepresentationCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRowIdentityCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
+import io.github.amichne.kast.protocol.contract.ImpactExecutionSiteCause
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
@@ -31,6 +32,7 @@ import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.query.contract.QueryValuePathAccountingFailure
 import io.github.amichne.kast.relation.contract.BoundaryModelFailure
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
+import io.github.amichne.kast.relation.contract.ValueSiteFailure
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -59,6 +61,10 @@ class ImpactExecutionFailureProjectionTest {
                     ImpactExecutionFailureDocument.Accounting(ImpactExecutionAccountingCause.DUPLICATE_PATH),
                 QueryImpactExecutionFailure.Representation(RepresentationPropagationFailure.CALLABLE_MISMATCH) to
                     ImpactExecutionFailureDocument.Representation(ImpactExecutionRepresentationCause.CALLABLE_MISMATCH),
+                QueryImpactExecutionFailure.Site(ValueSiteFailure.STATE_BASIS_MISMATCH) to
+                    ImpactExecutionFailureDocument.Site(ImpactExecutionSiteCause.STATE_BASIS_MISMATCH),
+                QueryImpactExecutionFailure.Site(ValueSiteFailure.CONDITIONS_NOT_PRESERVED) to
+                    ImpactExecutionFailureDocument.Site(ImpactExecutionSiteCause.CONDITIONS_NOT_PRESERVED),
                 QueryImpactExecutionFailure.Boundary(BoundaryModelFailure.KIND_MISMATCH) to
                     ImpactExecutionFailureDocument.Boundary(ImpactExecutionBoundaryCause.KIND_MISMATCH),
                 QueryImpactExecutionFailure.ModelHistory(QueryImpactModelHistoryFailure.MISSING_APPLICATION) to

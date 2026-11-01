@@ -5,7 +5,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
-import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRejection
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
@@ -47,16 +47,20 @@ class NativeAtomicReturnControlTest : NativePacketValueFixtureTest() {
         )
     }
 
-    fun testMutableBindingKeepsItsTypedObligationWithoutInventingARead() {
+    fun testStraightLineMutableBindingReachesOnlyItsCompilerAdmittedRead() {
         val fixture = packetFixture(listOf(CONTROLS))
-        val expression = fixture.markedExpression(PacketDeclaration(CONTROLS, "", "mutableCase"), "mutable-seed")
+        val owner = PacketDeclaration(CONTROLS, "", "mutableCase")
+        val expression = fixture.markedExpression(owner, "mutable-seed")
+        val expected = fixture.argumentExpression(owner, "consumeAtomic", "packet")
         val binding = next(fixture, seeded(fixture, expression), ValueTransferKind.LOCAL_BINDING)
         assertEquals(ValueRole.LocalBinding, binding.role)
+        assertTrue(binding.localVersion is ValueLocalVersion.Defined)
         val step = step(fixture, binding)
-        assertTrue("Mutable control must not invent a transfer", step.transfers.isEmpty())
-        assertEquals(listOf(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW), step.obligations.map { it.cause })
-        assertEquals(step.source, step.obligations.single().site)
-        assertEquals(ValueFlowTerminal.Unresolved, step.terminal)
+        assertEquals(listOf(ValueTransferKind.LOCAL_READ), step.transfers.map { it.kind })
+        assertEquals(listOf(expected.anchor), step.transfers.map { it.target.range })
+        assertEquals(binding.enclosing, step.transfers.single().target.enclosing)
+        assertTrue("Straight-line version acquired an obligation: ${step.obligations}", step.obligations.isEmpty())
+        assertEquals(ValueFlowTerminal.SupportedDomainExhausted, step.terminal)
     }
 
     private fun assertSourceReturn(owner: PacketDeclaration, marker: String) {

@@ -75,6 +75,8 @@ private fun reviewedImpactExpansionBytes(
             if (!model.matchesInput(argument)) continue
             val modelBytes = graph.representationModel(model)
             var next = saturatedAdd(terminalReserve, graph.site(argument.call.resultSite()))
+            // The modeled result and its identity both retain the same immutable prerequisites.
+            repeat(2) { next = saturatedAdd(next, graph.conditions(route.site.conditions)) }
             repeat(branches + 2) { next = saturatedAdd(next, modelBytes) }
             required = saturatedAdd(required, next)
         }

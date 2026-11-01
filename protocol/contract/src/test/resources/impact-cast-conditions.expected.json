@@ -1,0 +1,46 @@
+[
+  {
+    "type": "CAST_SUCCESS",
+    "origin": {
+      "execution": {
+        "enclosing": {
+          "basis": { "type": "PUBLISHED", "root": "/workspace", "generation": 7 },
+          "file": "/workspace/File.kt",
+          "range": { "start": 0, "end": 100 },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "executionOwner": { "type": "DECLARATION" }
+      },
+      "range": { "start": 10, "end": 11 },
+      "role": { "type": "EXPRESSION_RESULT" },
+      "valuePath": [],
+      "callStack": []
+    },
+    "useRange": { "start": 10, "end": 30 },
+    "kind": "UNSAFE",
+    "originalType": "kotlin/Any?",
+    "targetType": "kotlin/collections/List<kotlin/String>"
+  },
+  {
+    "type": "CAST_SUCCESS",
+    "origin": {
+      "execution": {
+        "enclosing": {
+          "basis": { "type": "PUBLISHED", "root": "/workspace", "generation": 7 },
+          "file": "/workspace/File.kt",
+          "range": { "start": 0, "end": 100 },
+          "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "executionOwner": { "type": "DECLARATION" }
+      },
+      "range": { "start": 10, "end": 11 },
+      "role": { "type": "EXPRESSION_RESULT" },
+      "valuePath": [],
+      "callStack": []
+    },
+    "useRange": { "start": 10, "end": 30 },
+    "kind": "SAFE",
+    "originalType": "kotlin/Any?",
+    "targetType": "kotlin/collections/List<kotlin/String>"
+  }
+]

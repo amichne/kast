@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bind a successful selected gate to its exact producer; docs validation publishes no payload."""
+"""Bind a successful selected gate to its exact producer and qualification scope."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TypeGuard
 
 from required_checks import CompletedChecks, admit_checks
-from validation_scope import ROOT, SHA, Reason, Scope, select
+from validation_scope import ROOT, SHA, NativeCompilation, Reason, Scope, select
 
 WORKFLOW = ".github/workflows/ci.yml"
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
@@ -22,6 +22,7 @@ REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 
 class Outcome(str, Enum):
     DOCS_VALIDATED = "DOCS_VALIDATED"
+    SOURCE_VALIDATED = "SOURCE_VALIDATED"
     PRODUCT_VALIDATED = "PRODUCT_VALIDATED"
 
 
@@ -60,6 +61,20 @@ class ProductValidated:
     record: ValidationRecord
 
 
+@dataclass(frozen=True)
+class SourceValidated:
+    record: ValidationRecord
+
+
+SCOPE_OUTCOMES = {
+    Scope.DOCUMENTATION: Outcome.DOCS_VALIDATED,
+    Scope.SOURCE: Outcome.SOURCE_VALIDATED,
+    Scope.SOURCE_FULL: Outcome.SOURCE_VALIDATED,
+    Scope.PRODUCT: Outcome.PRODUCT_VALIDATED,
+    Scope.FULL: Outcome.PRODUCT_VALIDATED,
+}
+
+
 def _mapping(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
 
@@ -95,8 +110,8 @@ def decode(document: object) -> ValidationRecord | Failure:
                 selected, result = Scope(scope), Outcome(outcome)
             except ValueError:
                 return Failure.INVALID_RECORD
-            if (selected is Scope.DOCUMENTATION) != (result is Outcome.DOCS_VALIDATED) or (
-                selected is Scope.DOCUMENTATION
+            if SCOPE_OUTCOMES[selected] is not result or (
+                selected in {Scope.DOCUMENTATION, Scope.SOURCE}
                 and (event not in {"push", "pull_request"} or not SHA.fullmatch(base) or base in {revision, "0" * 40})
             ):
                 return Failure.INVALID_RECORD
@@ -109,7 +124,7 @@ def decode(document: object) -> ValidationRecord | Failure:
 
 def admit(
     record: ValidationRecord, run: object, repository: str, revision: str, tree: str
-) -> DocumentationValidated | ProductValidated | Failure:
+) -> DocumentationValidated | SourceValidated | ProductValidated | Failure:
     """A successful exact main producer can authorize publication or explicit no-publication."""
     match run:
         case {
@@ -145,7 +160,11 @@ def admit(
         return Failure.SOURCE_TREE_MISMATCH
     if record.outcome is Outcome.DOCS_VALIDATED:
         return DocumentationValidated(record)
-    return ProductValidated(record)
+    if record.outcome is Outcome.SOURCE_VALIDATED:
+        return SourceValidated(record)
+    if record.outcome is Outcome.PRODUCT_VALIDATED:
+        return ProductValidated(record)
+    return Failure.INVALID_RECORD
 
 
 def record_gate(
@@ -159,14 +178,18 @@ def record_gate(
     event: str,
     needs: object,
     root: Path = ROOT,
+    *,
+    affected: bool = False,
+    native_compilation: NativeCompilation = NativeCompilation.ENABLED,
 ) -> ValidationRecord | Failure:
     completed = admit_checks(needs)
     if not isinstance(completed, CompletedChecks):
         return Failure.GATE_NOT_COMPLETE
-    selection = select(event, base, revision, root)
+    selection = select(event, base, revision, root, affected=True) if affected else select(event, base, revision, root)
+    selection = selection.with_native_compilation(native_compilation)
     if selection.reason is Reason.CHECKOUT_MISMATCH or completed.scope is not selection.scope:
         return Failure.SELECTION_MISMATCH
-    result = Outcome.DOCS_VALIDATED if selection.scope is Scope.DOCUMENTATION else Outcome.PRODUCT_VALIDATED
+    result = SCOPE_OUTCOMES[selection.scope]
     record = ValidationRecord(
         1, result, selection.scope, repository, revision, tree, base, run_id, number, attempt, event
     )
@@ -192,6 +215,7 @@ def read(path: Path) -> ValidationRecord | Failure:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", type=Path, required=True)
+    parser.add_argument("--affected", action="store_true")
     args = parser.parse_args()
     try:
         checkout = subprocess.check_output(
@@ -210,6 +234,8 @@ def main() -> None:
             int(os.environ["GITHUB_RUN_ATTEMPT"]),
             os.environ["GITHUB_EVENT_NAME"],
             json.loads(os.environ["CI_NEEDS"]),
+            affected=args.affected,
+            native_compilation=NativeCompilation(os.environ.get("KAST_NATIVE_COMPILATION", "true")),
         )
         if isinstance(record, Failure):
             raise SystemExit(f"validation-outcome: {record.value}")

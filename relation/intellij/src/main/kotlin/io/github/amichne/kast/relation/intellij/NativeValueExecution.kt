@@ -22,6 +22,7 @@ internal fun restoreCapturedValueExecution(
                 return nativeValueExecutionOwner(element, host, expected.enclosing)
             is io.github.amichne.kast.relation.contract.ValueExecutionContext.Callback -> context.body
             is io.github.amichne.kast.relation.contract.ValueExecutionContext.ReviewedCallback -> context.binding.body
+            is io.github.amichne.kast.relation.contract.ValueExecutionContext.DeclaredCallback -> context.binding.body
         }
     if (expected.basis != scope.request.subject.lease.identity)
         return Refinement.Rejected(ValueFlowRejection.STALE_SITE)

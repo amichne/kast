@@ -34,12 +34,16 @@ internal class DeclaredEffectArchive private constructor(val root: Path, val jar
     companion object {
         fun compile(): DeclaredEffectArchive {
             val root = Files.createTempDirectory("kast-declared-effect-case-")
-            val source = root.resolve("DependencyEffects.kt")
             val jar = root.resolve("effects.jar")
             var transferred = false
             try {
-                Files.write(source, resource("DependencyEffects.kt"))
-                compile(listOf(source), jar, emptyList())
+                val prepared =
+                    Path.of(
+                        checkNotNull(System.getProperty("kast.declaredEffectArchive")) {
+                            "Missing Gradle dependency fixture archive"
+                        }
+                    )
+                Files.copy(prepared, jar)
                 val archive = DeclaredEffectArchive(root, jar)
                 transferred = true
                 return archive

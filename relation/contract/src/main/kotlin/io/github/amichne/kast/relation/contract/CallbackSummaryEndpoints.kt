@@ -25,6 +25,8 @@ internal class CallbackSummaryEndpoints private constructor() {
         endpoint(value.enclosing)
         value.stateEndpoints().forEach(::endpoint)
         when (val role = value.role) {
+            is ValueRole.StringConversionResult -> call(role.invocation)
+            is ValueRole.LoopResult -> role.result.protocol.invocations().forEach(::call)
             is ValueRole.Argument -> call(role.call)
             is ValueRole.Receiver -> call(role.call)
             is ValueRole.Formal -> Unit
@@ -65,7 +67,7 @@ internal class CallbackSummaryEndpoints private constructor() {
     private fun binding(value: CallbackBindingEvidence) {
         when (value) {
             is CallbackBindingEvidence.Bound -> {
-                call(value.binding.invocation)
+                value.binding.frame.stateEndpoints().forEach(::endpoint)
                 files += value.binding.invocationOwner.file
                 files += value.binding.parameter.file
             }

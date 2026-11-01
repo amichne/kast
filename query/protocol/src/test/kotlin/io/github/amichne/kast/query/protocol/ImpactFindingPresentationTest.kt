@@ -208,6 +208,7 @@ class ImpactFindingPresentationTest {
                 "representation",
                 "terminal",
                 "boundaryObligations",
+                "classification",
                 "reviewedRelations",
             ),
             encoded.keys,

@@ -1,3 +1,6 @@
+import support.consumeProjectOutput
+import org.gradle.process.CommandLineArgumentProvider
+import org.gradle.api.tasks.testing.Test
 import support.tasks.idea.selectedIdeaProductInfo
 import conventions.registerJsonContractVerification
 import conventions.jsoncontracts.JsonContractScanRequest
@@ -37,63 +40,84 @@ registerJsonContractVerification(
     )
 )
 
-group = providers.gradleProperty("GROUP").get()
-val gitDescribeVersion: Provider<String> = providers.exec {
-    commandLine("git", "describe", "--tags", "--match", "v*", "--long", "--always")
-    workingDir(rootDir)
-    isIgnoreExitValue = true
-}.standardOutput.asText.map { raw ->
-    val trimmed = raw.trim()
-    val regex = Regex("""^v?(\d+\.\d+\.\d+)-(\d+)-g([0-9a-f]+)$""")
-    regex.matchEntire(trimmed)?.let { m ->
-        val base = m.groupValues[1]
-        val distance = m.groupValues[2].toInt()
-        val sha = m.groupValues[3]
-        if (distance == 0) base else "$base-${m.groupValues[2]}-g$sha"
-    } ?: trimmed.removePrefix("v").ifEmpty { "0.0.0-unknown" }
-}
-version = providers.gradleProperty("version")
-    .orElse(providers.gradleProperty("VERSION"))
-    .orElse(gitDescribeVersion)
-    .get()
-
 // Shared libraries retain the source version: a control rebuild cannot rename host dependencies.
 val controlVersion = providers.gradleProperty("controlVersion").orElse(provider { version.toString() })
 val hostedPluginVersion = providers.gradleProperty("hostedPluginVersion").orElse(provider { version.toString() })
 extra["controlVersion"] = controlVersion.get()
 extra["hostedPluginVersion"] = hostedPluginVersion.get()
-subprojects {
-    group = rootProject.group
-    version = when (path) {
-        ":cli", ":app-server", ":distribution:cli" -> controlVersion.get()
-        ":runtime:hosted" -> hostedPluginVersion.get()
-        else -> rootProject.version
-    }
+val modulePaths = subprojects.filter { it.buildFile.isFile }.map { it.path }
+val hostedPluginFiles = consumeProjectOutput("hostedPluginFiles", ":runtime:hosted", "hostedPluginElements")
+val hostedPluginArchive = layout.file(hostedPluginFiles.flatMap { it.elements }.map { it.single().asFile })
+val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
+val contractFile = layout.file(hostedContractFiles.flatMap { it.elements }.map { it.single().asFile })
+val registryFiles = consumeProjectOutput("operationRegistryFiles", ":protocol:wire", "operationRegistryElements")
+val generatedOperationRegistry = layout.file(registryFiles.flatMap { it.elements }.map { it.single().asFile })
+val catalogueFiles = consumeProjectOutput("configurationCatalogueFiles", ":cli", "configurationCatalogueElements")
+val generatedConfigurationCatalogue = layout.file(catalogueFiles.flatMap { it.elements }.map { it.single().asFile })
+val providerFiles = consumeProjectOutput("providerCatalogueFiles", ":cli", "providerCatalogueElements")
+val generatedProviderCatalogue = layout.file(providerFiles.flatMap { it.elements }.map { it.single().asFile })
+val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "cliInstallationElements")
+val managementExecutable = consumeProjectOutput("managementExecutable", ":distribution:cli", "managementExecutableElements")
+val queryExecutableFiles = consumeProjectOutput("queryExecutable", ":cli", "queryExecutableElements")
+
+val publicLauncherTestClasses = consumeProjectOutput("publicLauncherTestClasses", ":cli", "publicLauncherTestClassesElements")
+val publicLauncherTestRuntime = consumeProjectOutput("publicLauncherTestRuntime", ":cli", "publicLauncherTestRuntimeElements")
+
+abstract class PublicLauncherArguments : CommandLineArgumentProvider {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val executable: org.gradle.api.file.RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val queryExecutable: org.gradle.api.file.RegularFileProperty
+
+    override fun asArguments(): Iterable<String> =
+        listOf(
+            "-Dkast.publicLauncher=${executable.get().asFile.absolutePath}",
+            "-Dkast.queryExecutable=${queryExecutable.get().asFile.absolutePath}",
+        )
 }
 
-evaluationDependsOn(":runtime:hosted")
-val hostedPluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
+val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
+    description = "Exercises the public native launcher and query payload with a local Unix socket peer."
+    group = "verification"
+    testClassesDirs = files(publicLauncherTestClasses)
+    classpath = files(publicLauncherTestRuntime)
+    useJUnitPlatform { includeTags("public-launcher") }
+    binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/publicLauncherTest/binary"))
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/publicLauncherTest"))
+    reports.html.outputLocation.set(layout.buildDirectory.dir("reports/tests/publicLauncherTest"))
+    jvmArgumentProviders.add(objects.newInstance<PublicLauncherArguments>().apply {
+        executable.set(layout.file(managementExecutable.flatMap { it.elements }.map { it.single().asFile }))
+        queryExecutable.set(layout.file(queryExecutableFiles.flatMap { it.elements }.map { it.single().asFile }))
+    })
+}
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
+val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
+    commandLine("git", "rev-parse", "HEAD")
+    workingDir(rootDir)
+}.standardOutput.asText.map(String::trim))
+val releaseSourceTree = providers.exec {
+    commandLine("git", "rev-parse", "HEAD^{tree}")
+    workingDir(rootDir)
+}.standardOutput.asText.map(String::trim)
 tasks.named("generateKastDocumentation") {
     dependsOn(":distribution:cli:generateManagementVersion")
 }
-val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
-    "generated/operation-registry/operation-registry.json",
-)
-val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file(
-    "generated/configuration/configuration-schema.json",
-)
 val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("generateKastControlMetadata") {
     group = "distribution"
     description = "Generates the control required hosted contract and public schemas."
     dependsOn(":protocol:wire:generateHostedContract", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue", ":cli:generateProviderCatalog")
-    hostedContractFile.set(project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json"))
+    hostedContractFile.set(contractFile)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
     configurationCatalogueFile.set(generatedConfigurationCatalogue)
-    providerCatalogueFile.set(project(":cli").layout.buildDirectory.file("generated/provider/provider-catalog.json"))
+    providerCatalogueFile.set(generatedProviderCatalogue)
     productVersion.set(controlVersion)
+    sourceRevision.set(releaseSourceRevision)
+    sourceTree.set(releaseSourceTree)
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
     outputDirectory.set(generatedControlMetadata)
@@ -116,10 +140,15 @@ val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKas
 val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     group = "distribution"
     description = "Stages the Kast control installation for the existing IDE."
-    dependsOn(":cli:installDist", ":distribution:cli:nativeCompile", generateKastControlMetadata, generateKastAgentTools)
+    dependsOn(":cli:installDist", generateKastControlMetadata, generateKastAgentTools)
     into(controlProductDirectory)
-    from(project(":cli").layout.buildDirectory.dir("install/kast")) {
+    from(cliInstallation) {
         exclude("bin/cli", "bin/kast.bat")
+    }
+    from(queryExecutableFiles) {
+        into("bin")
+        rename { "kast-query" }
+        filePermissions { unix("755") }
     }
     from(generatedControlMetadata) {
         into("share/kast")
@@ -127,7 +156,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(agentToolsDirectory) {
         into("share/kast/agent-tools")
     }
-    from(project(":distribution:cli").layout.buildDirectory.file("native/nativeCompile/kast")) {
+    from(managementExecutable) {
         into("share/kast/libexec")
         rename { "kast-management" }
     }
@@ -138,6 +167,8 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
     from("packaging/install-completion-v1") { into("share/kast") }
+    from("packaging/managed-install-v1") { into("share/kast") }
+    from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py")) { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
@@ -146,13 +177,20 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
 }
 
-val controlArchivePlatform = providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
+val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
+    require(platform == "macos-aarch64") { "Imported native archives must target macos-aarch64" }
+    require(executable.isNotBlank()) { "An imported platform needs a native executable" }
+    platform
+}.zip(providers.gradleProperty("kastQueryNativeExecutable").orElse("")) { platform, queryExecutable ->
+    require(queryExecutable.isNotBlank()) { "An imported platform needs a query executable" }
+    platform
+}.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {
         os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
         os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
         else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64")
     }
-}
+})
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     group = "distribution"
@@ -172,6 +210,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "bin/kast-codex",
                 "bin/kast-mcp",
                 "bin/kast-tool-rpc",
+                "bin/kast-query",
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
                 "share/kast/libexec/kast-management",
@@ -188,16 +227,13 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     dependsOn(assembleKastControlDist)
     controlDirectory.set(controlProductDirectory)
     controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    qualifiedQueryExecutable.set(layout.file(queryExecutableFiles.flatMap { it.elements }.map { it.single().asFile }))
+    targetPlatform.set(controlArchivePlatform)
     maximumEntries.set(controlDistributionMaximumEntries)
-    maximumArchiveBytes.set(64L * 1024L * 1024L)
-    maximumInstalledBytes.set(128L * 1024L * 1024L)
+    maximumArchiveBytes.set(96L * 1024L * 1024L)
+    maximumInstalledBytes.set(192L * 1024L * 1024L)
 }
 
-val contractFile = project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json")
-val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
-    commandLine("git", "rev-parse", "HEAD")
-    workingDir(rootDir)
-}.standardOutput.asText.map(String::trim))
 tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
     dependsOn(assembleKastControlDist, "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
     component.set(ReleaseComponent.CONTROL)
@@ -300,7 +336,8 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
-    environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
+    val archive = hostedPluginArchive
+    doFirst { environment("KAST_HOSTED_PLUGIN_ARCHIVE", archive.get().asFile.absolutePath) }
     environment("KAST_HOST_RELEASE_RECORD", hostRecord.get().asFile.absolutePath)
     environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("python3", layout.projectDirectory.file("packaging/run-installed-product.py"))
@@ -347,6 +384,39 @@ tasks.withType<VerificationReportTask>().configureEach {
     }
 }
 
+val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginReloadTest") {
+    group = "verification"
+    description = "Examines local plugin replacement admission and atomic directory exchange."
+    inputs.files("packaging/reload_hosted.py", "packaging/reload_hosted.py.lock", "packaging/test_reload_hosted.py")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--script", layout.projectDirectory.file("packaging/reload_hosted.py").asFile.absolutePath, "--self-test"))
+}
+tasks.named("check") { dependsOn(localPluginReloadTest) }
+
+val managedInstallationTest = tasks.register<VerificationReportTask>("managedInstallationTest") {
+    group = "verification"
+    description = "Proves immutable selection, managed replacement, and recorded recovery."
+    sourceFiles.from(fileTree("packaging") { include("*.py", "*.sh", "pyproject.toml", "uv.lock") })
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
+        "packaging/test-managed-installation.py", "packaging/test-managed-release.py",
+        "packaging/test-managed-update-contract.py", "-q"))
+}
+
+val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {
+    group = "verification"
+    description = "Proves qualified publication and concurrent discovery admission."
+    sourceFiles.from(fileTree(".github/scripts/release") { include("*.py", "pyproject.toml", "uv.lock") })
+    sourceFiles.from(fileTree(".github/scripts/ci") { include("*.py") })
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", ".github/scripts/release", "pytest",
+        ".github/scripts/release/test_build_candidate.py",
+        ".github/scripts/release/test_developer_catalog.py",
+        ".github/scripts/release/test_developer_publication.py", "-q"))
+}
+
+tasks.named("check") { dependsOn(managedInstallationTest, developerPublicationTest) }
+
 val testCheckoutInstaller = tasks.register<VerificationReportTask>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout and release bootstrap boundaries without touching machine state."
@@ -382,14 +452,14 @@ val installerRemovalTest = tasks.register<VerificationReportTask>("installerRemo
 val installationSystemPythonTest = tasks.register<VerificationReportTask>("installationSystemPythonTest") {
     group = "verification"
     description = "Proves offline recovery works with macOS system Python, independently of the development interpreter."
-    inputs.files("packaging/installation-recovery.py", "packaging/installation-lifecycle.py", "packaging/test-installation-recovery.py")
+    inputs.files("packaging/installation-recovery.py", "packaging/installation-lifecycle.py", "packaging/managed_update_journal.py", "packaging/test-installation-recovery.py")
     executableFile.set(layout.file(providers.provider { java.io.File("/usr/bin/python3") }))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-installation-recovery.py").asFile.absolutePath))
 }
 
 val installationRecoveryTest = tasks.register<VerificationReportTask>("installationRecoveryTest") {
     group = "verification"
-    inputs.files("packaging/installation-recovery.py", "packaging/test-installation-recovery.py")
+    inputs.files("packaging/installation-recovery.py", "packaging/managed_update_journal.py", "packaging/test-installation-recovery.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-installation-recovery.py").asFile.absolutePath))
 }
@@ -406,7 +476,7 @@ val priorInstallationCleanupTest = tasks.register<VerificationReportTask>("prior
     group = "verification"
     description = "Proves exact user review and selected-installation protection for historical cleanup."
     inputs.files("packaging/prune-prior-installations.py", "packaging/installation-lifecycle.py",
-        "packaging/installation-recovery.py", "packaging/test-prune-prior-installations.py")
+        "packaging/installation-recovery.py", "packaging/managed_update_journal.py", "packaging/test-prune-prior-installations.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-prune-prior-installations.py").asFile.absolutePath))
 }
@@ -486,6 +556,15 @@ val documentationToolingTest = tasks.register<VerificationReportTask>("documenta
     arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"))
 }
 
+val verifyPublicKnowledge = tasks.register<VerificationReportTask>("verifyPublicKnowledge") {
+    group = "verification"
+    description = "Rejects public OKF projection drift and missing tracked attribution."
+    dependsOn(documentationMarkdownDependencies, documentationPythonDependencies)
+    doNotTrackState("Attribution examines current Git tracking and the source bytes cited by OpenWiki Claims.")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/okf_public.py", "--check"))
+}
+
 val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verifyDocumentationGlossary") {
     group = "verification"
     description = "Rejects glossary projection drift and rejected forms in current prose."
@@ -504,7 +583,7 @@ val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verify
 }
 
 tasks.withType<VerificationReportTask>().configureEach {
-    if (name in setOf("verifyDocumentationMarkdown", "documentationToolingTest", "verifyDocumentationGlossary")) {
+    if (name in setOf("verifyDocumentationMarkdown", "documentationToolingTest", "verifyDocumentationGlossary", "verifyPublicKnowledge")) {
         runtimeFiles.from(validationExecutable("node"), validationExecutable("uv"), validationExecutable("npm"))
         runtimeFiles.from("docs/tooling/markdown/node_modules")
         if (name != "verifyDocumentationMarkdown") {
@@ -536,7 +615,7 @@ tasks.register<VerificationReportTask>("verifyScopedProse") {
     sourceFiles.from(selectedProse, ".vale.ini", "config/vale")
 }
 
-tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest) }
+tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest, verifyPublicKnowledge) }
 
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
@@ -554,17 +633,55 @@ val productBuildGate = tasks.register("productBuildGate") {
         installedProductTest,
         testCheckoutInstaller,
         installerEntrypointTest,
+        verifyKastControlDistLayout,
         "verifyKastArchitecture",
         ":app-server:verifyReleaseRuntimeAdmission",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }
 
-subprojects.forEach { owner ->
-    owner.plugins.withId("base") {
-        productBuildGate.configure { dependsOn(owner.tasks.named("check")) }
-    }
+productBuildGate.configure {
+    dependsOn(modulePaths.map { "$it:check" })
+    dependsOn(publicLauncherTest)
 }
+
+val sourceValidationGate = tasks.register("sourceValidationGate") {
+    group = "verification"
+    description = "Examines source, semantic fixtures, and contracts without release assembly or native compilation."
+    dependsOn(
+        "check",
+        productGateVersionTest,
+        installerFixtureTest,
+        installationLifecycleTest,
+        priorInstallationCleanupTest,
+        installationRecoveryTest,
+        installationSystemPythonTest,
+        localInstallationTest,
+        installerRemovalTest,
+        testCheckoutInstaller,
+        installerEntrypointTest,
+        "verifyKastArchitecture",
+    )
+    dependsOn(gradle.includedBuild("build-logic").task(":check"))
+}
+
+val verifyVerificationGraph = tasks.register<Exec>("verifyVerificationGraph") {
+    group = "verification"
+    description = "Rejects a stale snapshot of production, test, fixture, and generated-contract consumers."
+    dependsOn("generateVerificationGraph")
+    inputs.files("config/ci/verification-graph.json", ".github/scripts/ci/verification_plan.py")
+    inputs.file(layout.buildDirectory.file("reports/ci/verification-graph.json"))
+    commandLine("python3", ".github/scripts/ci/verification_plan.py", "--check-generated",
+        layout.buildDirectory.file("reports/ci/verification-graph.json").get().asFile)
+}
+tasks.named("check") { dependsOn(verifyVerificationGraph) }
+
+sourceValidationGate.configure {
+    dependsOn(modulePaths.flatMap { listOf("$it:scopedCheck", "$it:check") })
+}
+
+// A qualified candidate owns these source proofs in the same Gradle invocation.
+productBuildGate.configure { dependsOn(sourceValidationGate) }
 
 val configurationIngressTest = tasks.register<Exec>("configurationIngressTest") {
     group = "verification"
@@ -583,10 +700,15 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
             "**/src/main/scripts/**", "*.kts", "install.sh", "packaging/*.sh", "packaging/*.py")
         exclude("**/build/**", "**/.gradle/**", "**/node_modules/**")
     })
-    commandLine("python3", layout.projectDirectory.file("packaging/configuration_ingress.py"),
-        "--root", layout.projectDirectory, "--schema", generatedConfigurationCatalogue.get().asFile,
-        "--policy", layout.projectDirectory.file("build-policy/configuration-ingress.json"),
-        "--snapshot", layout.projectDirectory.file("packaging/configuration-schema.json"))
+    val root = layout.projectDirectory
+    val catalogue = generatedConfigurationCatalogue
+    executable("python3")
+    argumentProviders.add(CommandLineArgumentProvider {
+        listOf(root.file("packaging/configuration_ingress.py").asFile.absolutePath,
+            "--root", root.asFile.absolutePath, "--schema", catalogue.get().asFile.absolutePath,
+            "--policy", root.file("build-policy/configuration-ingress.json").asFile.absolutePath,
+            "--snapshot", root.file("packaging/configuration-schema.json").asFile.absolutePath)
+    })
 }
 
 val pythonTestEnvironment = layout.buildDirectory.dir("python-tests/env")
@@ -715,3 +837,27 @@ val semanticTraceGate = tasks.register<Exec>("verifyKotlinSemanticCoverage") {
         "--junit", layout.projectDirectory.dir("symbol/intellij/build/test-results/semanticCoverageFixtureTest"))
 }
 tasks.named("check") { dependsOn(semanticInputGate, semanticInventoryGate, semanticTraceGate) }
+
+val selectedSemanticOwners = providers.gradleProperty("kastSemanticOwners").map { raw ->
+    val owners = raw.split(',')
+    require(owners.isNotEmpty() && owners.distinct().size == owners.size && owners.all {
+        it in setOf(":relation:intellij", ":runtime:hosted", ":symbol:intellij")
+    }) { "kastSemanticOwners must name distinct semantic fixture owners" }
+    owners
+}.orElse(emptyList())
+
+tasks.register<Exec>("verifySelectedKotlinSemanticCoverage") {
+    group = "verification"
+    description = "Requires every case of each selected semantic fixture owner with exact report accounting."
+    dependsOn(selectedSemanticOwners.get().map { "$it:semanticCoverageFixtureTest" })
+    workingDir(semanticCoverageDirectory.dir("tooling"))
+    val selectedManifest = providers.gradleProperty("kastSemanticSelection")
+        .map { file(it) }.orElse(layout.buildDirectory.file("reports/ci/source/missing-selection.tsv").map { it.asFile })
+    inputs.file(selectedManifest)
+    val reports = selectedSemanticOwners.map { owners -> owners.map { owner ->
+        layout.projectDirectory.dir(owner.removePrefix(":").replace(':', '/') + "/build/test-results/semanticCoverageFixtureTest")
+    } }
+    inputs.files(reports)
+    commandLine(listOf("uv", "run", "--locked", "--script", "inventory.py", "execution", "--required-cases", selectedManifest.get()) +
+        reports.get().flatMap { listOf("--junit", it.asFile) })
+}

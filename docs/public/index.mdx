@@ -1,60 +1,53 @@
 ---
-title: "Give your agent a better view of Kotlin"
-sidebarTitle: "Start here"
-description: "Find exact Kotlin declarations, trace their connections, and choose the documentation that fits your task."
+title: "See what your Kotlin change affects"
+sidebarTitle: "Overview"
+description: "Connect Kast to your coding agent. Find callers, trace supported value paths, and inspect problems in your Kotlin project with source locations."
+keywords:
+  - "Kotlin"
+  - "coding agents"
+  - "callers"
+  - "value flow"
 icon: "scan-search"
+hideFooterPagination: true
 ---
+
+import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <span id="what-kast-adds" />
 
-<span id="use-the-agent-you-already-use" />
+Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis.
+Use the native `kast` command with Codex, Copilot, or Pi to investigate your Kotlin code.
 
-<span id="is-kast-for-you" />
-
-Kast connects your coding agent to IntelliJ IDEA. Your agent uses compiler evidence to find Kotlin declarations and the links between them.
-
-Text search finds matching words. Kast tells overloads apart. It reports links in source and states the limits of each answer.
-
-<Card title="Get your first result" icon="arrow-right" href="/start">
-  Install Kast, connect Codex, and find a function and its caller in source you control.
-</Card>
+<span id="try-it-on-your-project" />
 
 <span id="choose-your-reader-track" />
 
-## Find the right documentation
-
-<Columns cols={3}>
-  <Card title="Guides" icon="list-checks" href="/how-to">
-    Complete a task and recover when it stops.
-  </Card>
-
-  <Card title="Architecture" icon="workflow" href="/explanation">
-    Follow an answer to its source and understand when it remains valid.
-  </Card>
-
-  <Card title="Reference" icon="braces" href="/reference">
-    Look up exact inputs, results, limits, and client contracts.
+<Columns cols={1}>
+  <Card title="Set up Kast" icon="arrow-right" href="/start">
+    Install Kast and give your agent guidance for the CLI.
   </Card>
 </Columns>
 
-## What your agent can do
+<span id="is-kast-for-you" />
 
-- Find a declaration by name, source location, or matching word.
-- Read source and distinguish declarations with the same name.
-- Find references, callers, implementations, and overrides.
-- Inspect IDEA diagnostics for a file or directory.
-- Add a declaration or replace a supported function body.
+For Apple silicon Macs, Kotlin Gradle projects, and IntelliJ IDEA 262. [Setup requirements](/start#before-you-install).
 
-[Example questions](/search) show these tasks in an agent conversation. Codex, Copilot, and Pi use distinct adapters to reach the same semantic owners.
+<span id="use-the-agent-you-already-use" />
 
-## Before your first query
+<span id="use-the-evidence-for-your-next-decision" />
 
-Use an Apple silicon Mac and a Kotlin Gradle repository. Kast needs IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+## Ask about your code
 
-[Install Kast](/start), then [connect your agent](/agent-harnesses). The plugin's MCP session starts IDEA setup for projects with `settings.gradle.kts`. If trust, import, or indexing blocks a query, Kast reports the cause.
+Give your agent the function's file and name.
 
-A complete answer applies to its declared source scope and compiler-static model. It does not prove that code ran or that the project builds.
+<Prompt description="Before you change a function" actions={["copy"]}>
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+</Prompt>
 
-[What an answer proves](/reference/evidence-boundaries) explains these limits. Your project's build and tests prove behavior after a change.
+Try [another question](/search), or use the [CLI reference](/reference/cli) for terminal commands.
 
-[Glossary](/glossary) defines the terms used in Kast answers.
+<span id="a-name-match-does-not-explain-a-value-path" />
+
+For a visual explanation, [follow a value through code](/explanation/value-journey).
+
+<DeeperReading />

@@ -99,7 +99,6 @@ dependencies {
 }
 
 tasks.test {
-    dependsOn(jsonContractsTestTask)
     jvmArgumentProviders.add(
         objects.newInstance<JsonContractParserTestArguments>().apply {
             parserClasspath.from(jsonContracts.runtimeClasspath)
@@ -107,3 +106,5 @@ tasks.test {
     )
     useJUnitPlatform()
 }
+
+tasks.check { dependsOn(jsonContractsTestTask) }

@@ -6,6 +6,7 @@ data class QuerySourceWindowDocument(
     val lines: SourceLineRangeDocument,
 )
 
+@kotlinx.serialization.Serializable
 enum class QuerySourceFailureDocument {
     WORKSPACE_NOT_READY,
     WORKSPACE_ROOT_MISMATCH,

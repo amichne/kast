@@ -1,22 +1,22 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:22bc4de6300c2dd9e5ad9f72b8caa0bcafe30f9c801119ad8b30c1602ba00de6",
+  "pageVersion": "sha256:84f58f8b795dd3316fce13b100e0310566566b4f0a5dff7a588b343c7194d8b8",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
       "statement": "KastDirectToolSession shares compiled registration, installation admission, and existing-IDE invocation between direct transports. MCP initialization or the first admitted modern request starts one preparation owner reused by later demand.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt#L37-L83",
-          "version": "repo-lines-v1:sha256:55a4556610949a61679ef9e976e1f9b250fdac0be7a2446d75fa70ced4941558:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3MjBmMmZjNjRjZTgzOTI4ZDEwZGQxMTA3YjBlYjAzOTMzZGUwZDZiZTRjMDFiMjQ0NDZkYTQ4ZTRjNDQ2YmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3YmNmOGE3NjdlY2Q3YjkzNWZhYzQ4NTVhZjk1ZjA3NDI0ODQ4YTI3ZDRkOTczZDJmM2FkYzM3NGE1MGU0YzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlNDRhOTEyYTQyN2UxYTM1YWE0MDcwMmY1NjE3MGNiMzA1YzI5MzJlYjYyMTJiYjJmMzljOGRjYzM3NzZjNmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiZmFiZDQ0ZjJkYmI0ZmQ4ZjRkYTNlOTcwNmNiYmUyMDE3NDRhNTMwYTUxZDU5ZmJjMTc3YWEwZTI1NWM5ODMifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
+          "version": "repo-file-v1:sha256:1b7d56744a4b83ee2d6c12ad8a681abd2cac426cb8d2174c23a6f58b0c5201a0"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
-          "version": "repo-file-v1:sha256:9d0d26ef8af91b550fab17a584dd653fe1b3f883e9b034ac84095281f1791690"
+          "version": "repo-file-v1:sha256:2aa11fa926f4b5bd4189ea046117d2da556bf0ab1190c4ec4a79df5f946b1ede"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L49-L90",
-          "version": "repo-lines-v1:sha256:a276cc6025aafa3ae939a1d3c34d8a776bad7c5835fa1220a14dac79c5a7a063:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1Y2EyM2ViZGZiMmJlZTg3ODY1OWRkNTg3MWU4ZjE2YjcwMTZjNTRjMjc2MjQ3OWE1Mjg0NWFiMzhjYjllZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MDVlNGYxMDcyY2EyMGQxY2JmZDQxMjhhZmM4MmE0NzIyNGVkYWFiZTdkMTM0OGI5MTVjNTYwYjEzZjI4ZmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU0MGRhN2EzOWNiNzJlM2Q5ZmNiZmFiZWZmYjhhYTQzNjYzYzk3MGNmZWQyZjdiMDYyYmMxNWJjN2UwNzhhN2UifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
+          "version": "repo-file-v1:sha256:978bf5c6857886a1e45e1ef740e40a898f802550019120e92386828b78f82f8d"
         }
       ]
     },
@@ -26,7 +26,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
-          "version": "repo-file-v1:sha256:97627bef40f0a606bcc45e429672d18e527cf771d3be5448f0d4f318dc7b96c9"
+          "version": "repo-file-v1:sha256:978bf5c6857886a1e45e1ef740e40a898f802550019120e92386828b78f82f8d"
         }
       ]
     },
@@ -36,11 +36,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
+          "version": "repo-file-v1:sha256:1df157cf5c203646259b39917285272889f22d82eb4659e741df289197f17035"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
-          "version": "repo-file-v1:sha256:35c90850bca24c6b6cd85163634fc24b654e2ec9d43aaceefc1bff473d1c47e9"
+          "version": "repo-file-v1:sha256:a6662a05c0ef6573f4c18ab826e36add62bb7463d6927e1eed889dd3029596b1"
         }
       ]
     },
@@ -50,17 +50,17 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
+          "version": "repo-file-v1:sha256:1df157cf5c203646259b39917285272889f22d82eb4659e741df289197f17035"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt",
-          "version": "repo-file-v1:sha256:83737c4ac9d37f3e0cecdada4770d7beca024bc65f4fbcce0ae20f8794017766"
+          "version": "repo-file-v1:sha256:fe4449f9a5c282893fd4e5357c72405edf610fee07babd0fefb9a808543d47aa"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

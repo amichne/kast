@@ -365,6 +365,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         )
 
     fun bound(value: CallbackArgumentBinding): QueryCallbackBindingDocument.Bound? {
+        if (value.frame.target != io.github.amichne.kast.relation.contract.ValueCallTarget.Direct) return null
         return QueryCallbackBindingDocument.Bound(
             value.invocation.impactDocument().callbackValue() ?: return null,
             occurrence(

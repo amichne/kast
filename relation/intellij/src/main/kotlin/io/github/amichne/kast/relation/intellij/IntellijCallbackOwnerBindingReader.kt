@@ -22,8 +22,10 @@ internal class IntellijCallbackOwnerBindingReader(
         enclosing: RelationEndpoint,
     ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
         val lexicalOwner =
-            (enclosing as? RelationEndpoint.Resolved)?.evidence
-                ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+            when (val restored = lexicalOwner(enclosing)) {
+                is Refinement.Refined -> restored.value
+                is Refinement.Rejected -> return restored
+            }
         val supply = supply(literal) ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
         return when (
             val read =
@@ -55,20 +57,49 @@ internal class IntellijCallbackOwnerBindingReader(
             }
             is CallbackInvocationFlowRead.Unavailable -> unavailable(body, supply, read.cause)
             is CallbackInvocationFlowRead.ContractRejected -> Refinement.Rejected(read.cause)
-            is CallbackInvocationFlowRead.Immutable -> {
-                val owner =
-                    when (val admitted = RelationCallableBody.Named.fromCompiler(lexicalOwner)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected ->
-                            return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-                    }
-                val cause = unavailableCause(supply, CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
-                when (val admitted = unavailable(body, supply, cause)) {
-                    is Refinement.Refined -> admitted.value.withExecution(read.flow, owner)
-                    is Refinement.Rejected -> admitted
-                }
-            }
+            is CallbackInvocationFlowRead.Immutable -> immutableOwner(lexicalOwner, body, supply, read)
         }
+    }
+
+    private fun immutableOwner(
+        lexicalOwner: io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence,
+        body: RelationCallableBody.Anonymous,
+        supply: CallbackBodySupply,
+        read: CallbackInvocationFlowRead.Immutable,
+    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
+        val owner =
+            when (val admitted = RelationCallableBody.Named.fromCompiler(lexicalOwner)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+            }
+        val cause = unavailableCause(supply, CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
+        return when (val admitted = unavailable(body, supply, cause)) {
+            is Refinement.Refined -> admitted.value.withExecution(read.flow, owner)
+            is Refinement.Rejected -> admitted
+        }
+    }
+
+    private fun lexicalOwner(
+        enclosing: RelationEndpoint
+    ): Refinement<
+        io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence,
+        CallbackInvocationFlowFailure,
+    > {
+        val declaration =
+            when (val restored = context.declaration(enclosing)) {
+                is IntellijRelationSubjectLookup.Found -> restored.declaration
+                is IntellijRelationSubjectLookup.Rejected ->
+                    return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+            }
+        val lexicalOwner =
+            context.receiverDeclaration(declaration)
+                ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        when (io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint.validate(enclosing, lexicalOwner)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        }
+        return Refinement.Refined(lexicalOwner)
     }
 
     fun readUnavailable(

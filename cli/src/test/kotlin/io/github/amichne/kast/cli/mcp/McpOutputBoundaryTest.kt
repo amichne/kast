@@ -7,6 +7,7 @@ import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.direct.directSupportTools
+import io.github.amichne.kast.cli.rpc.QueryDeliveryFixtures
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
@@ -33,6 +34,81 @@ import org.junit.jupiter.api.io.TempDir
 
 class McpOutputBoundaryTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `serialized output includes escaped text structured content and framing`() {
+        val document = queryFixture("prefix")
+        val text = "λ\"\\\u0000".repeat(50_000)
+        val response = success(JsonPrimitive(17), McpCallResult(listOf(McpTextContent(text)), false, document))
+        val independentlyEncoded = mcpWire.encodeToString(McpResponse.serializer(), response)
+        val actual = encodeBoundedMcpResponse(response)
+        assertEquals(independentlyEncoded, actual)
+        assertTrue(actual.toByteArray(Charsets.UTF_8).size + 1 <= MCP_RESPONSE_LIMIT_BYTES)
+        assertTrue(actual.toByteArray(Charsets.UTF_8).size > text.length)
+        val result = Json.parseToJsonElement(actual).jsonObject.getValue("result").jsonObject
+        assertEquals(document, result.getValue("structuredContent"))
+        assertEquals(
+            text,
+            result.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun `oversized rejected evidence preserves the semantic conclusion in text and structured control`() {
+        val document = queryFixture("rejected")
+        val text = "λ\"\\\u0000".repeat(500_000)
+        val response = success(JsonPrimitive(18), McpCallResult(listOf(McpTextContent(text)), true, document))
+        assertTrue(
+            mcpWire.encodeToString(McpResponse.serializer(), response).toByteArray().size > MCP_RESPONSE_LIMIT_BYTES
+        )
+        val actual = encodeBoundedMcpResponse(response)
+        assertTrue(actual.toByteArray(Charsets.UTF_8).size + 1 <= MCP_RESPONSE_LIMIT_BYTES)
+        val result = Json.parseToJsonElement(actual).jsonObject.getValue("result").jsonObject
+        val structured = result.getValue("structuredContent").jsonObject
+        assertEquals("OUTPUT_LIMIT", structured.getValue("type").jsonPrimitive.content)
+        assertEquals(JsonPrimitive(true), result["isError"])
+        assertEquals(
+            structured,
+            Json.parseToJsonElement(
+                result.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content
+            ),
+        )
+        val header = structured.getValue("semantic").jsonObject
+        assertEquals(
+            setOf(
+                "original_outcome",
+                "completion",
+                "authority",
+                "coverage",
+                "blockers",
+                "omissions",
+                "presentation",
+                "recovery",
+            ),
+            header.keys,
+        )
+        assertEquals(
+            setOf("type", "exhaustive", "known_minimum", "limitations", "progress"),
+            header.getValue("coverage").jsonObject.keys,
+        )
+        assertEquals("rejected_document", header.getValue("original_outcome").jsonPrimitive.content)
+        assertEquals("QUALIFIED", header.getValue("coverage").jsonObject.getValue("type").jsonPrimitive.content)
+        assertEquals(JsonPrimitive(43), header.getValue("coverage").jsonObject.getValue("known_minimum"))
+        assertEquals(
+            JsonPrimitive("TIME_LIMIT_REACHED"),
+            header.getValue("coverage").jsonObject.getValue("limitations").jsonArray.single(),
+        )
+        assertEquals("READ_RESULT", header.getValue("recovery").jsonObject.getValue("type").jsonPrimitive.content)
+        assertTrue(McpStructuredResults.validates("query_symbols", structured))
+    }
+
+    private fun queryFixture(name: String): JsonObject =
+        Json.parseToJsonElement(QueryDeliveryFixtures.serialized())
+            .jsonObject
+            .getValue(name)
+            .jsonObject
+            .getValue("document")
+            .jsonObject
 
     @Test
     fun `argument and workspace rejections satisfy the discovered output contract`() {

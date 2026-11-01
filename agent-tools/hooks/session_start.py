@@ -99,8 +99,7 @@ def read_context(plugin: Path, workspace: Path) -> Context | Rejected:
         references = plugin.resolve(strict=True) / "references"
         if references.is_symlink():
             return Rejected(Failure.RESOURCE_REJECTED)
-        for name in RESOURCE_NAMES:
-            path = references / name
+        for path in (*[references / name for name in RESOURCE_NAMES], plugin / "skills/kast/SKILL.md"):
             if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_RESOURCE_BYTES:
                 return Rejected(Failure.RESOURCE_REJECTED)
         brief = (references / "onboarding.md").read_text(encoding="utf-8")
@@ -109,7 +108,9 @@ def read_context(plugin: Path, workspace: Path) -> Context | Rejected:
             brief.rstrip()
             + "\nWorkspace: "
             + json.dumps(str(workspace), ensure_ascii=False)
-            + "\nQuery schema: "
+            + "\nKast skill: "
+            + json.dumps(str(plugin.resolve() / "skills/kast/SKILL.md"), ensure_ascii=False)
+            + "\nAdvanced query schema: "
             + json.dumps(str(references / "query-schema.json"), ensure_ascii=False)
             + "\nQuery examples: "
             + json.dumps(str(references / "query-examples.json"), ensure_ascii=False)

@@ -10,10 +10,13 @@ import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallbackInputFailureDocument
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowBudgetDocument
@@ -55,13 +58,14 @@ class ImplementationDispatchSchemaReuseTest {
     private val json = Json { encodeDefaults = true }
     private val schema by lazy { installedPublicToolOutputSchema(PublicToolIdentity.QUERY_SYMBOLS) }
     private val independent by lazy {
-        independentImpactSchema(ImpactImplementationDispatchDocument.serializer())
+        independentFactoredImpactSchema(ImpactImplementationDispatchDocument.serializer())
     }
 
     @Test
     fun `shared impact definitions retain their independent complete serializer shapes`() {
         val assertions = LocalSchemaAssertions(schema)
         assertions.assertLocalReferences()
+        val independentSchemas = IndependentImpactSchemas()
         val serializers =
             mapOf(
                 "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
@@ -71,15 +75,19 @@ class ImplementationDispatchSchemaReuseTest {
                 "impactCapturedBody" to ImpactCapturedBodyDocument.serializer(),
                 "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
                 "impactCallFrame" to ImpactCallFrameDocument.serializer(),
+                "impactCallTarget" to ImpactCallTargetDocument.serializer(),
                 "impactValueRole" to ImpactValueRoleDocument.serializer(),
                 "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
                 "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
+                "impactCallbackInputFailure" to ImpactCallbackInputFailureDocument.serializer(),
+                "impactFlowDomain" to ImpactFlowDomainDocument.serializer(),
+                "impactDeclaredCallbackValueBinding" to ImpactDeclaredCallbackValueBindingDocument.serializer(),
             )
         for ((name, serializer) in serializers) {
             assertions.assertDefinitionEquivalent(
                 name,
-                independentImpactSchema(serializer),
+                independentSchemas.graph(serializer),
             )
         }
     }
@@ -89,7 +97,7 @@ class ImplementationDispatchSchemaReuseTest {
         val assertions = LocalSchemaAssertions(schema)
         assertions.assertLocalReferences()
         assertions.assertDefinitionEquivalent("impactImplementationDispatch", independent)
-        assertEquals(4, referenceCount(schema, "impactImplementationDispatch"))
+        assertEquals(5, referenceCount(schema, "impactImplementationDispatch"))
     }
 
     @Test

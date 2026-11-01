@@ -45,8 +45,11 @@ class ImpactReviewedValueTest {
     }
 
     private fun assertBindingShape(binding: JsonObject) {
+        assertEquals(setOf("authority", "relation"), binding.keys)
+        val authority = binding.getValue("authority").jsonObject
         assertEquals(
             setOf(
+                "type",
                 "rule",
                 "basis",
                 "enclosing",
@@ -54,20 +57,25 @@ class ImpactReviewedValueTest {
                 "supplierRange",
                 "selected",
                 "artifacts",
-                "semantics",
                 "actualExecution",
                 "invocationCount",
+                "invocationEvidence",
+                "parent",
             ),
-            binding.keys,
+            authority.keys,
         )
+        assertEquals("CALLBACK", authority.getValue("type").jsonPrimitive.content)
+        assertEquals("NOT_ESTABLISHED", authority.getValue("actualExecution").jsonPrimitive.content)
+        assertEquals("NOT_ESTABLISHED", authority.getValue("invocationCount").jsonPrimitive.content)
+        assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", authority.getValue("rule").jsonPrimitive.content)
+        val relation = binding.getValue("relation").jsonObject
+        assertEquals(setOf("type", "semantics"), relation.keys)
+        assertEquals("CALLBACK_CORRESPONDENCE", relation.getValue("type").jsonPrimitive.content)
         assertEquals(
             "CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
-            binding.getValue("semantics").jsonPrimitive.content,
+            relation.getValue("semantics").jsonPrimitive.content,
         )
-        assertEquals("NOT_ESTABLISHED", binding.getValue("actualExecution").jsonPrimitive.content)
-        assertEquals("NOT_ESTABLISHED", binding.getValue("invocationCount").jsonPrimitive.content)
-        assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", binding.getValue("rule").jsonPrimitive.content)
-        val selected = binding.getValue("selected").jsonObject
+        val selected = authority.getValue("selected").jsonObject
         assertEquals("kotlin.collections.map", selected.getValue("qualifiedIdentity").jsonPrimitive.content)
         assertEquals("0", selected.getValue("formalIndex").jsonPrimitive.content)
     }
@@ -99,7 +107,11 @@ class ImpactReviewedValueTest {
             assertFalse(
                 transfer
                     .copy(
-                        binding = changed,
+                        binding =
+                            ImpactReviewedValueRelationshipDocument.fromBinding(
+                                changed,
+                                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+                            ),
                         source =
                             transfer.source.copy(
                                 executionOwner = ImpactExecutionOwnerDocument.ReviewedCallback(changed)
@@ -112,30 +124,36 @@ class ImpactReviewedValueTest {
     }
 
     private fun changedBindings(fixture: ImpactReviewedValueFixture): List<ImpactReviewedValueBindingDocument> {
-        val transfer = fixture.transfer
+        val binding = fixture.binding
         return listOf(
-            transfer.binding.copy(
-                artifacts = transfer.binding.artifacts.copy(binaryArtifactSha256 = fixture.text("f".repeat(64)))
+            binding.copy(
+                artifacts =
+                    org.junit.jupiter.api.Assertions.assertInstanceOf(
+                            ImpactReviewedCollectionArtifactsDocument::class.java,
+                            binding.artifacts,
+                        )
+                        .copy(binaryArtifactSha256 = fixture.text("f".repeat(64)))
             ),
-            transfer.binding.copy(
-                artifacts = transfer.binding.artifacts.copy(sourceArtifactSha256 = fixture.text("f".repeat(64)))
+            binding.copy(
+                artifacts =
+                    org.junit.jupiter.api.Assertions.assertInstanceOf(
+                            ImpactReviewedCollectionArtifactsDocument::class.java,
+                            binding.artifacts,
+                        )
+                        .copy(sourceArtifactSha256 = fixture.text("f".repeat(64)))
             ),
-            transfer.binding.copy(
-                body = transfer.binding.body.copy(compilerIdentity = fixture.text("name-only-callback"))
-            ),
-            transfer.binding.copy(
+            binding.copy(body = binding.body.copy(compilerIdentity = fixture.text("name-only-callback"))),
+            binding.copy(
                 selected =
-                    transfer.binding.selected.copy(
+                    binding.selected.copy(
                         declaration =
-                            transfer.binding.selected.declaration.copy(
+                            binding.selected.declaration.copy(
                                 compilerIdentity = fixture.text("canonical-signature-sha256-v1|" + "f".repeat(64))
                             )
                     )
             ),
-            transfer.binding.copy(
-                selected = transfer.binding.selected.copy(formalIndex = ProtocolOffset.parse(1).reviewedValue())
-            ),
-            transfer.binding.copy(
+            binding.copy(selected = binding.selected.copy(formalIndex = ProtocolOffset.parse(1).reviewedValue())),
+            binding.copy(
                 basis =
                     ImpactSemanticBasisDocument.Published(
                         fixture.text("/workspace"),

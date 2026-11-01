@@ -1,0 +1,25 @@
+
+    ██╗  ██╗ █████╗ ███████╗████████╗
+    ██║ ██╔╝██╔══██╗██╔════╝╚══██╔══╝
+    █████╔╝ ███████║███████╗   ██║
+    ██╔═██╗ ██╔══██║╚════██║   ██║
+    ██║  ██║██║  ██║███████║   ██║
+    ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝
+  Compiler-grounded Kotlin evidence for coding agents
+
+  ◆ checking the selected IntelliJ installation
+  ✓ found IntelliJ IDEA 2026.2.3 (build 262.10968.63)
+  › The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line.
+  ◆ downloading Kast Control 0.0.0
+  › The Codex plugin uses the installed MCP launcher and the IntelliJ host plugin.
+  › Codex plugin installation is skipped; use kast connect for your harness.
+  ◆ installing the managed payload and IntelliJ host plugin
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/kcv1g-a3b5uat
+{"boundary":"INSTALLER","traversedEntries":15658,"payloadFiles":15520,"payloadBytes":92691587}
+{"event":"kast_installation_public_endpoint","endpoint":"PRIVATE","reason":"FRESH_DEFAULT"}
+{"event":"kast_installation_configuration","outcome":"ADMITTED"}
+{"event":"kast_installation","stage":"CANDIDATE_QUALIFICATION","outcome":"COMPLETED"}
+{"outcome":{"type":"ABSENT"},"type":"LEGACY_APPROVAL_CLEANUP"}
+kast: installed /private/tmp/kcv1g-a3b5uat/.local/bin/kast; add /private/tmp/kcv1g-a3b5uat/.local/bin to PATH
+  ✓ staged Kast Control 0.0.0
+  › The verified lifecycle owner will activate control.

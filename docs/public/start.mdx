@@ -1,76 +1,107 @@
 ---
-title: "Install Kast"
-description: "Install Kast with one command and ask your first Kotlin question in Codex."
-icon: "download"
+title: "Set up Kast"
+sidebarTitle: "Set up"
+description: "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project."
+keywords:
+  - "CLI"
+  - "Codex"
+  - "Copilot"
+  - "Pi"
+  - "IntelliJ IDEA"
+icon: "terminal"
+hideFooterPagination: true
 ---
 
-Use this guide to install Kast and ask your first question in Codex. The installer offers the Codex plugin by default.
+import DeeperReading from "/snippets/deeper-reading.mdx"
 
-## Before you install
+Use the native `kast` CLI with Codex, Copilot, or Pi.
+
+## Before you start
+
+<span id="before-you-install" />
 
 You need:
 
 - An Apple silicon Mac.
 - A Kotlin Gradle project.
 - IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
-- Codex CLI installed and available as `codex` in your terminal.
-- Python 3.9 or later, available as `python3`, for the installer and Codex session hook.
+- The Codex, Copilot, or Pi CLI.
+- Python 3.12 or 3.13 available as `python3` on `PATH`.
 
-Before you run the installer, check both commands:
+For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv 0.12.9 or later.
 
-```shell
-codex --version
-python3 --version
-```
-
-If either command is not available, install it first. [Integration requirements](/reference/integrations) describe the supported agent startup tools.
+## 1. Install or update Kast
 
 <span id="1-install-kast" />
+<span id="1-select-the-development-build" />
 
-1. [Install Kast.](#1-install-kast)
-2. [Load the IDEA plugin.](#2-restart-intellij-idea)
-3. [Connect your agent.](#3-connect-your-agent)
+Save your project work. Installation can end active Kast sessions.
+For an initial installation, run:
 
-<Steps>
-  <Step title="Install Kast">
-    Run this command in a terminal:
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+```
 
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
-    ```
+This command needs no checkout or existing `kast` installation. It selects the latest qualified development build and resets stale Kast state. The agent guidance is installed in step 2.
 
-    The installer adds Kast and its IntelliJ plugin. Accept the default Codex plugin installation when the installer asks.
-  </Step>
-  <Step title="Load the IDEA plugin">
-    <span id="2-restart-intellij-idea" />
+Restart IDEA after installation to load the Kast Host.
+If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
 
-    Restart IDEA to load the plugin. Then check the installation:
+<Accordion title="If Kast is already installed">
+  Update to the latest qualified development build:
 
+  ```shell
+  kast upgrade --channel main --restart-ide
+  ```
+
+  `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
+</Accordion>
+
+## 2. Install agent guidance
+
+<span id="choose-your-agent" />
+<span id="1-connect-your-agent" />
+<span id="2-restart-intellij-idea" />
+<span id="2-restart-your-tools" />
+<span id="3-connect-your-agent" />
+
+<Tabs sync={false}>
+  <Tab title="Codex">
     ```shell
-    kast status
+    kast install codex
     ```
+  </Tab>
+  <Tab title="Copilot">
+    ```shell
+    kast install copilot
+    ```
+  </Tab>
+  <Tab title="Pi">
+    ```shell
+    kast install pi
+    ```
+  </Tab>
+</Tabs>
 
-    If your terminal cannot find `kast`, use the command path that the installer prints.
+These commands install guidance for the native CLI.
 
-    <span id="3-connect-your-agent" />
-  </Step>
-  <Step title="Connect your agent">
-    <span id="3-ask-your-agent" />
+Start a fresh agent session in the same Kotlin repository or worktree.
+If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
 
-    The installer offers the Codex plugin by default. Continue with [Connect your agent](/agent-harnesses) to load it and select the exact worktree.
+## 3. Ask about your code
 
-    Use the same page for Copilot or Pi. [Installation reference](/reference/installation) covers release channels and installer options.
-  </Step>
-</Steps>
-
+<span id="3-ask-your-agent" />
 <span id="4-establish-readiness" />
+<span id="what-your-first-result-establishes" />
 
-## 4. Prove readiness
+Give your agent the function's file and name.
 
-Complete [the first-query exercise](/tutorials/first-query) in the selected project. Compare the returned declaration and caller with the exercise source.
+<Prompt description="Find the callers of your function" actions={["copy"]}>
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+</Prompt>
 
-<Warning>
-  `kast status` reports installation state. A tool catalog proves availability. A fresh semantic query proves that the selected project admits the requested read.
-</Warning>
+The first query can wait for Gradle import and indexing. Use the returned source locations to inspect the answer.
 
-If setup stops, use [Troubleshoot Kast](/troubleshooting).
+Try [example questions](/search), read the [CLI reference](/reference/cli), or use [Help](/troubleshooting).
+
+<DeeperReading />

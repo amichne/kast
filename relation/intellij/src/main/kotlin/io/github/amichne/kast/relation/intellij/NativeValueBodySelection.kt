@@ -34,16 +34,17 @@ internal fun nativeValueBodySelection(
             is IntellijRelationSubjectLookup.Rejected -> return NativeValueBodySelection.IMPLEMENTATION_INVENTORY
         }
     val syntax =
-        host.exactValueElement(invocation.range)?.nativeValueCallSyntax()
+        host.exactValueElement(invocation.range)?.nativeSelectedValueCallSyntax(function, projection)
             ?: return NativeValueBodySelection.IMPLEMENTATION_INVENTORY
     return projection.observation.observedAnalyze(syntax.element) {
         val call = resolveNativeValueCall(syntax)
-        val dispatch = call?.dispatchReceiver?.type as? KaClassType
+        val dispatch =
+            if (syntax is NativeValueCallSyntax.StringConversion) syntax.expression.expressionType as? KaClassType
+            else call?.dispatchReceiver?.type as? KaClassType
+        val selected =
+            if (syntax is NativeValueCallSyntax.StringConversion) syntax.function else call?.signature?.symbol?.psi
         val owner = dispatch?.symbol as? KaClassSymbol
-        if (
-            call?.signature?.symbol?.psi?.originalElement == function.originalElement &&
-                owner?.modality == KaSymbolModality.FINAL
-        ) {
+        if (selected?.originalElement == function.originalElement && owner?.modality == KaSymbolModality.FINAL) {
             NativeValueBodySelection.DIRECT
         } else {
             NativeValueBodySelection.IMPLEMENTATION_INVENTORY

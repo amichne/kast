@@ -14,7 +14,9 @@ internal fun QueryRunResult.selectedImpactAccounting(
     val pathCount =
         when (
             val count =
-                QueryDiscoveryCountDocument.parse(selected.count { it is QueryResultItemDocument.ValuePath }.toLong())
+                QueryDiscoveryCountDocument.parse(
+                    selected.count { it.detailKind() == QueryEntryDetailKind.VALUE_PATH }.toLong()
+                )
         ) {
             is Refinement.Refined -> count.value
             is Refinement.Rejected -> return Refinement.Rejected(ImpactAccountingFailure.PAGE_COUNT_MISMATCH)

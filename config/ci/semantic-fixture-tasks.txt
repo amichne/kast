@@ -1,0 +1,6 @@
+:relation:intellij:semanticCoverageFixtureTest
+:runtime:hosted:semanticCoverageFixtureTest
+:symbol:intellij:semanticCoverageFixtureTest
+:verifyKotlinSemanticCoverage
+:verifyKotlinSemanticInventory
+:verifySelectedKotlinSemanticCoverage

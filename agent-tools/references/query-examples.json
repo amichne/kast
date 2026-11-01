@@ -177,14 +177,14 @@
   },
   {
     "name": "referenceOccurrences",
-    "summary": "Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.",
+    "summary": "Copy an issued exact reference instead of the non-issued example token. Return individual compiler-confirmed references.",
     "arguments": {
       "request": {
         "type": "RUN",
         "source": {
           "type": "SYMBOL_REFS",
           "symbolRefs": [
-            "<exact-ref-returned-by-Kast>"
+            "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
           ]
         },
         "steps": [
@@ -767,14 +767,14 @@
   },
   {
     "name": "traceAffectedUses",
-    "summary": "Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.",
+    "summary": "Copy an issued exact reference instead of the non-issued example token. Trace affected uses with original completion and qualifications.",
     "arguments": {
       "request": {
         "type": "RUN",
         "source": {
           "type": "SYMBOL_REFS",
           "symbolRefs": [
-            "<exact-ref-returned-by-Kast>"
+            "exact:v5:NON_ISSUED_EXAMPLE_ONLY"
           ]
         },
         "steps": [],
@@ -794,7 +794,7 @@
         },
         "retention": "RETAIN",
         "executionBudget": {
-          "maxElapsedMs": 30000
+          "maxResults": 20
         }
       }
     }
@@ -861,6 +861,25 @@
         "type": "READ_SOURCE",
         "candidateRef": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
         "region": "CALLABLE_BODY"
+      }
+    }
+  },
+  {
+    "name": "readRetainedDetail",
+    "summary": "Copy an issued detail selector. This non-issued example grants no authority. Detail reads perform no semantic replay.",
+    "arguments": {
+      "request": {
+        "type": "READ_RESULT",
+        "result": "result:v1:00000000-0000-0000-0000-000000000000",
+        "detail": {
+          "result": "result:v1:00000000-0000-0000-0000-000000000000",
+          "section": "CANONICAL_ENTRY_JSON",
+          "target": "ROW",
+          "ordinal": 0,
+          "kind": "EXACT_SYMBOL",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "offset": 0
+        }
       }
     }
   }

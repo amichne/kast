@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e67f3b95e8e6018ca0feca82fd7e4bfcf9771d7a6dff81206883d1d570a245af",
+  "pageVersion": "sha256:fefb65e65cb112f21ff05ccfe35b273228ded49e010dba4babcec8ead5430ad2",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:b3b6769ab89658fbfec352fa629d6c1827064a278c7d417a82dec4680e329c77"
+          "version": "repo-file-v1:sha256:a847676550509433be1f5b62a5ffcc67be07887eb3ef47c2579bd3d8f08f2bcc"
         }
       ]
     },
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/run-portable-tests.py",
-          "version": "repo-file-v1:sha256:445b4a7319ef34ee94d63b7cde9eb4a344c595c8468cae33a44c025e74b585e4"
+          "version": "repo-file-v1:sha256:df7f05f496d917706f677ebfc08b84d6e2ab336d1e70f932902a9d1ad2b4bf33"
         }
       ]
     },
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-31T07:55:41.140Z"
   }
 }

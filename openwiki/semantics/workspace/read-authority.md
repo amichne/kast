@@ -18,9 +18,6 @@ code_sources:
 - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/Refinement.kt
 - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedEpochAdmissionTest.kt
 - path: kernel/src/test/kotlin/io/github/amichne/kast/kernel/ExecutionBudgetTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-02ae034b72e79a3f84b122d8
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt
@@ -29,6 +26,9 @@ sources:
   - id: openwiki-source-66bcd153d89119a79ea0c09b
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/execution/AdmittedProjectReadExecution.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Workspace roots and read authority

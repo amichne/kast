@@ -1,4 +1,7 @@
+import java.time.Duration
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import support.tasks.nativefixtures.CompileDependencyFixture
+import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
@@ -6,7 +9,9 @@ plugins {
     id("kast.role.intellij-read")
 }
 
-group = "${rootProject.group}.relation"
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
+group = "${providers.gradleProperty("GROUP").get()}.relation"
 
 base {
     archivesName.set("relation-intellij")
@@ -91,20 +96,52 @@ dependencies {
 // The native call oracle must compile with the repository's compiler before IDE acceptance.
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     // Compile the independently authored immutable-callback oracle through the production Kotlin compiler.
-    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/invocation/src/main/kotlin"))
-    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/forwarding/src/main/kotlin"))
-    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/suppliers/src/main/kotlin"))
-    source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt"))
-    source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt"))
-    source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))
     source(
-        rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt")
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/immutable-callback-fixture/invocation/src/main/kotlin",
+        )
     )
-    source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferences.kt"))
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/immutable-callback-fixture/forwarding/src/main/kotlin",
+        )
+    )
+    source(
+        File(repositoryRoot.asFile, "experiments/host-observation/immutable-callback-fixture/suppliers/src/main/kotlin")
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt",
+        )
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt",
+        )
+    )
+    source(
+        File(repositoryRoot.asFile, "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt")
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferenceTarget.kt",
+        )
+    )
+    source(
+        File(
+            repositoryRoot.asFile,
+            "experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinReferences.kt",
+        )
+    )
 }
 
 tasks.named("test") {
-    inputs.file(rootProject.file("cli/src/test/resources/stabilization/Fixture.kt"))
+    inputs.file(File(repositoryRoot.asFile, "cli/src/test/resources/stabilization/Fixture.kt"))
 }
 
 // Indexed Platform fixtures own a separate process and task; parser/pure tests stay fast.
@@ -116,12 +153,34 @@ val reviewedCallbackSources =
         isCanBeResolved = true
     }
 
+val contractFixtureStdlib =
+    configurations.create("contractFixtureStdlib") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        isTransitive = false
+    }
+
+val reviewedScopeStdlib =
+    configurations.create("reviewedScopeStdlib") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        isTransitive = false
+    }
+
 dependencies {
     reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
+    contractFixtureStdlib(libs.kotlin.stdlib)
+    reviewedScopeStdlib(libs.reviewed.scope.stdlib)
+    reviewedScopeStdlib(variantOf(libs.reviewed.scope.stdlib) { classifier("sources") })
 }
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
     from(reviewedCallbackSources) { into("reviewed-libraries") }
+    from(reviewedScopeStdlib) { into("reviewed-libraries") }
+    from(contractFixtureStdlib) {
+        into("contract-libraries")
+        rename { "kotlin-stdlib.jar" }
+    }
     from("testData/r1-value-flow") { into("r1-value-flow") }
 }
 
@@ -178,6 +237,58 @@ dependencies {
     )
 }
 
+val compileDeclaredEffectFixture =
+    tasks.register<CompileDependencyFixture>("compileDeclaredEffectFixture") {
+        sourceFile.set(layout.projectDirectory.file("src/nativeTest/resources/semantic-effects/DependencyEffects.kt"))
+        equivalentSources.from(
+            File(repositoryRoot.asFile, "runtime/hosted/src/nativeTest/resources/semantic-effects/DependencyEffects.kt")
+        )
+        compilerClasspath.from(
+            nativeIdeaHome.map { home ->
+                fileTree(home.dir("plugins/Kotlin/kotlinc/lib")) { include("*.jar") }
+            }
+        )
+        dependencies.from(nativeIdeaHome.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar"))
+        javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+        archiveFile.set(layout.buildDirectory.file("native-test/dependencies/effects.jar"))
+        timeout.set(Duration.ofSeconds(60))
+        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+    }
+
+val compileResultEffectFixture =
+    tasks.register<CompileDependencyFixture>("compileResultEffectFixture") {
+        sourceFile.set(layout.projectDirectory.file("src/nativeTest/resources/semantic-effects/ResultEffects.kt"))
+        compilerClasspath.from(configurations.named("kotlinCompilerClasspath"))
+        dependencies.from(contractFixtureStdlib)
+        compilerArguments.set(
+            listOf(
+                "-no-stdlib",
+                "-no-reflect",
+                "-language-version",
+                "2.4",
+                "-api-version",
+                "2.4",
+                "-Xallow-returns-result-of",
+                "-Xreturn-value-checker=check",
+            )
+        )
+        javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+        archiveFile.set(layout.buildDirectory.file("native-test/dependencies/result-effects.jar"))
+        timeout.set(Duration.ofSeconds(60))
+    }
+
+tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
+    from(compileResultEffectFixture.flatMap { it.archiveFile }) { into("contract-libraries") }
+}
+
+val nativeDependencyFixtureElements =
+    configurations.create("nativeDependencyFixtureElements") {
+        isCanBeConsumed = true
+        isCanBeResolved = false
+    }
+
+artifacts.add(nativeDependencyFixtureElements.name, compileDeclaredEffectFixture.flatMap { it.archiveFile })
+
 fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<String>) =
     tasks.register<Test>(taskName) {
         description = "Runs headless indexed Kotlin fixtures in the pinned IntelliJ Platform."
@@ -191,6 +302,11 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
             filter { selectedClasses.forEach(::includeTestsMatching) }
         }
         maxParallelForks = 1
+        jvmArgumentProviders.add(
+            objects.newInstance<DependencyFixtureArguments>().apply {
+                archives.from(compileDeclaredEffectFixture.flatMap { it.archiveFile })
+            }
+        )
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
                 productInfo.set(nativeIdeaHome.file("product-info.json"))
@@ -212,9 +328,25 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
 
 registerRelationNativeFixtures("nativeFixtureTest", emptyList())
 
+val dependencyFixtureTest =
+    registerRelationNativeFixtures("dependencyFixtureTest", listOf("*DeclaredEffectArchiveIsolationTest"))
+
+tasks.named("check") { dependsOn(dependencyFixtureTest) }
+
+tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest) }
+
 registerRelationNativeFixtures(
     "semanticCoverageFixtureTest",
     listOf(
+        "*NativeConstructorPropertyStorageTest",
+        "*NativeImplicitLambdaParameterTest",
+        "*NativeContainerMapFlowTest",
+        "*NativeFlowClosureTest",
+        "*NativeCallbackReturnFlowTest.testPublicProducerSeedsTheExactInvokedDecodeResult",
+        "*NativeCallbackReturnFlowTest.testIgnoredOuterCallbackRejectsNestedProducer",
+        "*NativeCallbackReturnFlowTest.testReturnedUninvokedCallbackRemainsRejected",
+        "*NativeCallbackReturnFlowTest.testCapturedWithRefusalNamesTheReadRatherThanTheBinding",
+        "*NativeCallbackReturnFlowTest.testRunnerControlledCallbackReturnAndReadmissionExceedLegacyTypeCap",
         "*NativeDependencyCallbackTest",
         "*NativeDeclaredEffectCallbackTest",
         "*NativeCallbackCandidateFilterTest",
@@ -223,6 +355,7 @@ registerRelationNativeFixtures(
         "*NativeRunnerControlledTypeProofTest",
         "*NativeDestructuringCompilerTest",
         "*NativeDestructuringFlowTest",
+        "*NativeOrderedDestructuringFlowTest",
         "*NativeDestructuringRevalidationTest",
         "*NativeReceiverImplementationDispatchTest",
         "*NativeCoreValueCompositionTest",
@@ -230,6 +363,17 @@ registerRelationNativeFixtures(
         "*NativeInheritedReceiverTest",
         "*NativeTypeOperationFlowTest",
         "*NativeContractPayloadTest",
+        "*NativeContractScopeTest",
+        "*NativeBinaryResultContractTest",
+        "*NativeBinaryResultValueTest",
+        "*NativeConfiguredDestructuringTest",
+        "*NativeLocalValueVersionTest",
+        "*NativeCallbackArgumentBindingTest",
+        "*NativeCallbackInputTest",
+        "*NativeRepeatedCallbackInputTest",
+        "*NativeCallbackInputObligationTest",
+        "*NativeLoopInputTest",
+        "*NativeLoopInputBoundaryTest",
         "*NativeDestructuringFormsTest",
     ),
 )

@@ -1,54 +1,50 @@
 ---
-title: "Choose a question for your agent"
-sidebarTitle: "Example questions"
-description: "Find code, trace its connections, inspect problems, and make targeted changes through your agent."
+title: "Ask about the code you work on"
+sidebarTitle: "Examples"
+description: "Use Kast with your coding agent to find callers, follow a function's result, or inspect IDEA diagnostics in the Kotlin code you work on."
+keywords:
+  - "examples"
+  - "callers"
+  - "value flow"
+  - "diagnostics"
 icon: "search"
+hideFooterPagination: true
 ---
 
-Use these prompts with your [connected agent](/agent-harnesses). Each prompt identifies a task and the evidence that the answer must keep.
+import DeeperReading from "/snippets/deeper-reading.mdx"
 
-## Find the exact code
+After [setup](/start), give your agent a function, file, or directory. Choose a question that matches your task.
 
-Find a function, class, or property and read its source. If several declarations share a name, Kast gives their signatures and locations.
+## What depends on this function?
 
-> Use Kast to find submitOrder in this repository. Show the matches and their source locations.
+<Prompt description="Find callers before an edit" actions={["copy"]}>
+Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+</Prompt>
 
-## Understand what connects to it
+## Where does this value go?
 
-Find callers, references, implementations, or overrides. Use those connections to investigate a feature or review the code around a proposed change.
+<Prompt description="Follow a function's result" actions={["copy"]}>
+Use the Kast CLI to trace this function's result. Show where it goes and where the evidence stops.
+</Prompt>
 
-> Use Kast to find the callers of the submitOrder function I selected. Show where each call occurs.
+## What problems does IDEA report?
 
-> Use Kast to find implementations of CacheManager in this project.
+The optional [MCP composition](/reference/integrations#optional-mcp) exposes a diagnostics task.
 
-## Find reported problems
+<Prompt description="Inspect the code you changed" actions={["copy"]}>
+Use Kast to inspect IDEA diagnostics in the code we changed.
+</Prompt>
 
-Ask for the problems that IntelliJ reports in the selected code.
+<span id="which-implementation-matters" />
 
-> Use Kast to inspect the IDEA diagnostics for the function I selected.
+<span id="can-we-change-this-body" />
 
-## Make a targeted change
+Find [implementations](/reference/search), [make a targeted change](/reference/change), or [explore a value journey](/explanation/value-journey).
 
-Kast can add a declaration to an existing Kotlin file or replace a supported function body. It reports the edit outcome.
+<span id="what-if-kast-cannot-finish" />
 
-> Use Kast to replace the selected retryLimit function's body with `{ return 3 }`. Keep its signature unchanged.
+If Kast cannot finish, ask your agent for the reported cause and recovery action. Use [Help](/troubleshooting) for setup problems.
 
-These edits cover specific targets. Kast does not rename symbols, create files, or do multi-file refactors through its change tools.
+Use the [CLI reference](/reference/cli) for declaration, caller, source, and retained-result commands.
 
-After an edit, review the diff. Run your project's build and tests.
-
-The [change guide](/reference/change) describes supported targets and the receipt needed before another write.
-
-## Know when an answer needs more work
-
-Kast reports when it cannot finish a search or prove a relationship. A limited answer does not prove that no matches exist.
-
-Your agent can use the reported reason to narrow the question or resolve a setup problem.
-
-Use [Find and trace code](/reference/search) for scoped discovery. Use [Inspect diagnostics](/how-to/inspect-diagnostics) for reported problems.
-
-Use [Read retained evidence](/how-to/read-retained-evidence) when the response supplies more evidence than one preview.
-
-<Card title="Connect your agent" icon="plug" href="/agent-harnesses">
-  Choose Codex, Copilot, or Pi and ask your first question.
-</Card>
+<DeeperReading />

@@ -8,13 +8,15 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
 /** Detached path evidence. Completion is exclusively carried by the containing query coverage ledger. */
-@Serializable
+@Serializable(with = ImpactPathDocumentSerializer::class)
 data class ImpactPathDocument(
     val producer: ImpactValueSiteReferenceDocument,
     val steps: BoundedProtocolList<ImpactPathStepDocument>,
     val representation: ImpactRepresentationEvidenceDocument,
     val terminal: ImpactPathTerminalDocument,
-)
+) {
+    val classification: ImpactPathClassificationDocument = steps.classifyImpact()
+}
 
 @Serializable
 data class ImpactRuleReferenceDocument(val model: ImpactModelIdentityDocument, val rule: ImpactModelIdentifierDocument)
@@ -33,6 +35,8 @@ enum class ImpactTransferKindDocument {
     SOURCE_CALL_RETURN,
     FIELD_READ,
     CONSTRUCTOR_FIELD,
+    CAST_RESULT,
+    STRING_CONTENT,
 }
 
 @Serializable
@@ -68,6 +72,23 @@ enum class ImpactInterpolationScalarKindDocument {
 @JsonClassDiscriminator("type")
 sealed interface ImpactTransferEvidenceDocument {
     @Serializable @SerialName("DIRECT") data object Direct : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("STRING_CONTENT")
+    data class StringContent(
+        @SerialName("template_range") val templateRange: ImpactSourceRangeDocument,
+        @SerialName("entry_range") val entryRange: ImpactSourceRangeDocument,
+        @SerialName("input_range") val inputRange: ImpactSourceRangeDocument,
+        val input: ImpactStringContentInputDocument,
+        @SerialName("null_alternative") val nullAlternative: ImpactStringNullAlternativeDocument,
+    ) : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("LOOP_ADVANCE")
+    data class LoopAdvance(
+        val iteration: ImpactLoopIterationDocument,
+        val receiverKind: ImpactReceiverKindDocument,
+    ) : ImpactTransferEvidenceDocument
 
     @Serializable
     @SerialName("SOURCE")

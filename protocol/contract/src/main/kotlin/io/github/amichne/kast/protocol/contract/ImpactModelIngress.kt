@@ -163,7 +163,9 @@ private fun ImpactValueSiteReferenceDocument.siteFailure(): Refinement<Unit, Imp
     return when (val role = role) {
         is ImpactValueRoleDocument.Argument -> role.siteFailure(this)
         is ImpactValueRoleDocument.Receiver -> role.siteFailure(this)
+        is ImpactValueRoleDocument.StringConversionResult,
         is ImpactValueRoleDocument.Formal,
+        is ImpactValueRoleDocument.LoopResult,
         ImpactValueRoleDocument.ExpressionResult,
         ImpactValueRoleDocument.LocalBinding,
         ImpactValueRoleDocument.LocalRead,

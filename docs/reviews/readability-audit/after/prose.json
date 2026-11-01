@@ -1,0 +1,1026 @@
+{
+  ".github/scripts/ci/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 251.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 34
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 166.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 215
+    }
+  ],
+  "AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        3,
+        3
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 41.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 149
+    }
+  ],
+  "SECURITY.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.Complexity",
+      "Description": "",
+      "Link": "",
+      "Message": "Estimated Flesch-Kincaid grade is 14.10. Review sentence structure; preserve precise technical terms.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "agent-tools/onboarding.template.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 658.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "app-server/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 48.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 312
+    }
+  ],
+  "app-server/docs/compatibility.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 151.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 97
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 144.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 111
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 46.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 113
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 716.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 202
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 155.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 284
+    }
+  ],
+  "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 216.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 110
+    }
+  ],
+  "config/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        9,
+        9
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 36.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 4
+    }
+  ],
+  "docs/static-query-execution.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 133.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 184
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 134.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 207
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 126.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 242
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 197.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 320
+    }
+  ],
+  "docs/tool-rpc.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 769.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 128
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 121.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 206
+    }
+  ],
+  "docs/tooling/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 135.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 37
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 150.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 57
+    }
+  ],
+  "docs/tooling/value-journey/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 147.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 40
+    }
+  ],
+  "experiments/host-observation/AGENT_EFFICIENCY.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 125.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 117
+    }
+  ],
+  "experiments/host-observation/ENTERPRISE_CACHE.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 36.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 76
+    }
+  ],
+  "experiments/host-observation/EVALUATION_CHECKLIST.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 784.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 331
+    }
+  ],
+  "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 778.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 14
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 135.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 69
+    }
+  ],
+  "experiments/host-observation/PI_EVALUATION.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 42.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 7
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 689.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 33
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 192.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 174
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 614.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 180
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 125.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 218
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 256.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 312
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 1093.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 392
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 130.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 417
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 44.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 456
+    }
+  ],
+  "experiments/host-observation/SEMANTIC_REPRODUCTION.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        144,
+        144
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 38.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 5
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 139.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 78
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 1816.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 91
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 122.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 134
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 124.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 207
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 160.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 244
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 158.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 299
+    }
+  ],
+  "experiments/host-observation/agent-payload/evidence.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 737.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 204
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 136.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 385
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 124.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 422
+    }
+  ],
+  "experiments/host-observation/pi-fixtures/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        32,
+        32
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 36.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 162
+    }
+  ],
+  "experiments/host-observation/trace-completeness/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        14,
+        14
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 39.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 73
+    }
+  ],
+  "experiments/host-observation/try-local-qualification.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 753.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SentenceLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This sentence has 40.00 words. Check whether it contains distinct ideas that could be separated.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 86
+    }
+  ],
+  "experiments/representation-impact/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.ParagraphLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This paragraph has 199.00 words. Look for a change of topic or a useful list.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 33
+    }
+  ],
+  "relation/intellij/NATIVE_FIXTURES.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 723.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "runtime/hosted/NATIVE_FIXTURES.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 617.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "runtime/hosted/native/README.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Prose.SectionLength",
+      "Description": "",
+      "Link": "",
+      "Message": "This section has 771.00 words. Consider a subheading at a change of topic.",
+      "Severity": "suggestion",
+      "Match": "",
+      "Line": 1
+    }
+  ]
+}

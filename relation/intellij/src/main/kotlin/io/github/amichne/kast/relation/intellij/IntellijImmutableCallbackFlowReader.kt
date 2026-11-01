@@ -147,15 +147,20 @@ internal fun transport(
     kind: ValueTransferKind,
     evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
 ): Refinement<ImmutableCallbackValue, CallbackInvocationFlowCause> {
+    val target =
+        when (val result = destination.withState(conditions = value.destination.conditions)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected ->
+                return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        }
     val edge =
-        when (val result = ValueTransfer.fromCompiler(value.destination, destination, kind, evidence)) {
+        when (val result = ValueTransfer.fromCompiler(value.destination, target, kind, evidence)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected ->
                 return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         }
     return when (
-        val result =
-            ImmutableCallbackValue.fromCompiler(value.origin, value.source, destination, value.transfers + edge)
+        val result = ImmutableCallbackValue.fromCompiler(value.origin, value.source, target, value.transfers + edge)
     ) {
         is Refinement.Refined -> result
         is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)

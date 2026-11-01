@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.appserver.AdmittedAppServerConfiguration
 import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
 import io.github.amichne.kast.appserver.SavedConfigurationIngress
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -58,6 +59,12 @@ internal fun readInstallationConfiguration(
             is SavedConfigurationIngress.Rejected ->
                 return Refinement.Rejected(InstallationConfigurationFailure.SOURCE_REJECTED)
         }
+    return resolveInstallationConfiguration(sources)
+}
+
+internal fun resolveInstallationConfiguration(
+    sources: ConfigurationSources
+): Refinement<AdmittedAppServerConfiguration, InstallationConfigurationFailure> {
     val configuration =
         when (val resolution = ResolvedKastConfiguration.resolve(sources)) {
             is Refinement.Refined -> resolution.value

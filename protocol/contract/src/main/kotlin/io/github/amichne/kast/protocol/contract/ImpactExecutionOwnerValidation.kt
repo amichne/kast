@@ -5,6 +5,9 @@ fun ImpactValueSiteReferenceDocument.admitsExecutionOwner(): Boolean =
     executionOwner.admits(enclosing, range) &&
         admitsValueState() &&
         when (val position = role) {
+            is ImpactValueRoleDocument.StringConversionResult ->
+                position.invocation.admitsOwner(enclosing, executionOwner) && position.invocation.range == range
+            is ImpactValueRoleDocument.LoopResult -> position.admits(this)
             is ImpactValueRoleDocument.Argument -> position.invocation.admitsOwner(enclosing, executionOwner)
             is ImpactValueRoleDocument.Receiver -> position.invocation.admitsOwner(enclosing, executionOwner)
             is ImpactValueRoleDocument.Formal -> position.position.admits(this)
@@ -18,7 +21,7 @@ fun ImpactValueSiteReferenceDocument.admitsExecutionOwner(): Boolean =
 private fun ImpactInvocationReferenceDocument.admitsOwner(
     host: ImpactDeclarationReferenceDocument,
     owner: ImpactExecutionOwnerDocument,
-): Boolean = executionOwner == owner && executionOwner.admits(host, range)
+): Boolean = executionOwner.hasSameExecutionIdentity(owner) && executionOwner.admits(host, range)
 
 internal fun ImpactExecutionOwnerDocument.admits(
     host: ImpactDeclarationReferenceDocument,
@@ -28,12 +31,14 @@ internal fun ImpactExecutionOwnerDocument.admits(
         ImpactExecutionOwnerDocument.Declaration -> host.range.containsExecutionRange(anchor)
         is ImpactExecutionOwnerDocument.ReviewedCallback ->
             binding.admits(host) && binding.body.range.containsExecutionRange(anchor)
+        is ImpactExecutionOwnerDocument.DeclaredCallback ->
+            binding.admits(host) && binding.body.range.containsExecutionRange(anchor)
         is ImpactExecutionOwnerDocument.Callback ->
             body.file == host.file &&
                 host.range.containsExecutionRange(body.range) &&
                 body.range.containsExecutionRange(anchor) &&
                 invocations.values.isNotEmpty() &&
-                invocations.values.any { it.body == body } &&
+                admitsSelection() &&
                 invocations.values.all { it.admitsCapture(host) }
     }
 
@@ -44,8 +49,7 @@ private fun ImpactCaptureInvocationDocument.admitsCapture(host: ImpactDeclaratio
         host.range.containsExecutionRange(body.range) &&
         supplyOwner.file == enclosing.file &&
         supplyOwner.range.containsExecutionRange(supply.range) &&
-        supply.callable.range.containsExecutionRange(parameter) &&
-        invocationOwner.range.containsExecutionRange(invocation)
+        admitsForwardings(host.basis)
 
 internal fun ImpactSourceRangeDocument.containsExecutionRange(other: ImpactSourceRangeDocument): Boolean =
     other.start.value < other.end.value && other.start.value >= start.value && other.end.value <= end.value
@@ -58,8 +62,15 @@ internal fun ImpactExecutionOwnerDocument.isOnBasis(basis: ImpactSemanticBasisDo
                 ImpactExecutionOwnerDocument.Declaration -> true
                 is ImpactExecutionOwnerDocument.ReviewedCallback ->
                     binding.basis == basis && binding.admits(binding.enclosing)
+                is ImpactExecutionOwnerDocument.DeclaredCallback ->
+                    binding.contract.basis == basis && binding.admits(binding.enclosing)
                 is ImpactExecutionOwnerDocument.Callback ->
-                    invocations.values.all { it.enclosing.basis == basis && it.supply.callable.basis == basis }
+                    admitsSelection() &&
+                        invocations.values.all { capture ->
+                            capture.enclosing.basis == basis &&
+                                capture.supply.callable.basis == basis &&
+                                capture.admitsForwardings(basis)
+                        }
             }
     }
 

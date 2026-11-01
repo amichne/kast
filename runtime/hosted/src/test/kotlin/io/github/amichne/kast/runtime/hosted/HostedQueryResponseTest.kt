@@ -42,6 +42,10 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -255,13 +259,20 @@ class HostedQueryResponseTest {
     }
 
     @Test
-    fun `projection without retention refuses irreversible clipping`() {
-        val response =
-            encodeHostedQueryResponse(
-                OperationOutcome.Complete(envelope(List(40) { item() }, emptyList())),
-                maximumBytes = ReturnedByteLimit.parse(65_536).refined(),
-            )
-        assertTrue(response is HostedResponse.Oversized)
+    fun `projection without retention preserves its original header and reports unavailable detail`() {
+        val original = OperationOutcome.Complete(envelope(List(40) { item() }, emptyList()))
+        val response = encodeHostedQueryResponse(original, maximumBytes = ReturnedByteLimit.parse(65_536).refined())
+        assertTrue(response is HostedResponse.Canonical<*, *, *>)
+        assertEquals(original, (response as HostedResponse.Canonical<*, *, *>).semantic)
+        val document = Json.parseToJsonElement(response.document).jsonObject
+        val header = document.getValue("semantic").jsonObject
+        assertEquals("complete", header.getValue("original_outcome").jsonPrimitive.content)
+        assertEquals("0", header.getValue("presentation").jsonObject.getValue("rows").jsonPrimitive.content)
+        assertEquals("UNAVAILABLE", header.getValue("recovery").jsonObject.getValue("type").jsonPrimitive.content)
+        assertEquals(JsonNull, document.getValue("nextQuery"))
+        assertTrue(response.document.toByteArray(Charsets.UTF_8).size <= 65_536)
+        val impossible = encodeHostedQueryResponse(original, maximumBytes = ReturnedByteLimit.parse(1).refined())
+        assertTrue(impossible is HostedResponse.Oversized)
     }
 
     private fun assertRetainedTerminalCoverage(retained: QueryRunQualification) {

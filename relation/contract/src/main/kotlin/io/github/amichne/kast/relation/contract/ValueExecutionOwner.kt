@@ -11,10 +11,14 @@ sealed interface ValueExecutionContext {
     internal constructor(
         val body: RelationCallableBody.Anonymous,
         val invocations: List<ValueCaptureInvocation>,
+        val selectedInvocation: ValueCaptureInvocation,
     ) : ValueExecutionContext
 
     /** Conditional library value correspondence remains distinct from source invocation evidence. */
     data class ReviewedCallback internal constructor(val binding: ReviewedCallbackValueBinding) : ValueExecutionContext
+
+    /** Compiler-declared dependency effects retain the selected source supplier, not a binary body. */
+    data class DeclaredCallback internal constructor(val binding: DeclaredCallbackValueBinding) : ValueExecutionContext
 }
 
 data class ValueCaptureInvocation
@@ -43,10 +47,25 @@ private constructor(
             ValueExecutionContext.Declaration -> enclosing.range
             is ValueExecutionContext.Callback -> context.body.range
             is ValueExecutionContext.ReviewedCallback -> context.binding.body.range
+            is ValueExecutionContext.DeclaredCallback -> context.binding.body.range
         }
     val identity = ValueExecutionIdentity(enclosing.valueIdentity, basis, context)
 
     fun belongsTo(host: RelationEndpoint): Boolean = identity.host == host.valueIdentity && basis == host.lease.identity
+
+    /** Match a compiler body against the admitted execution, including an exact anonymous supplier. */
+    fun represents(body: RelationCallableBody): Boolean =
+        when (body) {
+            is RelationCallableBody.Named ->
+                context == ValueExecutionContext.Declaration && enclosing.matchesCallbackRoot(body.evidence)
+            is RelationCallableBody.Anonymous ->
+                when (val execution = context) {
+                    ValueExecutionContext.Declaration -> false
+                    is ValueExecutionContext.Callback -> execution.body == body
+                    is ValueExecutionContext.ReviewedCallback -> execution.binding.body == body
+                    is ValueExecutionContext.DeclaredCallback -> execution.binding.body == body
+                }
+        }
 
     fun hasSameProofAs(other: ValueExecutionOwner): Boolean =
         identity == other.identity && enclosing.hasSameProofAs(other.enclosing)
@@ -56,10 +75,16 @@ private constructor(
         when (val execution = context) {
             ValueExecutionContext.Declaration -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.ReviewedCallback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            is ValueExecutionContext.DeclaredCallback -> Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             is ValueExecutionContext.Callback ->
-                if (invocation.body != execution.body || invocation !in execution.invocations)
+                if (invocation != execution.selectedInvocation)
                     Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-                else supplierOwner(invocation.supply.invocationOwner, execution)
+                else {
+                    val caller = invocation.supply.invocation.executionOwner
+                    if (caller.belongsTo(enclosing) && caller.represents(invocation.supply.invocationOwner))
+                        Refinement.Refined(caller)
+                    else supplierOwner(invocation.supply.invocationOwner, execution)
+                }
         }
 
     private fun supplierOwner(
@@ -70,10 +95,17 @@ private constructor(
             is RelationCallableBody.Named ->
                 if (enclosing.matchesCallbackRoot(supplier.evidence)) Refinement.Refined(declaration(enclosing))
                 else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-            is RelationCallableBody.Anonymous ->
-                if (execution.invocations.any { it.body == supplier })
-                    Refinement.Refined(ValueExecutionOwner(enclosing, execution.copy(body = supplier)))
+            is RelationCallableBody.Anonymous -> {
+                val selections = execution.invocations.filter { it.body == supplier }
+                if (selections.size == 1)
+                    Refinement.Refined(
+                        ValueExecutionOwner(
+                            enclosing,
+                            execution.copy(body = supplier, selectedInvocation = selections.single()),
+                        )
+                    )
                 else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            }
         }
 
     companion object {
@@ -82,16 +114,45 @@ private constructor(
         fun reviewedCallback(binding: ReviewedCallbackValueBinding): ValueExecutionOwner =
             ValueExecutionOwner(binding.enclosing, ValueExecutionContext.ReviewedCallback(binding))
 
+        fun declaredCallback(binding: DeclaredCallbackValueBinding): ValueExecutionOwner =
+            ValueExecutionOwner(binding.enclosing, ValueExecutionContext.DeclaredCallback(binding))
+
         fun callback(
             enclosing: RelationEndpoint,
             body: RelationCallableBody.Anonymous,
             graph: CompleteCallbackFlowGraph,
+        ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
+            admitCallback(enclosing, body, graph) { captures -> captures.filter { it.body == body } }
+
+        /** Select one exact supply and invocation from a complete graph; repeated bodies remain distinct executions. */
+        fun callback(
+            enclosing: RelationEndpoint,
+            body: RelationCallableBody.Anonymous,
+            graph: CompleteCallbackFlowGraph,
+            supply: CallbackArgumentBinding,
+            invocation: CallbackParameterInvocation,
+        ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> =
+            admitCallback(enclosing, body, graph) { captures ->
+                captures.filter { it.body == body && it.supply == supply && it.invocation == invocation }
+            }
+
+        private fun admitCallback(
+            enclosing: RelationEndpoint,
+            body: RelationCallableBody.Anonymous,
+            graph: CompleteCallbackFlowGraph,
+            select: (List<ValueCaptureInvocation>) -> List<ValueCaptureInvocation>,
         ): Refinement<ValueExecutionOwner, ValueFlowUnsupportedCause> {
             if (graph.basis != enclosing.lease.identity || !enclosing.matchesCallbackRoot(graph.root))
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             if (body.file != enclosing.file || !enclosing.range.containsValueRange(body.range))
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-            if (graph.edges.any { it !is StaticCallbackEdge.Supply && it !is StaticCallbackEdge.Invoke })
+            if (
+                graph.edges.any { edge ->
+                    edge !is StaticCallbackEdge.Supply &&
+                        edge !is StaticCallbackEdge.Forward &&
+                        edge !is StaticCallbackEdge.Invoke
+                }
+            )
                 return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             // Formal reachability cannot prove an anonymous invocation owner; do not truncate its inventory.
             if (graph.edges.filterIsInstance<StaticCallbackEdge.Invoke>().any { it.owner !is StaticCallbackNode.Named })
@@ -100,16 +161,15 @@ private constructor(
                 invokedFromRoot(graph).map { edge ->
                     ValueCaptureInvocation(edge.target.body, edge.source.supply, edge.evidence)
                 }
-            if (invocations.none { it.body == body })
-                return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-            if (invocations.groupBy { it.body }.values.any { it.size != 1 })
-                return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+            val selected = select(invocations)
+            if (selected.size != 1) return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
             return Refinement.Refined(
                 ValueExecutionOwner(
                     enclosing,
                     ValueExecutionContext.Callback(
                         body,
                         java.util.Collections.unmodifiableList(invocations),
+                        selected.single(),
                     ),
                 )
             )

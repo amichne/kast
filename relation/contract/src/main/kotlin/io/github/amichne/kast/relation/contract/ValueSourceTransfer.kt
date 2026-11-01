@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
 /** Source transitions preserve field identity and the matched call context. */
 sealed interface ValueSourceOperation {
@@ -11,6 +12,16 @@ sealed interface ValueSourceOperation {
     data class SeedReturn(val frame: ValueCallFrame) : ValueSourceOperation
 
     data class CallbackReturn(val invocation: ValueCaptureInvocation, val frame: ValueCallFrame) : ValueSourceOperation
+
+    /** A source lambda return reaches its supplier expression through an exact binary result contract. */
+    data class DeclaredCallbackResult(val binding: DeclaredCallbackValueBinding) : ValueSourceOperation
+
+    data class CallbackArgumentEntry(
+        val invocation: ValueCaptureInvocation,
+        val supplierFrame: ValueCallFrame,
+        val parameter: ValueFormalParameter,
+        val argumentRange: ExactDeclarationTextRange,
+    ) : ValueSourceOperation
 
     data class ReadField(val field: ValueField) : ValueSourceOperation
 
@@ -33,6 +44,8 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
                     source.callStack == ValueCallStack.Empty &&
                     target.callStack == ValueCallStack.Empty
             is ValueSourceOperation.CallbackReturn -> op.admitsCallbackReturn(source, target, kind)
+            is ValueSourceOperation.DeclaredCallbackResult -> op.admitsDeclaredCallbackResult(source, target, kind)
+            is ValueSourceOperation.CallbackArgumentEntry -> op.admitsCallbackArgument(source, target, kind)
             is ValueSourceOperation.ReadField -> op.admitsField(source, target, kind)
             is ValueSourceOperation.ConstructField -> op.admitsConstruction(source, target, kind)
         }
@@ -102,7 +115,10 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
     private fun ValueSite.isResultOf(call: ValueInvocation): Boolean =
         enclosing.valueIdentity == call.enclosing.valueIdentity &&
             range == call.range &&
-            role == ValueRole.ExpressionResult &&
+            basis == call.basis &&
+            (role == ValueRole.ExpressionResult ||
+                (role as? ValueRole.LoopResult)?.result?.invocation == call ||
+                (role as? ValueRole.StringConversionResult)?.invocation == call) &&
             executionOwner == call.executionOwner
 
     private fun <T, F> Refinement<T, F>.matches(expected: T): Boolean = this is Refinement.Refined && value == expected
@@ -111,3 +127,22 @@ class ValueSourceTransfer private constructor(val operation: ValueSourceOperatio
 
     override fun hashCode(): Int = operation.hashCode()
 }
+
+private fun ValueSourceOperation.DeclaredCallbackResult.admitsDeclaredCallbackResult(
+    source: ValueSite,
+    target: ValueSite,
+    kind: ValueTransferKind,
+): Boolean =
+    kind == ValueTransferKind.SOURCE_CALL_RETURN &&
+        binding.admitsReturn(source) &&
+        target.executionOwner == ValueExecutionOwner.declaration(binding.enclosing) &&
+        target.range == binding.contract.occurrence.range &&
+        target.role == ValueRole.ExpressionResult &&
+        source.valuePath == target.valuePath &&
+        source.callStack == target.callStack &&
+        target.conditions.facts.any {
+            it is ValueCondition.DeclaredCallbackResult &&
+                it.binding == binding &&
+                it.origin.matches(source) &&
+                it.useRange == target.range
+        }

@@ -8,6 +8,94 @@ class ImpactFindingAccountingTest {
     private val fixture = ImpactFindingFixture()
 
     @Test
+    fun `inline and deferred read witnesses cannot exceed their declared section`() {
+        val reference = QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001").refined()
+        for (rows in listOf(readRejectionRows(), deferredReadRejectionRows(reference))) {
+            val original = readRejectionResult(rows, reference)
+            assertEquals(Refinement.Refined(Unit), original.validateImpactAccounting())
+            val accounting = original.impactAccounting as ImpactAccountingDocument.Investigated
+            val view = accounting.view as ImpactAccountingViewDocument.Witness
+            val invalid =
+                original.copy(impactAccounting = accounting.copy(view = view.copy(sectionCount = fixture.count(0))))
+            assertEquals(
+                Refinement.Rejected(ImpactAccountingFailure.WITNESS_ORDINAL_MISMATCH),
+                invalid.validateImpactAccounting(),
+            )
+        }
+    }
+
+    private fun readRejectionRows(): List<QueryResultItemDocument> =
+        (0L..1L).map { ordinal ->
+            QueryResultItemDocument.ImpactWitness(
+                ImpactWitnessItemDocument(
+                    ImpactWitnessSectionDocument.READ_REJECTIONS,
+                    fixture.count(ordinal),
+                    ImpactWitnessDocument.ReadRejection(
+                        ImpactReadRejectionDocument.Native(
+                            fixture.producer,
+                            ImpactRequestedBoundaryDocument.Workspace,
+                            ImpactNativeReadRejectionDocument.AUTHORITY_MOVED,
+                            fixture.count(0),
+                        )
+                    ),
+                )
+            )
+        }
+
+    private fun deferredReadRejectionRows(reference: QueryResultReference): List<QueryResultItemDocument> =
+        (0..1).map { ordinal ->
+            QueryResultItemDocument.DeferredDetail(
+                QueryDeferredDetailDocument(
+                    QueryEntryDetailSelectorDocument(
+                        reference,
+                        QueryEntryDetailSection.CANONICAL_ENTRY_JSON,
+                        QueryEntryDetailTarget.ROW,
+                        QueryResultCursor.parse(ordinal).refined(),
+                        QueryEntryDetailKind.IMPACT_WITNESS,
+                        fixture.text("0".repeat(64)),
+                        ProtocolOffset.parse(0).refined(),
+                    ),
+                    fixture.text("Read rejection"),
+                )
+            )
+        }
+
+    private fun readRejectionResult(
+        rows: List<QueryResultItemDocument>,
+        reference: QueryResultReference,
+    ): QueryRunResult =
+        result(rows, first = 0, next = 2, sectionCount = 2)
+            .copy(
+                impactAccounting =
+                    accounting(0, 2, 2)
+                        .copy(
+                            originalReadRejectionCount = fixture.count(2),
+                            view =
+                                ImpactAccountingViewDocument.Witness(
+                                    ImpactWitnessSectionDocument.READ_REJECTIONS,
+                                    fixture.count(0),
+                                    fixture.count(2),
+                                    fixture.count(2),
+                                ),
+                        ),
+                retention = QueryResultRetention.Retained(reference),
+                presentationWindow =
+                    QueryRetainedPresentationWindow.create(
+                            reference,
+                            QueryResultCursor.Start,
+                            QueryResultCursor.parse(2).refined(),
+                            QueryResultCursor.parse(2).refined(),
+                        )
+                        .refined(),
+            )
+
+    private fun <T, F> Refinement<T, F>.refined(): T =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
+
+    @Test
     fun `present finding representation cannot claim zero admitted alternatives`() {
         val finding =
             fixture

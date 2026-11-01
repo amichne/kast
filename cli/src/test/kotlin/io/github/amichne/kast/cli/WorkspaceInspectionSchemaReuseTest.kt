@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelIdentity
@@ -186,9 +187,17 @@ class WorkspaceInspectionSchemaReuseTest {
 internal class LocalSchemaAssertions(private val schema: JsonObject) {
     private val definitions = schema["\$defs"]?.jsonObject.orEmpty()
 
+    fun assertEquivalent(expected: IndependentSchemaGraph) {
+        LocalSchemaGraphAssertions(schema, expected).assertEquivalent()
+    }
+
     fun assertEquivalent(expected: JsonElement) {
         assertLocalReferences()
         compare(expected, schema, "root", allowDefinitions = true)
+    }
+
+    fun assertDefinitionEquivalent(name: String, expected: IndependentSchemaGraph) {
+        LocalSchemaGraphAssertions(schema, expected).assertDefinitionEquivalent(name)
     }
 
     fun assertDefinitionEquivalent(name: String, expected: JsonElement) {
@@ -198,6 +207,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
     fun assertLocalReferences() {
         val visited = mutableSetOf<String>()
         val visiting = mutableSetOf<String>()
+        val comparedImpactDefinitions = mutableSetOf<String>()
         fun visit(element: JsonElement) {
             when (element) {
                 is JsonArray -> element.forEach(::visit)
@@ -206,7 +216,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     if (name == null) element.values.forEach(::visit)
                     else if (name !in visited) {
                         if (!visiting.add(name)) {
-                            assertRecursiveDefinition(name)
+                            assertRecursiveDefinition(name, comparedImpactDefinitions)
                             return
                         }
                         visit(definitions.getValue(name))
@@ -220,7 +230,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
         visit(schema)
     }
 
-    private fun assertRecursiveDefinition(name: String) {
+    private fun assertRecursiveDefinition(name: String, comparedImpactDefinitions: MutableSet<String>) {
         assertTrue(
             name in
                 setOf(
@@ -230,6 +240,7 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     "impactInvocationReference",
                     "impactExecutionOwner",
                     "impactCaptureInvocation",
+                    "impactValueSiteReference",
                 ),
             name,
         )
@@ -238,10 +249,12 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
                     "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
                     "impactExecutionOwner" to ImpactExecutionOwnerDocument.serializer(),
                     "impactCaptureInvocation" to ImpactCaptureInvocationDocument.serializer(),
+                    "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
                 )
-                .filterKeys { it in definitions }
+                .filterKeys { it in definitions && it !in comparedImpactDefinitions }
                 .forEach { (definition, serializer) ->
-                    compare(independentImpactSchema(serializer), definitions.getValue(definition), definition)
+                    assertDefinitionEquivalent(definition, independentFactoredImpactSchema(serializer))
+                    comparedImpactDefinitions.add(definition)
                 }
         }
     }
@@ -251,9 +264,16 @@ internal class LocalSchemaAssertions(private val schema: JsonObject) {
             if (
                 actual is JsonObject &&
                     "\$ref" !in actual &&
-                    expected["\$ref"]?.jsonPrimitive?.content == "#/\$defs/impactInvocationReference"
+                    expected["\$ref"]?.jsonPrimitive?.content in
+                        setOf("#/\$defs/impactInvocationReference", "#/\$defs/impactCaptureInvocation")
             ) {
-                compare(independentImpactSchema(ImpactInvocationReferenceDocument.serializer()), actual, path)
+                val serializer =
+                    when (expected.getValue("\$ref").jsonPrimitive.content) {
+                        "#/\$defs/impactInvocationReference" -> ImpactInvocationReferenceDocument.serializer()
+                        "#/\$defs/impactCaptureInvocation" -> ImpactCaptureInvocationDocument.serializer()
+                        else -> error("Expected a recursive impact descriptor")
+                    }
+                compare(independentImpactSchema(serializer), actual, path)
             } else {
                 assertEquals(expected, actual, "Reference at $path")
             }

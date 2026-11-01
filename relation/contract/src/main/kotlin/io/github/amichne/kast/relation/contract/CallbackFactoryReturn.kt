@@ -171,7 +171,7 @@ private fun CallbackFactoryCaptureSelection.Default.defaultSite(
 ): Refinement<ValueSite, CallbackFactoryReturnFailure> {
     val formal = declaration.parameter
     if (
-        formal.callable.valueIdentity != binding.invocation.callable.valueIdentity ||
+        formal.callable.valueIdentity != binding.callable.valueIdentity ||
             formal.position != binding.position ||
             formal.parameter != binding.parameter
     )

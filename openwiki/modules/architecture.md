@@ -41,8 +41,14 @@ code_sources:
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
 sources:
+  - id: openwiki-source-a2fefa3a4f5f735a18fbcd32
+    resource: repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt
+  - id: openwiki-source-48edfaeb8d917960adc80600
+    resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
   - id: openwiki-source-dfe8403e5aee6d5722e08a79
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
+  - id: openwiki-source-0e95ec5f9ce3c00f4f50719c
+    resource: repo://build-logic/src/test/kotlin/support/architecture/WorkspaceRefreshEffectBoundaryTest.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
@@ -51,10 +57,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-31T05:30:47.008Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T21:29:39.165Z
+    at: 2026-10-31T05:30:47.008Z
 ---
 
 # Verified module architecture
@@ -128,7 +134,12 @@ The [installed knowledge contract](../contracts/installed-knowledge.md) describe
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
 
-The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unapproved native import entry points and cache/index rebuilding.
+The explicit workspace refresh adapter owns native Gradle model reload and its existing VFS refresh entry points.
+`NativeHostBundleRefreshRoot.submit` separately owns the exact `VfsUtil.markDirty` and `LocalFileSystem.refreshFiles` signatures for managed Host refresh.
+Architecture admission compares that caller's complete method descriptor and each target signature.
+Other methods, overloads, Gradle import calls, and workspace refresh entry points reject for this owner.
+Passive reads and general hosted callers receive neither capability.
+Architecture regression tests preserve these restrictions.
 
 The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Project close retains its exact local confirmation and scoped native lifecycle owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
 
@@ -142,6 +153,9 @@ no host package. Fresh-pair assembly composes both artifacts as an installation
 convenience; exact hosted contract equality governs communication.
 
 ## Kotlin semantic coverage gates
+
+Semantic fixtures are disabled by default.
+Set `KAST_SEMANTIC_FIXTURES=true` for native semantic fixtures and their inventory and coverage gates.
 
 Root `check` includes three separate semantic coverage gates.
 `verifyKotlinSemanticInputs` compares the required resource population and reviewed carrier hashes.

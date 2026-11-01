@@ -163,6 +163,11 @@ private class CallbackWorkspaceFiles {
         files += value.enclosing.file
         value.stateEndpoints().forEach { files += it.file }
         when (val role = value.role) {
+            is ValueRole.StringConversionResult -> {
+                files += role.invocation.enclosing.file
+                files += role.invocation.callable.file
+            }
+            is ValueRole.LoopResult -> Unit // The complete protocol is included by stateEndpoints above.
             is ValueRole.Argument -> {
                 files += role.call.enclosing.file
                 files += role.call.callable.file
@@ -214,8 +219,7 @@ private class CallbackWorkspaceFiles {
     }
 
     private fun argument(value: CallbackArgumentBinding) {
-        files += value.invocation.enclosing.file
-        files += value.invocation.callable.file
+        value.frame.stateEndpoints().forEach { files += it.file }
         files += value.invocationOwner.file
         files += value.parameter.file
     }

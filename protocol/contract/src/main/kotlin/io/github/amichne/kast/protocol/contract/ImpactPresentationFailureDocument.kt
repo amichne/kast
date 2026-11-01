@@ -81,6 +81,10 @@ sealed interface ImpactPresentationFailureDocument {
     data class Budget(val cause: ImpactPresentationBudgetCause) : ImpactPresentationFailureDocument
 
     @Serializable
+    @SerialName("CLASSIFICATION_MISMATCH")
+    data object ClassificationMismatch : ImpactPresentationFailureDocument
+
+    @Serializable
     @SerialName("DOMAIN_PROJECTION_REJECTED")
     data object DomainProjectionRejected : ImpactPresentationFailureDocument
 }

@@ -179,15 +179,15 @@ A syntax/import or provisioning failure does not count as a killed mutation.
 
 ## Optional full-request calibration and no-inference preflight
 
-A case may supply at most64 `inputCalibrations`, each an exact object:
+A case may supply at most 64 `inputCalibrations`, each an exact object:
 
 ```json
 {"type":"OFFLINE_FULL_PAYLOAD_CALIBRATION","path":"/private/receipts/request.json","sha256":"<64 lowercase hex characters>"}
 ```
 
-Receipt files must be owned regular files, with one link, mode0400 or0600, inside
-an owned0700 directory. Symlinks, identity changes, extra reference fields and
-files above4MiB are rejected. Descriptors close before verification/registration.
+Receipt files must be owned regular files, with one link, mode 0400 or 0600, inside
+an owned 0700 directory. Symlinks, identity changes, extra reference fields and
+files larger than 4 MiB are rejected. Descriptors close before verification/registration.
 The worker loads and verifies all references before creating the SDK session.
 It records finite `INPUT_CALIBRATION` preparation/failure evidence without paths
 or request content. Receipt authority is explicit:
@@ -237,7 +237,7 @@ node experiments/host-observation/pi_evaluation_preflight.mjs \
   --sha256 "$MANIFEST_SHA256"
 ```
 
-The private manifest binds the private plan digest and at most64 unique
+The private manifest binds the private plan digest and at most 64 unique
 case/phase entries. It must cover WORK for each fresh case and DELIVERY for each
 received-result case; fresh DELIVERY can be checked independently as well:
 
@@ -257,9 +257,9 @@ as receipts. Full body files must already contain the locally requested output c
 preflight never adds fields, trims context or rewrites declarations. The report
 retains hashes and finite admissions only. A declared received-result identity
 is validated by the plan parser; actual session restoration remains a later SDK
-check. Structural parsing is bounded at depth64 and32768 JSON nodes, with at
-most1024 input items and64 tools. The installed declaration schema requires
-depth33; the larger finite depth supports that complete schema and its receipt
+check. Structural parsing is bounded at depth 64 and 32,768 JSON nodes, with at
+most 1,024 input items and 64 tools. The installed declaration schema requires
+depth 33; the larger finite depth supports that complete schema and its receipt
 without changing any token or semantic-work allowance.
 
 Changed declarations, instructions, input or restored `additional_tools` change
@@ -345,14 +345,14 @@ receipt and child exit are separate observations. Neither claims an unseen child
 callback. A nonzero child exit still gives the CLI a failure status; the private
 aggregate retains the received report and cleanup observation.
 
-Real owned-child tests include a delayed1,200ms callback within the overall5s
+Real owned-child tests include a delayed 1,200 ms callback within the overall 5 s
 bound, charged startup, never-completing publication and sticky semantic failure.
 Deterministic ordering cases cover cancellation-send, observer and process-kill
 errors, duplicate and conflicting reports, and malformed or failed later frames.
-They preserve exact300k/1MB reports and a policy-accepted
-synthetic rejection summary whose limitations fit the300,000-byte tool allowance.
+They preserve exact 300k/1MB reports and a policy-accepted
+synthetic rejection summary whose limitations fit the 300,000-byte tool allowance.
 The latter establishes accepted-shape transport reliability; it does not prove
-that a native producer or normal pilot creates14,000 repeated limitations.
+that a native producer or normal pilot creates 14,000 repeated limitations.
 Callback-error and timeout cases retain finite failures and reap owned children.
 
 ## Minimal next live validation (not run by this change)
@@ -361,7 +361,7 @@ After explicit authorization and matched installation/native admission, run one
 fixed public 1001-reference case and the exact-negative control against the same
 frozen fixture/oracle, with independent counters. Default dense rejection stops
 at its first typed reply. Negative control gets its declared final allowance.
-If a saved result needs delivery, authorize one received-result continuation,
+If a previously received reply needs delivery, authorize one received-result continuation,
 retain the exact transcript and prove zero additional semantic calls. Compare
 rows and qualification with an external oracle; label contention. No semantic
 retry, schema reduction, source mutation, new login or global setting edit is
@@ -499,11 +499,11 @@ This follows invocation aggregation and complete retained storage, not a general
 rule about low-level page minima. The six-case producer check preserves distinct
 occurrences sharing a target and rejects coupled count/vocabulary mutations.
 
-`queryDeliveries` records stop, physical rpc_count and UTF-8 byte counts separately
+`queryDeliveries` records stop, physical `rpc_count` and UTF-8 byte counts separately
 from logical model proposals and semantic replies. A failed RPC can increase
 rpc_count without adding a page. Saved-result continuation reports historical
 delivery RPC counts separately and executes zero new semantic calls. Pi's
-observed isError flag and the client's expected host failure remain distinct
+observed `isError` flag and the client's expected host failure remain distinct
 from semantic completion; host success is not proof of exhaustive evidence.
 
 The twelve envelope fixtures are produced by the actual pinned shared client,

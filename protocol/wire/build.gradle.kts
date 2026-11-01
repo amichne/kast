@@ -4,6 +4,9 @@ plugins {
     id("kast.role.contract")
 }
 
+// The 1,000-owner decoder cases need the same stack on every platform.
+tasks.named<Test>("test") { jvmArgs("-Xss2m") }
+
 val operationRegistryArtifact = layout.buildDirectory.file("generated/operation-registry/operation-registry.json")
 
 tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateOperationRegistry") {
@@ -29,4 +32,16 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateHostedContract
     classpath.from(sourceSets.main.get().runtimeClasspath)
     mainClass.set("io.github.amichne.kast.protocol.wire.CanonicalHostedContract")
     outputFile.set(layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json"))
+}
+
+configurations.consumable("operationRegistryElements") {
+    outgoing.artifact(
+        tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateOperationRegistry").flatMap { it.outputFile }
+    )
+}
+
+configurations.consumable("hostedContractElements") {
+    outgoing.artifact(
+        tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateHostedContract").flatMap { it.outputFile }
+    )
 }

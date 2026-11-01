@@ -287,7 +287,7 @@ for (const harness of ['copilot', 'pi']) {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;
     const loaded = await load(harness, reply);
     assert.equal(loaded.registered.length, 0);
-    assert.match(loaded.error?.message ?? '', /catalog.*expected=17.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
+    assert.match(loaded.error?.message ?? '', /catalog.*expected=18.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
   });
   const invokeRead = async (outcome) => {
     const loaded = await load(harness, catalog, outcome);
@@ -661,7 +661,10 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
     assert.equal(result.initial, null);
     assert.equal(result.delivery.original_outcome, 'complete');
     assert.equal(result.delivery.result, fixture.prefix.document.retention.reference);
-    assert.ok(Buffer.byteLength(JSON.stringify(result),'utf8') < 1024);
+    assert.ok(Buffer.byteLength(JSON.stringify(result),'utf8') <= 4096);
+    assert.equal(result.semantic.original_outcome, 'complete');
+    assert.equal(result.semantic.authority.type, 'RETAINED_RESULT');
+    assert.equal(result.semantic.presentation.rows, 0);
     assert.equal(calls, 1);
   });
   test('shared production delivery bounds physical output RPCs even when every page advances', async () => {

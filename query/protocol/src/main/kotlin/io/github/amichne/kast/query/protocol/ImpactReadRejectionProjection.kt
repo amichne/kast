@@ -35,7 +35,7 @@ internal fun QueryImpactReadRejection.impactDocument(): ImpactProjected<ImpactRe
             }
         }
 
-private fun ValueFlowRejection.impactDocument(): ImpactNativeReadRejectionDocument =
+internal fun ValueFlowRejection.impactDocument(): ImpactNativeReadRejectionDocument =
     when (this) {
         ValueFlowRejection.STALE_SITE -> ImpactNativeReadRejectionDocument.STALE_SITE
         ValueFlowRejection.OUTSIDE_DOMAIN -> ImpactNativeReadRejectionDocument.OUTSIDE_DOMAIN

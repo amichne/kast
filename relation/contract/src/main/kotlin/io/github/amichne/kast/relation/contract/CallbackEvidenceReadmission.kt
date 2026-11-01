@@ -148,9 +148,19 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
         }
 
     fun argument(previous: CallbackArgumentBinding): CallbackReadmission<CallbackArgumentBinding> =
-        call(previous.invocation).then { call ->
-            CallbackArgumentBinding.fromCompiler(call, previous.invocationOwner, previous.position, previous.parameter)
-                .callback()
+        when (previous.frame.target) {
+            is ValueCallTarget.Implementation ->
+                Refinement.Rejected(CallbackSummaryReadmissionFailure.ImplementationNeedsFreshRead)
+            ValueCallTarget.Direct ->
+                call(previous.invocation).then { call ->
+                    CallbackArgumentBinding.fromCompiler(
+                            call,
+                            previous.invocationOwner,
+                            previous.position,
+                            previous.parameter,
+                        )
+                        .callback()
+                }
         }
 
     fun call(previous: ValueInvocation): CallbackReadmission<ValueInvocation> =
@@ -189,6 +199,7 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
                             execution,
                             previous.valuePath,
                             previous.callStack,
+                            previous.conditions,
                         )
                 ) {
                     is Refinement.Refined -> admitted
@@ -200,6 +211,10 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
 
     private fun role(previous: ValueRole): CallbackReadmission<ValueRole> =
         when (previous) {
+            is ValueRole.StringConversionResult ->
+                call(previous.invocation).then { Refinement.Refined(ValueRole.StringConversionResult(it)) }
+            is ValueRole.LoopResult ->
+                Refinement.Rejected(CallbackSummaryReadmissionFailure.Site(ValueSiteFailure.STATE_BASIS_MISMATCH))
             is ValueRole.Argument ->
                 call(previous.call).then { Refinement.Refined(ValueRole.Argument(it, previous.position)) }
             is ValueRole.Receiver ->

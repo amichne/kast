@@ -114,6 +114,8 @@ private fun ValueTransfer.admitsImmutableCallbackTransport(): Boolean =
             ValueTransferKind.SOURCE_CALL_RETURN,
             ValueTransferKind.FIELD_READ,
             ValueTransferKind.CONSTRUCTOR_FIELD,
+            ValueTransferKind.CAST_RESULT,
+            ValueTransferKind.STRING_CONTENT,
             ValueTransferKind.RECEIVER,
             ValueTransferKind.PROPERTY_ASSIGNMENT -> false
         }

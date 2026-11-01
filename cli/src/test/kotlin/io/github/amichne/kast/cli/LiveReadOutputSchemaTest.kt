@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import com.networknt.schema.InputFormat
+import com.networknt.schema.Schema
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.kernel.*
@@ -12,6 +13,7 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocumen
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,6 +21,27 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class LiveReadOutputSchemaTest {
+    @Test
+    fun `immutable schema preparation keeps validation results case owned`() {
+        val other = LiveReadOutputSchemaTest()
+        val document =
+            Json.parseToJsonElement(completeEnvelope(CanonicalOperation.QUERY_RUN))
+                .jsonObject
+                .getValue("document")
+                .jsonObject
+        assertAdmits(CanonicalOperation.QUERY_RUN, document)
+        other.assertRejects(CanonicalOperation.QUERY_RUN, document.with("status", JsonPrimitive("invalid")))
+        assertAdmits(CanonicalOperation.QUERY_RUN, document)
+        assertTrue(
+            outputSchema(CanonicalOperation.QUERY_RUN) !== outputSchema(CanonicalOperation.SOURCE_READ),
+            "Distinct operation schemas must keep their identities",
+        )
+        assertTrue(
+            outputSchema(CanonicalOperation.QUERY_RUN) === other.outputSchema(CanonicalOperation.QUERY_RUN),
+            "Identical schema inputs must reuse their compiled preparation",
+        )
+    }
+
     @Test
     fun `source trace interpretation preserves required effect evidence in installed schemas`() {
         val steps = BoundedProtocolList.create(listOf<QueryStepDocument>(QueryStepDocument.Trace())).refined()
@@ -92,7 +115,11 @@ class LiveReadOutputSchemaTest {
                 .refined()
         )
     private val published = EvidenceBasis.Published(EvidenceGeneration.parse(7).refined())
-    private val schemas = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+
+    private companion object {
+        val schemas = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+        val compiledSchemas = ConcurrentHashMap<CanonicalOperation, Schema>()
+    }
 
     @Test
     fun `all five actual complete projections satisfy their advertised published and live schemas`() {
@@ -391,9 +418,13 @@ class LiveReadOutputSchemaTest {
     internal fun assertRejects(operation: CanonicalOperation, document: JsonObject) =
         assertTrue(validate(operation, document).isNotEmpty(), "$operation admitted contradictory evidence: $document")
 
+    private fun outputSchema(operation: CanonicalOperation) =
+        compiledSchemas.computeIfAbsent(operation) {
+            schemas.getSchema(installedServerOutputSchema(it).toString())
+        }
+
     private fun validate(operation: CanonicalOperation, document: JsonObject) =
-        schemas
-            .getSchema(installedServerOutputSchema(operation).toString())
+        outputSchema(operation)
             .validate(
                 completedSchemaEnvelope(document),
                 InputFormat.JSON,

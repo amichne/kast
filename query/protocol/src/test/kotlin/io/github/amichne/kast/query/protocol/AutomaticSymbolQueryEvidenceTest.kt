@@ -56,6 +56,7 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
             )
         val evidence = retainedEvidence(rejection)
         assertEquals(11, evidence.preview.values.size)
+        assertAccumulatedOriginalEvidence(rejection)
         assertEquals(
             listOf(QueryLimitationDocument.RELATION_INCOMPLETE),
             originalCoverage(rejection).limitations.values,
@@ -133,6 +134,7 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
         assertEquals(11, payload.invocation!!.accumulatedRowCount)
         assertEquals(1100, payload.evidenceWindow!!.total.value)
         assertEquals(1, payload.relationObservations.values.size)
+        assertObservationOriginalEvidence(payload.originalEvidenceSummary)
         val reference = (payload.retention as QueryResultRetention.Retained).reference
         val suffix =
             readEvidence(protocol, reference, payload.nextCursor!!.value, payload.evidenceWindow!!.nextCursor)
@@ -190,12 +192,7 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
                 listOf(QueryLimitationDocument.RELATION_INCOMPLETE),
                 originalCoverage(rejection).limitations.values,
             )
-            assertEquals(
-                io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable(
-                    io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure.CAPACITY_EXCEEDED
-                ),
-                rejection.evidence,
-            )
+            assertUnavailableOriginalEvidence(rejection)
             script.assertDrained()
         }
 

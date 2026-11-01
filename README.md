@@ -1,73 +1,53 @@
 # Kast
 
-**Give your coding agent the Kotlin knowledge your IDE already uses.**
+**See what your Kotlin change affects.**
 
-Kast connects your agent to IntelliJ IDEA so it can find exact declarations,
-trace their connections, inspect diagnostics, and make targeted source changes.
-
-[![Kast traces a response link through Kotlin fields and keeps an opaque transport boundary unproven.](docs/demo/kast-demo.svg)](docs/demo/kast-demo.mp4)
-
-Watch a 54-second edited evidence replay of Kast `v0.50.2` results from a small
-public Kotlin fixture. Follow a response into `FeatureResponse.link`, then inspect an outgoing
-request that remains unproven at the transport boundary. Recorded per-call waits
-are preserved; reading pauses are added. Results are static compiler evidence.
-
-[MP4](docs/demo/kast-demo.mp4) · [Still preview](docs/demo/kast-demo.png) ·
-[Transcript and reproduction](docs/demo/README.md)
-
-When several functions share a name, your agent needs to know which one matters.
-When you change a function, it needs to know who calls it.
-Kast gives it compiler-backed answers from your Kotlin project.
-
-## From a question to the code that matters
-
-Ask your agent:
-
-> Find the callers of this function and show their source locations.
-
-> Which classes implement this interface?
-
-> Show the diagnostics in this directory before we change it.
-
-Your agent gets declarations, relationships, and source locations that it can use
-in its next step. Kast keeps each answer tied to the selected repository or
-worktree and reports the limits of its evidence.
-
-Use it to investigate unfamiliar code, trace the impact of a change, or give your
-agent precise context for its next edit. Codex, Copilot, and Pi can all use Kast.
+Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis.
+Use the native `kast` command to find declarations, inspect callers, and read source in your Kotlin project.
 
 ## Get started
 
-You need an Apple silicon Mac, a Kotlin Gradle project, and IntelliJ IDEA
-`262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Use an Apple silicon Mac and a Kotlin Gradle project.
+Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Install uv 0.12.9 or later.
+Use Python 3.12 or 3.13.
 
-Run this command:
+Install the latest qualified development build from a terminal:
 
 ```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
 
-The installer adds Kast and its IDEA plugin. Accept the default Codex connection.
-Restart IDEA and Codex. Select your Kotlin repository or worktree. Ask:
+You need no checkout or existing `kast` command.
+The installer replaces Kast-owned assets and can end active Kast sessions.
+Restart IntelliJ IDEA to load the installed Host.
 
-> Use Kast to find a Kotlin declaration in this workspace. Show its signature
-> and source location.
+Install CLI guidance for your agent:
 
-The plugin's MCP session starts preparation for `settings.gradle.kts` projects.
-Semantic calls wait for the project and report setup blockers.
-Codex owns its App Server and control socket. Pi uses native MCP without uv setup.
+```shell
+kast install codex
+```
 
-[Use Copilot or Pi](https://kast.michne.com/agent-harnesses/) ·
-[Installation options](https://kast.michne.com/reference/installation/) ·
-[Troubleshoot setup](https://kast.michne.com/troubleshooting/)
+Use `copilot` or `pi` instead of `codex` for another agent.
+Start a fresh agent session in the same Kotlin repository or worktree.
 
-## Go further
+Give your agent the function's file and name, then ask:
 
-- [Try a guided query](https://kast.michne.com/tutorials/first-query/) with a known result.
-- [Find questions for your next task](https://kast.michne.com/search/).
-- [Read what an answer proves](https://kast.michne.com/reference/evidence-boundaries/).
-- [Upgrade or recover Kast](https://kast.michne.com/reference/management/).
+> Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
+
+The persistent Host in IntelliJ IDEA supplies compiler analysis for CLI calls.
+The default agent setup supplies CLI guidance. MCP is optional.
+
+[Set up Kast](https://kast.michne.com/start/) ·
+[CLI reference](https://kast.michne.com/reference/cli/) ·
+[Help](https://kast.michne.com/troubleshooting/)
+
+## More
+
+- [Example questions](https://kast.michne.com/search/).
+- [A visual explanation of value flow](https://kast.michne.com/explanation/value-journey/).
+- [Technical reference](https://kast.michne.com/reference/).
 - [Contribute to Kast](docs/development.md).
 
-Kast is under the [GNU General Public License v3.0 only](LICENSE).
+Kast uses the [GNU General Public License v3.0 only](LICENSE).
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).

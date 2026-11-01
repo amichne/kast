@@ -179,6 +179,7 @@ sealed interface CliExit {
     data class BoundaryRejected(
         val status: CliBoundaryExitStatus,
         override val document: CanonicalJsonDocument,
+        val cause: CliFailureCause = CliFailureCause.Unspecified,
     ) : CliExit {
         override val code: Int = status.code
     }
@@ -201,3 +202,10 @@ private fun usageExit(
         CliBoundaryExitStatus.USAGE,
         CliBoundaryDocuments.usageRejected(failure, diagnostic),
     )
+
+/** Keeps the precise runtime failure for adapters with their own process policy. */
+sealed interface CliFailureCause {
+    data object Unspecified : CliFailureCause
+
+    data class Runtime(val rejection: io.github.amichne.kast.appserver.DaemonOperationClientRejection) : CliFailureCause
+}

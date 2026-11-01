@@ -1,0 +1,3086 @@
+{
+  "baseRevision": "dac99b39a0b7b497d5c0e0d5c2a604f5817e5397",
+  "files": [
+    {
+      "path": ".agents/marketplaces.md",
+      "sha256": "73c71d02272dd47f7799d65d668d8b9afa373b5ce450bd9bc51ee6e2b4830214",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Agent marketplaces\".",
+      "title": "Agent marketplaces"
+    },
+    {
+      "path": ".github/scripts/ci/README.md",
+      "sha256": "1c759115988fa1b62ee339ebc8d888eb8b995931f8efaa2e70ab7b95c34e5c4c",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"CI validation and cache policy\".",
+      "title": "CI validation and cache policy"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "6b89b98db8d93d7d76242ef65b2a01c0b44f83145c076cb8ab4e4b04e3be3255",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast\".",
+      "title": "Kast"
+    },
+    {
+      "path": "README.md",
+      "sha256": "de070ad302e212c0f957eb7f78c1332b2bcd92a0f78a154dc54d4d33da464e7a",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "Kast"
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "ce52cba57c18e506888453ca18055eb27fe8c53d8ea6f4849125b613868bdf14",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Security reporting\".",
+      "title": "Security reporting"
+    },
+    {
+      "path": "agent-tools/AGENTS.md",
+      "sha256": "cf08570b8babb7acbd6e4593654115a5f484163404ceaea8be9891d9f30830b0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Agent onboarding\".",
+      "title": "Agent onboarding"
+    },
+    {
+      "path": "agent-tools/README.md",
+      "sha256": "9b06d7eddb268618066e4608c98f6724bd354db264e57a60cbfbbdec8a3484c5",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast agent tools\".",
+      "title": "Kast agent tools"
+    },
+    {
+      "path": "agent-tools/onboarding.template.md",
+      "sha256": "9173c7da6cab4a648abdeb9ad0720956791cca32dac94e54611589842eba389d",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast\".",
+      "title": "Kast"
+    },
+    {
+      "path": "agent-tools/references/onboarding.md",
+      "sha256": "d7609a55ce6487b0b06a08338cef9879099e7267f2f2251b9b41dea4f0cfea09",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast\".",
+      "title": "Kast"
+    },
+    {
+      "path": "agent-tools/references/query-row-compatibility.md",
+      "sha256": "e60ce7ca115b3828338d1ffdfdbf39633254c0514952d83f200a4ee31c528068",
+      "assessment": "EXCLUDED",
+      "reason": "Generated reference owned by packaging/generate-public-query.py.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Query row compatibility\".",
+      "title": "Query row compatibility"
+    },
+    {
+      "path": "agent-tools/references/query-topics.md",
+      "sha256": "c687730b60ccc27221d1ccb2d6a7f72c7ecf5cabac9746adadf0668e3e1c7cc7",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Query topics\".",
+      "title": "Query topics"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/boundedCallerWalk.md",
+      "sha256": "2783531a98043973c140ac84f166603132676b2f324de78031a99613a1083aa3",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`boundedCallerWalk`\".",
+      "title": "`boundedCallerWalk`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/completeImpactFindings.md",
+      "sha256": "39662f7c996df0adbd0c18985b01fb702a306d27d737572b832cd2f646a41cd6",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`completeImpactFindings`\".",
+      "title": "`completeImpactFindings`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/directCallees.md",
+      "sha256": "23299c0d54725e31a981755b8cc6f3711d5497399e2239b05f1640a41969aeb8",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`directCallees`\".",
+      "title": "`directCallees`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/directCallers.md",
+      "sha256": "1a31ac54d7e8ea4abddb3de37eac99b1b356e60f72125e55bc7183f1d67d4f4d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`directCallers`\".",
+      "title": "`directCallers`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/enclosingOccurrenceSource.md",
+      "sha256": "7367b3acc639f3107e3ea4e32514726f63c063c1c067182d5f807e6fabb37f90",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`enclosingOccurrenceSource`\".",
+      "title": "`enclosingOccurrenceSource`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/fuzzyDeclarationDiscovery.md",
+      "sha256": "ede392c90b2469a9699200b50848c7a496dc9ea0197d07edd3c9a907a294b175",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`fuzzyDeclarationDiscovery`\".",
+      "title": "`fuzzyDeclarationDiscovery`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/implementations.md",
+      "sha256": "cc53e215d3f06de6a38fe645c33b0ed7d1412c791a5f6e3ec51760b0a9dbb408",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`implementations`\".",
+      "title": "`implementations`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/intersectRetained.md",
+      "sha256": "0fb629482f43b8fe4cced0bee39ca82c532eb71221a5ad811e30a4cc0c433fcd",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`intersectRetained`\".",
+      "title": "`intersectRetained`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/knownAppServerClass.md",
+      "sha256": "f865b38c10444b4a1ff57788d6945db973d8f94f179821f1d19c76e6dc9d19f7",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`knownAppServerClass`\".",
+      "title": "`knownAppServerClass`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/narrowReferenceExpansion.md",
+      "sha256": "332747b7200d0e07bc3bcc0a8db4f17252f1a42b28d290dcf86a00a8b694da93",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`narrowReferenceExpansion`\".",
+      "title": "`narrowReferenceExpansion`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/publicFunctionInventory.md",
+      "sha256": "0c9d6d072a75e4e4449ce98986766d892151bd1cb96cfabf7d4c4d370e5bbcc5",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`publicFunctionInventory`\".",
+      "title": "`publicFunctionInventory`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/readCallbackSource.md",
+      "sha256": "4ffba0f13ac20165de2b20c5a697f2ef5d701388df80a5f38079de33929d7d9a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`readCallbackSource`\".",
+      "title": "`readCallbackSource`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/readImpactFindings.md",
+      "sha256": "757e028931c36c0e635c9a32fd53c35e725d9cae51af4678d771f415ca49b039",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`readImpactFindings`\".",
+      "title": "`readImpactFindings`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/readImpactProducers.md",
+      "sha256": "1b38ef3bde8aea4082f37edeb7963041924fecc4cad0d035ba5c944c2d805feb",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`readImpactProducers`\".",
+      "title": "`readImpactProducers`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/readImpactSiteAccounting.md",
+      "sha256": "5047715edc64509279bd5447d298ab085a94df35fc2fbeb2f8bed7fa92a63c26",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`readImpactSiteAccounting`\".",
+      "title": "`readImpactSiteAccounting`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/readRetainedDetail.md",
+      "sha256": "fe54be4ed8497e84ef070b36ea8b1df7e8a99c92958a62d7cbac0388add9a1e2",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`readRetainedDetail`\".",
+      "title": "`readRetainedDetail`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/representationImpact.md",
+      "sha256": "5f3b91159221ebe385d8eb506b001cc243dbb531330392365a548736ce63ed45",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`representationImpact`\".",
+      "title": "`representationImpact`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/representationImpactRequestedSite.md",
+      "sha256": "e7f3327915f9a5eaad09b6c1d6b674d920ee34da0aace3d8d512467b8ce4ef12",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`representationImpactRequestedSite`\".",
+      "title": "`representationImpactRequestedSite`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/resumeQuery.md",
+      "sha256": "11792bf29db01199263a084c0a9654aec8f2d5be4088c99dfe4d7484047b2bbf",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`resumeQuery`\".",
+      "title": "`resumeQuery`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/retainByName.md",
+      "sha256": "8d9a62044524173ac6aa98a390bdc5a68ad686ea1c6ad1646f8d887bfc1ade88",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`retainByName`\".",
+      "title": "`retainByName`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/runByName.md",
+      "sha256": "d21bbfa99f66a6886831f3a29e657ec5b94fac979e4fa7560dbc5f069ca39136",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`runByName`\".",
+      "title": "`runByName`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/scopedExactDeclaration.md",
+      "sha256": "1ac342a93a72ffba2b91e484bf634199c9413a84003b9368ed24f58afac9dc09",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`scopedExactDeclaration`\".",
+      "title": "`scopedExactDeclaration`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/scopedTextWord.md",
+      "sha256": "2c3f6d486a02aa8d69577e5e1548c32cbfc814b0363b4158b162bce7eb50e01b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`scopedTextWord`\".",
+      "title": "`scopedTextWord`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/advanced/workspaceReferenceWalk.md",
+      "sha256": "4cbe1cb1c09906c5792aa94fe1b654ab48de7c338431fa16fdbce8a948efbf7a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"`workspaceReferenceWalk`\".",
+      "title": "`workspaceReferenceWalk`"
+    },
+    {
+      "path": "agent-tools/references/query-topics/declarations.md",
+      "sha256": "623bdd48375e91f879f150c0d2fab37c3b604dce31138f3e7ce5e506d751ffdc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"declarations\".",
+      "title": "declarations"
+    },
+    {
+      "path": "agent-tools/references/query-topics/exact-selection.md",
+      "sha256": "2774863dc2750ab0290758a8f32cf5bcea30c7e717aeeb0e5bb44da3f02bc590",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"exact-selection\".",
+      "title": "exact-selection"
+    },
+    {
+      "path": "agent-tools/references/query-topics/relations.md",
+      "sha256": "6cd3940c9dfb52c58d2d7b0fec33c3dc3427d4f52dae1b133cbdd37189c75970",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"relations\".",
+      "title": "relations"
+    },
+    {
+      "path": "agent-tools/references/query-topics/retained-evidence.md",
+      "sha256": "5dc26ba4cddbacc027614429067e65c0821b6b9c52a2bc4104177f87fdcf90c4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"retained-evidence\".",
+      "title": "retained-evidence"
+    },
+    {
+      "path": "agent-tools/references/query-topics/source-reads.md",
+      "sha256": "718247e4b713273716589961c8aa69604d9248e9062b9b288e76fa580a82f043",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"source-reads\".",
+      "title": "source-reads"
+    },
+    {
+      "path": "agent-tools/references/query-topics/trace.md",
+      "sha256": "b5294f14904498ebeb423724b4b13b51352113bffb00bc9328172ee7860756f7",
+      "assessment": "EXCLUDED",
+      "reason": "Generated agent reference owned by contract and onboarding generators.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"trace\".",
+      "title": "trace"
+    },
+    {
+      "path": "app-server/AGENTS.md",
+      "sha256": "eebabc07a960fd291f9799eb228368c60239c335049d1fd3d78a4afb7898eb56",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"app-server\".",
+      "title": "app-server"
+    },
+    {
+      "path": "app-server/README.md",
+      "sha256": "f6a2f3daba4eeb9e977e472e6b8c4266eb145ad09aaa5b017e344194b59cce13",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Persistent Kast App Server\".",
+      "title": "Persistent Kast App Server"
+    },
+    {
+      "path": "app-server/docs/compatibility.md",
+      "sha256": "32492b5b6b32e822de0402ad740bc4bcb7323ae75890424e076bd6ab176f3ef0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Compatibility and blocker record\".",
+      "title": "Compatibility and blocker record"
+    },
+    {
+      "path": "app-server/docs/public-query-contract.md",
+      "sha256": "b087a278131421b07b7516600a8f1d15480ec9485eac7a2c8d84e618b161c82c",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public tool and query contracts\".",
+      "title": "Public tool and query contracts"
+    },
+    {
+      "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md",
+      "sha256": "7982dffa6dfebf9339dc449f5fa868aeeea2076120d33f523e1c59678fd48a77",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Codex Host Boundaries\".",
+      "title": "Codex Host Boundaries"
+    },
+    {
+      "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md",
+      "sha256": "6a99c88aaa7d3667a2827e643b884a0c9666e2be99f74ec259e63307484bf441",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public query interface\".",
+      "title": "Public query interface"
+    },
+    {
+      "path": "build-logic/AGENTS.md",
+      "sha256": "dffa2840b6464d333f9a2ef9f14ea92d757c86b7d20beb26e71cfcae107378c4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"build-logic\".",
+      "title": "build-logic"
+    },
+    {
+      "path": "change/AGENTS.md",
+      "sha256": "ce0650ffa9254b0e42ea182552cba90cae5c2d56ab7d541bf355aa2ffb8f5b81",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"change\".",
+      "title": "change"
+    },
+    {
+      "path": "cli/AGENTS.md",
+      "sha256": "953e73726ad15b1a02df10dcb9cd5c9e1405e3d5a7b3facfd430ac3db9876179",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"CLI\".",
+      "title": "CLI"
+    },
+    {
+      "path": "cli/docs/query-delivery-simplification.md",
+      "sha256": "4b86f3939a22a5647465e7d76292fc0b8b5e0b349e2dcf00c83a33183ca5b774",
+      "assessment": "EXCLUDED",
+      "reason": "Historical implementation or qualification report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Compact awaited query delivery\".",
+      "title": "Compact awaited query delivery"
+    },
+    {
+      "path": "cli/docs/query-presentation-serialization.md",
+      "sha256": "7b31b21ecc95ee299a4be1f20f83776280e3734afec852845f195c9a645b1cfd",
+      "assessment": "EXCLUDED",
+      "reason": "Historical implementation or qualification report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Exact descriptions without serialized dictionary keys\".",
+      "title": "Exact descriptions without serialized dictionary keys"
+    },
+    {
+      "path": "cli/docs/query-summary.md",
+      "sha256": "9e6d8aeb562256c55d8cf8ec84b1ddc8cd9d0e0b6a9e2278bf24206c49358448",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Query summaries before contract details\".",
+      "title": "Query summaries before contract details"
+    },
+    {
+      "path": "config/README.md",
+      "sha256": "dff84ff6694c3ebc2330b8b47662dc8874e069f0a15f520482a4c9577233431a",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kotlin quality baselines\".",
+      "title": "Kotlin quality baselines"
+    },
+    {
+      "path": "config/json-contracts/README.md",
+      "sha256": "308d467fc4b0e205a6f3dbb339b3ed95425f49a01561d044c1dc948bdb7df8e1",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"JSON contract syntax guard\".",
+      "title": "JSON contract syntax guard"
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/README.md",
+      "sha256": "5d81777c86200d52ac16c2ac7a255a137a0e3fedee064cbc1957bf4158b09c28",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kotlin semantic coverage inventory\".",
+      "title": "Kotlin semantic coverage inventory"
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/Readme.md",
+      "sha256": "aeb9cbbc3144901fe9582bacd54e27db44e4f7e164131a0851e4442166f69461",
+      "assessment": "EXCLUDED",
+      "reason": "Vendored upstream documentation.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Fir elements\".",
+      "title": "Fir elements"
+    },
+    {
+      "path": "config/vale/README.md",
+      "sha256": "d5aac54ed2ac718d7cb0b2ee88d5986870073cf55a6f177e3f9e47505833ab92",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Local Vale rules\".",
+      "title": "Local Vale rules"
+    },
+    {
+      "path": "diagnostic/AGENTS.md",
+      "sha256": "9890159ff43ba09604094a2f4cc6c050ef55a9156725b6d3ed2575a924453690",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"diagnostic\".",
+      "title": "diagnostic"
+    },
+    {
+      "path": "distribution/AGENTS.md",
+      "sha256": "cda4c0ffd299231ed7cc36ded7fd0db5460306864f456f4244fa7bfed0fce865",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"distribution\".",
+      "title": "distribution"
+    },
+    {
+      "path": "distribution/cli/AGENTS.md",
+      "sha256": "f56f2d814162a3af7de2c27b03bc0b97cd3fb5c0166bddd51f50140f7590377d",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Native management CLI\".",
+      "title": "Native management CLI"
+    },
+    {
+      "path": "docs/AGENTS.md",
+      "sha256": "0c7e046bf4cecd25669de6fa5756328bcbd6f0ac5734ede8e298f15356eb0284",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"docs\".",
+      "title": "docs"
+    },
+    {
+      "path": "docs/GLOSSARY.md",
+      "sha256": "02c8a91698b57c518c5d7194cf433c81f82b31366c2b4ba67319d908c63a9cd3",
+      "assessment": "EXCLUDED",
+      "reason": "Generated glossary reader view owned by docs/glossary.json.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast glossary\".",
+      "title": "Kast glossary"
+    },
+    {
+      "path": "docs/demo/README.md",
+      "sha256": "5cb0c3a564099ef7fe25ef0a1e177e824e181431da523397362561374273f397",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Landing demo\".",
+      "title": "Landing demo"
+    },
+    {
+      "path": "docs/development.md",
+      "sha256": "90e4be4e4ac8efc14fa09f13330e20a8465c47431c751bbe3bba52a379054c83",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Develop and validate Kast\".",
+      "title": "Develop and validate Kast"
+    },
+    {
+      "path": "docs/documentation-structure.md",
+      "sha256": "bae9b6f3fb2455f200fd9dbd6cf548311d56bea8d7c4ff021e0545f7e112135c",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Docs reader tracks\".",
+      "title": "Docs reader tracks"
+    },
+    {
+      "path": "docs/hosted-read-configuration.md",
+      "sha256": "bc4d0e22c83abcd5ac9626147d810481b6d673833dd24bea3f5ec0f36ff02fc7",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Configure semantic reads and diagnose limits\".",
+      "title": "Configure semantic reads and diagnose limits"
+    },
+    {
+      "path": "docs/installation-recovery.md",
+      "sha256": "ab94b23f7cb8ccc12e9a2c3a0bdf1ee420e1544709c5d7134102e0e33a29a997",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Recover a damaged installation\".",
+      "title": "Recover a damaged installation"
+    },
+    {
+      "path": "docs/public/.mintlify/product-brief.md",
+      "sha256": "a679cc6f038e1df19b077177c7f59036f4e5ca379d3c2bd092d7d26e0e6c6c2f",
+      "assessment": "EXCLUDED",
+      "reason": "Mintlify agent context, not a maintained reader page.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "Product brief"
+    },
+    {
+      "path": "docs/public/agent-harnesses.mdx",
+      "sha256": "69849e3bc59c4e511847a74bebbde90c62a78e8c3dc0d339efc4a174be585fb8",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "agent-harnesses.mdx"
+    },
+    {
+      "path": "docs/public/architecture/change-lifecycle.mdx",
+      "sha256": "ce88a4b6d500cf60b6a9bffe2d2ca829b60cc044606438d48babffed495df214",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "change-lifecycle.mdx"
+    },
+    {
+      "path": "docs/public/architecture/query-reuse.mdx",
+      "sha256": "40dd5ebb923a6a2eaa006031fe88f1c2e14dd023c657fbb2e8d469720f3f3d6e",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "query-reuse.mdx"
+    },
+    {
+      "path": "docs/public/architecture/topology.mdx",
+      "sha256": "a89b780da43929cabadef3fd0bf55f9dea9afddca0d8f46e35f4a3b69552af72",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "topology.mdx"
+    },
+    {
+      "path": "docs/public/explanation.mdx",
+      "sha256": "00f59fc496e3ea6e79d58b71b4047de289c86050cd869ed35795b59ba5974bf2",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "explanation.mdx"
+    },
+    {
+      "path": "docs/public/explanation/query-lifecycle.mdx",
+      "sha256": "7b02be84823f0b3149da4c362a9179a835bd10ce6caf68ba4326f1204217d6e6",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "query-lifecycle.mdx"
+    },
+    {
+      "path": "docs/public/explanation/value-journey-evidence.mdx",
+      "sha256": "2c6b5a268e7a60bd9437d6c7d475db6f890c297b0bdd3c767ddb160cb5741ae0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "value-journey-evidence.mdx"
+    },
+    {
+      "path": "docs/public/explanation/value-journey.mdx",
+      "sha256": "e1b5fee547bf6246823a67c5a639e8275815c6956ef90432fd21dbde6ea48394",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "value-journey.mdx"
+    },
+    {
+      "path": "docs/public/glossary.mdx",
+      "sha256": "b56fc5823fd029fee4042bc3aba8e95585b06292ae640444d02518627556d6ab",
+      "assessment": "EXCLUDED",
+      "reason": "Generated glossary reader view owned by docs/glossary.json.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "glossary.mdx"
+    },
+    {
+      "path": "docs/public/how-to.mdx",
+      "sha256": "945ab45b71442841d485ddf9b45687358c517091f01ad37c92ce55a596561c5d",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "how-to.mdx"
+    },
+    {
+      "path": "docs/public/how-to/complete-engineering-task.mdx",
+      "sha256": "cb20e10ccfb85cf34898614f3b494eaf0e1963857ff3146a192547658f53c7a9",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "complete-engineering-task.mdx"
+    },
+    {
+      "path": "docs/public/how-to/inspect-diagnostics.mdx",
+      "sha256": "c5eb6037a8132c32b76b29c5b761ff735dae29c45409cca315377d4745a3f2a6",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "inspect-diagnostics.mdx"
+    },
+    {
+      "path": "docs/public/how-to/read-retained-evidence.mdx",
+      "sha256": "0fe5a22eb7872b388177f31aa172c48f60bc5e28785583717b46bd365988fffe",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "read-retained-evidence.mdx"
+    },
+    {
+      "path": "docs/public/index.mdx",
+      "sha256": "fb67791b1f848b5c473d058b052aa6ee21b78574e63248e293002e4eed833810",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "index.mdx"
+    },
+    {
+      "path": "docs/public/reference.mdx",
+      "sha256": "c090b7e60f7da96c8ed6cd3eb1a3974fb52b768cbfe991790021668d63a223ea",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "reference.mdx"
+    },
+    {
+      "path": "docs/public/reference/AGENTS.md",
+      "sha256": "a6ca28028d3bf47017aed65680204785f0f25ba602977834772465435b1e0b03",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "Public reference ownership"
+    },
+    {
+      "path": "docs/public/reference/api.mdx",
+      "sha256": "0a1f93ac31dc9d01360aa7429e011bf3b63c1b27900514e14316ed39f1da8972",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "api.mdx"
+    },
+    {
+      "path": "docs/public/reference/callback-observations.mdx",
+      "sha256": "5b98fc5b467e75d1ab17d289757aba470d20d8db62fdce4ad28e595d94983834",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "callback-observations.mdx"
+    },
+    {
+      "path": "docs/public/reference/callbacks.mdx",
+      "sha256": "67052784504fc67cc2e89cf4cf8b84cd7a69e20dca8aaf7ceff63ee19931c98c",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "callbacks.mdx"
+    },
+    {
+      "path": "docs/public/reference/change.mdx",
+      "sha256": "40850d86abe9e21b60decb2a6524a245dd17b8c20acf2d2061c5ca10df35afbf",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "change.mdx"
+    },
+    {
+      "path": "docs/public/reference/compatibility.mdx",
+      "sha256": "8cc0b1fc9bf219433570b48fa2ecf2894e26830bea8b3517af3b824bf857879d",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "compatibility.mdx"
+    },
+    {
+      "path": "docs/public/reference/composition.mdx",
+      "sha256": "ebbd2d61131cc9e7ca776cf97d1e5a1969ff444d3b325f79159d88abbb03ccaa",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "composition.mdx"
+    },
+    {
+      "path": "docs/public/reference/evidence-boundaries.mdx",
+      "sha256": "5bf58535f5ceeed730507d76bb52f68fa32797d819ca0925185718a9f3341eb2",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "evidence-boundaries.mdx"
+    },
+    {
+      "path": "docs/public/reference/installation.mdx",
+      "sha256": "7946d3daa96698913f064139f5f3bcf3b7d216ee875fde4a8fe84e85e65ce5f2",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "installation.mdx"
+    },
+    {
+      "path": "docs/public/reference/integrations.mdx",
+      "sha256": "337b3ad66ef42e93b6420448fef38eeeec80f2ba9b1a86545ac520111eefcc02",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "integrations.mdx"
+    },
+    {
+      "path": "docs/public/reference/internals/architecture.mdx",
+      "sha256": "07f29988a1af772f3b65b7a8a1369f6c68bbee3f0a73f4dbb3de82fd0d398498",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "architecture.mdx"
+    },
+    {
+      "path": "docs/public/reference/internals/background-startup.mdx",
+      "sha256": "4a676622a37cddffde247b2a3ebdaf0a1baa59ba8017e56dd359b0b80955aad3",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Explanation",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "background-startup.mdx"
+    },
+    {
+      "path": "docs/public/reference/lifecycles.mdx",
+      "sha256": "a23b132f5b84fd6831ddc7a87c869076dc5c118aefc8e075d3cd0bc5a0777c7c",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "lifecycles.mdx"
+    },
+    {
+      "path": "docs/public/reference/limits.mdx",
+      "sha256": "976ddaa35ad2e81293ef420ec8b2a8cc7e74cf4fa84e81e4a464eb371ffd07d5",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "limits.mdx"
+    },
+    {
+      "path": "docs/public/reference/management.mdx",
+      "sha256": "e57943dcffe9ddfc7d472be76ae96443768f160861e4a00470a3c036b6c9d4d1",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "management.mdx"
+    },
+    {
+      "path": "docs/public/reference/mcp-catalog.mdx",
+      "sha256": "43c768bae153401a72ec69caf5acdf51d0f589fafa8fb1a4a69143aa8a700414",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "mcp-catalog.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/diagnostic.mdx",
+      "sha256": "622bc4e9339cbbaae8f77f4b7dccfcfe2f83ca714e1ad38304c2c5791c8f5770",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "diagnostic.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/live-evidence.mdx",
+      "sha256": "4d8d864fa1522f34929870d0d898c5250ce3679cbd9b95ed67033936c0dab5dd",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "live-evidence.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/mcp-change-result.mdx",
+      "sha256": "5b0f50c0387d0ca15f9e6fcb1ed23c12af93c2d2e0868c27733c4bb3a158a8ec",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "mcp-change-result.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/mcp-investigation-result.mdx",
+      "sha256": "57fe0155adea6b568203a16f6b921972746e066561ccaef7e411c3c499659782",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "mcp-investigation-result.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/mcp-read-result.mdx",
+      "sha256": "a79ad33e80236c0a728528ea3eb1f89911d1ef481d04bb263fd5f8ca2dbe9fc4",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "mcp-read-result.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/mcp-tool-call-result.mdx",
+      "sha256": "f33d859e60c9782b3b4ee19c2606316fbf02a746cecf447c7aa857cffb3da8df",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "mcp-tool-call-result.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/query-item.mdx",
+      "sha256": "bc78d62755fab2e50bb91690373bde1a6a857ddcdc8a8b89396317f2862b64f0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "query-item.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/relation-fact.mdx",
+      "sha256": "b9748298539d662f72efd48331f7818874a82b73a1668badc88d29da02cea39e",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "relation-fact.mdx"
+    },
+    {
+      "path": "docs/public/reference/models/tool-rpc-reply.mdx",
+      "sha256": "41ab1119ca4cae86d280cae7639aee1f1f6b97e895ca83a7782cd6b19b9eeca8",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "tool-rpc-reply.mdx"
+    },
+    {
+      "path": "docs/public/reference/program-tracing.mdx",
+      "sha256": "e76f1d445fb0eaff9bc2a0bec5f9f1eefac423404eccf3bc87dca938043bff37",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "program-tracing.mdx"
+    },
+    {
+      "path": "docs/public/reference/query-pipelines.mdx",
+      "sha256": "b1bf4136f6d4a8a6e5bf7f2bd154180f53f55d89f78d35739433cf4c371d3d2a",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "query-pipelines.mdx"
+    },
+    {
+      "path": "docs/public/reference/responses.mdx",
+      "sha256": "b4485a1d0b62368c6958ec1b07f6f18f93c192cd7679f6f240f314ef15e9d446",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "responses.mdx"
+    },
+    {
+      "path": "docs/public/reference/rpc-catalog.mdx",
+      "sha256": "a7ea58e34d6bdbe4c05d014c745aed39d3a4561b1b5e9b23d217c5cd5f5ebd02",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "rpc-catalog.mdx"
+    },
+    {
+      "path": "docs/public/reference/schemas.mdx",
+      "sha256": "a84301af87fdbae57aa3785b100d561f2f73ad64245de228eea7fb510b410002",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "schemas.mdx"
+    },
+    {
+      "path": "docs/public/reference/search.mdx",
+      "sha256": "331dc4fb13d718f847a95c5798a107545d765a53c8578d0360ed7b86a539f2c2",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "search.mdx"
+    },
+    {
+      "path": "docs/public/reference/source-map.mdx",
+      "sha256": "969dca611656787b5937e90ad35f0f7263dd792d93b339a63b10a4d40511ecab",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "source-map.mdx"
+    },
+    {
+      "path": "docs/public/reference/staleness.mdx",
+      "sha256": "6b15ae0398fe94e86a536eb7995060d7a40deb4017da921ac0d5d80ec9df2d7e",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "staleness.mdx"
+    },
+    {
+      "path": "docs/public/reference/symbols.mdx",
+      "sha256": "d7401c958db0c9e14b867714cc588c36385c9672af8ab01b454a45a1e4896429",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "symbols.mdx"
+    },
+    {
+      "path": "docs/public/reference/troubleshooting.mdx",
+      "sha256": "8b9aa3d922d0e5e45132981ae1b4b21c4ec7cefae3105ebfc8bee623a2100d99",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "troubleshooting.mdx"
+    },
+    {
+      "path": "docs/public/reference/walkthrough.mdx",
+      "sha256": "e8fdf82793bf7171a685ea317935c69e723ded3610327dbb94b005b3a0dddcf3",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "walkthrough.mdx"
+    },
+    {
+      "path": "docs/public/search.mdx",
+      "sha256": "b0c2e3b06f8b589d4b4f695cd6c852ccd9ef781603de8538aa956c6b4c33f84e",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "search.mdx"
+    },
+    {
+      "path": "docs/public/snippets/deeper-reading.mdx",
+      "sha256": "a0b85ceac8bbc9978ddf5448d32e63c570aca58b50b0933337f2d2d9dd2f718b",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "deeper-reading.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/changes/planning-and-write-admission.mdx",
+      "sha256": "64a040400fe0908abe0ccfc879e3a56a2b56893312119e112603f1316a66edc4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "planning-and-write-admission.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/changes/receipts-and-recovery.mdx",
+      "sha256": "9cd61bd71c2b0f883ed0a15e762b00875b9051e01a75b336e10cddcc761b40cb",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "receipts-and-recovery.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/contracts/operation-outcomes.mdx",
+      "sha256": "a7dbdcbdb9906fccbb4ad0d56726902231086ff45c2934931c2dd36c4cd01cc3",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "operation-outcomes.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/contracts/source-identity.mdx",
+      "sha256": "7690cac0f6bedef155ac5600e30c4491f1018fe8c23dba868da1509a8d3497fd",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "source-identity.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/glossary/evidence-authority.mdx",
+      "sha256": "a6070b796a3353d38c7df2e6a429be9b85070d10d386ed01e2f879153ec68929",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "evidence-authority.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/modules/architecture.mdx",
+      "sha256": "199ed7b1106bc3de4067b0e0df16899882c50ca5bdac531245f46ccd1256924d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "architecture.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/queries/execution-and-composition.mdx",
+      "sha256": "8832f45735ee72a7e7bcffc615b044927058681178d3e83bb5a5cb4faa1eb25b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "execution-and-composition.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/queries/retention-and-presentation.mdx",
+      "sha256": "19d479cb43125e03ff6a60433c39893365f3f19edbc6b64c0ac4d7bcecdff550",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "retention-and-presentation.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/runtime/hosted-composition-and-publication.mdx",
+      "sha256": "c90bb991fdede64f6f16c75e12978d81359e804dc46c02af12f959de5fb0d039",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "hosted-composition-and-publication.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx",
+      "sha256": "115cff07514157fdde473769f318579b57bac6a312634f30601df763ba9960c7",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "idea-lifecycle-and-refresh.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/semantics/relation/callback-reuse-and-completion.mdx",
+      "sha256": "a27ff226271f78a333e393e70bf1f3d0a11a841980ed846a4a3712100be07a4e",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "callback-reuse-and-completion.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/semantics/relation/callback-supply-and-binding.mdx",
+      "sha256": "c90f0b94146ec229764b8130906616c004f23b216addbc3a2fffedb5b4013fcc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "callback-supply-and-binding.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
+      "sha256": "3626a8bc0c24909fb8dcb3459474894cb9fb5eb1e65ac62c37dddd4a870cc47a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "discovery-and-identity.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/semantics/workspace/model-and-freshness.mdx",
+      "sha256": "5b2debbe21dcecbcb131386663ee83bb48d3156af8661e07cb1223c475b24f9c",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "model-and-freshness.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/semantics/workspace/read-authority.mdx",
+      "sha256": "597d301fccb91f550a685fcd9b67fc0ef9fdee3e687c00dba6d39f7f9107bcea",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "read-authority.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/topology/live-dependencies-and-reuse.mdx",
+      "sha256": "ed4e658d61081f5d68e01b09cc5e0a4fce626e62d815acac973a280adc65bc08",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "live-dependencies-and-reuse.mdx"
+    },
+    {
+      "path": "docs/public/snippets/okf/transport/coordinator-and-workspace-preparation.mdx",
+      "sha256": "6226f9848930088f889d83df2e82c4e28b092732d6f1d4189e71e410cd107d18",
+      "assessment": "EXCLUDED",
+      "reason": "Generated public OpenWiki projection owned by docs/tooling/okf_public.py.",
+      "category": "Reference",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Look up exact contracts, fields, meanings, and supported cases.",
+      "title": "coordinator-and-workspace-preparation.mdx"
+    },
+    {
+      "path": "docs/public/start.mdx",
+      "sha256": "a03c78bcf6efb4d243b67401c0ff2407be7e6e2b12f7e72fcec2f4ab958b8fcd",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "start.mdx"
+    },
+    {
+      "path": "docs/public/troubleshooting.mdx",
+      "sha256": "223279503882e687458234e0909d086135e197bd9c0661defca7ee9782b24ff7",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "How-to",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete the named task with prerequisites and recovery.",
+      "title": "troubleshooting.mdx"
+    },
+    {
+      "path": "docs/public/tutorials.mdx",
+      "sha256": "b936dfb889dc11200b96cb07b7d8a25f4a9e353491cc0176ad1ede7aee807b64",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Overview",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Choose whether Kast fits the task and select the next page.",
+      "title": "tutorials.mdx"
+    },
+    {
+      "path": "docs/public/tutorials/first-query.mdx",
+      "sha256": "a4fd4849138ca58d03f2d031cb793c685ba2b0281ac14b60c431462cf70c2704",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Tutorial",
+      "reader": "Kotlin engineer new to Kast",
+      "purpose": "Complete one exercise and compare its result with known source.",
+      "title": "first-query.mdx"
+    },
+    {
+      "path": "docs/recovery-plan.md",
+      "sha256": "1c1085d90566b1815e3dd20feae751cf121b71cfc6a40bc864efa45bfb7250e0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Understand accepted recovery design requirements and their implementation-pending status.",
+      "title": "Resumable installation recovery"
+    },
+    {
+      "path": "docs/reviews/behavior-sized-testing.md",
+      "sha256": "3ebbf621cf978e3d817fc61ba640829925773a81e135c8ec88301a0bee66a533",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Configuration and retirement testing verification\".",
+      "title": "Configuration and retirement testing verification"
+    },
+    {
+      "path": "docs/reviews/ci-fixture-reuse.md",
+      "sha256": "1b493e1db32c06188d542a83e5e74136cafb40a2e85fb9acb05994c329dda95c",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Immutable dependency fixtures\".",
+      "title": "Immutable dependency fixtures"
+    },
+    {
+      "path": "docs/reviews/ci-selection-contract.md",
+      "sha256": "6484941bf2a1e2c3b8a2b99ed163679770243f14ae989c9869ea250f407fe7b7",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"CI selection contract\".",
+      "title": "CI selection contract"
+    },
+    {
+      "path": "docs/reviews/composable-source-context.md",
+      "sha256": "6e6ce8a11a81a7be40f1bffa06033cee56b61c52391fb70f2fd5b830bfeed42a",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Query source context\".",
+      "title": "Query source context"
+    },
+    {
+      "path": "docs/reviews/concurrent-semantic-reads.md",
+      "sha256": "3131de39048e2e384145249405baa6d3f1276de48a148322fabd3996e3ecc02f",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Concurrent semantic reads: qualification and capacity\".",
+      "title": "Concurrent semantic reads: qualification and capacity"
+    },
+    {
+      "path": "docs/reviews/core-kotlin-language-parity.md",
+      "sha256": "7fbfe758e904f381dea745af1f41382b6dea1cfdfc8c3a427fca11e476ec08f9",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Core Kotlin language parity\".",
+      "title": "Core Kotlin language parity"
+    },
+    {
+      "path": "docs/reviews/core-kotlin-value-coverage.md",
+      "sha256": "9a2eee8359fdee069d094238808778293f383c96e77add2d8edc22c0a41a87ca",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Core Kotlin value-flow acceptance\".",
+      "title": "Core Kotlin value-flow acceptance"
+    },
+    {
+      "path": "docs/reviews/gradle-work-2026-10-28.md",
+      "sha256": "6f509b563009d48e1ffbaf336c56ba5baf13d3b10e841d964a0e850e5a29bc5e",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Routine Gradle work: 2026-10-28\".",
+      "title": "Routine Gradle work: 2026-10-28"
+    },
+    {
+      "path": "docs/reviews/hosted-semantic-reproduction.md",
+      "sha256": "c4949b078e2b178c84abba0fea3a067455252828b0010a16842e3c9b5bcf620d",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Hosted semantic-query reproduction\".",
+      "title": "Hosted semantic-query reproduction"
+    },
+    {
+      "path": "docs/reviews/lazy-callback-proof.md",
+      "sha256": "7e925de27d2e9aec8d9ff38665ed36e8d12aea24c5dd5c8b7de7d00be67caa23",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Deferred Kotlin lazy callbacks\".",
+      "title": "Deferred Kotlin lazy callbacks"
+    },
+    {
+      "path": "docs/reviews/live-semantic-read-acceptance.md",
+      "sha256": "f7f87be813b3c24b9dff949d74cc3d95adf2d01a9e914cfc5ccce5dfabc9eb53",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Live semantic read acceptance\".",
+      "title": "Live semantic read acceptance"
+    },
+    {
+      "path": "docs/reviews/native-flow-closure-oracle-review.md",
+      "sha256": "6e11616e2e3df1bb8209677e8a1544c6b513779a56dfc6f71f4ddda1a57cf981",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Native flow closure: independent oracle review\".",
+      "title": "Native flow closure: independent oracle review"
+    },
+    {
+      "path": "docs/reviews/native-flow-closure.md",
+      "sha256": "0ea96bc11b9346f47ae8e1c0d6e6fb19a89bd4cf4b87f189782d42b847efec80",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Native flow closure evidence\".",
+      "title": "Native flow closure evidence"
+    },
+    {
+      "path": "docs/reviews/persistent-topology-snapshots.md",
+      "sha256": "41c6b145c4c92f71183403968faf09876a5d39e5228528b602e0662488eedcd8",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Persistent topology snapshot evidence\".",
+      "title": "Persistent topology snapshot evidence"
+    },
+    {
+      "path": "docs/reviews/plugin-native-change-acceptance.md",
+      "sha256": "aa0194d4e9a2bb48466eb419ef3f449a59881f218f0dc73de7abdf897db32b5d",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Existing-IDE declaration change acceptance\".",
+      "title": "Existing-IDE declaration change acceptance"
+    },
+    {
+      "path": "docs/reviews/representation-impact-proof.md",
+      "sha256": "59e63d5de0b90eb42754c2c19e56c6f8e23a58347e91aee5675a7713b7e16752",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installed representation-impact proof\".",
+      "title": "Installed representation-impact proof"
+    },
+    {
+      "path": "docs/reviews/semantic-read-throughput.md",
+      "sha256": "a984628afba2897edca07fdee9252ffa7f2f2be5668e662fd2a81c878941c2dd",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Single IDEA backend read throughput\".",
+      "title": "Single IDEA backend read throughput"
+    },
+    {
+      "path": "docs/reviews/semantic-replay-comparison.md",
+      "sha256": "4d9a868b73cb5d6b752b307701480871f9583c98ab241c397f5e77cbdf0f946f",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Local semantic replay comparison\".",
+      "title": "Local semantic replay comparison"
+    },
+    {
+      "path": "docs/reviews/shared-okf-audit.md",
+      "sha256": "cd0c30a5f1cea40817ae71f24870b0cbbe845f1144fed4f478836c53dafb1432",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public documentation and shared OKF\".",
+      "title": "Public documentation and shared OKF"
+    },
+    {
+      "path": "docs/reviews/workspace-readiness-recovery-989.md",
+      "sha256": "b1c4668d11347837c9cb74ca03b39b552a4f2f9df840a704aedc5564d7110a6f",
+      "assessment": "EXCLUDED",
+      "reason": "Historical report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Workspace readiness and recovery proof\".",
+      "title": "Workspace readiness and recovery proof"
+    },
+    {
+      "path": "docs/static-query-execution.md",
+      "sha256": "d1d330571f01c0155d4de01c8327068f24d26fdba5eac4ddf859af016fd09307",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Static query execution\".",
+      "title": "Static query execution"
+    },
+    {
+      "path": "docs/tool-rpc.md",
+      "sha256": "dd9c62b57943d7898905a48c3e3d9b21f67a6e24c990ceb2b8a0bb7404574491",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Tool RPC for agent extensions\".",
+      "title": "Tool RPC for agent extensions"
+    },
+    {
+      "path": "docs/tooling/README.md",
+      "sha256": "a640038a0c512b05634df01d6370af49a25ded0a170aa00b77c909d606e5d8e0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast glossary tool\".",
+      "title": "Kast glossary tool"
+    },
+    {
+      "path": "docs/tooling/diagrams/README.md",
+      "sha256": "f5c73674ab1e248acff2a39fda0bf3cf7b18fc731b7d8d3c357bd6056a4ba1a2",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public diagrams\".",
+      "title": "Public diagrams"
+    },
+    {
+      "path": "docs/tooling/value-journey/README.md",
+      "sha256": "95fc8890c1fca171fcf88bf8f48bc2396c2772b2ed0cf383165d3a5f42dae199",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Value-journey explainer\".",
+      "title": "Value-journey explainer"
+    },
+    {
+      "path": "docs/topology-impact.md",
+      "sha256": "82e02e29b65bb291c212f8d0861d7f55076c6a49e45c3dd2fd14204634cf7f40",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Find consumers of changed Kast modules\".",
+      "title": "Find consumers of changed Kast modules"
+    },
+    {
+      "path": "evidence/AGENTS.md",
+      "sha256": "b4e600786f08983721ee7ccdc6c86273cb6e3c92ead42e3fab88ca2b6a7f5355",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"evidence\".",
+      "title": "evidence"
+    },
+    {
+      "path": "experiments/host-observation/ACCEPTANCE.md",
+      "sha256": "2df0a519ae6dd2d44a7030285c8abc8165d2ea772d6862e99e488e8e610ef9f3",
+      "assessment": "EXCLUDED",
+      "reason": "Historical implementation or qualification report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Executed acceptance \u2014 2026-09-09\".",
+      "title": "Executed acceptance \u2014 2026-09-09"
+    },
+    {
+      "path": "experiments/host-observation/AGENT_EFFICIENCY.md",
+      "sha256": "c76ece62c304d3985c1561db1e01778522a92957613fc1e0a9482d0639c39e21",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Paired Pi agent experiments\".",
+      "title": "Paired Pi agent experiments"
+    },
+    {
+      "path": "experiments/host-observation/AGENT_EFFICIENCY_REFERENCES.md",
+      "sha256": "d7e96426b1ff6e056eb26e3d4e924ca29e20f301791bd9939a095909e2828f28",
+      "assessment": "EXCLUDED",
+      "reason": "Historical implementation or qualification report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Reference chains and provider timing\".",
+      "title": "Reference chains and provider timing"
+    },
+    {
+      "path": "experiments/host-observation/AGENT_EFFICIENCY_TOKEN_POC.md",
+      "sha256": "098e200f29ad8f5cecc81dd83746b8cf6a91ef807403ebe648751d0928c2e912",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast token POC\".",
+      "title": "Kast token POC"
+    },
+    {
+      "path": "experiments/host-observation/CALLBACK_REPRODUCTION_RESULTS.md",
+      "sha256": "6cdaaa69467e60175ffccc43a251405ef05553ba5c27ef0cb82b262df19b95d4",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast callback completion issues\".",
+      "title": "Kast callback completion issues"
+    },
+    {
+      "path": "experiments/host-observation/CAMPAIGN_RESULTS.md",
+      "sha256": "79198a6f2e7334ba2fe514e2d931acf0a042fda04e029ac0b31e71cb1f3207aa",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public corpus campaign results\".",
+      "title": "Public corpus campaign results"
+    },
+    {
+      "path": "experiments/host-observation/DEBUG_CAMPAIGN_REPORT.md",
+      "sha256": "27c028e2e64eaec060255f7560f202bc1fb37943923e96ab1d987294ffda2816",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installed DEBUG campaign\".",
+      "title": "Installed DEBUG campaign"
+    },
+    {
+      "path": "experiments/host-observation/DELIVERY_TOOL_DECLARATIONS.md",
+      "sha256": "d7874a24f60b26f1511757c39826eeba283fb5587e1c481d37eaaece59b53d98",
+      "assessment": "EXCLUDED",
+      "reason": "Historical implementation or qualification report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Final answer tool declarations\".",
+      "title": "Final answer tool declarations"
+    },
+    {
+      "path": "experiments/host-observation/ENTERPRISE_CACHE.md",
+      "sha256": "aac70b927be76041fcfeb03aed77cea33b0a79f585bb309a212ed720ae61b668",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Qualify the five enterprise cache feedback cases\".",
+      "title": "Qualify the five enterprise cache feedback cases"
+    },
+    {
+      "path": "experiments/host-observation/ENTERPRISE_CACHE_VALIDATION.md",
+      "sha256": "2ee7b7ea5b3f9bbcfc0d6f87e1afcac3623e25356ee64d74d97c1bb6489139e9",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Enterprise cache feedback: local validation record\".",
+      "title": "Enterprise cache feedback: local validation record"
+    },
+    {
+      "path": "experiments/host-observation/EVALUATION_CHECKLIST.md",
+      "sha256": "73710f4b724f6cabb62ad372fb879808e91518d57af1c1b51df3c60eceb93c90",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast evaluation checklist across real codebases\".",
+      "title": "Kast evaluation checklist across real codebases"
+    },
+    {
+      "path": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "sha256": "6ddebf2d25cf57420d67e71630a63d9defcc4a78f99e8c98191a0531ca38b044",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Existing IDEA index endpoint\".",
+      "title": "Existing IDEA index endpoint"
+    },
+    {
+      "path": "experiments/host-observation/HOSTED_QUERY.md",
+      "sha256": "02d3d1bd327cfb3cc3368a9d7dd15989967ed12c9f52077f4d416e4f2fda5a28",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Saved Kotlin direct-supertype query\".",
+      "title": "Saved Kotlin direct-supertype query"
+    },
+    {
+      "path": "experiments/host-observation/LOG_VISIBILITY.md",
+      "sha256": "6f021efe4f058fa48a0416f738835142a15606f5a874b9ff1e00b44fcb372618",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Capture Kast and IntelliJ logs\".",
+      "title": "Capture Kast and IntelliJ logs"
+    },
+    {
+      "path": "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md",
+      "sha256": "fd09e9de349e7a75f54d8931b95465f6733398252b2b3ea84ab8c55ed7c69648",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Received partial-prefix admission\".",
+      "title": "Received partial-prefix admission"
+    },
+    {
+      "path": "experiments/host-observation/PI_EVALUATION.md",
+      "sha256": "30c300e5c25d128a3cf8bed827aa7189c35211660198b2ff074c6f24cdfb23fa",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Bounded Pi agent evaluation\".",
+      "title": "Bounded Pi agent evaluation"
+    },
+    {
+      "path": "experiments/host-observation/README.md",
+      "sha256": "133883cd902fb4a5b7dc5d6d603b27730cce98bd27fe9ce968f3186a92d974f8",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Manual IntelliJ host observation\".",
+      "title": "Manual IntelliJ host observation"
+    },
+    {
+      "path": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "sha256": "65409bb8b53dd824e99e41a2c7fef34407d42b03ab9fc548104a7623efef6b48",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Native semantic-query reproduction\".",
+      "title": "Native semantic-query reproduction"
+    },
+    {
+      "path": "experiments/host-observation/TRACE_COMPLETENESS_PLAN.md",
+      "sha256": "fe515b282dc4d96e1bafd0393b2535312f89076aec2a7ecc018ebbcf296f2873",
+      "assessment": "EXCLUDED",
+      "reason": "Historical implementation or qualification report tied to its recorded revision.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Complete the two remaining TRACE cases\".",
+      "title": "Complete the two remaining TRACE cases"
+    },
+    {
+      "path": "experiments/host-observation/agent-efficiency-configs/reference-chain-private-onboarding.md",
+      "sha256": "0b9064e17023615fa41f4b8360eee98f8c418b836a0314acd9f26aaf367d7c97",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast reference tasks\".",
+      "title": "Kast reference tasks"
+    },
+    {
+      "path": "experiments/host-observation/agent-efficiency-configs/reference-chain-scoped-onboarding.md",
+      "sha256": "ae2e60c00bc2779b1bc283537e2d729428c0bf2801ee102e1d930245f23c1b0e",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast reference tasks\".",
+      "title": "Kast reference tasks"
+    },
+    {
+      "path": "experiments/host-observation/agent-efficiency-configs/token-poc-onboarding.md",
+      "sha256": "4d1c562d18584d81c47642330f5b7e7eadebeb43a29bc3f2a275ceb74aacf8dc",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast: compact semantic workflow\".",
+      "title": "Kast: compact semantic workflow"
+    },
+    {
+      "path": "experiments/host-observation/agent-payload/evidence.md",
+      "sha256": "ad4a8c9288e604f22e9f1a061949bb21d7e3e3b9b834f5236f5761d136cb1b89",
+      "assessment": "INCLUDED",
+      "reason": "Historical measurement report recognized during reader review. Kept in the frozen comparison to avoid reducing findings through a scope change.",
+      "category": "Contributor documentation",
+      "reader": "Contributor who examines historical measurements",
+      "purpose": "Interpret recorded implementation and measurement evidence at its stated revisions.",
+      "evidenceStatus": "HISTORICAL_INCLUDED_FOR_COMPARABILITY",
+      "title": "Agent payload evidence"
+    },
+    {
+      "path": "experiments/host-observation/developer-trace-delivery/REPLAY.md",
+      "sha256": "b8d8fc6425e453d89bffda770fcf6834b02fce12db9712e38d5d245c5a05e4c3",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Available developer TRACE cases\".",
+      "title": "Available developer TRACE cases"
+    },
+    {
+      "path": "experiments/host-observation/developer-trace-delivery/VALIDATION.md",
+      "sha256": "50a3044cb04e85a9fd2f38a754203d41910be600a2e76d5422fc421d1018d76d",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Developer TRACE and graph delivery\".",
+      "title": "Developer TRACE and graph delivery"
+    },
+    {
+      "path": "experiments/host-observation/final-delivery-compaction.md",
+      "sha256": "799f860f26988ca86b628388324f8d2b21d9a4fa6c78a154b83cccfcbdc0448f",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"final-delivery-compaction.md\".",
+      "title": "final-delivery-compaction.md"
+    },
+    {
+      "path": "experiments/host-observation/k2-common-metadata-fixture/README.md",
+      "sha256": "5343166ef8d16c544c2ebaf2337b39a6b6339c9a542c586f0ead63c11dbf3582",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Common metadata reference fixture\".",
+      "title": "Common metadata reference fixture"
+    },
+    {
+      "path": "experiments/host-observation/pi-fixtures/README.md",
+      "sha256": "d5a4af433407d776dc16dfcacb0c52128fa5571a1dde954caae8031a84333ee0",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public canonical fixture provenance\".",
+      "title": "Public canonical fixture provenance"
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/NOTICE.md",
+      "sha256": "3bf7aaf62fdf78781561279926d3f1f4d686e9059fd938f8d345cb7d130824a2",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"NOTICE.md\".",
+      "title": "NOTICE.md"
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/ORACLE.md",
+      "sha256": "bec38557a4517b6bc97ff92574cecadef66922d34002a051433e69105f92de27",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Independent r1 graph oracle\".",
+      "title": "Independent r1 graph oracle"
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/README.md",
+      "sha256": "123c4b17984ec35fd61ce195809e69b3c2cf2d50573b4bc1c2351d7a0d69723e",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"TRACE completeness validation suite\".",
+      "title": "TRACE completeness validation suite"
+    },
+    {
+      "path": "experiments/host-observation/trace-completeness/VALIDATION.md",
+      "sha256": "b8332822ce3201510653ad3f56b15420332bd53b6ee75373a13f30af8c3a63c6",
+      "assessment": "EXCLUDED",
+      "reason": "Recorded experiment results, not current product instructions.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"TRACE completeness r1 implementation record\".",
+      "title": "TRACE completeness r1 implementation record"
+    },
+    {
+      "path": "experiments/host-observation/try-local-qualification.md",
+      "sha256": "c9020094fdedc70fa1df6408b8e23fc2ee9a3ec0379b5641e81b6c97a1814205",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Try/catch and local identity qualification\".",
+      "title": "Try/catch and local identity qualification"
+    },
+    {
+      "path": "experiments/representation-impact/README.md",
+      "sha256": "cc1b911efc4eeceff46dfca6df15a318450c9d6cba68b71758e9f0fc7d301ddf",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installed representation-impact capture\".",
+      "title": "Installed representation-impact capture"
+    },
+    {
+      "path": "experiments/task-access/README.md",
+      "sha256": "e3696ea3d64dd537a3757b68bd70c398fff41d4e0f328f8960b3fd6bd658385c",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Task access candidate\".",
+      "title": "Task access candidate"
+    },
+    {
+      "path": "experiments/task-access/SKILL.md",
+      "sha256": "fe15dca1b520eeafa4b88a2716cc76d2cf11710d0154b8495f57d76788d25fb4",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast task access candidate\".",
+      "title": "Kast task access candidate"
+    },
+    {
+      "path": "kernel/AGENTS.md",
+      "sha256": "f442c3ca8924612850644d8f69157c37c514c232f2bb6c2aed2515b4410a7dc2",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"kernel\".",
+      "title": "kernel"
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "sha256": "a6278bc034db578808f97dcf8c50076ca1e62356b680a5d94a4c5e3fd4ca3fda",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Explanation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "Functional package coverage"
+    },
+    {
+      "path": "openwiki/architecture/index.md",
+      "sha256": "0407b7a07b1e1a02314f5a478fc6f8816fbc0f2c5556d5b2dab39ce18358a7ab",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Explanation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Understand the named mechanism and the limits of its evidence.",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/changes/index.md",
+      "sha256": "eec19e525dbbb85320c23c73009aaa0f2e246cd4b1e3e3fd8d240ce568335d3d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/changes/planning-and-write-admission.md",
+      "sha256": "4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Change planning and write admission\".",
+      "title": "Change planning and write admission"
+    },
+    {
+      "path": "openwiki/changes/receipts-and-recovery.md",
+      "sha256": "6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Mutation receipts and recovery\".",
+      "title": "Mutation receipts and recovery"
+    },
+    {
+      "path": "openwiki/contracts/configuration.md",
+      "sha256": "7c2ea239208070c53525132362a4537edb6244f565ee2efa55aee96b92cd268c",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installation configuration\".",
+      "title": "Installation configuration"
+    },
+    {
+      "path": "openwiki/contracts/index.md",
+      "sha256": "1acb8bd3f958814100cdb8709292c888c5e22849f192e859a3fb7c8fab9a4e05",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/contracts/installed-knowledge.md",
+      "sha256": "a47a59f40ea8f137f9ec7edf2909a94a5cc14cb9e3c09adbfa31a5abdea4f20f",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installed knowledge\".",
+      "title": "Installed knowledge"
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "sha256": "9a0dac494ef34a47fb868ad0f6943624287afabbb76769214aec5185ca8c5373",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Operation outcomes\".",
+      "title": "Operation outcomes"
+    },
+    {
+      "path": "openwiki/contracts/operation-registry.md",
+      "sha256": "697f5074616333b6cef70899b5673cc861b87dfa5843b1f49907e50b655f825f",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Canonical operation registry\".",
+      "title": "Canonical operation registry"
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "sha256": "638d9891d8944643b32144606259518e46ca0ba5b928cc28f92ca221286bc06a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public intent tools\".",
+      "title": "Public intent tools"
+    },
+    {
+      "path": "openwiki/contracts/source-failures.md",
+      "sha256": "a94db78f5587f9f4956cba8c1f66ab3c2c45a34aded0e305f11bbb9b2f73a413",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Source failure origin\".",
+      "title": "Source failure origin"
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "sha256": "c70c2748ed4caef3d5152af7b39c41ba62701e3dcf53e215703244f394546ff7",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Source and workspace identity\".",
+      "title": "Source and workspace identity"
+    },
+    {
+      "path": "openwiki/development/build-and-architecture.md",
+      "sha256": "342b6f2f06a8149b02d79417c4c64ee3f45877fed8d5a7ba5c45bdc67469d15a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Build roles and architecture enforcement\".",
+      "title": "Build roles and architecture enforcement"
+    },
+    {
+      "path": "openwiki/development/contracts-and-generation.md",
+      "sha256": "d71487adc050d00d6320c0d21e66c27e5d2e61e70aae37458694d675b0ee865b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Contract ownership and generated projections\".",
+      "title": "Contract ownership and generated projections"
+    },
+    {
+      "path": "openwiki/development/index.md",
+      "sha256": "af9dd342e2b5a0ae54ca67ed0898d0fec226cb0632c2c951050f1ff75483cb19",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/development/knowledge-upkeep.md",
+      "sha256": "51fc593ddb9d9ae427501535a4ebb4087ff117b1e2285a4c13a0d70993a62105",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Knowledge upkeep and coverage assessment\".",
+      "title": "Knowledge upkeep and coverage assessment"
+    },
+    {
+      "path": "openwiki/development/testing-and-native-qualification.md",
+      "sha256": "e67f3b95e8e6018ca0feca82fd7e4bfcf9771d7a6dff81206883d1d570a245af",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Tests and native qualification\".",
+      "title": "Tests and native qualification"
+    },
+    {
+      "path": "openwiki/distribution/index.md",
+      "sha256": "a7047e34b72f321f518f04cefe930c10b2e314633f1ba4a5e30651c8d533c326",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/distribution/installation-and-managed-files.md",
+      "sha256": "13956c1ee0d253eaf37a5ccc1a2cdcbce7a5669dab7d92034944aa2ae65ee827",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installation and managed files\".",
+      "title": "Installation and managed files"
+    },
+    {
+      "path": "openwiki/distribution/management-and-connections.md",
+      "sha256": "7b1a333258af0cee30929537f9010c2aae5da5e80561c87f393afbb287605a4b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Native management and harness connections\".",
+      "title": "Native management and harness connections"
+    },
+    {
+      "path": "openwiki/distribution/release-candidates-and-promotion.md",
+      "sha256": "a2988134f2828e6e7933e89eceaf5d3de89da3361841c8164a91fe187a15083e",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Release candidates and promotion\".",
+      "title": "Release candidates and promotion"
+    },
+    {
+      "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+      "sha256": "e8d74672a8e4206200ef995c45a43e8dfe4c566c08eda01791c2c6c00c69994b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Upgrade, shutdown, and guarded reset\".",
+      "title": "Upgrade, shutdown, and guarded reset"
+    },
+    {
+      "path": "openwiki/flows/change-lifecycle.md",
+      "sha256": "8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Semantic change lifecycle\".",
+      "title": "Semantic change lifecycle"
+    },
+    {
+      "path": "openwiki/flows/host-observation.md",
+      "sha256": "d0c36733adebb711228ff202519450669eb4a57499323d2ce582694171141f4e",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Experimental host observation\".",
+      "title": "Experimental host observation"
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "sha256": "d44f05143578b99902acb142a1da549c76c962f1fdf1887a9e5bde6b8fdf02c7",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Existing-IDE semantic query\".",
+      "title": "Existing-IDE semantic query"
+    },
+    {
+      "path": "openwiki/flows/index.md",
+      "sha256": "a5ae811936e0b6a458ca8e742792dfc2ac2f84f0cead2d62324b6ac2cbbe21d9",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/flows/request-dispatch.md",
+      "sha256": "3489c1ff042199a3a95c27853a35fac1697a099d49bbf0ffc385de0bd3622b3e",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Request dispatch\".",
+      "title": "Request dispatch"
+    },
+    {
+      "path": "openwiki/flows/semantic-query.md",
+      "sha256": "53f5eb632a433bcee8647451f1dc677e17237e9ffc28eef615e1df2f0813bde9",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Semantic query\".",
+      "title": "Semantic query"
+    },
+    {
+      "path": "openwiki/flows/workspace-publication.md",
+      "sha256": "de57b1e24e380e96149e9c9b7e55f8b8dde7bf5701d804caa7055bc4776f4c3b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Historical workspace publication\".",
+      "title": "Historical workspace publication"
+    },
+    {
+      "path": "openwiki/glossary/compiler-identity.md",
+      "sha256": "544ff4a70dcbe7ea89db657740c75b48c7124d4d41a5f87ffdd79d1d3dcae66a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Compiler identity\".",
+      "title": "Compiler identity"
+    },
+    {
+      "path": "openwiki/glossary/evidence-authority.md",
+      "sha256": "f5f6597f1a2a921feb0f084ace6cdece5c5a70480b11cf3f9c637019048167d4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Evidence authority\".",
+      "title": "Evidence authority"
+    },
+    {
+      "path": "openwiki/glossary/evidence-generation.md",
+      "sha256": "7cc2cb2d61c0327301f3a60449636cc63ad83c4bdde795197830ede6df2b0e0c",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Evidence generation\".",
+      "title": "Evidence generation"
+    },
+    {
+      "path": "openwiki/glossary/index.md",
+      "sha256": "dece1d52a3200ca4a1f805643aa44b396f9e31c907d271a2c5cf40dad7017c69",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/glossary/refinement.md",
+      "sha256": "47f71677ed0f64197b5f11a9a53b467dd34123c425c51df9d8bf47763e55e4df",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Refinement\".",
+      "title": "Refinement"
+    },
+    {
+      "path": "openwiki/index.md",
+      "sha256": "86e93730245df6782554f6eea9962e3c9d4106ab938503b85392fb87aeb30be1",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/knowledge/index.md",
+      "sha256": "27a320903b7a636adde934aa1fdb988d3037a57055b62d5e86b5b999c94925cc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/knowledge/installed-projection-and-retrieval.md",
+      "sha256": "c7ca7866afafcbee1cc2078494d7aa302d3cf68fdad4fbfc0c3e9d4f0e98da52",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Installed knowledge projection and retrieval\".",
+      "title": "Installed knowledge projection and retrieval"
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "sha256": "256b4542340aa489bddbdae6e98d0bb1e0b411d15249021ee55ca16fc48fccdc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Verified module architecture\".",
+      "title": "Verified module architecture"
+    },
+    {
+      "path": "openwiki/modules/change.md",
+      "sha256": "03a11f99920a7332928564dd2eacc02d64dc80396d76f68edfbe7fc9955b11f0",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Semantic change\".",
+      "title": "Semantic change"
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "sha256": "61c1f7a1f3892a405e01831e7538f9d78a4ba709c19325ff964a1dcb58b5ae9b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Distribution and packaging\".",
+      "title": "Distribution and packaging"
+    },
+    {
+      "path": "openwiki/modules/index.md",
+      "sha256": "dcd745be8b867376f880ca7b99f2b3d403288f4bb793352c2aa230cae0d13a3a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/modules/kernel.md",
+      "sha256": "c19ad4baf118f8c8c3df2ece7480a85b841ebee8b47bc5fa5e3903c009776941",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kernel\".",
+      "title": "Kernel"
+    },
+    {
+      "path": "openwiki/modules/protocol.md",
+      "sha256": "112185b59df6a9d03036b4bcc0bb2d5cc842e35a98fac5a468ad684604ea135d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Protocol\".",
+      "title": "Protocol"
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "sha256": "828fc4b3e2d3563317606be2af839796fc08a155189b8afc829e1043b27debdb",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Query protocol\".",
+      "title": "Query protocol"
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "sha256": "603c776ff14c91de79621295b47cd3725beabd46deeb5a91d1cd478cd31ad259",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Runtime and process hosts\".",
+      "title": "Runtime and process hosts"
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "sha256": "4e1c5197eba054d067c716ffb7e77af3e937f16237828212900f2c62a5dd23dc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Semantic read domains\".",
+      "title": "Semantic read domains"
+    },
+    {
+      "path": "openwiki/modules/topology-evidence.md",
+      "sha256": "d6e7ee5250cab4a1700148d40a841e23889c46cf48d3c023be344ab82b98b75c",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Durable change evidence and retained topology\".",
+      "title": "Durable change evidence and retained topology"
+    },
+    {
+      "path": "openwiki/modules/workspace.md",
+      "sha256": "d9a6b1e750c884a7d2f407388e0f3f330cc0a23ed2f42662d2b38696f6fa9336",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Workspace\".",
+      "title": "Workspace"
+    },
+    {
+      "path": "openwiki/queries/execution-and-composition.md",
+      "sha256": "da9b6d4159fa1408cff5eb50d135d708937cc7f54dcd530c5d154f665793d4fd",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Query stages and composition\".",
+      "title": "Query stages and composition"
+    },
+    {
+      "path": "openwiki/queries/impact-and-peer-proof.md",
+      "sha256": "0578045c6dcdf528f4042c485768b8c2c9b95c0e779f4d593ad4eb688535e4c5",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Value impact and independent peer proof\".",
+      "title": "Value impact and independent peer proof"
+    },
+    {
+      "path": "openwiki/queries/index.md",
+      "sha256": "f1aaf88f9730c532b95dd6c552374bca3ca592a950faa0123f2f498c23460cbf",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/queries/public-admission.md",
+      "sha256": "abf34b6df01fe3dce46af45491f702cf6e3d1396489db7814e40d843487ea184",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Public query admission and capabilities\".",
+      "title": "Public query admission and capabilities"
+    },
+    {
+      "path": "openwiki/queries/retention-and-presentation.md",
+      "sha256": "d761d083d2d124bf3a712f7af71a773bfcde0c892461bcbdd2e20937f4592c87",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Retained results and output delivery\".",
+      "title": "Retained results and output delivery"
+    },
+    {
+      "path": "openwiki/queries/trace-and-completion.md",
+      "sha256": "8c4ce5827fe0525bd27c72478f89a5ac1e6205249ae6038d1e3e0cd4c5b29b44",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"TRACE and compiler-static completion\".",
+      "title": "TRACE and compiler-static completion"
+    },
+    {
+      "path": "openwiki/quickstart.md",
+      "sha256": "68391e83cc5d26e348b51e79e4ec2f655720249204c015b555ce277ad08f054d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Kast repository guide\".",
+      "title": "Kast repository guide"
+    },
+    {
+      "path": "openwiki/runtime/hosted-composition-and-publication.md",
+      "sha256": "6ed150f959887b857013304a879a6152a8549e341ea5b1d9c9ffe683bde090cb",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Hosted endpoint composition and publication\".",
+      "title": "Hosted endpoint composition and publication"
+    },
+    {
+      "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "sha256": "201dea19ed5c649e446891bbacb69e356a1fcbec945310ef679037a443c1ba71",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"IDEA lifecycle and explicit refresh\".",
+      "title": "IDEA lifecycle and explicit refresh"
+    },
+    {
+      "path": "openwiki/runtime/index.md",
+      "sha256": "04600b80e661ca1dba7ecb065a7c4372852d9e69d8d16ec94b8e69790c238885",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/diagnostics/index.md",
+      "sha256": "27d694db0baf0c681692c7af694a9a8ea958d05299ab88d9497ce9a426c972f4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/diagnostics/scans-and-progress.md",
+      "sha256": "8be3a8b2e6404871f6d034e225774e2e5350c6383558442478d19d6726490c06",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Diagnostic scans and progress\".",
+      "title": "Diagnostic scans and progress"
+    },
+    {
+      "path": "openwiki/semantics/index.md",
+      "sha256": "c1861b376c7a9d29368ea62a39baddad9b5c7639f083d7ba3d5643c2c926da9d",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Directories\".",
+      "title": "Directories"
+    },
+    {
+      "path": "openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "sha256": "97cb83cd28791f159486b1ab7ae4e1e16f8e44fe1bc6e1ecd93eab9f94f77489",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Callback reuse and graph completion\".",
+      "title": "Callback reuse and graph completion"
+    },
+    {
+      "path": "openwiki/semantics/relation/callback-supply-and-binding.md",
+      "sha256": "dc8c9b1ced5b05271392b8569c3bfb2acbbe815cc56a41a7d441ed325f209b36",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Callback supply and invocation bindings\".",
+      "title": "Callback supply and invocation bindings"
+    },
+    {
+      "path": "openwiki/semantics/relation/index.md",
+      "sha256": "0269e08d0dd2a67a5fd097c0fe758977d33e73d2e9158e780f4ad1679805aa17",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/relation/named-relations.md",
+      "sha256": "6ee749ce60019b348b34057da95f3fb4bcc37cf8854da1218a54eabaecbf03e8",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Named relationships and occurrences\".",
+      "title": "Named relationships and occurrences"
+    },
+    {
+      "path": "openwiki/semantics/relation/value-flow-and-models.md",
+      "sha256": "4f1f4c2d0ac4db4bca25a5e2d06e56fbfa0ba9b13381bdd34e0eb5fbbfd73c85",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Value flow and representation models\".",
+      "title": "Value flow and representation models"
+    },
+    {
+      "path": "openwiki/semantics/source/anchors-and-paging.md",
+      "sha256": "01a75cd18915aae5bea08f1c90b4da9be0e6bbe5a9d2c264b255cfa2867a7b5b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Source anchors and structural pages\".",
+      "title": "Source anchors and structural pages"
+    },
+    {
+      "path": "openwiki/semantics/source/index.md",
+      "sha256": "4bdfc66a0e349b1ab3ab59e98678e5225a3a385d35bfdcfa38def5160673b5b1",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/symbol/discovery-and-identity.md",
+      "sha256": "258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Declaration discovery and exact identity\".",
+      "title": "Declaration discovery and exact identity"
+    },
+    {
+      "path": "openwiki/semantics/symbol/index.md",
+      "sha256": "a481c6405198086aa3f75999f1385d148fb670e80fd6e9dbc6d0ff06bce9ae80",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/traversal/frontiers-and-continuations.md",
+      "sha256": "4f61a651393ca3727572b7d51c9d1c1a0eaf7390598a2a6b00833694c2596e13",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Traversal frontiers and continuations\".",
+      "title": "Traversal frontiers and continuations"
+    },
+    {
+      "path": "openwiki/semantics/traversal/index.md",
+      "sha256": "6c813413e49807910c41c3db0a8918c37721eb342626eb46c041260029b4e411",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/workspace/index.md",
+      "sha256": "58f1d1420645a49afc4084405e2cb09dba25b548e980507ac98c337d67741678",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/semantics/workspace/model-and-freshness.md",
+      "sha256": "6567c27626874525dd6b1a207bd206fd14d12ba5e1f1c8022431cc79b2c25099",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Imported model and freshness\".",
+      "title": "Imported model and freshness"
+    },
+    {
+      "path": "openwiki/semantics/workspace/read-authority.md",
+      "sha256": "94fbd94ef0cc6f9ecf10a6b3909a4cf2558020468c5eaefd38996d94406078e4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Workspace roots and read authority\".",
+      "title": "Workspace roots and read authority"
+    },
+    {
+      "path": "openwiki/topology/graph-queries.md",
+      "sha256": "1019eda69d9a7d367130555c225cf89cb8538c00fea893c102908c67cc0f7371",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Detached topology graph queries\".",
+      "title": "Detached topology graph queries"
+    },
+    {
+      "path": "openwiki/topology/historical-capture-and-storage.md",
+      "sha256": "b57e6d072408573c9d685070e58023ece15fc64cba62765c3dccbefb7a0670cc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Historical capture and SQLite storage\".",
+      "title": "Historical capture and SQLite storage"
+    },
+    {
+      "path": "openwiki/topology/index.md",
+      "sha256": "c254d770d5cfa325fd165d7721d6578e85afd4828b9f4a6e471d120feeb9fed0",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/topology/live-dependencies-and-reuse.md",
+      "sha256": "f0272b1ca38f3d8f96f119c7f07e7535347702031758db54134ce49cbcf29887",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Live dependency proofs and fact reuse\".",
+      "title": "Live dependency proofs and fact reuse"
+    },
+    {
+      "path": "openwiki/transport/codex-hosts-and-framing.md",
+      "sha256": "d3871b20c5bcb570b9fa1fca3ef979111e2ae1346fb9f68695e8c141599ea703",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Codex hosts and protocol framing\".",
+      "title": "Codex hosts and protocol framing"
+    },
+    {
+      "path": "openwiki/transport/coordinator-and-workspace-preparation.md",
+      "sha256": "8d7b54d4525542225be40454471064390638eb7ee24213db5e7faf66be998ecc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Coordinator and workspace preparation\".",
+      "title": "Coordinator and workspace preparation"
+    },
+    {
+      "path": "openwiki/transport/direct-mcp-and-tool-rpc.md",
+      "sha256": "22bc4de6300c2dd9e5ad9f72b8caa0bcafe30f9c801119ad8b30c1602ba00de6",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Direct MCP and tool RPC\".",
+      "title": "Direct MCP and tool RPC"
+    },
+    {
+      "path": "openwiki/transport/harness-delivery.md",
+      "sha256": "80a17734c8bde4c273f7fcea5ddc4090aad804f6fb644d03e35416db32932322",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Agent context and harness delivery\".",
+      "title": "Agent context and harness delivery"
+    },
+    {
+      "path": "openwiki/transport/index.md",
+      "sha256": "6ee903585e34a5e6a799bc622f4c1a37d1438bd3cfbd1e0252690230dee7f1a9",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Files\".",
+      "title": "Files"
+    },
+    {
+      "path": "openwiki/transport/invocations-and-durable-records.md",
+      "sha256": "4917494de5ffa7a01d7b0a0fa3a325722efc6036b0b4de4d6167b46a0a7eeb21",
+      "assessment": "EXCLUDED",
+      "reason": "Generated source-bound OpenWiki knowledge. Review current public projection separately.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Invocation fences and durable thread records\".",
+      "title": "Invocation fences and durable thread records"
+    },
+    {
+      "path": "packaging/AGENTS.md",
+      "sha256": "586c116ee67a5ad361a3f05020dacd1a6dc55001bf10150c76c0bd9d96b17f71",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"packaging\".",
+      "title": "packaging"
+    },
+    {
+      "path": "packaging/cloud/README.md",
+      "sha256": "7a16812ea0f373d74214442d53f5c9b5a8d28f1bddbe3dcbb5f1fddb71c1f304",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Linux evaluation environment\".",
+      "title": "Linux evaluation environment"
+    },
+    {
+      "path": "protocol/AGENTS.md",
+      "sha256": "887da6a2724cf293a5b8474348440b7af2e810754f56ca9b629465de298dbb3b",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"protocol\".",
+      "title": "protocol"
+    },
+    {
+      "path": "query/AGENTS.md",
+      "sha256": "13fde4ea90fe7023eef6abbb14dbcad1de490d53cdffcb8f67011211ad3ef566",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"query\".",
+      "title": "query"
+    },
+    {
+      "path": "relation/AGENTS.md",
+      "sha256": "68b1b4ef86da8af89167ebabcc829c57eb3b4640abe8e92af97e55f235c062cc",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"relation\".",
+      "title": "relation"
+    },
+    {
+      "path": "relation/intellij/NATIVE_FIXTURES.md",
+      "sha256": "650fe633b60e67d394812afaacfd71828aa70a496c7375b8393bc0d61a2f0065",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Headless indexed Kotlin fixtures\".",
+      "title": "Headless indexed Kotlin fixtures"
+    },
+    {
+      "path": "runtime/AGENTS.md",
+      "sha256": "bd3071cda6d51a654ff57098dbc846ecd92a31a1132088093586d838ab09706a",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"runtime\".",
+      "title": "runtime"
+    },
+    {
+      "path": "runtime/hosted/NATIVE_FIXTURES.md",
+      "sha256": "76b683121f0bfe035c2314368318a5d3245a2a2a7feed54145658f1309fce323",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Native hosted wait fixtures\".",
+      "title": "Native hosted wait fixtures"
+    },
+    {
+      "path": "runtime/hosted/native/README.md",
+      "sha256": "fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9",
+      "assessment": "INCLUDED",
+      "reason": "Maintained authored reader-facing prose.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"Mixed-version native acceptance\".",
+      "title": "Mixed-version native acceptance"
+    },
+    {
+      "path": "source/AGENTS.md",
+      "sha256": "0d78896b1b8e375271c1c203b14f0496ee968f98f6633ddb877c6d7cdd8a83ba",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"source\".",
+      "title": "source"
+    },
+    {
+      "path": "symbol/AGENTS.md",
+      "sha256": "67e0a70d517ab03c60cb3c9feee5fc028f31e315b6035a00b7c02203b512d9a4",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"symbol\".",
+      "title": "symbol"
+    },
+    {
+      "path": "topology/AGENTS.md",
+      "sha256": "189ecd3ad0013b96191fe39300c5650d005b2469df5f26476f5ea37c1565f6e8",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"topology\".",
+      "title": "topology"
+    },
+    {
+      "path": "traversal/AGENTS.md",
+      "sha256": "4fcdbf2eeb306630bf0bee32c8a4dde26cf934fa361b4e030904d9008e07c3bf",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"traversal\".",
+      "title": "traversal"
+    },
+    {
+      "path": "workspace/AGENTS.md",
+      "sha256": "48988e359b50747cd961391be8b6822c50a75106636cce0c2606a659fa078597",
+      "assessment": "EXCLUDED",
+      "reason": "Generated navigation map. Authored engineering rules are assessed at their source.",
+      "category": "Contributor documentation",
+      "reader": "Kast contributor or operator",
+      "purpose": "Develop, operate, or maintain the component described by \"workspace\".",
+      "title": "workspace"
+    }
+  ]
+}

@@ -301,6 +301,8 @@ private fun ImpactCompilerTransferDocument.validRoles(): Boolean =
         ImpactTransferKindDocument.SOURCE_CALL_RETURN,
         ImpactTransferKindDocument.FIELD_READ,
         ImpactTransferKindDocument.CONSTRUCTOR_FIELD,
+        ImpactTransferKindDocument.CAST_RESULT,
+        ImpactTransferKindDocument.STRING_CONTENT,
         ImpactTransferKindDocument.RETURN,
         ImpactTransferKindDocument.PROPERTY_ASSIGNMENT,
         ImpactTransferKindDocument.BRANCH_ALTERNATIVE,

@@ -34,7 +34,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T21:29:39.165Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # TRACE and compiler-static completion

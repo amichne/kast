@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 508.62125000000003 599.976" width="508.62125000000003" height="599.976" style="--bg:#FBFBF9;--fg:#20231F;--line:#9CA59A;--accent:#3154C7;--muted:#52594E;--surface:#F2F3EE;--border:#B9C1B4;background:var(--bg)">
+<style>
+
+  text { font-family: 'SUSE', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="reference-reuse-arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="reference-reuse-arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="P" data-to="K" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="223.88924999999995,60.900000000000006 223.88924999999995,96.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#reference-reuse-arrowhead)" />
+<polyline class="edge" data-from="K" data-to="M" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="No" points="189.9265833333333,266.71333333333337 189.9265833333333,380.97600000000006 117.22249999999998,380.97600000000006 117.22249999999998,449.27600000000007" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#reference-reuse-arrowhead)" />
+<polyline class="edge" data-from="K" data-to="C" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Yes" points="257.8519166666666,266.7133333333333 257.8519166666666,324.676 330.5559999999999,324.676 330.5559999999999,392.976" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#reference-reuse-arrowhead)" />
+<polyline class="edge" data-from="C" data-to="U" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Rejected" points="299.85233333333326,429.876 299.85233333333326,453.87600000000003 252.41774999999996,453.87600000000003 252.41774999999996,522.176" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#reference-reuse-arrowhead)" />
+<polyline class="edge" data-from="C" data-to="R" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Admitted" points="361.2596666666666,429.876 361.2596666666666,453.876 408.69425,453.876 408.69424999999995,522.1759999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#reference-reuse-arrowhead)" />
+<g class="edge-label" data-from="K" data-to="M" data-label="No">
+  <rect x="101.72249999999997" y="387.97600000000006" width="30.718000000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="117.08149999999998" y="403.12600000000003" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">No</text>
+</g>
+<g class="edge-label" data-from="K" data-to="C" data-label="Yes">
+  <rect x="312.0559999999999" y="331.676" width="36.658" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="330.38499999999993" y="346.82599999999996" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Yes</text>
+</g>
+<g class="edge-label" data-from="C" data-to="U" data-label="Rejected">
+  <rect x="222.41774999999996" y="460.87600000000003" width="59.230000000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="252.03274999999996" y="476.026" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Rejected</text>
+</g>
+<g class="edge-label" data-from="C" data-to="R" data-label="Admitted">
+  <rect x="380.19425" y="460.876" width="56.854000000000006" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="408.62125000000003" y="476.02599999999995" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Admitted</text>
+</g>
+<g class="node" data-id="P" data-label="Prepared detached inventory" data-shape="rectangle">
+  <rect x="116.21724999999998" y="24" width="215.34399999999997" height="36.900000000000006" rx="0" ry="0" fill="#EAF0FF" stroke="#3154C7" stroke-width="0.75" />
+  <text x="223.88924999999995" y="42.45" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F" dy="4.55">Prepared detached inventory</text>
+</g>
+<g class="node" data-id="K" data-label="Same authority, subject,
+scope, and purpose?" data-shape="diamond">
+  <polygon points="223.88924999999995,96.90000000000002 325.7772499999999,198.788 223.88924999999995,300.676 122.00124999999996,198.788" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="223.88924999999995" y="198.788" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)"><tspan x="223.88924999999995" dy="-3.9000000000000012">Same authority, subject,</tspan><tspan x="223.88924999999995" dy="16.900000000000002">scope, and purpose?</tspan></text>
+</g>
+<g class="node" data-id="M" data-label="Prepare a new inventory" data-shape="rectangle">
+  <rect x="24" y="449.27600000000007" width="186.44499999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="117.22249999999998" y="467.72600000000006" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Prepare a new inventory</text>
+</g>
+<g class="node" data-id="C" data-label="Admit receiving capacity" data-shape="rectangle">
+  <rect x="238.44499999999996" y="392.976" width="184.22199999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="330.5559999999999" y="411.426" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Admit receiving capacity</text>
+</g>
+<g class="node" data-id="U" data-label="Unavailable" data-shape="rectangle">
+  <rect x="196.61574999999996" y="522.176" width="111.604" height="36.900000000000006" rx="0" ry="0" fill="#FAE8E5" stroke="#BC6258" stroke-width="0.75" />
+  <text x="252.41774999999996" y="540.6260000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F" dy="4.55">Unavailable</text>
+</g>
+<g class="node" data-id="R" data-label="Confirm the
+receiving relation" data-shape="stadium">
+  <rect x="336.21975" y="522.1759999999999" width="144.949" height="53.800000000000004" rx="26.900000000000002" ry="26.900000000000002" fill="#E5F5EE" stroke="#278160" stroke-width="0.75" />
+  <text x="408.69425" y="549.0759999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#20231F"><tspan x="408.69425" dy="-3.9000000000000012">Confirm the</tspan><tspan x="408.69425" dy="16.900000000000002">receiving relation</tspan></text>
+</g>
+</svg>

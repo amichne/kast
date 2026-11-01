@@ -12,6 +12,9 @@ sealed interface LocalReferenceResolution {
 
     data object OtherBinding : LocalReferenceResolution
 
+    /** A confirmed write or a read supplied by a different admitted definition. */
+    data object OtherVersion : LocalReferenceResolution
+
     /** The exact binding remains established, but its branch cannot carry the tracked value. */
     data object ExcludedBranch : LocalReferenceResolution
 }
@@ -30,9 +33,11 @@ class LocalBindingReferenceScan<C>(
     private val elapsedMillis: () -> Long,
     private val onWork: (RelationWorkCount) -> Unit = {},
     private val additionalWork: () -> Long = { 0L },
+    private val enumerationSuspension: () -> ValueFlowSuspensionCause? = { null },
+    initialObligations: List<ValueFlowObligation> = emptyList(),
 ) {
     private val edges = mutableListOf<ValueTransfer>()
-    private val obligations = mutableListOf<ValueFlowObligation>()
+    private val obligations = initialObligations.distinct().toMutableList()
     private val consumed = request.remainder?.consumed?.toMutableSet() ?: linkedSetOf()
     private val emitted = request.remainder?.emitted?.toMutableSet() ?: linkedSetOf()
     private var work = 1L
@@ -41,11 +46,17 @@ class LocalBindingReferenceScan<C>(
     fun read(): ValueFlowRead {
         if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
+        if (obligations.any { it.site.basis != request.source.basis })
+            return ValueFlowRead.ContractRejected(ValueFlowStepFailure.BASIS_MISMATCH, count())
+        if (obligations.any { it.site != request.source })
+            return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
         // Reserve one transfer, one new obligation, and one detached address before confirmation.
         if (!fitsCandidate() || !request.budget.resources.permitsWork(MINIMUM_PROGRESS_WORK))
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         spend() // role admission, after the adapter's authority/owner unit
         enumerate(::visit)
+        // Native enumeration can expire before it reaches a candidate. Preserve any earlier scan suspension.
+        if (suspension == null) suspension = enumerationSuspension()
         // Replay can consume the time grant before reaching new input; a later grant may still advance it.
         if (
             suspension != null &&
@@ -71,6 +82,7 @@ class LocalBindingReferenceScan<C>(
         spend()
         when (val result = confirm(candidate)) {
             LocalReferenceResolution.OtherBinding,
+            LocalReferenceResolution.OtherVersion,
             LocalReferenceResolution.ExcludedBranch -> Unit
             is LocalReferenceResolution.Unsupported -> obligation(result.cause)
             is LocalReferenceResolution.Unresolved ->
@@ -92,7 +104,9 @@ class LocalBindingReferenceScan<C>(
                 val bytes =
                     ValueFlowStep.detachedByteCount(request.source, domain, edges + transfer.value, obligations).value
                 val reserve = 2048L.addBytes(request.source.retainedBytes)
-                if (!request.budget.permitsReturnedBytes(bytes.addBytes(reserve))) {
+                val progress =
+                    LocalBindingReadRemainder.storageBytes(request.source, consumed.size + 1, emitted + target.identity)
+                if (!request.budget.permitsReturnedBytes(bytes.addBytes(progress).addBytes(reserve))) {
                     obligation(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
                 } else if (emitted.add(target.identity)) edges += transfer.value
             }
@@ -143,7 +157,7 @@ class LocalBindingReferenceScan<C>(
         val remaining = request.budget.returnedBytes.value - base
         val reserve = 2048L.addBytes(request.source.retainedBytes)
         val next =
-            LocalBindingReadRemainder.storageBytes(request.source, consumed.size, emitted.size) +
+            LocalBindingReadRemainder.storageBytes(request.source, consumed.size, emitted) +
                 1024L +
                 2048L +
                 3L * request.source.retainedBytes

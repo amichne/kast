@@ -189,7 +189,9 @@ class ImpactPathSchemaTest {
 
     @Test
     fun `path schema closes terminal evidence variants and preserves all required discriminator shapes`() {
+        println("IMPACT_PATH_SCHEMA stage=GENERATE")
         val document = independentImpactSchemaWithDefinitions(ImpactPathDocument.serializer())
+        println("IMPACT_PATH_SCHEMA stage=GENERATED characters=${document.toString().length}")
         val terminal =
             CallbackSchemaFixture(document)
                 .definition("independentRoot")
@@ -223,6 +225,7 @@ class ImpactPathSchemaTest {
         val schema =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
         for (example in examples()) {
+            println("IMPACT_PATH_SCHEMA stage=VALIDATE terminal=${example.terminal::class.simpleName}")
             val raw = Json.encodeToString(ImpactPathDocument.serializer(), example)
             assertTrue(schema.validate(raw, InputFormat.JSON).isEmpty(), raw)
             for (malformed in

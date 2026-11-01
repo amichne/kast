@@ -11,7 +11,9 @@ plugins {
     id("kast.role.ide-read-only")
 }
 
-group = "${rootProject.group}.workspace"
+val repositoryRoot = project.isolated.rootProject.projectDirectory
+
+group = "${providers.gradleProperty("GROUP").get()}.workspace"
 
 base {
     archivesName.set("workspace-intellij-read")
@@ -105,8 +107,9 @@ dependencies {
     testFixturesImplementation(testFixtures(project(":workspace:contract")))
 }
 
-private val workspaceContractFriendPath =
-    project(":workspace:contract").layout.buildDirectory.dir("classes/kotlin/main")
+private val workspaceContractFriendPath = providers.provider {
+    repositoryRoot.dir("workspace/contract/build/classes/kotlin/main")
+}
 
 tasks.withType<KotlinCompile>().configureEach {
     dependsOn(":workspace:contract:compileKotlin")
@@ -127,7 +130,7 @@ val hostedQueryPluginJar =
         archiveBaseName.set("kast-hosted-query")
         archiveVersion.set("0.1.0")
         from(sourceSets.main.get().output)
-        from(rootProject.layout.projectDirectory.dir("experiments/host-observation/hosted-plugin")) {
+        from(repositoryRoot.dir("experiments/host-observation/hosted-plugin")) {
             expand(
                 "ideBuild" to ideHostBuild,
                 "kotlinBuild" to "$ideHostBuild-IJ",
@@ -135,9 +138,9 @@ val hostedQueryPluginJar =
                     "sha256:" +
                         MessageDigest.getInstance("SHA-256")
                             .digest(
-                                rootProject
-                                    .file(
-                                        "protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json"
+                                File(
+                                        repositoryRoot.asFile,
+                                        "protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json",
                                     )
                                     .readBytes()
                             )
@@ -146,8 +149,10 @@ val hostedQueryPluginJar =
                     "sha256:" +
                         MessageDigest.getInstance("SHA-256")
                             .digest(
-                                rootProject
-                                    .file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
+                                File(
+                                        repositoryRoot.asFile,
+                                        "protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json",
+                                    )
                                     .readBytes()
                             )
                             .joinToString("") { "%02x".format(it) },
@@ -174,6 +179,6 @@ val hostedQueryPlugin =
 // The actual encoder is compared with the exact bytes also validated by CLI schema tests.
 tasks.named("test") {
     inputs
-        .file(rootProject.layout.projectDirectory.file("cli/src/test/resources/hosted-read-failure-encodings.json"))
+        .file(repositoryRoot.file("cli/src/test/resources/hosted-read-failure-encodings.json"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }

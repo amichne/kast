@@ -36,7 +36,8 @@
       "type": "DECLARATION"
     },
     "valuePath": [],
-    "callStack": []
+    "callStack": [],
+    "conditions": []
   },
   "admission": {
     "acquisition": {

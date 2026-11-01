@@ -82,7 +82,7 @@ private class CallbackSupplierEndpoints {
     }
 
     private fun argument(value: CallbackArgumentBinding) {
-        call(value.invocation)
+        value.frame.stateEndpoints().forEach(::endpoint)
         files += value.invocationOwner.file
         files += value.parameter.file
     }
@@ -101,6 +101,8 @@ private class CallbackSupplierEndpoints {
         endpoint(value.enclosing)
         value.stateEndpoints().forEach(::endpoint)
         when (val role = value.role) {
+            is ValueRole.StringConversionResult -> call(role.invocation)
+            is ValueRole.LoopResult -> role.result.protocol.invocations().forEach(::call)
             is ValueRole.Argument -> call(role.call)
             is ValueRole.Receiver -> call(role.call)
             is ValueRole.Formal -> Unit

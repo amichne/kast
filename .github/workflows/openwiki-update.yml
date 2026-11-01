@@ -22,7 +22,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22"
+          node-version: "24.21.0"
+
+      - name: Set up Python for the public OKF projection
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install the locked projection runtimes
+        run: |
+          python3 -m pip install --disable-pip-version-check uv==0.12.9
+          npm ci --ignore-scripts --engine-strict --prefix docs/tooling/markdown
 
       - name: Install OpenWiki
         # mermaid + jsdom are optional; they add high-fidelity validation of Mermaid diagrams. Remove if your wiki has none.
@@ -43,6 +53,13 @@ jobs:
           LANGCHAIN_TRACING_V2: "false"
           LANGSMITH_TRACING: "false"
 
+      - name: Project completed OKF pages into the public site
+        id: projection
+        if: ${{ !cancelled() && (steps.openwiki.outcome == 'success' || steps.openwiki.outcome == 'failure') }}
+        run: |
+          git add -- openwiki
+          uv run --locked --project docs/tooling python docs/tooling/okf_public.py --write
+
       - name: Remove transient OpenWiki run state
         if: ${{ !cancelled() }}
         run: rm -f -- openwiki/.run.json
@@ -53,13 +70,13 @@ jobs:
         # CLAUDE.md is listed only when present: git add fails on a missing path
         # and then stages nothing.
         run: |
-          paths=openwiki,AGENTS.md,.github/workflows/openwiki-update.yml
+          paths=openwiki,AGENTS.md,.github/workflows/openwiki-update.yml,docs/public
           if [ -e CLAUDE.md ]; then paths="$paths,CLAUDE.md"; fi
           echo "list=$paths" >> "$GITHUB_OUTPUT"
 
       - name: Create OpenWiki update pull request
         id: create-pr
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.projection.outcome == 'success' }}
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           add-paths: ${{ steps.paths.outputs.list }}
@@ -72,7 +89,8 @@ jobs:
             OpenWiki result: ${{ steps.openwiki.outcome }}
 
             When the result is `failure`, this PR intentionally preserves only the
-            pages completed before the failure. Merge it to make that progress the
+            pages completed before the failure, with their public projections.
+            A rejected projection prevents this PR. Merge it to make that progress the
             baseline for the next scheduled run.
 
       - name: Annotate OpenWiki update pull request

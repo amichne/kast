@@ -4,7 +4,17 @@ description: "Read query facts, completion evidence, output pages, and saved-sta
 icon: "list-checks"
 ---
 
-A query result contains semantic facts and their coverage. It also reports producer progress and how much output was shown. Each field answers a distinct part of the source question.
+A query result reports facts, their coverage, and producer progress. It also states how much output the response includes.
+
+Read the fields in this order before you draw a conclusion:
+
+1. Read the tool-call outcome and the semantic status.
+2. Read the searched scope and completion interpretation.
+3. Examine the returned facts with their source evidence and stated limits.
+4. Use the issued handles if more rows or evidence remain.
+
+A full page can belong to an incomplete answer. A short preview can belong to a complete answer.
+Page size alone proves neither case.
 
 <a id="interpret-coverage-before-making-a-claim" />
 
@@ -26,7 +36,7 @@ Complete coverage means that the scan finished within the declared supported dom
 
 ## RUN completion
 
-The query response uses `kast.query.run.v8`. Host and Control must agree on that contract.
+The query response uses `kast.query.run.v9`. Host and Control must agree on that contract.
 
 Every public run uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. The work must finish without item failures or omitted evidence.
 
@@ -36,7 +46,17 @@ This interpretation permits source filters and deduplication before `TRACE`. An 
 
 Unresolved compiler mappings, missing source membership, stale dependency evidence, and exhausted grants still prevent completion.
 
-Impact investigations also keep their original ledgers intact and meet all proof rules. The model does not prove that code ran or that a path can run.
+An impact investigation keeps its original ledgers and must meet all proof rules. The model does not prove that code ran or that a path can run.
+
+### Two different meanings of missing output
+
+Suppose a complete query produces five rows, but its preview shows two.
+The remaining three rows are output to read through the issued handle. They are not unfinished search work.
+
+Now suppose a query stops before it proves completion and keeps two rows as rejection evidence.
+Those rows remain useful facts with their original limits. The last evidence page does not turn the rejected answer into a complete answer.
+
+These numbers illustrate the distinction. They are not a captured Kast response.
 
 <a id="read-evidence-from-a-completion-rejection" />
 
@@ -52,7 +72,7 @@ A historical checkpoint records producer progress. It grants no right to run new
 
 If supplied, `seedQuery` starts a new investigation from proved preview identities. It does not cover rows left out or scope left unfinished.
 
-If retention fails, the result reports the storage cause. It does not invent a handle. `RETENTION_UNAVAILABLE` can keep a complete scan even if needed storage is not available.
+If retention fails, the result reports the storage cause without a result reference. `RETENTION_UNAVAILABLE` can still report a complete scan.
 
 <a id="read-rows-and-evidence-pages" />
 
@@ -138,10 +158,9 @@ When `relation_graph` is present, compact rows use table IDs instead of repeatin
 | `reference-edge.witness` | `relation_graph.witnesses[].id` |
 | Witness `target` and declaration-owned `ownership.declaration` | `relation_graph.nodes[].id` |
 
-Each node keeps its exact reference in `node.symbol.selector`. Pass that selector, not the node ID, to a fresh `SYMBOL_REFS` query.
-Node, connection, and witness IDs describe evidence within `relation_graph.basis`; they are not live declaration selectors.
+Each node keeps its exact reference in `node.symbol.selector`. For a fresh `SYMBOL_REFS` query, pass that selector. Node, connection, and witness IDs identify evidence only within `relation_graph.basis`. They cannot select live declarations.
 
-`relation_graph.detail` supplies arguments for a detailed retained read. Table joins recover compact descriptions; they do not advance row or evidence cursors.
+`relation_graph.detail` supplies arguments for a detailed retained read. Table joins recover compact descriptions. They do not advance row or evidence cursors.
 
 ```json
 {
@@ -166,6 +185,32 @@ The IDEA `kast_semantic_read` receipt reports retention allowances and what stor
 
 That receipt counts proof storage with a conservative charge. It does not measure heap use or encoded output bytes.
 
+## Value-path relationships
+
+Full paths and compact findings include `classification`.
+
+| Classification | Meaning |
+| --- | --- |
+| `ESTABLISHED` with `EXACT` | Every admitted step preserves the tracked value. |
+| `ESTABLISHED` with `DERIVED` | The path includes established content construction. |
+| `NOT_ESTABLISHED` | The record identifies the first step without established value correspondence. |
+
+A later exact step keeps earlier derivation or missing proof.
+Compiler, reviewed-library, and model evidence keep their distinct authority.
+Admitted modeled connections keep their models and qualifications.
+A modeled step alone yields `NOT_ESTABLISHED`.
+
+A Kotlin string template consumes the established embedded result.
+A `String?` value contributes content only when its value is non-null.
+Its null alternative constructs literal `null` without source-content contribution.
+A null-only result keeps an explicit constant-construction record.
+Each repeated entry keeps its own occurrence, even when entries reach one requested site.
+
+A constant getter or conversion can discard its input.
+Its own String result can still contribute content.
+An implicit object conversion uses the selected `kotlin.Any.toString()` member or override.
+An unsupported conversion keeps its exact entry and selected member evidence.
+
 ## Saved state and identity
 
 Fresh `RUN` queries can reacquire exact references under current compiler authority. This does not refresh earlier rows or evidence.
@@ -183,8 +228,13 @@ Changed epochs, owner retirement, expiry, or eviction can block reuse. Reading o
 
 Direct MCP puts the operation document in `result.structuredContent`. Tool RPC and completed hosted calls carry `document`.
 
-MCP transport rejection uses a distinct envelope: `result.isError` is `true`, and `result.structuredContent` contains `type: "MCP_REJECTED"`, `status: "rejected"`, and `error`.
-For an overlapping invocation, `error.code` is `INVOCATION_IN_PROGRESS`. This is not a canonical semantic rejection or evidence that the active query failed.
+MCP transport rejection returns a distinct envelope:
+
+- `result.isError` is `true`.
+- `result.structuredContent` contains `type: "MCP_REJECTED"`, `status: "rejected"`, and `error`.
+
+For an overlapping invocation, `error.code` is `INVOCATION_IN_PROGRESS`. This is a transport rejection. It does not report a canonical semantic rejection or prove that the active query failed.
+
 [MCP concurrency](/reference/limits#mcp-concurrency) describes the per-connection limit and recovery.
 
 `health_check` has its own readiness shape. [The source map](/reference/source-map#query-execution-and-retention) identifies the query and retention owners.

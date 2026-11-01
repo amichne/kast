@@ -5,7 +5,7 @@ plugins {
     id("kast.role.intellij-read")
 }
 
-group = "${rootProject.group}.diagnostic"
+group = "${providers.gradleProperty("GROUP").get()}.diagnostic"
 
 base {
     archivesName.set("diagnostic-intellij")

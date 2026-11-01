@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4f61a651393ca3727572b7d51c9d1c1a0eaf7390598a2a6b00833694c2596e13",
+  "pageVersion": "sha256:96352b140f55fa6a55e0f3aeee1fc52cad46dc20d5956f2664718cffdd171896",
   "claims": [
     {
       "id": "claim_798895ae650c48729590630fac020cc9",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt",
-          "version": "repo-file-v1:sha256:4464036f12bc52cff78b800bb54707d221751793d9b873b0dbc281af6211b305"
+          "version": "repo-file-v1:sha256:1c2345a94b375af672dfc51de5c61210593425d11d4edd8b580fc21fe055a2e8"
         },
         {
           "resource": "repo://traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/RelationBackedTraversal.kt",
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

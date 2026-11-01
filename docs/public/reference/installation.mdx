@@ -1,131 +1,136 @@
 ---
-title: "Install Kast"
-sidebarTitle: "Release channels and installation"
-description: "Install the matched IDEA plugin and native Kast command, then connect your agent."
+title: "Install and update Kast"
+sidebarTitle: "Installation and updates"
+description: "Install Kast from a remote script, select the latest published main build, and load its Host through a compatible reload or an IDEA restart."
 icon: "download"
 keywords:
-  - "install"
+  - "upgrade"
   - "IntelliJ IDEA"
   - "Kotlin"
 ---
 
-Use these steps to select a release channel and IDEA installation. The installer puts Control, Host, service settings, and the public command in their owned locations.
-
-1. [Check platform prerequisites.](#before-you-install)
-2. [Install the selected release.](#1-install-the-selected-release)
-3. [Load Host and inspect state.](#2-load-the-plugin-and-inspect-state)
-4. [Prove a semantic connection.](#3-establish-a-semantic-connection)
+Use the remote installer for an initial installation, then use `kast upgrade` for updates.
+The normal setup path tracks the latest published development build with `--channel main`.
 
 ## Before you install
 
-Use an Apple silicon Mac with a Kotlin Gradle repository. Select IDEA build `262.*` with bundled Kotlin and Java 25 JBR.
+Use an Apple silicon Mac and a Kotlin Gradle project.
+Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Your project's JDK does not replace the IDEA runtime.
 
-If IDEA uses another path, change the path in this command.
+Use Python 3.12 or 3.13, available as `python3` on `PATH`. For upgrades, install uv 0.12.9 or later. The [optional MCP service](/reference/integrations#optional-mcp) uses the same runtime versions.
 
-```shell
-idea="/Applications/IntelliJ IDEA.app/Contents"
-cat "$idea/Resources/build.txt"
-cat "$idea/jbr/Contents/Home/release"
-```
-
-Make sure that the build starts with `IU-262.` or `IC-262.`. Make sure that the runtime reports Java 25 and `aarch64` or `arm64`.
+Save your project work before installation or an update.
 
 <a id="install" />
 
-## 1. Install the selected release
+## Remote initial install
 
-Run the public installer from a terminal.
+Run this command from a terminal:
 
 ```shell wrap
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
 
-By default, the installer selects Control and Host from the same stable release.
-It uses GitHub's public release redirect, without an anonymous API request.
-It admits only a version URL from `amichne/kast` and examines artifact checksums and contracts before installation.
+This command needs no checkout or existing `kast` installation. `--developer-latest` selects the latest qualified development build from the published channel. It installs matching Control and Host artifacts and resets stale Kast state. `--skip-codex-plugin` skips the optional MCP setup. After installation, use [agent setup](/reference/integrations) for CLI guidance.
 
-If release selection fails, the error keeps the HTTP cause and names `--version <major.minor.patch>` as the recovery option.
-The installer replaces the selected Host directory even when its old receipt or file inventory differs.
-A replacement error triggers restoration of the prior Host and receipt.
-Failed restoration keeps recovery evidence.
+The installer replaces Kast-owned installation files, Host files, and bundled agent assets. Replacement can end active Kast sessions. Restart IDEA to load the installed Host. Start a fresh agent session.
 
-The installer offers the Codex plugin. Accept the default. Restart IDEA and Codex to use it.
+The installation directory is `$HOME/.local/share/kast`.
+The command path is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, or `$HOME/.local/bin/kast` otherwise.
+If the shell cannot find `kast`, add the reported command directory to `PATH`.
+The installer does not edit shell profiles.
 
-For installation without a prompt, append `-- --install-codex-plugin`. To omit Codex plugin installation, append `-- --skip-codex-plugin`. The former `--register-codex-mcp` and `--skip-codex-mcp` options remain aliases for these plugin choices.
+For another IDEA installation, append `--idea-home "/Applications/IntelliJ IDEA.app"` after the installer options.
+Keep Bash's `--` separator before those options.
+To preview installation without changes, append `--dry-run`. To inspect structured diagnostics, append `--verbose`.
 
-For structured error details, append `-- --verbose`. Keep the `--` separator before installer options.
+## 1. Install the selected release
 
-<Accordion title="Latest developer build">
-  Developer builds use the published prerelease channel.
+List the published builds:
 
-  ```shell wrap
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
-  ```
+```shell
+kast versions
+```
 
-  The installer prints the selected version and source revision. Your local checkout and installed version do not select that published candidate.
+The catalog lists up to five selectable main builds. Each entry shows its revision, version, and platform targets.
 
-  Terminal downloads show progress. Ctrl-C stops installation. `kast upgrade` keeps the developer channel.
+Preview the latest development build:
 
-  A developer installation resets stale Kast state before replacement. For a stable installation, `--force` asks for the same cleanup.
+```shell
+kast upgrade --channel main --dry-run
+```
 
-  Reset also removes old Kast configuration, launcher backups, and the default Pi and Copilot extensions.
-  With a Host helper that supports reset, it also removes known historical copies of the plugin.
-  Stable locks stay in place. Unrelated extensions and plugins stay in place.
+A successful preview returns `PLANNED`.
+It admits the selected artifacts without installation changes or an IDEA restart.
 
-  To preview the plan without changing files or registrations, use `--dry-run`. To omit Codex plugin installation, use `--skip-codex-plugin`.
-</Accordion>
+Apply the latest development build and permit a normal IDEA restart when necessary:
 
-<Accordion title="Another IDEA installation">
-  Select the application path explicitly.
+```shell
+kast upgrade --channel main --restart-ide
+```
 
-  ```shell wrap
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
-  ```
-</Accordion>
+Kast uses a compatible reload when the running Host permits it.
+Active Kast sessions can end so that the selected build can replace the prior build.
+If you omit `--restart-ide`, a necessary restart returns `RESTART_REQUIRED` before installation changes.
+If IDEA is already stopped, Kast can install the selected build without starting IDEA.
+Read the [update outcome](/reference/management#lifecycle-result-contract) before you start another session.
 
-<Accordion title="Recorded component pair">
-  This command selects the [historical pair](/reference/compatibility#recorded-release-pair), rather than the latest channel release.
+### Select another IDEA installation
 
-  ```shell wrap
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
-  ```
+Supply the exact IDEA app path:
 
-  `--version` selects Control. `--host-version` selects Host.
-</Accordion>
+```shell
+kast upgrade --channel main --idea-home "/Applications/IntelliJ IDEA.app" --restart-ide
+```
+
+The selected IDEA installation and profile determine which Host Kast updates.
+An unsupported custom-profile restart rejects before installation changes.
+
+### Pin a published build
+
+Use one selector per command: `--channel`, `--version`, or `--commit`.
+A version selector uses an exact published release version.
+A commit selector uses a published main revision or its unique displayed 12-character prefix.
+Copy the revision from `kast versions`.
+
+Replace `VERSION` or `MAIN_REVISION` with your selected value:
+
+```shell
+kast upgrade --version VERSION
+kast upgrade --commit MAIN_REVISION
+```
+
+Either exact selector records a pin.
+An unqualified `kast upgrade` rejects a pin with `PINNED_BUILD` before installation changes.
+To track development builds again, use `kast upgrade --channel main`.
 
 ## 2. Load the plugin and inspect state
 
-Restart IDEA to load Host. Check the installed version and command path. Check the recorded connections too.
+Examine installation and loaded Host evidence separately:
 
 ```shell
-kast status
+kast status --json
 ```
 
-Status reports receipt records and passive runtime evidence.
-An empty registration list does not describe Codex's plugin catalog.
-`EPOCH_UNAVAILABLE` does not prove that an installed MCP session failed.
-Use the semantic exercise in step 3 to examine that session.
+`installedBuild` describes the files on disk. `applicationHost` describes the admitted running IDEA process and its loaded Host.
+`updatePolicy` describes future selection. `unresolvedTransaction` reports unfinished installation work.
+Status starts no Java process and requests no Host lifecycle action.
 
-If `XDG_CONFIG_HOME` is nonempty, the public executable is `$XDG_CONFIG_HOME/kast`. Otherwise, it is `$HOME/.local/bin/kast`.
+Compare `installedBuild` with `applicationHost` to distinguish installed files from the loaded Host. A query supplies separate evidence for project readiness and completion.
 
-If the shell cannot find the command, use the installer-reported absolute path. Add its directory to `PATH` when needed.
+<span id="coordinator-endpoint" />
 
-The installer reports a missing `PATH` entry. It does not change shell profiles.
-
-### Coordinator endpoint
-
-Fresh and replacement installations use a private endpoint. If a saved `codex-control` selection is admitted, replacement changes it to `private`.
-
-The installer rejects an explicit `codex-control` selection. It does not start a broker or publish desktop discovery. The plugin's MCP session prepares IntelliJ. Codex owns its App Server and control socket.
-
-Read [App Server compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for endpoint admission and migration details.
+Use [agent setup](/reference/integrations) to install the selected agent's guidance.
+If an update reports `HARNESS_REFRESH_REQUIRED`, repeat that setup before a fresh agent session.
 
 <span id="3-establish-a-semantic-connection" />
 
 ## 3. Prove a semantic connection
 
-[Connect your agent](/reference/integrations). Complete [the first-query exercise](/tutorials/first-query) in the intended worktree.
+Start IDEA when the outcome is `INSTALLED_NOT_RUNNING`.
+Start a fresh agent session in the intended Kotlin repository or worktree.
+Ask [a question about your code](/start#3-ask-about-your-code).
 
-Installation success alone does not prove which Host is loaded. It does not prove that the workspace is ready. [Lifecycles](/reference/lifecycles) separates those facts.
-
-For recovery or removal, use [Manage Kast](/reference/management). Before another installation try, keep the failed stage and recovery path.
+Keep the returned scope and completion evidence with the answer.
+Use [Manage Kast](/reference/management) for update outcomes and recovery.

@@ -25,7 +25,7 @@ class SharedNativeFixtureIdeaTest {
         val original = mapOf("lib/platform.jar" to "platform", "obsolete.jar" to "remove me")
         archive(original)
         val seed = run()
-        assertEquals(TaskOutcome.SUCCESS, seed.task(PRODUCER)?.outcome)
+        assertProvisioned(seed, "initial SDK archive")
         assertEquals(1, seed.tasks.count { it.path.endsWith(":extractNativeTestIdea") })
         assertHomes(original)
 
@@ -39,17 +39,17 @@ class SharedNativeFixtureIdeaTest {
 
         val changed = mapOf("lib/platform.jar" to "changed platform", "plugins/Kotlin/lib/plugin.jar" to "Kotlin")
         archive(changed)
-        assertEquals(TaskOutcome.SUCCESS, run().task(PRODUCER)?.outcome)
+        assertProvisioned(run(), "same-path SDK archive replacement")
         assertHomes(changed)
 
         root.resolve("relation/intellij/build/native-test/idea/lib/platform.jar").writeText("corrupted output")
-        assertEquals(TaskOutcome.SUCCESS, run().task(PRODUCER)?.outcome)
+        assertProvisioned(run(), "SDK output corruption")
         assertHomes(changed)
 
         GradleRunner.create().withProjectDir(root.toFile()).withArguments(
-            ":relation:intellij:clean", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx512m -XX:ActiveProcessorCount=2",
+            ":relation:intellij:clean", "--no-watch-fs", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx512m -XX:ActiveProcessorCount=2",
         ).build()
-        assertEquals(TaskOutcome.SUCCESS, run().task(PRODUCER)?.outcome)
+        assertProvisioned(run(), "producer clean")
         assertHomes(changed)
     }
 
@@ -103,12 +103,19 @@ class SharedNativeFixtureIdeaTest {
     private fun runner(vararg arguments: String): GradleRunner = GradleRunner.create()
         .withProjectDir(root.toFile())
         .withArguments(
-            listOf(":symbol:intellij:observe", ":runtime:hosted:observe", "--configuration-cache", "--build-cache",
+            // These cases prove declared inputs without asynchronous OS watcher delivery.
+            listOf(":symbol:intellij:observe", ":runtime:hosted:observe", "--configuration-cache", "--no-watch-fs", "--build-cache",
                 "--parallel", "--console=plain", "--max-workers=2",
                 "-Dorg.gradle.jvmargs=-Xmx512m -XX:ActiveProcessorCount=2") + arguments,
         )
 
     private fun run(vararg arguments: String): BuildResult = runner(*arguments).build()
+
+    private fun assertProvisioned(result: BuildResult, changedInput: String) {
+        assertEquals(TaskOutcome.SUCCESS, result.task(PRODUCER)?.outcome) {
+            "$PRODUCER after $changedInput:\n${result.output.takeLast(8_192)}"
+        }
+    }
 
     private fun archive(entries: Map<String, String>) {
         ZipOutputStream(Files.newOutputStream(root.resolve("idea.zip"))).use { zip ->

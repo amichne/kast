@@ -1,6 +1,5 @@
 package support.architecture.gradle
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
@@ -42,30 +41,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
 @CacheableTask
-abstract class VerifyKastArchitectureTask : DefaultTask() {
-    init {
-        observedProjectPaths.convention(emptyList())
-        observedProjectDependencies.convention(emptyList())
-        observedExportedProjectDependencies.convention(emptyList())
-        observedModuleRoleConventions.convention(emptyList())
-        classDirectoryOwners.convention(emptyList())
-    }
-
-    @get:Input
-    abstract val observedProjectPaths: ListProperty<String>
-
-    @get:Input
-    abstract val observedProjectDependencies: ListProperty<String>
-
-    @get:Input
-    abstract val observedExportedProjectDependencies: ListProperty<String>
-
-    @get:Input
-    abstract val observedModuleRoleConventions: ListProperty<String>
-
-    @get:Input
-    abstract val classDirectoryOwners: ListProperty<String>
-
+abstract class VerifyKastArchitectureTask : ModuleBuildFactsConsumer() {
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val compiledClassDirectories: ConfigurableFileCollection
@@ -78,6 +54,7 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
+        val facts = moduleFacts()
         val canonical = when (val policy = canonicalArchitecturePolicy()) {
             is ArchitecturePolicyValidation.Valid -> policy.architecture
             is ArchitecturePolicyValidation.Invalid -> throw GradleException(
@@ -88,10 +65,10 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         val graph = when (
             val parsed = ArchitectureObservationParser.parse(
                 policy,
-                observedProjectPaths.get(),
-                observedProjectDependencies.get(),
-                observedExportedProjectDependencies.get(),
-                observedModuleRoleConventions.get(),
+                facts.map { it.projectPath },
+                facts.flatMap { it.productionDependencies },
+                facts.flatMap { it.exportedDependencies },
+                facts.flatMap { it.roleConventions },
             )
         ) {
             is ArchitectureObservationValidation.Valid -> parsed.graph
@@ -103,7 +80,7 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
         val effects = when (
             val scan = scanArchitectureEffects(
                 policy,
-                classDirectoryOwners.get(),
+                facts.flatMap { it.classDirectoryOwners },
                 rootDirectory.get().asFile.toPath(),
             )
         ) {
@@ -157,13 +134,8 @@ abstract class VerifyKastArchitectureTask : DefaultTask() {
 }
 
 @CacheableTask
-abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
+abstract class GenerateKastModuleKnowledgeTask : ModuleBuildFactsConsumer() {
     init {
-        observedProjectPaths.convention(emptyList())
-        observedProjectDependencies.convention(emptyList())
-        observedExportedProjectDependencies.convention(emptyList())
-        observedModuleRoleConventions.convention(emptyList())
-        classDirectoryOwners.convention(emptyList())
         agentGuidePaths.convention(emptyList())
     }
 
@@ -172,21 +144,6 @@ abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
 
     @get:Input
     abstract val sourceRevision: org.gradle.api.provider.Property<String>
-
-    @get:Input
-    abstract val observedProjectPaths: ListProperty<String>
-
-    @get:Input
-    abstract val observedProjectDependencies: ListProperty<String>
-
-    @get:Input
-    abstract val observedExportedProjectDependencies: ListProperty<String>
-
-    @get:Input
-    abstract val observedModuleRoleConventions: ListProperty<String>
-
-    @get:Input
-    abstract val classDirectoryOwners: ListProperty<String>
 
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -211,6 +168,7 @@ abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
 
     @TaskAction
     fun generate() {
+        val facts = moduleFacts()
         val architecture = when (val policy = canonicalArchitecturePolicy()) {
             is ArchitecturePolicyValidation.Valid -> policy.architecture
             is ArchitecturePolicyValidation.Invalid -> throw GradleException(
@@ -221,10 +179,10 @@ abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
         val graph = when (
             val parsed = ArchitectureObservationParser.parse(
                 architecture,
-                observedProjectPaths.get(),
-                observedProjectDependencies.get(),
-                observedExportedProjectDependencies.get(),
-                observedModuleRoleConventions.get(),
+                facts.map { it.projectPath },
+                facts.flatMap { it.productionDependencies },
+                facts.flatMap { it.exportedDependencies },
+                facts.flatMap { it.roleConventions },
             )
         ) {
             is ArchitectureObservationValidation.Valid -> parsed.graph
@@ -235,7 +193,7 @@ abstract class GenerateKastModuleKnowledgeTask : DefaultTask() {
         val effects = when (
             val scan = scanArchitectureEffects(
                 architecture,
-                classDirectoryOwners.get(),
+                facts.flatMap { it.classDirectoryOwners },
                 root,
             )
         ) {

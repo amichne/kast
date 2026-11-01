@@ -1,10 +1,10 @@
 ---
 title: "Schemas and samples"
-description: "Find generated schemas, request samples, and recorded responses for Kast tools."
+description: "Find generated schemas, request samples, and result contracts for Kast tools."
 icon: "braces"
 ---
 
-Generated schemas define the encoded requests and results. Use the installed catalog for your release. Links on `main` can describe newer behavior.
+Generated schemas define the encoded requests and results. Use the tool catalog from your Kast session.
 
 ## Raw JSON Schema
 
@@ -41,41 +41,11 @@ Use [Query forms](/reference/api) to choose which inputs belong together. [Lifec
 
 Some samples are valid inputs. Others use inputs that Kast rejects. Their references are placeholders. They carry no live workspace authority.
 
-Examples do not prove that a native tool ran. They do not report current compiler facts. A recorded response keeps the source revision. It also keeps the environment of the run.
+Examples do not prove that a native tool ran. They do not report current compiler facts. A live response belongs to the source and workspace that the query examined.
 
-## Recorded walkthrough
+<span id="recorded-walkthrough" />
 
-The [record of 16 calls](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) contains past results. The walkthrough and composition examples use those results.
-
-| Capture fact | Value |
-| --- | --- |
-| Date | September 29, 2026 (UTC) |
-| CLI and IDEA plugin | `0.20260928.121700` |
-| IDEA/Kotlin build | `262.10315.125` |
-| Checkout | `81fb023c06f8dba63e3531f49632f465b5cc6b21` |
-| Tutorial source | `56df0912e46b182bb4ad8beabd1512823100fd72`. The only changes from that checkout were in `docs/public`. |
-| Successful and qualified reads | Same host, epoch 7, `SAVED_PSI_COMMITTED` content. |
-
-| Calls | What happened |
-| --- | --- |
-| `01`–`03`: discover and save A/B | These calls found one interface, ten implementations, and two `Concat` declarations. Scan coverage was complete. |
-| `04`–`05`: `UNION`/`WHERE` and `INTERSECT` | `UNION` and its filter kept two distinct declarations. `INTERSECT` kept one shared declaration. |
-| `06`–`07`: join C, project, trace references | The join kept one pair. The projected query found one compiler-confirmed reference occurrence. |
-| `08`–`09`: read retained A/C | These reads returned ten symbols and one pair. They kept the original result identities. |
-| `10`–`11`, `16`: incomplete `right` input | The input had one qualified discovery row. Both `DIFFERENCE` and `ANTI` rejected it with `right-input-incomplete`. |
-| `12`–`13`: bounded execution and resume | The first reply showed one row and a continuation. The next showed the other row with complete coverage. |
-| `14`–`15`: find `exactStage`, walk callers | The lookup found one function. The walk returned one caller record at depth 1. The bound was two hops. |
-
-The capture replaces the absolute checkout prefix with `/workspace/kast`. It keeps references, offsets, identities, and qualifications.
-
-The capture is older than compact output and current complete-only execution. Its semantic continuation behavior is historical. It is not the public `RESUME` contract today.
-
-The capture predates contract 17. Its requests have no `terminalStep` and keep the old syntax.
-The walkthrough and composition pages now show EMIT terminals. Their results still come from the old run. These syntax changes are not new run evidence.
-
-Current `RESUME` only shows produced output. Current `RUN` does the work across semantic pages. It rejects incomplete proof.
-
-Schema tests check the saved JSON. They do not replay the original IDEA interaction.
+[The query walkthrough](/reference/walkthrough) shows how to compose a request with fresh references.
 
 ## Public request example
 

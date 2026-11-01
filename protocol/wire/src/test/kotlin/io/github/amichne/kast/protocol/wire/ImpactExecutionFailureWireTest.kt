@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionPathCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRepresentationCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRowIdentityCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
+import io.github.amichne.kast.protocol.contract.ImpactExecutionSiteCause
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.wire.presentation.QueryRejectionCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.toCliDocument
@@ -36,8 +37,9 @@ class ImpactExecutionFailureWireTest {
                 ImpactExecutionFailureDocument.Selection(ImpactExecutionSelectionCause.PRESENTATION_ONLY_ROWS),
                 ImpactExecutionFailureDocument.RowIdentity(ImpactExecutionRowIdentityCause.CHANGED_RETAINED_ROWS),
                 ImpactExecutionFailureDocument.PresentationOnly,
+                ImpactExecutionFailureDocument.Site(ImpactExecutionSiteCause.CONDITIONS_NOT_PRESERVED),
             )
-        assertEquals(9, expected.size)
+        assertEquals(10, expected.size)
         for ((index, cause) in cases.withIndex()) {
             val rejection = QueryRunRejection.ImpactExecutionRejected(cause)
             val encoded =

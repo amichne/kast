@@ -51,6 +51,7 @@ import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument
 import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -151,6 +152,13 @@ internal object QueryDeliveryFixtures {
             "disposedOutput" to unavailable(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
         )
 
+    fun presentationHeaders(): List<ToolRpcReply> =
+        listOf(
+            page(0, 1, 0, 0, summary = true, header = true),
+            page(0, 1, 0, 0, rejectedProof = true, header = true),
+            rejection(header = true),
+        )
+
     private fun budgetProgress() =
         QueryQualifiedProgressDocument.Resumable(
             QueryCheckpointDocument.RetainedOutput(
@@ -200,6 +208,7 @@ internal object QueryDeliveryFixtures {
         rejectedProof: Boolean = false,
         output: Boolean = false,
         outputSuffix: Boolean = false,
+        header: Boolean = false,
     ): ToolRpcReply {
         val items = rows.subList(start, end)
         val outputOnly = output || outputSuffix
@@ -229,8 +238,8 @@ internal object QueryDeliveryFixtures {
             )
         val envelope = EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, basis, result)
         return if (rejectedProof || output)
-            ToolRpcReply.Qualified(project(OperationOutcome.Qualified(envelope, qualification(output))))
-        else ToolRpcReply.Complete(project(OperationOutcome.Complete(envelope)))
+            ToolRpcReply.Qualified(project(OperationOutcome.Qualified(envelope, qualification(output)), header))
+        else ToolRpcReply.Complete(project(OperationOutcome.Complete(envelope), header))
     }
 
     private fun retention(outputOnly: Boolean) =
@@ -281,7 +290,7 @@ internal object QueryDeliveryFixtures {
             .refined()
     }
 
-    private fun rejection() =
+    private fun rejection(header: Boolean = false) =
         ToolRpcReply.RejectedDocument(
             project(
                 OperationOutcome.Rejected(
@@ -292,12 +301,18 @@ internal object QueryDeliveryFixtures {
                         QueryInvocationStop.TIME_LIMIT,
                         QueryCompletionEvidenceDocument.Retained(reference, bounded(rows.take(1)), question),
                     )
-                )
+                ),
+                header,
             )
         )
 
-    private fun project(outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>): JsonObject {
-        val projection = CanonicalQueryCliDocuments.project(outcome)
+    private fun project(
+        outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>,
+        header: Boolean = false,
+    ): JsonObject {
+        val projection =
+            if (header) QueryPresentationHeaderDocument.from(outcome).project()
+            else CanonicalQueryCliDocuments.project(outcome)
         val document =
             when (projection) {
                 is ProjectedOperationOutcome.Complete -> projection.document

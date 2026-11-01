@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueCallBindingFailure
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueField
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -27,6 +28,7 @@ import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
@@ -161,6 +163,7 @@ internal fun sourceFormalTarget(
                 executionOwner = frame.callee,
                 valuePath = source.valuePath,
                 callStack = stack,
+                conditions = source.conditions,
             )
     ) {
         is Refinement.Refined -> value
@@ -200,6 +203,7 @@ internal fun sourceFieldTarget(
     source: ValueSite,
     expression: KtExpression,
     field: ValueField,
+    conditions: ValueConditions = source.conditions,
 ): Refinement<NativeValueFieldRead, ValueFlowUnsupportedCause> {
     val selected =
         when (val value = source.valuePath.select(ValuePathSegment.Field(field))) {
@@ -216,6 +220,7 @@ internal fun sourceFieldTarget(
                     executionOwner = source.executionOwner,
                     valuePath = selected,
                     callStack = source.callStack,
+                    conditions = conditions,
                 )
         ) {
             is Refinement.Refined -> value.value
@@ -272,9 +277,11 @@ private fun KtNamedDeclaration.hasStoredValueField(projection: IntellijK2Relatio
                 is KtProperty -> declaration.symbol as? KaKotlinPropertySymbol
                 else -> null
             }
+        // Override modality can remain OPEN inside a final class; its declared getter still cannot be overridden.
+        val finalOwner = (property?.containingDeclaration as? KaClassSymbol)?.modality == KaSymbolModality.FINAL
         property != null &&
-            property.modality == KaSymbolModality.FINAL &&
-            property.getter?.modality == KaSymbolModality.FINAL &&
+            (finalOwner ||
+                (property.modality == KaSymbolModality.FINAL && property.getter?.modality == KaSymbolModality.FINAL)) &&
             property.isVal &&
             !property.isDelegated &&
             property.hasBackingField &&

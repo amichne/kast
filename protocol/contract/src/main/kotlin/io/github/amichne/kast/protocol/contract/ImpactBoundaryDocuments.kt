@@ -2,7 +2,9 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -24,11 +26,17 @@ sealed interface ImpactExecutionOwnerDocument {
     data class ReviewedCallback(val binding: ImpactReviewedValueBindingDocument) : ImpactExecutionOwnerDocument
 
     @Serializable
+    @SerialName("DECLARED_CALLBACK")
+    data class DeclaredCallback(val binding: ImpactDeclaredCallbackValueBindingDocument) : ImpactExecutionOwnerDocument
+
+    @Serializable
     @SerialName("CALLBACK")
     data class Callback(
         val body: ImpactCapturedBodyDocument,
         @ProtocolCollectionConstraint(maximumItems = 1024)
         val invocations: BoundedProtocolList<ImpactCaptureInvocationDocument>,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val selection: ImpactCallbackSelectionDocument = ImpactCallbackSelectionDocument.Unique,
     ) : ImpactExecutionOwnerDocument
 }
 
@@ -49,12 +57,45 @@ data class ImpactCaptureInvocationDocument(
     val position: ProtocolOffset,
     val invocation: ImpactSourceRangeDocument,
     val invocationOwner: ImpactCapturedBodyDocument,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val supplyTarget: ImpactCallTargetDocument = ImpactCallTargetDocument.Direct,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @ProtocolCollectionConstraint(maximumItems = 32)
+    val forwardings: BoundedProtocolList<ImpactCallbackForwardingDocument> = EmptyImpactCallbackForwardings,
 )
+
+/** An ordered formal-to-formal edge retains the exact selected source-call frame. */
+@Serializable
+data class ImpactCallbackForwardingDocument(
+    val sourceParameter: ImpactSourceRangeDocument,
+    val sourcePosition: ProtocolOffset,
+    val argument: ImpactSourceRangeDocument,
+    val targetFrame: ImpactCallFrameDocument,
+    val parameter: ImpactSourceRangeDocument,
+    val position: ProtocolOffset,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @ProtocolCollectionConstraint(maximumItems = 1024)
+    val callableTransfers: BoundedProtocolList<ImpactCompilerTransferDocument> = EmptyImpactCallbackTransfers,
+)
+
+val EmptyImpactCallbackForwardings: BoundedProtocolList<ImpactCallbackForwardingDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactCallbackForwardingDocument>()) as Refinement.Refined).value
+
+val EmptyImpactCallbackTransfers: BoundedProtocolList<ImpactCompilerTransferDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactCompilerTransferDocument>()) as Refinement.Refined).value
 
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactValueRoleDocument {
     @Serializable @SerialName("EXPRESSION_RESULT") data object ExpressionResult : ImpactValueRoleDocument
+
+    @Serializable
+    @SerialName("STRING_CONVERSION_RESULT")
+    data class StringConversionResult(val invocation: ImpactInvocationReferenceDocument) : ImpactValueRoleDocument
+
+    @Serializable
+    @SerialName("LOOP_RESULT")
+    data class LoopResult(val result: ImpactLoopResultDocument) : ImpactValueRoleDocument
 
     @Serializable @SerialName("LOCAL_BINDING") data object LocalBinding : ImpactValueRoleDocument
 
@@ -91,6 +132,9 @@ data class ImpactValueSiteReferenceDocument(
     @EncodeDefault
     @ProtocolCollectionConstraint(maximumItems = 32)
     val callStack: BoundedProtocolList<ImpactCallFrameDocument> = EmptyImpactCallStack,
+    @Required val conditions: BoundedProtocolList<ImpactValueConditionDocument> = EmptyImpactConditions,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val localVersion: ImpactLocalVersionDocument = ImpactLocalVersionDocument.Unversioned,
 )
 
 @Serializable

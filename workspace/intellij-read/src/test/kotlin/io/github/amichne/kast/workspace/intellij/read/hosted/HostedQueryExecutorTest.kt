@@ -21,10 +21,7 @@ import org.junit.jupiter.api.Test
 class HostedQueryExecutorTest {
     @Test
     fun `two readers overlap at configured capacity and cancellation owns only one slot`() = runTest {
-        val limits =
-            (io.github.amichne.kast.kernel.ReadLimits.resolve(mapOf("KAST_READ_HOST_READERS" to "2"))
-                    as io.github.amichne.kast.kernel.Refinement.Refined)
-                .value
+        val limits = (ReadLimits.resolve(mapOf("KAST_READ_HOST_READERS" to "2")) as Refinement.Refined).value
         val executor = HostedQueryExecutor(backgroundScope)
         val firstEntered = CompletableDeferred<HostedQueryProgress>()
         val secondEntered = CompletableDeferred<HostedQueryProgress>()
@@ -52,15 +49,17 @@ class HostedQueryExecutorTest {
             assertTrue(firstEntered.isCompleted)
             assertTrue(secondEntered.isCompleted)
             assertNotSame(firstEntered.await(), secondEntered.await())
-            assertCapacityOccupied(executor, limits)
+            val waiting = async { executor.execute(executor.endpoint, limits) { 7 } }
+            runCurrent()
+            assertFalse(waiting.isCompleted, "Saturation must wait without rejecting the read")
             first.cancel()
             runCurrent()
             assertFalse(first.isCompleted)
-            assertCapacityOccupied(executor, limits)
+            assertFalse(waiting.isCompleted, "Cancellation cleanup still owns its slot")
             firstCleanup.complete(Unit)
             first.join()
             assertFalse(second.isCompleted)
-            assertEquals(HostedExecution.Completed(7), executor.execute(executor.endpoint, limits) { 7 })
+            assertEquals(HostedExecution.Completed(7), waiting.await())
             secondRelease.complete(Unit)
             assertEquals(HostedExecution.Completed(42), second.await())
         } finally {
@@ -283,15 +282,5 @@ class HostedQueryExecutorTest {
         assertEquals(HostedExecution.Completed(3), executor.execute(executor.endpoint) { 3 })
         executor.retire()
         executor.drain()
-    }
-
-    private suspend fun assertCapacityOccupied(
-        executor: HostedQueryExecutor,
-        limits: io.github.amichne.kast.kernel.ReadLimits,
-    ) {
-        assertEquals(
-            HostedExecution.Rejected(HostedQueryFailure.BUSY),
-            executor.execute(executor.endpoint, limits) { error("Capacity must remain occupied") },
-        )
     }
 }

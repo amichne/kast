@@ -232,8 +232,30 @@ sealed interface QueryRunRequest : OperationRequest {
         @SerialName("evidence_cursor")
         @ProtocolIntegerConstraint(minimum = 0, maximum = 1_000_000)
         val evidenceCursor: QueryEvidenceCursor? = null,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val detail: QueryEntryDetailSelectorDocument? = null,
     ) : QueryRunRequest {
+        fun detailPresentation(rowCount: QueryResultCursor): ReadResult =
+            when (detail?.target) {
+                QueryEntryDetailTarget.ROW -> copy(cursor = detail.ordinal, evidenceCursor = QueryEvidenceCursor.Start)
+                QueryEntryDetailTarget.EVIDENCE ->
+                    copy(
+                        cursor = rowCount,
+                        evidenceCursor =
+                            (QueryEvidenceCursor.parse(detail.ordinal.value)
+                                    as io.github.amichne.kast.kernel.Refinement.Refined)
+                                .value,
+                    )
+                null -> this
+            }
+
         companion object {
+            fun detail(
+                result: QueryResultReference,
+                selector: QueryEntryDetailSelectorDocument,
+                output: QueryOutputDocument,
+                executionBudget: ExecutionBudgetDocument? = null,
+            ): ReadResult = ReadResult(result, selector.ordinal, output, executionBudget, detail = selector)
+
             fun symbols(
                 result: QueryResultReference,
                 cursor: QueryResultCursor = QueryResultCursor.Start,
@@ -283,6 +305,7 @@ sealed interface QueryRunRequest : OperationRequest {
     }
 }
 
+@Serializable
 enum class QueryExactFailureDocument {
     WORKSPACE_NOT_READY,
     WORKSPACE_ROOT_MISMATCH,
@@ -298,6 +321,7 @@ enum class QueryExactFailureDocument {
     COMPILER_CONTRACT_VIOLATION,
 }
 
+@Serializable
 enum class QueryPredicateFailureDocument {
     PREDICATE_UNPROVEN,
     WORKSPACE_NOT_READY,
@@ -319,6 +343,7 @@ enum class QueryPredicateFailureDocument {
     CONTRACT_VIOLATION,
 }
 
+@Serializable
 enum class QueryRelationFailureDocument {
     WORKSPACE_NOT_READY,
     WORKSPACE_ROOT_MISMATCH,
@@ -359,6 +384,14 @@ data class QueryRunResult(
     val interpretation: QueryResultInterpretationDocument = QueryResultInterpretationDocument.QueryResult,
     /** Current retained selection. Legacy SYMBOLS documents without this fact keep full presentation. */
     val presentationOutput: QueryOutputDocument? = null,
+    val deferredEvidence: BoundedProtocolList<QueryDeferredDetailDocument> =
+        (BoundedProtocolList.create(emptyList<QueryDeferredDetailDocument>())
+                as io.github.amichne.kast.kernel.Refinement.Refined)
+            .value,
+    val detail: QueryEntryDetailDocument? = null,
+    /** Request-only selection, consumed by the hosted serializer after retained authority admission. */
+    val detailSelection: QueryEntryDetailSelectorDocument? = null,
+    val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
 ) : OperationResult
 
 @Serializable

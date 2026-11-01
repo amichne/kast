@@ -18,11 +18,16 @@ data class ImpactCompilerTransferDocument(
     ) : this(source, target, kind, ImpactTransferEvidenceDocument.Direct)
 
     fun admitsEvidence(): Boolean =
-        when (val proof = evidence) {
-            ImpactTransferEvidenceDocument.Direct -> kind.admitsDirectState(source, target)
-            is ImpactTransferEvidenceDocument.Source -> proof.operation.admits(source, target, kind)
-            is ImpactTransferEvidenceDocument.NormalBranchResult -> proof.admitsNormalBranch(source, target, kind)
-        }
+        source.conservesConditions(target, kind) &&
+            admitsLocalVersions() &&
+            when (val proof = evidence) {
+                ImpactTransferEvidenceDocument.Direct ->
+                    source.admitsDirectLoop(target, kind) && kind.admitsDirectState(source, target)
+                is ImpactTransferEvidenceDocument.StringContent -> proof.admitsContent(source, target, kind)
+                is ImpactTransferEvidenceDocument.LoopAdvance -> proof.admits(source, target, kind)
+                is ImpactTransferEvidenceDocument.Source -> proof.operation.admits(source, target, kind)
+                is ImpactTransferEvidenceDocument.NormalBranchResult -> proof.admitsNormalBranch(source, target, kind)
+            }
 }
 
 private fun ImpactTransferEvidenceDocument.NormalBranchResult.admitsNormalBranch(
@@ -34,7 +39,7 @@ private fun ImpactTransferEvidenceDocument.NormalBranchResult.admitsNormalBranch
         (source.role == ImpactValueRoleDocument.ExpressionResult || source.role == ImpactValueRoleDocument.LocalRead) &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         source.enclosing == target.enclosing &&
-        source.executionOwner == target.executionOwner &&
+        source.executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
         source.valuePath == target.valuePath &&
         source.callStack.hasSameCallStackIdentity(target.callStack) &&
         admitsAnchors(source.range, target.range) &&
@@ -45,6 +50,8 @@ private fun ImpactTransferKindDocument.admitsDirectState(
     target: ImpactValueSiteReferenceDocument,
 ): Boolean =
     when (this) {
+        ImpactTransferKindDocument.CAST_RESULT -> source.admitsCastResult(target)
+        ImpactTransferKindDocument.STRING_CONTENT,
         ImpactTransferKindDocument.SOURCE_CALL_ENTRY,
         ImpactTransferKindDocument.SOURCE_CALL_RETURN,
         ImpactTransferKindDocument.FIELD_READ,
@@ -62,16 +69,26 @@ private fun ImpactTransferKindDocument.admitsDirectState(
                 admitsDirectOwner(source, target)
     }
 
+private fun ImpactValueSiteReferenceDocument.admitsCastResult(target: ImpactValueSiteReferenceDocument): Boolean =
+    (role == ImpactValueRoleDocument.ExpressionResult || role == ImpactValueRoleDocument.LocalRead) &&
+        target.role == ImpactValueRoleDocument.ExpressionResult &&
+        enclosing == target.enclosing &&
+        executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
+        valuePath == target.valuePath &&
+        callStack.hasSameCallStackIdentity(target.callStack) &&
+        target.range.containsExecutionRange(range)
+
 private fun ImpactTransferKindDocument.admitsDirectOwner(
     source: ImpactValueSiteReferenceDocument,
     target: ImpactValueSiteReferenceDocument,
 ): Boolean {
-    if (source.executionOwner == target.executionOwner) return true
+    if (source.executionOwner.hasSameExecutionIdentity(target.executionOwner)) return true
     val binding =
         source.role == ImpactValueRoleDocument.LocalBinding ||
             (source.role as? ImpactValueRoleDocument.Formal)?.position is ImpactFormalPositionDocument.Parameter
     return this == ImpactTransferKindDocument.LOCAL_READ &&
         binding &&
+        source.localVersion == ImpactLocalVersionDocument.Unversioned &&
         target.role == ImpactValueRoleDocument.LocalRead &&
         source.enclosing == target.enclosing &&
         source.executionOwner == ImpactExecutionOwnerDocument.Declaration &&

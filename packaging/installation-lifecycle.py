@@ -221,6 +221,7 @@ class AdmittedRecovery:
     receipt: CapturedRecoveryFile
     recoveryScript: CapturedRecoveryFile
     lifecycleScript: CapturedRecoveryFile
+    journalScript: Optional[CapturedRecoveryFile] = None
     type: str = field(default='ADMITTED_RECOVERY', init=False)
 
 @dataclass(frozen=True)
@@ -283,14 +284,18 @@ def decode_recovery_proof(document, installation):
         if document['installation'] != str(installation.root):
             raise Rejected(Failure.RECOVERY_REJECTED)
         return EmptyRecovery(document['installation'], journal_identity(document['recoveryDirectoryIdentity']))
-    exact_fields(document, ('type', 'installation', 'installationIdentity', 'recoveryDirectoryIdentity',
-                            'bundleIdentity', 'receipt', 'recoveryScript', 'lifecycleScript'))
+    expected = ('type', 'installation', 'installationIdentity', 'recoveryDirectoryIdentity',
+                'bundleIdentity', 'receipt', 'recoveryScript', 'lifecycleScript')
+    if isinstance(document, dict) and 'journalScript' in document:
+        expected += ('journalScript',)
+    exact_fields(document, expected)
     if document['type'] != 'ADMITTED_RECOVERY' or document['installation'] != str(installation.root):
         raise Rejected(Failure.RECOVERY_REJECTED)
     return AdmittedRecovery(document['installation'], journal_identity(document['installationIdentity']),
         journal_identity(document['recoveryDirectoryIdentity']), journal_identity(document['bundleIdentity']),
         captured_recovery_file(document['receipt']), captured_recovery_file(document['recoveryScript']),
-        captured_recovery_file(document['lifecycleScript']))
+        captured_recovery_file(document['lifecycleScript']),
+        captured_recovery_file(document['journalScript']) if document.get('journalScript') is not None else None)
 
 def decode_configuration_proof(document, installation):
     if document == {'type': 'ABSENT_CONFIGURATION'}:

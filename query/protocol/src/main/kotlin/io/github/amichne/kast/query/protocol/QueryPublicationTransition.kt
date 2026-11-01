@@ -170,7 +170,7 @@ private fun QueryPublicationPageCharge.admittedBytes(
             if (this.page != page) publicationRejected(QueryPublicationFailure.PUBLISHED_PAGE_MISMATCH)
             else
                 Refinement.Refined(
-                    encodedBytes.value
+                    retainedPageBytes.value
                         .saturatedMultiply(RETAINED_ENCODING_MULTIPLIER)
                         .saturatedAdd(PUBLISHED_PAGE_STRUCTURE_BYTES)
                 )

@@ -78,6 +78,7 @@ sealed interface QueryCompletionEvidenceDocument {
         val result: QueryResultReference,
         val preview: BoundedProtocolList<QueryResultItemDocument>,
         val question: QueryQuestionDocument,
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
     ) : QueryCompletionEvidenceDocument {
         /** Reading these rows preserves the original policy rejection and performs no semantic replay. */
         fun readRequest(): QueryRunRequest.ReadResult =
@@ -92,7 +93,10 @@ sealed interface QueryCompletionEvidenceDocument {
             }
     }
 
-    data class Unavailable(val cause: QueryCompletionRetentionFailure) : QueryCompletionEvidenceDocument
+    data class Unavailable(
+        val cause: QueryCompletionRetentionFailure,
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
+    ) : QueryCompletionEvidenceDocument
 }
 
 enum class QueryCompletionLimitationsFailure {

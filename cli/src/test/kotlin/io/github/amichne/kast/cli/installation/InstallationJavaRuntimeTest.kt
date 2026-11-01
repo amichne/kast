@@ -4,12 +4,53 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class InstallationJavaRuntimeTest {
+    @Test
+    fun `public Java rejection keeps its fixed document for incompatible and missing release metadata`(
+        @TempDir temporary: Path
+    ) {
+        val home = runtime(temporary)
+        for (release in listOf("JAVA_VERSION=\"24\"\n", "JAVA_VERSION=\"invalid\"\n", "")) {
+            Files.writeString(home.value.resolve("release"), release)
+            val result = launch(temporary, home, InstallationJavaFailureMode.PUBLIC_QUERY)
+            assertEquals(4, result.first)
+            val document = Json.parseToJsonElement(result.second).jsonObject
+            assertEquals(setOf("type", "failure"), document.keys)
+            assertEquals("rejected", document.getValue("type").jsonPrimitive.content)
+            assertEquals("CATALOG_UNAVAILABLE", document.getValue("failure").jsonPrimitive.content)
+            assertEquals(1, result.second.count { it == '\n' })
+        }
+    }
+
+    @Test
+    fun `public Java rejection reports a closed stdout pipe as output failure`(@TempDir temporary: Path) {
+        val home = runtime(temporary)
+        Files.delete(home.value.resolve("release"))
+        val script =
+            Files.writeString(
+                temporary.resolve("closed-output.sh"),
+                "read -r gate\n" + installationJavaRuntimeEnvironment(home, InstallationJavaFailureMode.PUBLIC_QUERY),
+            )
+        val child = ProcessBuilder("/bin/sh", script.toString()).start()
+        try {
+            child.inputStream.close()
+            child.outputStream.use { it.write("ready\n".toByteArray()) }
+            assertTrue(child.waitFor(5, TimeUnit.SECONDS))
+            assertEquals(5, child.exitValue(), child.errorReader().readText())
+        } finally {
+            if (child.isAlive) child.destroyForcibly().waitFor()
+        }
+    }
+
     @Test
     fun `installed launcher selects quoted JBR despite ambient Java`(@TempDir temporary: Path) {
         val home = runtime(temporary)
@@ -82,11 +123,16 @@ class InstallationJavaRuntimeTest {
         return (InstallationPath.parse(home.toString()) as Refinement.Refined).value
     }
 
-    private fun launch(root: Path, home: InstallationPath): Triple<Int, String, String> {
+    private fun launch(
+        root: Path,
+        home: InstallationPath,
+        failureMode: InstallationJavaFailureMode = InstallationJavaFailureMode.PRIVATE_LAUNCHER,
+    ): Triple<Int, String, String> {
         val script =
             Files.writeString(
                 root.resolve("launch.sh"),
-                installationJavaRuntimeEnvironment(home) + "\nexec \"${'$'}JAVA\" \"${'$'}JAVA_HOME\" \"${'$'}JAVA\"\n",
+                installationJavaRuntimeEnvironment(home, failureMode) +
+                    "\nexec \"${'$'}JAVA\" \"${'$'}JAVA_HOME\" \"${'$'}JAVA\"\n",
             )
         val process =
             ProcessBuilder("/bin/sh", script.toString())

@@ -20,6 +20,7 @@ import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryResultRetentionEvidence
 import io.github.amichne.kast.query.protocol.QueryResultRetentionObservation
 import io.github.amichne.kast.query.protocol.QueryStateStore
+import io.github.amichne.kast.query.service.QueryNanoClock
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -108,7 +109,7 @@ internal class NativePacketQueryServices(
                 }
         }
     }
-    val observation = io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None
+    val observation = NativeTraceCounters()
     val symbols =
         ProjectBoundIntellijSymbolPorts.create(
             project = project,
@@ -121,6 +122,9 @@ internal class NativePacketQueryServices(
     val references = CanonicalQueryReferences(model)
     private val compiler = IntellijValueFlowCompilerAdapter(observation)
     private val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
+    var nativeProofReads = 0
+        private set
+
     var nativeFlowReads = 0
         private set
 
@@ -137,20 +141,28 @@ internal class NativePacketQueryServices(
     }
     private val producers =
         object : ValueProducerSeedCompilerPort {
-            override suspend fun seed(request: ValueProducerSeedRequest) =
-                compiler.seed(project = project, current = lease, request = request, model = compiledModel)
+            override suspend fun seed(
+                request: ValueProducerSeedRequest
+            ): io.github.amichne.kast.relation.contract.ValueProducerSeedRead {
+                nativeProofReads++
+                return compiler.seed(project = project, current = lease, request = request, model = compiledModel)
+            }
 
             override suspend fun revalidate(selector: SymbolSelector, budget: RelationBudget) =
-                compiler.revalidate(
-                    project = project,
-                    current = lease,
-                    selector = selector,
-                    budget = budget,
-                    model = compiledModel,
-                )
+                compiler
+                    .revalidate(
+                        project = project,
+                        current = lease,
+                        selector = selector,
+                        budget = budget,
+                        model = compiledModel,
+                    )
+                    .also { nativeProofReads++ }
 
             override suspend fun revalidateSite(request: ValueSiteRevalidationRequest) =
-                compiler.revalidateSite(project = project, current = lease, request = request, model = compiledModel)
+                compiler
+                    .revalidateSite(project = project, current = lease, request = request, model = compiledModel)
+                    .also { nativeProofReads++ }
         }
     private val relations =
         RelationService(
@@ -191,7 +203,7 @@ internal class NativePacketQueryServices(
             oneHop = RelationBudget(resources, RelationByteLimit.parse(RETURNED_BYTES).packetQueryRefined()),
         )
 
-    private fun operations(presentation: QueryPresentationExecution?) =
+    private fun operations(presentation: QueryPresentationExecution?, checkpoint: NativePacketQueryCheckpoint?) =
         QueryService(
             discovery = SymbolDiscoveryService(validation, symbols.discovery),
             exact = SymbolExactService(validation, symbols.exact),
@@ -199,19 +211,30 @@ internal class NativePacketQueryServices(
             relations = relations,
             traversal = hostedTraversalOperations(relations, observation),
             traversalCeiling = traversal,
-            valueFlow = valueFlow,
+            clock = checkpoint ?: QueryNanoClock(System::nanoTime),
+            valueFlow =
+                ValueFlowCompilerPort { request ->
+                    valueFlow.read(request).also { checkpoint?.observed(it) }
+                },
             presentation = presentation,
         )
 
     private val state = QueryStateStore()
     val protocol = protocol()
 
-    fun protocol(presentation: QueryPresentationExecution? = null): CanonicalQueryProtocol {
-        val operations = operations(presentation)
+    fun protocol(
+        presentation: QueryPresentationExecution? = null,
+        checkpoint: NativePacketQueryCheckpoint? = null,
+    ): CanonicalQueryProtocol {
+        val operations = operations(presentation, checkpoint)
         return CanonicalQueryProtocol(
             operations =
                 QueryOperations { request ->
-                    operations.run(request).also { lastExecution = it }
+                    checkpoint?.entering(request)
+                    operations.run(request).also { result ->
+                        lastExecution = result
+                        checkpoint?.completed(result)
+                    }
                 },
             authority = references,
             state = state,

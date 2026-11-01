@@ -293,6 +293,13 @@ enum class ConfigurationParameter(
         ":distribution:cli",
         mutability = ConfigurationMutability.DERIVED,
     ),
+    MANAGEMENT_SELECTION(
+        "KAST_MANAGEMENT_SELECTION",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        ":distribution:cli",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     PUBLIC_RESET_RECOVERY(
         "KAST_PUBLIC_RESET_RECOVERY",
         ConfigurationSyntax.ABSOLUTE_PATH,
@@ -316,6 +323,14 @@ enum class ConfigurationParameter(
         ":cli",
         disclosure = ConfigurationDisclosure.SECRET_PRESENCE,
         mutability = ConfigurationMutability.DERIVED,
+    ),
+    SEMANTIC_FIXTURES(
+        "KAST_SEMANTIC_FIXTURES",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.BUILD,
+        ":build-logic",
+        defaultValue = "false",
+        mutability = ConfigurationMutability.BUILD_SETTING,
     ),
     LOCAL_COMPONENT(
         "KAST_LOCAL_COMPONENT",

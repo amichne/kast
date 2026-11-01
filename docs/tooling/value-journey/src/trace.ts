@@ -2,6 +2,8 @@ import e0 from "../../../../relation/intellij/testData/r1-value-flow/E0.kt?raw";
 import e3 from "../../../../relation/intellij/testData/r1-value-flow/E3.kt?raw";
 import e4 from "../../../../relation/intellij/testData/r1-value-flow/E4.kt?raw";
 import oracle from "../../../../relation/intellij/testData/r1-value-flow/oracle.json";
+import { displaySource } from "./display-source";
+import type { FixtureVariant } from "./display-source";
 
 export type Detail = "story" | "normal" | "proof";
 export type ExampleId = "e0" | "gap" | "fork" | "constant";
@@ -78,8 +80,9 @@ export interface Example {
   readonly label: string;
   readonly description: string;
   readonly source: string;
-  readonly variant: "E0" | "E3" | "E4";
+  readonly variant: FixtureVariant;
   readonly sha256: string;
+  readonly fixtureSha256: string;
   /** An authored expectation is never a retained compiler witness or a coverage ledger. */
   readonly basis: { readonly kind: "authored-oracle"; readonly path: string };
   readonly paths: readonly [TracePath, ...TracePath[]];
@@ -121,28 +124,35 @@ export async function loadExamples(): Promise<ExampleAdmission> {
   }
 
   const build = (
-    variant: "E0" | "E3" | "E4",
-    source: string,
+    variant: FixtureVariant,
+    fixtureSource: string,
     sha256: string,
+    fixtureSha256: string,
   ): ExampleAdmission => {
-    const seed = SourceAnchor.admit(source, 232, "ClientValue(id = id)");
-    const call = SourceAnchor.admit(source, 338, "toClientValue()");
-    const envelope = SourceAnchor.admit(
-      source,
-      313,
-      "ClientEnvelope(payload = toClientValue())",
-    );
+    const source = displaySource(fixtureSource, variant);
+    const anchor = (start: number, text: string): AnchorAdmission => {
+      const original = SourceAnchor.admit(fixtureSource, start, text);
+      if (original.kind === "rejected") return original;
+      return SourceAnchor.admit(
+        source,
+        displaySource(fixtureSource.slice(0, start), variant).length,
+        displaySource(text, variant),
+      );
+    };
+    const seed = anchor(232, "ClientValue(id = id)");
+    const call = anchor(338, "toClientValue()");
+    const listing = anchor(313, "ClientEnvelope(payload = toClientValue())");
     if (seed.kind === "rejected") return seed;
     if (call.kind === "rejected") return call;
-    if (envelope.kind === "rejected") return envelope;
+    if (listing.kind === "rejected") return listing;
     const local = { kind: "local" } as const;
     const head: Step = {
       id: "seed.ClientValue.result",
       anchor: seed.value,
-      title: "A value begins here",
+      title: "A customer starts here",
       explanation:
-        "Follow only the ClientValue produced by this constructor. Not the WireValue, its id, or the enclosing object.",
-      value: "ClientValue",
+        "createCustomer builds a customer from the signup’s name. Follow this source origin, marked A, through the calls that use it.",
+      value: "Customer",
       authority: "compiler",
       operation: "PRODUCER",
       importance: "landmark",
@@ -151,9 +161,8 @@ export async function loadExamples(): Promise<ExampleAdmission> {
     const returned: Step = {
       ...head,
       id: "toClientValue.RETURN",
-      title: "Returned by toClientValue",
-      explanation:
-        "The expression body returns the same ClientValue. Its identity is preserved across this return.",
+      title: "Returned by createCustomer",
+      explanation: "The function returns the customer to its caller.",
       operation: "SEED_RETURN",
       importance: "detail",
     };
@@ -162,14 +171,14 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         ...head,
         id: "toClientValue.call.result",
         anchor: call.value,
-        title: "Returned to this exact call",
+        title: "This call receives the customer",
         explanation:
-          "The produced value becomes the result of this toClientValue() call, not every call with the same name.",
+          "The call inside draftWelcomeEmail receives the customer returned by createCustomer. A matching name alone would not establish this connection.",
         operation: "RETURN",
         importance: "normal",
         context: {
           kind: "call",
-          title: "WireValue.toClientValue",
+          title: "Signup.createCustomer",
           anchor: seed.value,
         },
       },
@@ -177,31 +186,31 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         ...head,
         id: "ClientEnvelope.payload.argument",
         anchor: call.value,
-        title: "Passed as payload",
+        title: "Passed as the recipient",
         explanation:
-          "This call result is bound to the payload parameter of the selected ClientEnvelope constructor.",
+          "The WelcomeEmail constructor receives the customer as its recipient argument.",
         operation: "ARGUMENT",
         importance: "detail",
       },
       {
         ...head,
         id: "ClientEnvelope.result.payload",
-        anchor: envelope.value,
-        title: "Stored in the payload field",
+        anchor: listing.value,
+        title: "An email draft holds the customer",
         explanation:
-          "The envelope carries the original ClientValue in .payload. The envelope itself is not the tracked value.",
-        value: "ClientEnvelope.payload",
+          "The recipient field holds the customer, not just the customer’s name. The surrounding email draft is a container; it is not another customer.",
+        value: "WelcomeEmail.recipient",
         operation: "CONSTRUCT_FIELD",
         importance: "landmark",
       },
       {
         ...head,
         id: "toClientEnvelope.RETURN.payload",
-        anchor: envelope.value,
-        title: "Returned inside an envelope",
+        anchor: listing.value,
+        title: "Returned inside an email draft",
         explanation:
-          "toClientEnvelope returns an envelope whose payload carries the same ClientValue.",
-        value: "ClientEnvelope.payload",
+          "draftWelcomeEmail returns a draft whose recipient carries the customer.",
+        value: "WelcomeEmail.recipient",
         operation: "SEED_RETURN",
         importance: "detail",
       },
@@ -210,15 +219,14 @@ export async function loadExamples(): Promise<ExampleAdmission> {
       kind: "authored-oracle",
       path: "relation/intellij/testData/r1-value-flow/oracle.json",
     } as const;
-    const base = { source, variant, sha256, basis };
+    const base = { source, variant, sha256, fixtureSha256, basis };
     const wrapperPath: TracePath = {
       id: "wrapper",
-      label: "Envelope payload",
+      label: "Email recipient",
       steps: [head, returned, ...wrapper],
       ending: {
         kind: "expected-end",
-        explanation:
-          "The authored route ends at the returned payload. This is not an investigation-completeness claim.",
+        explanation: "This route ends at the returned email’s recipient.",
       },
     };
     if (variant === "E4")
@@ -228,29 +236,27 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           {
             ...base,
             id: "constant",
-            label: "E4 · Independent constant",
+            label: "Change one line",
             description:
-              "Why does the original value not reach this map result?",
+              "The list now gets a new Guest customer. The original customer still has another use, but not in this list.",
             paths: [
               {
                 ...wrapperPath,
                 ending: {
                   kind: "excluded",
                   explanation:
-                    'convert constructs a separate ClientValue("constant"). The oracle forbids an edge from the original seed to that value or the convert result.',
+                    'prepareEmails constructs a separate Customer("Guest"). The original customer does not reach this list, even though the list’s declared type stays the same.',
                 },
               },
             ],
           },
         ],
       };
-    const callback = SourceAnchor.admit(
-      source,
+    const callback = anchor(
       variant === "E0" ? 436 : 433,
       variant === "E0" ? "it.toClientEnvelope()" : "it.toClientValue()",
     );
-    const map = SourceAnchor.admit(
-      source,
+    const map = anchor(
       variant === "E0" ? 424 : 421,
       variant === "E0"
         ? "items.map { it.toClientEnvelope() }"
@@ -258,7 +264,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
     );
     if (callback.kind === "rejected") return callback;
     if (map.kind === "rejected") return map;
-    const payload = variant === "E0" ? "ClientEnvelope.payload" : "ClientValue";
+    const value = variant === "E0" ? "WelcomeEmail.recipient" : "Customer";
     const callbackStep: Step = {
       ...head,
       id:
@@ -266,26 +272,29 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           ? "toClientEnvelope.call.result.payload"
           : "callback.toClientValue.call.result",
       anchor: callback.value,
-      title: "Returned to the callback",
-      explanation: `The exact call result carries ${payload}. The callback body and the named function that supplies it are distinct owners.`,
-      value: payload,
+      title: "The repeated operation receives it",
+      explanation:
+        variant === "E0"
+          ? "The operation inside map calls draftWelcomeEmail for a signup and receives the email draft holding the customer."
+          : "This separate call inside map receives a customer directly. It is a different call context from the email recipient route, not one runtime object splitting in two.",
+      value,
       operation: "RETURN",
       importance: "normal",
       context: {
         kind: "call",
         title:
           variant === "E0"
-            ? "WireValue.toClientEnvelope"
-            : "WireValue.toClientValue",
-        anchor: variant === "E0" ? envelope.value : seed.value,
+            ? "Signup.draftWelcomeEmail"
+            : "Signup.createCustomer",
+        anchor: variant === "E0" ? listing.value : seed.value,
       },
     };
     const callbackReturn: Step = {
       ...callbackStep,
       id: variant === "E0" ? "callback.RETURN.payload" : "callback.RETURN",
-      title: "Bound to map’s transform",
+      title: "The operation inside map returns it",
       explanation:
-        "The lambda result carries the tracked value. Compiler binding identifies the transform formal; it does not establish output-element propagation.",
+        "The operation inside map returns its result. Connecting that result to a list element needs an additional rule about map; the call alone is not enough.",
       operation: "CALLBACK_RETURN",
       importance: "landmark",
       context: { kind: "callback" },
@@ -297,10 +306,10 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           ? "convert.map.result.Element.payload"
           : "convert.map.result.Element",
       anchor: map.value,
-      title: "Callback result → possible output element",
+      title: "The list can hold this result",
       explanation:
-        "The reviewed stdlib map rule relates a transform result to a possible output element. Compiler binding alone cannot establish this transfer.",
-      value: `List.Element<${payload}>`,
+        "The reviewed rule for map connects the callback result to a possible list element.",
+      value: `List.Element<${value}>`,
       authority: "reviewed-library",
       operation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
     };
@@ -310,9 +319,9 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         variant === "E0"
           ? "convert.RETURN.Element.payload"
           : "convert.RETURN.Element",
-      title: "Returned from convert",
+      title: "The returned list keeps the connection",
       explanation:
-        "The returned list may contain an element carrying the original value. Neither the whole list nor the whole envelope becomes that value.",
+        "The returned list can carry this source origin. That does not tell us whether this program ran, how many elements it produced, or every other place the value is used.",
       authority: "compiler",
       operation: "SEED_RETURN",
       context: local,
@@ -320,7 +329,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
     const journey: TracePath = {
       id: "map",
       label:
-        variant === "E0" ? "Envelope → map element" : "Direct → map element",
+        variant === "E0" ? "Email drafts in the list" : "Customers in the list",
       steps: [
         head,
         returned,
@@ -333,7 +342,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
       ending: {
         kind: "expected-end",
         explanation:
-          "End of the authored expected route. A connected path does not establish complete investigation coverage.",
+          "The route reaches the returned list. The example ends here.",
       },
     };
     if (variant === "E3")
@@ -343,9 +352,9 @@ export async function loadExamples(): Promise<ExampleAdmission> {
           {
             ...base,
             id: "fork",
-            label: "E3 · Two continuations",
+            label: "Find the other use",
             description:
-              "One producer, two uses. Choose a continuation without losing the common prefix.",
+              "Two separate calls use createCustomer: one makes an email recipient; the other returns customers directly in a list.",
             paths: [journey, wrapperPath],
           },
         ],
@@ -356,15 +365,17 @@ export async function loadExamples(): Promise<ExampleAdmission> {
         {
           ...base,
           id: "e0",
-          label: "E0 · Value journey",
-          description: "Where can this produced ClientValue go?",
+          label: "Follow a customer",
+          description:
+            "A signup becomes a customer, an email draft holds that customer, and a list can hold the draft.",
           paths: [journey],
         },
         {
           ...base,
           id: "gap",
-          label: "E0 · Missing proof",
-          description: "Same source. One deliberately withheld library rule.",
+          label: "Remove one rule",
+          description:
+            "The source is unchanged. Withhold the map rule and the list connection can no longer be established.",
           paths: [
             {
               ...journey,
@@ -373,7 +384,7 @@ export async function loadExamples(): Promise<ExampleAdmission> {
                 kind: "unresolved",
                 obligation: "CALLBACK_RESULT_TO_OUTPUT_ELEMENT",
                 explanation:
-                  "The callback result is known, but its relationship to a map output element is not admitted in this simulated gap. No downstream step is shown.",
+                  "The callback returns the value. Without the rule for map, this example cannot connect it to a list element.",
               },
             },
           ],
@@ -381,9 +392,24 @@ export async function loadExamples(): Promise<ExampleAdmission> {
       ],
     };
   };
-  const positive = build("E0", e0, digests[0]);
-  const fork = build("E3", e3, digests[1]);
-  const constant = build("E4", e4, digests[2]);
+  const positive = build(
+    "E0",
+    e0,
+    await digest(displaySource(e0, "E0")),
+    digests[0],
+  );
+  const fork = build(
+    "E3",
+    e3,
+    await digest(displaySource(e3, "E3")),
+    digests[1],
+  );
+  const constant = build(
+    "E4",
+    e4,
+    await digest(displaySource(e4, "E4")),
+    digests[2],
+  );
   if (positive.kind === "rejected") return positive;
   if (fork.kind === "rejected") return fork;
   if (constant.kind === "rejected") return constant;

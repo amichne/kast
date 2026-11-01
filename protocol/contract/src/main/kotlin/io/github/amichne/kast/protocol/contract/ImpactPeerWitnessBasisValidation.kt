@@ -10,7 +10,10 @@ internal fun ImpactWitnessDocument.hasSourceBasis(basis: ImpactSemanticBasisDocu
         is ImpactWitnessDocument.RepresentationModel -> rule.isOnBasis(basis)
         is ImpactWitnessDocument.BoundaryModel -> rule.isOnBasis(basis)
         is ImpactWitnessDocument.NativeRead ->
-            source.isOnBasis(basis) && domain.subject.basis == basis && receipts.hasSourceBasis(basis)
+            source.isOnBasis(basis) &&
+                domain.subject.basis == basis &&
+                receipts.hasSourceBasis(basis) &&
+                stringConstructions.admitsConstructions(source)
         is ImpactWitnessDocument.CompilerTransfer ->
             transfer.admitsEvidence() && transfer.source.isOnBasis(basis) && transfer.target.isOnBasis(basis)
         is ImpactWitnessDocument.ReviewedTransfer -> transfer.admitsEvidence() && transfer.binding.basis == basis
@@ -32,7 +35,15 @@ private fun ImpactFindingDocument.hasSourceBasis(basis: ImpactSemanticBasisDocum
 
 internal fun ImpactFindingDocument.reviewedEvidenceHasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     reviewedRelations.values.all { it.basis == basis && it.admits(it.enclosing) } &&
-        representation.hasReviewedSourceBasis(basis)
+        representation.hasReviewedSourceBasis(basis) &&
+        admitsReviewedPremises() &&
+        classification.admitsReviewedClassification(reviewedRelations, representation) &&
+        admitsEntryContentClassification()
+
+private fun ImpactFindingDocument.admitsEntryContentClassification(): Boolean =
+    classification != ImpactPathClassificationDocument.Established(ImpactRelationshipDocument.EXACT) ||
+        (producer.reviewedEntrySelection() == ImpactReviewedEntrySelectionDocument.COMPONENT &&
+            destination.reviewedEntrySelection() == ImpactReviewedEntrySelectionDocument.COMPONENT)
 
 private fun ImpactFindingRepresentationDocument.hasReviewedSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
@@ -69,7 +80,9 @@ private fun ImpactFindingTerminalDocument.hasSourceBasis(
         is ImpactFindingTerminalDocument.UnresolvedBoundary ->
             source.site.isOnBasis(basis) && obligation.position.site.isOnBasis(basis)
         is ImpactFindingTerminalDocument.SupportedDomainEnd ->
-            observation.source.isOnBasis(basis) && observation.domain.subject.basis == basis
+            observation.source.isOnBasis(basis) &&
+                observation.domain.subject.basis == basis &&
+                observation.stringConstructions.admitsConstructions(observation.source)
     }
 
 private fun ImpactReadRejectionDocument.hasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
@@ -82,4 +95,28 @@ private fun ImpactBoundaryRuleDocument.isOnBasis(basis: ImpactSemanticBasisDocum
     when (this) {
         is ImpactBoundaryRuleDocument.Terminal -> source.site.isOnBasis(basis)
         is ImpactBoundaryRuleDocument.Continuation -> source.site.isOnBasis(basis) && target.site.isOnBasis(basis)
+    }
+
+private fun ImpactPathClassificationDocument.admitsReviewedClassification(
+    relations: BoundedProtocolList<ImpactReviewedValueRelationshipDocument>,
+    representation: ImpactFindingRepresentationDocument,
+): Boolean =
+    when (this) {
+        is ImpactPathClassificationDocument.NotEstablished -> true
+        is ImpactPathClassificationDocument.Established ->
+            relationship == ImpactRelationshipDocument.DERIVED ||
+                (relations.values.none { it.relation.relationship() == ImpactRelationshipDocument.DERIVED } &&
+                    !representation.hasDerivedReviewedRelation())
+    }
+
+private fun ImpactFindingRepresentationDocument.hasDerivedReviewedRelation(): Boolean =
+    when (this) {
+        ImpactFindingRepresentationDocument.NotModeled -> false
+        is ImpactFindingRepresentationDocument.Present ->
+            branches.values.any { branch ->
+                branch.provenance.values.any { provenance ->
+                    provenance is ImpactFindingProvenanceDocument.ReviewedLibrary &&
+                        provenance.binding.relation.relationship() == ImpactRelationshipDocument.DERIVED
+                }
+            }
     }

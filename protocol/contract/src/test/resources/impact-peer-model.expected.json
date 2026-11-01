@@ -37,7 +37,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "kind": "PERSISTENCE",
       "contract": {
@@ -75,7 +76,8 @@
           "type": "DECLARATION"
         },
         "valuePath": [],
-        "callStack": []
+        "callStack": [],
+        "conditions": []
       },
       "kind": "PERSISTENCE",
       "contract": {

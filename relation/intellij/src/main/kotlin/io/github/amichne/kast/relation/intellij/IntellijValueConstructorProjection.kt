@@ -29,7 +29,7 @@ internal fun nativeValueConstructorArgument(
             is Refinement.Rejected -> return Refinement.Rejected(ValueFlowUnsupportedCause.ACCESS_PATH_DEPTH_EXCEEDED)
         }
     val target =
-        when (val value = argument.call.resultSite().withState(path, source.callStack)) {
+        when (val value = argument.call.resultSite().withState(path, source.callStack, source.conditions)) {
             is Refinement.Refined -> value.value
             is Refinement.Rejected -> return constructorRejected()
         }

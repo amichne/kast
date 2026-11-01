@@ -145,15 +145,13 @@ class PublicExecutionBudgetTest {
         val encodedBudget = json.encodeToString(PublicToolExecutionBudget.serializer(), publicBudget)
         for ((identity, input) in inputs) {
             assertInstanceOf(Refinement.Refined::class.java, PublicToolContract.admit(identity, input))
-            val oneByte = budget.copy(maxReturnedBytes = (ReturnedByteLimit.parse(1) as Refinement.Refined).value)
             val small =
                 Json.parseToJsonElement(
                     input
                         .toString()
                         .replace(encodedBudget, json.encodeToString(publicBudget.copy(maxReturnedBytes = 1)))
                 )
-            val lowered = PublicToolContract.admit(identity, small) as Refinement.Refined
-            assertEquals(oneByte, (lowered.value.canonical as PublicToolCanonical.Query).request.executionBudget)
+            assertInstanceOf(Refinement.Rejected::class.java, PublicToolContract.admit(identity, small))
             assertMalformedBudgetDimensions(identity, input, encodedBudget)
             val unsupported =
                 Json.parseToJsonElement(

@@ -25,6 +25,7 @@ import io.github.amichne.kast.protocol.contract.ImpactExecutionPathCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRepresentationCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionRowIdentityCause
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
+import io.github.amichne.kast.protocol.contract.ImpactExecutionSiteCause
 import io.github.amichne.kast.protocol.contract.ImpactFindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingEvidenceReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingRepresentationDocument
@@ -144,6 +145,7 @@ class ImpactWitnessSchemaTest {
                 "LEDGER",
                 "ACCOUNTING",
                 "REPRESENTATION",
+                "SITE",
                 "BOUNDARY",
                 "PEER_BOUNDARY",
                 "MODEL_HISTORY",
@@ -392,6 +394,10 @@ private fun findingExample(site: ImpactValueSiteReferenceDocument): ImpactWitnes
             representation = ImpactFindingRepresentationDocument.NotModeled,
             terminal = ImpactFindingTerminalDocument.UnresolvedFlow(ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW),
             boundaryObligations = BoundedProtocolList.create(emptyList<ImpactBoundaryObligationDocument>()).value(),
+            classification =
+                io.github.amichne.kast.protocol.contract.ImpactPathClassificationDocument.Established(
+                    io.github.amichne.kast.protocol.contract.ImpactRelationshipDocument.EXACT
+                ),
         )
     )
 
@@ -402,6 +408,7 @@ private fun interpreterExamples(): List<ImpactExecutionFailureDocument> {
             ImpactExecutionFailureDocument.Ledger(ImpactExecutionLedgerCause.MISSING_BRANCH),
             ImpactExecutionFailureDocument.Accounting(ImpactExecutionAccountingCause.DUPLICATE_PATH),
             ImpactExecutionFailureDocument.Representation(ImpactExecutionRepresentationCause.CALLABLE_MISMATCH),
+            ImpactExecutionFailureDocument.Site(ImpactExecutionSiteCause.CONDITIONS_NOT_PRESERVED),
             ImpactExecutionFailureDocument.Boundary(ImpactExecutionBoundaryCause.KIND_MISMATCH),
             ImpactExecutionFailureDocument.PeerBoundary(ImpactPeerProofFailureDocument.CONNECTION_MISMATCH),
             ImpactExecutionFailureDocument.ModelHistory(ImpactExecutionModelHistoryCause.MISSING_APPLICATION),

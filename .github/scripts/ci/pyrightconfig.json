@@ -1,7 +1,18 @@
 {
   "pythonVersion": "3.12",
   "typeCheckingMode": "strict",
-  "include": ["required_checks.py", "validation_scope.py", "validation_outcome.py", "verify_documentation.py"],
+  "include": [
+    "required_checks.py",
+    "native_handoff.py",
+    "../release/finalize_assets.py",
+    "validation_scope.py",
+    "validation_outcome.py",
+    "verify_documentation.py",
+    "source_validation.py",
+    "self_hosted_guard.py",
+    "verification_plan.py",
+    "rollout.py"
+  ],
   "reportMatchNotExhaustive": "error",
   "reportUnnecessaryTypeIgnoreComment": "error"
 }

@@ -14,11 +14,13 @@ import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
+import org.jetbrains.kotlin.analysis.api.resolution.KaSmartCastedReceiverValue
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtFunction
 
 internal data class NativeReceiverCallRead(
     val receivers: List<ValueRole.Receiver>,
@@ -32,7 +34,7 @@ internal class NativeValueImplicitReceiverCalls(
     private val projection: IntellijK2RelationProjection,
 ) {
     fun read(
-        function: KtNamedFunction,
+        function: KtFunction,
         call: KtCallExpression,
     ): NativeReceiverCallRead {
         val selected =
@@ -76,15 +78,13 @@ internal class NativeValueImplicitReceiverCalls(
         return NativeReceiverCallRead(selected.kinds.map { ValueRole.Receiver(invocation, it) }, selected.causes)
     }
 
-    private fun KaSession.selected(function: KtNamedFunction, call: KtCallExpression): NativeImplicitCall {
+    private fun KaSession.selected(function: KtFunction, call: KtCallExpression): NativeImplicitCall {
         val position =
             (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
                 ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
         val expected =
-            when (position.kind) {
-                ValueReceiverKind.EXTENSION -> function.symbol.receiverParameter
-                ValueReceiverKind.DISPATCH -> function.symbol.containingDeclaration
-            } ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            nativeValueReceiverSymbol(function, position.kind)
+                ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
         val resolved =
             call.resolveCall() ?: return NativeImplicitCall.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
         val kinds = mutableListOf<ValueReceiverKind>()
@@ -111,11 +111,12 @@ internal class NativeValueImplicitReceiverCalls(
     }
 
     private fun KaSession.implicitMatch(receiver: KaReceiverValue?, expected: KaSymbol): NativeReceiverMatch =
-        when (val matched = valueReceiverMatch(receiver, expected)) {
-            NativeReceiverMatch.OTHER,
-            NativeReceiverMatch.UNAVAILABLE -> matched
-            NativeReceiverMatch.EXACT ->
-                if (receiver is KaImplicitReceiverValue) NativeReceiverMatch.EXACT else NativeReceiverMatch.UNAVAILABLE
+        when (receiver) {
+            is KaImplicitReceiverValue -> valueReceiverMatch(receiver, expected)
+            is KaSmartCastedReceiverValue -> implicitMatch(receiver.original, expected)
+            // Explicit receivers enter through their expression reads, including explicit this.
+            is KaExplicitReceiverValue,
+            null -> NativeReceiverMatch.OTHER
         }
 }
 
@@ -133,6 +134,7 @@ internal fun nativeImplicitReceiverArrival(
                     executionOwner = source.executionOwner,
                     valuePath = source.valuePath,
                     callStack = source.callStack,
+                    conditions = source.conditions,
                 )
         ) {
             is Refinement.Refined -> value.value

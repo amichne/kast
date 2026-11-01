@@ -11,6 +11,7 @@
   <depends>org.jetbrains.plugins.gradle</depends>
   <applicationListeners>
     <listener class="io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleStartup" topic="com.intellij.ide.AppLifecycleListener"/>
+    <listener class="io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleStartup" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
   </applicationListeners>
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="io.github.amichne.kast.runtime.hosted.HostedEndpointStartup"/>

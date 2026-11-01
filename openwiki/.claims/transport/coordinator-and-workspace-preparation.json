@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8d7b54d4525542225be40454471064390638eb7ee24213db5e7faf66be998ecc",
+  "pageVersion": "sha256:b286e6d96ef39368d3fbfab19def5a0be7454b1481f26397d334cc833d42de6b",
   "claims": [
     {
       "id": "claim_9afc4ce3301b4badb9651eeb2f54f674",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
-          "version": "repo-file-v1:sha256:3ef4b5a06f3c167b69ce474dded988494a9aec8f3099488ab47510a2d3b33eff"
+          "version": "repo-file-v1:sha256:5aceec734dcf5d1f2d4df673ff5554051b2d8fe9e07519f93f4246996fe91767"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt",
@@ -39,6 +39,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-18T02:29:42.742Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

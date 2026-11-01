@@ -12,11 +12,24 @@ internal fun ImpactValueSiteReferenceDocument.admitsValueState(): Boolean =
         callStack.values.withIndex().all { (index, frame) ->
             callStack.values.take(index).none { it.hasSameFrameIdentity(frame) }
         } &&
-        callStack.values.all { it.admits(enclosing.basis) }
+        callStack.values.all { it.admits(enclosing.basis) } &&
+        admitsConditions() &&
+        admitsLocalVersion()
 
 internal fun ImpactValuePathSegmentDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         ImpactValuePathSegmentDocument.Element -> true
+        is ImpactValuePathSegmentDocument.PairComponent -> origin.admits(basis)
+        is ImpactValuePathSegmentDocument.MapEntryComponent ->
+            when (val origin = entry) {
+                is ImpactReviewedGroupBucketDocument -> slot == origin.slot && origin.admits(basis)
+                is ImpactReviewedInputEntryOriginDocument -> origin.admits(basis)
+                is ImpactReviewedPreservedKeyOriginDocument ->
+                    slot == ImpactMapEntrySlotDocument.KEY && origin.admits(basis)
+                is ImpactReviewedMapEntryCorrelationDocument -> origin.admits(basis)
+                is ImpactReviewedMappedEntryOriginDocument ->
+                    slot == ImpactMapEntrySlotDocument.VALUE && origin.admits(basis)
+            }
         is ImpactValuePathSegmentDocument.Field -> declaration.basis == basis && declaration.validValueDeclaration()
     }
 
@@ -43,11 +56,11 @@ internal fun ImpactFormalPositionDocument.admits(site: ImpactValueSiteReferenceD
             parameter.admits() &&
                 parameter.callable == site.enclosing &&
                 parameter.range == site.range &&
-                parameter.executionOwner == site.executionOwner
+                parameter.executionOwner.hasSameExecutionIdentity(site.executionOwner)
         is ImpactFormalPositionDocument.Receiver -> true
     }
 
-private fun ImpactDeclarationReferenceDocument.validValueDeclaration(): Boolean =
+internal fun ImpactDeclarationReferenceDocument.validValueDeclaration(): Boolean =
     declarationFailure() is Refinement.Refined
 
 internal fun ImpactSourceOperationDocument.admits(
@@ -60,7 +73,9 @@ internal fun ImpactSourceOperationDocument.admits(
         is ImpactSourceOperationDocument.Enter -> admitsEntry(source, target, kind)
         is ImpactSourceOperationDocument.Return -> admitsReturn(source, target, kind)
         is ImpactSourceOperationDocument.SeedReturn -> admitsSeedReturn(source, target, kind)
+        is ImpactSourceOperationDocument.DeclaredCallbackResult -> admitsDeclaredResult(source, target, kind)
         is ImpactSourceOperationDocument.CallbackReturn -> admitsCallbackReturn(source, target, kind)
+        is ImpactSourceOperationDocument.CallbackArgumentEntry -> admitsCallbackArgument(source, target, kind)
         is ImpactSourceOperationDocument.ReadField -> admitsFieldRead(source, target, kind)
         is ImpactSourceOperationDocument.ConstructField -> admitsConstruction(source, target, kind)
     }
@@ -74,7 +89,7 @@ private fun ImpactSourceOperationDocument.Enter.admitsEntry(
     kind == ImpactTransferKindDocument.SOURCE_CALL_ENTRY &&
         frame.admits(source.enclosing.basis) &&
         target.isIn(frame.callee) &&
-        target.role == ImpactValueRoleDocument.Formal(position) &&
+        target.role.hasSameRoleIdentity(ImpactValueRoleDocument.Formal(position)) &&
         position.admits(target) &&
         source.actualMatches(this) &&
         source.valuePath == target.valuePath &&
@@ -120,7 +135,7 @@ private fun ImpactSourceOperationDocument.ReadField.admitsFieldRead(
         field.validValueDeclaration() &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         source.enclosing == target.enclosing &&
-        source.executionOwner == target.executionOwner &&
+        source.executionOwner.hasSameExecutionIdentity(target.executionOwner) &&
         source.callStack.hasSameCallStackIdentity(target.callStack) &&
         source.valuePath.selects(ImpactValuePathSegmentDocument.Field(field), target.valuePath)
 
@@ -136,8 +151,8 @@ private fun ImpactSourceOperationDocument.ConstructField.admitsConstruction(
         source.enclosing == target.enclosing &&
         target.range == invocation.range &&
         target.role == ImpactValueRoleDocument.ExpressionResult &&
-        source.executionOwner == invocation.executionOwner &&
-        target.executionOwner == invocation.executionOwner &&
+        source.executionOwner.hasSameExecutionIdentity(invocation.executionOwner) &&
+        target.executionOwner.hasSameExecutionIdentity(invocation.executionOwner) &&
         source.callStack.hasSameCallStackIdentity(target.callStack) &&
         listOf(ImpactValuePathSegmentDocument.Field(storage.field)) + source.valuePath.values == target.valuePath.values
 
@@ -156,16 +171,17 @@ private fun ImpactValueSiteReferenceDocument.actualConstructs(
     parameter: ImpactFormalParameterDocument,
 ): Boolean =
     (role as? ImpactValueRoleDocument.Argument)?.let {
-        it.invocation == invocation && it.index == parameter.index
+        it.invocation.hasSameInvocationIdentity(invocation) && it.index == parameter.index
     } == true
 
 private fun ImpactValueSiteReferenceDocument.actualMatches(operation: ImpactSourceOperationDocument.Enter): Boolean {
     val frame = operation.frame
-    if (enclosing != frame.enclosing || executionOwner != frame.invocation.executionOwner) return false
+    if (enclosing != frame.enclosing || !executionOwner.hasSameExecutionIdentity(frame.invocation.executionOwner))
+        return false
     return when (val position = operation.position) {
         is ImpactFormalPositionDocument.Parameter ->
             position.parameter.callable == frame.callee.enclosing &&
-                position.parameter.executionOwner == frame.callee.executionOwner &&
+                position.parameter.executionOwner.hasSameExecutionIdentity(frame.callee.executionOwner) &&
                 matchesParameter(frame, position.parameter)
         is ImpactFormalPositionDocument.Receiver -> matchesReceiver(frame, position.kind)
     }
@@ -177,8 +193,7 @@ private fun ImpactValueSiteReferenceDocument.matchesParameter(
 ): Boolean =
     when (val actual = role) {
         is ImpactValueRoleDocument.Argument ->
-            actual.invocation == (frame.invocation as? ImpactCallOccurrenceDocument.Declared)?.invocation &&
-                actual.index == parameter.index
+            actual.invocation.hasSameInvocationIdentity(frame.invocation) && actual.index == parameter.index
         else -> false
     }
 
@@ -188,19 +203,24 @@ private fun ImpactValueSiteReferenceDocument.matchesReceiver(
 ): Boolean =
     when (val actual = role) {
         is ImpactValueRoleDocument.Receiver ->
-            actual.kind == kind &&
-                actual.invocation == (frame.invocation as? ImpactCallOccurrenceDocument.Declared)?.invocation
+            actual.kind == kind && actual.invocation.hasSameInvocationIdentity(frame.invocation)
         else -> false
     }
 
 internal fun ImpactValueSiteReferenceDocument.isIn(owner: ImpactExecutionReferenceDocument): Boolean =
-    enclosing == owner.enclosing && executionOwner == owner.executionOwner
+    enclosing == owner.enclosing && executionOwner.hasSameExecutionIdentity(owner.executionOwner)
 
 internal fun ImpactValueSiteReferenceDocument.isResultOf(frame: ImpactCallFrameDocument): Boolean =
     enclosing == frame.enclosing &&
         range == frame.invocation.range &&
-        role == ImpactValueRoleDocument.ExpressionResult &&
-        executionOwner == frame.invocation.executionOwner
+        (role == ImpactValueRoleDocument.ExpressionResult ||
+            (role as? ImpactValueRoleDocument.StringConversionResult)
+                ?.invocation
+                ?.hasSameInvocationIdentity(frame.invocation) == true ||
+            (role as? ImpactValueRoleDocument.LoopResult)?.let {
+                it.admits(this) && it.result.invocation.hasSameInvocationIdentity(frame.invocation)
+            } == true) &&
+        executionOwner.hasSameExecutionIdentity(frame.invocation.executionOwner)
 
 internal fun BoundedProtocolList<ImpactValuePathSegmentDocument>.selects(
     selected: ImpactValuePathSegmentDocument,

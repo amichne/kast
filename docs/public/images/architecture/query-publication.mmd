@@ -1,0 +1,11 @@
+flowchart TD
+  Ready["Ready checkpoint"] --> Running["Claim token<br/>reserve replay space"]
+  Running -.->|Concurrent acquisition| Busy["InUse<br/>existing claim stays owned"]
+  Running --> PrivatePage["Private page<br/>staged successor"]
+  PrivatePage -->|Atomic commit| Published(["Published page<br/>reachable successor"])
+  Published -->|Replay| Published
+  Running -.->|Cancel| Cleanup["Release claim and<br/>try-owned allocations"]
+  PrivatePage -.->|Publication rejected| Cleanup
+  class Running proof
+  class Busy,Cleanup stop
+  class Published result

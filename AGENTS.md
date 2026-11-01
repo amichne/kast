@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-22T03:38:55Z"
-source_revision: 822bd6a9d43bde00bad3e756529a71de8c9a82b9
+timestamp: "2026-10-30T14:28:03Z"
+source_revision: 2ca945f49f621979a0817d7e29a2b3a6d72633ef
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -13,6 +13,7 @@ code_sources:
   - path: config/vale/styles/Kast/Terminology.yml
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: install.sh
@@ -53,7 +54,7 @@ This guide owns repository rules and routes source investigation.
 - [`diagnostic/`](diagnostic/AGENTS.md) and [`change/`](change/AGENTS.md) - compiler diagnostics and proof-carrying mutation workflows.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
-- [`cli/`](cli/AGENTS.md) - private JVM entry points, direct tools, installation workflows, and typed output projections.
+- [`cli/`](cli/AGENTS.md) - the public semantic CLI, private JVM entry points, direct tools, installation workflows, and typed output projections.
 - [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
 - [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
@@ -66,9 +67,17 @@ This guide owns repository rules and routes source investigation.
 - Build and tests: `./gradlew build`.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
 - Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. The full pre-push gate remains necessary.
+- Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
+- Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
+- Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
+- The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
+- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds both transferred executables to source identity and digest. Mac jobs compile and exercise both executables.
+- Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - Public native command: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
+- Public semantic JVM entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
+- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task uses a real JVM child and local peer.
 - Private installer version entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
@@ -82,12 +91,18 @@ This guide owns repository rules and routes source investigation.
 - A detached checkout, missing upstream, or divergent branch does not require a base decision: use the latest `origin/main`. Preserve existing branch references; retain any unique detached commits under a branch before switching bases.
 - If local changes prevent refreshing the task checkout, preserve that checkout and its stashes, and use a separate clean managed worktree from the fetched `origin/main`. Pull and verify that worktree as above, then continue there without asking the user to choose a base. Do not reset, overwrite, stash, rebase, or apply existing work merely to refresh the base.
 
+## Local IntelliJ Restarts
+
+- Restart IntelliJ IDEA whenever Kast development, diagnosis, tests, or recovery need a restart.
+- The user grants standing authorization for these restarts. Do not ask for separate approval.
+- Preserve user work through the normal IDE restart action.
+
 ## Navigation Hints
 
 - For architecture uncertainty, use optional OpenWiki retrieval. If retrieval tools are unavailable, read `openwiki/quickstart.md` and its source citations.
 - For domain behavior, start in the matching `*/contract`, then read `*/service`, and open `*/intellij` only for platform effects.
 - For public syntax, start with the authored schema and admission in the [public query guide](app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md).
-- For semantic execution, trace direct MCP or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
+- For semantic execution, trace the public CLI, direct MCP, or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
 - For wire contracts, trace `protocol/contract` -> `protocol/registry` -> `protocol/wire`.
 - For startup or connectivity, start with `docs/public/start.mdx` and `docs/public/reference/installation.mdx`, then examine `cli`, `app-server`, and `runtime/hosted`.
 - For installation failures, start with `install.sh`, `distribution`, and `packaging`; use `app-server/docs/compatibility.md` for known Codex integration gates.
@@ -138,6 +153,7 @@ This guide owns repository rules and routes source investigation.
 
 ## Testing
 
+- Semantic fixture suites are off by default in local builds and CI. For compiler behavior evidence, set `KAST_SEMANTIC_FIXTURES=true`. Read [the switch guide](.github/scripts/ci/README.md#temporary-semantic-fixture-switch) for scope and skipped evidence.
 - Start with one named behavior and the smallest execution boundary that can prove it. Virtualize only its external dependencies; run the real production rule with existing domain types, fixtures and test runners. This is the default across the repository.
 - Declare the case's minimum starting facts, permitted effects and independent expected result. Keep pure parsing, resolution and policy checks in the owning contract/service tests with explicit values and no filesystem, process, socket or clock dependency. Build and runner provisioning are separate from this behavior budget.
 - Enlarge the boundary only for an assertion that needs it: a private filesystem for path/lock/identity facts, a real child for process-adapter binding, compiler/platform fixtures for semantic authority, and explicitly authorized disposable native composition for OS/IDE integration. Scripted observations do not establish native behavior.

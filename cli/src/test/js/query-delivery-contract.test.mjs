@@ -9,10 +9,8 @@ const initial = captured.cases.complete.result.initial;
 const page = captured.cases.complete.result.pages[0];
 const admitCanonical = value => ['complete', 'qualified', 'rejected_document', 'rejected'].includes(value?.type)
   ? value : { type: 'invalid' };
-const envelope = stop => ({
-  type: 'query_delivery', initial, pages: [page],
-  delivery: { stop, rpc_count: 2, request_bytes: 7, response_bytes: 11, result: null },
-});
+const envelope = stop => createQueryDeliveryEnvelope(initial,[page],
+  { stop, rpc_count: 2, request_bytes: 7, response_bytes: 11, result: null });
 
 test('unknown outer fields cannot be admitted as delivery evidence', () => {
   const value = envelope('DELIVERED');
@@ -49,6 +47,7 @@ for (const stop of stops) {
 for (const original of ['complete', 'qualified', 'rejected_document', 'rejected']) {
   test(`BYTE_LIMIT alone can omit ${original} initial with no fabricated pages`, () => {
     const value = { type: 'query_delivery', initial: null, pages: [],
+      semantic: {...captured.cases.byteLimitWithoutInitial.result.semantic, original_outcome:original},
       delivery: { stop: 'BYTE_LIMIT', original_outcome: original, rpc_count: 1, request_bytes: 7, response_bytes: 11, result: null } };
     assert.strictEqual(decodeQueryDelivery(value, () => { throw new Error('Absent canonical reply must not be decoded'); }), value);
     assert.deepEqual(JSON.parse(encodeQueryDeliveryEnvelope(value).json), value);
@@ -75,7 +74,7 @@ const malformed = [
   ['unknown original outcome', value => { value.initial = null; value.pages = []; value.delivery.stop = 'BYTE_LIMIT'; value.delivery.original_outcome = 'unknown'; }],
   ['pages after omitted initial', value => { value.initial = null; value.delivery.stop = 'BYTE_LIMIT'; value.delivery.original_outcome = 'complete'; }],
 ];
-for (const field of ['type', 'initial', 'pages', 'delivery']) malformed.push([`missing ${field}`, value => { delete value[field]; }]);
+for (const field of ['type', 'initial', 'pages', 'delivery', 'semantic']) malformed.push([`missing ${field}`, value => { delete value[field]; }]);
 for (const field of ['stop', 'rpc_count', 'request_bytes', 'response_bytes', 'result']) malformed.push([`missing ${field}`, value => { delete value.delivery[field]; }]);
 for (const [name, mutate] of malformed) test(`${name} is finite outer rejection`, () => {
   const value = structuredClone(envelope('DELIVERED')); mutate(value);

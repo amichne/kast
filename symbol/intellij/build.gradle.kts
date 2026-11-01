@@ -7,7 +7,7 @@ plugins {
     id("kast.role.intellij-read")
 }
 
-group = "${rootProject.group}.symbol"
+group = "${providers.gradleProperty("GROUP").get()}.symbol"
 
 base {
     archivesName.set("symbol-intellij")

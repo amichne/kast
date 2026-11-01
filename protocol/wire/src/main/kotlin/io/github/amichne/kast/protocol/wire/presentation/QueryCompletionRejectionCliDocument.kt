@@ -11,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
+import io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
@@ -40,7 +41,9 @@ internal data class QueryCompletionRejectionCliDocument(
     @EncodeDefault(EncodeDefault.Mode.NEVER) val originalFailure: QueryOriginalFailureDocument? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val diagnosticReadId: io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentity? = null,
-)
+) {
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS) val explanation: String = completionExplanation(cause, stop)
+}
 
 @Serializable
 internal sealed interface QueryCompletionEvidenceCliDocument {
@@ -52,32 +55,99 @@ internal sealed interface QueryCompletionEvidenceCliDocument {
         val question: QueryQuestionDocument,
         val nextQuery: QueryCompletionPublicReadQuery,
         @EncodeDefault(EncodeDefault.Mode.NEVER) val seedQuery: QueryCompletionPublicSeedQuery? = null,
-    ) : QueryCompletionEvidenceCliDocument
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("original_evidence_summary_state")
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
+    ) : QueryCompletionEvidenceCliDocument {
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        val instruction: String =
+            "Retained output is available. Use nextQuery to read it without another semantic read. Keep the original incomplete verdict when you report these rows."
+    }
 
     @Serializable
     @SerialName("UNAVAILABLE")
-    data class Unavailable(val cause: QueryCompletionRetentionFailure) : QueryCompletionEvidenceCliDocument
+    data class Unavailable(
+        val cause: QueryCompletionRetentionFailure,
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("original_evidence_summary_state")
+        val originalEvidenceSummary: QueryEvidenceSummaryState = QueryEvidenceSummaryState.Uncaptured,
+    ) : QueryCompletionEvidenceCliDocument {
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        val instruction: String =
+            "No retained result is available. Inspect cause and the original coverage before you select a new query. Do not retry the same request automatically."
+    }
 }
 
+/** Explain the failed proof without changing coverage, evidence, or recovery authority. */
+private fun completionExplanation(cause: QueryCompletionCauseDocument, stop: QueryInvocationStop): String =
+    when (cause) {
+        QueryCompletionCauseDocument.IncompleteExecution ->
+            when (stop) {
+                QueryInvocationStop.TIME_LIMIT -> "The query reached its time limit before completion."
+                QueryInvocationStop.WORK_LIMIT -> "The query reached its work limit before completion."
+                QueryInvocationStop.RETAINED_BYTES_LIMIT -> "The query reached its retention limit before completion."
+                QueryInvocationStop.RETENTION_FAILED -> "The query did not retain its complete output."
+                QueryInvocationStop.BUDGET_INCREASE_REQUIRED ->
+                    "The query needs a larger execution grant to establish completion."
+                QueryInvocationStop.CANCELLED -> "The query stopped after cancellation."
+                QueryInvocationStop.INVALID_STATE,
+                QueryInvocationStop.NON_ADVANCING -> "The query did not continue from its execution state."
+                QueryInvocationStop.COMPLETED,
+                QueryInvocationStop.TERMINAL_INCOMPLETE ->
+                    "The query did not establish every requested relationship. Inspect the original limitations and omissions."
+            }
+        QueryCompletionCauseDocument.ItemFailure ->
+            "At least one query item failed. Other retained items keep their original evidence."
+        QueryCompletionCauseDocument.OmittedEvidence ->
+            "The query omitted evidence that the complete verdict needs. Inspect the omission reasons."
+        is QueryCompletionCauseDocument.CallbackGraphUnproven ->
+            "The callback graph has an unresolved proof obligation. Inspect graphFailure before you change resource limits."
+        is QueryCompletionCauseDocument.InvestigationUnproven ->
+            "The value investigation has an unresolved proof obligation. Inspect investigationFailure before you change resource limits."
+        is QueryCompletionCauseDocument.RetentionUnavailable -> "The query did not retain its output."
+    } + " This does not establish that the requested data is absent."
+
 /** Copyable query_symbols arguments, encoded from retained result identity and its original output. */
-@Serializable internal data class QueryCompletionPublicReadQuery(val request: QueryCompletionPublicReadRequest)
+@Serializable data class QueryCompletionPublicReadQuery(val request: QueryCompletionPublicReadRequest)
 
 @Serializable
-internal enum class QueryCompletionPublicReadAction {
+enum class QueryCompletionPublicReadAction {
     READ_RESULT
 }
 
 @Serializable
-internal data class QueryCompletionPublicReadRequest(
+@ConsistentCopyVisibility
+data class QueryCompletionPublicReadRequest
+private constructor(
     val result: QueryResultReference,
     val output: QueryCompletionPublicReadOutput,
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val type: QueryCompletionPublicReadAction = QueryCompletionPublicReadAction.READ_RESULT,
-    @EncodeDefault(EncodeDefault.Mode.ALWAYS) val cursor: QueryResultCursor = QueryResultCursor.Start,
-)
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val cursor: QueryResultCursor? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("evidence_cursor")
+    val evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val detail: io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument? = null,
+) {
+    companion object {
+        fun rows(
+            result: QueryResultReference,
+            output: QueryCompletionPublicReadOutput,
+            cursor: QueryResultCursor = QueryResultCursor.Start,
+            evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null,
+        ) = QueryCompletionPublicReadRequest(result, output, cursor = cursor, evidenceCursor = evidenceCursor)
+
+        fun detail(
+            result: QueryResultReference,
+            output: QueryCompletionPublicReadOutput,
+            selector: io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument,
+        ) = QueryCompletionPublicReadRequest(result, output, detail = selector)
+    }
+}
 
 @Serializable
-internal enum class QueryCompletionPublicSymbolField {
+enum class QueryCompletionPublicSymbolField {
     NAME,
     LOCATION,
     SIGNATURE,
@@ -85,7 +155,7 @@ internal enum class QueryCompletionPublicSymbolField {
 }
 
 @Serializable
-internal sealed interface QueryCompletionPublicReadOutput {
+sealed interface QueryCompletionPublicReadOutput {
     @Serializable
     @SerialName("SYMBOLS")
     data class Symbols(
@@ -119,22 +189,23 @@ internal fun QueryRunRejection.CompletionUnproven.toCompletionCli() =
                     retained.preview.values.map { it.toCliDocument() },
                     retained.question,
                     QueryCompletionPublicReadQuery(
-                        QueryCompletionPublicReadRequest(
+                        QueryCompletionPublicReadRequest.rows(
                             retained.result,
                             retained.question.output.toCompletionPublicOutput(),
                         )
                     ),
                     completionSeedQuery(retained),
+                    retained.originalEvidenceSummary,
                 )
             is QueryCompletionEvidenceDocument.Unavailable ->
-                QueryCompletionEvidenceCliDocument.Unavailable(retained.cause)
+                QueryCompletionEvidenceCliDocument.Unavailable(retained.cause, retained.originalEvidenceSummary)
         },
         policyProgress,
         originalFailure,
         diagnosticReadId,
     )
 
-internal fun QueryOutputDocument.toCompletionPublicOutput(): QueryCompletionPublicReadOutput =
+fun QueryOutputDocument.toCompletionPublicOutput(): QueryCompletionPublicReadOutput =
     when (this) {
         is QueryOutputDocument.Symbols ->
             QueryCompletionPublicReadOutput.Symbols(

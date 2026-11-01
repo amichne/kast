@@ -68,7 +68,7 @@ class KtorBrokerServerTest {
     @Test
     fun `one completed lifecycle preserves native identity and complete content`(@TempDir temporary: Path) =
         runBlocking {
-            val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
+            val publicSocket = Path.of("/tmp").toRealPath().resolve("kast-ktor-${UUID.randomUUID()}.sock")
             val upstream = FakeUpstreamConnection()
             val broker = observerBroker()
             val started =
@@ -167,7 +167,7 @@ class KtorBrokerServerTest {
     @Test
     fun `Ktor Unix WebSocket server transparently bridges one upstream session`(@TempDir temporary: Path): Unit =
         runBlocking {
-            val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
+            val publicSocket = Path.of("/tmp").toRealPath().resolve("kast-ktor-${UUID.randomUUID()}.sock")
             val upstream = FakeUpstreamConnection()
             val broker = Broker.create(emptyList(), BrokerLimits.defaults()).validatedValue()
             val contracts = protocolContracts()
@@ -218,7 +218,7 @@ class KtorBrokerServerTest {
 
     @Test
     fun `legacy route upgrades while unknown route remains absent`(@TempDir temporary: Path) = runBlocking {
-        val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
+        val publicSocket = Path.of("/tmp").toRealPath().resolve("kast-ktor-${UUID.randomUUID()}.sock")
         val upstream = FakeUpstreamConnection()
         val started = start(publicSocket, upstream)
         val client = HttpClient(CIO) { install(WebSockets) }
@@ -246,7 +246,7 @@ class KtorBrokerServerTest {
 
     @Test
     fun `running server retains an exclusive filesystem ownership lease`() = runBlocking {
-        val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
+        val publicSocket = Path.of("/tmp").toRealPath().resolve("kast-ktor-${UUID.randomUUID()}.sock")
         val started = start(publicSocket, FakeUpstreamConnection())
         val lockPath = ownershipLockPath(publicSocket)
         try {
@@ -273,7 +273,7 @@ class KtorBrokerServerTest {
 
     @Test
     fun `legacy host socket cannot establish coordinator readiness`() = runBlocking {
-        val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
+        val publicSocket = Path.of("/tmp").toRealPath().resolve("kast-ktor-${UUID.randomUUID()}.sock")
         val upstream = FakeUpstreamConnection()
         val started = start(publicSocket, upstream)
         try {
@@ -293,7 +293,7 @@ class KtorBrokerServerTest {
 
     @Test
     fun `connection closes when initialize is not the first request`() = runBlocking {
-        val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
+        val publicSocket = Path.of("/tmp").toRealPath().resolve("kast-ktor-${UUID.randomUUID()}.sock")
         val upstream = FakeUpstreamConnection()
         val started =
             KtorBrokerServer.start(

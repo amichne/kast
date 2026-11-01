@@ -43,10 +43,10 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt
   - id: openwiki-source-8abcd99add0585ea126a3883
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
-generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T14:48:27.492Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Operation outcomes
@@ -84,7 +84,7 @@ uses the MCP error flag separately and does not invent a semantic result.
 
 Transport success does not imply semantic completeness. A host must preserve the distinction when projecting output, and it must not attach a successful payload to rejection. The public [result guide](../../docs/public/reference/responses.mdx) gives the user-facing interpretation.
 
-The one-shot tool RPC returns a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so Copilot and Pi adapters cannot turn qualified evidence into a complete result. The catalog marks `add_declaration` as `WRITE` and all direct reads as `READ`. A shutdown fence returns the closed `INSTALLATION_STOPPED` boundary failure before workspace discovery, preparation, or semantic dispatch.
+The one-shot tool RPC returns a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so Copilot and Pi adapters cannot turn qualified evidence into a complete result. The catalog marks `add_declaration` as `WRITE` and all direct reads as `READ`. A shutdown fence or remaining replacement journal returns `INSTALLATION_STOPPED` before workspace discovery, preparation, or semantic dispatch. An empty journal or dangling journal link also blocks admission.
 
 Canonical query and source failures derive a closed
 `ReadRecoveryAction`. Their CLI/tool rejected documents require `next_action`

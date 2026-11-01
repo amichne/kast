@@ -5,6 +5,7 @@ plugins {
     kotlin("jvm")
     `java-library`
     id("kast.kotlin-quality")
+    id("kast.module-facts")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")

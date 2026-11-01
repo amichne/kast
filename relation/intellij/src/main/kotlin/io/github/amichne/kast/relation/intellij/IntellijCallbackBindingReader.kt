@@ -67,8 +67,10 @@ internal sealed interface CallbackBindingPreparation {
         val call: org.jetbrains.kotlin.psi.KtCallExpression,
     ) : CallbackBindingPreparation
 
-    data class DependencyContract(val binding: io.github.amichne.kast.relation.contract.CallbackDependencyContract) :
-        CallbackBindingPreparation
+    data class DependencyContract(
+        val binding: io.github.amichne.kast.relation.contract.CallbackDependencyContract,
+        val resultEffect: io.github.amichne.kast.relation.contract.DeclaredCallbackResultEffect,
+    ) : CallbackBindingPreparation
 
     data class DeferredDependency(val binding: io.github.amichne.kast.relation.contract.CallbackDeferredDependency) :
         CallbackBindingPreparation

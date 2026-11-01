@@ -210,6 +210,7 @@ internal class AutomaticServiceRowQueryTest : AutomaticSymbolQueryCase() {
                         QueryResultItemDocument.BindingRow.create(item.left, item.right).refined()
                     is QueryResultItemDocument.Occurrence -> item.copy(rowId = null)
                     is QueryResultItemDocument.TraversalRecord -> item.copy(rowId = null)
+                    is QueryResultItemDocument.DeferredDetail,
                     is QueryResultItemDocument.ExactSymbol,
                     is QueryResultItemDocument.ReferenceOccurrence,
                     is QueryResultItemDocument.ValuePath,

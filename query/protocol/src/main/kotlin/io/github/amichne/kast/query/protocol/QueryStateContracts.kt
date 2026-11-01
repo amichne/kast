@@ -58,12 +58,23 @@ typealias QueryPublishedPage = OperationOutcome<QueryRunResult, QueryRunQualific
 sealed interface QueryPublicationPageCharge {
     data object Reserved : QueryPublicationPageCharge
 
-    class Encoded private constructor(val page: QueryPublishedPage, val encodedBytes: QueryRetentionByteCount) :
-        QueryPublicationPageCharge {
+    class Encoded
+    private constructor(
+        val page: QueryPublishedPage,
+        val encodedBytes: QueryRetentionByteCount,
+        val retainedPageBytes: QueryRetentionByteCount,
+    ) : QueryPublicationPageCharge {
         companion object {
             /** The successful owning encoder supplies the measured UTF-8 document bound for this exact page. */
             fun fromEncoding(page: QueryPublishedPage, encodedBytes: QueryRetentionByteCount): Encoded =
-                Encoded(page, encodedBytes)
+                Encoded(page, encodedBytes, encodedBytes)
+
+            /** Presentation bytes never discharge the memory charge for the original retained semantic page. */
+            fun fromPresentationEncoding(
+                page: QueryPublishedPage,
+                encodedBytes: QueryRetentionByteCount,
+                retainedPageBytes: QueryRetentionByteCount,
+            ): Encoded = Encoded(page, encodedBytes, retainedPageBytes)
         }
     }
 }

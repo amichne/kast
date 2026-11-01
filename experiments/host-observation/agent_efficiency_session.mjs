@@ -15,6 +15,36 @@ const fields = ['version','workspaceRoot','outputRoot','piPackageRoot','piVersio
 const reject = reason => ({type:'rejected',reason});
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const positive = value => Number.isSafeInteger(value) && value > 0;
+// Count every occurrence, including replacement declarations. Never expand local schema refs.
+export function measureLoadedDeclarations(payload) {
+  const declarations=[];
+  const append=(tools,location)=>{
+    if (!Array.isArray(tools)) return;
+    for(const declaration of tools) {
+      const encoded=JSON.stringify(declaration);
+      declarations.push({location,name:declaration.name??null,sha256:hash(encoded),
+        unicodeCharacters:Array.from(encoded).length,utf8Bytes:Buffer.byteLength(encoded),declaration});
+    }
+  };
+  append(payload.tools,'tools');
+  for(const [index,item] of (payload.input??[]).entries()) {
+    if(['additional_tools','tool_search_output'].includes(item.type)) append(item.tools,`input[${index}].tools`);
+  }
+  return {serialization:'JSON.stringify, UTF-8',declarations,
+    totalUtf8Bytes:declarations.reduce((sum,item)=>sum+item.utf8Bytes,0),
+    totalUnicodeCharacters:declarations.reduce((sum,item)=>sum+item.unicodeCharacters,0)};
+}
+export function measureResultExposure(event, payload) {
+  const mcp=event.structuredContent;
+  const canonical=mcp?.structuredContent;
+  const encodedBytes=value=>value===undefined?null:Buffer.byteLength(JSON.stringify(value));
+  return {canonicalUtf8Bytes:encodedBytes(canonical),mcpResultUtf8Bytes:encodedBytes(mcp),
+    qualification:'MCP_RESULT_EXCLUDES_JSON_RPC_WRAPPER',
+    modelResults:(payload.input??[]).filter(item=>item.type==='function_call_output').map(item=>({
+      callId:item.call_id,serializedItemUtf8Bytes:encodedBytes(item),
+      outputUtf8Bytes:typeof item.output==='string'?Buffer.byteLength(item.output):encodedBytes(item.output),
+    }))};
+}
 export function admitSessionPlan(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)
       || Object.keys(value).length !== fields.length || fields.some(key=>!Object.hasOwn(value,key)))
@@ -54,6 +84,12 @@ export function usageQualification(requests,events) {
     ?'FINALIZED_PROVIDER_USAGE':'INCOMPLETE';
 }
 
+// Both matched arms use one explicit capability policy. Pi owns the sandbox and tool lifecycle.
+export const EfficiencyCodemodeOptions=Object.freeze({mode:'on',models:false});
+export function createEfficiencyCodemodeExtension(sdk) {
+  return sdk.createCodemodeExtension(EfficiencyCodemodeOptions);
+}
+
 async function runSession(plan) {
   const started=performance.now();
   fs.mkdirSync(plan.outputRoot,{mode:0o700});
@@ -61,6 +97,8 @@ async function runSession(plan) {
   fs.writeFileSync(journal,'',{mode:0o600,flag:'wx'});
   const audit=path.join(plan.outputRoot,'semantic-audit.jsonl');
   fs.writeFileSync(audit,'',{mode:0o600,flag:'wx'});
+  const declarationJournal=path.join(plan.outputRoot,'provider-declarations.jsonl');
+  fs.writeFileSync(declarationJournal,'',{mode:0o600,flag:'wx'});
   const recordAudit=projection=>{
     if(projection!==null)fs.appendFileSync(audit,JSON.stringify(projection)+'\n');
   };
@@ -101,6 +139,8 @@ async function runSession(plan) {
       if(reason!=='COMPLETED'){ctx.abort();return eventData.payload;}
       const admission=admitProviderRequest(eventData.payload,{requests,totalTokens},plan,
         {record:event,stop:fail,abort:()=>ctx.abort()});
+      fs.appendFileSync(declarationJournal,JSON.stringify({request:requests+1,...measureLoadedDeclarations(admission.payload)})+'\n');
+      event({type:'model_result_exposure',request:requests+1,...measureResultExposure({},admission.payload)});
       if(admission.type==='admitted'){requests++;payloadBytes+=admission.bytes;providerTiming=emptyProviderTiming();}
       return admission.payload;
     });
@@ -123,9 +163,10 @@ async function runSession(plan) {
       toolCalls++;event({type:'tool_call',toolName:call.toolName,toolCallId:call.toolCallId,inputBytes:Buffer.byteLength(JSON.stringify(call.input)),
         inputSha256:hash(JSON.stringify(call.input))});
     });
-    pi.on('tool_result',result=>{referenceExposure.result(result);recordAudit(projectResult(result));});
+    pi.on('tool_result',result=>{referenceExposure.result(result);recordAudit(projectResult(result));
+      event({type:'result_exposure',toolName:result.toolName,...measureResultExposure(result,{})});});
   };
-  const factories=[sdk.createCodemodeExtension({mode:'on'}),sdk.createToolSearchExtension(),guard];
+  const factories=[createEfficiencyCodemodeExtension(sdk),sdk.createToolSearchExtension(),guard];
   if(plan.arm==='treatment')factories.push(sdk.createMcpExtension({
     loadConfig:()=>({servers:[{name:'kast',source:'experiment',scope:'extension',config:{
       command:plan.mcpCommand,cwd:plan.workspaceRoot,timeout:180,exposure:plan.exposure}}],errors:[]}),
@@ -195,12 +236,14 @@ async function runSession(plan) {
   const cost=qualification==='FINALIZED_PROVIDER_USAGE'&&known.every(value=>value.catalogCostUsd!==null)
     ?known.reduce((sum,value)=>sum+value.catalogCostUsd,0):null;
   return {version:1,outcome:reason,wallSeconds:(performance.now()-started)/1000,setupSeconds:setupMillis/1000,
-    provider:plan.provider,model:plan.model,effort:plan.effort,arm:plan.arm,requests,toolCalls,retries,compactions,
+    provider:plan.provider,model:plan.model,effort:plan.effort,arm:plan.arm,
+    codemodeOptions:EfficiencyCodemodeOptions,requests,toolCalls,retries,compactions,
     inputTokens:known.reduce((sum,item)=>sum+item.input,0),outputTokens:known.reduce((sum,item)=>sum+item.output,0),
     cacheReadTokens:known.reduce((sum,item)=>sum+item.cacheRead,0),cacheWriteTokens:known.reduce((sum,item)=>sum+item.cacheWrite,0),
     totalTokens,payloadBytes,toolOutputBytes,catalogCostUsd:cost,billedCostUsd:null,
     costQualification:'CATALOG_ESTIMATE_NOT_BILLED',usageQualification:qualification,
     outputCapQualification:'REQUESTED_BACKEND_ENFORCEMENT_UNPROVEN',planSha256:hash(JSON.stringify(plan)),
+    adapterSha256:hash(fs.readFileSync(fileURLToPath(import.meta.url))),
     piPackageSha256:hash(packageBytes),mcpExecutableSha256:plan.arm==='treatment'?hash(fs.readFileSync(plan.mcpCommand)):null,
     onboardingSha256:hash(plan.onboarding)};
 }

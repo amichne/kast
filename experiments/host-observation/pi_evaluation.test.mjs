@@ -745,7 +745,7 @@ test('retained prefix inventory binds projected symbol fields and excludes invoc
 });
 test('retained evidence families cannot regress across a contiguous prefix',()=>{
   const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
-  const reference=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document.items[0].occurrence;
+  const reference=JSON.parse(readFileSync(new URL('./pi-fixtures/native-current-documents.json',import.meta.url),'utf8')).occurrences.items[0].occurrence;
   first.reference_observations=[reference];first.page_progress.reference_evidence=1;first.evidence_window.end=1;
   last.document.items=[];last.document.page_progress.rows=0;last.document.next_cursor=null;
   last.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
@@ -920,7 +920,7 @@ test('missing row IDs use symbol or occurrence identity and conflicting preview 
   assert.equal(rejected.restoreReceivedResult(decodeEnvelope(resultEvent(symbol).content),10000).allow,false);
   // Existing pinned, sanitized canonical reference rows supply actual occurrence
   // shape. Missing IDs deliberately exercise the compatible optional-ID boundary.
-  const native=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document;
+  const native=JSON.parse(readFileSync(new URL('./pi-fixtures/native-current-documents.json',import.meta.url),'utf8')).occurrences;
   const references=partialPrefix(),page=references.pages[0].document,proof=references.initial.document.rejection.detail.evidence;
   page.items=structuredClone(native.items.slice(0,3));
   for(const row of page.items)delete row.row_id;
@@ -1031,7 +1031,7 @@ test('canonical omitted or null final cursors permit only later evidence-only pa
   }
 });
 test('matching reference previews require canonical target ownership occurrence and evidence DTOs',()=>{
-  const native=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document;
+  const native=JSON.parse(readFileSync(new URL('./pi-fixtures/native-current-documents.json',import.meta.url),'utf8')).occurrences;
   for(const [label,change] of [
     ['target name',r=>r.target.name=true],['target kind',r=>r.target.kind='UNKNOWN'],
     ['compiler signature',r=>r.target.compilerEvidence.signature=true],

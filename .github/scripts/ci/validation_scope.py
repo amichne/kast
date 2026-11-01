@@ -2,11 +2,15 @@
 """Select CI checks from an exact diff; unclassified inputs retain every check."""
 
 import argparse
+import json
+import os
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
+
+import verification_plan
 
 ROOT = Path(__file__).resolve().parents[3]
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -59,6 +63,45 @@ DOCUMENTATION_PATHS = frozenset(
         "docs/public/tutorials/first-query.mdx",
     }
 )
+
+# These inputs now include their knowledge-link and generated-example consumers in the documentation lane.
+DOCUMENTATION_CONSUMER_PATHS = frozenset({
+    "docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
+    "docs/public/snippets/value-journey.jsx",
+    # These have knowledge links, installer examples, or generated-view consumers.
+    # verify_documentation.py retains those direct checks without product assembly.
+    ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
+    "app-server/docs/public-query-contract.md", "docs/development.md",
+    "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+    "docs/static-query-execution.md", "docs/okf-public.json",
+    "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+    "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
+    "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
+    "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx",
+    "docs/public/search.mdx", "docs/public/explanation/value-journey-evidence.mdx",
+    "experiments/host-observation/README.md",
+    "experiments/host-observation/EVALUATION_CHECKLIST.md",
+    "experiments/host-observation/HOSTED_ENDPOINT.md",
+    "experiments/host-observation/PI_EVALUATION.md",
+    "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+    "experiments/representation-impact/README.md",
+    "config/vale/styles/config/vocabularies/Kast/accept.txt",
+    "config/vale/styles/config/vocabularies/KastNames/accept.txt",
+    "config/vale/readability/audit.py", "config/vale/readability/audit.py.lock",
+    "config/vale/readability/test_audit.py", "config/vale/readability/pyrightconfig.json",
+    "config/vale/readability/pytest.ini", "config/vale/readability/starter-provenance.json",
+})
+
+
+def documentation_input(path: str) -> bool:
+    """Reviewed file owners, not a repository-wide Markdown or non-Kotlin exemption."""
+    return (
+        path in DOCUMENTATION_PATHS
+        or path in DOCUMENTATION_CONSUMER_PATHS
+        or path.startswith("docs/tooling/value-journey/")
+        or (path.startswith("docs/reviews/readability-audit/") and Path(path).suffix in {".md", ".json", ".txt"})
+        or (path.startswith("config/vale/readability/") and Path(path).suffix in {".ini", ".yml", ".txt"})
+    )
 
 # Bound to settings.gradle.kts by the source-inventory regression. Unknown modules
 # and fixtures must not inherit a narrow plan from a source-set-shaped filename.
@@ -113,8 +156,17 @@ PRODUCT_SOURCE_PREFIXES = tuple(
     f"{module}/src/{source_set}/kotlin/" for module in PRODUCT_MODULES for source_set in ("main", "test")
 )
 
+# Candidate preflight examines this inventory against the resolved native task graph.
+NATIVE_INPUT_MODULES = frozenset({
+    "change/apply", "change/contract", "change/recovery", "change/verify", "diagnostic/contract",
+    "distribution/cli", "distribution/contract", "distribution/managed", "evidence/contract", "evidence/sqlite",
+    "kernel", "relation/contract", "symbol/contract", "traversal/contract", "workspace/contract",
+})
+QUALIFICATION_MODULES = NATIVE_INPUT_MODULES | {"cli"}
+
 
 class Check(str, Enum):
+    SOURCE = "source"
     PRODUCT = "product"
     PORTABLE = "portable"
     DOCUMENTATION = "documentation"
@@ -122,20 +174,36 @@ class Check(str, Enum):
 
 
 ALL_CHECKS = frozenset(Check)
-PRODUCT_CHECKS = frozenset({Check.PRODUCT, Check.PORTABLE})
+PRODUCT_CHECKS = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
+SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE})
+FULL_SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE, Check.DOCUMENTATION})
 DOCUMENTATION_CHECKS = frozenset({Check.DOCUMENTATION})
+
+
+class NativeCompilation(str, Enum):
+    ENABLED = "true"
+    DISABLED = "false"
 
 
 class Scope(str, Enum):
     FULL = "FULL"
     PRODUCT = "PRODUCT"
     DOCUMENTATION = "DOCUMENTATION"
+    SOURCE = "SOURCE"
+    SOURCE_FULL = "SOURCE_FULL"
 
 
-SCOPE_CHECKS = {Scope.FULL: ALL_CHECKS, Scope.PRODUCT: PRODUCT_CHECKS, Scope.DOCUMENTATION: DOCUMENTATION_CHECKS}
+SCOPE_CHECKS = {
+    Scope.FULL: ALL_CHECKS,
+    Scope.PRODUCT: PRODUCT_CHECKS,
+    Scope.DOCUMENTATION: DOCUMENTATION_CHECKS,
+    Scope.SOURCE: SOURCE_CHECKS,
+    Scope.SOURCE_FULL: FULL_SOURCE_CHECKS,
+}
 
 
 class Reason(str, Enum):
+    PLAN_REJECTED = "plan-rejected"
     FULL_EVENT = "full-event"
     INVALID_REVISION = "invalid-revision"
     CHECKOUT_MISMATCH = "checkout-mismatch"
@@ -147,7 +215,13 @@ class Reason(str, Enum):
 @dataclass(frozen=True)
 class Selection:
     checks: frozenset[Check]
-    reason: Reason
+    reason: Reason | verification_plan.Failure
+    plan: verification_plan.Plan | None = None
+
+    def with_native_compilation(self, mode: NativeCompilation) -> "Selection":
+        if mode is NativeCompilation.DISABLED:
+            return Selection(self.checks - {Check.PRODUCT, Check.GATE_GRAPH}, self.reason, self.plan)
+        return self
 
     @property
     def scope(self) -> Scope:
@@ -159,12 +233,13 @@ def path_checks(path: str) -> frozenset[Check]:
     # paths, included-build logic, and unusual filenames keep the full gate.
     if not re.fullmatch(r"[A-Za-z0-9_./-]+", path) or any(part in ("", ".", "..") for part in path.split("/")):
         return ALL_CHECKS
+    if documentation_input(path):
+        return DOCUMENTATION_CHECKS
     if path.startswith((".", "build-logic/")):
         return ALL_CHECKS
-    if path in DOCUMENTATION_PATHS:
-        return DOCUMENTATION_CHECKS
     if path.endswith(".kt") and path.startswith(PRODUCT_SOURCE_PREFIXES):
-        return PRODUCT_CHECKS
+        owner = path.split("/src/", 1)[0]
+        return PRODUCT_CHECKS if owner in QUALIFICATION_MODULES else SOURCE_CHECKS
     return ALL_CHECKS
 
 
@@ -177,15 +252,20 @@ def classify_paths(paths: tuple[str, ...]) -> frozenset[Check]:
 
 
 def classify_diff(raw: bytes) -> frozenset[Check]:
+    paths = diff_paths(raw)
+    return ALL_CHECKS if paths is None else classify_paths(paths)
+
+
+def diff_paths(raw: bytes) -> tuple[str, ...] | None:
     """Only regular-file add/edit/delete observations can authorize a narrow lane."""
     fields = raw.split(b"\0")
     if fields[-1] != b"" or len(fields) % 2 != 1:
-        return ALL_CHECKS
+        return None
     paths: list[str] = []
     for metadata, path in zip(fields[0:-1:2], fields[1:-1:2], strict=True):
         match = re.fullmatch(rb":(100644|000000) (100644|000000) ([0-9a-f]{40}) ([0-9a-f]{40}) ([AMD])", metadata)
         if match is None:
-            return ALL_CHECKS
+            return None
         old_mode, new_mode, old_sha, new_sha, status = match.groups()
         zero = b"0" * 40
         expected_modes = {b"M": (b"100644", b"100644"), b"A": (b"000000", b"100644"), b"D": (b"100644", b"000000")}
@@ -194,15 +274,15 @@ def classify_diff(raw: bytes) -> frozenset[Check]:
             or (old_sha == zero) != (status == b"A")
             or (new_sha == zero) != (status == b"D")
         ):
-            return ALL_CHECKS
+            return None
         try:
             paths.append(path.decode("ascii"))
         except UnicodeDecodeError:
-            return ALL_CHECKS
-    return classify_paths(tuple(paths))
+            return None
+    return tuple(paths)
 
 
-def select(event: str, base: str, head: str, root: Path = ROOT) -> Selection:
+def select(event: str, base: str, head: str, root: Path = ROOT, *, affected: bool = False) -> Selection:
     if event not in {"pull_request", "push"}:
         return Selection(ALL_CHECKS, Reason.FULL_EVENT)
     if not SHA.fullmatch(base) or not SHA.fullmatch(head) or "0" * 40 in (base, head):
@@ -236,7 +316,30 @@ def select(event: str, base: str, head: str, root: Path = ROOT) -> Selection:
         return Selection(ALL_CHECKS, Reason.DIFF_UNAVAILABLE)
     if not diff.stdout:
         return Selection(ALL_CHECKS, Reason.NO_CHANGES)
-    return Selection(classify_diff(diff.stdout), Reason.CHANGED_INPUTS)
+    checks = classify_diff(diff.stdout)
+    # Main retains qualified candidates for developer promotion after source-only PR feedback.
+    if event == "push" and checks == SOURCE_CHECKS:
+        checks = PRODUCT_CHECKS
+    if affected and checks != DOCUMENTATION_CHECKS:
+        paths = diff_paths(diff.stdout)
+        if paths is None:
+            return Selection(ALL_CHECKS, Reason.PLAN_REJECTED)
+        try:
+            tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=root, text=True).strip()
+            basis = subprocess.check_output(["git", "merge-base", base, head], cwd=root, text=True).strip() if event == "pull_request" else base
+        except (OSError, subprocess.CalledProcessError):
+            return Selection(ALL_CHECKS, Reason.PLAN_REJECTED)
+        plan = verification_plan.plan(root, frozenset(":" + module.replace("/", ":") for module in PRODUCT_MODULES),
+                                      paths, head, tree, base, basis, event)
+        if isinstance(plan, verification_plan.Failure):
+            return Selection(ALL_CHECKS, plan)
+        # A collected source root admits fixture/source-set paths that the legacy inventory cannot classify.
+        # Native inputs and non-Kotlin resources keep candidate qualification.
+        qualification = any(owner[1:].replace(":", "/") in QUALIFICATION_MODULES for owner in plan.owners)
+        qualification = qualification or any(not path.endswith(".kt") for path in paths)
+        checks = PRODUCT_CHECKS if qualification or event == "push" else SOURCE_CHECKS
+        return Selection(checks, Reason.CHANGED_INPUTS, plan)
+    return Selection(checks, Reason.CHANGED_INPUTS)
 
 
 def main() -> None:
@@ -245,14 +348,19 @@ def main() -> None:
     parser.add_argument("--base", default="")
     parser.add_argument("--head", default="")
     parser.add_argument("--github-output", type=Path, required=True)
+    parser.add_argument("--affected", action="store_true")
     args = parser.parse_args()
-    selection = select(args.event, args.base, args.head)
+    native = NativeCompilation(os.environ.get("KAST_NATIVE_COMPILATION", "true"))
+    selection = select(args.event, args.base, args.head, affected=True) if args.affected else select(args.event, args.base, args.head)
+    selection = selection.with_native_compilation(native)
     with args.github_output.open("a", encoding="utf-8") as output:
         for check in Check:
             output.write(f"{check.value}={'run' if check in selection.checks else 'skip'}\n")
         output.write(f"scope={selection.scope.value}\n")
+        if selection.plan is not None:
+            output.write("plan=" + json.dumps(asdict(selection.plan), separators=(",", ":")) + "\n")
     selected = ",".join(check.value for check in Check if check in selection.checks)
-    print(f"validation-scope: {selected} ({selection.reason.value})", flush=True)
+    print(f"validation-scope: {selected} ({selection.reason.value}); native-compilation={native.value}", flush=True)
 
 
 if __name__ == "__main__":

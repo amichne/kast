@@ -1,0 +1,116 @@
+import { loadExamples } from "./trace";
+
+const xml = (value: string): string =>
+  value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&apos;";
+    }
+  });
+
+/** An explicitly static comparison, generated from the admitted examples. */
+export async function buildPreview(): Promise<string> {
+  const admitted = await loadExamples();
+  if (admitted.kind === "rejected") throw new Error(admitted.code);
+  const example = admitted.examples.find((candidate) => candidate.id === "e0");
+  const constant = admitted.examples.find(
+    (candidate) => candidate.id === "constant",
+  );
+  if (!example || !constant) throw new Error("Missing preview example");
+  const connection = example.paths[0].steps.find(
+    (step) => step.authority === "reviewed-library",
+  );
+  if (!connection) throw new Error("Missing reviewed list connection");
+  const sourceLines = (lines: readonly string[], x: number) =>
+    lines
+      .map(
+        (line, index) =>
+          `<text class="code" x="${x}" y="${209 + index * 27}" xml:space="preserve">${xml(line)}</text>`,
+      )
+      .join("\n");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title description">
+  <title id="title">Same list type. Different customer.</title>
+  <desc id="description">A customer from createCustomer can be held in an email draft and a returned list, using a reviewed map rule. Changing one expression creates a separate Guest customer instead. A and B mark different source origins, not runtime object IDs. Static illustration from fixed source, not a live Kast response.</desc>
+  <style>
+    text { font-family:SUSE,system-ui,sans-serif; fill:#20242b; }
+    .paper { fill:#fff; stroke:#dce1e8; }
+    .panel { fill:#f5f7fa; stroke:#dce1e8; }
+    .eyebrow { font-size:14px; letter-spacing:1.5px; fill:#626a75; }
+    .title { font-size:36px; font-weight:600; letter-spacing:-1px; }
+    .heading { font-size:22px; font-weight:600; }
+    .copy { font-size:17px; fill:#626a75; }
+    .code { font-family:Menlo,Consolas,monospace; font-size:17px; fill:#3159ad; }
+    .list { fill:#fff; stroke:#3159ad; }
+    .email { fill:#f5f7fa; stroke:#dce1e8; }
+    .customer { fill:#edf7f2; stroke:#176b62; }
+    .customer-text { fill:#176b62; font-size:18px; font-weight:600; }
+    .other { fill:#fff6e8; stroke:#92540e; }
+    .other-text { fill:#92540e; font-size:18px; font-weight:600; }
+    .label { font-size:14px; fill:#626a75; }
+    .token { fill:#176b62; }
+    .other-token { fill:#92540e; }
+    .letter { fill:#fff; font-family:Menlo,monospace; font-size:16px; font-weight:600; }
+    @media(prefers-color-scheme:dark) {
+      text { fill:#eef0f4; }
+      .paper { fill:#15181d; stroke:#36404c; }
+      .panel, .email { fill:#1b2028; stroke:#36404c; }
+      .eyebrow, .copy, .label { fill:#a7b1bd; }
+      .code { fill:#a4bdff; }
+      .list { fill:#15181d; stroke:#a4bdff; }
+      .customer { fill:#1c302d; stroke:#8cd2bb; }
+      .customer-text { fill:#8cd2bb; }
+      .other { fill:#352b20; stroke:#edbc79; }
+      .other-text { fill:#edbc79; }
+      .token { fill:#8cd2bb; }
+      .other-token { fill:#edbc79; }
+      .letter { fill:#15181d; }
+    }
+  </style>
+  <rect class="paper" x="1" y="1" width="1198" height="648" rx="16"/>
+  <text class="eyebrow" x="36" y="40">KAST / SEE THE CONNECTION</text>
+  <text class="title" x="36" y="90">Same list type. Different customer.</text>
+  <text class="copy" x="36" y="123">A matching name or type does not tell you which value the code uses.</text>
+  <rect class="panel" x="32" y="151" width="552" height="403" rx="9"/>
+  <rect class="panel" x="616" y="151" width="552" height="403" rx="9"/>
+  <text class="eyebrow" x="52" y="182">01 / FOLLOW THE CUSTOMER</text>
+  <text class="eyebrow" x="636" y="182">02 / CHANGE ONE EXPRESSION</text>
+  ${sourceLines(connection.anchor.text.split("\n"), 52)}
+  ${sourceLines(
+    constant.source
+      .split("\n")
+      .slice(-4, -1)
+      .map((line) => line.replace(/^ {4}/, "")),
+    636,
+  )}
+  <rect class="list" x="52" y="291" width="512" height="190" rx="7"/>
+  <text class="label" x="70" y="318">Returned email list</text>
+  <rect class="email" x="70" y="334" width="476" height="129" rx="6"/>
+  <text class="code" x="88" y="362">WelcomeEmail</text>
+  <rect class="customer" x="88" y="379" width="440" height="66" rx="5"/>
+  <circle class="token" cx="117" cy="412" r="16"/><text class="letter" x="112" y="418">A</text>
+  <text class="customer-text" x="145" y="405">Customer</text>
+  <text class="label" x="145" y="428">recipient · from createCustomer</text>
+  <text class="copy" x="52" y="513">The list can hold the original source origin.</text>
+  <text class="label" x="52" y="537">The list connection additionally needs the reviewed map rule.</text>
+  <rect class="list" x="636" y="291" width="512" height="190" rx="7"/>
+  <text class="label" x="654" y="318">Returned email list · same declared type</text>
+  <rect class="email" x="654" y="334" width="476" height="129" rx="6"/>
+  <text class="code" x="672" y="362">WelcomeEmail</text>
+  <rect class="other" x="672" y="379" width="440" height="66" rx="5"/>
+  <rect class="other-token" x="685" y="396" width="32" height="32" rx="3"/><text class="letter" x="696" y="418">B</text>
+  <text class="other-text" x="729" y="405">A different customer</text>
+  <text class="label" x="729" y="428">recipient · Customer("Guest")</text>
+  <text class="copy" x="636" y="513">The original customer does not reach this list.</text>
+  <text class="label" x="636" y="537">Its separate email-recipient route still exists.</text>
+  <text class="heading" x="36" y="594">Follow the connection, not just the word.</text>
+  <text class="label" x="36" y="624">Static illustration · A and B mark source origins · No execution or live Kast query</text>
+</svg>\n`.replace(/[ \t]+$/gm, "");
+}

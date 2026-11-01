@@ -131,12 +131,24 @@ internal class AutomaticSymbolQueryTest : AutomaticSymbolQueryCase() {
             io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument.Complete,
             rejection.originalCoverage,
         )
+        val unavailable =
+            assertInstanceOf(
+                io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable::class.java,
+                rejection.evidence,
+            )
         assertEquals(
-            io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable(
-                io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure.CAPACITY_EXCEEDED
-            ),
-            rejection.evidence,
+            io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure.CAPACITY_EXCEEDED,
+            unavailable.cause,
         )
+        val original =
+            assertInstanceOf(
+                    io.github.amichne.kast.protocol.contract.QueryEvidenceSummaryState.Captured::class.java,
+                    unavailable.originalEvidenceSummary,
+                )
+                .summary
+        assertEquals(0, original.failureCount.value)
+        assertEquals(0, original.omissionCount.value)
+        assertEquals(0, original.evidenceCount.value)
         script.assertDrained()
     }
 

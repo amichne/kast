@@ -1,5 +1,17 @@
 # Develop and validate Kast
 
+Use this guide to change Kast itself, select tests, and prepare a reviewable commit.
+For a first query in your Kotlin project, use [the first-query tutorial](public/tutorials/first-query.mdx).
+
+Choose the route that matches your change:
+
+- For code, start with [one behavior](#test-one-behavior-at-a-time), then use [the scoped edit loop](#use-the-scoped-edit-loop).
+- For prose, use [the documentation policy](documentation-structure.md) and its separate prose and terminology procedures.
+- For a local product, read [build and installation](#build-and-install-the-checkout) before changes to your existing installation.
+- For release evidence, read [CI candidates and developer publication](#ci-candidates-and-developer-publication).
+
+## Prepare the toolchain
+
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
 The project [mise configuration](../mise.toml) pins GraalVM 25.0.2 and sets
 `JAVA_HOME` and `GRAALVM_HOME` to that installation. With mise shell activation,
@@ -103,6 +115,37 @@ then run the repository-required guards for changed contracts, architecture and
 documentation. Full build/release gates remain separate evidence; these focused
 checks do not replace them.
 
+### Gradle configuration and Build Scans
+
+The build enables Isolated Projects, the configuration cache, and the local build cache.
+Each module publishes its own architecture facts and generated outputs.
+Root tasks consume those artifacts without access to another project's mutable Gradle model.
+An ordinary `help` command does not collect module facts or compile module sources.
+
+Use `--no-isolated-projects` to compare behavior during a Gradle plugin investigation.
+Keep the task selection and cache state identical for timing comparisons.
+
+Build Scan publication is opt-in.
+After you accept the public service terms, request a scan with:
+
+```shell
+mise exec -- ./gradlew help --scan -PkastBuildScanTerms=yes
+```
+
+The public service receives build metadata, dependency details, and console output.
+The settings redact the username, host names, and IP addresses.
+The scan records the source revision and supplied GitHub run identifiers.
+An uncommitted edit still needs a separate diff record for exact source identity.
+
+For build-logic edits, select the needed test class:
+
+```shell
+mise exec -- ./gradlew -p build-logic test --tests '*VerificationGraphTaskTest'
+```
+
+The `test` task excludes the separate JSON parser suite.
+The build-logic `check` task still includes both suites.
+
 ### Use the scoped edit loop
 
 Run the module's `scopedCheck` task with `--continue` to collect independent failures:
@@ -155,6 +198,7 @@ unexpected skips and reports the expected platform skip count (currently 15 on
 Linux, zero on macOS arm64).
 CI runs this container suite on a disposable Ubuntu runner for every pull request
 and main push, alongside the macOS product checks.
+
 Run the same offline inventory without Docker using
 `python3 packaging/run-portable-tests.py`. A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
@@ -210,7 +254,12 @@ explicitly.
 
 ## CI candidates and developer publication
 
-Every PR builds and tests one complete Control/Host pair, including documentation-only PRs.
+CI selects its plan from the exact diff.
+Reviewed documentation paths can use the `DOCUMENTATION` plan without a product candidate.
+Installer examples, new paths, and unclassified changes keep full validation.
+The [CI policy](../.github/scripts/ci/README.md#ci-validation-and-cache-policy) owns the complete plan table and selection rules.
+
+The `PRODUCT` and `FULL` plans build and qualify a complete Control/Host pair.
 CI fixes the candidate version to `0.0.<CI run number>` before compilation.
 Retries retain that version and record the producer attempt separately.
 The identity record retains the full run ID; the version uses an installer-compatible integer.
@@ -224,12 +273,15 @@ The candidate retains its original commit and version.
 Missing or expired candidates, changed trees, and fork producers require a fresh main build.
 Malformed records, damaged payloads, and incomplete observations reject reuse.
 
-Successful main CI triggers developer publication automatically.
-Publication downloads the retained candidate and runs no Gradle or native-image build.
+Successful main CI triggers the developer publication workflow automatically.
+A `DOCS_VALIDATED` result leaves the developer product pointer unchanged and publishes no candidate.
+Product publication needs the exact run's `PRODUCT_VALIDATED` record.
+It downloads the retained candidate and runs no Gradle or native-image build.
 A separate promotion record binds the build commit to the merged commit and successful main run.
 The immutable developer release contains both records.
 If main advances before publication, the publisher retains the existing latest pointer.
-The public installer's `--developer-latest` flag selects the build named by that pointer.
+`kast versions` lists qualified main builds from the published catalog.
+`kast upgrade --channel main` selects the latest qualified development build.
 
 To retry publication for current main, supply its successful CI run ID:
 
@@ -246,6 +298,8 @@ Stable full and component releases retain their explicit semantic versions.
 Those versions currently change compiled Kotlin, the native executable, and plugin metadata.
 A different release version therefore requires a separate build.
 Developer promotion never renames or edits a tested payload.
+
+### Build evidence and dependency trust
 
 CI pins GraalVM 25.0.2 and retains Gradle task outputs plus the native reachability-metadata repository.
 The repository secret `GRADLE_ENCRYPTION_KEY` enables encrypted configuration-cache storage.
@@ -271,6 +325,22 @@ tampering; do not treat them as evidence for release provenance. For an intentio
 dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
 A successful CLI build does not establish that IDEA imported the Gradle model.
+
+### Installer policy
+
+Keep the public installation path simple: select the latest qualified development build and replace Kast-owned assets.
+Kast owns all directories for its installed assets, including Control, Host, and bundled agent guidance.
+Replace stale contents within those directories.
+End active Kast sessions when necessary to complete replacement.
+Keep source workspaces, the IDEA application, and unrelated agent assets outside that ownership.
+
+Artifact identity, checksums, contracts, and finite failure outcomes remain necessary.
+A rollback or recovery result does not complete an update to the latest build.
+After recovery succeeds, resolve the latest build again and complete its installation and Host activation.
+The [installation reference](public/reference/installation.mdx) owns remote installation commands and current restart behavior.
+
+### Install a local build
+For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
 
 Install the working tree into the existing user installation from the repository root:
 
@@ -388,6 +458,7 @@ retaining outstanding invocation observations until their native work terminates
 Preparation reports pending native work with the retained model observation and
 active operation identities. A retired endpoint incarnation remains blocked and
 requires a newly attached host; it does not imply the live project was disposed.
+
 The query owner retains its last successful preparation observation for the same
 native project identity. If refresh or observation cancellation makes current
 model checks unavailable, inspection still shows the earlier observed model and
@@ -403,6 +474,31 @@ oracle tracks fixture state and rejects deliberate stale-snapshot, retirement,
 and incarnation-bypass mutations. `HostedWorkspaceReadinessTest` exercises the
 production adapter projection with detached epoch sources and no native project,
 filesystem, Git, import, or registration fixture.
+
+## Compare complete engineering tasks
+
+Use this procedure for a controlled budget comparison, after the ordinary [engineering task](public/how-to/complete-engineering-task.mdx) succeeds.
+It defines a comparison, without a claim of measured time, heap use, or a completed native trial.
+
+Keep source revisions, requests, fixtures, and host conditions fixed.
+Restore only the disposable fixture between runs.
+Keep response limits equal across profiles.
+
+Record each measure for the whole task:
+
+| Measure | Record |
+| --- | --- |
+| Share of tasks that complete | Tasks with the expected answer and passing project tests, divided by all trials. |
+| Whole-task time | Time from discovery through the final test, with retries and recovery. |
+| Extra steps | Extra calls, manual budget changes, and unresolved decisions. |
+| Response size | Actual encoded bytes across all calls and pages. |
+| Memory | Host heap use and charged checkpoint bytes as distinct measures. |
+| Editor response | Editor responsiveness and cancellation settlement during the task. |
+| Coverage and current state | Original completion verdicts, identity evidence, and stale-state rejection outcomes. |
+
+Include controls for a smaller work grant, a stale reference, and caller cancellation.
+Keep a typed rejection distinct from a completed task.
+Do not raise retention quotas without memory evidence.
 
 ## OpenWiki upkeep
 

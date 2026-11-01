@@ -2,10 +2,10 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
-import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
@@ -15,12 +15,12 @@ import org.jetbrains.kotlin.analysis.api.resolution.KaSmartCastedReceiverValue
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtThisExpression
 
 internal sealed interface NativeReceiverFieldProof {
-    data object Matched : NativeReceiverFieldProof
+    data class Matched(val conditions: ValueConditions) : NativeReceiverFieldProof
 
     data object Unrelated : NativeReceiverFieldProof
 
@@ -29,7 +29,7 @@ internal sealed interface NativeReceiverFieldProof {
 
 /** Receiver fields preserve compiler identity and explicit branch compatibility. */
 internal fun KaSession.receiverFieldGuard(
-    function: KtNamedFunction,
+    function: KtFunction,
     expression: KtNameReferenceExpression,
     receiver: KaReceiverValue?,
     request: ValueFlowRequest,
@@ -40,11 +40,7 @@ internal fun KaSession.receiverFieldGuard(
     val workAllowance = request.budget.resources.workAllowance
     val position =
         (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver ?: return unsupportedReceiver()
-    val expected =
-        when (position.kind) {
-            ValueReceiverKind.EXTENSION -> function.symbol.receiverParameter
-            ValueReceiverKind.DISPATCH -> function.symbol.containingDeclaration
-        } ?: return unsupportedReceiver()
+    val expected = nativeValueReceiverSymbol(function, position.kind) ?: return unsupportedReceiver()
     when (branchValueReceiverMatch(receiver, expected, workAllowance)) {
         NativeBranchIdentity.OTHER -> return NativeReceiverFieldProof.Unrelated
         NativeBranchIdentity.UNAVAILABLE -> return unsupportedReceiver()
@@ -53,11 +49,16 @@ internal fun KaSession.receiverFieldGuard(
             return NativeReceiverFieldProof.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
     }
     return when (branchAdmission(source, expression, expected, scope, projection, workAllowance)) {
-        NativeValueBranchAdmission.ADMITTED -> NativeReceiverFieldProof.Matched
+        NativeValueBranchAdmission.ADMITTED -> NativeReceiverFieldProof.Matched(source.conditions)
         NativeValueBranchAdmission.NOT_APPLICABLE ->
-            if (receiver is KaSmartCastedReceiverValue) unsupportedReceiver() else NativeReceiverFieldProof.Matched
+            if (receiver is KaSmartCastedReceiverValue)
+                stableReceiverFieldProof(expression, receiver, request, position.kind)
+            else NativeReceiverFieldProof.Matched(source.conditions)
         NativeValueBranchAdmission.EXCLUDED -> NativeReceiverFieldProof.Unrelated
-        NativeValueBranchAdmission.UNPROVEN -> unsupportedReceiver()
+        NativeValueBranchAdmission.UNPROVEN ->
+            if (receiver is KaSmartCastedReceiverValue)
+                stableReceiverFieldProof(expression, receiver, request, position.kind)
+            else unsupportedReceiver()
         NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
             NativeReceiverFieldProof.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
     }

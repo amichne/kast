@@ -13,6 +13,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.call
@@ -83,8 +84,15 @@ internal class NativeValueCallerFrames(
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         expectedOwner: ValueExecutionOwner,
+        allowance: IntellijRelationAllowance,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> =
-        boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Retained(expectedOwner))
+        boundInvocation(
+            call = call,
+            host = host,
+            enclosing = enclosing,
+            admission = NativeCallerOwnerAdmission.Retained(expectedOwner),
+            allowance = allowance,
+        )
 
     fun initialInvocation(
         call: NativeValueCallSyntax,
@@ -92,17 +100,24 @@ internal class NativeValueCallerFrames(
         enclosing: RelationEndpoint,
         allowance: IntellijRelationAllowance,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> =
-        boundInvocation(call, host, enclosing, NativeCallerOwnerAdmission.Initial(allowance))
+        boundInvocation(
+            call = call,
+            host = host,
+            enclosing = enclosing,
+            admission = NativeCallerOwnerAdmission.Initial(allowance),
+            allowance = allowance,
+        )
 
     private fun boundInvocation(
         call: NativeValueCallSyntax,
         host: PsiNamedElement,
         enclosing: RelationEndpoint,
         admission: NativeCallerOwnerAdmission,
+        allowance: IntellijRelationAllowance,
     ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
         val bound =
             projection.observation.call(IntellijReadCall.VALUE_RETURN_CALL_BINDING) {
-                selectedCallable(call, enclosing)
+                selectedCallable(call, enclosing, allowance)
             }
         projection.observation.count(
             if (bound is Refinement.Refined) IntellijReadCounter.VALUE_RETURN_CALL_BINDINGS_ADMITTED
@@ -113,6 +128,16 @@ internal class NativeValueCallerFrames(
                 is Refinement.Refined -> bound.value
                 is Refinement.Rejected -> return bound
             }
+        return admittedInvocation(call, host, enclosing, admission, callee)
+    }
+
+    private fun admittedInvocation(
+        call: NativeValueCallSyntax,
+        host: PsiNamedElement,
+        enclosing: RelationEndpoint,
+        admission: NativeCallerOwnerAdmission,
+        callee: RelationEndpoint,
+    ): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
         val expression = call.anchor
         val admitted =
             projection.observation.call(IntellijReadCall.VALUE_RETURN_OWNER_ADMISSION) {
@@ -129,12 +154,23 @@ internal class NativeValueCallerFrames(
             }
         return when (
             val value =
-                ValueInvocation.fromCompiler(
-                    enclosing = enclosing,
-                    range = sourceValueRange(expression),
-                    callable = callee,
-                    executionOwner = execution,
+                if (
+                    (call is NativeValueCallSyntax.Component || call is NativeValueCallSyntax.PropertyRead) &&
+                        callee.signature is CanonicalCompilerSignature.Property
                 )
+                    ValueInvocation.getterFromCompiler(
+                        enclosing = enclosing,
+                        range = sourceValueRange(expression),
+                        callable = callee,
+                        executionOwner = execution,
+                    )
+                else
+                    ValueInvocation.fromCompiler(
+                        enclosing = enclosing,
+                        range = sourceValueRange(expression),
+                        callable = callee,
+                        executionOwner = execution,
+                    )
         ) {
             is Refinement.Refined -> value
             is Refinement.Rejected -> rejected()
@@ -144,7 +180,27 @@ internal class NativeValueCallerFrames(
     private fun selectedCallable(
         call: NativeValueCallSyntax,
         enclosing: RelationEndpoint,
+        allowance: IntellijRelationAllowance,
     ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
+        if (call is NativeValueCallSyntax.StringConversion)
+            return nativeValueCallableEndpoint(
+                declaration = call.function,
+                enclosing = enclosing,
+                scope = scope,
+                projection = projection,
+            )
+        if (call is NativeValueCallSyntax.Component) return selectedComponent(call, enclosing, allowance)
+        if (call is NativeValueCallSyntax.PropertyRead)
+            return when (val selected = nativeNamedGetter(call, projection)) {
+                is Refinement.Refined ->
+                    nativeValueCallableEndpoint(
+                        declaration = selected.value,
+                        enclosing = enclosing,
+                        scope = scope,
+                        projection = projection,
+                    )
+                is Refinement.Rejected -> selected
+            }
         val declaration =
             projection.observation.observedAnalyze(call.element) {
                 (resolveNativeValueCall(call)?.signature?.symbol as? KaNamedFunctionSymbol)?.psi as? PsiNamedElement
@@ -155,6 +211,41 @@ internal class NativeValueCallerFrames(
             scope = scope,
             projection = projection,
         )
+    }
+
+    private fun selectedComponent(
+        call: NativeValueCallSyntax.Component,
+        enclosing: RelationEndpoint,
+        allowance: IntellijRelationAllowance,
+    ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
+        val admission =
+            when (
+                val value =
+                    call.admit(
+                        enclosing = enclosing,
+                        scope = scope,
+                        projection = projection,
+                        permit = { allowance.permitDestructuring(scope) },
+                    )
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected ->
+                    return if (value.failure == ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION) rejected() else value
+            }
+        return when (val target = admission.target(call.entry)) {
+            is Refinement.Rejected -> target
+            is Refinement.Refined ->
+                when (val selected = target.value) {
+                    is NativeComponentTarget.Field -> rejected()
+                    is NativeComponentTarget.Callable ->
+                        nativeValueCallableEndpoint(
+                            declaration = selected.declaration,
+                            enclosing = enclosing,
+                            scope = scope,
+                            projection = projection,
+                        )
+                }
+        }
     }
 
     private fun executionOwner(
@@ -199,6 +290,7 @@ internal class NativeValueCallerFrames(
                         enclosing = enclosing,
                         scope = scope,
                         projection = projection,
+                        allowance = allowance,
                         admitWork = { allowance.admitCallbackWork(scope.request.budget.resources) },
                         expiry = {
                             if (allowance.elapsedLimitReached(scope.request.budget.resources))
@@ -235,6 +327,7 @@ internal fun nativeValueInitialExecution(
                 return Refinement.Rejected(NativeInitialValueFailure.Native(plain.failure))
     }
     val allowance = IntellijRelationAllowance(System.nanoTime()) { System.nanoTime() }
+    val failures = mutableListOf<io.github.amichne.kast.relation.contract.ValueCallbackInputFailure>()
     val captured =
         nativeValueCaptureOwner(
             element,
@@ -242,6 +335,7 @@ internal fun nativeValueInitialExecution(
             enclosing,
             scope,
             projection,
+            allowance,
             admitWork = {
                 when {
                     allowance.elapsedLimitReached(scope.request.budget.resources) ->
@@ -258,28 +352,36 @@ internal fun nativeValueInitialExecution(
                 if (allowance.elapsedLimitReached(scope.request.budget.resources)) CallbackExpiryAdmission.EXPIRED
                 else CallbackExpiryAdmission.CURRENT
             },
+            recordFailure = { failures.add(it) },
         )
     return when (captured) {
         is Refinement.Refined -> Refinement.Refined(initialValueRead(captured.value, allowance.examined))
-        is Refinement.Rejected -> Refinement.Rejected(NativeInitialValueFailure.Unsupported(captured.failure))
+        is Refinement.Rejected ->
+            Refinement.Rejected(NativeInitialValueFailure.Unsupported(captured.failure, failures.toList()))
     }
 }
 
 internal data class NativeInitialValueRead(
-    val owner: ValueExecutionOwner,
+    val execution: NativeValueExecution,
     val examinedWork: io.github.amichne.kast.relation.contract.RelationWorkCount,
-)
+) {
+    val owner: ValueExecutionOwner
+        get() = execution.owner
+}
 
 private fun initialValueRead(execution: NativeValueExecution, work: Long): NativeInitialValueRead =
     when (val count = io.github.amichne.kast.relation.contract.RelationWorkCount.parse(work)) {
-        is Refinement.Refined -> NativeInitialValueRead(execution.owner, count.value)
+        is Refinement.Refined -> NativeInitialValueRead(execution, count.value)
         is Refinement.Rejected -> error("Native capture work is nonnegative")
     }
 
 internal sealed interface NativeInitialValueFailure {
     data class Native(val cause: ValueFlowRejection) : NativeInitialValueFailure
 
-    data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeInitialValueFailure
+    data class Unsupported(
+        val cause: ValueFlowUnsupportedCause,
+        val callbackFailures: List<io.github.amichne.kast.relation.contract.ValueCallbackInputFailure> = emptyList(),
+    ) : NativeInitialValueFailure
 
     fun seedRejection(): ValueFlowRejection =
         when (this) {

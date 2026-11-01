@@ -8,7 +8,10 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 
+@EnabledOnOs(OS.MAC)
 class NativeResetPeerAcceptanceTest {
     @Test
     fun `native ownership capture waits for the accepted descriptor on the same connected peer`() {

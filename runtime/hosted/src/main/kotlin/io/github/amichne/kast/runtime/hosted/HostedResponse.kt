@@ -23,6 +23,11 @@ import kotlinx.serialization.json.Json
 
 private val HOSTED_RESPONSE_JSON = Json { encodeDefaults = true }
 
+internal enum class HostedCanonicalPresentation {
+    FULL,
+    HEADER_ONLY,
+}
+
 /** An encoded response retains its original outcome until the connection has finished writing. */
 internal sealed interface HostedResponse {
     val document: String
@@ -59,6 +64,7 @@ internal sealed interface HostedResponse {
         val operation: CanonicalOperation,
         val semantic: OperationOutcome<Result, Qualification, Rejection>,
         override val document: String,
+        val presentation: HostedCanonicalPresentation = HostedCanonicalPresentation.FULL,
     ) : HostedResponse {
         override val outcome =
             when (semantic) {
@@ -68,6 +74,34 @@ internal sealed interface HostedResponse {
             }
 
         companion object {
+            fun queryPresentation(
+                semantic: HostedQueryOutcome,
+                limits: ReadLimits,
+                maximumBytes: ReturnedByteLimit,
+                detail: io.github.amichne.kast.protocol.contract.QueryEntryDetailDocument? = null,
+            ): HostedResponse {
+                if (maximumBytes.value < io.github.amichne.kast.protocol.contract.PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES)
+                    return Oversized(CanonicalOperation.QUERY_RUN, semantic)
+                val header =
+                    io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument.from(
+                        semantic,
+                        detail,
+                    )
+                val document =
+                    io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument.generated(
+                            io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument
+                                .serializer()
+                        )
+                        .create(header)
+                        .value
+                return if (
+                    document.toByteArray(Charsets.UTF_8).size <=
+                        minOf(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong(), maximumBytes.value)
+                )
+                    Canonical(CanonicalOperation.QUERY_RUN, semantic, document, HostedCanonicalPresentation.HEADER_ONLY)
+                else Oversized(CanonicalOperation.QUERY_RUN, semantic)
+            }
+
             fun <
                 Request : OperationRequest,
                 Result : OperationResult,

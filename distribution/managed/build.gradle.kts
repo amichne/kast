@@ -3,7 +3,7 @@ plugins {
     id("kast.role.filesystem-write")
 }
 
-group = "${rootProject.group}.distribution"
+group = "${providers.gradleProperty("GROUP").get()}.distribution"
 
 base {
     archivesName.set("distribution-managed")

@@ -14,9 +14,10 @@ class NativeFixtureIdea internal constructor(
 object SharedNativeFixtureIdea {
     fun select(project: Project): NativeFixtureIdea = with(project) {
         val consumerDirectory = layout.projectDirectory
+        val defaultHome = isolated.rootProject.projectDirectory.dir("relation/intellij/build/native-test/idea")
         val suppliedHome = providers.gradleProperty("nativeFixtureIdeaHome")
         val home = suppliedHome.map(consumerDirectory::dir).orElse(
-            project(":relation:intellij").layout.buildDirectory.dir("native-test/idea"),
+            providers.provider { defaultHome },
         )
         val contents = files(home)
         if (!suppliedHome.isPresent) contents.builtBy(":relation:intellij:extractNativeTestIdea")

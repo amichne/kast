@@ -1,5 +1,7 @@
 import java.security.MessageDigest
+import support.consumeProjectOutput
 import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
@@ -7,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("kast.role.ide-host")
 }
+
+val repositoryRoot = project.isolated.rootProject.projectDirectory
 
 base { archivesName.set("kast-ide-hosted") }
 
@@ -42,15 +46,37 @@ val ideBuild =
     } else pinnedBuild
 val ideReleaseLine = ideBuild.substringBefore('.')
 
+val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
+val hostSourceRevision =
+    providers
+        .gradleProperty("kastSourceRevision")
+        .orElse(
+            providers
+                .exec {
+                    workingDir(repositoryRoot.asFile)
+                    commandLine("git", "rev-parse", "HEAD")
+                }
+                .standardOutput
+                .asText
+                .map(String::trim)
+        )
+val hostSourceTree =
+    providers
+        .exec {
+            workingDir(repositoryRoot.asFile)
+            commandLine("git", "rev-parse", "HEAD^{tree}")
+        }
+        .standardOutput
+        .asText
+        .map(String::trim)
+
 tasks.processResources {
-    val schema = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
-    val registry = rootProject.file("protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
+    val schema = File(repositoryRoot.asFile, "protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
+    val registry =
+        File(repositoryRoot.asFile, "protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
     fun digest(file: File) =
         "sha256:" + MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
-    val contract =
-        project(":protocol:wire").layout.buildDirectory.file("generated/hosted-contract/hosted-contract.json")
-    dependsOn(":protocol:wire:generateHostedContract")
-    from(contract)
+    from(hostedContractFiles)
     val values =
         mapOf(
             "ideBuild" to ideBuild,
@@ -59,6 +85,8 @@ tasks.processResources {
             "pluginVersion" to project.version.toString(),
             "schemaDigest" to digest(schema),
             "registryDigest" to digest(registry),
+            "sourceRevision" to hostSourceRevision.get(),
+            "sourceTree" to hostSourceTree.get(),
         )
     inputs.properties(values)
     expand(values)
@@ -109,6 +137,8 @@ dependencies {
 
 val hostedPlugin =
     tasks.register<Zip>("hostedPlugin") {
+        val componentVersionSuffix = "-${project.version}.jar"
+        val externalJarPrefixes = setOf("sqlite-jdbc-", "kotlinx-serialization-")
         group = "distribution"
         description = "Packages the project-owned existing-IDE index endpoint."
         archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideReleaseLine.zip")
@@ -117,9 +147,9 @@ val hostedPlugin =
         isReproducibleFileOrder = true
         into("kast-ide-hosted/lib") {
             from(tasks.jar)
-            from(project(":workspace:intellij-read").tasks.named("jar"))
             from(configurations.runtimeClasspath) {
                 include(
+                    "workspace-intellij-read-*.jar",
                     "kernel-*.jar",
                     "workspace-contract-*.jar",
                     "symbol-contract-*.jar",
@@ -162,13 +192,18 @@ val hostedPlugin =
                     "kotlinx-serialization-json-jvm-*.jar",
                 )
             }
+            eachFile {
+                if (externalJarPrefixes.none(name::startsWith) && name.endsWith(componentVersionSuffix))
+                    name = name.removeSuffix(componentVersionSuffix) + ".jar"
+            }
+            duplicatesStrategy = DuplicatesStrategy.FAIL
         }
     }
 
 // The actual encoder is compared with the exact bytes also validated by CLI schema tests.
 tasks.named("test") {
     inputs
-        .file(rootProject.layout.projectDirectory.file("cli/src/test/resources/hosted-endpoint-failure-encodings.json"))
+        .file(repositoryRoot.file("cli/src/test/resources/hosted-endpoint-failure-encodings.json"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
@@ -187,7 +222,7 @@ dependencies {
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
     from(reviewedCallbackSources) { into("reviewed-libraries") }
-    from(rootProject.file("relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
+    from(File(repositoryRoot.asFile, "relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
 }
 
 configurations[nativeTest.implementationConfigurationName].apply {
@@ -212,7 +247,7 @@ val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
 val nativeIdeaHome =
     objects.directoryProperty().apply {
         if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
-        else set(project(":relation:intellij").layout.buildDirectory.dir("native-test/idea"))
+        else set(providers.provider { repositoryRoot.dir("relation/intellij/build/native-test/idea") })
     }
 val nativeIdeaLibraries =
     files(
@@ -255,6 +290,19 @@ dependencies {
     add(nativeTest.runtimeOnlyConfigurationName, "com.jetbrains.intellij.platform:test-runner:$nativePlatformBuild")
 }
 
+val nativeDependencyFixture =
+    configurations.create("nativeDependencyFixture") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
+dependencies {
+    add(
+        nativeDependencyFixture.name,
+        project(path = ":relation:intellij", configuration = "nativeDependencyFixtureElements"),
+    )
+}
+
 fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>) =
     tasks.register<Test>(taskName) {
         description = "Runs native hosted wait and cancellation fixtures in the pinned IntelliJ Platform."
@@ -263,7 +311,7 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
         classpath = nativeTest.runtimeClasspath
         inputs
             .files(
-                rootProject.fileTree("experiments/host-observation/nested-callback-fixture") {
+                fileTree(repositoryRoot.dir("experiments/host-observation/nested-callback-fixture")) {
                     include("*/src/main/kotlin/**/*.kt")
                 }
             )
@@ -274,6 +322,11 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
             filter { selectedClasses.forEach(::includeTestsMatching) }
         }
         maxParallelForks = 1
+        jvmArgumentProviders.add(
+            objects.newInstance<DependencyFixtureArguments>().apply {
+                archives.from(nativeDependencyFixture)
+            }
+        )
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
                 productInfo.set(nativeIdeaHome.file("product-info.json"))
@@ -295,6 +348,13 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
 
 registerHostedNativeFixtures("nativeFixtureTest", emptyList())
 
+val dependencyFixtureTest =
+    registerHostedNativeFixtures("dependencyFixtureTest", listOf("*DeclaredEffectArchiveIsolationTest"))
+
+tasks.named("check") { dependsOn(dependencyFixtureTest) }
+
+tasks.named("scopedCheck") { dependsOn(dependencyFixtureTest) }
+
 registerHostedNativeFixtures(
     "semanticCoverageFixtureTest",
     listOf(
@@ -308,5 +368,13 @@ registerHostedNativeFixtures(
         "*NativeCrossModuleCallbackRejectionTest",
         "*NativeCrossModuleCallbackProjectionTest",
         "*NativeTraceEffectGapTest",
+        "*NativeCompilerCoverageQueryTest",
+        "*NativeContainerMapQueryTest",
+        "*NativeStringContentQueryTest",
+        "*NativeCompilerCoverageControlsTest",
     ),
 )
+
+configurations.consumable("hostedPluginElements") {
+    outgoing.artifact(hostedPlugin.flatMap { it.archiveFile })
+}

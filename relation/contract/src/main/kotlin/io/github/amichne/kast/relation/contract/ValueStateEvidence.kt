@@ -1,8 +1,18 @@
 package io.github.amichne.kast.relation.contract
 
 internal fun ValueSite.stateEndpoints(includeFormal: Boolean = true): List<RelationEndpoint> = buildList {
-    valuePath.segments.filterIsInstance<ValuePathSegment.Field>().forEach { add(it.field.declaration) }
+    (role as? ValueRole.LoopResult)?.result?.protocol?.invocations()?.forEach {
+        add(it.enclosing)
+        add(it.callable)
+    }
+    valuePath.segments.forEach { addAll(it.reviewedPathEndpoints()) }
     callStack.frames.forEach { addAll(it.stateEndpoints()) }
+    conditions.facts.forEach { condition ->
+        val origin = condition.origin
+        add(origin.execution.enclosing)
+        origin.valuePath.segments.forEach { addAll(it.reviewedPathEndpoints()) }
+        origin.callStack.frames.forEach { addAll(it.stateEndpoints()) }
+    }
     val formal = (role as? ValueRole.Formal)?.position as? ValueFormalPosition.Parameter
     if (includeFormal && formal != null) add(formal.parameter.callable)
 }
@@ -25,19 +35,112 @@ internal fun ValueCallFrame.stateEndpoints(): List<RelationEndpoint> = buildList
 }
 
 internal fun StringBuilder.valueState(site: ValueSite) {
-    when (val context = site.executionOwner.context) {
+    valueState(site.executionOwner, site.valuePath, site.callStack)
+    field(site.conditions.facts.size.toString())
+    site.conditions.facts.forEach { condition ->
+        when (condition) {
+            is ValueCondition.ReviewedCallbackNormalReturn -> reviewedNormalReturn(condition)
+            is ReviewedGroupMembership -> reviewedGroupMembership(condition)
+            is ReviewedGroupKeyRepresentative -> reviewedGroupKeyRepresentative(condition)
+            is ReviewedPredicateAccepts -> reviewedPredicateAccepts(condition)
+            is ReviewedCallbackResultNonNull -> reviewedCallbackResultNonNull(condition)
+            is ValueCondition.ReviewedCollectionNormalResult -> reviewedCollectionNormalResult(condition)
+            is ValueCondition.ReviewedEntryKeyUnique -> reviewedEntryKeyUnique(condition)
+            is ValueCondition.ReviewedMappedKeySurvives -> reviewedMappedKeySurvives(condition)
+            is ValueCondition.ReviewedPreservedKeySurvives -> reviewedPreservedKeySurvives(condition)
+            is ValueCondition.ReviewedEntryComponentStable -> reviewedEntryComponentStable(condition)
+            is ValueCondition.ReviewedEntryPrefixNormal -> reviewedEntryPrefixNormal(condition)
+            is ValueCondition.DeclaredCallbackResult -> declaredResultCondition(condition)
+            is ValueCondition.StableLocal -> {
+                field("STABLE_LOCAL")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                localVersion(condition.version)
+                field(condition.originalType.value)
+                field(condition.refinedType.value)
+            }
+            is ValueCondition.StableReceiver -> {
+                field("STABLE_RECEIVER")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                field(condition.kind.name)
+                field(condition.originalType.value)
+                field(condition.refinedType.value)
+            }
+            is ValueCondition.StringContentNonNull -> {
+                field("STRING_CONTENT_NON_NULL")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                range(condition.entryRange)
+            }
+            is ValueCondition.CastSuccess -> {
+                field("CAST_SUCCESS")
+                conditionOrigin(condition.origin)
+                range(condition.useRange)
+                field(condition.kind.name)
+                field(condition.originalType.value)
+                field(condition.targetType.value)
+            }
+        }
+    }
+}
+
+private fun StringBuilder.declaredResultCondition(condition: ValueCondition.DeclaredCallbackResult) {
+    field("DECLARED_CALLBACK_RESULT")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    declaredCallbackBinding(condition.binding)
+}
+
+internal fun StringBuilder.conditionOrigin(origin: ValueConditionOrigin) {
+    endpoint(origin.execution.enclosing)
+    range(origin.execution.range)
+    field(origin.execution.identity.host.compiler.value)
+    range(origin.range)
+    valueRole(origin.role)
+    valueState(origin.execution, origin.valuePath, origin.callStack)
+}
+
+private fun StringBuilder.valueState(
+    execution: ValueExecutionOwner,
+    path: ValueAccessPath,
+    stack: ValueCallStack,
+) {
+    executionContext(execution.context)
+    field(path.depth.toString())
+    path.segments.forEach { segment ->
+        when (segment) {
+            ValuePathSegment.Element -> field("ELEMENT")
+            is ValuePathSegment.PairComponent -> {
+                field("PAIR_COMPONENT")
+                reviewedTupleOrigin(segment.origin)
+                field(segment.slot.name)
+            }
+            is ValuePathSegment.MapEntryComponent -> {
+                field("MAP_ENTRY_COMPONENT")
+                reviewedMapEntryOrigin(segment.entry)
+                field(segment.slot.name)
+            }
+            is ValuePathSegment.Field -> {
+                field("FIELD")
+                endpoint(segment.field.declaration)
+            }
+        }
+    }
+    field(stack.frames.size.toString())
+    stack.frames.forEach { frame -> callFrame(frame) }
+}
+
+internal fun StringBuilder.executionContext(context: ValueExecutionContext) {
+    when (context) {
         ValueExecutionContext.Declaration -> Unit
+        is ValueExecutionContext.DeclaredCallback -> {
+            field("DECLARED_CALLBACK_VALUE")
+            declaredCallbackBinding(context.binding)
+        }
         is ValueExecutionContext.ReviewedCallback -> {
             field("REVIEWED_CALLBACK_VALUE")
-            field(context.binding.body.compilerIdentity.value)
-            range(context.binding.body.range)
-            range(context.binding.occurrence.range)
-            field(context.binding.target.compilerIdentity.value)
-            field(context.binding.target.file.stableValue)
-            range(context.binding.target.range)
-            field(context.binding.position.value.toString())
-            field(context.binding.artifact.binaryArtifact.value)
-            field(context.binding.artifact.sourceArtifact.value)
+            reviewedCallbackBinding(context.binding)
         }
         is ValueExecutionContext.Callback -> {
             field("CAPTURED_EXECUTION")
@@ -46,25 +149,19 @@ internal fun StringBuilder.valueState(site: ValueSite) {
             field(context.invocations.size.toString())
             context.invocations.forEach { frame ->
                 field(frame.body.compilerIdentity.value)
-                valueCall(frame.supply.invocation)
+                callFrame(frame.supply.frame)
                 range(frame.supply.parameter.range)
                 field(frame.supply.position.value.toString())
                 field(frame.invocation.canonicalProjection())
             }
+            field("SELECTED_INVOCATION")
+            callFrame(context.selectedInvocation.supply.frame)
+            body(context.selectedInvocation.supply.invocationOwner)
+            occurrence(context.selectedInvocation.supply.parameter)
+            field(context.selectedInvocation.supply.position.value.toString())
+            field(context.selectedInvocation.invocation.canonicalProjection())
         }
     }
-    field(site.valuePath.depth.toString())
-    site.valuePath.segments.forEach { segment ->
-        when (segment) {
-            ValuePathSegment.Element -> field("ELEMENT")
-            is ValuePathSegment.Field -> {
-                field("FIELD")
-                endpoint(segment.field.declaration)
-            }
-        }
-    }
-    field(site.callStack.frames.size.toString())
-    site.callStack.frames.forEach { frame -> callFrame(frame) }
 }
 
 internal fun StringBuilder.callFrame(frame: ValueCallFrame) {
@@ -96,7 +193,7 @@ private fun StringBuilder.sourceOwnership(ownership: ValueSourceOwnership) {
     field(root.provenance.name)
 }
 
-private fun StringBuilder.valueCall(call: ValueInvocation) {
+internal fun StringBuilder.valueCall(call: ValueInvocation) {
     endpoint(call.enclosing)
     range(call.range)
     endpoint(call.callable)
@@ -126,6 +223,10 @@ internal fun StringBuilder.formalPosition(position: ValueFormalPosition) {
 
 internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
     when (operation) {
+        is ValueSourceOperation.DeclaredCallbackResult -> {
+            field("DECLARED_CALLBACK_RESULT")
+            declaredCallbackBinding(operation.binding)
+        }
         is ValueSourceOperation.Enter -> {
             field("ENTER")
             callFrame(operation.frame)
@@ -141,13 +242,15 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
         }
         is ValueSourceOperation.CallbackReturn -> {
             field("CALLBACK_RETURN")
-            field(operation.invocation.body.compilerIdentity.value)
-            range(operation.invocation.body.range)
-            valueCall(operation.invocation.supply.invocation)
-            range(operation.invocation.supply.parameter.range)
-            field(operation.invocation.supply.position.value.toString())
-            field(operation.invocation.invocation.canonicalProjection())
+            captureInvocation(operation.invocation)
             callFrame(operation.frame)
+        }
+        is ValueSourceOperation.CallbackArgumentEntry -> {
+            field("CALLBACK_ARGUMENT_ENTRY")
+            captureInvocation(operation.invocation)
+            callFrame(operation.supplierFrame)
+            formalPosition(ValueFormalPosition.Parameter(operation.parameter))
+            range(operation.argumentRange)
         }
         is ValueSourceOperation.ReadField -> {
             field("READ_FIELD")
@@ -160,4 +263,28 @@ internal fun StringBuilder.sourceOperation(operation: ValueSourceOperation) {
             endpoint(operation.storage.field.declaration)
         }
     }
+}
+
+private fun StringBuilder.captureInvocation(invocation: ValueCaptureInvocation) {
+    field(invocation.body.compilerIdentity.value)
+    range(invocation.body.range)
+    callFrame(invocation.supply.frame)
+    range(invocation.supply.parameter.range)
+    field(invocation.supply.position.value.toString())
+    field(invocation.invocation.canonicalProjection())
+}
+
+internal fun StringBuilder.declaredCallbackBinding(binding: DeclaredCallbackValueBinding) {
+    endpoint(binding.enclosing)
+    body(binding.body)
+    occurrence(binding.contract.occurrence)
+    body(binding.contract.owner)
+    field(binding.contract.target.compilerIdentity.value)
+    field(binding.contract.target.file.stableValue)
+    range(binding.contract.target.range)
+    field(binding.contract.position.value.toString())
+    field(binding.contract.classDigest.value)
+    field(binding.contract.provenance.name)
+    field(binding.contract.invocationKind.name)
+    field(binding.resultEffect.name)
 }

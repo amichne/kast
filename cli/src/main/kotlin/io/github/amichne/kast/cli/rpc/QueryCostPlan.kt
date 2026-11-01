@@ -13,6 +13,7 @@ import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.TraversalExtentDocument
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -66,7 +67,10 @@ internal enum class QueryCostAdvice {
 }
 
 /** Request-only advice uses the same schema admission as a call and consumes no host capabilities. */
-internal fun planToolQuery(bytes: ByteArray): QueryCostPlanReply {
+internal fun planToolQuery(
+    bytes: ByteArray,
+    catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
+): QueryCostPlanReply {
     if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
         return QueryCostPlanReply.Rejected(QueryCostPlanFailure.REQUEST_TOO_LARGE)
     val input =
@@ -81,7 +85,7 @@ internal fun planToolQuery(bytes: ByteArray): QueryCostPlanReply {
             return QueryCostPlanReply.Rejected(QueryCostPlanFailure.INVALID_ARGUMENTS)
         }
     val canonical =
-        when (val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, arguments)) {
+        when (val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, arguments, catalog)) {
             is Refinement.Refined -> admitted.value.canonical
             is Refinement.Rejected -> return QueryCostPlanReply.Rejected(QueryCostPlanFailure.INVALID_ARGUMENTS)
         }

@@ -319,6 +319,101 @@ class ValueImplementationCallOracleTest {
     }
 }
 
+class CallbackImplementationBindingTest {
+    @Test
+    fun `callback binding retains declared call concrete formal and implementation authority`() {
+        val case = implementationCase()
+        val frame = case.frame(case.first)
+        val owner =
+            RelationCallableBody.Named.fromCompiler((case.call.enclosing as RelationEndpoint.Resolved).evidence)
+                .flowRefined()
+        val parameter = RelationOccurrence.fromSource(case.first.source.file, flowRange(310, 320))
+        val binding =
+            CallbackArgumentBinding.fromCompiler(
+                    frame = frame,
+                    invocationOwner = owner,
+                    position = ValueArgumentPosition.parse(0).flowRefined(),
+                    parameter = parameter,
+                )
+                .flowRefined()
+        assertSame(frame, binding.frame)
+        assertSame(case.call, binding.invocation)
+        assertEquals(case.first.target, binding.invocation.callable)
+        assertEquals(case.first.source, binding.callable)
+        assertEquals(case.first.source, binding.formalIdentity().flowRefined().callable)
+        assertSame(frame.target, binding.frame.target)
+    }
+
+    @Test
+    fun `callback binding cannot use implementation formal with an erased or sibling frame`() {
+        val case = implementationCase()
+        val owner =
+            RelationCallableBody.Named.fromCompiler((case.call.enclosing as RelationEndpoint.Resolved).evidence)
+                .flowRefined()
+        val parameter = RelationOccurrence.fromSource(case.first.source.file, flowRange(310, 320))
+        val position = ValueArgumentPosition.parse(0).flowRefined()
+        val expected = Refinement.Rejected(CallbackInvocationFlowFailure.PARAMETER_OUTSIDE_CALLABLE)
+        assertEquals(
+            expected,
+            CallbackArgumentBinding.fromCompiler(
+                invocation = case.call,
+                invocationOwner = owner,
+                position = position,
+                parameter = parameter,
+            ),
+        )
+        assertEquals(
+            expected,
+            CallbackArgumentBinding.fromCompiler(
+                frame = case.frame(case.second),
+                invocationOwner = owner,
+                position = position,
+                parameter = parameter,
+            ),
+        )
+    }
+
+    @Test
+    fun `callback binding identity retains dispatch coverage rather than only concrete declaration`() {
+        val case = implementationCase()
+        val compiled =
+            RelationCompilation.qualifiedTerminal(
+                    case.compilation.batch,
+                    setOf(RelationLimitation.UNRESOLVED_TARGET),
+                )
+                .flowRefined()
+        val incomplete = ValueImplementationDispatch.fromCompiler(compiled).flowRefined()
+        val partial =
+            ValueCallFrame.implementation(
+                    invocation = case.call,
+                    dispatch = incomplete,
+                    relation = case.first,
+                    ownership = case.ownership(case.first),
+                )
+                .flowRefined()
+        val owner =
+            RelationCallableBody.Named.fromCompiler((case.call.enclosing as RelationEndpoint.Resolved).evidence)
+                .flowRefined()
+        fun boundFrame(frame: ValueCallFrame) =
+            CallbackArgumentBinding.fromCompiler(
+                    frame = frame,
+                    invocationOwner = owner,
+                    position = ValueArgumentPosition.parse(0).flowRefined(),
+                    parameter = RelationOccurrence.fromSource(case.first.source.file, flowRange(310, 320)),
+                )
+                .flowRefined()
+        val fullBinding = boundFrame(case.frame(case.first))
+        val partialBinding = boundFrame(partial)
+        assertEquals(fullBinding.invocation, partialBinding.invocation)
+        assertEquals(fullBinding.callable, partialBinding.callable)
+        assertNotEquals(fullBinding, partialBinding)
+        assertNotEquals(
+            buildString { binding(CallbackBindingEvidence.Bound(fullBinding)) },
+            buildString { binding(CallbackBindingEvidence.Bound(partialBinding)) },
+        )
+    }
+}
+
 private data class ImplementationCase(
     val call: ValueInvocation,
     val first: RelationFact,

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
@@ -8,22 +10,60 @@ import org.junit.jupiter.api.Test
 /** Explicit compiler facts exercise result matching, not native resolution or runtime execution. */
 class ValueCallbackReturnTest {
     @Test
+    fun `callback parameters belong to the anonymous signature rather than the enclosing function`() {
+        val fixture = CallbackInvocationFlowFixture()
+        val range = fixture.range(30, 60)
+        val signature =
+            CanonicalCompilerSignature.function(
+                    rawQualifiedIdentity = RelationCallableBody.Anonymous.sourceIdentity(fixture.file, range),
+                    rawReceiverType = null,
+                    rawContextReceiverTypes = emptyList(),
+                    rawValueParameterTypes = listOf("fixture.Payload"),
+                    rawTypeParameterCount = 0,
+                )
+                .flowRefined() as CanonicalCompilerSignature.Function
+        val body = RelationCallableBody.Anonymous.fromCompiler(fixture.file, range, signature).flowRefined()
+        val execution = callbackOwner(fixture, body, fixture.binding, formalInvocation(fixture))
+        val name = SymbolDiscoveryCandidateName.parse("payload").flowRefined()
+        val parameterRange = fixture.range(32, 39)
+        val parameter =
+            ValueFormalParameter.fromCompiler(
+                    callable = fixture.caller,
+                    position = ValueArgumentPosition.parse(0).flowRefined(),
+                    name = name,
+                    range = parameterRange,
+                    executionOwner = execution,
+                )
+                .flowRefined()
+        assertEquals(execution, parameter.executionOwner)
+        assertEquals(parameterRange, parameter.range)
+        assertEquals(
+            Refinement.Rejected(ValueCallBindingFailure.INVALID_PARAMETER),
+            ValueFormalParameter.fromCompiler(
+                callable = fixture.caller,
+                position = ValueArgumentPosition.parse(1).flowRefined(),
+                name = name,
+                range = parameterRange,
+                executionOwner = execution,
+            ),
+        )
+    }
+
+    @Test
     fun `callback result enters only its exact formal invocation and supplier frame`() {
         val first = callbackResult(20)
         val second = callbackResult(100)
         assertEquals(first.target.enclosing.valueIdentity, second.target.enclosing.valueIdentity)
         assertNotEquals(first.source.executionOwner, second.source.executionOwner)
-        val transfer =
-            ValueTransfer.fromCompiler(
-                    first.source,
-                    first.target,
-                    ValueTransferKind.SOURCE_CALL_RETURN,
-                    first.evidence,
-                )
-                .flowRefined()
-        assertEquals(first.source.valuePath, transfer.target.valuePath)
-        assertEquals(1, transfer.target.callStack.frames.size)
-        assertEquals(first.frame, transfer.target.callStack.frames.single())
+        val activeSource = first.source.withState(callStack = first.target.callStack).flowRefined()
+        for (source in listOf(first.source, activeSource)) {
+            val transfer =
+                ValueTransfer.fromCompiler(source, first.target, ValueTransferKind.SOURCE_CALL_RETURN, first.evidence)
+                    .flowRefined()
+            assertEquals(source.valuePath, transfer.target.valuePath)
+            assertEquals(1, transfer.target.callStack.frames.size)
+            assertEquals(first.frame, transfer.target.callStack.frames.single())
+        }
         val wrongOccurrence =
             ValueSite.fromCompiler(
                     first.target.enclosing,
@@ -39,10 +79,12 @@ class ValueCallbackReturnTest {
                 wrongOccurrence,
                 first.target.withState(valuePath = ValueAccessPath.Whole).flowRefined(),
             )) {
-            assertEquals(
-                Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH),
-                ValueTransfer.fromCompiler(first.source, target, ValueTransferKind.SOURCE_CALL_RETURN, first.evidence),
-            )
+            for (source in listOf(first.source, activeSource)) {
+                assertEquals(
+                    Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH),
+                    ValueTransfer.fromCompiler(source, target, ValueTransferKind.SOURCE_CALL_RETURN, first.evidence),
+                )
+            }
         }
         assertEquals(
             Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH),

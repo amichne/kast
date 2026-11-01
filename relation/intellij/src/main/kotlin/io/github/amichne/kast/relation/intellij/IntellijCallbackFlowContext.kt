@@ -57,6 +57,12 @@ internal class IntellijCallbackFlowContext(
 
     fun claimWork(): CallbackWorkAdmission = admitWork()
 
+    fun currentWork(): CallbackWorkAdmission =
+        when (callbackExpiry()) {
+            CallbackExpiryAdmission.EXPIRED -> CallbackWorkAdmission.TIME_LIMIT_REACHED
+            CallbackExpiryAdmission.CURRENT -> claimWork()
+        }
+
     fun permit(): Refinement<Unit, CallbackInvocationFlowCause> =
         when (claimWork()) {
             CallbackWorkAdmission.READY -> Refinement.Refined(Unit)
@@ -114,6 +120,8 @@ internal class IntellijCallbackFlowContext(
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> null
         }
+
+    fun declaration(endpoint: RelationEndpoint): IntellijRelationSubjectLookup = projection.subject(scope, endpoint)
 
     fun receiverDeclaration(element: com.intellij.psi.PsiNamedElement): CompilerGroundedSymbolEvidence? =
         when (val result = projection.project(element)) {
@@ -239,9 +247,18 @@ internal class IntellijCallbackFlowContext(
         }
     }
 
-    fun site(element: PsiElement, target: RelationEndpoint, role: ValueRole): ValueSite? {
+    fun site(
+        element: PsiElement,
+        target: RelationEndpoint,
+        role: ValueRole,
+        executionOwner: io.github.amichne.kast.relation.contract.ValueExecutionOwner =
+            io.github.amichne.kast.relation.contract.ValueExecutionOwner.declaration(target),
+    ): ValueSite? {
         val range = range(element) ?: return null
-        return when (val result = ValueSite.fromCompiler(target, range, role)) {
+        return when (
+            val result =
+                ValueSite.fromCompiler(enclosing = target, range = range, role = role, executionOwner = executionOwner)
+        ) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> null
         }

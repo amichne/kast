@@ -7,10 +7,25 @@ import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ReviewedDistinctStringKeys
+import io.github.amichne.kast.relation.contract.ReviewedEntryKeyEvidence
+import io.github.amichne.kast.relation.contract.ReviewedGroupBucket
+import io.github.amichne.kast.relation.contract.ReviewedGroupCallbacks
+import io.github.amichne.kast.relation.contract.ReviewedInputEntryOrigin
+import io.github.amichne.kast.relation.contract.ReviewedMapEntryCorrelation
+import io.github.amichne.kast.relation.contract.ReviewedMapEntryFamily
+import io.github.amichne.kast.relation.contract.ReviewedMapEntryOrigin
+import io.github.amichne.kast.relation.contract.ReviewedMappedEntryOrigin
+import io.github.amichne.kast.relation.contract.ReviewedPreservedKeyOrigin
+import io.github.amichne.kast.relation.contract.ReviewedTupleOrigin
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
+import io.github.amichne.kast.relation.contract.ValueLoopProtocol
+import io.github.amichne.kast.relation.contract.ValueLoopTransfer
 import io.github.amichne.kast.relation.contract.ValuePathSegment
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -76,11 +91,15 @@ private fun RepresentationEvidence.peerEvidenceHasForeignBasis(
 
 internal fun ValueSite.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     enclosing.lease != lease ||
+        localVersion.hasForeignBasis(lease) ||
         executionOwner.enclosing.lease != lease ||
         executionOwner.basis != lease.identity ||
-        valuePath.segments.filterIsInstance<ValuePathSegment.Field>().any { it.field.declaration.lease != lease } ||
+        valuePath.segments.any { it.hasForeignBasis(lease) } ||
         callStack.frames.any { it.hasForeignBasis(lease) } ||
+        conditions.hasForeignBasis(lease) ||
         when (val current = role) {
+            is ValueRole.StringConversionResult -> current.invocation.hasForeignBasis(lease)
+            is ValueRole.LoopResult -> current.result.protocol.hasForeignBasis(lease)
             is ValueRole.Argument -> current.call.hasForeignBasis(lease)
             is ValueRole.Receiver -> current.call.hasForeignBasis(lease)
             is ValueRole.Formal ->
@@ -94,6 +113,20 @@ internal fun ValueSite.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
             ValueRole.Return,
             ValueRole.PropertyAssignment -> false
         }
+
+private fun ValueLocalVersion.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        ValueLocalVersion.Unversioned -> false
+        is ValueLocalVersion.Defined -> execution.enclosing.lease != lease
+    }
+
+private fun ValueConditions.hasForeignBasis(lease: SemanticReadAuthority): Boolean = facts.any { condition ->
+    val origin = condition.origin
+    origin.execution.enclosing.lease != lease ||
+        origin.basis != lease.identity ||
+        origin.valuePath.segments.any { it.hasForeignBasis(lease) } ||
+        origin.callStack.frames.any { it.hasForeignBasis(lease) }
+}
 
 internal fun ValueInvocation.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     enclosing.lease != lease ||
@@ -218,7 +251,9 @@ private fun ReviewedValueTransfer.hasForeignBasis(lease: SemanticReadAuthority):
 
 private fun ValueTransferEvidence.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (val proof = this) {
+        is ValueLoopTransfer -> proof.iteration.protocol.hasForeignBasis(lease)
         ValueTransferEvidence.Direct,
+        is io.github.amichne.kast.relation.contract.ValueStringContent,
         is ValueTransferEvidence.NormalBranchResult -> false
         is ValueSourceTransfer ->
             when (val operation = proof.operation) {
@@ -226,9 +261,16 @@ private fun ValueTransferEvidence.hasForeignBasis(lease: SemanticReadAuthority):
                     operation.frame.hasForeignBasis(lease) || operation.position.hasForeignBasis(lease)
                 is ValueSourceOperation.Return -> operation.frame.hasForeignBasis(lease)
                 is ValueSourceOperation.SeedReturn -> operation.frame.hasForeignBasis(lease)
+                is ValueSourceOperation.DeclaredCallbackResult ->
+                    operation.binding.enclosing.lease != lease || operation.binding.basis != lease.identity
                 is ValueSourceOperation.CallbackReturn ->
                     operation.frame.hasForeignBasis(lease) ||
                         operation.invocation.supply.invocation.hasForeignBasis(lease)
+                is ValueSourceOperation.CallbackArgumentEntry ->
+                    operation.supplierFrame.hasForeignBasis(lease) ||
+                        operation.invocation.supply.invocation.hasForeignBasis(lease) ||
+                        operation.parameter.callable.lease != lease ||
+                        operation.parameter.executionOwner.basis != lease.identity
                 is ValueSourceOperation.ReadField -> operation.field.declaration.lease != lease
                 is ValueSourceOperation.ConstructField ->
                     operation.call.hasForeignBasis(lease) ||
@@ -242,3 +284,73 @@ private fun ValueFormalPosition.hasForeignBasis(lease: SemanticReadAuthority): B
         is ValueFormalPosition.Parameter -> parameter.callable.lease != lease
         is ValueFormalPosition.Receiver -> false
     }
+
+private fun ValueLoopProtocol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    listOf(iterator, hasNext, next).any { it.hasForeignBasis(lease) }
+
+private fun ValuePathSegment.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        ValuePathSegment.Element -> false
+        is ValuePathSegment.Field -> field.declaration.lease != lease
+        is ValuePathSegment.PairComponent -> origin.hasForeignBasis(lease)
+        is ValuePathSegment.MapEntryComponent -> entry.hasForeignBasis(lease)
+    }
+
+private fun ReviewedTupleOrigin.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    binding.invocation.hasForeignBasis(lease) || callStack.frames.any { it.hasForeignBasis(lease) }
+
+private fun ReviewedMapEntryOrigin.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        is ReviewedGroupBucket -> hasForeignBasis(lease)
+        is ReviewedMapEntryCorrelation -> hasForeignBasis(lease)
+        is ReviewedInputEntryOrigin ->
+            family.hasForeignBasis(lease) ||
+                receiverExecution.enclosing.lease != lease ||
+                receiverExecution.basis != lease.identity
+        is ReviewedPreservedKeyOrigin ->
+            family.hasForeignBasis(lease) ||
+                receiverExecution.enclosing.lease != lease ||
+                receiverExecution.basis != lease.identity
+        is ReviewedMappedEntryOrigin ->
+            family.hasForeignBasis(lease) ||
+                returnExecution.enclosing.lease != lease ||
+                returnExecution.basis != lease.identity
+    }
+
+private fun ReviewedMapEntryFamily.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    binding.enclosing.lease != lease || basis != lease.identity || callStack.frames.any { it.hasForeignBasis(lease) }
+
+private fun ReviewedMapEntryCorrelation.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    binding.enclosing.lease != lease ||
+        binding.basis != lease.identity ||
+        tupleOrigin.hasForeignBasis(lease) ||
+        returnExecution.enclosing.lease != lease ||
+        returnExecution.basis != lease.identity ||
+        callStack.frames.any { it.hasForeignBasis(lease) } ||
+        keyEvidence.hasForeignBasis(lease)
+
+private fun ReviewedEntryKeyEvidence.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    when (this) {
+        ReviewedEntryKeyEvidence.Conditional -> false
+        is ReviewedEntryKeyEvidence.Distinct -> proof.hasForeignBasis(lease)
+    }
+
+private fun ReviewedDistinctStringKeys.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    input.formal.invocation.hasForeignBasis(lease) ||
+        input.arguments.any { it.formal.invocation.hasForeignBasis(lease) } ||
+        key.binding.basis != lease.identity ||
+        key.binding.enclosing.lease != lease ||
+        key.formal.callable.lease != lease ||
+        key.formal.executionOwner.basis != lease.identity ||
+        key.tupleOrigin.hasForeignBasis(lease) ||
+        associationInvocation.hasForeignBasis(lease)
+
+private fun ReviewedGroupBucket.hasForeignBasis(lease: SemanticReadAuthority): Boolean {
+    val family = callbacks
+    return family.selector.enclosing.lease != lease ||
+        basis != lease.identity ||
+        (family is ReviewedGroupCallbacks.TransformedElements && family.transform.enclosing.lease != lease) ||
+        sourceExecution.enclosing.lease != lease ||
+        sourceExecution.basis != lease.identity ||
+        callStack.frames.any { it.hasForeignBasis(lease) }
+}

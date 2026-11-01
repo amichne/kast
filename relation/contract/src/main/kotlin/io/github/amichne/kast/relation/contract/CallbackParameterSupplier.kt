@@ -39,11 +39,7 @@ private constructor(
     val selection: CallbackSupplierSelection,
     val value: ImmutableCallbackValue,
 ) {
-    val retainedBytes: Long =
-        value.retainedBytes
-            .addBytes(4096L)
-            .addBytes(binding.invocation.enclosing.detachedTextUnits().multiplyBytes(2))
-            .addBytes(binding.invocation.callable.detachedTextUnits().multiplyBytes(2))
+    val retainedBytes: Long = value.retainedBytes.addBytes(4096L).addBytes(valueFrameStorageBytes(binding.frame))
 
     companion object {
         fun fromCompiler(

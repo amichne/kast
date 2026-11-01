@@ -1,0 +1,112 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.relation.contract.ReviewedCollectionSelection
+import io.github.amichne.kast.relation.contract.ReviewedEntrySelection
+import io.github.amichne.kast.relation.contract.ReviewedValueRelation
+import io.github.amichne.kast.relation.contract.ReviewedValueSemantics
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+
+/** Relationship strength and evidence authority remain independent facts. */
+enum class QueryImpactRelationship {
+    EXACT,
+    DERIVED,
+}
+
+enum class QueryImpactCorrespondenceFailure {
+    REPRESENTATION_MODEL_ONLY,
+    BOUNDARY_MODEL_ONLY,
+}
+
+sealed interface QueryImpactClassification {
+    data class Established(val relationship: QueryImpactRelationship) : QueryImpactClassification
+
+    data class NotEstablished(val step: QueryImpactStep, val cause: QueryImpactCorrespondenceFailure) :
+        QueryImpactClassification
+}
+
+internal fun List<QueryImpactStep>.classifyImpact(): QueryImpactClassification =
+    fold<QueryImpactStep, QueryImpactClassification>(
+        QueryImpactClassification.Established(QueryImpactRelationship.EXACT)
+    ) { previous, step ->
+        when (previous) {
+            is QueryImpactClassification.NotEstablished -> previous
+            is QueryImpactClassification.Established ->
+                when (val current = step.classification()) {
+                    is QueryImpactClassification.NotEstablished -> current
+                    is QueryImpactClassification.Established ->
+                        QueryImpactClassification.Established(
+                            if (
+                                previous.relationship == QueryImpactRelationship.DERIVED ||
+                                    current.relationship == QueryImpactRelationship.DERIVED
+                            )
+                                QueryImpactRelationship.DERIVED
+                            else QueryImpactRelationship.EXACT
+                        )
+                }
+        }
+    }
+
+private fun QueryImpactStep.classification(): QueryImpactClassification =
+    when (this) {
+        is QueryImpactStep.Compiler -> QueryImpactClassification.Established(transfer.kind.relationship())
+        is QueryImpactStep.ReviewedLibrary -> QueryImpactClassification.Established(transfer.relation.relationship())
+        is QueryImpactStep.ModeledRepresentation ->
+            QueryImpactClassification.NotEstablished(this, QueryImpactCorrespondenceFailure.REPRESENTATION_MODEL_ONLY)
+        is QueryImpactStep.ModeledBoundary ->
+            QueryImpactClassification.NotEstablished(this, QueryImpactCorrespondenceFailure.BOUNDARY_MODEL_ONLY)
+    }
+
+private fun ValueTransferKind.relationship(): QueryImpactRelationship =
+    when (this) {
+        ValueTransferKind.STRING_CONTENT -> QueryImpactRelationship.DERIVED
+        ValueTransferKind.LOCAL_BINDING,
+        ValueTransferKind.LOCAL_READ,
+        ValueTransferKind.ARGUMENT,
+        ValueTransferKind.RETURN,
+        ValueTransferKind.PROPERTY_ASSIGNMENT,
+        ValueTransferKind.BRANCH_ALTERNATIVE,
+        ValueTransferKind.WRAPPER_RETURN,
+        ValueTransferKind.RECEIVER,
+        ValueTransferKind.SOURCE_CALL_ENTRY,
+        ValueTransferKind.SOURCE_CALL_RETURN,
+        ValueTransferKind.FIELD_READ,
+        ValueTransferKind.CONSTRUCTOR_FIELD,
+        ValueTransferKind.CAST_RESULT -> QueryImpactRelationship.EXACT
+    }
+
+private fun ReviewedValueRelation.relationship(): QueryImpactRelationship =
+    when (this) {
+        is ReviewedValueRelation.FilteredElements ->
+            if (selection == ReviewedCollectionSelection.CONTENT) QueryImpactRelationship.DERIVED
+            else QueryImpactRelationship.EXACT
+        ReviewedValueRelation.NonNullCallbackResult -> QueryImpactRelationship.EXACT
+        is ReviewedValueRelation.CallbackCorrespondence ->
+            when (semantics) {
+                ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
+                    QueryImpactRelationship.DERIVED
+                ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
+                ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+                ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+                ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT -> QueryImpactRelationship.EXACT
+            }
+        is ReviewedValueRelation.ReorderedElements ->
+            when (selection) {
+                ReviewedCollectionSelection.ELEMENT -> QueryImpactRelationship.EXACT
+                ReviewedCollectionSelection.CONTENT -> QueryImpactRelationship.DERIVED
+            }
+        is ReviewedValueRelation.CallbackReceiverInput -> QueryImpactRelationship.EXACT
+        is ReviewedValueRelation.GroupPlacement -> entry.selection.relationship()
+        is ReviewedValueRelation.EntryInput -> selection.relationship()
+        is ReviewedValueRelation.PreservedKey -> selection.relationship()
+        is ReviewedValueRelation.EntryProjection -> selection.relationship()
+        is ReviewedValueRelation.MappedValue -> selection.relationship()
+        is ReviewedValueRelation.TupleConstruction,
+        is ReviewedValueRelation.TupleProjection,
+        is ReviewedValueRelation.AssociationComponent -> QueryImpactRelationship.EXACT
+    }
+
+private fun ReviewedEntrySelection.relationship(): QueryImpactRelationship =
+    when (this) {
+        ReviewedEntrySelection.COMPONENT -> QueryImpactRelationship.EXACT
+        ReviewedEntrySelection.CONTENT -> QueryImpactRelationship.DERIVED
+    }

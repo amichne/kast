@@ -53,7 +53,7 @@ class AgentOnboardingTest(unittest.TestCase):
                     text = result.stdout.rstrip("\n") + "\n"
                 texts.append(text)
                 self.assertLessEqual(len(text.encode()), 8192)
-                self.assertIn("`CLASS` includes interfaces", text)
+                self.assertIn("The `interface` kind searches the CLASS family", text)
                 for clause in (
                     "Apply the task's source-set and path exclusions before each read batch",
                     "Remove duplicate paths and reuse unchanged source reads",
@@ -61,9 +61,9 @@ class AgentOnboardingTest(unittest.TestCase):
                     "Keep requested matches and failures",
                     "Read only the needed section or named example for unfamiliar shapes",
                     "Incomplete results and scope qualifications do not prove absence. Preserve them",
-                    "one non-null `terminalStep` object tagged `EMIT` or `TRACE`",
-                    "Use `terminalStep.output`, not `RUN.output`",
-                    "Never put `TRACE` in `steps` or add `traceOptions`",
+                    "Use `find` with a simple `name`",
+                    "Use `source` with its default `ANCHOR`",
+                    "Read the bundled Kast skill",
                 ):
                     self.assertIn(clause, text, host)
                 brief = (PLUGIN / "references/onboarding.md").read_text().rstrip()

@@ -11,6 +11,18 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactValuePathSegmentDocument {
+    @Serializable
+    @SerialName("PAIR_COMPONENT")
+    data class PairComponent(val origin: ImpactReviewedTupleOriginDocument, val slot: ImpactPairSlotDocument) :
+        ImpactValuePathSegmentDocument
+
+    @Serializable
+    @SerialName("MAP_ENTRY_COMPONENT")
+    data class MapEntryComponent(
+        val entry: ImpactReviewedMapEntryOriginDocument,
+        val slot: ImpactMapEntrySlotDocument,
+    ) : ImpactValuePathSegmentDocument
+
     @Serializable @SerialName("ELEMENT") data object Element : ImpactValuePathSegmentDocument
 
     @Serializable
@@ -90,9 +102,23 @@ sealed interface ImpactSourceOperationDocument {
     data class SeedReturn(val frame: ImpactCallFrameDocument) : ImpactSourceOperationDocument
 
     @Serializable
+    @SerialName("DECLARED_CALLBACK_RESULT")
+    data class DeclaredCallbackResult(val binding: ImpactDeclaredCallbackValueBindingDocument) :
+        ImpactSourceOperationDocument
+
+    @Serializable
     @SerialName("CALLBACK_RETURN")
     data class CallbackReturn(val invocation: ImpactCaptureInvocationDocument, val frame: ImpactCallFrameDocument) :
         ImpactSourceOperationDocument
+
+    @Serializable
+    @SerialName("CALLBACK_ARGUMENT_ENTRY")
+    data class CallbackArgumentEntry(
+        val invocation: ImpactCaptureInvocationDocument,
+        val supplierFrame: ImpactCallFrameDocument,
+        val parameter: ImpactFormalParameterDocument,
+        val argumentRange: ImpactSourceRangeDocument,
+    ) : ImpactSourceOperationDocument
 
     @Serializable
     @SerialName("READ_FIELD")

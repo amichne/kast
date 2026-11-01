@@ -179,6 +179,11 @@ internal class ImpactFindingFixture {
             representation = representation(),
             terminal = ImpactFindingTerminalDocument.UnresolvedFlow(ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW),
             boundaryObligations = bounded(listOf(obligation)),
+            classification =
+                ImpactPathClassificationDocument.NotEstablished(
+                    (ProtocolOffset.parse(0) as Refinement.Refined).value,
+                    ImpactCorrespondenceFailureDocument.BOUNDARY_MODEL_ONLY,
+                ),
         )
 
     fun row(index: Int): QueryResultRowReference =

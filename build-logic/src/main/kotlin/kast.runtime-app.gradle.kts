@@ -113,8 +113,6 @@ val portableDistZip = tasks.register<Zip>("portableDistZip") {
 }
 
 
-tasks.matching {
-    it.name in setOf("distZip", "distTar", "installDist")
-}.configureEach {
-    dependsOn(writeWrapperScript)
+listOf("distZip", "distTar", "installDist").forEach { taskName ->
+    tasks.named(taskName) { dependsOn(writeWrapperScript) }
 }

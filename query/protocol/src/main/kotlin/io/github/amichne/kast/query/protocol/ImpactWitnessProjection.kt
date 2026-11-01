@@ -156,40 +156,44 @@ private fun QueryImpactWitnessEntry.ReadRejected.projectReadRejection(): ImpactP
     }
 
 private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjected<ImpactWitnessDocument> =
-    count(observation.reviewedTransfers.size).impactThen { reviewed ->
-        observation.receipts
-            .impactEach { it.receiptDocument() }
-            .impactThen { receipts ->
-                observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
-                    (source, domain) ->
-                    count(observationOrdinal.value)
-                        .impactZip(count(observation.examinedWorkUnits.value))
-                        .impactZip(count(observation.retainedBytes))
-                        .impactZip(count(observation.transfers.size))
-                        .impactZip(count(observation.obligations.size))
-                        .impactMap { (counts, obligations) ->
-                            ImpactWitnessDocument.NativeRead(
-                                counts.first.first.first,
-                                source,
-                                domain,
-                                counts.first.first.second,
-                                counts.first.second,
-                                when (observation.terminal) {
-                                    ValueFlowTerminal.SupportedDomainExhausted ->
-                                        ImpactNativeObservationTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED
-                                    ValueFlowTerminal.Unresolved -> ImpactNativeObservationTerminalDocument.UNRESOLVED
-                                    ValueFlowTerminal.ResourceSuspended ->
-                                        ImpactNativeObservationTerminalDocument.RESOURCE_SUSPENDED
-                                },
-                                counts.second,
-                                obligations,
-                                receipts,
-                                reviewed,
-                            )
-                        }
+    count(observation.reviewedTransfers.size)
+        .impactZip(observation.stringConstructions.impactEach { it.impactDocument() })
+        .impactThen { (reviewed, constructions) ->
+            observation.receipts
+                .impactEach { it.receiptDocument() }
+                .impactThen { receipts ->
+                    observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
+                        (source, domain) ->
+                        count(observationOrdinal.value)
+                            .impactZip(count(observation.examinedWorkUnits.value))
+                            .impactZip(count(observation.retainedBytes))
+                            .impactZip(count(observation.transfers.size))
+                            .impactZip(count(observation.obligations.size))
+                            .impactMap { (counts, obligations) ->
+                                ImpactWitnessDocument.NativeRead(
+                                    counts.first.first.first,
+                                    source,
+                                    domain,
+                                    counts.first.first.second,
+                                    counts.first.second,
+                                    when (observation.terminal) {
+                                        ValueFlowTerminal.SupportedDomainExhausted ->
+                                            ImpactNativeObservationTerminalDocument.SUPPORTED_DOMAIN_EXHAUSTED
+                                        ValueFlowTerminal.Unresolved ->
+                                            ImpactNativeObservationTerminalDocument.UNRESOLVED
+                                        ValueFlowTerminal.ResourceSuspended ->
+                                            ImpactNativeObservationTerminalDocument.RESOURCE_SUSPENDED
+                                    },
+                                    counts.second,
+                                    obligations,
+                                    receipts,
+                                    reviewed,
+                                    constructions,
+                                )
+                            }
+                    }
                 }
-            }
-    }
+        }
 
 private fun ValueFlowWorkReceipt.receiptDocument(): ImpactProjected<ImpactNativeReadReceiptDocument> =
     domain

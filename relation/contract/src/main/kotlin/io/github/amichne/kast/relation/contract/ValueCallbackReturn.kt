@@ -14,10 +14,12 @@ internal fun ValueSourceOperation.CallbackReturn.admitsCallbackReturn(
         source.valuePath == target.valuePath &&
         matchesOwners(source, target) &&
         matchesSupplier(source) &&
-        when (val stack = source.callStack.enter(frame)) {
-            is Refinement.Refined -> stack.value == target.callStack
-            is Refinement.Rejected -> false
-        }
+        (if (source.callStack.frames.lastOrNull() == frame) source.callStack == target.callStack
+        else
+            when (val stack = source.callStack.enter(frame)) {
+                is Refinement.Refined -> stack.value == target.callStack
+                is Refinement.Rejected -> false
+            })
 }
 
 private fun ValueSourceOperation.CallbackReturn.matchesOwners(source: ValueSite, target: ValueSite): Boolean {
@@ -26,22 +28,29 @@ private fun ValueSourceOperation.CallbackReturn.matchesOwners(source: ValueSite,
     return context != null &&
         owner != null &&
         context.body == invocation.body &&
-        invocation in context.invocations &&
+        invocation == context.selectedInvocation &&
         target.enclosing.matchesCallbackRoot(owner.evidence) &&
         target.range == invocation.invocation.occurrence.range &&
         target.executionOwner == frame.callee &&
-        frame.callee.context == ValueExecutionContext.Declaration &&
-        frame.target == ValueCallTarget.Direct
+        frame.callee.context == ValueExecutionContext.Declaration
 }
 
 private fun ValueSourceOperation.CallbackReturn.matchesSupplier(source: ValueSite): Boolean {
+    val owner = source.executionOwner.supplierOf(invocation)
+    if (owner !is Refinement.Refined) return false
+    when (val route = ValueCallbackCallRoute.fromActiveStack(invocation, source.callStack)) {
+        is Refinement.Refined ->
+            return frame == route.value.invocationFrame &&
+                route.value.supplierFrame.invocation.executionOwner == owner.value
+        is Refinement.Rejected -> if (invocation.invocation.forwardings.isNotEmpty()) return false
+    }
     val supplied = invocation.supply.invocation
     val call = frame.invocation
-    val owner = source.executionOwner.supplierOf(invocation)
-    return call.enclosing.valueIdentity == supplied.enclosing.valueIdentity &&
+    return frame.target == invocation.supply.frame.target &&
+        frame.callee == invocation.supply.frame.callee &&
+        call.enclosing.valueIdentity == supplied.enclosing.valueIdentity &&
         call.enclosing.valueIdentity == source.enclosing.valueIdentity &&
         call.range == supplied.range &&
         call.callable.valueIdentity == supplied.callable.valueIdentity &&
-        owner is Refinement.Refined &&
         call.executionOwner == owner.value
 }

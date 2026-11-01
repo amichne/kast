@@ -31,11 +31,13 @@ internal fun QueryImpactFinding.findingDocument(
         .impactZip(
             path.steps
                 .filterIsInstance<QueryImpactStep.ReviewedLibrary>()
-                .map { it.transfer.binding }
-                .distinct()
-                .impactEach { it.impactDocument() }
+                .map { it.transfer }
+                .distinctBy { it.binding to it.relation }
+                .impactEach { it.relationshipDocument() }
         )
-        .impactMap { (fields, reviewed) ->
+        .impactZip(path.classificationDocument())
+        .impactMap { (values, classification) ->
+            val (fields, reviewed) = values
             val (finding, obligations) = fields
             ImpactFindingDocument(
                 ImpactFindingEvidenceReferenceDocument(finding.first.first.first.first, rowId),
@@ -44,6 +46,7 @@ internal fun QueryImpactFinding.findingDocument(
                 finding.first.second,
                 finding.second,
                 obligations,
+                classification,
                 reviewed,
             )
         }
@@ -69,7 +72,7 @@ internal fun QueryImpactRepresentation.findingDocument(): ImpactProjected<Impact
 private fun RepresentationHistory.findingDocument(): ImpactProjected<ImpactFindingProvenanceDocument> =
     when (this) {
         is RepresentationHistory.ReviewedTransfer ->
-            transfer.binding.impactDocument().impactMap(ImpactFindingProvenanceDocument::ReviewedLibrary)
+            transfer.relationshipDocument().impactMap(ImpactFindingProvenanceDocument::ReviewedLibrary)
         is RepresentationHistory.Origin ->
             reference.impactDocument().impactZip(rule.state.impactDocument()).impactMap { (reference, state) ->
                 ImpactFindingProvenanceDocument.Origin(reference, state)

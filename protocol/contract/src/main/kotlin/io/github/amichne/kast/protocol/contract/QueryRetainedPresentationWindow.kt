@@ -3,6 +3,8 @@ package io.github.amichne.kast.protocol.contract
 import io.github.amichne.kast.kernel.Refinement
 
 sealed interface QueryPresentationWindowFailure {
+    data object DETAIL_SELECTOR_MISMATCH : QueryPresentationWindowFailure
+
     data object REVERSED_WINDOW : QueryPresentationWindowFailure
 
     data object OUTSIDE_RETAINED_RESULT : QueryPresentationWindowFailure
@@ -74,7 +76,8 @@ val QueryRunResult.presentationUnitCount: Int
             walkObservations.values.size +
             referenceObservations.values.size +
             discoveryObservations.values.size +
-            relationObservations.values.size
+            relationObservations.values.size +
+            deferredEvidence.values.size
 
 /** A fitting boundary may expose only the offsets of the rows it actually emits. */
 fun QueryRunResult.presentationPrefix(count: Int): Refinement<QueryRunResult, QueryPresentationWindowFailure> =
@@ -98,12 +101,7 @@ private fun QueryRunResult.presentationSlice(
     val selectedRowCount = minOf(count, items.values.size)
     val partition = QueryPresentationPartition(count, suffix)
     val bounded = partition.select(items)
-    val selectedFailures = partition.select(failures)
-    val selectedOmissions = partition.select(omissions)
-    val selectedWalks = partition.select(walkObservations)
-    val selectedReferences = partition.select(referenceObservations)
-    val selectedDiscoveries = partition.select(discoveryObservations)
-    val selectedRelations = partition.select(relationObservations)
+    val evidence = selectEvidence(count, suffix)
     val selected = bounded.values
     val selectedWindow =
         when (val selected = if (suffix) window?.suffix(selectedRowCount) else window?.prefix(selectedRowCount)) {
@@ -120,18 +118,105 @@ private fun QueryRunResult.presentationSlice(
     return Refinement.Refined(
         copy(
             items = bounded,
-            failures = selectedFailures,
-            omissions = selectedOmissions,
-            walkObservations = selectedWalks,
-            referenceObservations = selectedReferences,
-            discoveryObservations = selectedDiscoveries,
-            relationObservations = selectedRelations,
+            failures = evidence.failures,
+            omissions = evidence.omissions,
+            walkObservations = evidence.walkObservations,
+            referenceObservations = evidence.referenceObservations,
+            discoveryObservations = evidence.discoveryObservations,
+            relationObservations = evidence.relationObservations,
+            deferredEvidence = evidence.deferredEvidence,
+            evidenceWindow = evidence.evidenceWindow,
             impactAccounting = accounting,
             presentationWindow = selectedWindow,
             nextCursor = selectedWindow?.nextCursor,
         )
     )
 }
+
+private data class QueryEvidenceSlice(
+    val failures: BoundedProtocolList<QueryItemFailureDocument>,
+    val omissions: BoundedProtocolList<QueryRelationOmissionDocument>,
+    val walkObservations: BoundedProtocolList<QueryWalkObservationDocument>,
+    val referenceObservations: BoundedProtocolList<RelationReferenceOccurrenceDocument>,
+    val discoveryObservations: BoundedProtocolList<QueryDiscoveryObservationDocument>,
+    val relationObservations: BoundedProtocolList<QueryRelationObservationDocument>,
+    val deferredEvidence: BoundedProtocolList<QueryDeferredDetailDocument>,
+    val evidenceWindow: QueryEvidenceWindowDocument?,
+)
+
+private fun QueryRunResult.selectEvidence(count: Int, suffix: Boolean): QueryEvidenceSlice {
+    val evidenceStart = evidenceWindow?.start?.value ?: 0
+    val evidenceCutoff = (count - items.values.size).coerceIn(0, presentationUnitCount - items.values.size)
+    val evidencePartition =
+        QueryEvidencePresentationPartition(
+            evidenceStart,
+            evidenceCutoff,
+            suffix,
+            deferredEvidence.values.map { it.selector.ordinal.value }.toSet(),
+        )
+    val selectedFailures = evidencePartition.select(failures)
+    val selectedOmissions = evidencePartition.select(omissions)
+    val selectedWalks = evidencePartition.select(walkObservations)
+    val selectedReferences = evidencePartition.select(referenceObservations)
+    val selectedDiscoveries = evidencePartition.select(discoveryObservations)
+    val selectedRelations = evidencePartition.select(relationObservations)
+    val selectedDeferred =
+        BoundedProtocolList.create(
+                deferredEvidence.values.filter {
+                    if (suffix) it.selector.ordinal.value >= evidenceStart + evidenceCutoff
+                    else it.selector.ordinal.value < evidenceStart + evidenceCutoff
+                }
+            )
+            .presentationSubset()
+    val selectedEvidenceWindow = evidenceWindow?.let {
+        val split = QueryEvidenceCursor.parse(it.start.value + evidenceCutoff).presentationSubset()
+        QueryEvidenceWindowDocument.create(
+                if (suffix) split else it.start,
+                if (suffix) it.end else split,
+                it.total,
+                selectedDeferred.values.size,
+            )
+            .presentationSubset()
+    }
+    return QueryEvidenceSlice(
+        failures = selectedFailures,
+        omissions = selectedOmissions,
+        walkObservations = selectedWalks,
+        referenceObservations = selectedReferences,
+        discoveryObservations = selectedDiscoveries,
+        relationObservations = selectedRelations,
+        deferredEvidence = selectedDeferred,
+        evidenceWindow = selectedEvidenceWindow,
+    )
+}
+
+/** Deferred entries occupy presentation positions without advancing delivered-evidence counts. */
+private class QueryEvidencePresentationPartition(
+    start: Int,
+    private val count: Int,
+    private val suffix: Boolean,
+    private val deferred: Set<Int>,
+) {
+    private val start = start
+    private var ordinal = start
+
+    fun <T> select(values: BoundedProtocolList<T>): BoundedProtocolList<T> =
+        BoundedProtocolList.create(
+                values.values.filter {
+                    while (ordinal in deferred) ordinal++
+                    val selected = if (suffix) ordinal >= start + count else ordinal < start + count
+                    ordinal++
+                    selected
+                }
+            )
+            .presentationSubset()
+}
+
+private fun <Value, Failure> Refinement<Value, Failure>.presentationSubset(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("An admitted presentation subset lost its range: $failure")
+    }
 
 /** Independent evidence positions never become retained row cursors. */
 private class QueryPresentationPartition(private val count: Int, private val suffix: Boolean) {
@@ -163,5 +248,46 @@ fun QueryRunResult.admittedPresentationWindow():
         window != null && window.itemCount != items.values.size ->
             return Refinement.Rejected(QueryPresentationWindowFailure.ITEM_WINDOW_MISMATCH)
     }
+    if (!admitsDeferredRows(retained, window))
+        return Refinement.Rejected(QueryPresentationWindowFailure.DETAIL_SELECTOR_MISMATCH)
+    if (!admitsDeferredEvidence(retained))
+        return Refinement.Rejected(QueryPresentationWindowFailure.DETAIL_SELECTOR_MISMATCH)
     return Refinement.Refined(window)
+}
+
+private fun QueryRunResult.admitsDeferredRows(
+    retained: QueryResultRetention.Retained?,
+    window: QueryRetainedPresentationWindow?,
+): Boolean {
+    val deferredRows = items.values.withIndex().filter { it.value is QueryResultItemDocument.DeferredDetail }
+    if (deferredRows.isEmpty()) return true
+    if (retained == null || window == null) return false
+    return deferredRows.all { (index, item) ->
+        val selector = (item as QueryResultItemDocument.DeferredDetail).detail.selector
+        selector.isInitialDetail(retained.reference, QueryEntryDetailTarget.ROW) &&
+            selector.ordinal.value == window.start.value + index
+    }
+}
+
+private fun QueryRunResult.admitsDeferredEvidence(retained: QueryResultRetention.Retained?): Boolean {
+    val summaries = deferredEvidence.values
+    if (summaries.isEmpty()) return true
+    val evidence = evidenceWindow
+    if (retained == null || evidence == null) return false
+    if (evidence.deferredCount != summaries.size) return false
+    if (summaries.map { it.selector.ordinal }.distinct().size != summaries.size) return false
+    return summaries.all { summary ->
+        val selector = summary.selector
+        selector.isInitialDetail(retained.reference, QueryEntryDetailTarget.EVIDENCE) &&
+            selector.ordinal.value in evidence.start.value until evidence.end.value
+    }
+}
+
+private fun QueryEntryDetailSelectorDocument.isInitialDetail(
+    reference: QueryResultReference,
+    expectedTarget: QueryEntryDetailTarget,
+): Boolean {
+    if (result != reference || target != expectedTarget) return false
+    if (offset.value != 0) return false
+    return sha256.value.matches(Regex("[0-9a-f]{64}"))
 }

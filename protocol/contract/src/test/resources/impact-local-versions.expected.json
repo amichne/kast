@@ -1,0 +1,19 @@
+[
+  {"type": "UNVERSIONED"},
+  {
+    "type": "DEFINED",
+    "declaration": {"start": 10, "end": 30},
+    "block": {"start": 5, "end": 95},
+    "definition": {"start": 10, "end": 30},
+    "rhs": {"start": 20, "end": 30},
+    "end": {"type": "NEXT_WRITE", "range": {"start": 60, "end": 80}, "rhs": {"start": 70, "end": 80}}
+  },
+  {
+    "type": "DEFINED",
+    "declaration": {"start": 10, "end": 30},
+    "block": {"start": 5, "end": 95},
+    "definition": {"start": 60, "end": 80},
+    "rhs": {"start": 70, "end": 80},
+    "end": {"type": "BLOCK_END", "range": {"start": 5, "end": 95}}
+  }
+]

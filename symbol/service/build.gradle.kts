@@ -3,7 +3,7 @@ plugins {
     id("kast.role.service")
 }
 
-group = "${rootProject.group}.symbol"
+group = "${providers.gradleProperty("GROUP").get()}.symbol"
 
 base {
     archivesName.set("symbol-service")

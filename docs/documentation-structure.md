@@ -1,12 +1,16 @@
 # Docs reader tracks
 
-Kast has one Mintlify site. It has three tracks: Guides, Architecture, and Reference. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
+Kast has one Mintlify site. Its main path shows what Kast does, how to try it, and how to resolve problems.
+`docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
 
 The [Diátaxis framework](https://diataxis.fr/) groups pages by what the reader needs. Its four groups are tutorials, how-to guides, reference, and explanation.
 
-This policy applies to the authored public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
+This policy applies to the public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
 
-Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts. These tracks keep the four Diátaxis page purposes below.
+Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts.
+Guides, Architecture, and Reference remain visible as navigation tabs.
+Links at the bottom of core pages also connect these reader tracks.
+These content types keep the four Diátaxis page purposes below.
 
 ## Choose the page's purpose
 
@@ -47,6 +51,40 @@ The Architecture track covers authority, query lifecycle, query reuse, retention
 Do not move a page just to match a directory name. Keep its routes and heading anchors when their meaning stays the same.
 
 ## Source evidence and OpenWiki
+
+`openwiki/` owns shared explanations in tracked OKF documents with recorded Claims.
+Public pages listed in `docs/okf-public.json` consume those documents through generated snippets.
+The manifest owns their routes, titles, diagrams, and legacy anchors.
+Its optional `introduction` supplies reader orientation before the shared content.
+Use that introduction to distinguish current public syntax from internal contracts, without duplicating the canonical explanation.
+
+`docs/tooling/okf_public.py` produces the snippets, page shells, and `snippets/okf/provenance.json`.
+The report keeps each source digest and each recorded evidence version.
+The projector rejects missing or untracked source files, missing Claim sidecars, and a page digest that differs from its sidecar.
+It qualifies source drift and evidence versions that it does not assess.
+A matching file digest does not prove current behavior.
+
+Reader-specific tutorials, procedures, schema bindings, and illustrations keep their distinct owners.
+The manifest lists every public page and names the pages whose fuller content still needs canonical reconciliation.
+Keep those pages until the OKF preserves their facts and qualifications.
+The [audit](reviews/shared-okf-audit.md) records that limit at its examined revision.
+
+After the OpenWiki lifecycle completes, regenerate the public projection:
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/okf_public.py --write
+```
+
+Before acceptance, examine projection parity:
+
+```shell
+mise exec -- ./gradlew verifyPublicKnowledge
+```
+
+This task also belongs to `check` and `productBuildGate`. The documentation CI lane uses the same projector.
+The OpenWiki update workflow regenerates the public projection after a successful update.
+It includes those outputs in its pull request.
+Edit shared prose through OpenWiki. Keep generated public files under their projector.
 
 Before a key claim, read its contract owner. Check its callers, encoded schema, and focused tests. Trace a flow through one real source path.
 
@@ -120,6 +158,24 @@ The root `.vale.ini` applies these rules to the same authored scope. The glossar
 
 ## Local Vale integration
 
+### Reader audit: separate prose and terminology
+
+The [reader audit](reviews/readability-audit/README.md) records the maintained corpus and the supplied Vale starter.
+Its two stages use Vale `3.25.1`, with separate configurations and compatibility tests.
+The prose stage has no vocabulary. The terminology stage uses Kast's glossary and product names.
+Terminology exceptions cannot change prose metrics.
+
+From the repository root, save a new report directory:
+
+```shell
+mise exec vale@3.25.1 -- uv run --locked --script config/vale/readability/audit.py --output build/reports/documentation/reader-audit
+```
+
+The runner rejects an existing output directory. Keep the baseline before edits and the final report after edits.
+Review advisory findings against each page's reader purpose. A lower score does not prove better comprehension.
+
+### Repository policy and shared assessment
+
 Vale `3.24.0` runs locally with checked-in rules and licenses. Normal lint needs no style download, hosted service, or installed plugin.
 
 From the repository root, install the pinned executable:
@@ -179,3 +235,13 @@ An author review simulates a reader review. A prose score and docs build do not 
 The live site reads `docs/public` from `main`. Get separate approval to publish. After it is live, check the rendered tracks and redirects.
 
 If the deploy fails, restore the prior docs revision. Review local changes before they go live.
+
+## Public diagram source
+
+Use beautiful-mermaid for public diagrams.
+Keep the authored `.mmd` files in `docs/public/images/architecture`.
+The [diagram tool](tooling/diagrams/README.md) owns the renderer, page manifest, and output checks.
+
+Pages import generated JSX snippets. The inline SVG files inherit the site font and theme colors.
+Keep the source and generated SVG files at their established URLs.
+After a source edit, render the files and examine the page in light and dark themes.

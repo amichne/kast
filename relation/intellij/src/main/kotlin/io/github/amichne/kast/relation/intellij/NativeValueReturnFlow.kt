@@ -44,6 +44,7 @@ internal class NativeValueReturnFlow(
         val exhausted =
             when {
                 returns.isReviewedCallback -> returns.reviewedCallback(owner, ::accept)
+                returns.isDeclaredCallback -> returns.declaredCallback(owner, ::accept)
                 returns.isCallback -> returns.callback(permit = permit, consume = ::accept)
                 returns.isMatched -> returns.matched(consume = ::accept)
                 else -> namedCallers()

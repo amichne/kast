@@ -50,7 +50,7 @@ private fun CallbackFactoryBodyCall.admitsBasis(factory: ValueInvocation): Boole
 private fun CallbackFactoryBodyCall.Captured.matches(captures: List<CallbackFactoryCapture>): Boolean {
     val capture =
         captures.singleOrNull {
-            it.binding.invocation.callable == formal.callable &&
+            it.binding.callable == formal.callable &&
                 it.binding.position == formal.position &&
                 it.binding.parameter == formal.parameter
         } ?: return false

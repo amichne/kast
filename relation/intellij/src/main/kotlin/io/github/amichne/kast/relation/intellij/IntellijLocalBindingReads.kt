@@ -12,25 +12,25 @@ import io.github.amichne.kast.relation.contract.LocalReferenceKey
 import io.github.amichne.kast.relation.contract.LocalReferenceKind
 import io.github.amichne.kast.relation.contract.LocalReferenceResolution
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.ValueConditions
+import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
-import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.idea.references.KtReference
-import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtProperty
 
 /** Only native observations; scan decisions and detached progress belong to LocalBindingReferenceScan. */
 internal class IntellijLocalBindingReads(
@@ -45,8 +45,15 @@ internal class IntellijLocalBindingReads(
     private val captureAllowance = IntellijRelationAllowance(started) { System.nanoTime() }
     private var scannedWork = 1L
 
-    fun read(element: PsiElement): ValueFlowRead =
-        when (element) {
+    fun read(element: PsiElement): ValueFlowRead {
+        if (request.source.localVersion is ValueLocalVersion.Defined) return readVersion(element)
+        val componentObligations =
+            when (val admission = admitComponents(element)) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return unsupportedBindingRead(admission.failure, element)
+            }
+        return when (element) {
+            is KtFunctionLiteral -> readImplicitParameter(element)
             is KtNamedDeclaration ->
                 readReferences(
                     binding = element,
@@ -54,30 +61,130 @@ internal class IntellijLocalBindingReads(
                         observation.forEachReference(element, LocalSearchScope(owner), process = visit)
                     },
                     confirm = { confirmLocalBindingReference(it, element, observation) },
+                    componentObligations = componentObligations,
                 )
             else -> staleBindingRead()
         }
+    }
+
+    private fun readImplicitParameter(literal: KtFunctionLiteral): ValueFlowRead =
+        NativeImplicitLambdaReads(
+                request = request,
+                scope = scope,
+                projection = projection,
+                observation = observation,
+                started = started,
+            )
+            .read(
+                literal = literal,
+                onWork = { work ->
+                    scannedWork = work.value - captureAllowance.examined
+                    onWork(work)
+                },
+                additionalWork = { captureAllowance.examined },
+                target = ::branchReadTarget,
+            )
+            .also(observation::recordValueRead)
+
+    private fun readVersion(element: PsiElement): ValueFlowRead {
+        scannedWork = 2L
+        val restored = nativeLocalValueVersion(element, request.source.executionOwner, observation, ::permitComponents)
+        scannedWork = 1L
+        onWork(bindingWork())
+        val version =
+            when (restored) {
+                is Refinement.Rejected -> return unsupportedBindingRead(restored.failure, element)
+                is Refinement.Refined -> restored.value
+            }
+        if (version.proof != request.source.localVersion) return staleBindingRead()
+        val binding = version.binding
+        return when (val components = admitComponents(binding)) {
+            is Refinement.Rejected -> unsupportedBindingRead(components.failure, binding)
+            is Refinement.Refined ->
+                readReferences(
+                    binding = binding,
+                    enumerate = { visit ->
+                        observation.forEachReference(binding, LocalSearchScope(owner), process = visit)
+                    },
+                    confirm = { confirmLocalBindingReference(it, binding, observation) },
+                    componentObligations = components.value,
+                )
+        }
+    }
+
+    private fun admitComponents(element: PsiElement): Refinement<List<ValueFlowObligation>, ValueFlowUnsupportedCause> {
+        if (element !is KtDestructuringDeclarationEntry) return Refinement.Refined(emptyList())
+        val declaration =
+            element.parent as? org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+                ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        // Reserve authority and the scan's role-admission unit before proving every sibling.
+        scannedWork = 2L
+        val context =
+            IntellijCallbackFlowContext(
+                scope = scope,
+                projection = projection,
+                admitWork = ::admitCaptureWork,
+                observation = observation,
+                callbackExpiry = ::captureExpiry,
+            )
+        val admission =
+            NativeDestructuringAdmission.readReviewed(
+                declaration = declaration,
+                scope = scope,
+                projection = projection,
+                permit = ::permitComponents,
+                reviewed = NativeReviewedComponentScope.Available(request.source.executionOwner, context),
+            )
+        scannedWork = 1L
+        onWork(bindingWork())
+        return when (admission) {
+            is Refinement.Refined ->
+                Refinement.Refined(
+                    admission.value.unresolvedGetters.map { sibling ->
+                        nativeValueObligation(request.source, ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY, sibling)
+                    }
+                )
+            is Refinement.Rejected -> admission
+        }
+    }
+
+    private fun permitComponents(): Refinement<Unit, ValueFlowUnsupportedCause> {
+        ProgressManager.checkCanceled()
+        return when (admitCaptureWork()) {
+            CallbackWorkAdmission.READY -> Refinement.Refined(Unit)
+            CallbackWorkAdmission.WORK_LIMIT_REACHED ->
+                Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+            CallbackWorkAdmission.TIME_LIMIT_REACHED ->
+                Refinement.Rejected(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
+        }
+    }
+
+    private fun bindingWork(): RelationWorkCount =
+        when (val count = RelationWorkCount.parse(1L + captureAllowance.examined)) {
+            is Refinement.Refined -> count.value
+            is Refinement.Rejected -> error("Binding admission work is nonnegative")
+        }
+
+    private fun unsupportedBindingRead(cause: ValueFlowUnsupportedCause, element: PsiElement): ValueFlowRead =
+        nativeUnsupportedBindingRead(
+            source = request.source,
+            scope = scope,
+            observation = observation,
+            obligation = nativeValueObligation(request.source, cause, element),
+            work = ::bindingWork,
+        )
 
     private fun readReferences(
         binding: KtNamedDeclaration,
         enumerate: ((PsiReference) -> Boolean) -> Unit,
         confirm: (KtReference) -> LocalBindingReferenceConfirmation,
+        componentObligations: List<ValueFlowObligation>,
     ): ValueFlowRead =
         LocalBindingReferenceScan<PsiReference>(
                 request,
                 scope.request,
                 enumerate,
-                { reference ->
-                    val elementRange = nativeRange(reference.element)
-                    val referenceRange = reference.rangeInElement.shiftRight(reference.element.textRange.startOffset)
-                    LocalReferenceKey(
-                        (elementRange as Refinement.Refined).value,
-                        (ExactDeclarationTextRange.parse(referenceRange.startOffset, referenceRange.endOffset)
-                                as Refinement.Refined)
-                            .value,
-                        (LocalReferenceKind.fromBoundary(reference.javaClass.name) as Refinement.Refined).value,
-                    )
-                },
+                ::nativeLocalReferenceKey,
                 { reference ->
                     val native = reference as? KtReference
                     if (native == null)
@@ -99,43 +206,69 @@ internal class IntellijLocalBindingReads(
                     onWork(work)
                 },
                 { captureAllowance.examined },
+                initialObligations = componentObligations,
             )
             .read()
-            .also { read ->
-                val step =
-                    when (read) {
-                        is ValueFlowRead.Observed -> read.step
-                        is ValueFlowRead.Suspended -> read.step
-                        is ValueFlowRead.Rejected,
-                        is ValueFlowRead.ContractRejected -> null
-                    }
-                step?.transfers?.forEach { observation.count(IntellijReadCounter.VALUE_FLOW_TRANSFERS) }
-                step?.obligations?.forEach { observation.count(IntellijReadCounter.VALUE_FLOW_OBLIGATIONS) }
-            }
+            .also(observation::recordValueRead)
 
     private fun admittedReadTarget(element: PsiElement, binding: KtNamedDeclaration): LocalReferenceResolution {
+        val version = request.source.localVersion
+        if (version is ValueLocalVersion.Defined) {
+            if (!version.admitsRead(sourceValueRange(element))) return LocalReferenceResolution.OtherVersion
+            if (!nativeLocalVersionRead(element, binding, observation))
+                return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+        }
         val expression =
             element as? KtExpression
                 ?: return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         return when (
-            nativeValueBranchAdmission(
-                source = request.source,
-                expression = expression,
-                binding = binding,
-                scope = scope,
-                projection = projection,
-                workAllowance = request.budget.resources.workAllowance,
-            )
+            val admission =
+                nativeValueBranchAdmission(
+                    source = request.source,
+                    expression = expression,
+                    binding = binding,
+                    scope = scope,
+                    projection = projection,
+                    workAllowance = request.budget.resources.workAllowance,
+                )
         ) {
             NativeValueBranchAdmission.ADMITTED,
-            NativeValueBranchAdmission.NOT_APPLICABLE -> localReadTarget(element)
+            NativeValueBranchAdmission.NOT_APPLICABLE,
+            NativeValueBranchAdmission.UNPROVEN -> branchReadTarget(expression, admission)
             NativeValueBranchAdmission.EXCLUDED -> LocalReferenceResolution.ExcludedBranch
-            NativeValueBranchAdmission.UNPROVEN ->
-                LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
             NativeValueBranchAdmission.WORK_LIMIT_REACHED ->
                 LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
         }
     }
+
+    private fun branchReadTarget(
+        expression: KtExpression,
+        admission: NativeValueBranchAdmission,
+    ): LocalReferenceResolution =
+        if (request.source.localVersion is ValueLocalVersion.Defined) {
+            when (
+                val conditions =
+                    nativeLocalReadConditions(
+                        request.source,
+                        expression,
+                        admission,
+                        observation,
+                        request.budget.resources.workAllowance,
+                    )
+            ) {
+                is Refinement.Refined ->
+                    nativeLocalReadTarget(
+                        element = expression,
+                        source = request.source,
+                        execution = request.source.executionOwner,
+                        scope = scope,
+                        conditions = conditions.value,
+                    )
+                is Refinement.Rejected -> LocalReferenceResolution.Unsupported(conditions.failure)
+            }
+        } else if (admission == NativeValueBranchAdmission.UNPROVEN)
+            LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        else localReadTarget(expression)
 
     private fun localReadTarget(element: PsiElement): LocalReferenceResolution {
         val execution =
@@ -149,15 +282,22 @@ internal class IntellijLocalBindingReads(
                                 enclosing = request.source.enclosing,
                                 scope = scope,
                                 projection = projection,
+                                allowance = captureAllowance,
                                 admitWork = ::admitCaptureWork,
-                                expiry = {
-                                    if (captureAllowance.elapsedLimitReached(request.budget.resources))
-                                        CallbackExpiryAdmission.EXPIRED
-                                    else CallbackExpiryAdmission.CURRENT
-                                },
+                                expiry = ::captureExpiry,
                             )
                     ) {
-                        is Refinement.Refined -> captured.value.owner
+                        is Refinement.Refined -> {
+                            if (captured.value.owner.context !is ValueExecutionContext.Callback)
+                                return LocalReferenceResolution.Unresolved(
+                                    nativeValueObligation(
+                                        request.source,
+                                        ValueFlowUnsupportedCause.NESTED_EXECUTION,
+                                        element,
+                                    )
+                                )
+                            captured.value.owner
+                        }
                         is Refinement.Rejected ->
                             return LocalReferenceResolution.Unresolved(
                                 nativeValueObligation(request.source, captured.failure, element)
@@ -169,33 +309,12 @@ internal class IntellijLocalBindingReads(
                     )
                 NativeValueOwnership.ADMITTED -> request.source.executionOwner
             }
-        return localReadTarget(element, execution)
+        return nativeLocalReadTarget(element = element, source = request.source, execution = execution, scope = scope)
     }
 
-    private fun localReadTarget(element: PsiElement, execution: ValueExecutionOwner): LocalReferenceResolution {
-        if (!scope.nativeScope.contains(element.containingFile.virtualFile))
-            return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
-        val range =
-            when (val value = nativeRange(element)) {
-                is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return LocalReferenceResolution.Unsupported(value.failure)
-            }
-        return when (
-            val target =
-                ValueSite.fromCompiler(
-                    enclosing = request.source.enclosing,
-                    range = range,
-                    role = ValueRole.LocalRead,
-                    executionOwner = execution,
-                    valuePath = request.source.valuePath,
-                    callStack = request.source.callStack,
-                )
-        ) {
-            is Refinement.Refined -> LocalReferenceResolution.Transfer(target.value)
-            is Refinement.Rejected ->
-                LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
-    }
+    private fun captureExpiry(): CallbackExpiryAdmission =
+        if (captureAllowance.elapsedLimitReached(request.budget.resources)) CallbackExpiryAdmission.EXPIRED
+        else CallbackExpiryAdmission.CURRENT
 
     private fun admitCaptureWork(): CallbackWorkAdmission =
         when {
@@ -207,13 +326,56 @@ internal class IntellijLocalBindingReads(
                 CallbackWorkAdmission.READY
             }
         }
-
-    private fun nativeRange(element: PsiElement): Refinement<ExactDeclarationTextRange, ValueFlowUnsupportedCause> =
-        when (val range = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {
-            is Refinement.Refined -> range
-            is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
 }
+
+private fun nativeLocalReadTarget(
+    element: PsiElement,
+    source: ValueSite,
+    execution: ValueExecutionOwner,
+    scope: CompiledRelationScope,
+    conditions: ValueConditions = source.conditions,
+): LocalReferenceResolution {
+    if (!scope.nativeScope.contains(element.containingFile.virtualFile))
+        return LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
+    val range =
+        when (val value = nativeRange(element)) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> return LocalReferenceResolution.Unsupported(value.failure)
+        }
+    return when (
+        val target =
+            ValueSite.fromCompiler(
+                enclosing = source.enclosing,
+                range = range,
+                role = ValueRole.LocalRead,
+                executionOwner = execution,
+                valuePath = source.valuePath,
+                callStack = source.callStack,
+                conditions = conditions,
+            )
+    ) {
+        is Refinement.Refined -> LocalReferenceResolution.Transfer(target.value)
+        is Refinement.Rejected -> LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    }
+}
+
+private fun IntellijReadObservation.recordValueRead(read: ValueFlowRead) {
+    val step =
+        when (read) {
+            is ValueFlowRead.Observed -> read.step
+            is ValueFlowRead.Suspended -> read.step
+            is ValueFlowRead.Rejected,
+            is ValueFlowRead.ContractRejected -> null
+        }
+    step?.transfers?.forEach { count(IntellijReadCounter.VALUE_FLOW_TRANSFERS) }
+    step?.obligations?.forEach { count(IntellijReadCounter.VALUE_FLOW_OBLIGATIONS) }
+}
+
+private fun nativeRange(element: PsiElement): Refinement<ExactDeclarationTextRange, ValueFlowUnsupportedCause> =
+    when (val range = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {
+        is Refinement.Refined -> range
+        is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    }
 
 private fun staleBindingRead(): ValueFlowRead =
     when (val work = RelationWorkCount.parse(1L)) {
@@ -221,99 +383,13 @@ private fun staleBindingRead(): ValueFlowRead =
         is Refinement.Rejected -> error("Binding authority admission has one work unit")
     }
 
-internal fun PsiElement.isNativeReferenceBinding(role: ValueRole): Boolean =
-    when (role) {
-        ValueRole.LocalBinding ->
-            when (val binding = nativeLocalBindingMutability()) {
-                is Refinement.Refined -> binding.value == NativeLocalBindingMutability.IMMUTABLE
-                is Refinement.Rejected -> false
-            }
-        is ValueRole.Formal -> role.position is ValueFormalPosition.Parameter && this is KtParameter
-        is ValueRole.Argument,
-        is ValueRole.Receiver,
-        ValueRole.ExpressionResult,
-        ValueRole.LocalRead,
-        ValueRole.Return,
-        ValueRole.PropertyAssignment -> false
-    }
-
-internal enum class NativeLocalBindingMutability {
-    IMMUTABLE,
-    MUTABLE,
-}
-
-/** The same cheap declaration law governs admission and reference enumeration. */
-internal fun PsiElement.nativeLocalBindingMutability():
-    Refinement<NativeLocalBindingMutability, ValueFlowUnsupportedCause> {
-    val mutable =
-        when (this) {
-            is KtProperty -> {
-                if (!isLocal)
-                    return Refinement.Rejected(
-                        if (isVar) ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW
-                        else ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY
-                    )
-                isVar
-            }
-            is KtDestructuringDeclarationEntry -> {
-                val declaration =
-                    parent as? KtDestructuringDeclaration
-                        ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                if (name == "_" || declaration.nativeDestructuringContext() == NativeDestructuringContext.Unsupported)
-                    return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                declaration.isVar
-            }
-            else -> return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
-    return Refinement.Refined(
-        if (mutable) NativeLocalBindingMutability.MUTABLE else NativeLocalBindingMutability.IMMUTABLE
+private fun nativeLocalReferenceKey(reference: PsiReference): LocalReferenceKey {
+    val elementRange = nativeRange(reference.element)
+    val referenceRange = reference.rangeInElement.shiftRight(reference.element.textRange.startOffset)
+    return LocalReferenceKey(
+        (elementRange as Refinement.Refined).value,
+        (ExactDeclarationTextRange.parse(referenceRange.startOffset, referenceRange.endOffset) as Refinement.Refined)
+            .value,
+        (LocalReferenceKind.fromBoundary(reference.javaClass.name) as Refinement.Refined).value,
     )
-}
-
-internal fun PsiElement.nativeLocalBindingCause(): ValueFlowUnsupportedCause =
-    when (val binding = nativeLocalBindingMutability()) {
-        is Refinement.Refined ->
-            when (binding.value) {
-                NativeLocalBindingMutability.MUTABLE -> ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW
-                NativeLocalBindingMutability.IMMUTABLE ->
-                    error("Immutable local binding must use the production reference scan")
-            }
-        is Refinement.Rejected -> binding.failure
-    }
-
-/** Shared K2 identity proof for local value reads; spelling never establishes a transfer. */
-internal enum class LocalBindingReferenceConfirmation {
-    EXACT_BINDING,
-    OTHER_BINDING,
-    UNRESOLVED,
-}
-
-internal fun confirmLocalBindingReference(
-    reference: KtReference,
-    property: KtNamedDeclaration,
-    observation: IntellijReadObservation,
-): LocalBindingReferenceConfirmation {
-    return when (val resolution = resolveLocalValueReference(reference, observation)) {
-        NativeLocalValueReferenceResolution.Unresolved -> LocalBindingReferenceConfirmation.UNRESOLVED
-        is NativeLocalValueReferenceResolution.Resolved ->
-            if (resolution.declaration === property) LocalBindingReferenceConfirmation.EXACT_BINDING
-            else LocalBindingReferenceConfirmation.OTHER_BINDING
-    }
-}
-
-internal sealed interface NativeLocalValueReferenceResolution {
-    data class Resolved(val declaration: PsiElement) : NativeLocalValueReferenceResolution
-
-    data object Unresolved : NativeLocalValueReferenceResolution
-}
-
-/** Shared native observation, including formal references; consumers retain their own ownership and role checks. */
-internal fun resolveLocalValueReference(
-    reference: KtReference,
-    observation: IntellijReadObservation,
-): NativeLocalValueReferenceResolution {
-    val declaration =
-        observation.observedAnalyze(reference.element) { reference.resolveToSymbol()?.psi }
-            ?: return NativeLocalValueReferenceResolution.Unresolved
-    return NativeLocalValueReferenceResolution.Resolved(declaration)
 }

@@ -1,0 +1,72 @@
+{
+  "sourceRevision": "dac99b39a0b7b497d5c0e0d5c2a604f5817e5397",
+  "workingTree": "documentation and documentation tooling changes present; not committed",
+  "ideaVersion": "2026.2.3",
+  "ideaBuild": "262.10968.63",
+  "commands": [
+    "mise exec -- ./packaging/install-checkout.sh persistent --idea-home '/Users/amichne/Applications/IntelliJ IDEA.app' --install-codex-plugin",
+    "kast stop",
+    "kast stop --force --json"
+  ],
+  "attempts": [
+    {
+      "version": "0.20261028.203132",
+      "build": "passed",
+      "installExit": 9,
+      "result": "ROLLED_BACK; PRIOR_ADMISSION_EXIT_REJECTED",
+      "log": "/tmp/kast-docs-reinstall.log"
+    },
+    {
+      "version": "0.20261028.203727",
+      "build": "passed",
+      "installExit": 9,
+      "result": "RECOVERY_REQUIRED; PRIOR_ADMISSION_EXIT_REJECTED; PRIOR_RECOVERY_REJECTED",
+      "failures": [
+        "REGISTRY_REJECTED",
+        "SERVICE_OWNERSHIP_UNPROVEN"
+      ],
+      "log": "/tmp/kast-docs-reinstall-retry.log"
+    }
+  ],
+  "installedVersion": "0.20261028.203727",
+  "artifacts": [
+    {
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/build/distributions/kast-control-v0.20261028.203132-macos-aarch64.tar.gz",
+      "sha256": "956f04ddb206a983d2bf064a06065dafc51911f9a1ad593c6bceb3d0dab768be"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/runtime/hosted/build/distributions/kast-ide-hosted-v0.20261028.203132-idea-262.zip",
+      "sha256": "1a49ceb9a768808f6cde9cd8c5bfd0ce7a837bc7c13a7bc240f3914e450e7fd2"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/build/distributions/kast-control-v0.20261028.203727-macos-aarch64.tar.gz",
+      "sha256": "3c85e3cf4c990fac888e4346acba34d895fafee3b5d5e19b3bb46133895e9090"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/runtime/hosted/build/distributions/kast-ide-hosted-v0.20261028.203727-idea-262.zip",
+      "sha256": "3d404546024f8e59512939e8d1a26c1287df3530038b9942a0ddd54df93a9250"
+    }
+  ],
+  "codexPluginInstall": "passed; installer requests Codex restart/fresh session",
+  "ideaRestart": {
+    "version": "2026.2.3",
+    "hostLoadedVersion": "0.20261028.203727",
+    "evidence": "idea.log:57822 at2026-10-28 16:49:04,573 Loaded custom plugins includes Kast Existing IDE Runtime (0.20261028.203727)",
+    "workspace": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+    "visibleState": "README open; scanning files"
+  },
+  "recovery": {
+    "reason": "A retired Kast process receipt referred to a PID reused by an unrelated process. Its start identity differed.",
+    "action": "Quarantine the single stale receipt after identity, owner, mode, inode, and hash checks. Preserve original bytes and recovery instructions.",
+    "receiptSha256": "410e717c50a280a9a3339378be75116dca95a6219c00b5b62c7bbe0ff0f377de",
+    "globalReset": false,
+    "admission": "STATE_ADMITTED",
+    "installExit": 0,
+    "priorEntriesRetainedForReview": 1
+  },
+  "limits": [
+    "Source checkout installation, not a fresh public-channel installation.",
+    "Current-chat MCP transport closed during retirement. A fresh session is necessary.",
+    "Separate tutorial-current-head.json records fresh MCP semantic evidence."
+  ]
+}

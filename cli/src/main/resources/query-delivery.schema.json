@@ -22,6 +22,634 @@
       },
       "additionalProperties": true,
       "description": "Opaque canonical RPC reply: the owning RPC decoder admits all inner semantics separately."
+    },
+    "SemanticHeader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_outcome",
+        "completion",
+        "authority",
+        "coverage",
+        "blockers",
+        "omissions",
+        "presentation",
+        "recovery"
+      ],
+      "properties": {
+        "original_outcome": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected_document",
+            "rejected"
+          ]
+        },
+        "completion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "policy",
+            "model",
+            "interpretation",
+            "cause"
+          ],
+          "properties": {
+            "policy": {
+              "enum": [
+                "COMPLETE_ONLY",
+                "UNAVAILABLE"
+              ]
+            },
+            "model": {
+              "enum": [
+                "COMPILER_RESOLVED_STATIC_V1",
+                "UNAVAILABLE"
+              ]
+            },
+            "interpretation": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "cause": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            }
+          }
+        },
+        "authority": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "result"
+              ],
+              "properties": {
+                "type": {
+                  "const": "RETAINED_RESULT"
+                },
+                "result": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "root",
+                "host",
+                "epoch",
+                "contentView",
+                "version"
+              ],
+              "properties": {
+                "type": {
+                  "const": "LIVE"
+                },
+                "root": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "host": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "epoch": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "contentView": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "UNAVAILABLE"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "workspace_digest",
+                "host",
+                "epoch",
+                "contentView",
+                "version"
+              ],
+              "properties": {
+                "type": {
+                  "const": "LIVE_DIGEST"
+                },
+                "workspace_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "maxLength": 64
+                },
+                "host": {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                "epoch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "contentView": {
+                  "enum": [
+                    "SAVED_PSI_COMMITTED"
+                  ]
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "exhaustive",
+            "known_minimum",
+            "limitations",
+            "progress"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "COMPLETE",
+                "QUALIFIED",
+                "UNKNOWN"
+              ]
+            },
+            "exhaustive": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "known_minimum": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "limitations": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              }
+            },
+            "progress": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "reason",
+                "next_action"
+              ],
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                },
+                "next_action": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                }
+              }
+            }
+          }
+        },
+        "blockers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "failure",
+            "rejection",
+            "cause",
+            "stop",
+            "qualification",
+            "codes",
+            "failure_count",
+            "kinds"
+          ],
+          "properties": {
+            "failure": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "rejection": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "cause": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "stop": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "qualification": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "codes": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              }
+            },
+            "failure_count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "kinds": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              }
+            }
+          }
+        },
+        "omissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "count",
+            "codes"
+          ],
+          "properties": {
+            "codes": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              }
+            },
+            "count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "presentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rows",
+            "accumulated_rows",
+            "evidence_presented",
+            "evidence_total",
+            "detail",
+            "deferred_count",
+            "detail_read"
+          ],
+          "properties": {
+            "rows": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "accumulated_rows": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "evidence_presented": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "evidence_total": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "detail": {
+              "enum": [
+                "INLINE",
+                "DEFERRED_DETAIL",
+                "UNAVAILABLE"
+              ]
+            },
+            "deferred_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "detail_read": {
+              "enum": [
+                "NONE",
+                "FRAGMENT",
+                "FINAL_FRAGMENT"
+              ]
+            }
+          }
+        },
+        "recovery": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "result",
+                "cursor",
+                "evidence_cursor"
+              ],
+              "properties": {
+                "type": {
+                  "const": "READ_RESULT"
+                },
+                "result": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "cursor": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "evidence_cursor": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "continuation"
+              ],
+              "properties": {
+                "type": {
+                  "const": "RESUME"
+                },
+                "continuation": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "reason"
+              ],
+              "properties": {
+                "type": {
+                  "const": "UNAVAILABLE"
+                },
+                "reason": {
+                  "enum": [
+                    "NO_RETAINED_AUTHORITY",
+                    "AUTHORITY_REJECTED"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "QueryPresentationHeader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "operation",
+        "status",
+        "delivery_stop",
+        "semantic",
+        "binding"
+      ],
+      "properties": {
+        "type": {
+          "const": "QUERY_PRESENTATION_HEADER"
+        },
+        "operation": {
+          "const": "query.run"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected"
+          ]
+        },
+        "delivery_stop": {
+          "enum": [
+            "BYTE_LIMIT",
+            "DETAIL_SECTION"
+          ]
+        },
+        "semantic": {
+          "$ref": "#/$defs/SemanticHeader"
+        },
+        "binding": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "result"
+              ],
+              "properties": {
+                "type": {
+                  "const": "RETAINED_RESULT"
+                },
+                "result": {
+                  "type": "string",
+                  "maxLength": 128
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "root",
+                "host",
+                "epoch",
+                "contentView",
+                "version"
+              ],
+              "properties": {
+                "type": {
+                  "const": "LIVE"
+                },
+                "root": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "host": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "epoch": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "contentView": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "UNAVAILABLE"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "workspace_digest",
+                "host",
+                "epoch",
+                "contentView",
+                "version"
+              ],
+              "properties": {
+                "type": {
+                  "const": "LIVE_DIGEST"
+                },
+                "workspace_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "maxLength": 64
+                },
+                "host": {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                "epoch": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "contentView": {
+                  "enum": [
+                    "SAVED_PSI_COMMITTED"
+                  ]
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "oneOf": [
@@ -32,7 +660,8 @@
         "type",
         "initial",
         "pages",
-        "delivery"
+        "delivery",
+        "semantic"
       ],
       "properties": {
         "type": {
@@ -95,6 +724,9 @@
               ]
             }
           }
+        },
+        "semantic": {
+          "$ref": "#/$defs/SemanticHeader"
         }
       }
     },
@@ -105,7 +737,8 @@
         "type",
         "initial",
         "pages",
-        "delivery"
+        "delivery",
+        "semantic"
       ],
       "properties": {
         "type": {
@@ -166,6 +799,9 @@
               ]
             }
           }
+        },
+        "semantic": {
+          "$ref": "#/$defs/SemanticHeader"
         }
       }
     }

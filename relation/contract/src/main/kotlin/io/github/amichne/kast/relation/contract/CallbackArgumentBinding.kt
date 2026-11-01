@@ -8,11 +8,18 @@ import java.util.Collections
 @ConsistentCopyVisibility
 data class CallbackArgumentBinding
 private constructor(
-    val invocation: ValueInvocation,
+    val frame: ValueCallFrame,
     val invocationOwner: RelationCallableBody,
     val position: ValueArgumentPosition,
     val parameter: RelationOccurrence,
 ) {
+    /** The compiler-resolved call target remains distinct from the selected implementation body. */
+    val invocation: ValueInvocation
+        get() = frame.invocation
+
+    val callable: RelationEndpoint
+        get() = frame.callee.enclosing
+
     companion object {
         fun fromCompiler(
             invocation: ValueInvocation,
@@ -20,19 +27,41 @@ private constructor(
             position: ValueArgumentPosition,
             parameter: RelationOccurrence,
         ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowFailure> =
-            when {
+            when (val frame = ValueCallFrame.direct(invocation, ValueExecutionOwner.declaration(invocation.callable))) {
+                is Refinement.Refined ->
+                    fromCompiler(
+                        frame = frame.value,
+                        invocationOwner = invocationOwner,
+                        position = position,
+                        parameter = parameter,
+                    )
+                is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowFailure.BASIS_MISMATCH)
+            }
+
+        fun fromCompiler(
+            frame: ValueCallFrame,
+            invocationOwner: RelationCallableBody,
+            position: ValueArgumentPosition,
+            parameter: RelationOccurrence,
+        ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowFailure> {
+            val invocation = frame.invocation
+            val callable = frame.callee.enclosing
+            return when {
+                frame.callee.context != ValueExecutionContext.Declaration ->
+                    Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
                 invocationOwner.file != invocation.enclosing.file ||
                     !invocationOwner.range.containsValueRange(invocation.range) ||
                     !invocation.enclosing.range.containsValueRange(invocationOwner.range) ->
                     Refinement.Rejected(CallbackInvocationFlowFailure.INVOCATION_OUTSIDE_SUPPLYING_OWNER)
-                parameter.file != invocation.callable.file ||
-                    !invocation.callable.range.containsValueRange(parameter.range) ->
+                parameter.file != callable.file || !callable.range.containsValueRange(parameter.range) ->
                     Refinement.Rejected(CallbackInvocationFlowFailure.PARAMETER_OUTSIDE_CALLABLE)
-                position.value !in
-                    (invocation.callable.signature as CanonicalCompilerCallableSignature).valueParameters.indices ->
+                position.value !in (callable.signature as CanonicalCompilerCallableSignature).valueParameters.indices ||
+                    position.value !in
+                        (invocation.callable.signature as CanonicalCompilerCallableSignature).valueParameters.indices ->
                     Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_PARAMETER_POSITION)
-                else -> Refinement.Refined(CallbackArgumentBinding(invocation, invocationOwner, position, parameter))
+                else -> Refinement.Refined(CallbackArgumentBinding(frame, invocationOwner, position, parameter))
             }
+        }
     }
 }
 

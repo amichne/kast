@@ -1,0 +1,9 @@
+flowchart TD
+  P["Prepared detached inventory"] --> K{"Same authority, subject,<br/>scope, and purpose?"}
+  K -->|No| M["Prepare a new inventory"]
+  K -->|Yes| C["Admit receiving capacity"]
+  C -->|Rejected| U["Unavailable"]
+  C -->|Admitted| R(["Confirm the<br/>receiving relation"])
+  class P proof
+  class U stop
+  class R result
