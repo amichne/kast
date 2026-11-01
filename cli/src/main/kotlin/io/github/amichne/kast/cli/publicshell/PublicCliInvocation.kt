@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.cli.rpc.ToolRpcFailure
-import io.github.amichne.kast.distribution.output.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.output.cliOutputRejection
 import io.github.amichne.kast.distribution.output.renderCliOutput
 import io.github.amichne.kast.kernel.Refinement

@@ -11,9 +11,9 @@ import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parsers.CommandLineParser
-import io.github.amichne.kast.distribution.output.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
 import io.github.amichne.kast.distribution.output.cliOutputRejection
-import io.github.amichne.kast.distribution.output.selectCliOutputFormat
 import io.github.amichne.kast.kernel.Refinement
 import kotlin.system.exitProcess
 

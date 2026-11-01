@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
-import io.github.amichne.kast.distribution.output.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

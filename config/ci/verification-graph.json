@@ -234,7 +234,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "39bc9e30c02596e72489ac7b41d63c2f7f8012722b9a250a54eb1b82a402f273"
+            "sha256": "2c21f819c76576cbf67a86c397d553fe014bf6afd5bed42aee1411838b5d8965"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
@@ -418,7 +418,7 @@
         },
         {
             "path": "distribution/output/build.gradle.kts",
-            "sha256": "2ebacc33b20dcf26b448ae85449f98a12e390a918efff51314a3b544a01c77fb"
+            "sha256": "2cc0b0689091a37a97bea1e2a93e13ffff7a9c3943127680599eb5890de97d17"
         },
         {
             "path": "evidence/contract/build.gradle.kts",
@@ -817,7 +817,8 @@
                 ":cli",
                 ":distribution:cli",
                 ":distribution:contract",
-                ":distribution:managed"
+                ":distribution:managed",
+                ":distribution:output"
             ],
             "sourceRoots": [
                 "distribution/contract/src/main/java",

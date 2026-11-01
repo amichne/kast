@@ -179,7 +179,8 @@ Local cancellation or JVM termination does not prove native settlement.
 - `app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt` owns public admission.
 - `cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt` owns direct execution composition.
 - `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt` owns native delegation.
-- `distribution/output/` owns format selection and the shared `JToon` adapter.
+- `distribution/contract/` owns format selection and its configuration declaration.
+- `distribution/output/` owns the shared `JToon` adapter.
 
 These examples describe the interface.
 The implementation report records which examples and native paths ran.

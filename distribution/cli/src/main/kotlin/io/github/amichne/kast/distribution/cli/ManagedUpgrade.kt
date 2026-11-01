@@ -43,8 +43,10 @@ internal fun upgradeSelectedBuild(
     val selected = command.copy(json = output.structured(command.json))
     val childOutput =
         when (output.format) {
-            io.github.amichne.kast.distribution.output.CliOutputFormat.JSON -> OwnedChildOutput.Inherited
-            io.github.amichne.kast.distribution.output.CliOutputFormat.TOON -> OwnedChildOutput.Document(output.format)
+            io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat.JSON ->
+                OwnedChildOutput.Inherited
+            io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat.TOON ->
+                OwnedChildOutput.Document(output.format)
         }
     val execution =
         ManagedUpgradeExecution(

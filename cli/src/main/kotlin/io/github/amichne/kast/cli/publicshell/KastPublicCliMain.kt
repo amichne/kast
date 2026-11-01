@@ -18,9 +18,9 @@ import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.cli.rpc.costAdvice
 import io.github.amichne.kast.cli.rpc.decodeToolRpcInput
 import io.github.amichne.kast.cli.rpc.presentToolRpcExit
-import io.github.amichne.kast.distribution.output.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
 import io.github.amichne.kast.distribution.output.cliOutputRejection
-import io.github.amichne.kast.distribution.output.selectCliOutputFormat
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog

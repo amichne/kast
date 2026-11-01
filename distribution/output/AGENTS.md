@@ -13,7 +13,8 @@ code_sources:
 
 # CLI output
 
-This module owns pure format selection and result presentation for both public executables.
+This module owns result presentation for both public executables.
+`distribution/contract` owns the format enum, parser, and configuration declaration.
 The process adapters supply `KAST_OUTPUT_TOON` once at startup.
 The existing serializers own result fields, discriminators, defaults, and nulls.
 `JToon` encodes their complete JSON projection.

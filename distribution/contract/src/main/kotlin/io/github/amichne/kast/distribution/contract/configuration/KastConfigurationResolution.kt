@@ -347,6 +347,19 @@ private fun parse(
 ): Refinement<ConfigurationValue, ConfigurationRejection> {
     if (raw.length > 32 * 1024 || raw.any { it == '\u0000' || it == '\n' || it == '\r' })
         return rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
+    if (parameter == ConfigurationParameter.OUTPUT_TOON)
+        return when (val format = selectCliOutputFormat(raw)) {
+            is Refinement.Refined ->
+                Refinement.Refined(
+                    ConfigurationValue.Switch(
+                        when (format.value) {
+                            CliOutputFormat.JSON -> ConfigurationSwitch.DISABLED
+                            CliOutputFormat.TOON -> ConfigurationSwitch.ENABLED
+                        }
+                    )
+                )
+            is Refinement.Rejected -> rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
+        }
     val limit = parameter.readLimit
     if (limit != null)
         return when (

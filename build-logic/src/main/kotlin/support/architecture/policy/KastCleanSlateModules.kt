@@ -24,7 +24,7 @@ internal object KastCleanSlateModules {
             ModuleId.DIAGNOSTIC_CONTRACT,
         ),
         target(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
-        target(ModuleId.DISTRIBUTION_OUTPUT, ModuleRole.TRANSPORT, ModuleId.KERNEL),
+        target(ModuleId.DISTRIBUTION_OUTPUT, ModuleRole.TRANSPORT, ModuleId.DISTRIBUTION_CONTRACT),
         target(
             ModuleId.DISTRIBUTION_CLI,
             ModuleRole.CLI,

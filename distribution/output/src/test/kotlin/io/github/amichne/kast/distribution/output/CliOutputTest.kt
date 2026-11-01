@@ -1,6 +1,9 @@
 package io.github.amichne.kast.distribution.output
 
 import dev.toonformat.jtoon.JToon
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFailure
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString

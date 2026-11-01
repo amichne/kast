@@ -3,7 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import dev.toonformat.jtoon.JToon
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
-import io.github.amichne.kast.distribution.output.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.file.Files

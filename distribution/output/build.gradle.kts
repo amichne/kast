@@ -10,7 +10,7 @@ base {
 }
 
 dependencies {
-    api(project(":kernel"))
+    api(project(":distribution:contract"))
     implementation(libs.serialization.json)
     implementation(libs.jtoon)
     testImplementation(libs.jtoon)
