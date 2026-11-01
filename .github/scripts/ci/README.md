@@ -140,25 +140,23 @@ Other values reject the Gradle invocation.
 Gradle logs the disabled state, and source execution reports list `skippedTasks` under schema version 2.
 The switch does not remove fixture sources or their case manifest.
 
-## Main self-hosted runner
+## Candidate runner routing
 
-The repository variable `KAST_SELF_HOSTED_RUNNER=true` routes final main product qualification to `kast-main` on macOS ARM64.
-Only main push and manual main runs use this route.
-Pull requests and merge groups keep `macos-15`.
-Set the variable to `false` to restore hosted execution for main.
+A reused candidate runs the final `Kotlin product` job on `ubuntu-latest`.
+That job downloads and retains the qualified payload without executing its macOS binaries.
+Reuse admission still requires a successful same-repository pull request and an identical source tree.
+The retained record keeps the original platform, toolchain, version, producer and payload digests.
 
-The runner service keeps its checkout under its own work directory.
-Final product qualification consumes release archives and does not run Gradle.
-Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.
-This avoids the macOS `setup-python` installer's fixed `/Users/runner` prefix.
+A fresh candidate runs that job on hosted `macos-15`.
+It exercises the assembled Mac product and seals its identity before retention.
+Linux cannot execute those macOS binaries.
 The native Gradle task passes `-mmacosx-version-min=15.0` to the macOS linker.
 Before candidate sealing, it rejects a native binary whose deployment target differs from macOS 15.0.
-The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
-It rejects other repositories, refs, events, workflows, and jobs.
-Install the hook outside the runner application directory.
-Set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
-Restart the service after a hook change.
-Keep the installed hook synchronized with its reviewed source.
+
+CI no longer consults `KAST_SELF_HOSTED_RUNNER` for runner selection.
+The failed main run stalled while the self-hosted runner downloaded an action.
+Its artifact upload then received `403 Forbidden: job is completed`.
+Routing by candidate state keeps reuse on Linux and fresh qualification on a hosted Mac.
 
 Run the focused checks from the repository root:
 
