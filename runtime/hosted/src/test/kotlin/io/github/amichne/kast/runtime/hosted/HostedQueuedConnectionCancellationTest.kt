@@ -11,34 +11,34 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 class HostedQueuedConnectionCancellationTest {
     @Test
-    fun `listener cancellation closes queued peer without dispatch or an IO failure`() = runBlocking {
-        withTimeout(10_000) {
+    fun `listener cancellation closes queued peer without dispatch or an IO failure`() =
+        runTest(timeout = 10.seconds) {
             val events = Collections.synchronizedList(mutableListOf<HostedTransportObservation>())
-            val queued = CompletableDeferred<Unit>()
+            val queued = CompletableDeferred<HostedTransportObservation>()
             val dispatches = AtomicInteger()
             val limits = (ReadLimits.resolve(mapOf("KAST_READ_HOST_CONNECTIONS" to "1")) as Refinement.Refined).value
             val observer = cancellationObserver(events, queued)
             fixture { listener, address ->
-                val server =
-                    launch(Dispatchers.IO) {
-                        serveHostedListener(listener, observer, limits) { _, _ ->
-                            dispatches.incrementAndGet()
-                            error("No request reached dispatch")
-                        }
+                // The shared scheduler lets admission suspend before cancellation releases the occupied permit.
+                val server = launch {
+                    serveHostedListener(listener, observer, limits) { _, _ ->
+                        dispatches.incrementAndGet()
+                        error("No request reached dispatch")
                     }
+                }
                 try {
                     SocketChannel.open(StandardProtocolFamily.UNIX).use { active ->
                         SocketChannel.open(StandardProtocolFamily.UNIX).use { waiting ->
@@ -46,7 +46,17 @@ class HostedQueuedConnectionCancellationTest {
                                 active.connect(address)
                                 waiting.connect(address)
                             }
-                            queued.await()
+                            val admission = queued.await()
+                            assertEquals(
+                                0,
+                                synchronized(events) {
+                                    events.count {
+                                        it.connectionId == admission.connectionId &&
+                                            it.stage == HostedTransportStage.CONNECTION_ADMISSION &&
+                                            it.outcome == HostedEndpointOutcome.COMPLETED
+                                    }
+                                },
+                            )
                             server.cancelAndJoin()
                             assertEquals(-1, withContext(Dispatchers.IO) { waiting.read(ByteBuffer.allocate(1)) })
                         }
@@ -55,21 +65,28 @@ class HostedQueuedConnectionCancellationTest {
                     server.cancelAndJoin()
                 }
             }
-            val ended =
-                events
-                    .filter { it.stage == HostedTransportStage.CONNECTION_ADMISSION }
-                    .single {
-                        it.outcome != HostedEndpointOutcome.STARTED && it.outcome != HostedEndpointOutcome.COMPLETED
-                    }
-            assertEquals(HostedEndpointOutcome.CANCELLED, ended.outcome)
-            assertNull(ended.failure)
+            assertCancelledAdmission(events, queued.await())
             assertEquals(0, dispatches.get())
         }
+
+    private fun assertCancelledAdmission(
+        events: List<HostedTransportObservation>,
+        queued: HostedTransportObservation,
+    ) {
+        val ended =
+            events
+                .filter { it.stage == HostedTransportStage.CONNECTION_ADMISSION }
+                .single {
+                    it.outcome != HostedEndpointOutcome.STARTED && it.outcome != HostedEndpointOutcome.COMPLETED
+                }
+        assertEquals(queued.connectionId, ended.connectionId)
+        assertEquals(HostedEndpointOutcome.CANCELLED, ended.outcome)
+        assertNull(ended.failure)
     }
 
     private fun cancellationObserver(
         events: MutableList<HostedTransportObservation>,
-        queued: CompletableDeferred<Unit>,
+        queued: CompletableDeferred<HostedTransportObservation>,
     ) =
         object : HostedEndpointObserver {
             private var admissions = 0
@@ -83,7 +100,7 @@ class HostedQueuedConnectionCancellationTest {
                         observation.outcome == HostedEndpointOutcome.STARTED &&
                         ++admissions == 2
                 )
-                    queued.complete(Unit)
+                    queued.complete(observation)
             }
         }
 
