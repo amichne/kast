@@ -24,8 +24,8 @@ import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
@@ -78,7 +78,7 @@ internal class NativeValueReceiverReads(
     }
 
     fun forEachRead(
-        function: KtNamedFunction,
+        function: KtFunction,
         admitTraversal: () -> Boolean,
         permit: () -> Boolean,
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
@@ -90,7 +90,7 @@ internal class NativeValueReceiverReads(
     }
 
     private fun readElement(
-        function: KtNamedFunction,
+        function: KtFunction,
         element: PsiElement,
         permit: () -> Boolean,
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
@@ -107,7 +107,7 @@ internal class NativeValueReceiverReads(
     }
 
     private fun readField(
-        function: KtNamedFunction,
+        function: KtFunction,
         name: KtNameReferenceExpression,
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
     ) {
@@ -128,7 +128,7 @@ internal class NativeValueReceiverReads(
     }
 
     private fun thisRead(
-        function: KtNamedFunction,
+        function: KtFunction,
         expression: KtThisExpression,
         permit: () -> Boolean,
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
@@ -163,7 +163,7 @@ internal class NativeValueReceiverReads(
     }
 
     private fun calls(
-        function: KtNamedFunction,
+        function: KtFunction,
         call: KtCallExpression,
         permit: () -> Boolean,
         consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
@@ -193,7 +193,7 @@ internal class NativeValueReceiverReads(
     }
 
     private fun projected(
-        function: KtNamedFunction,
+        function: KtFunction,
         candidate: NativeReceiverField.Selected,
     ): Refinement<NativeValueFieldRead, ValueFlowUnsupportedCause> {
         if (valueNativeOwnership(candidate.expression, function) != NativeValueOwnership.ADMITTED)
@@ -214,7 +214,7 @@ internal class NativeValueReceiverReads(
         return sourceFieldTarget(source, candidate.expression, field, candidate.conditions)
     }
 
-    private fun receiverField(function: KtNamedFunction, expression: KtNameReferenceExpression): NativeReceiverField =
+    private fun receiverField(function: KtFunction, expression: KtNameReferenceExpression): NativeReceiverField =
         projection.observation.observedAnalyze(expression) {
             val call = expression.resolveCall() ?: return@observedAnalyze missingReceiverField(expression)
             val property =
@@ -250,9 +250,9 @@ private fun KaSession.missingReceiverField(expression: KtNameReferenceExpression
         else -> NativeReceiverField.Unrelated
     }
 
-/** The current named execution and its actual K2 receiver symbol establish the alias, including labeled this. */
+/** The current execution and its actual K2 receiver symbol establish the alias, including labeled this. */
 internal fun nativeThisReceiverKind(
-    function: KtNamedFunction,
+    function: KtFunction,
     expression: KtThisExpression,
     observation: IntellijReadObservation,
 ): Refinement<ValueReceiverKind, ValueFlowUnsupportedCause> =
@@ -265,10 +265,11 @@ internal fun nativeThisReceiverKind(
                 ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
         if (actual.origin != KaSymbolOrigin.SOURCE)
             return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        val callable = function.symbol
         when (actual) {
-            callable.receiverParameter -> Refinement.Refined(ValueReceiverKind.EXTENSION)
-            callable.containingDeclaration -> Refinement.Refined(ValueReceiverKind.DISPATCH)
+            nativeValueReceiverSymbol(function, ValueReceiverKind.EXTENSION) ->
+                Refinement.Refined(ValueReceiverKind.EXTENSION)
+            nativeValueReceiverSymbol(function, ValueReceiverKind.DISPATCH) ->
+                Refinement.Refined(ValueReceiverKind.DISPATCH)
             else -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }
     }

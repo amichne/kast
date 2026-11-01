@@ -9,13 +9,16 @@ import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocume
 import io.github.amichne.kast.protocol.contract.ImpactActualExecutionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCapturedBodyDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackReceiverDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationCountKnowledgeDocument
-import io.github.amichne.kast.protocol.contract.ImpactReviewedArtifactsDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionArtifactsDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSectionsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedFunctionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedSourceLinesDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRelationshipDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueSemanticsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedValueTransferDocument
@@ -49,7 +52,6 @@ internal fun reviewedTransferSchemaFixture(): ImpactReviewedValueTransferDocumen
             range(30, 90),
             selected(enclosing),
             artifacts(),
-            ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
             ImpactActualExecutionDocument.NOT_ESTABLISHED,
             ImpactInvocationCountKnowledgeDocument.NOT_ESTABLISHED,
         )
@@ -69,7 +71,14 @@ internal fun reviewedTransferSchemaFixture(): ImpactReviewedValueTransferDocumen
             ImpactValueRoleDocument.ExpressionResult,
             valuePath = bounded(listOf(ImpactValuePathSegmentDocument.Element, field)),
         )
-    return ImpactReviewedValueTransferDocument(source, target, binding)
+    return ImpactReviewedValueTransferDocument(
+        source,
+        target,
+        ImpactReviewedValueRelationshipDocument.fromBinding(
+            binding,
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+        ),
+    )
 }
 
 private fun selected(enclosing: ImpactDeclarationReferenceDocument): ImpactReviewedFunctionDocument {
@@ -87,7 +96,7 @@ private fun selected(enclosing: ImpactDeclarationReferenceDocument): ImpactRevie
             compilerIdentity = CompilerSymbolEvidenceDocument.fromSignature(signature).value().identity,
         ),
         signature.qualifiedIdentity,
-        text("kotlin/collections/Iterable<T>"),
+        ImpactDeclaredCallbackReceiverDocument.Present(text("kotlin/collections/Iterable<T>")),
         signature.contextReceivers,
         signature.valueParameters,
         QueryDiscoveryCountDocument.parse(2).value(),
@@ -96,15 +105,18 @@ private fun selected(enclosing: ImpactDeclarationReferenceDocument): ImpactRevie
 }
 
 private fun artifacts() =
-    ImpactReviewedArtifactsDocument(
+    ImpactReviewedCollectionArtifactsDocument(
         binaryArtifactSha256 = text("bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3"),
         sourceArtifactSha256 = text("1e29c0668b0aa555e7b154e5da2e8094e1b755cfee25737839195bbbdad8a4a2"),
-        sourceEntry = text("commonMain/generated/_Collections.kt"),
         sourceEntrySha256 = text("aad6a5398189369be27f65952a5f2c935e3bf00d166e2046a0fb4be0d007a85c"),
         facadeSha256 = text("7f74e68459e9c8ae6c69510014b6fe0f565b9389ddbe5acb5e181dd773558878"),
         implementationSha256 = text("e5afca255b864c70152adeeecd88367f5477966ab26bd16f8db2b5c56c995296"),
-        mapLines = ImpactReviewedSourceLinesDocument(offset(1744), offset(1746)),
-        mapToLines = ImpactReviewedSourceLinesDocument(offset(1819), offset(1823)),
+        sections =
+            ImpactReviewedCollectionSectionsDocument.Map(
+                mapLines = ImpactReviewedSourceLinesDocument(offset(1744), offset(1746)),
+                mapToLines = ImpactReviewedSourceLinesDocument(offset(1819), offset(1823)),
+            ),
+        helpers = bounded(emptyList()),
     )
 
 private fun range(start: Int, end: Int) = ImpactSourceRangeDocument(offset(start), offset(end))

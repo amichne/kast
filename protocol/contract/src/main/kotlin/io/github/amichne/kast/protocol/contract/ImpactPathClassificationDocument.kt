@@ -37,9 +37,8 @@ internal fun BoundedProtocolList<ImpactPathStepDocument>.classifyImpact(): Impac
                 if (step.transfer.kind.relationship() == ImpactRelationshipDocument.DERIVED)
                     relationship = ImpactRelationshipDocument.DERIVED
             is ImpactPathStepDocument.ReviewedLibrary ->
-                when (step.transfer.binding.semantics) {
-                    ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT -> Unit
-                }
+                if (step.transfer.binding.relation.relationship() == ImpactRelationshipDocument.DERIVED)
+                    relationship = ImpactRelationshipDocument.DERIVED
             is ImpactPathStepDocument.ModeledRepresentation ->
                 return notEstablished(index, ImpactCorrespondenceFailureDocument.REPRESENTATION_MODEL_ONLY)
             is ImpactPathStepDocument.ModeledBoundary ->
@@ -71,4 +70,42 @@ private fun ImpactTransferKindDocument.relationship(): ImpactRelationshipDocumen
         ImpactTransferKindDocument.FIELD_READ,
         ImpactTransferKindDocument.CONSTRUCTOR_FIELD,
         ImpactTransferKindDocument.CAST_RESULT -> ImpactRelationshipDocument.EXACT
+    }
+
+internal fun ImpactReviewedValueRelationDocument.relationship(): ImpactRelationshipDocument =
+    when (this) {
+        is ImpactReviewedValueRelationDocument.CallbackReceiverInput -> ImpactRelationshipDocument.EXACT
+        is ImpactReviewedValueRelationDocument.GroupPlacement -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.FilteredElements ->
+            if (selection == ImpactReviewedCollectionSelectionDocument.CONTENT) ImpactRelationshipDocument.DERIVED
+            else ImpactRelationshipDocument.EXACT
+        ImpactReviewedValueRelationDocument.NonNullCallbackResult -> ImpactRelationshipDocument.EXACT
+        is ImpactReviewedValueRelationDocument.CallbackCorrespondence ->
+            when (semantics) {
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
+                    ImpactRelationshipDocument.DERIVED
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
+                    ImpactRelationshipDocument.EXACT
+            }
+        is ImpactReviewedValueRelationDocument.ReorderedElements ->
+            when (selection) {
+                ImpactReviewedCollectionSelectionDocument.CONTENT -> ImpactRelationshipDocument.DERIVED
+                ImpactReviewedCollectionSelectionDocument.ELEMENT -> ImpactRelationshipDocument.EXACT
+            }
+        is ImpactReviewedValueRelationDocument.EntryInput -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.PreservedKey -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.EntryProjection -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.MappedValue -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.TupleConstruction,
+        is ImpactReviewedValueRelationDocument.TupleProjection,
+        is ImpactReviewedValueRelationDocument.AssociationComponent -> ImpactRelationshipDocument.EXACT
+    }
+
+private fun ImpactReviewedEntrySelectionDocument.relationship(): ImpactRelationshipDocument =
+    when (this) {
+        ImpactReviewedEntrySelectionDocument.COMPONENT -> ImpactRelationshipDocument.EXACT
+        ImpactReviewedEntrySelectionDocument.CONTENT -> ImpactRelationshipDocument.DERIVED
     }

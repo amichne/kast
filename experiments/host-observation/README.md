@@ -107,7 +107,7 @@ See [ACCEPTANCE.md](ACCEPTANCE.md) for executed evidence and promotion limits. I
 
 ## Semantic replay timing
 
-The workload runner drains producer checkpoints with `RESUME`. A complete producer can still return a retained preview with unread rows or evidence. The runner consumes those pages with `READ_RESULT`, keeping the original output selection and execution budget. It advances the row cursor and evidence cursor independently. It requires stable result ownership, live authority, unique row identities and contiguous cursor positions. Unknown presentation variants or inconsistent pages fail admission. Reaching the call limit with unread pages leaves the trial incomplete. A retained rejection preview never becomes a complete result.
+The workload runner follows issued output continuations with `RESUME`. Under public contract 17, this action presents already-produced output. It does not continue semantic execution. A complete producer can still return a retained preview with unread rows or evidence. The runner consumes those pages with `READ_RESULT`, keeping the original output selection and execution budget. It advances the row cursor and evidence cursor independently. It requires stable result ownership, live authority, unique row identities and contiguous cursor positions. Unknown presentation variants or inconsistent pages fail admission. Reaching the call limit with unread pages leaves the trial incomplete. A retained rejection preview never becomes a complete result.
 
 Older receipts that stopped at a retained prefix need a fresh capture. Re-admitting their saved calls records unread pages; it cannot supply missing rows or evidence.
 

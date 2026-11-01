@@ -5,12 +5,12 @@ from pathlib import Path
 import json
 import re
 import subprocess
-from validation_scope import NATIVE_INPUT_MODULES
+from validation_scope import NATIVE_INPUT_MODULES, PRODUCT_MODULES
 
 ROOT = Path(__file__).resolve().parents[3]
 PRODUCT_GATE_COMMAND = ["python3", "distribution/release/run_product_gate.py"]
 REQUIRED = frozenset({
-    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:nativeTest", ":app-server:test",
+    ":productBuildGate", ":productGateVersionTest", ":cli:test", ":cli:udsTest", ":app-server:test",
     ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
     ":topology:contract:test", ":topology:build:test", ":topology:service:test", ":topology:intellij:test",
     ":evidence:topology-sqlite:test",
@@ -18,7 +18,8 @@ REQUIRED = frozenset({
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
     ":localInstallationTest", ":installerFixtureTest",
     ":documentationToolingTest", ":verifyDocumentationGlossary", ":verifyDocumentationMarkdown",
-})
+    ":sourceValidationGate",
+}) | frozenset(f":{module.replace('/', ':')}:{task}" for module in PRODUCT_MODULES for task in ("check", "scopedCheck"))
 
 
 class Failure(str, Enum):

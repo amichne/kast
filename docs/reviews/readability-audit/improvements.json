@@ -1,0 +1,47 @@
+{
+  "proseFindingChanges": [
+    {
+      "path": "docs/hosted-read-configuration.md",
+      "before": 5,
+      "after": 0,
+      "decrease": 5
+    },
+    {
+      "path": "app-server/README.md",
+      "before": 6,
+      "after": 1,
+      "decrease": 5
+    },
+    {
+      "path": "docs/static-query-execution.md",
+      "before": 8,
+      "after": 4,
+      "decrease": 4
+    },
+    {
+      "path": "docs/development.md",
+      "before": 3,
+      "after": 0,
+      "decrease": 3
+    },
+    {
+      "path": "app-server/docs/public-query-contract.md",
+      "before": 3,
+      "after": 0,
+      "decrease": 3
+    },
+    {
+      "path": ".github/scripts/ci/README.md",
+      "before": 3,
+      "after": 2,
+      "decrease": 1
+    },
+    {
+      "path": "experiments/host-observation/PI_EVALUATION.md",
+      "before": 8,
+      "after": 9,
+      "decrease": -1
+    }
+  ],
+  "note": "These counts do not measure comprehension. Public-page improvements appear in the reader reviews because public pages had no starter alerts before the rewrite."
+}

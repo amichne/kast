@@ -362,13 +362,16 @@ internal fun nativeValueInitialExecution(
 }
 
 internal data class NativeInitialValueRead(
-    val owner: ValueExecutionOwner,
+    val execution: NativeValueExecution,
     val examinedWork: io.github.amichne.kast.relation.contract.RelationWorkCount,
-)
+) {
+    val owner: ValueExecutionOwner
+        get() = execution.owner
+}
 
 private fun initialValueRead(execution: NativeValueExecution, work: Long): NativeInitialValueRead =
     when (val count = io.github.amichne.kast.relation.contract.RelationWorkCount.parse(work)) {
-        is Refinement.Refined -> NativeInitialValueRead(execution.owner, count.value)
+        is Refinement.Refined -> NativeInitialValueRead(execution, count.value)
         is Refinement.Rejected -> error("Native capture work is nonnegative")
     }
 

@@ -1,0 +1,490 @@
+{
+  "findings": [
+    {
+      "file": ".github/scripts/ci/README.md",
+      "line": 34,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": ".github/scripts/ci/README.md",
+      "line": 215,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "AGENTS.md",
+      "line": 149,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The sentence enumerates distinct test mechanisms and their required authority. Keep the engineering constraint intact. The contributor guide supplies the progressive explanation.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "SECURITY.md",
+      "line": 1,
+      "rule": "Prose.Complexity",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The page has four short paragraphs with explicit reporting actions. Security, platform, provenance, and protocol names raise the grade estimate. Simplifying those names changes their meaning.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "agent-tools/onboarding.template.md",
+      "line": 1,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This is the source of agent instructions, not a new-reader tutorial. Its compact sequence preserves exact discovery, authority, and recovery rules. Keep its behavioral instruction order.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/README.md",
+      "line": 312,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated source evidence from native evidence, or expressed independent fixture cases as a list. Technical distinctions remain.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/docs/compatibility.md",
+      "line": 97,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This section qualifies recorded client versions, ownership, and native evidence. Its density reflects coupled lifecycle conditions. Keep the qualifications and use public setup pages for the introductory path.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/docs/compatibility.md",
+      "line": 111,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This section qualifies recorded client versions, ownership, and native evidence. Its density reflects coupled lifecycle conditions. Keep the qualifications and use public setup pages for the introductory path.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/docs/compatibility.md",
+      "line": 113,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This section qualifies recorded client versions, ownership, and native evidence. Its density reflects coupled lifecycle conditions. Keep the qualifications and use public setup pages for the introductory path.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/docs/compatibility.md",
+      "line": 202,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This section qualifies recorded client versions, ownership, and native evidence. Its density reflects coupled lifecycle conditions. Keep the qualifications and use public setup pages for the introductory path.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/docs/compatibility.md",
+      "line": 284,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This section qualifies recorded client versions, ownership, and native evidence. Its density reflects coupled lifecycle conditions. Keep the qualifications and use public setup pages for the introductory path.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md",
+      "line": 110,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The paragraph enumerates exact query admission contracts and distinct stage outcomes for contributors. Preserve the individual rules and literal API names rather than shorten the contract to reduce a count.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "config/README.md",
+      "line": 4,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The sentence explains why aggregate Detekt analysis and optional source-set tasks coexist. Each clause supports that distinction. No undefined domain concept or unclear action resulted from this review.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 184,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 207,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 242,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/static-query-execution.md",
+      "line": 320,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "Separated independent ownership, mechanism, evidence, or lifetime topics. No numeric threshold determined the split.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/tool-rpc.md",
+      "line": 128,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This reference section keeps delivery identity, paging, limits, cancellation, and semantic completion distinct. Readers can use the public retained-evidence guide first. Keep exact failure codes and the source-versus-delivery qualification.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/tool-rpc.md",
+      "line": 206,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This reference section keeps delivery identity, paging, limits, cancellation, and semantic completion distinct. Readers can use the public retained-evidence guide first. Keep exact failure codes and the source-versus-delivery qualification.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/tooling/README.md",
+      "line": 37,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The paragraph describes one parser contract, including exact exclusions or finite failure codes. Each sentence states a separate constraint. Keep the codes and limits visible rather than replace them with a generic failure summary.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/tooling/README.md",
+      "line": 57,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The paragraph describes one parser contract, including exact exclusions or finite failure codes. Each sentence states a separate constraint. Keep the codes and limits visible rather than replace them with a generic failure summary.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "docs/tooling/value-journey/README.md",
+      "line": 40,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The paragraph specifies the explorer interaction contract for maintainers, including keyboard behavior, source position, and reduced motion. Keep those distinct constraints. The reader-facing explanation does not depend on this implementation guide.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/AGENT_EFFICIENCY.md",
+      "line": 117,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The paragraph keeps experimental custody, independent candidates, and coordinator authority together. These are experiment controls, not beginner prerequisites. Keep all controls without a lower-grade rewrite.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/ENTERPRISE_CACHE.md",
+      "line": 76,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The sentence specifies the order of a controlled freshness experiment. Exact old and new identities and separate handle contracts are necessary. Keep that order and the negative reuse condition.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/EVALUATION_CHECKLIST.md",
+      "line": 331,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The long section is a coverage table with distinct mechanisms, completed assertions, and remaining gaps. Splitting the table removes the shared comparison. Keep all evidence tiers and unresolved cases.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md",
+      "line": 14,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section is an exact field inventory for rejection, recovery, and partial evidence. Keep its distinct invariants and count semantics. It is a reference for the experiment, not a first-query lesson.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PARTIAL_PREFIX_INVARIANTS.md",
+      "line": 69,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section is an exact field inventory for rejection, recovery, and partial evidence. Keep its distinct invariants and count semantics. It is a reference for the experiment, not a first-query lesson.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 7,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 33,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 174,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 180,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This new advisory follows restored spaces around numeric limits in the calibration procedure. The limits now read correctly. Keep the exact quantities and the contiguous procedure instead of removing spaces or qualifications to lower the word count.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 218,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 312,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 392,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 417,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/PI_EVALUATION.md",
+      "line": 456,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section defines a controlled experiment and records qualified evidence. Exact request limits, terminal-result behavior, distinct evidence tiers, and historical versions prevent misleading conclusions. Keep those qualifications visible.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 5,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 78,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 91,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 134,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 207,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 244,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+      "line": 299,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The operational reproduction guide needs pinned versions, process ordering, capture limits, and negative controls. The flagged passage preserves those experiment conditions. Do not shorten it into an unqualified performance or semantic claim.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/agent-payload/evidence.md",
+      "line": 204,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This is historical implementation and measurement evidence. Preserve the recorded result and qualification. It remains in the frozen corpus solely for comparison, not as current product instruction.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/agent-payload/evidence.md",
+      "line": 385,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This is historical implementation and measurement evidence. Preserve the recorded result and qualification. It remains in the frozen corpus solely for comparison, not as current product instruction.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/agent-payload/evidence.md",
+      "line": 422,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This is historical implementation and measurement evidence. Preserve the recorded result and qualification. It remains in the frozen corpus solely for comparison, not as current product instruction.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/pi-fixtures/README.md",
+      "line": 162,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The sentence distinguishes installed SDK code from doubled provider effects and absent native execution. Keep the package identities and explicit evidence limit.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/trace-completeness/README.md",
+      "line": 73,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The sentence lists exact resource limits with distinct units and owners. All limits affect reproducibility. Keep them intact rather than collapse them into a generic bounded-run statement.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/try-local-qualification.md",
+      "line": 1,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section gives one qualification procedure and its complete independent oracle. Keep the exact ranges, identity distinctions, stale rejection, and fresh read that establish the result.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/host-observation/try-local-qualification.md",
+      "line": 86,
+      "rule": "Prose.SentenceLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The section gives one qualification procedure and its complete independent oracle. Keep the exact ranges, identity distinctions, stale rejection, and fresh read that establish the result.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "experiments/representation-impact/README.md",
+      "line": 33,
+      "rule": "Prose.ParagraphLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "The paragraph defines strict capture admission and finite uncertainty outcomes. Keep authority, native counters, harness rejection, and product rejection distinct. The longer passage prevents a false success interpretation.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "relation/intellij/NATIVE_FIXTURES.md",
+      "line": 1,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This short reference page lists native fixture controls under one title. Commands and coverage limits belong to one procedure. The section-length signal alone does not show a missing concept or action.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "runtime/hosted/NATIVE_FIXTURES.md",
+      "line": 1,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This page describes one opt-in fixture lane with commands, prerequisites, and evidence limits. Keep these together. The section-length signal alone does not show a comprehension defect.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    },
+    {
+      "file": "runtime/hosted/native/README.md",
+      "line": 1,
+      "rule": "Prose.SectionLength",
+      "severity": "suggestion",
+      "decision": "REVIEWED_ADVISORY",
+      "reason": "This native-acceptance guide distinguishes current contract selection from historical mixed-version inventories. Keep the exact versions, fixture controls, and historical qualifications.",
+      "scope": "Final location. Reasons come from the page review and baseline rule review, not an assumed exact paragraph match."
+    }
+  ]
+}

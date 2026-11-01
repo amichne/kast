@@ -1,0 +1,298 @@
+{
+  "AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 11.31 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        163,
+        168
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 90
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        4,
+        9
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Prefer",
+      "Line": 147
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        291,
+        293
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 151
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        3,
+        9
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 41 words.",
+      "Severity": "warning",
+      "Match": "Enlarge",
+      "Line": 158
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        173,
+        179
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 27 words.",
+      "Severity": "warning",
+      "Match": "Trigger",
+      "Line": 160
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        3,
+        8
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'Retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "Retain",
+      "Line": 162
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        145,
+        150
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 162
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        141,
+        143
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 164
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        216,
+        218
+      ],
+      "Check": "Slopsentral.Modals",
+      "Description": "",
+      "Link": "",
+      "Message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "may",
+      "Line": 170
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        159,
+        164
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 171
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "keep"
+        ]
+      },
+      "Suggestions": [
+        "keep"
+      ],
+      "Span": [
+        72,
+        77
+      ],
+      "Check": "Slopsentral.Diction",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+      "Severity": "warning",
+      "Match": "retain",
+      "Line": 199
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        61,
+        63
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 26 words.",
+      "Severity": "warning",
+      "Match": "Use",
+      "Line": 208
+    }
+  ],
+  "cli/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 12.22 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ],
+  "protocol/AGENTS.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 16.17 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ]
+}

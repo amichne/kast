@@ -19,9 +19,6 @@ code_sources:
 - path: topology/build/src/test/kotlin/io/github/amichne/kast/topology/build/historical/HistoricalCaptureCoordinatorTest.kt
 - path: evidence/topology-sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/historical/HistoricalSqliteStagingTest.kt
 - path: evidence/topology-sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/historical/HistoricalSqliteReaderIsolationTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-f66e1ad798bbb15d28859cdd
     resource: repo://evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/historical/SqliteHistoricalSnapshotStaging.kt
@@ -32,6 +29,9 @@ sources:
   - id: openwiki-source-2227517211515ea63d498717
     resource: repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/historical/IntellijHistoricalCaptureAdapter.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Historical capture and SQLite storage

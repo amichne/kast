@@ -4,20 +4,57 @@ The receipt and this executable live outside bin/lib/share. Quarantined evidence
 is never deleted by recovery. An unresolved process is never signalled by PID.
 """
 from dataclasses import asdict, dataclass, fields, replace
+from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
+import types
 import argparse
+import ctypes
 import hashlib
 import plistlib
 import fcntl
 import json
 import importlib.util
 import os
+import re
 import shutil
 import stat
 import sys
 import typing
 import uuid
+
+sys.dont_write_bytecode = True
+
+from managed_update_journal import (
+    Failure,
+    Rejected,
+    Identity,
+    ReplacementStage,
+    NoPrevious,
+    PhysicalPrevious,
+    LegacyPrevious,
+    ManagedReservation,
+    ManagedFileAbsent,
+    ManagedFilePresent,
+    ManagedHostAbsent,
+    ManagedHostPresent,
+    ManagedHostReplacement,
+    ManagedHostExistingLock,
+    ManagedHostStagedLock,
+    ManagedProfileMissing,
+    ManagedProfileCreated,
+    ManagedBuildIdentity,
+    ManagedTrackStable,
+    ManagedTrackMain,
+    ManagedPinnedBuild,
+    ManagedBinding,
+    ManagedNotice,
+    ManagedComposition,
+    Replacement,
+    ManagedControlResult,
+    ManagedTreeWitness,
+    ManagedShutdownFence,
+)
 
 
 class Status(str, Enum):
@@ -30,35 +67,6 @@ class Status(str, Enum):
     CLEAN = 'CleanBaselineRestored'
     UNRESOLVED = 'DetachedWithUnresolvedState'
     BLOCKED = 'RecoveryBlocked'
-
-
-class Failure(str, Enum):
-    OWNERSHIP = 'ANCHOR_OWNERSHIP_UNPROVEN'
-    RECEIPT = 'RECEIPT_REJECTED'
-    FILESYSTEM = 'FILESYSTEM_REJECTED'
-    RETIREMENT = 'RETIREMENT_UNPROVEN'
-    EVIDENCE = 'UNRESOLVED_STATE_PRESERVED'
-    RESTART = 'IDE_RESTART_REQUIRED'
-    PLUGIN = 'PLUGIN_OWNERSHIP_UNPROVEN'
-
-
-class Rejected(Exception):
-    def __init__(self, failure):
-        self.failure = failure
-
-
-@dataclass(frozen=True)
-class Identity:
-    device: int
-    inode: int
-    owner: int
-
-    @staticmethod
-    def observe(path):
-        value = path.lstat()
-        if value.st_uid != os.getuid():
-            raise Rejected(Failure.OWNERSHIP)
-        return Identity(value.st_dev, value.st_ino, value.st_uid)
 
 
 @dataclass(frozen=True)
@@ -100,51 +108,18 @@ class Receipt:
     stage: Status
 
 
-class ReplacementStage(str, Enum):
-    PREPARED = 'PREPARED'
-    COMMITTED = 'PAYLOAD_COMMITTED'
-    FINALIZING = 'FINALIZING'
-    RECOVERY_REQUIRED = 'RECOVERY_REQUIRED'
-
-
-@dataclass(frozen=True)
-class NoPrevious:
-    type: str
-
-
-@dataclass(frozen=True)
-class PhysicalPrevious:
-    type: str
-    installation: str
-    identity: Identity
-    payload: str
-    recovery: str
-
-
-@dataclass(frozen=True)
-class LegacyPrevious:
-    type: str
-    installation: str
-    identity: Identity
-    selector: str
-    target: str
-    recovery: str
-
-
-@dataclass(frozen=True)
-class Replacement:
-    schemaVersion: int
-    stage: ReplacementStage
-    installation: str
-    installationIdentity: Identity
-    previous: typing.Union[NoPrevious, PhysicalPrevious, LegacyPrevious]
-
-
 @dataclass(frozen=True)
 class Report:
     status: Status
     unresolved: list[Failure]
     recoveryExecutable: str
+
+
+def stream_digest(stream):
+    digest = hashlib.sha256()
+    for block in iter(lambda: stream.read(65536), b''):
+        digest.update(block)
+    return digest.hexdigest()
 
 
 def encode(document):
@@ -154,7 +129,38 @@ def encode(document):
 def decode(kind, value):
     """Strict dataclass boundary: unknown fields and absent fields are rejected."""
     origin = typing.get_origin(kind)
-    if origin is typing.Union:
+    if origin is typing.Literal:
+        allowed = typing.get_args(kind)
+        if len(allowed) != 1 or type(value) is not type(allowed[0]) or value != allowed[0]:
+            raise Rejected(Failure.RECEIPT)
+        return value
+    if kind is Replacement and isinstance(value, dict):
+        value = {'reservation': None, 'composition': None} | value
+    if kind is ManagedHostReplacement and isinstance(value, dict):
+        value = {'lock': None} | value
+    if kind is ManagedComposition and isinstance(value, dict):
+        value = {'profileDirectories': [], 'binding': None, 'notices': [], 'priorRuntimeJson': None} | value
+    if origin is typing.Union or (origin is not None and origin is getattr(types, "UnionType", None)):
+        if kind == typing.Union[ManagedHostExistingLock, ManagedHostStagedLock, None]:
+            if value is None:
+                return None
+            if not isinstance(value, dict) or value.get('type') not in {'EXISTING', 'STAGED'}:
+                raise Rejected(Failure.RECEIPT)
+            return decode(ManagedHostExistingLock if value['type'] == 'EXISTING' else ManagedHostStagedLock, value)
+        if kind == typing.Union[ManagedTrackStable, ManagedTrackMain, ManagedPinnedBuild]:
+            variants = {'TrackStable': ManagedTrackStable, 'TrackMain': ManagedTrackMain, 'PinnedBuild': ManagedPinnedBuild}
+            if not isinstance(value, dict) or value.get('type') not in variants:
+                raise Rejected(Failure.RECEIPT)
+            return decode(variants[value['type']], value)
+        if kind == typing.Union[ManagedProfileMissing, ManagedProfileCreated]:
+            if not isinstance(value, dict) or value.get('type') not in {'MISSING', 'CREATED'}:
+                raise Rejected(Failure.RECEIPT)
+            return decode(ManagedProfileMissing if value['type'] == 'MISSING' else ManagedProfileCreated, value)
+        if kind in (typing.Union[ManagedFileAbsent, ManagedFilePresent], typing.Union[ManagedHostAbsent, ManagedHostPresent]):
+            if not isinstance(value, dict) or value.get('type') not in {'ABSENT', 'PRESENT'}:
+                raise Rejected(Failure.RECEIPT)
+            variants = (ManagedFileAbsent, ManagedFilePresent) if kind == typing.Union[ManagedFileAbsent, ManagedFilePresent] else (ManagedHostAbsent, ManagedHostPresent)
+            return decode(variants[0] if value['type'] == 'ABSENT' else variants[1], value)
         if kind == typing.Union[NoPrevious, PhysicalPrevious, LegacyPrevious]:
             if not isinstance(value, dict) or value.get('type') not in {'NONE', 'PHYSICAL', 'LEGACY'}:
                 raise Rejected(Failure.RECEIPT)
@@ -177,7 +183,11 @@ def decode(kind, value):
             raise Rejected(Failure.RECEIPT) from None
     if not isinstance(value, dict) or set(value) != {field.name for field in fields(kind)}:
         raise Rejected(Failure.RECEIPT)
-    return kind(**{field.name: decode(field.type, value[field.name]) for field in fields(kind)})
+    if kind is ManagedComposition:
+        raw_runtime = value['priorRuntimeJson']
+        if raw_runtime is not None and (not isinstance(raw_runtime, str) or len(raw_runtime.encode('utf-8')) > 262144):
+            raise Rejected(Failure.RECEIPT)
+    return kind(**{field.name: value[field.name] if kind is ManagedComposition and field.name == 'priorRuntimeJson' else decode(field.type, value[field.name]) for field in fields(kind)})
 
 
 def unique(pairs):
@@ -227,8 +237,9 @@ def load(path, kind=Receipt):
         observed = os.fstat(source.fileno())
         if not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid() or observed.st_mode & 0o077:
             raise Rejected(Failure.RECEIPT)
-        raw = source.read(65537)
-    if len(raw) > 65536:
+        limit = 2_097_152 if kind is Replacement else 65_536
+        raw = source.read(limit + 1)
+    if len(raw) > limit:
         raise Rejected(Failure.RECEIPT)
     try:
         document = json.loads(raw, object_pairs_hook=unique)
@@ -306,6 +317,12 @@ def copy_recovery_scripts(bundle):
     shutil.copyfile(Path(__file__).resolve(), retained_script(bundle))
     os.chmod(retained_script(bundle), 0o600)
     sync(retained_script(bundle))
+    journal = Path(__file__).resolve().with_name('managed_update_journal.py')
+    if not journal.is_file() or journal.is_symlink():
+        raise Rejected(Failure.RECEIPT)
+    shutil.copyfile(journal, bundle / journal.name)
+    os.chmod(bundle / journal.name, 0o600)
+    sync(bundle / journal.name)
     lifecycle = Path(__file__).resolve().with_name('installation-lifecycle.py')
     if lifecycle.is_file():
         shutil.copyfile(lifecycle, bundle / lifecycle.name)
@@ -798,6 +815,498 @@ def detach_legacy_links(receipt, unresolved):
             sync(path.parent)
         else:
             unresolved.append(Failure.OWNERSHIP)
+
+
+def managed_tree(path):
+    """Capture the complete owned tree before a Control move or terminal cleanup."""
+    physical(path)
+    digest = hashlib.sha256()
+    pending, entries = [path], []
+    while pending:
+        current = pending.pop()
+        if len(entries) >= 100000:
+            raise Rejected(Failure.OWNERSHIP)
+        attributes = current.lstat()
+        if attributes.st_uid != os.getuid() or not (stat.S_ISDIR(attributes.st_mode) or stat.S_ISREG(attributes.st_mode)):
+            raise Rejected(Failure.OWNERSHIP)
+        identity = Identity(attributes.st_dev, attributes.st_ino, attributes.st_uid)
+        content = ''
+        if stat.S_ISREG(attributes.st_mode):
+            descriptor = os.open(current, os.O_RDONLY | os.O_NOFOLLOW)
+            with os.fdopen(descriptor, 'rb') as stream:
+                if Identity.observe(current) != identity:
+                    raise Rejected(Failure.OWNERSHIP)
+                content = stream_digest(stream)
+            if Identity.observe(current) != identity:
+                raise Rejected(Failure.OWNERSHIP)
+        else:
+            with os.scandir(current) as children:
+                for child in children:
+                    if len(entries) + len(pending) + 1 >= 100000:
+                        raise Rejected(Failure.OWNERSHIP)
+                    pending.append(Path(child.path))
+        entries.append((current.relative_to(path).as_posix(), identity, stat.S_IMODE(attributes.st_mode), content))
+    for relative, identity, mode, content in sorted(entries):
+        digest.update(relative.encode())
+        digest.update(b'\0')
+        digest.update(f'{identity.device}:{identity.inode}:{identity.owner}:{mode}:{content}\n'.encode())
+    return ManagedTreeWitness(Identity.observe(path), digest.hexdigest())
+
+
+def managed_move(source, destination, witness):
+    """No-replace rename preserves foreign concurrent destinations, including empty directories."""
+    if managed_tree(source) != witness or os.path.lexists(destination):
+        raise Rejected(Failure.OWNERSHIP)
+    physical(destination.parent)
+    library = ctypes.CDLL(None, use_errno=True)
+    if sys.platform == 'darwin':
+        rename = library.renamex_np
+        rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+        result = rename(os.fsencode(source), os.fsencode(destination), 4)
+    elif sys.platform.startswith('linux') and hasattr(library, 'renameat2'):
+        rename = library.renameat2
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        result = rename(-100, os.fsencode(source), -100, os.fsencode(destination), 1)
+    else:
+        raise Rejected(Failure.FILESYSTEM)
+    if result != 0:
+        raise OSError(ctypes.get_errno(), 'Control directory move rejected')
+    sync(source.parent)
+    if destination.parent != source.parent:
+        sync(destination.parent)
+    if managed_tree(destination) != witness:
+        raise Rejected(Failure.OWNERSHIP)
+
+
+@contextmanager
+def managed_control_lock(outer):
+    """The caller holds management.lock. This lock also excludes the private JVM installer."""
+    physical(outer)
+    descriptor = os.open(outer / 'activation.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        attributes = os.fstat(descriptor)
+        if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid() or attributes.st_mode & 0o077:
+            raise Rejected(Failure.OWNERSHIP)
+        fcntl.lockf(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+    finally:
+        os.close(descriptor)
+
+
+def managed_control_record(root, receipt, phases):
+    outer = physical(root.parent)
+    if root.name != 'installation' or root != outer / 'installation':
+        raise Rejected(Failure.OWNERSHIP)
+    transaction = physical(outer / 'recovery/replacement')
+    if load(transaction / 'receipt.json', Replacement) != receipt or receipt.schemaVersion != 1 or receipt.installation != str(root):
+        raise Rejected(Failure.RECEIPT)
+    reservation, composition = receipt.reservation, receipt.composition
+    if reservation is None or composition is None or composition.phase not in phases:
+        raise Rejected(Failure.RECEIPT)
+    staged = Path(reservation.staged)
+    if staged.parent != outer or not staged.name.startswith('.install-') or not re_full_digest(reservation.manifestSha256) or not re_full_digest(reservation.controlSha256):
+        raise Rejected(Failure.RECEIPT)
+    return transaction, reservation
+
+
+def re_full_digest(value):
+    return isinstance(value, str) and len(value) == 64 and all(character in '0123456789abcdef' for character in value)
+
+
+def managed_payload(path, expected_root, identity, reservation=None):
+    if Identity.observe(physical(path)) != identity:
+        raise Rejected(Failure.OWNERSHIP)
+    manifest_path = path / 'installation.json'
+    descriptor = os.open(manifest_path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, 'rb') as stream:
+        attributes = os.fstat(stream.fileno())
+        if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid():
+            raise Rejected(Failure.OWNERSHIP)
+        raw = stream.read(67108865)
+    if len(raw) > 67108864:
+        raise Rejected(Failure.RECEIPT)
+    try:
+        document = json.loads(raw, object_pairs_hook=unique)
+    except (ValueError, UnicodeError):
+        raise Rejected(Failure.RECEIPT) from None
+    if not isinstance(document, dict) or document.get('installationRoot') != str(expected_root) or document.get('schemaVersion') not in (1, 2, 3):
+        raise Rejected(Failure.RECEIPT)
+    if document['schemaVersion'] in (1, 2) and (expected_root.parent.name != 'versions' or expected_root.name != document.get('semanticVersion', '') + '-' + document.get('payloadIdentity', '')[7:]):
+        raise Rejected(Failure.RECEIPT)
+    if reservation is not None and (hashlib.sha256(raw).hexdigest() != reservation.manifestSha256 or document.get('semanticVersion') != reservation.version or document.get('controlSha256') != 'sha256:' + reservation.controlSha256):
+        raise Rejected(Failure.RECEIPT)
+    # Reuse the existing complete payload-inventory owner for a temporarily detached root.
+    specification = importlib.util.spec_from_file_location('kast_managed_restore_lifecycle', Path(__file__).with_name('installation-lifecycle.py'))
+    if specification is None or specification.loader is None:
+        raise Rejected(Failure.RECEIPT)
+    lifecycle = importlib.util.module_from_spec(specification)
+    sys.modules[specification.name] = lifecycle
+    specification.loader.exec_module(lifecycle)
+    try:
+        lifecycle.verify_payload(path, document)
+    except lifecycle.Rejected:
+        raise Rejected(Failure.OWNERSHIP) from None
+    return managed_tree(path)
+
+
+def managed_recovery(path, expected_root, identity):
+    receipt = load(path / 'receipt.json')
+    if receipt.installation != str(expected_root) or receipt.installationIdentity != identity:
+        raise Rejected(Failure.RECEIPT)
+    return managed_tree(path)
+
+
+def managed_previous(root, transaction, previous):
+    if isinstance(previous, PhysicalPrevious):
+        if previous.installation != str(root) or previous.payload != str(transaction / 'payload') or previous.recovery != str(transaction / 'recovery'):
+            raise Rejected(Failure.RECEIPT)
+        options = [path for path in (root, transaction / 'payload') if os.path.lexists(path) and not path.is_symlink() and Identity.observe(path) == previous.identity]
+        if len(options) != 1:
+            raise Rejected(Failure.OWNERSHIP)
+        return options[0], root, root.parent / 'recovery/installation', managed_payload(options[0], root, previous.identity)
+    if isinstance(previous, LegacyPrevious):
+        prior, selector = Path(previous.installation), Path(previous.selector)
+        if prior.parent != root.parent / 'versions' or selector != root.parent / 'current' or previous.target != 'versions/' + prior.name or previous.recovery != str(transaction / 'recovery') or not selector.is_symlink() or os.readlink(selector) != previous.target:
+            raise Rejected(Failure.OWNERSHIP)
+        return prior, prior, root.parent / 'recovery' / prior.name, managed_payload(prior, prior, previous.identity)
+    if isinstance(previous, NoPrevious) and previous.type == 'NONE':
+        if os.path.lexists(transaction / 'payload') or os.path.lexists(transaction / 'recovery'):
+            raise Rejected(Failure.OWNERSHIP)
+        return None
+    raise Rejected(Failure.RECEIPT)
+
+
+def rollback_managed_control(root, receipt):
+    """Restore Control files only. Keep the journal, rejected bytes, Host files, and profile preimages."""
+    try:
+        with managed_control_lock(root.parent):
+            transaction, reservation = managed_control_record(root, receipt, {'RESTORING'})
+            prior = managed_previous(root, transaction, receipt.previous)
+            selected = []
+            for candidate in (root, Path(reservation.staged), transaction / 'rejected-control'):
+                if not os.path.lexists(candidate):
+                    continue
+                if candidate.is_symlink():
+                    raise Rejected(Failure.OWNERSHIP)
+                if Identity.observe(candidate) == receipt.installationIdentity:
+                    selected.append((candidate, managed_payload(candidate, root, receipt.installationIdentity, reservation)))
+                elif candidate != root or prior is None or candidate != prior[0]:
+                    raise Rejected(Failure.OWNERSHIP)
+            if len(selected) != 1:
+                raise Rejected(Failure.OWNERSHIP)
+            current, witness = selected[0]
+            if current == root:
+                managed_move(root, transaction / 'rejected-control', witness)
+            if prior is not None and prior[0] == transaction / 'payload':
+                managed_move(prior[0], root, prior[3])
+                managed_payload(root, root, receipt.previous.identity)
+            active = root.parent / 'recovery/installation'
+            rejected_recovery = transaction / 'rejected-recovery'
+            if os.path.lexists(active):
+                active_receipt = load(active / 'receipt.json')
+                if active_receipt.installationIdentity == receipt.installationIdentity:
+                    managed_move(active, rejected_recovery, managed_recovery(active, root, receipt.installationIdentity))
+                elif prior is None or active != prior[2] or active_receipt.installationIdentity != receipt.previous.identity:
+                    raise Rejected(Failure.RECEIPT)
+            if os.path.lexists(rejected_recovery):
+                managed_recovery(rejected_recovery, root, receipt.installationIdentity)
+            if prior is not None:
+                destination = prior[2]
+                if not os.path.lexists(destination):
+                    source = transaction / 'recovery'
+                    managed_move(source, destination, managed_recovery(source, prior[1], receipt.previous.identity))
+                managed_recovery(destination, prior[1], receipt.previous.identity)
+                if os.path.lexists(transaction / 'recovery'):
+                    managed_recovery(transaction / 'recovery', prior[1], receipt.previous.identity)
+            elif os.path.lexists(root) or os.path.lexists(active):
+                raise Rejected(Failure.OWNERSHIP)
+            return ManagedControlResult.RESTORED
+    except (OSError, ValueError, UnicodeError):
+        raise Rejected(Failure.FILESYSTEM) from None
+
+
+def seal_managed_control(root, receipt):
+    """Only the outer owner's terminal proof authorizes cleanup of retained Control slots."""
+    try:
+        with managed_control_lock(root.parent):
+            transaction, reservation = managed_control_record(root, receipt, {'RESTORED', 'ACTIVATION_PROVEN'})
+            restored = receipt.composition.phase == 'RESTORED'
+            if restored:
+                prior = managed_previous(root, transaction, receipt.previous)
+                if not isinstance(receipt.previous, PhysicalPrevious) and os.path.lexists(root):
+                    raise Rejected(Failure.OWNERSHIP)
+                if prior is not None:
+                    managed_recovery(prior[2], prior[1], receipt.previous.identity)
+                elif os.path.lexists(root.parent / 'recovery/installation'):
+                    raise Rejected(Failure.OWNERSHIP)
+            else:
+                managed_payload(root, root, receipt.installationIdentity, reservation)
+                managed_recovery(root.parent / 'recovery/installation', root, receipt.installationIdentity)
+            removals = []
+            for path in (Path(reservation.staged), transaction / 'rejected-control'):
+                if os.path.lexists(path):
+                    removals.append((path, managed_payload(path, root, receipt.installationIdentity, reservation)))
+            rejected = transaction / 'rejected-recovery'
+            if os.path.lexists(rejected):
+                removals.append((rejected, managed_recovery(rejected, root, receipt.installationIdentity)))
+            previous = receipt.previous
+            legacy_selector = None
+            if isinstance(previous, PhysicalPrevious) and os.path.lexists(transaction / 'payload'):
+                if restored:
+                    raise Rejected(Failure.OWNERSHIP)
+                removals.append((transaction / 'payload', managed_payload(transaction / 'payload', root, previous.identity)))
+            elif isinstance(previous, LegacyPrevious) and not restored:
+                prior, selector = Path(previous.installation), Path(previous.selector)
+                if prior.parent != root.parent / 'versions' or selector != root.parent / 'current' or previous.target != 'versions/' + prior.name or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[0-9a-f]{64}', prior.name):
+                    raise Rejected(Failure.RECEIPT)
+                if os.path.lexists(selector):
+                    if not selector.is_symlink() or os.readlink(selector) != previous.target:
+                        raise Rejected(Failure.OWNERSHIP)
+                    legacy_selector = (selector, Identity.observe(selector))
+                elif os.path.lexists(prior):
+                    raise Rejected(Failure.OWNERSHIP)
+                if os.path.lexists(prior):
+                    removals.append((prior, managed_payload(prior, prior, previous.identity)))
+                legacy_recovery = root.parent / 'recovery' / prior.name
+                if os.path.lexists(legacy_recovery):
+                    removals.append((legacy_recovery, managed_recovery(legacy_recovery, prior, previous.identity)))
+            if not isinstance(previous, NoPrevious) and os.path.lexists(transaction / 'recovery'):
+                prior_root = Path(previous.installation)
+                removals.append((transaction / 'recovery', managed_recovery(transaction / 'recovery', prior_root, previous.identity)))
+            if not shutil.rmtree.avoids_symlink_attacks:
+                raise Rejected(Failure.FILESYSTEM)
+            transaction_id = admit_managed_transaction(receipt)
+            for path, witness in removals:
+                retire_managed_storage(root.parent, path, witness, transaction_id)
+            if legacy_selector is not None:
+                selector, identity = legacy_selector
+                if not selector.is_symlink() or Identity.observe(selector) != identity or os.readlink(selector) != previous.target:
+                    raise Rejected(Failure.OWNERSHIP)
+                selector.unlink()
+                sync(selector.parent)
+            if isinstance(previous, LegacyPrevious) and not restored:
+                directory = root.parent / 'versions'
+                if os.path.lexists(directory) and not any(physical(directory).iterdir()):
+                    directory.rmdir()
+                    sync(directory.parent)
+            return ManagedControlResult.SEALED
+    except (OSError, ValueError, UnicodeError):
+        raise Rejected(Failure.FILESYSTEM) from None
+
+
+def managed_shutdown_fence(root):
+    path = root.parent / 'shutdown.json'
+    if not os.path.lexists(path):
+        return None
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, 'rb') as stream:
+        attributes = os.fstat(stream.fileno())
+        identity = Identity(attributes.st_dev, attributes.st_ino, attributes.st_uid)
+        if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid() or attributes.st_mode & 0o022:
+            raise Rejected(Failure.OWNERSHIP)
+        raw = stream.read(4097)
+    if len(raw) > 4096 or Identity.observe(path) != identity:
+        raise Rejected(Failure.RECEIPT)
+    try:
+        fence = decode(ManagedShutdownFence, json.loads(raw, object_pairs_hook=unique))
+    except (ValueError, UnicodeError):
+        raise Rejected(Failure.RECEIPT) from None
+    if fence != ManagedShutdownFence(str(root), 1):
+        raise Rejected(Failure.RECEIPT)
+    return identity
+
+
+def managed_terminal_control(root, receipt, transaction):
+    composition, reservation = receipt.composition, receipt.reservation
+    if composition is None or reservation is None or composition.binding is None:
+        raise Rejected(Failure.RECEIPT)
+    if composition.phase == 'ACTIVATION_PROVEN':
+        managed_payload(root, root, receipt.installationIdentity, reservation)
+        managed_recovery(root.parent / 'recovery/installation', root, receipt.installationIdentity)
+    elif composition.phase == 'RESTORED':
+        prior = managed_previous(root, transaction, receipt.previous)
+        if not isinstance(receipt.previous, PhysicalPrevious) and os.path.lexists(root):
+            raise Rejected(Failure.OWNERSHIP)
+        if prior is not None:
+            managed_recovery(prior[2], prior[1], receipt.previous.identity)
+        elif os.path.lexists(root.parent / 'recovery/installation'):
+            raise Rejected(Failure.OWNERSHIP)
+    else:
+        raise Rejected(Failure.RECEIPT)
+
+
+@dataclass(frozen=True)
+class ManagedStorageCleanupObservation:
+    reason: Failure
+    event: typing.Literal['kast_managed_storage_cleanup'] = 'kast_managed_storage_cleanup'
+    outcome: typing.Literal['FAILED'] = 'FAILED'
+
+
+def retire_managed_storage(outer: Path, path: Path, witness: ManagedTreeWitness, transaction_id: uuid.UUID) -> None:
+    """Detach admitted terminal garbage before recursive deletion can change its inventory."""
+    relative = path.relative_to(outer).as_posix()
+    suffix = hashlib.sha256(relative.encode()).hexdigest()
+    completed = outer / 'recovery' / ('completed-control-' + str(transaction_id) + '-' + suffix)
+    managed_move(path, completed, witness)
+    cleanup_retired_storage(completed, witness)
+
+
+def cleanup_retired_storage(completed: Path, witness: ManagedTreeWitness) -> None:
+    try:
+        if not shutil.rmtree.avoids_symlink_attacks or managed_tree(completed) != witness:
+            raise Rejected(Failure.OWNERSHIP)
+        shutil.rmtree(completed)
+        sync(completed.parent)
+    except (OSError, Rejected) as problem:
+        reason = problem.failure if isinstance(problem, Rejected) else Failure.FILESYSTEM
+        print(json.dumps(asdict(ManagedStorageCleanupObservation(reason))), file=sys.stderr)
+
+
+def admit_managed_transaction(receipt: Replacement) -> uuid.UUID:
+    reservation = receipt.reservation
+    if reservation is None:
+        raise Rejected(Failure.RECEIPT)
+    try:
+        transaction = uuid.UUID(reservation.transaction)
+    except ValueError:
+        raise Rejected(Failure.RECEIPT) from None
+    if str(transaction) != reservation.transaction:
+        raise Rejected(Failure.RECEIPT)
+    return transaction
+
+
+def close_managed_journal(transaction: Path, receipt: Replacement, transaction_id: uuid.UUID) -> None:
+    """Publish terminal completion before deleting its sole durable receipt."""
+    if receipt.reservation is None or str(transaction_id) != receipt.reservation.transaction:
+        raise Rejected(Failure.RECEIPT)
+    if load(transaction / 'receipt.json', Replacement) != receipt:
+        raise Rejected(Failure.RECEIPT)
+    completed = transaction.with_name('completed-replacement-' + str(transaction_id))
+    witness = managed_tree(transaction)
+    if load(transaction / 'receipt.json', Replacement) != receipt:
+        raise Rejected(Failure.RECEIPT)
+    managed_move(transaction, completed, witness)
+    # Closed storage does not block admission of the next transaction.
+    cleanup_retired_storage(completed, witness)
+
+
+def abort_managed_reservation(root: Path, receipt: Replacement) -> ManagedControlResult:
+    """Recover only a proven preparation that never acquired a Host or retirement fence."""
+    try:
+        with managed_control_lock(root.parent):
+            outer = physical(root.parent)
+            transaction = physical(outer / 'recovery/replacement')
+            reservation = receipt.reservation
+            if (root != outer / 'installation' or receipt.schemaVersion != 1 or
+                    receipt.installation != str(root) or receipt.stage != ReplacementStage.PREPARED or
+                    receipt.composition is not None or reservation is None or
+                    load(transaction / 'receipt.json', Replacement) != receipt or
+                    os.path.lexists(outer / 'shutdown.json')):
+                raise Rejected(Failure.RECEIPT)
+            if {path.name for path in transaction.iterdir()} - {'receipt.json', 'aborted-control'}:
+                raise Rejected(Failure.EVIDENCE)
+            staged = Path(reservation.staged)
+            if (staged.parent != outer or not staged.name.startswith('.install-') or
+                    not re_full_digest(reservation.controlSha256) or not re_full_digest(reservation.manifestSha256)):
+                raise Rejected(Failure.RECEIPT)
+            transaction_id = admit_managed_transaction(receipt)
+            prior = managed_previous(root, transaction, receipt.previous)
+            if not isinstance(receipt.previous, PhysicalPrevious) and os.path.lexists(root):
+                raise Rejected(Failure.OWNERSHIP)
+            if isinstance(receipt.previous, NoPrevious):
+                if os.path.lexists(root) or os.path.lexists(outer / 'current') or os.path.lexists(outer / 'recovery/installation'):
+                    raise Rejected(Failure.OWNERSHIP)
+            elif prior is not None:
+                managed_recovery(prior[2], prior[1], receipt.previous.identity)
+            retained = transaction / 'aborted-control'
+            candidates = [path for path in (staged, retained) if os.path.lexists(path)]
+            if len(candidates) != 1:
+                raise Rejected(Failure.OWNERSHIP)
+            candidate = candidates[0]
+            witness = managed_payload(candidate, root, receipt.installationIdentity, reservation)
+            if candidate == staged:
+                managed_move(staged, retained, witness)
+            if managed_previous(root, transaction, receipt.previous) != prior:
+                raise Rejected(Failure.OWNERSHIP)
+            close_managed_journal(transaction, receipt, transaction_id)
+            return ManagedControlResult.RESTORED
+    except (OSError, ValueError, UnicodeError):
+        raise Rejected(Failure.FILESYSTEM) from None
+
+
+def finalize_managed_journal(root, receipt):
+    """The caller proves terminal files and runtime again before this final, interruption-safe cleanup."""
+    try:
+        with managed_control_lock(root.parent):
+            transaction = root.parent / 'recovery/replacement'
+            if not os.path.lexists(transaction) or (not os.path.lexists(transaction / 'receipt.json') and not any(physical(transaction).iterdir())):
+                if managed_shutdown_fence(root) is not None:
+                    raise Rejected(Failure.RECEIPT)
+                managed_terminal_control(root, receipt, transaction)
+                if os.path.lexists(transaction):
+                    transaction.rmdir()
+                    sync(transaction.parent)
+                return ManagedControlResult.SEALED
+            transaction, _ = managed_control_record(root, receipt, {'RESTORED', 'ACTIVATION_PROVEN'})
+            transaction_id = admit_managed_transaction(receipt)
+            composition = receipt.composition
+            if composition.binding is None:
+                raise Rejected(Failure.RECEIPT)
+            managed_terminal_control(root, receipt, transaction)
+            slots = (
+                (composition.selection, 'selection.json'),
+                (composition.management, 'management-preimage'),
+                (composition.publicExecutable, 'command-preimage'),
+                (composition.profileOptions, 'options-preimage'),
+                (composition.priorRuntime, 'runtime-preimage'),
+            )
+            admitted = []
+            names = {'receipt.json'}
+            for preimage, name in slots:
+                if isinstance(preimage, ManagedFileAbsent):
+                    continue
+                if not isinstance(preimage, ManagedFilePresent) or preimage.preimage != str(transaction / name) or not re_full_digest(preimage.sha256):
+                    raise Rejected(Failure.RECEIPT)
+                names.add(name)
+                path = transaction / name
+                if not os.path.lexists(path):
+                    continue
+                descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                with os.fdopen(descriptor, 'rb') as stream:
+                    attributes = os.fstat(stream.fileno())
+                    identity = Identity(attributes.st_dev, attributes.st_ino, attributes.st_uid)
+                    if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid() or Identity.observe(path) != identity:
+                        raise Rejected(Failure.OWNERSHIP)
+                    digest = stream_digest(stream)
+                if digest != preimage.sha256 or Identity.observe(path) != identity:
+                    raise Rejected(Failure.OWNERSHIP)
+                admitted.append((path, identity, digest))
+            # Host.seal_managed and seal_managed_control must leave no component directories here.
+            if any(path.name not in names for path in transaction.iterdir()):
+                raise Rejected(Failure.EVIDENCE)
+            fence = managed_shutdown_fence(root)
+            for path, identity, digest in admitted:
+                if Identity.observe(path) != identity:
+                    raise Rejected(Failure.OWNERSHIP)
+                descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                with os.fdopen(descriptor, 'rb') as stream:
+                    if stream_digest(stream) != digest:
+                        raise Rejected(Failure.OWNERSHIP)
+                path.unlink()
+                sync(transaction)
+            if managed_shutdown_fence(root) != fence:
+                raise Rejected(Failure.OWNERSHIP)
+            if fence is not None:
+                (root.parent / 'shutdown.json').unlink()
+                sync(root.parent)
+            # The binding and notices remain durable until every preimage and the exact fence are gone.
+            record = transaction / 'receipt.json'
+            if load(record, Replacement) != receipt or {path.name for path in transaction.iterdir()} != {'receipt.json'}:
+                raise Rejected(Failure.RECEIPT)
+            close_managed_journal(transaction, receipt, transaction_id)
+            return ManagedControlResult.SEALED
+    except (OSError, ValueError, UnicodeError):
+        raise Rejected(Failure.FILESYSTEM) from None
 
 
 def replacement_to_finalize(root):

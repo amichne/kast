@@ -61,7 +61,7 @@ class DesktopStdioProtocolIntegrationTest {
     @Test
     fun `desktop stdio injects one qualified catalog and reaches broker dispatch`(@TempDir temporary: Path) =
         runBlocking {
-            val socket = Path.of("/private/tmp/kast-desktop-${UUID.randomUUID()}.sock")
+            val socket = Path.of("/tmp").toRealPath().resolve("kast-desktop-${UUID.randomUUID()}.sock")
             val bootstrap = agentSessionBootstrapFixture()
             val invocations = AtomicInteger()
             val upstream = FakeCodexUpstream()

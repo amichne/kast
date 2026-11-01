@@ -1,0 +1,6 @@
+# Required spellings and capitalization, not a list of all allowed words.
+GitHub
+Vale
+# EXAMPLE ONLY: replace this fictional product name with your approved names.
+ExampleService
+

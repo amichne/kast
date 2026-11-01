@@ -23,16 +23,12 @@ code_sources:
   - path: cli/src/main/js/query-presentation.mjs
   - path: cli/src/test/js/query-presentation.test.mjs
 sources:
-  - id: openwiki-source-dd9e88cd86195114839ba128
-    resource: repo://agent-tools/hooks/copilot.json
-  - id: openwiki-source-0ef9393c85b75ed872cfaa50
-    resource: repo://agent-tools/hooks/hooks.json
-  - id: openwiki-source-11016f6b7875699873f6eff3
-    resource: repo://agent-tools/hooks/session_start.py
   - id: openwiki-source-0f47b5cd95dd664d8cb6e398
     resource: repo://agent-tools/onboarding.template.md
-  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
-    resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-4f236e61dfb77c185728cfd7
+    resource: repo://agent-tools/skills/kast/SKILL.md
+  - id: openwiki-source-20e85ee434d9dedec13e85f7
+    resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - id: openwiki-source-784aad5c07345736dc67037f
     resource: repo://cli/src/main/js/query-delivery-contract.mjs
   - id: openwiki-source-82cf2cb34e9f56bad15bc34f
@@ -43,43 +39,45 @@ sources:
     resource: repo://cli/src/main/resources/query-delivery.schema.json
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
+  - id: openwiki-source-552a7d3faff1f8e990a51c96
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
   - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-10-16T07:07:29.171Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Agent context and harness delivery
 
-## One brief supplies session context
+## CLI-first guidance is the default
 
-The Codex and Copilot plugins select host-specific session hooks.
-Their shared script reads the same brief and emits the envelope that each host accepts.
-It adds the exact session workspace and absolute paths to the query schema and named example array.
-The hook invokes Python 3.9 or later and uses only the standard library.
-It starts no uv process and downloads no dependencies.
+The canonical `skills/kast` directory supplies native CLI guidance and its local reference documents.
+Codex and Copilot plugins expose that skill through their native plugin discovery.
+Pi uses its native skill directory.
+`kast install <harness>` admits only the selected manifest-owned installed bundle.
+The default generated composition contains no automatic MCP registration, hooks, or Python scripts.
 
-Invalid events, absent resources, linked resources, and oversized context reject without partial context.
-Codex owns hook trust. Plugin installation alone does not prove context delivery.
+`--mcp` selects the complete optional composition and prepares its Python dependency environment explicitly.
+CLI and MCP use the same persistent IDEA Host and semantic contracts.
+A provider cache must match selected resource bytes. Equal versions alone do not establish that match.
+A standalone export copies the complete canonical skill directory without provider configuration.
+After setup or a core update, start a fresh agent session and obey the result's harness-refresh notice.
 
-`onboarding.template.md` owns the shared prose.
+`onboarding.template.md` owns the optional MCP brief.
 The public-query generator derives enum lists, the schema, and the example array from `tools.schema.json`.
-The brief explains that interfaces use the `CLASS` declaration family.
-It distinguishes directory paths, Kotlin packages, exact source-set names, output fields, and issued references.
-The plugin does not publish a discoverable skill.
+Authored legacy hook resources remain source material. The generated compositions do not select those hooks automatically.
 
-The installed Pi extension registers Kast through native `registerMcpServer`.
-It reads bounded local resources directly with Node and adds the shared brief before each model request.
-An absent or invalid resource produces one warning while normal turns and native MCP stay available.
-Pi starts no Python or uv process for context.
+The optional Pi extension registers Kast through native `registerMcpServer`.
+It reads bounded local context directly with Node and adds that brief before model requests.
+A rejected resource produces one warning while later turns and native MCP remain available.
+Its context path starts no Python or uv process. The explicitly selected MCP server uses its separate transport process.
 Pi owns MCP discovery, permissions, and connection lifetime.
-The CLI distribution selects `pi/mcp-extension.ts` for `kast connect pi`.
 
 ## Optional RPC adapters consume one catalog
 

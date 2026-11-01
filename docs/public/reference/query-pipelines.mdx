@@ -4,9 +4,9 @@ description: "Find shared declarations, combine saved sets, or trace one side of
 icon: "workflow"
 ---
 
-Use this procedure to compare or combine retained query results. Keep both inputs in one admitted read state.
+Compare or combine retained Kast query results from one admitted read state.
 
-Set `retention: "RETAIN"` on the producing queries. Keep the issued retained result references unchanged.
+On each producing query, set `retention: "RETAIN"`. Keep the issued retained result references unchanged.
 
 1. [Keep a second query result.](#1-keep-a-second-query-result)
 2. [Combine the inputs.](#2-combine-the-inputs)
@@ -17,11 +17,11 @@ Set `retention: "RETAIN"` on the producing queries. Keep the issued retained res
 
 ## Complete static answers
 
-Every public run needs complete execution within `COMPILER_RESOLVED_STATIC_V1`. Combining inputs keeps their identities and stated limits.
+Every public run must finish within `COMPILER_RESOLVED_STATIC_V1`. Composition keeps both inputs' identities and limits.
 
-A finished output page cannot supply producer proof that is missing. During later output reads, rejection evidence stays `POLICY_REJECTED_EVIDENCE`.
+A finished output page cannot supply missing producer proof. Later output reads keep rejection evidence as `POLICY_REJECTED_EVIDENCE`.
 
-These examples describe a comparison between two query results. They are not captured replies. Replace each placeholder with an issued reference.
+The examples compare two query results. They do not contain captured replies. Replace each placeholder with an issued reference.
 
 <a id="retain-a-second-query-result" />
 
@@ -204,18 +204,18 @@ Exact focus reads restore the original authority and reject stale references wit
 }
 ```
 
-`ENCLOSING_DECLARATION`, `ENCLOSING_CALLABLE_BODY`, and `ENCLOSING_CLASS_BODY` select the smallest strict enclosing region of that kind.
-`CALLABLE_BODY` and `CLASS_BODY` select the nearest matching body, which can belong to the anchor itself.
-`ANCHOR` keeps the exact anchor, and `FILE` selects its file.
-A structural owner must contain the full focus.
-A window across sibling declarations cannot select just its first callable.
+`ENCLOSING_DECLARATION`, `ENCLOSING_CALLABLE_BODY`, and `ENCLOSING_CLASS_BODY` select the smallest strict enclosing region of that kind. `CALLABLE_BODY` and `CLASS_BODY` select the nearest matching body, which can belong to the anchor itself. `ANCHOR` selects the exact anchor. `FILE` selects its file.
+
+A structural owner must contain the full focus. A window across sibling declarations cannot select only its first callable.
 
 Omission or `null` selects `ANCHOR` and `COMPLETE` text.
-`EXCERPT` returns at most `maxLines` around the anchor start, clipped to the selected region.
-Its default is 40 lines, and its range is 1 to 1000 lines.
-`WINDOW` defaults to five lines before and after the anchor, clipped to the selected region.
-A window includes the full anchor span, so a multi-line anchor can produce more text than these line counts.
-An oversized view withholds text and reports an explicit limitation.
+
+| Text view | Range and defaults |
+| --- | --- |
+| `EXCERPT` | At most `maxLines` around the anchor start, clipped to the selected region. Default: 40 lines. Range: 1 to 1000 lines. |
+| `WINDOW` | Five lines before and after the anchor by default, clipped to the selected region. |
+
+A window includes the full anchor span. A multi-line anchor can produce more text than the before and after line counts. An oversized view withholds text and reports an explicit limitation.
 
 The response keeps the structural region selector separate from the text selector.
 A window selector identifies an excerpt and does not prove complete declaration text.

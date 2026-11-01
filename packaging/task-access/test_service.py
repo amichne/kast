@@ -240,7 +240,7 @@ def test_native_bridge_keeps_large_canonical_text_once(tmp_path: Path) -> None:
 def test_static_host_deadlines_cover_every_admitted_catalog() -> None:
     from transport import HOST_TIMEOUT_SECONDS, Policy
 
-    config = json.loads((ROOT / "agent-tools/.mcp.json").read_text())["mcpServers"]["kast"]
+    config = json.loads((ROOT / "agent-tools/mcp.json").read_text())["mcpServers"]["kast"]
     assert HOST_TIMEOUT_SECONDS == 3780
     assert config["tool_timeout_sec"] == HOST_TIMEOUT_SECONDS
     assert config["timeout"] == HOST_TIMEOUT_SECONDS * 1000

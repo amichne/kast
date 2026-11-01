@@ -74,6 +74,7 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                 "io.github.amichne.kast.appserver.KastCodexMain",
                 "io.github.amichne.kast.appserver.KastCodexMainKt",
                 "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
+                "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
                 "io.github.amichne.kast.cli.mcp.KastMcpMain",
             )
 
@@ -109,6 +110,8 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                         "kast-service",
                         "kast-mcp",
                         "kast-tool-rpc",
+                        "kast-query",
+                        "kast-query-complete",
                         "kast-codex",
                         "kast-mcp-complete",
                         "kast-tool-rpc-complete",
@@ -281,7 +284,8 @@ internal class ForceDaemonRetirement(
     private fun incarnationRetired(prior: LifecycleProcessSnapshot, observed: LifecycleProcessObservation): Boolean =
         when (observed) {
             LifecycleProcessObservation.Absent -> true
-            LifecycleProcessObservation.Unavailable -> false
+            LifecycleProcessObservation.Unavailable,
+            is LifecycleProcessObservation.IdentityOnly -> false
             is LifecycleProcessObservation.Present ->
                 observed.snapshot.pid == prior.pid && observed.snapshot.startEpochMillis != prior.startEpochMillis
         }

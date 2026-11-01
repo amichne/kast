@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.WorkAllowance
@@ -11,7 +12,6 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValuePathSegment
-import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
@@ -27,10 +27,10 @@ import org.jetbrains.kotlin.analysis.api.types.KaStarTypeProjection
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtIfExpression
 import org.jetbrains.kotlin.psi.KtIsExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtWhenConditionIsPattern
 import org.jetbrains.kotlin.psi.KtWhenEntry
 import org.jetbrains.kotlin.psi.KtWhenExpression
@@ -48,7 +48,7 @@ internal enum class NativeValueBranchAdmission {
 internal fun nativeValueBranchAdmission(
     source: ValueSite,
     expression: KtExpression,
-    binding: KtNamedDeclaration,
+    binding: PsiElement,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     workAllowance: WorkAllowance,
@@ -56,15 +56,12 @@ internal fun nativeValueBranchAdmission(
     projection.observation.observedAnalyze(expression) {
         val expected =
             when (binding) {
-                is KtNamedFunction -> {
+                is KtFunction -> {
                     val receiver = (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
-                    when (receiver?.kind) {
-                        ValueReceiverKind.EXTENSION -> binding.symbol.receiverParameter
-                        ValueReceiverKind.DISPATCH -> binding.symbol.containingDeclaration
-                        null -> null
-                    }
+                    receiver?.kind?.let { nativeValueReceiverSymbol(binding, it) }
                 }
-                else -> binding.symbol
+                is KtNamedDeclaration -> binding.symbol
+                else -> null
             }
         val branch = branchAdmission(source, expression, expected, scope, projection, workAllowance)
         when (branch) {

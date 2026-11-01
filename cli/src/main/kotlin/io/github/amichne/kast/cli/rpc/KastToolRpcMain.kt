@@ -73,7 +73,7 @@ object KastToolRpcMain {
                         ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
                     else if (session.admission() != InstalledToolAdmission.AVAILABLE)
                         ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
-                    else invokeObserved(bridge, command[1], bytes)
+                    else invokeObserved(session, bridge, command[1], bytes)
                 }
                 else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
             }
@@ -86,7 +86,7 @@ object KastToolRpcMain {
             session.admission() != InstalledToolAdmission.AVAILABLE ->
                 printReply(ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED))
             else ->
-                OneShotInvocationRecord.begin()?.use {
+                session.beginInvocation(InvocationRecordKind.RPC)?.use {
                     KastToolRpcQuerySession(session.queryCatalog, bridge::callAdmitted).run(System.`in`, ::printReply)
                 } ?: printReply(ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE))
         }
@@ -101,10 +101,15 @@ object KastToolRpcMain {
         System.out.flush()
     }
 
-    private fun invokeObserved(bridge: KastToolRpcBridge, name: String, bytes: ByteArray): ToolRpcReply =
+    private fun invokeObserved(
+        session: KastDirectToolSession,
+        bridge: KastToolRpcBridge,
+        name: String,
+        bytes: ByteArray,
+    ): ToolRpcReply =
         when (val input = decodeToolRpcInput(bytes)) {
             is Refinement.Refined ->
-                OneShotInvocationRecord.begin()?.use { bridge.call(name, input.value) }
+                session.beginInvocation(InvocationRecordKind.RPC)?.use { bridge.call(name, input.value) }
                     ?: ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE)
             is Refinement.Rejected -> ToolRpcReply.Rejected(input.failure)
         }
@@ -177,38 +182,38 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
             } catch (_: RuntimeException) {
                 return ToolRpcReply.Rejected(ToolRpcFailure.INVOCATION_FAILED)
             }
-        return observeDirectToolStage(DirectToolStage.RESULT_PROJECTION) { present(name, exit) }
+        return observeDirectToolStage(DirectToolStage.RESULT_PROJECTION) { presentToolRpcExit(name, exit) }
     }
+}
 
-    private fun present(name: String, exit: CliExit): ToolRpcReply {
-        val document =
-            try {
-                toolRpcJson.parseToJsonElement(exit.document.value) as? JsonObject
-                    ?: return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
-            } catch (_: SerializationException) {
-                return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
-            }
-        val admitted =
-            when (exit) {
-                // Legacy CLI boundary documents have their own closed serializers, outside semantic schemas.
-                is CliExit.BoundaryRejected,
-                is CliExit.PublicInputRejected -> true
-                is CliExit.Complete,
-                is CliExit.Qualified,
-                is CliExit.OperationRejected ->
-                    McpStructuredResults.validatesSemantic(name, document) &&
-                        McpStructuredResults.matchesExit(exit, document)
-                is CliExit.Delegated -> false
-            }
-        if (!admitted) return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
-        return when (exit) {
-            is CliExit.Complete -> ToolRpcReply.Complete(document)
-            is CliExit.Qualified -> ToolRpcReply.Qualified(document)
-            is CliExit.OperationRejected,
-            is CliExit.BoundaryRejected -> ToolRpcReply.RejectedDocument(document)
-            is CliExit.PublicInputRejected -> ToolRpcReply.Rejected.publicInput(exit.failure)
-            is CliExit.Delegated -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
+internal fun presentToolRpcExit(name: String, exit: CliExit): ToolRpcReply {
+    val document =
+        try {
+            toolRpcJson.parseToJsonElement(exit.document.value) as? JsonObject
+                ?: return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
+        } catch (_: SerializationException) {
+            return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
         }
+    val admitted =
+        when (exit) {
+            // Legacy CLI boundary documents have their own closed serializers, outside semantic schemas.
+            is CliExit.BoundaryRejected,
+            is CliExit.PublicInputRejected -> true
+            is CliExit.Complete,
+            is CliExit.Qualified,
+            is CliExit.OperationRejected ->
+                McpStructuredResults.validatesSemantic(name, document) &&
+                    McpStructuredResults.matchesExit(exit, document)
+            is CliExit.Delegated -> false
+        }
+    if (!admitted) return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
+    return when (exit) {
+        is CliExit.Complete -> ToolRpcReply.Complete(document)
+        is CliExit.Qualified -> ToolRpcReply.Qualified(document)
+        is CliExit.OperationRejected,
+        is CliExit.BoundaryRejected -> ToolRpcReply.RejectedDocument(document)
+        is CliExit.PublicInputRejected -> ToolRpcReply.Rejected.publicInput(exit.failure)
+        is CliExit.Delegated -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_RESULT)
     }
 }
 

@@ -1,0 +1,104 @@
+{
+  "baseline": "7135d0f2a847a28b919bdba84bbbc8253f8d885a",
+  "source_state": "Task branch during implementation; selected test sources unchanged",
+  "command": "mise exec -- ./gradlew :runtime:hosted:test --tests '*HostedQueryRetainedPresentationTest' --tests '*HostedContinuationOwnerRetentionTest' --tests '*HostedCompletionRejectionPublicationTest' --tests '*HostedQueuedConnectionCancellationTest' --tests '*HostedConnectionAdmissionTest' :query:protocol:test --tests '*QueryRetainedRowAdmissionTest' --tests '*CanonicalQueryRetentionProtocolTest' --tests '*QueryCheckpointReplayTest' :app-server:test --tests '*PublicExecutionBudgetTest' :workspace:intellij-read:test --tests '*HostedQueryExecutorTest' --tests '*HostedQueryBackpressureTest' --tests '*HostedReadActionAccountingTest'",
+  "log": "/tmp/kast-cli-retained-characterization.log",
+  "suites": [
+    {
+      "module": "app-server",
+      "name": "io.github.amichne.kast.appserver.query.PublicExecutionBudgetTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "query/protocol",
+      "name": "io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "query/protocol",
+      "name": "io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "query/protocol",
+      "name": "io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest",
+      "tests": 10,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "runtime/hosted",
+      "name": "io.github.amichne.kast.runtime.hosted.HostedCompletionRejectionPublicationTest",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "runtime/hosted",
+      "name": "io.github.amichne.kast.runtime.hosted.HostedConnectionAdmissionTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "runtime/hosted",
+      "name": "io.github.amichne.kast.runtime.hosted.HostedContinuationOwnerRetentionTest",
+      "tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "runtime/hosted",
+      "name": "io.github.amichne.kast.runtime.hosted.HostedQueryRetainedPresentationTest",
+      "tests": 5,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "runtime/hosted",
+      "name": "io.github.amichne.kast.runtime.hosted.HostedQueuedConnectionCancellationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "workspace/intellij-read",
+      "name": "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryBackpressureTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "workspace/intellij-read",
+      "name": "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorTest",
+      "tests": 7,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "module": "workspace/intellij-read",
+      "name": "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadActionAccountingTest",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    }
+  ]
+}

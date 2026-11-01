@@ -18,7 +18,7 @@ class ImpactReviewedFindingTest {
         val plain = values.finding().copy(representation = ImpactFindingRepresentationDocument.NotModeled)
         val empty = Json.parseToJsonElement(Json.encodeToString(plain)).jsonObject
         assertEquals(emptyList<Nothing>(), empty.getValue("reviewedRelations").jsonArray.toList())
-        val finding = plain.copy(reviewedRelations = reviewed.bounded(listOf(reviewed.binding)))
+        val finding = plain.copy(reviewedRelations = reviewed.bounded(listOf(reviewed.transfer.binding)))
         val encoded = Json.parseToJsonElement(Json.encodeToString(finding)).jsonObject
         assertEquals(
             setOf(
@@ -37,16 +37,20 @@ class ImpactReviewedFindingTest {
             "NOT_MODELED",
             encoded.getValue("representation").jsonObject.getValue("type").jsonPrimitive.content,
         )
-        val relation = encoded.getValue("reviewedRelations").jsonArray.single().jsonObject
+        val relation =
+            encoded.getValue("reviewedRelations").jsonArray.single().jsonObject.getValue("authority").jsonObject
         assertEquals("KOTLIN_2_4_21_ITERABLE_MAP_V1", relation.getValue("rule").jsonPrimitive.content)
         assertEquals("NOT_ESTABLISHED", relation.getValue("actualExecution").jsonPrimitive.content)
         assertEquals("NOT_ESTABLISHED", relation.getValue("invocationCount").jsonPrimitive.content)
         assertTrue(ImpactWitnessDocument.Finding(finding).hasSourceBasis(reviewed.binding.basis))
         val foreign =
-            reviewed.binding.copy(
-                basis =
-                    (reviewed.binding.basis as ImpactSemanticBasisDocument.Published).copy(
-                        root = reviewed.text("/other")
+            reviewed.transfer.binding.copy(
+                authority =
+                    reviewed.binding.copy(
+                        basis =
+                            (reviewed.binding.basis as ImpactSemanticBasisDocument.Published).copy(
+                                root = reviewed.text("/other")
+                            )
                     )
             )
         assertFalse(
@@ -63,7 +67,8 @@ class ImpactReviewedFindingTest {
             ImpactWitnessDocument.ReviewedTransfer(values.count(0), values.count(0), fixture.transfer)
         val history: ImpactRepresentationHistoryDocument =
             ImpactRepresentationHistoryDocument.ReviewedTransfer(fixture.transfer)
-        val finding: ImpactFindingProvenanceDocument = ImpactFindingProvenanceDocument.ReviewedLibrary(fixture.binding)
+        val finding: ImpactFindingProvenanceDocument =
+            ImpactFindingProvenanceDocument.ReviewedLibrary(fixture.transfer.binding)
         val encodedWitness = Json.parseToJsonElement(Json.encodeToString(witness)).jsonObject
         val encodedHistory = Json.parseToJsonElement(Json.encodeToString(history)).jsonObject
         val encodedFinding = Json.parseToJsonElement(Json.encodeToString(finding)).jsonObject
@@ -78,8 +83,13 @@ class ImpactReviewedFindingTest {
     @Test
     fun `reviewed source evidence encodes exact artifact spans and rejects changed hashes`() {
         val fixture = ImpactReviewedValueFixture()
-        val artifacts = fixture.binding.artifacts
-        val encoded = Json.parseToJsonElement(Json.encodeToString(artifacts)).jsonObject
+        val artifacts =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                ImpactReviewedCollectionArtifactsDocument::class.java,
+                fixture.binding.artifacts,
+            )
+        val encoded =
+            Json.parseToJsonElement(Json.encodeToString<ImpactReviewedArtifactsDocument>(artifacts)).jsonObject
         assertEquals(
             setOf(
                 "binaryArtifactSha256",
@@ -88,8 +98,8 @@ class ImpactReviewedFindingTest {
                 "sourceEntrySha256",
                 "facadeSha256",
                 "implementationSha256",
-                "mapLines",
-                "mapToLines",
+                "sections",
+                "helpers",
             ),
             encoded.keys,
         )
@@ -102,19 +112,30 @@ class ImpactReviewedFindingTest {
             "1e29c0668b0aa555e7b154e5da2e8094e1b755cfee25737839195bbbdad8a4a2",
             encoded.getValue("sourceArtifactSha256").jsonPrimitive.content,
         )
-        assertEquals("1744", encoded.getValue("mapLines").jsonObject.getValue("first").jsonPrimitive.content)
-        assertEquals("1746", encoded.getValue("mapLines").jsonObject.getValue("last").jsonPrimitive.content)
-        assertEquals("1819", encoded.getValue("mapToLines").jsonObject.getValue("first").jsonPrimitive.content)
-        assertEquals("1823", encoded.getValue("mapToLines").jsonObject.getValue("last").jsonPrimitive.content)
+        assertMapSpans(encoded.getValue("sections").jsonObject)
         val changed =
             listOf(
                 artifacts.copy(sourceEntrySha256 = fixture.text("f".repeat(64))),
                 artifacts.copy(facadeSha256 = fixture.text("f".repeat(64))),
                 artifacts.copy(implementationSha256 = fixture.text("f".repeat(64))),
-                artifacts.copy(mapLines = artifacts.mapToLines),
+                artifacts.copy(
+                    sections =
+                        (artifacts.sections as ImpactReviewedCollectionSectionsDocument.Map).copy(
+                            mapLines = (artifacts.sections as ImpactReviewedCollectionSectionsDocument.Map).mapToLines
+                        )
+                ),
             )
         for (artifact in changed) assertFalse(
             fixture.binding.copy(artifacts = artifact).admits(fixture.binding.enclosing)
         )
+    }
+
+    private fun assertMapSpans(sections: kotlinx.serialization.json.JsonObject) {
+        val map = sections.getValue("mapLines").jsonObject
+        val mapTo = sections.getValue("mapToLines").jsonObject
+        assertEquals("1744", map.getValue("first").jsonPrimitive.content)
+        assertEquals("1746", map.getValue("last").jsonPrimitive.content)
+        assertEquals("1819", mapTo.getValue("first").jsonPrimitive.content)
+        assertEquals("1823", mapTo.getValue("last").jsonPrimitive.content)
     }
 }

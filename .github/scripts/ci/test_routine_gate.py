@@ -19,6 +19,11 @@ class RoutineGateTest(unittest.TestCase):
     def output(self, tasks):
         return "\n".join(f"{task} SKIPPED" for task in sorted(tasks))
 
+    def test_qualified_candidate_must_also_schedule_source_obligations(self):
+        self.assertIn(":sourceValidationGate", REQUIRED)
+        self.assertIn(":query:service:scopedCheck", REQUIRED)
+        self.assertIn(":distribution:cli:check", REQUIRED)
+
     def test_required_proofs_remain_in_routine_gate(self):
         self.assertEqual("complete", inspect(self.output(REQUIRED))["status"])
 

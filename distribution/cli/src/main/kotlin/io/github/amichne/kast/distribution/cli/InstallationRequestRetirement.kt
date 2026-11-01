@@ -75,23 +75,19 @@ internal class InstallationRequestRetirement(
             }
         if (record.schemaVersion != 1 || record.pid <= 0 || record.startEpochMillis <= 0)
             return ShutdownProcessAdmission.Rejected
-        val admitted = OwnedLifecycleProcess.admit(record, processes.observe(record.pid), installation)
-        if (admitted !is ShutdownProcessAdmission.Owned) return admitted
-        val arguments = admitted.process.snapshot.arguments
-        val classpath = arguments.indexOfFirst { it == "-classpath" || it == "-cp" }
-        return if (
-            arguments[classpath + 1].split(':').all {
-                payloadOwned(installation, manifest, "lib/" + Path.of(it).fileName)
-            }
-        )
-            admitted
-        else ShutdownProcessAdmission.Rejected
+        return OwnedLifecycleProcess.admit(record, processes.observe(record.pid), installation, manifest)
     }
 
     private fun verifyRetired(process: OwnedLifecycleProcess): LifecycleEffect =
         when (val current = processes.observe(process.snapshot.pid)) {
             LifecycleProcessObservation.Absent -> LifecycleEffect.Completed
             LifecycleProcessObservation.Unavailable -> ownershipRejected()
+            is LifecycleProcessObservation.IdentityOnly ->
+                if (
+                    current.pid == process.snapshot.pid && current.startEpochMillis != process.snapshot.startEpochMillis
+                )
+                    LifecycleEffect.Completed
+                else ownershipRejected()
             is LifecycleProcessObservation.Present ->
                 if (current.snapshot.startEpochMillis == process.snapshot.startEpochMillis)
                     LifecycleEffect.Rejected(LifecycleFailure.REQUESTS_DID_NOT_RETIRE)

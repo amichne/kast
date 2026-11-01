@@ -95,6 +95,31 @@ class HostedReadRecoveryTest {
     }
 
     @Test
+    fun `queued timeout names the queue before semantic scope guidance`() {
+        val document =
+            Json.parseToJsonElement(
+                    HostedQueryWire.encode(
+                        HostedQueryResult.Rejected(
+                            HostedQueryFailure.BUDGET_EXCEEDED,
+                            HostedQueryStage.REQUEST_ADMISSION,
+                        )
+                    )
+                )
+                .jsonObject
+        val recovery = document.getValue("recovery").jsonObject
+        assertEquals("increase_host_deadline", recovery.getValue("kind").jsonPrimitive.content)
+        assertEquals(
+            "The host deadline expired before semantic work started. " +
+                "Read admission, queue wait, project admission, or cached Gradle model capture " +
+                "consumed the allowance. " +
+                "Inspect the kast_semantic_read stages before you change the query scope. " +
+                "Increase the host query, connection, and client exchange deadlines together " +
+                "if this project needs more preparation time.",
+            recovery.getValue("instruction").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun `caller capture timeout preserves provenance without inventing an admitted grant`() {
         val document =
             Json.parseToJsonElement(

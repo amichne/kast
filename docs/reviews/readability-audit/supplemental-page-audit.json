@@ -1,0 +1,94 @@
+{
+  "pages": [
+    {
+      "path": "agent-tools/onboarding.template.md",
+      "reader": "Agent integration author",
+      "purpose": "Define generated Kast tool instructions with schema-supplied placeholders.",
+      "category": "Reference",
+      "decision": "KEEP",
+      "assessment": "The opening names supported tasks. Exact identity, scope, freshness, source fallback, and recovery follow in operational order. This template targets agents rather than novice engineers. Preserve instruction semantics and placeholders.",
+      "evidenceScope": "Template placeholders and generated reference ownership; no runtime claim is added.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md",
+      "reader": "Codex host contributor",
+      "purpose": "Preserve host-owned transport selection, executable admission, and process outcomes.",
+      "category": "Contributor documentation",
+      "decision": "KEEP",
+      "assessment": "Each bullet owns a distinct invariant. The opening separates client transport from broker and semantic owners. Source links provide direct implementation routes.",
+      "evidenceScope": "Authored engineering rules cite host admission and transport owners. This review does not rerun native transport behavior.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md",
+      "reader": "Public query contributor",
+      "purpose": "Preserve catalog admission, query grammar, issued capabilities, and strict completion.",
+      "category": "Contributor documentation",
+      "decision": "KEEP",
+      "assessment": "The page separates query actions, source selectors, execution controls, and completion. Exact enums and failure constraints remain necessary. The dense stage inventory remains a reference for maintainers.",
+      "evidenceScope": "Current rule text names contract 18 and canonical schema owners. Generated syntax and actual admission tests remain stronger evidence.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "distribution/cli/AGENTS.md",
+      "reader": "Native management CLI contributor",
+      "purpose": "Preserve installation ownership and legal lifecycle transitions.",
+      "category": "Contributor documentation",
+      "decision": "KEEP",
+      "assessment": "The opening defines the public command scope. Later paragraphs distinguish passive status, destructive reset scope, plugin ownership, and stable installation paths. These constraints must remain precise.",
+      "evidenceScope": "ManagementCommand has explicit finite variants. The guide preserves reset, cleanup, and readiness limits without a new execution claim.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "experiments/host-observation/HOSTED_ENDPOINT.md",
+      "reader": "Engineer who examines the historical hosted-index prototype",
+      "purpose": "Reproduce the recorded prototype only with its historical interface and interpret its qualification.",
+      "category": "Contributor documentation",
+      "decision": "SCOPE_CORRECTED",
+      "assessment": "The original opening presented kast index as a current public primary client. A new notice identifies the September 2026 prototype and routes current users to Get started. Original commands and results remain intact.",
+      "evidenceScope": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt:66-92 has no index variant; the page records its qualification on 2026-09-10.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "experiments/host-observation/agent-efficiency-configs/reference-chain-private-onboarding.md",
+      "reader": "Experiment author or agent under the private-chain configuration",
+      "purpose": "Define a constrained reference workflow with private storage between code calls.",
+      "category": "Reference",
+      "decision": "KEEP",
+      "assessment": "The page distinguishes current request templates from historical captures and requires task-specific placeholders. It explains exact selection, complete source-use accounting, and the permitted private storage path.",
+      "evidenceScope": "This prompt is an experimental input, not general user onboarding. Preserve it to avoid changing measured agent conditions.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "experiments/host-observation/agent-efficiency-configs/reference-chain-scoped-onboarding.md",
+      "reader": "Experiment author or agent under the scoped-chain configuration",
+      "purpose": "Define the experiment arm that keeps intermediate values within one code call.",
+      "category": "Reference",
+      "decision": "KEEP",
+      "assessment": "The opening states the one-call restriction. The query example preserves production source scope, then explains exact selection and unresolved lexical sites. Distinct private/scoped instructions are deliberate experimental controls.",
+      "evidenceScope": "Contract-17 templates retain their recorded identity. No claim establishes current installed schema parity or successful agent behavior.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "experiments/host-observation/agent-efficiency-configs/token-poc-onboarding.md",
+      "reader": "Experiment author or agent under the token proof-of-concept configuration",
+      "purpose": "Define compact semantic calls and exact evidence preservation for the experiment.",
+      "category": "Reference",
+      "decision": "KEEP",
+      "assessment": "Headings separate native calls from result transport. The text distinguishes registration, readiness, schema drift, semantic completion, and source fallback. Code placeholders remain explicitly replaceable.",
+      "evidenceScope": "This prompt is an experimental input. Preserve direct-call and storage choices rather than silently alter the experimental control.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    },
+    {
+      "path": "experiments/host-observation/agent-payload/evidence.md",
+      "reader": "Contributor who interprets historical payload measurements",
+      "purpose": "Compare recorded conversion, source, native, and task evidence at their stated revisions.",
+      "category": "Contributor documentation",
+      "decision": "KEEP_HISTORICAL",
+      "assessment": "The report gives exact source identities, measured tables, unproved task outcomes, and later repairs. Repetition reflects dated evidence updates. Do not rewrite those updates into a stronger current conclusion.",
+      "evidenceScope": "Historical report recognized after baseline. Kept in the fixed comparison so scope changes cannot reduce its three advisory findings.",
+      "reviewType": "Simulated editorial review, not human-reader evidence"
+    }
+  ]
+}

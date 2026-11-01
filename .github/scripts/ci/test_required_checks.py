@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from copy import deepcopy
 from unittest.mock import patch
 
-from required_checks import CompletedSourceChecks, Gate, Verdict, admit_checks, inspect, main
+from required_checks import CompletedSourceChecks, Gate, Verdict, admit_checks, inspect, main, source_proof
 
 
 def docs_only_results():
@@ -33,6 +33,39 @@ def docs_only_results():
 
 
 class RequiredChecksTest(unittest.TestCase):
+    def test_source_full_requires_docs_and_source_without_product_authority(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", portable="run", scope="SOURCE_FULL")
+        needs["source"]["result"] = needs["portable"]["result"] = "success"
+        self.assertEqual(Verdict.COMPLETE, inspect(needs))
+        for job in ("source", "portable", "documentation"):
+            for result in ("skipped", "failure", "cancelled"):
+                rejected = deepcopy(needs)
+                rejected[job]["result"] = result
+                self.assertEqual(Verdict.CHECK_FAILED, inspect(rejected))
+        needs["kotlin"]["result"] = "success"
+        self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
+
+    def test_source_proof_requires_linux_even_when_native_succeeds(self):
+        for qualified in (False, True):
+            needs = docs_only_results()
+            needs["scope"]["outputs"].update(
+                source="run", product="run" if qualified else "skip", portable="run",
+                documentation="skip", scope="PRODUCT" if qualified else "SOURCE",
+            )
+            needs["source-work"] = {"result": "success"}
+            # Native work is independent of the source result.
+            for native in ("success", "failure", "cancelled", "skipped"):
+                needs["kotlin"] = {"result": native}
+                self.assertEqual(Verdict.COMPLETE, source_proof(needs))
+            for result in ("failure", "cancelled", "", "skipped"):
+                rejected = deepcopy(needs)
+                rejected["source-work"]["result"] = result
+                self.assertEqual(Verdict.CHECK_FAILED, source_proof(rejected))
+            del needs["source-work"]
+            self.assertEqual(Verdict.CHECK_FAILED, source_proof(needs))
+        self.assertEqual(Verdict.INVALID_SELECTION, source_proof(docs_only_results()))
+
     def test_source_feedback_cannot_complete_candidate_qualification(self):
         needs = docs_only_results()
         needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")

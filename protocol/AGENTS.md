@@ -4,9 +4,11 @@ title: "Kast protocol"
 description: "Defines canonical operations, public tool identities, compatibility evidence, and serialized wire documents."
 resource: "repo://protocol"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-29T23:41:55Z"
+source_revision: 90ef99b6c9edfd6c75d687865985546be29cdb16
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedEndpointFailure.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/ReadOutcomeClassificationFacts.kt
   - path: protocol/contract/build.gradle.kts
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt
@@ -33,6 +35,8 @@ Defines canonical operations, public tool identities, compatibility evidence, an
 
 ## Key Files
 
+- [HostedEndpointFailure.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedEndpointFailure.kt) - authoritative hosted transport failures shared by the producer and process adapters.
+- [ReadOutcomeClassificationFacts.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/ReadOutcomeClassificationFacts.kt) - typed facts from schema-admitted query and source-read outcomes.
 - [CanonicalOperation.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt) - the canonical operation domain.
 - [CanonicalQueryOperationModels.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt) - query requests and outputs.
 - [QueryCompletionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt) - `COMPLETE_ONLY`, the compiler-static model, and finite completion failures.
@@ -56,6 +60,8 @@ Defines canonical operations, public tool identities, compatibility evidence, an
 
 ## Navigation Hints
 
+- Use `HostedEndpointFailure` from `protocol/contract` for hosted transport failures.
+- Wire projections preserve classification facts. The CLI owns public shell exit decisions.
 - For an operation, read its contract, registry definition, and wire mapping in that order.
 - For public query syntax, read the authored schema through the app-server query guide.
 - Keep complete coverage distinct from semantic completion and from output presentation.

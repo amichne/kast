@@ -1,5 +1,8 @@
 package io.github.amichne.kast.evidence.sqlite
 
+import io.github.amichne.kast.change.contract.ChangePlanIdentity
+import io.github.amichne.kast.change.verify.LiveChangeReceiptLookup
+import io.github.amichne.kast.change.verify.LiveChangeReceiptStoreFailure
 import io.github.amichne.kast.evidence.contract.MutationDatabaseLocation
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
@@ -25,6 +28,17 @@ private constructor(
     private val connections: InitializedSqliteMutationRecoveryConnections,
     private val faults: MutationRecoveryFaultInjector,
 ) : MutationRecoveryEvidenceStore {
+    /** Settlement reconstructs durable records instead of inferring success from an idle process. */
+    fun settlement(): MutationRecoverySettlement =
+        try {
+            connections.use { connection ->
+                connection.autoCommit = false
+                connection.mutationSettlement()
+            }
+        } catch (_: SQLException) {
+            MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.STORAGE_UNAVAILABLE)
+        }
+
     override fun prepare(
         record: MutationRecoveryRecord.PreWriteDurable
     ): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = storageResult {
@@ -267,6 +281,60 @@ private constructor(
             )
     }
 }
+
+private fun Connection.mutationSettlement(): MutationRecoverySettlement =
+    createStatement().use { statement ->
+        statement.executeQuery("SELECT plan_binding FROM mutation_recovery").use { rows ->
+            readMutationSettlement(this, rows)
+        }
+    }
+
+private fun readMutationSettlement(connection: Connection, rows: java.sql.ResultSet): MutationRecoverySettlement {
+    while (rows.next()) {
+        val binding =
+            when (val parsed = MutationPlanBinding.parse(rows.getString(1))) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected ->
+                    return MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+            }
+        when (val result = connection.mutationRecordSettlement(binding)) {
+            MutationRecoverySettlement.Settled -> Unit
+            MutationRecoverySettlement.Unresolved,
+            is MutationRecoverySettlement.Rejected -> return result
+        }
+    }
+    return MutationRecoverySettlement.Settled
+}
+
+private fun Connection.mutationRecordSettlement(binding: MutationPlanBinding): MutationRecoverySettlement =
+    when (val loaded = loadMutationRecovery(binding)) {
+        is MutationRecoveryLoadResult.Found ->
+            when (val record = loaded.record) {
+                is MutationRecoveryRecord.PreWriteDurable,
+                is MutationRecoveryRecord.RecoveryRequired -> MutationRecoverySettlement.Unresolved
+                is MutationRecoveryRecord.RolledBack,
+                is MutationRecoveryRecord.AppliedWritesDurable ->
+                    inspectMutationSettlement(record, settlementReceipt(binding))
+            }
+        is MutationRecoveryLoadResult.Rejected -> MutationRecoverySettlement.Rejected(loaded.failure)
+        is MutationRecoveryLoadResult.Absent ->
+            MutationRecoverySettlement.Rejected(MutationRecoveryEvidenceFailure.CORRUPT_RECORD)
+    }
+
+private fun Connection.settlementReceipt(binding: MutationPlanBinding): LiveChangeReceiptLookup =
+    when (val identity = ChangePlanIdentity.parse("plan:${binding.value}")) {
+        null -> LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
+        else -> readSettlementReceipt(identity)
+    }
+
+private fun Connection.readSettlementReceipt(identity: ChangePlanIdentity): LiveChangeReceiptLookup =
+    createStatement().use { statement ->
+        statement
+            .executeQuery("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'live_change_receipt'")
+            .use { tables ->
+                if (tables.next()) loadLiveChangeReceipt(identity) else LiveChangeReceiptLookup.Missing
+            }
+    }
 
 private sealed interface SqlTerminalRequirement {
     data object Absent : SqlTerminalRequirement

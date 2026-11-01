@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshInspectionDocument
+import io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission
 import io.github.amichne.kast.runtime.hosted.lifecycle.inspectionDocument
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryResult
@@ -74,6 +75,11 @@ internal fun interface HostedEndpointObserver {
 /** Project-owned carrier composing passive reads and an explicitly requested workspace lifecycle. */
 @Service(Service.Level.PROJECT)
 class HostedEndpointService(private val project: Project, private val scope: CoroutineScope) : Disposable {
+    private val hostAdmission =
+        com.intellij.openapi.application.ApplicationManager.getApplication()
+            .getService(io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication::class.java)
+            .admission
+
     private enum class EndpointRetirement {
         LIVE,
         RETIRED,
@@ -213,19 +219,27 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
                 serveHostedListener(owner.server, observer, limits) { request, trace ->
-                    if (!lifecycleAdmission.enter()) HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
-                    else
-                        try {
-                            dispatch(
-                                root = root,
-                                request = request,
-                                limits = limits,
-                                refresh = refresh,
-                                trace = trace,
-                            )
-                        } finally {
-                            lifecycleAdmission.leave()
-                        }
+                    when (val admitted = hostAdmission.enter()) {
+                        HostedApplicationAdmission.Admission.Fenced ->
+                            HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
+                        is HostedApplicationAdmission.Admission.Admitted ->
+                            admitted.lease.use {
+                                if (!lifecycleAdmission.enter())
+                                    HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
+                                else
+                                    try {
+                                        dispatch(
+                                            root = root,
+                                            request = request,
+                                            limits = limits,
+                                            refresh = refresh,
+                                            trace = trace,
+                                        )
+                                    } finally {
+                                        lifecycleAdmission.leave()
+                                    }
+                            }
+                    }
                 }
             } finally {
                 withContext(NonCancellable) {

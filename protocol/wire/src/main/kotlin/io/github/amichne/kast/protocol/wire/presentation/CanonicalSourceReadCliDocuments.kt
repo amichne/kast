@@ -20,6 +20,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalSourceReadCliDocuments {
+    fun classificationFacts(document: kotlinx.serialization.json.JsonObject): SourceClassificationFacts =
+        sourceClassificationFacts(document)
+
     fun project(outcome: OperationOutcome<SourceReadResult, SourceReadQualification, SourceReadFailure>) =
         projectClosedOutcome(
             outcome,

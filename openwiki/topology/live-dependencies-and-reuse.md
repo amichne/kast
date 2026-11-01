@@ -17,9 +17,6 @@ code_sources:
 - path: topology/build/src/test/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStoreTest.kt
 - path: topology/build/src/test/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackStoreRetirementTest.kt
 - path: topology/build/src/test/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackSupplierStoreTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-99135b98c4f85c243291f774
     resource: repo://topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt
@@ -28,6 +25,9 @@ sources:
   - id: openwiki-source-c1b372e04845c7dde01c9691
     resource: repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Live dependency proofs and fact reuse

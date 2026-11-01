@@ -1,104 +1,74 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val MAXIMUM_ONE_SHOT_RECORDS = 256
 private const val MAXIMUM_ONE_SHOT_RECORD_BYTES = 4096L
-private const val MAXIMUM_INSTALL_MANIFEST_BYTES = 67_108_864L
 private const val MAXIMUM_MARKER_BYTES = 64L
 private const val ONE_SHOT_READ_DEADLINE_NANOS = 1_500_000_000L
 private val oneShotJson = Json { ignoreUnknownKeys = true }
 
-@Serializable private data class OneShotPayload(val path: String, val sha256: String)
-
-@Serializable
-private data class OneShotManifest(
-    val schemaVersion: Int,
-    val installationRoot: String,
-    val payloadFiles: List<OneShotPayload>,
-)
-
-private sealed interface MarkerQualification {
-    data object Qualified : MarkerQualification
-
-    data object Unavailable : MarkerQualification
-}
-
-private sealed interface InvocationState {
-    data object Active : InvocationState
-
-    data object Finished : InvocationState
-
-    data object Unavailable : InvocationState
-}
-
-private fun qualifyMarker(installation: Path): MarkerQualification {
-    val marker = installation.resolve("share/kast/one-shot-observation-v1")
-    val manifestRaw =
-        readBoundedFile(installation.resolve("installation.json"), MAXIMUM_INSTALL_MANIFEST_BYTES)
-            ?: return MarkerQualification.Unavailable
-    val manifest =
-        try {
-            oneShotJson.decodeFromString<OneShotManifest>(manifestRaw)
-        } catch (_: SerializationException) {
-            return MarkerQualification.Unavailable
-        }
-    val markerEntries = manifest.payloadFiles.filter { it.path == "share/kast/one-shot-observation-v1" }
-    if (
-        manifest.schemaVersion != INSTALLATION_MANIFEST_SCHEMA_VERSION ||
-            manifest.installationRoot != installation.toString()
-    )
-        return MarkerQualification.Unavailable
-    if (markerEntries.size != 1 || readBoundedFile(marker, MAXIMUM_MARKER_BYTES) != "1\n")
-        return MarkerQualification.Unavailable
-    val digest =
-        try {
-            sha256(marker)
-        } catch (_: Exception) {
-            return MarkerQualification.Unavailable
-        }
-    if (markerEntries.single().sha256 != "sha256:$digest") return MarkerQualification.Unavailable
-    return MarkerQualification.Qualified
-}
-
-private fun inspectInvocation(entry: Path): InvocationState {
-    val raw = readBoundedFile(entry, MAXIMUM_ONE_SHOT_RECORD_BYTES) ?: return InvocationState.Unavailable
+private fun inspectInvocation(
+    entry: Path,
+    installation: Path,
+    manifest: BundledManifest,
+    observe: (Long) -> LifecycleProcessObservation,
+): ShutdownProcessAdmission {
+    val raw = readBoundedFile(entry, MAXIMUM_ONE_SHOT_RECORD_BYTES) ?: return ShutdownProcessAdmission.Rejected
     val record =
         try {
             oneShotJson.decodeFromString<InstalledToolInvocation>(raw)
         } catch (_: SerializationException) {
-            return InvocationState.Unavailable
+            return ShutdownProcessAdmission.Rejected
         }
-    if (record.schemaVersion != 1 || record.pid <= 0 || record.startEpochMillis <= 0) return InvocationState.Unavailable
-    val live = ProcessHandle.of(record.pid)
-    if (live.isEmpty) return InvocationState.Finished
-    val start = live.get().info().startInstant().orElse(null) ?: return InvocationState.Unavailable
-    return if (start.toEpochMilli() == record.startEpochMillis) InvocationState.Active else InvocationState.Finished
+    if (record.schemaVersion != 1 || record.pid <= 0 || record.startEpochMillis <= 0)
+        return ShutdownProcessAdmission.Rejected
+    return OwnedLifecycleProcess.admit(record, observe(record.pid), installation, manifest)
 }
 
-/** A one-shot invocation is counted only while its exact process incarnation is live. */
-internal fun observeOneShotRequests(installation: Path): Observation<Int> {
+/** A one-shot invocation needs the same process and payload proof as ordinary retirement. */
+internal fun observeOneShotRequests(installation: Path): Observation<Int> =
+    observeOneShotRequests(installation, NativeLifecycleProcesses::observe)
+
+internal fun observeOneShotRequests(
+    installation: Path,
+    observe: (Long) -> LifecycleProcessObservation,
+): Observation<Int> {
     val unavailable = Observation.unavailable<Int>("one_shot_observation_unavailable")
-    if (qualifyMarker(installation) != MarkerQualification.Qualified) return unavailable
-    val directory = installation.resolve("state/run/one-shot")
-    if (Files.notExists(directory, LinkOption.NOFOLLOW_LINKS)) return Observation.verified(0)
-    if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) return unavailable
     return try {
-        if (directory.toRealPath() != directory) return unavailable
-        countInvocations(directory)
+        val manifest =
+            when (val read = readBundledManifest(installation)) {
+                is BundledManifestRead.Read -> read.manifest
+                BundledManifestRead.Unavailable,
+                BundledManifestRead.Invalid -> return unavailable
+            }
+        val marker = "share/kast/one-shot-observation-v1"
+        if (
+            !payloadOwned(installation, manifest, marker) ||
+                readBoundedFile(installation.resolve(marker), MAXIMUM_MARKER_BYTES) != "1\n"
+        )
+            return unavailable
+        val directory = installation.resolve("state/run/one-shot")
+        if (Files.notExists(directory, LinkOption.NOFOLLOW_LINKS)) return Observation.verified(0)
+        if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS) || directory.toRealPath() != directory)
+            return unavailable
+        countInvocations(directory, installation, manifest, observe)
     } catch (_: Exception) {
         unavailable
     }
 }
 
-private fun countInvocations(directory: Path): Observation<Int> {
+private fun countInvocations(
+    directory: Path,
+    installation: Path,
+    manifest: BundledManifest,
+    observe: (Long) -> LifecycleProcessObservation,
+): Observation<Int> {
     val unavailable = Observation.unavailable<Int>("one_shot_observation_unavailable")
     val started = System.nanoTime()
     var count = 0
@@ -108,10 +78,10 @@ private fun countInvocations(directory: Path): Observation<Int> {
             seen++
             if (System.nanoTime() - started > ONE_SHOT_READ_DEADLINE_NANOS) return unavailable
             if (seen > MAXIMUM_ONE_SHOT_RECORDS || !entry.fileName.toString().endsWith(".json")) return unavailable
-            when (inspectInvocation(entry)) {
-                InvocationState.Active -> count++
-                InvocationState.Finished -> Unit
-                InvocationState.Unavailable -> return unavailable
+            when (inspectInvocation(entry, installation, manifest, observe)) {
+                is ShutdownProcessAdmission.Owned -> count++
+                ShutdownProcessAdmission.Finished -> Unit
+                ShutdownProcessAdmission.Rejected -> return unavailable
             }
         }
     }

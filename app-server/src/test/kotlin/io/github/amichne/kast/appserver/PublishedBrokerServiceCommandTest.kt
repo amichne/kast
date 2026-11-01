@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 class PublishedBrokerServiceCommandTest {
     @Test
     fun `published command retains the selected launcher path for exact recovery`() {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-published-launcher-").toRealPath()
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-published-launcher-").toRealPath()
         try {
             listOf("bin", "lib", "share", "tools", "upstream").forEach { Files.createDirectory(root.resolve(it)) }
             val kast = executable(root.resolve("bin/kast"))
@@ -56,7 +56,7 @@ class PublishedBrokerServiceCommandTest {
 
     @Test
     fun `owned launch receipt recovers only its exact published command`() {
-        val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-published-command-").toRealPath()
+        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-published-command-").toRealPath()
         try {
             listOf("bin", "lib", "share").forEach { Files.createDirectory(root.resolve(it)) }
             val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")

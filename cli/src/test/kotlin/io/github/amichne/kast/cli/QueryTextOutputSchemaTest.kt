@@ -74,7 +74,7 @@ class QueryTextOutputSchemaTest {
         val request = textRequest()
         val raw = Json.encodeToJsonElement(QueryRunRequest.serializer(), request).toString()
         val contract = independentImpactSchemaWithDefinitions(QueryRunRequest.serializer())
-        val sourceContract = independentImpactSchema(QueryFromDocument.serializer())
+        val sourceContract = independentFactoredImpactSchema(QueryFromDocument.serializer()).root
         val variant =
             sourceContract
                 .getValue("anyOf")

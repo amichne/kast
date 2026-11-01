@@ -52,6 +52,593 @@ class ControlFixture:
 
 
 class HostInstallationTest(unittest.TestCase):
+    def signal_payload(self, version):
+        old = self.make_payload(version)
+        with zipfile.ZipFile(old.archive) as archive:
+            data = archive.read('kast-ide-hosted/lib/host.jar')
+        support = io.BytesIO()
+        with zipfile.ZipFile(support, 'w') as archive:
+            archive.writestr('unchanged.txt', b'unchanged support bytes')
+        path = self.root / ('signal-' + version + '.zip')
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('kast-ide-hosted/lib/kast-ide-hosted.jar', data)
+            archive.writestr('kast-ide-hosted/lib/unchanged.jar', support.getvalue())
+        return host.HostedPluginPayload(
+            path, hashlib.sha256(path.read_bytes()).hexdigest(), version, '263.123.1'
+        )
+
+    def signal_record(self):
+        host.install(host.HostInstallRequest(self.signal_payload('2.0.0'), self.plugins))
+        record = host.prepare_managed(
+            host.HostInstallRequest(self.signal_payload('3.0.0'), self.plugins), self.managed_slot()
+        )
+        return record
+
+    def test_reload_signal_preserves_exact_file_facts_and_changes_millisecond_stamp(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            content = marker.read_bytes()
+            os.utime(marker, ns=(1600000000000000000, 1600000000000000000))
+            before = marker.stat()
+            support = Path(record.destination) / 'lib/unchanged.jar'
+            support_before = support.stat().st_mtime_ns
+            evidence = host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            after = marker.stat()
+            self.assertEqual(
+                (
+                    before.st_dev,
+                    before.st_ino,
+                    before.st_uid,
+                    before.st_mode,
+                    before.st_size,
+                    before.st_atime_ns,
+                ),
+                (
+                    after.st_dev,
+                    after.st_ino,
+                    after.st_uid,
+                    after.st_mode,
+                    after.st_size,
+                    after.st_atime_ns,
+                ),
+            )
+            self.assertGreater(
+                evidence.mtimeMillis,
+                max(
+                    evidence.beforeMtimeMillis,
+                    evidence.retainedMtimeMillis,
+                    evidence.observedMillis,
+                ),
+            )
+            self.assertEqual(after.st_mtime_ns // 1000000, evidence.mtimeMillis)
+            self.assertEqual(hashlib.sha256(content).hexdigest(), evidence.sha256)
+            self.assertEqual(content, marker.read_bytes())
+            self.assertEqual(support_before, support.stat().st_mtime_ns)
+            host.admit_managed_candidate(record, Path(record.destination))
+
+    def test_restored_prior_signal_repeats_after_idempotent_file_rollback(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            selected = host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            host.rollback_managed(record)
+            first = host.stamp_reload_signal(lease, host.ReloadSignalTarget.RESTORED_PRIOR)
+            host.rollback_managed(record)
+            second = host.stamp_reload_signal(lease, host.ReloadSignalTarget.RESTORED_PRIOR)
+            self.assertEqual(selected.mtimeMillis, first.retainedMtimeMillis)
+            self.assertGreater(second.mtimeMillis, first.mtimeMillis)
+            self.assertEqual(first.identity, second.identity)
+            self.assertEqual(first.sha256, second.sha256)
+
+    def test_reload_signal_rejects_released_or_missing_lease_before_effects(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+        for stale in (lease, None):
+            with self.subTest(stale=stale), patch.object(host.os, 'utime') as effect:
+                with self.assertRaises(host.ReloadSignalRejected) as rejected:
+                    host.stamp_reload_signal(stale, host.ReloadSignalTarget.SELECTED)
+                self.assertEqual(host.ReloadSignalFailure.LEASE_NOT_HELD, rejected.exception.reason)
+                effect.assert_not_called()
+
+    def test_public_lease_construction_rejects_an_actual_unlocked_lock_descriptor(self):
+        record = self.signal_record()
+        with host.managed_lock(record):
+            host.commit_managed(record)
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.lock'
+        with path.open('r+') as unlocked, patch.object(host.os, 'utime') as effect:
+            self.assertEqual(record.lock.identity.inode, os.fstat(unlocked.fileno()).st_ino)
+            with self.assertRaises(TypeError):
+                host.HeldHostLease(record, unlocked)
+            effect.assert_not_called()
+
+    def test_reload_signal_rejects_symlink_and_changed_hash_before_stamp(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            saved = marker.read_bytes()
+            marker.write_bytes(b'changed unadmitted JAR bytes')
+            with (
+                patch.object(host.os, 'utime') as effect,
+                self.assertRaises(host.ReloadSignalRejected),
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            effect.assert_not_called()
+            marker.write_bytes(saved)
+            retained = marker.with_suffix('.retained')
+            marker.rename(retained)
+            marker.symlink_to(retained)
+            with (
+                patch.object(host.os, 'utime') as effect,
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.MARKER_UNPROVEN, rejected.exception.reason)
+            effect.assert_not_called()
+
+    def test_reload_signal_rejects_timestamp_precision_alias(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            before = marker.stat()
+            real = os.utime
+
+            def aliased(descriptor, *, ns):
+                real(descriptor, ns=(ns[0], before.st_mtime_ns))
+
+            with (
+                patch.object(host.os, 'utime', aliased),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.STAMP_PRECISION, rejected.exception.reason)
+
+    def test_reload_signal_rejects_mode_change_after_descriptor_stamp(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            marker.chmod(0o644)
+            real = os.utime
+
+            def changed(descriptor, *, ns):
+                real(descriptor, ns=ns)
+                os.fchmod(descriptor, 0o600)
+
+            with (
+                patch.object(host.os, 'utime', changed),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.FILE_CHANGED, rejected.exception.reason)
+
+    def test_reload_signal_millisecond_range_is_finite(self):
+        limit = (2**63 - 1) // 1000000
+        self.assertEqual(12, host.next_reload_signal_millis(10, 11, 9))
+        for values in ((limit, 1, 1), (1, limit, 1), (1, 1, -1), (True, 1, 1)):
+            with (
+                self.subTest(values=values),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.next_reload_signal_millis(*values)
+            self.assertEqual(host.ReloadSignalFailure.STAMP_RANGE, rejected.exception.reason)
+
+    def test_reload_signal_rejects_replacement_without_touching_the_new_inode(self):
+        record = self.signal_record()
+        with host.managed_lock(record) as lease:
+            host.commit_managed(record)
+            marker = Path(record.destination) / 'lib/kast-ide-hosted.jar'
+            content = marker.read_bytes()
+            real = os.utime
+            replacement = []
+
+            def replaced(descriptor, *, ns):
+                real(descriptor, ns=ns)
+                marker.rename(marker.with_suffix('.displaced'))
+                marker.write_bytes(content)
+                replacement.append(marker.stat().st_mtime_ns)
+
+            with (
+                patch.object(host.os, 'utime', replaced),
+                self.assertRaises(host.ReloadSignalRejected) as rejected,
+            ):
+                host.stamp_reload_signal(lease, host.ReloadSignalTarget.SELECTED)
+            self.assertEqual(host.ReloadSignalFailure.FILE_CHANGED, rejected.exception.reason)
+            self.assertEqual(replacement[0], marker.stat().st_mtime_ns)
+            self.assertEqual(content, marker.read_bytes())
+
+    def test_managed_lock_excludes_the_existing_host_installer(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        with host.managed_lock(record):
+            with self.assertRaises(BlockingIOError):
+                host.install(host.HostInstallRequest(self.make_payload('4.0.0'), self.plugins))
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+
+    def test_managed_first_absence_lock_stays_owned_until_rollback_cleanup(self):
+        self.plugins.parent.mkdir()
+        slot = self.managed_slot()
+        record = host.prepare_managed(host.HostInstallRequest(self.payload, self.plugins), slot)
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        self.assertFalse(retained.exists())
+        retained.mkdir(mode=0o700)
+        record = host.bind_managed_lock(record, host.Identity.observe(retained))
+        self.assertIsNone(record.retainedRootIdentity)
+        with host.managed_lock(record):
+            host.commit_managed(record)
+            host.rollback_managed(record)
+            host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+            self.assertTrue((retained / 'host-install.lock').is_file())
+        host.finish_managed_lock(record, host.ManagedHostTerminalPhase.RESTORED)
+        host.finish_managed_lock(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assertEqual([], list(slot.iterdir()))
+        self.assertEqual([], list(retained.iterdir()))
+        retained.rmdir()
+        self.assertFalse(self.plugins.exists())
+
+    def test_managed_lock_preserves_foreign_canonical_lock(self):
+        self.plugins.parent.mkdir()
+        record = host.prepare_managed(host.HostInstallRequest(self.payload, self.plugins), self.managed_slot())
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        retained.mkdir(mode=0o700)
+        record = host.bind_managed_lock(record, host.Identity.observe(retained))
+        foreign = retained / 'host-install.lock'
+        foreign.write_bytes(b'foreign lock contents')
+        with self.assertRaises(host.Rejected):
+            with host.managed_lock(record):
+                self.fail('foreign lock must reject')
+        self.assertEqual(b'foreign lock contents', foreign.read_bytes())
+
+    def test_managed_reservation_blocks_ordinary_owner_after_lease_exit(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        slot = self.managed_slot()
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), slot)
+        with host.managed_lock(record):
+            pass
+        canonical = self.plugins.parent / '.kast-plugin-recovery/host-install.lock'
+        self.assertEqual(2, canonical.stat().st_nlink)
+        with self.assertRaises(host.Rejected) as rejected:
+            host.install(host.HostInstallRequest(self.make_payload('4.0.0'), self.plugins))
+        self.assertEqual(host.Failure.RECOVERY_REQUIRED, rejected.exception.failure)
+        with self.assertRaises(host.Rejected):
+            host.remove_host_files(self.plugins)
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+        host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        host.finish_managed_lock(record, host.ManagedHostTerminalPhase.RESTORED)
+        host.finish_managed_lock(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assertEqual(1, canonical.stat().st_nlink)
+        self.assertEqual([], list(slot.iterdir()))
+        host.install(host.HostInstallRequest(self.make_payload('4.0.0'), self.plugins))
+
+    def test_ordinary_owner_lock_excludes_managed_owner(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        canonical = self.plugins.parent / '.kast-plugin-recovery/host-install.lock'
+        with canonical.open('r+') as lock:
+            host.fcntl.flock(lock, host.fcntl.LOCK_EX | host.fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError):
+                with host.managed_lock(record):
+                    self.fail('ordinary owner holds the lock')
+
+    def test_managed_activation_keeps_created_canonical_lock_and_releases_reservation(self):
+        self.plugins.parent.mkdir()
+        slot = self.managed_slot()
+        record = host.prepare_managed(host.HostInstallRequest(self.payload, self.plugins), slot)
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        retained.mkdir(mode=0o700)
+        record = host.bind_managed_lock(record, host.Identity.observe(retained))
+        with host.managed_lock(record):
+            host.admit_managed_prepared(record)
+            host.commit_managed(record)
+            host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        host.finish_managed_lock(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        with host.managed_lock(record):
+            self.assertEqual(2, (retained / 'host-install.lock').stat().st_nlink)
+        host.finish_managed_lock(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        canonical = retained / 'host-install.lock'
+        self.assertEqual(record.lock.identity, host.owned_file(canonical, private=True))
+        self.assertEqual(1, canonical.stat().st_nlink)
+        self.assertEqual([], list(slot.iterdir()))
+
+    def test_managed_prepared_admission_rejects_changed_prior_before_control(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        with host.managed_lock(record):
+            changed = self.plugins / 'kast-ide-hosted/lib/host.jar'
+            changed.write_bytes(b'foreign contents')
+            with self.assertRaises(host.Rejected):
+                host.admit_managed_prepared(record)
+            self.assertEqual(b'foreign contents', changed.read_bytes())
+
+    def test_managed_prepare_invalid_payload_leaves_no_unrecorded_artifacts(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        slot = self.managed_slot()
+        bad = replace(self.make_payload('3.0.0'), sha256='0' * 64)
+        with self.assertRaises(host.Rejected):
+            host.prepare_managed(host.HostInstallRequest(bad, self.plugins), slot)
+        self.assertEqual([], list(slot.iterdir()))
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+
+    def test_managed_prepare_record_failure_reclaims_only_created_staging(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        slot = self.managed_slot()
+        request = host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins)
+        with patch.object(host, 'ManagedHostReplacement', side_effect=OSError('record unavailable')):
+            with self.assertRaises(OSError):
+                host.prepare_managed(request, slot)
+        self.assertEqual([], list(slot.iterdir()))
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+
+    def test_managed_prepare_receipt_write_failure_leaves_no_partial_preimage(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        slot = self.managed_slot()
+        request = host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins)
+        with patch.object(host.os, 'fsync', side_effect=OSError('receipt flush unavailable')):
+            with self.assertRaises(OSError):
+                host.prepare_managed(request, slot)
+        self.assertEqual([], list(slot.iterdir()))
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+
+    def test_managed_prepare_publication_failure_reclaims_exact_complete_artifacts(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        slot = self.managed_slot()
+        request = host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins)
+        with patch.object(host, 'sync', side_effect=OSError('journal sync unavailable')):
+            with self.assertRaises(OSError):
+                host.prepare_managed(request, slot)
+        self.assertEqual([], list(slot.iterdir()))
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+
+    def test_managed_prepare_preserves_ambiguous_changed_publication(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        slot = self.managed_slot()
+        request = host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins)
+        def change_receipt_then_fail(_):
+            (slot / 'host-receipt').write_bytes(b'foreign evidence')
+            raise OSError('journal sync unavailable')
+        with patch.object(host, 'sync', side_effect=change_receipt_then_fail):
+            with self.assertRaises(host.Rejected) as rejected:
+                host.prepare_managed(request, slot)
+        self.assertEqual(host.Failure.RECOVERY_REQUIRED, rejected.exception.failure)
+        self.assertEqual(b'foreign evidence', (slot / 'host-receipt').read_bytes())
+        self.assertTrue((slot / 'host-candidate').is_dir())
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+
+    def test_managed_seal_repeats_only_after_selected_host_file_proof(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        with self.assertRaises(host.Rejected):
+            host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assertTrue(Path(record.backup).exists())
+        self.assertTrue(Path(record.previous.receipt).exists())
+        host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertEqual([], list(Path(record.candidate).parent.iterdir()))
+        self.assert_control_unchanged()
+
+    def assert_partial_managed_host_cleanup_keeps_retry(self, terminal, interruption):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        with host.managed_lock(record):
+            host.commit_managed(record)
+            if terminal is host.ManagedHostTerminalPhase.RESTORED:
+                host.rollback_managed(record)
+        active = host.inventory(self.plugins / 'kast-ide-hosted')
+        remove = shutil.rmtree
+        calls = []
+        def interrupted(path, *arguments, **options):
+            target = Path(path)
+            files = [entry for entry in target.rglob('*') if entry.is_file()]
+            if files:
+                calls.append(target)
+                files[0].unlink()
+                raise interruption('controlled partial Host deletion')
+            return remove(path, *arguments, **options)
+        interrupted.avoids_symlink_attacks = remove.avoids_symlink_attacks
+        output = io.StringIO()
+        with patch.object(shutil, 'rmtree', interrupted), redirect_stderr(output):
+            try:
+                host.seal_managed(record, terminal)
+            except (OSError, SystemExit):
+                pass
+        self.assertEqual(1, len(calls))
+        self.assertEqual(Path(record.candidate).parent.parent, calls[0].parent)
+        self.assertFalse(Path(record.backup).exists())
+        self.assertFalse(Path(record.candidate).exists())
+        if interruption is OSError:
+            self.assertEqual({'event': 'kast_managed_host_cleanup', 'outcome': 'FAILED',
+                              'reason': host.Failure.FILESYSTEM_REJECTED.value}, json.loads(output.getvalue()))
+        else:
+            self.assertEqual('', output.getvalue())
+        host.finish_managed_lock(record, terminal)
+        self.assertFalse((Path(record.candidate).parent / 'host-lock').exists())
+        self.assertEqual(active, host.inventory(self.plugins / 'kast-ide-hosted'))
+        self.assert_control_unchanged()
+
+    def test_partial_prior_host_deletion_keeps_terminal_retry_and_lock_release(self):
+        self.assert_partial_managed_host_cleanup_keeps_retry(host.ManagedHostTerminalPhase.ACTIVATION_PROVEN, OSError)
+
+    def test_interrupted_candidate_deletion_keeps_terminal_retry_and_lock_release(self):
+        self.assert_partial_managed_host_cleanup_keeps_retry(host.ManagedHostTerminalPhase.RESTORED, SystemExit)
+
+    def test_terminal_host_cleanup_preserves_foreign_completed_storage(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        identity = record.previous.identity
+        destination = Path(record.backup).parent.parent / f'completed-host-prior-{identity.device}-{identity.inode}-{identity.owner}'
+        destination.mkdir()
+        (destination / 'foreign').write_text('preserve')
+        before = host.inventory(Path(record.backup))
+        with self.assertRaises(host.Rejected) as rejected:
+            host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)
+        self.assertEqual('preserve', (destination / 'foreign').read_text())
+        self.assertEqual(before, host.inventory(Path(record.backup)))
+
+    def test_host_retirement_native_move_never_replaces_a_racing_empty_directory(self):
+        import host_directory_exchange as exchange
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        move = exchange.move_directory_noreplace
+        targets = []
+        def collision(source, destination):
+            destination.mkdir()
+            targets.append((destination, destination.stat().st_ino))
+            return move(source, destination)
+        before = host.inventory(Path(record.backup))
+        with patch.object(exchange, 'move_directory_noreplace', collision):
+            with self.assertRaises(host.Rejected) as rejected:
+                host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertEqual(host.Failure.FILESYSTEM_REJECTED, rejected.exception.failure)
+        self.assertEqual(1, len(targets))
+        self.assertEqual(targets[0][1], targets[0][0].stat().st_ino)
+        self.assertEqual([], list(targets[0][0].iterdir()))
+        self.assertEqual(before, host.inventory(Path(record.backup)))
+
+    def test_managed_seal_resumes_after_previous_bytes_were_released(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        preimage = Path(record.previous.receipt)
+        original = Path.unlink
+        def fail_preimage_unlink(path, *arguments, **keywords):
+            if path == preimage:
+                raise OSError('terminal cleanup interrupted')
+            return original(path, *arguments, **keywords)
+        with patch.object(Path, 'unlink', fail_preimage_unlink), self.assertRaises(OSError):
+            host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertFalse(Path(record.backup).exists())
+        self.assertTrue(preimage.exists())
+        host.seal_managed(record, host.ManagedHostTerminalPhase.ACTIVATION_PROVEN)
+        self.assertFalse(preimage.exists())
+        self.assert_control_unchanged()
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS atomic Host exchange')
+    def test_managed_hot_reload_swaps_and_restores_complete_owned_host(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        previous_inode = (self.plugins / 'kast-ide-hosted').stat().st_ino
+        receipt = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        previous_receipt = receipt.read_bytes()
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed_reload(record)
+        self.assertEqual(previous_inode, Path(record.backup).stat().st_ino)
+        self.assertEqual(record.candidateIdentity.inode, (self.plugins / 'kast-ide-hosted').stat().st_ino)
+        host.rollback_managed_reload(record)
+        self.assertEqual(previous_inode, (self.plugins / 'kast-ide-hosted').stat().st_ino)
+        self.assertEqual(previous_receipt, receipt.read_bytes())
+        host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assert_control_unchanged()
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS atomic Host exchange')
+    def test_managed_hot_reload_recovers_after_swap_before_prior_move(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        original = Path.rename
+        def fail_prior_move(path, destination):
+            if path == Path(record.candidate):
+                raise OSError('failure after atomic swap')
+            return original(path, destination)
+        with patch.object(Path, 'rename', fail_prior_move), self.assertRaises(OSError):
+            host.commit_managed_reload(record)
+        self.assertEqual(record.previous.identity.inode, Path(record.candidate).stat().st_ino)
+        host.rollback_managed_reload(record)
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+        host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assert_control_unchanged()
+
+    def managed_slot(self):
+        slot = self.root / 'managed/recovery/replacement'
+        slot.mkdir(parents=True)
+        return slot
+
+    def test_managed_replacement_keeps_prior_bytes_until_proven_rollback(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = (self.plugins / 'kast-ide-hosted').stat().st_ino
+        receipt_path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        receipt = receipt_path.read_bytes()
+        replacement = self.make_payload('3.0.0')
+        record = host.prepare_managed(host.HostInstallRequest(replacement, self.plugins), self.managed_slot())
+        self.assertEqual(before, (self.plugins / 'kast-ide-hosted').stat().st_ino)
+        self.assertEqual(receipt, receipt_path.read_bytes())
+        self.assertEqual(record, host.decode_managed(asdict(record)))
+        host.commit_managed(record)
+        self.assertTrue(Path(record.backup).is_dir())
+        self.assertNotEqual(before, (self.plugins / 'kast-ide-hosted').stat().st_ino)
+        host.rollback_managed(record)
+        self.assertEqual(before, (self.plugins / 'kast-ide-hosted').stat().st_ino)
+        self.assertEqual(receipt, receipt_path.read_bytes())
+        host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assertEqual([], list(Path(record.candidate).parent.iterdir()))
+        self.assert_control_unchanged()
+
+    def test_managed_first_install_restores_admitted_absence(self):
+        self.plugins.parent.mkdir()
+        record = host.prepare_managed(host.HostInstallRequest(self.payload, self.plugins), self.managed_slot())
+        self.assertFalse(self.plugins.exists())
+        host.commit_managed(record)
+        self.assertTrue((self.plugins / 'kast-ide-hosted').is_dir())
+        host.rollback_managed(record)
+        self.assertFalse(self.plugins.exists())
+        self.assertFalse((self.plugins.parent / '.kast-plugin-recovery').exists())
+        host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assert_control_unchanged()
+
+    def test_managed_candidate_tampering_rejects_before_active_host_changes(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        prior = host.inventory(self.plugins / 'kast-ide-hosted')
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        (Path(record.candidate) / 'lib/host.jar').write_bytes(b'foreign bytes')
+        with self.assertRaises(host.Rejected):
+            host.commit_managed(record)
+        self.assertEqual(prior, host.inventory(self.plugins / 'kast-ide-hosted'))
+        self.assertFalse(Path(record.backup).exists())
+
+    def test_managed_failure_after_prior_move_can_restore_exact_previous_host(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        original = Path.rename
+        def fail_candidate(path, destination):
+            if path == Path(record.candidate):
+                raise OSError('candidate exchange failed')
+            return original(path, destination)
+        with patch.object(Path, 'rename', fail_candidate), self.assertRaises(OSError):
+            host.commit_managed(record)
+        self.assertTrue(Path(record.backup).exists())
+        host.rollback_managed(record)
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+        host.seal_managed(record, host.ManagedHostTerminalPhase.RESTORED)
+        self.assert_control_unchanged()
+
+    def test_managed_rollback_preserves_a_foreign_changed_active_receipt(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        record = host.prepare_managed(host.HostInstallRequest(self.make_payload('3.0.0'), self.plugins), self.managed_slot())
+        host.commit_managed(record)
+        receipt = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        foreign = b'foreign receipt must survive'
+        receipt.write_bytes(foreign)
+        before = host.inventory(self.plugins / 'kast-ide-hosted')
+        with self.assertRaises(host.Rejected):
+            host.rollback_managed(record)
+        self.assertEqual(foreign, receipt.read_bytes())
+        self.assertEqual(before, host.inventory(self.plugins / 'kast-ide-hosted'))
+        self.assertTrue(Path(record.backup).exists())
+
     def test_completed_host_retains_exact_active_inventory_for_owned_removal(self):
         host.install(host.HostInstallRequest(self.payload, self.plugins))
         path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'

@@ -8,11 +8,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 
+def readability_commands(root: Path) -> tuple[tuple[str, ...], ...]:
+    # This optional tooling is introduced by the reader-journey change. A surviving
+    # runner OR test keeps the checks selected, including on partial deletion.
+    directory = root / "config/vale/readability"
+    if not any((directory / name).exists() for name in ("audit.py", "test_audit.py")):
+        return ()
+    uv = ("uv", "run", "--locked", "--project", "docs/tooling")
+    return (
+        (*uv, "pytest", "-c", "config/vale/readability/pytest.ini", "config/vale/readability"),
+        (*uv, "pyright", "--project", "config/vale/readability/pyrightconfig.json"),
+        (*uv, "ruff", "check", "--config", "docs/tooling/pyproject.toml",
+         "config/vale/readability/audit.py", "config/vale/readability/test_audit.py"),
+        (*uv, "ruff", "format", "--check", "--config", "docs/tooling/pyproject.toml",
+         "config/vale/readability/audit.py", "config/vale/readability/test_audit.py"),
+    )
+
+
 def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
     return (
         ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/markdown"),
         ("npm", "run", "check", "--prefix", "docs/tooling/markdown"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"),
+        ("python3", "packaging/test-installer-entrypoint.py"),
         ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/value-journey"),
         ("npm", "run", "build", "--prefix", "docs/tooling/value-journey"),
         ("git", "diff", "--exit-code", "--", "docs/public/snippets/value-journey.jsx",
@@ -59,7 +77,7 @@ def main() -> None:
     empty_config = Path(environment["NPM_CONFIG_GLOBALCONFIG"])
     empty_config.parent.mkdir(parents=True, exist_ok=True)
     empty_config.write_text("")
-    for command in commands(guides):
+    for command in (*commands(guides), *readability_commands(ROOT)):
         subprocess.run(command, cwd=ROOT, env=environment, check=True)
 
 

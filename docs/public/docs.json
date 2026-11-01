@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "See where your Kotlin changes lead. Give your agent connections through functions, fields, and callbacks.",
+  "description": "Connect Kast to your coding agent. Find callers, trace supported value paths, and inspect problems in your Kotlin project.",
   "colors": {
     "primary": "#3154C7",
     "light": "#8FA7FF",
@@ -32,40 +32,12 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Discover Kast",
+            "group": "Get started",
             "pages": [
               "index",
-              "explanation/value-journey",
-              "search"
-            ]
-          },
-          {
-            "group": "Try it on your project",
-            "pages": [
               "start",
-              "agent-harnesses",
-              "tutorials/first-query"
-            ]
-          },
-          {
-            "group": "Get unstuck",
-            "pages": [
+              "search",
               "troubleshooting"
-            ]
-          },
-          {
-            "group": "Task details",
-            "pages": [
-              "how-to",
-              "reference/search",
-              "how-to/inspect-diagnostics",
-              "how-to/read-retained-evidence",
-              "reference/query-pipelines",
-              "reference/change",
-              "how-to/complete-engineering-task",
-              "reference/troubleshooting",
-              "reference/management",
-              "tutorials"
             ]
           }
         ]
@@ -77,6 +49,7 @@
             "group": "Understand Kast",
             "pages": [
               "explanation",
+              "explanation/value-journey",
               "reference/internals/architecture",
               "explanation/query-lifecycle",
               "architecture/query-reuse",
@@ -105,7 +78,24 @@
             "group": "Interface reference",
             "pages": [
               "reference",
+              "reference/cli",
               "glossary"
+            ]
+          },
+          {
+            "group": "Task details",
+            "pages": [
+              "how-to",
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "reference/change",
+              "how-to/complete-engineering-task",
+              "reference/troubleshooting",
+              "reference/management",
+              "tutorials",
+              "tutorials/first-query"
             ]
           },
           {
@@ -126,7 +116,8 @@
               "reference/rpc-catalog",
               "reference/compatibility",
               "reference/installation",
-              "reference/integrations"
+              "reference/integrations",
+              "agent-harnesses"
             ]
           },
           {
@@ -197,7 +188,7 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Install Kast",
+      "label": "Set up Kast",
       "href": "/start"
     }
   },
@@ -207,56 +198,35 @@
     },
     "links": [
       {
-        "header": "Kast",
-        "items": [
-          {
-            "label": "Why Kast?",
-            "href": "/"
-          },
-          {
-            "label": "Follow a value",
-            "href": "/explanation/value-journey"
-          },
-          {
-            "label": "What you can do",
-            "href": "/search"
-          }
-        ]
-      },
-      {
         "header": "Get started",
         "items": [
           {
-            "label": "Install",
+            "label": "Overview",
+            "href": "/"
+          },
+          {
+            "label": "Set up",
             "href": "/start"
           },
           {
-            "label": "Connect your agent",
-            "href": "/agent-harnesses"
+            "label": "Examples",
+            "href": "/search"
           },
           {
-            "label": "Troubleshoot",
+            "label": "Help",
             "href": "/troubleshooting"
           }
         ]
       },
       {
-        "header": "Go deeper",
+        "header": "Details",
         "items": [
-          {
-            "label": "Example source and evidence",
-            "href": "/explanation/value-journey-evidence"
-          },
           {
             "label": "How Kast works",
             "href": "/explanation"
           },
           {
-            "label": "What an answer proves",
-            "href": "/reference/evidence-boundaries"
-          },
-          {
-            "label": "Technical reference",
+            "label": "Reference",
             "href": "/reference"
           },
           {

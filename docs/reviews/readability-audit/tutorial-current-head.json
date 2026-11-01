@@ -1,0 +1,733 @@
+{
+  "sourceRevision": "dac99b39a0b7b497d5c0e0d5c2a604f5817e5397",
+  "installedVersion": "0.20261028.203727",
+  "kind": "FRESH_INSTALLED_MCP_TUTORIAL",
+  "fixturePath": "protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+  "fixture": {
+    "source": "package tutorial\n\nfun kastTutorialMessage(): String {\n    return \"Ready\"\n}\n\nfun kastTutorialCaller(): String {\n    return kastTutorialMessage()\n}\n\nfun kastTutorialUnrelated(): String {\n    return \"Ready\"\n}\n",
+    "sha256": "d94d48c04b4eeab5118a86ce87cdbb7126d3e31461dbd9a4c05229b823dce1ef",
+    "removedAfterQueries": true,
+    "removedAfterCheck": true
+  },
+  "limits": [
+    "One Kotlin/JVM main source set in the documentation worktree.",
+    "Fresh standalone MCP process; the current chat retains a closed pre-install transport.",
+    "Historical issued references are not reusable examples."
+  ],
+  "discovery": {
+    "request": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "kastTutorialMessage",
+          "declarationKinds": [
+            "FUNCTION"
+          ],
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "protocol/contract/src/main/kotlin/tutorial",
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      },
+      "verbose": true
+    },
+    "receipt": {
+      "command": [
+        "/Users/amichne/.local/share/kast/installation/bin/kast-mcp-complete"
+      ],
+      "cwd": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+      "stdin": "{\"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"query_symbols\", \"arguments\": {\"request\": {\"type\": \"RUN\", \"source\": {\"type\": \"SEARCH_DECLARATIONS\", \"declarationName\": \"kastTutorialMessage\", \"declarationKinds\": [\"FUNCTION\"], \"scope\": {\"type\": \"DIRECTORY\", \"relativeDirectoryPath\": \"protocol/contract/src/main/kotlin/tutorial\", \"sourceSetNames\": [\"main\"]}}, \"terminalStep\": {\"type\": \"EMIT\", \"output\": {\"type\": \"SYMBOLS\", \"fields\": [\"NAME\", \"LOCATION\", \"SIGNATURE\"]}}, \"executionBudget\": {\"maxResults\": 10}}, \"verbose\": true}}, \"jsonrpc\": \"2.0\"}\n",
+      "stdout": "{\"id\":2,\"result\":{\"content\":[{\"text\":\"{\\\"original_evidence_summary\\\":{\\\"failure_count\\\":0,\\\"omission_count\\\":0,\\\"evidence_count\\\":1},\\\"invocation\\\":{\\\"accumulated_row_count\\\":1,\\\"preview\\\":{\\\"type\\\":\\\"INLINE\\\",\\\"row_count\\\":1,\\\"encoded_bytes\\\":525},\\\"stop\\\":{\\\"type\\\":\\\"COMPLETED\\\"}},\\\"evidence_window\\\":{\\\"type\\\":\\\"FINAL\\\",\\\"start\\\":0,\\\"end\\\":1,\\\"total\\\":1},\\\"question\\\":{\\\"from\\\":{\\\"type\\\":\\\"symbols\\\",\\\"match\\\":{\\\"type\\\":\\\"name\\\",\\\"text\\\":\\\"kastTutorialMessage\\\",\\\"matching\\\":\\\"exact-name\\\"},\\\"scope\\\":{\\\"sourceSets\\\":[\\\"main\\\"],\\\"directory\\\":{\\\"path\\\":\\\"protocol/contract/src/main/kotlin/tutorial\\\",\\\"containment\\\":\\\"descendants\\\"},\\\"packageName\\\":null},\\\"declarationKinds\\\":[\\\"function\\\"]},\\\"steps\\\":[],\\\"output\\\":{\\\"type\\\":\\\"symbols\\\",\\\"fields\\\":[\\\"name\\\",\\\"location\\\",\\\"signature\\\"]},\\\"completion\\\":{\\\"type\\\":\\\"COMPLETE_ONLY\\\",\\\"model\\\":\\\"COMPILER_RESOLVED_STATIC_V1\\\"}},\\\"impact_accounting\\\":{\\\"type\\\":\\\"NOT_APPLICABLE\\\"},\\\"operation\\\":\\\"query.run\\\",\\\"status\\\":\\\"complete\\\",\\\"items\\\":[{\\\"type\\\":\\\"exact-symbol\\\",\\\"ref\\\":\\\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\\\",\\\"kind\\\":\\\"function\\\",\\\"name\\\":\\\"kastTutorialMessage\\\",\\\"location\\\":{\\\"file\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\\\",\\\"range\\\":{\\\"startInclusive\\\":18,\\\"endExclusive\\\":74}},\\\"signature\\\":{\\\"type\\\":\\\"function\\\",\\\"qualifiedIdentity\\\":\\\"tutorial.kastTutorialMessage\\\",\\\"receiver\\\":{\\\"type\\\":\\\"absent\\\"},\\\"contextReceivers\\\":[],\\\"valueParameters\\\":[],\\\"typeParameterCount\\\":0},\\\"connections\\\":[]}],\\\"failures\\\":[],\\\"omissions\\\":[],\\\"walk_observations\\\":[],\\\"reference_observations\\\":[],\\\"discovery_observations\\\":[{\\\"universe\\\":{\\\"declaration_language\\\":\\\"kotlin\\\",\\\"match\\\":{\\\"type\\\":\\\"name\\\",\\\"text\\\":\\\"kastTutorialMessage\\\",\\\"matching\\\":\\\"exact-name\\\"},\\\"declaration_kinds\\\":[\\\"function\\\"],\\\"source_policy\\\":\\\"production-and-test\\\",\\\"generated_sources\\\":\\\"exclude\\\",\\\"libraries\\\":\\\"exclude\\\",\\\"source_sets\\\":{\\\"kind\\\":\\\"exact\\\",\\\"names\\\":[\\\"main\\\"]},\\\"directory\\\":{\\\"path\\\":\\\"protocol/contract/src/main/kotlin/tutorial\\\",\\\"containment\\\":\\\"descendants\\\"},\\\"package_name\\\":null},\\\"ordering\\\":\\\"named-candidate-v1\\\",\\\"progress\\\":{\\\"kind\\\":\\\"exhausted\\\"},\\\"observed_stops\\\":[],\\\"examined_work_units\\\":465,\\\"inventory_files\\\":0,\\\"reacquired_files\\\":0,\\\"examined_leaves\\\":0,\\\"inventory_nanoseconds\\\":0,\\\"declaration_scan_nanoseconds\\\":0,\\\"projection_nanoseconds\\\":3157459}],\\\"relation_observations\\\":[],\\\"retention\\\":{\\\"kind\\\":\\\"not_requested\\\"},\\\"coverage\\\":{\\\"exhaustive\\\":true},\\\"page_progress\\\":{\\\"rows\\\":1,\\\"walk_evidence\\\":0,\\\"reference_evidence\\\":0,\\\"relation_evidence\\\":0,\\\"scope_exclusions\\\":0,\\\"callback_observations\\\":0,\\\"callable_observations\\\":0,\\\"excluded_callbacks\\\":0,\\\"omissions\\\":0,\\\"failures\\\":0},\\\"execution_budget\\\":{\\\"mode\\\":\\\"RUNNER_CONTROLLED\\\",\\\"max_results\\\":{\\\"selection\\\":\\\"caller\\\",\\\"requested\\\":10,\\\"configuredDefault\\\":128,\\\"operatorCeiling\\\":2147483646,\\\"effective\\\":10,\\\"clamping\\\":[]},\\\"max_returned_bytes\\\":{\\\"selection\\\":\\\"configured_default\\\",\\\"requested\\\":null,\\\"configuredDefault\\\":49152,\\\"operatorCeiling\\\":2147483646,\\\"effective\\\":49152,\\\"clamping\\\":[]}},\\\"live\\\":{\\\"root\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast\\\",\\\"host\\\":\\\"e3251737-280a-4189-9669-5622e4c445d0\\\",\\\"epoch\\\":1,\\\"contentView\\\":\\\"SAVED_PSI_COMMITTED\\\",\\\"version\\\":1}}\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"original_evidence_summary\":{\"failure_count\":0,\"omission_count\":0,\"evidence_count\":1},\"invocation\":{\"accumulated_row_count\":1,\"preview\":{\"type\":\"INLINE\",\"row_count\":1,\"encoded_bytes\":525},\"stop\":{\"type\":\"COMPLETED\"}},\"evidence_window\":{\"type\":\"FINAL\",\"start\":0,\"end\":1,\"total\":1},\"question\":{\"from\":{\"type\":\"symbols\",\"match\":{\"type\":\"name\",\"text\":\"kastTutorialMessage\",\"matching\":\"exact-name\"},\"scope\":{\"sourceSets\":[\"main\"],\"directory\":{\"path\":\"protocol/contract/src/main/kotlin/tutorial\",\"containment\":\"descendants\"},\"packageName\":null},\"declarationKinds\":[\"function\"]},\"steps\":[],\"output\":{\"type\":\"symbols\",\"fields\":[\"name\",\"location\",\"signature\"]},\"completion\":{\"type\":\"COMPLETE_ONLY\",\"model\":\"COMPILER_RESOLVED_STATIC_V1\"}},\"impact_accounting\":{\"type\":\"NOT_APPLICABLE\"},\"operation\":\"query.run\",\"status\":\"complete\",\"items\":[{\"type\":\"exact-symbol\",\"ref\":\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\",\"kind\":\"function\",\"name\":\"kastTutorialMessage\",\"location\":{\"file\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\",\"range\":{\"startInclusive\":18,\"endExclusive\":74}},\"signature\":{\"type\":\"function\",\"qualifiedIdentity\":\"tutorial.kastTutorialMessage\",\"receiver\":{\"type\":\"absent\"},\"contextReceivers\":[],\"valueParameters\":[],\"typeParameterCount\":0},\"connections\":[]}],\"failures\":[],\"omissions\":[],\"walk_observations\":[],\"reference_observations\":[],\"discovery_observations\":[{\"universe\":{\"declaration_language\":\"kotlin\",\"match\":{\"type\":\"name\",\"text\":\"kastTutorialMessage\",\"matching\":\"exact-name\"},\"declaration_kinds\":[\"function\"],\"source_policy\":\"production-and-test\",\"generated_sources\":\"exclude\",\"libraries\":\"exclude\",\"source_sets\":{\"kind\":\"exact\",\"names\":[\"main\"]},\"directory\":{\"path\":\"protocol/contract/src/main/kotlin/tutorial\",\"containment\":\"descendants\"},\"package_name\":null},\"ordering\":\"named-candidate-v1\",\"progress\":{\"kind\":\"exhausted\"},\"observed_stops\":[],\"examined_work_units\":465,\"inventory_files\":0,\"reacquired_files\":0,\"examined_leaves\":0,\"inventory_nanoseconds\":0,\"declaration_scan_nanoseconds\":0,\"projection_nanoseconds\":3157459}],\"relation_observations\":[],\"retention\":{\"kind\":\"not_requested\"},\"coverage\":{\"exhaustive\":true},\"page_progress\":{\"rows\":1,\"walk_evidence\":0,\"reference_evidence\":0,\"relation_evidence\":0,\"scope_exclusions\":0,\"callback_observations\":0,\"callable_observations\":0,\"excluded_callbacks\":0,\"omissions\":0,\"failures\":0},\"execution_budget\":{\"mode\":\"RUNNER_CONTROLLED\",\"max_results\":{\"selection\":\"caller\",\"requested\":10,\"configuredDefault\":128,\"operatorCeiling\":2147483646,\"effective\":10,\"clamping\":[]},\"max_returned_bytes\":{\"selection\":\"configured_default\",\"requested\":null,\"configuredDefault\":49152,\"operatorCeiling\":2147483646,\"effective\":49152,\"clamping\":[]}},\"live\":{\"root\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast\",\"host\":\"e3251737-280a-4189-9669-5622e4c445d0\",\"epoch\":1,\"contentView\":\"SAVED_PSI_COMMITTED\",\"version\":1}},\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"kast\",\"version\":\"1\"}}},\"jsonrpc\":\"2.0\"}\n",
+      "stderr": "{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"ADMISSION\",\"outcome\":\"STARTED\"}\n{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"EXECUTION\",\"outcome\":\"STARTED\"}\n{\"requestId\":\"9dac1b2d-9ca7-48e3-9419-f57f3b912269\",\"outcome\":{\"type\":\"pending\",\"stage\":\"IMPORTING\"},\"event\":\"workspace-preparation\",\"preparation\":{\"stage\":\"IMPORTING\",\"elapsedMillis\":879,\"limitMillis\":1020000,\"remainingMillis\":1019121,\"limitingOwner\":\"PREPARATION_OWNER\"}}\n{\"requestId\":\"9dac1b2d-9ca7-48e3-9419-f57f3b912269\",\"outcome\":{\"type\":\"pending\",\"stage\":\"ADMISSION\"},\"event\":\"workspace-preparation\",\"preparation\":{\"stage\":\"ADMISSION\",\"elapsedMillis\":23177,\"limitMillis\":1020000,\"remainingMillis\":996823,\"limitingOwner\":\"PREPARATION_OWNER\"}}\n{\"requestId\":\"9dac1b2d-9ca7-48e3-9419-f57f3b912269\",\"outcome\":{\"type\":\"completed\"},\"event\":\"workspace-preparation\",\"preparation\":{\"stage\":\"ADMISSION\",\"elapsedMillis\":40498,\"limitMillis\":1020000,\"remainingMillis\":979502,\"limitingOwner\":\"PREPARATION_OWNER\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_FRAME\",\"announcedBytes\":1019,\"maximumBytes\":2147483646,\"outcome\":\"ADMITTED\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_BODY\",\"announcedBytes\":1019,\"drainedBytes\":1019,\"outcome\":\"DRAINED\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_DECODED\",\"outcome\":\"RECEIVED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_FRAME\",\"announcedBytes\":2904,\"maximumBytes\":2147483646,\"outcome\":\"ADMITTED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_BODY\",\"announcedBytes\":2904,\"drainedBytes\":2904,\"outcome\":\"DRAINED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_DECODED\",\"outcome\":\"SEMANTIC\"}}\n16:54:13.475 [kast-mcp-runner] WARN  c.n.s.keyword.UnknownKeywordFactory -- Unknown keyword discriminator - you should define your own Meta Schema. If the keyword is irrelevant for validation, just use a NonValidationKeyword or if it should generate annotations AnnotationKeyword\n{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"EXECUTION\",\"outcome\":\"COMPLETED\",\"resultVariant\":\"COMPLETE\"}\n",
+      "elapsedNanos": 41689930042,
+      "outcome": "completed",
+      "exitCode": 0
+    },
+    "result": {
+      "original_evidence_summary": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "invocation": {
+        "accumulated_row_count": 1,
+        "preview": {
+          "type": "INLINE",
+          "row_count": 1,
+          "encoded_bytes": 525
+        },
+        "stop": {
+          "type": "COMPLETED"
+        }
+      },
+      "evidence_window": {
+        "type": "FINAL",
+        "start": 0,
+        "end": 1,
+        "total": 1
+      },
+      "question": {
+        "from": {
+          "type": "symbols",
+          "match": {
+            "type": "name",
+            "text": "kastTutorialMessage",
+            "matching": "exact-name"
+          },
+          "scope": {
+            "sourceSets": [
+              "main"
+            ],
+            "directory": {
+              "path": "protocol/contract/src/main/kotlin/tutorial",
+              "containment": "descendants"
+            },
+            "packageName": null
+          },
+          "declarationKinds": [
+            "function"
+          ]
+        },
+        "steps": [],
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "location",
+            "signature"
+          ]
+        },
+        "completion": {
+          "type": "COMPLETE_ONLY",
+          "model": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "impact_accounting": {
+        "type": "NOT_APPLICABLE"
+      },
+      "operation": "query.run",
+      "status": "complete",
+      "items": [
+        {
+          "type": "exact-symbol",
+          "ref": "exact:v5:rTtzIsHzBJxY7ncpCaKWQw",
+          "kind": "function",
+          "name": "kastTutorialMessage",
+          "location": {
+            "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+            "range": {
+              "startInclusive": 18,
+              "endExclusive": 74
+            }
+          },
+          "signature": {
+            "type": "function",
+            "qualifiedIdentity": "tutorial.kastTutorialMessage",
+            "receiver": {
+              "type": "absent"
+            },
+            "contextReceivers": [],
+            "valueParameters": [],
+            "typeParameterCount": 0
+          },
+          "connections": []
+        }
+      ],
+      "failures": [],
+      "omissions": [],
+      "walk_observations": [],
+      "reference_observations": [],
+      "discovery_observations": [
+        {
+          "universe": {
+            "declaration_language": "kotlin",
+            "match": {
+              "type": "name",
+              "text": "kastTutorialMessage",
+              "matching": "exact-name"
+            },
+            "declaration_kinds": [
+              "function"
+            ],
+            "source_policy": "production-and-test",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {
+              "kind": "exact",
+              "names": [
+                "main"
+              ]
+            },
+            "directory": {
+              "path": "protocol/contract/src/main/kotlin/tutorial",
+              "containment": "descendants"
+            },
+            "package_name": null
+          },
+          "ordering": "named-candidate-v1",
+          "progress": {
+            "kind": "exhausted"
+          },
+          "observed_stops": [],
+          "examined_work_units": 465,
+          "inventory_files": 0,
+          "reacquired_files": 0,
+          "examined_leaves": 0,
+          "inventory_nanoseconds": 0,
+          "declaration_scan_nanoseconds": 0,
+          "projection_nanoseconds": 3157459
+        }
+      ],
+      "relation_observations": [],
+      "retention": {
+        "kind": "not_requested"
+      },
+      "coverage": {
+        "exhaustive": true
+      },
+      "page_progress": {
+        "rows": 1,
+        "walk_evidence": 0,
+        "reference_evidence": 0,
+        "relation_evidence": 0,
+        "scope_exclusions": 0,
+        "callback_observations": 0,
+        "callable_observations": 0,
+        "excluded_callbacks": 0,
+        "omissions": 0,
+        "failures": 0
+      },
+      "execution_budget": {
+        "mode": "RUNNER_CONTROLLED",
+        "max_results": {
+          "selection": "caller",
+          "requested": 10,
+          "configuredDefault": 128,
+          "operatorCeiling": 2147483646,
+          "effective": 10,
+          "clamping": []
+        },
+        "max_returned_bytes": {
+          "selection": "configured_default",
+          "requested": null,
+          "configuredDefault": 49152,
+          "operatorCeiling": 2147483646,
+          "effective": 49152,
+          "clamping": []
+        }
+      },
+      "live": {
+        "root": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+        "host": "e3251737-280a-4189-9669-5622e4c445d0",
+        "epoch": 1,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "version": 1
+      }
+    }
+  },
+  "callers": {
+    "request": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "exact:v5:rTtzIsHzBJxY7ncpCaKWQw"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "CALLERS"
+          }
+        ],
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      },
+      "verbose": true
+    },
+    "receipt": {
+      "command": [
+        "/Users/amichne/.local/share/kast/installation/bin/kast-mcp-complete"
+      ],
+      "cwd": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+      "stdin": "{\"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"query_symbols\", \"arguments\": {\"request\": {\"type\": \"RUN\", \"source\": {\"type\": \"SYMBOL_REFS\", \"symbolRefs\": [\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\"]}, \"steps\": [{\"type\": \"EXPAND_RELATION\", \"relation\": \"CALLERS\"}], \"terminalStep\": {\"type\": \"EMIT\", \"output\": {\"type\": \"SYMBOLS\", \"fields\": [\"NAME\", \"LOCATION\", \"SIGNATURE\"]}}, \"executionBudget\": {\"maxResults\": 10}}, \"verbose\": true}}, \"jsonrpc\": \"2.0\"}\n",
+      "stdout": "{\"id\":3,\"result\":{\"content\":[{\"text\":\"{\\\"original_evidence_summary\\\":{\\\"failure_count\\\":0,\\\"omission_count\\\":0,\\\"evidence_count\\\":1},\\\"invocation\\\":{\\\"accumulated_row_count\\\":1,\\\"preview\\\":{\\\"type\\\":\\\"INLINE\\\",\\\"row_count\\\":1,\\\"encoded_bytes\\\":2227},\\\"stop\\\":{\\\"type\\\":\\\"COMPLETED\\\"}},\\\"evidence_window\\\":{\\\"type\\\":\\\"FINAL\\\",\\\"start\\\":0,\\\"end\\\":1,\\\"total\\\":1},\\\"question\\\":{\\\"from\\\":{\\\"type\\\":\\\"references\\\",\\\"values\\\":[{\\\"token\\\":\\\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\\\"}]},\\\"steps\\\":[{\\\"type\\\":\\\"related\\\",\\\"relation\\\":\\\"callers\\\"}],\\\"output\\\":{\\\"type\\\":\\\"symbols\\\",\\\"fields\\\":[\\\"name\\\",\\\"location\\\",\\\"signature\\\"]},\\\"completion\\\":{\\\"type\\\":\\\"COMPLETE_ONLY\\\",\\\"model\\\":\\\"COMPILER_RESOLVED_STATIC_V1\\\"}},\\\"impact_accounting\\\":{\\\"type\\\":\\\"NOT_APPLICABLE\\\"},\\\"operation\\\":\\\"query.run\\\",\\\"status\\\":\\\"complete\\\",\\\"items\\\":[{\\\"type\\\":\\\"exact-symbol\\\",\\\"ref\\\":\\\"exact:v5:q1RxIVIBcC5E_aMeApCEGw\\\",\\\"kind\\\":\\\"function\\\",\\\"name\\\":\\\"kastTutorialCaller\\\",\\\"location\\\":{\\\"file\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\\\",\\\"range\\\":{\\\"startInclusive\\\":76,\\\"endExclusive\\\":145}},\\\"signature\\\":{\\\"type\\\":\\\"function\\\",\\\"qualifiedIdentity\\\":\\\"tutorial.kastTutorialCaller\\\",\\\"receiver\\\":{\\\"type\\\":\\\"absent\\\"},\\\"contextReceivers\\\":[],\\\"valueParameters\\\":[],\\\"typeParameterCount\\\":0},\\\"connections\\\":[{\\\"meaning\\\":\\\"callers\\\",\\\"source\\\":{\\\"selector\\\":\\\"exact:v5:q1RxIVIBcC5E_aMeApCEGw\\\",\\\"kind\\\":\\\"function\\\",\\\"name\\\":\\\"kastTutorialCaller\\\",\\\"qualifiedIdentity\\\":\\\"tutorial.kastTutorialCaller\\\",\\\"file\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\\\",\\\"range\\\":{\\\"startInclusive\\\":76,\\\"endExclusive\\\":145},\\\"compilerEvidence\\\":{\\\"identity\\\":\\\"canonical-signature-sha256-v1|48e20cc25155d4af3a8ef8fe93d208075a7f80a7aee41cf1929e3809a75d5388\\\",\\\"signature\\\":{\\\"type\\\":\\\"function\\\",\\\"qualifiedIdentity\\\":\\\"tutorial.kastTutorialCaller\\\",\\\"receiver\\\":{\\\"type\\\":\\\"absent\\\"},\\\"contextReceivers\\\":[],\\\"valueParameters\\\":[],\\\"typeParameterCount\\\":0}}},\\\"target\\\":{\\\"selector\\\":\\\"exact:v5:dtv1znPFt-dGNBD9J64zMw\\\",\\\"kind\\\":\\\"function\\\",\\\"name\\\":\\\"kastTutorialMessage\\\",\\\"qualifiedIdentity\\\":\\\"tutorial.kastTutorialMessage\\\",\\\"file\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\\\",\\\"range\\\":{\\\"startInclusive\\\":18,\\\"endExclusive\\\":74},\\\"compilerEvidence\\\":{\\\"identity\\\":\\\"canonical-signature-sha256-v1|2ef6c0f57ebf1cd0cb1860e9aa6790f01920b26f4ff5fefe04dd78b59723e3af\\\",\\\"signature\\\":{\\\"type\\\":\\\"function\\\",\\\"qualifiedIdentity\\\":\\\"tutorial.kastTutorialMessage\\\",\\\"receiver\\\":{\\\"type\\\":\\\"absent\\\"},\\\"contextReceivers\\\":[],\\\"valueParameters\\\":[],\\\"typeParameterCount\\\":0}}},\\\"occurrence\\\":{\\\"candidateSelector\\\":\\\"candidate:v5:-ibvar6b4EOnhxdpyBU_tQ\\\",\\\"file\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\\\",\\\"range\\\":{\\\"startInclusive\\\":122,\\\"endExclusive\\\":141}},\\\"provenance\\\":\\\"k2-authored-source\\\",\\\"coverage\\\":\\\"exact-compiler-confirmed\\\"}]}],\\\"failures\\\":[],\\\"omissions\\\":[],\\\"walk_observations\\\":[],\\\"reference_observations\\\":[],\\\"discovery_observations\\\":[],\\\"relation_observations\\\":[{\\\"subject\\\":{\\\"token\\\":\\\"exact:v5:dtv1znPFt-dGNBD9J64zMw\\\"},\\\"relation\\\":\\\"callers\\\",\\\"provider\\\":\\\"INTELLIJ_REFERENCES_V2\\\",\\\"requested_domain\\\":\\\"WORKSPACE\\\",\\\"effective_domain\\\":{\\\"scope\\\":{\\\"type\\\":\\\"WORKSPACE\\\"},\\\"source_policy\\\":\\\"production-and-test\\\",\\\"generated_sources\\\":\\\"exclude\\\",\\\"libraries\\\":\\\"exclude\\\",\\\"source_sets\\\":{\\\"kind\\\":\\\"all\\\"},\\\"directory\\\":null,\\\"package_name\\\":null,\\\"declaration_kinds\\\":[]},\\\"domain_fingerprint\\\":\\\"107e41afaff88fbb1c05b4dc65ab0802ec6ca6216254b0e664e255ff6661b32d\\\",\\\"coverage\\\":{\\\"type\\\":\\\"EXHAUSTED\\\"},\\\"scope_exclusions\\\":[],\\\"callback_observations\\\":[],\\\"callable_observations\\\":[]}],\\\"retention\\\":{\\\"kind\\\":\\\"not_requested\\\"},\\\"coverage\\\":{\\\"exhaustive\\\":true},\\\"page_progress\\\":{\\\"rows\\\":1,\\\"walk_evidence\\\":0,\\\"reference_evidence\\\":0,\\\"relation_evidence\\\":1,\\\"scope_exclusions\\\":0,\\\"callback_observations\\\":0,\\\"callable_observations\\\":0,\\\"excluded_callbacks\\\":0,\\\"omissions\\\":0,\\\"failures\\\":0},\\\"execution_budget\\\":{\\\"mode\\\":\\\"RUNNER_CONTROLLED\\\",\\\"max_results\\\":{\\\"selection\\\":\\\"caller\\\",\\\"requested\\\":10,\\\"configuredDefault\\\":128,\\\"operatorCeiling\\\":2147483646,\\\"effective\\\":10,\\\"clamping\\\":[]},\\\"max_returned_bytes\\\":{\\\"selection\\\":\\\"configured_default\\\",\\\"requested\\\":null,\\\"configuredDefault\\\":49152,\\\"operatorCeiling\\\":2147483646,\\\"effective\\\":49152,\\\"clamping\\\":[]}},\\\"reference_acquisitions\\\":{\\\"references\\\":[{\\\"previous\\\":\\\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\\\",\\\"current\\\":\\\"exact:v5:dtv1znPFt-dGNBD9J64zMw\\\",\\\"reason\\\":\\\"REFERENCE_UNAVAILABLE\\\"}]},\\\"live\\\":{\\\"root\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast\\\",\\\"host\\\":\\\"e3251737-280a-4189-9669-5622e4c445d0\\\",\\\"epoch\\\":2,\\\"contentView\\\":\\\"SAVED_PSI_COMMITTED\\\",\\\"version\\\":1}}\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"original_evidence_summary\":{\"failure_count\":0,\"omission_count\":0,\"evidence_count\":1},\"invocation\":{\"accumulated_row_count\":1,\"preview\":{\"type\":\"INLINE\",\"row_count\":1,\"encoded_bytes\":2227},\"stop\":{\"type\":\"COMPLETED\"}},\"evidence_window\":{\"type\":\"FINAL\",\"start\":0,\"end\":1,\"total\":1},\"question\":{\"from\":{\"type\":\"references\",\"values\":[{\"token\":\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\"}]},\"steps\":[{\"type\":\"related\",\"relation\":\"callers\"}],\"output\":{\"type\":\"symbols\",\"fields\":[\"name\",\"location\",\"signature\"]},\"completion\":{\"type\":\"COMPLETE_ONLY\",\"model\":\"COMPILER_RESOLVED_STATIC_V1\"}},\"impact_accounting\":{\"type\":\"NOT_APPLICABLE\"},\"operation\":\"query.run\",\"status\":\"complete\",\"items\":[{\"type\":\"exact-symbol\",\"ref\":\"exact:v5:q1RxIVIBcC5E_aMeApCEGw\",\"kind\":\"function\",\"name\":\"kastTutorialCaller\",\"location\":{\"file\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\",\"range\":{\"startInclusive\":76,\"endExclusive\":145}},\"signature\":{\"type\":\"function\",\"qualifiedIdentity\":\"tutorial.kastTutorialCaller\",\"receiver\":{\"type\":\"absent\"},\"contextReceivers\":[],\"valueParameters\":[],\"typeParameterCount\":0},\"connections\":[{\"meaning\":\"callers\",\"source\":{\"selector\":\"exact:v5:q1RxIVIBcC5E_aMeApCEGw\",\"kind\":\"function\",\"name\":\"kastTutorialCaller\",\"qualifiedIdentity\":\"tutorial.kastTutorialCaller\",\"file\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\",\"range\":{\"startInclusive\":76,\"endExclusive\":145},\"compilerEvidence\":{\"identity\":\"canonical-signature-sha256-v1|48e20cc25155d4af3a8ef8fe93d208075a7f80a7aee41cf1929e3809a75d5388\",\"signature\":{\"type\":\"function\",\"qualifiedIdentity\":\"tutorial.kastTutorialCaller\",\"receiver\":{\"type\":\"absent\"},\"contextReceivers\":[],\"valueParameters\":[],\"typeParameterCount\":0}}},\"target\":{\"selector\":\"exact:v5:dtv1znPFt-dGNBD9J64zMw\",\"kind\":\"function\",\"name\":\"kastTutorialMessage\",\"qualifiedIdentity\":\"tutorial.kastTutorialMessage\",\"file\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\",\"range\":{\"startInclusive\":18,\"endExclusive\":74},\"compilerEvidence\":{\"identity\":\"canonical-signature-sha256-v1|2ef6c0f57ebf1cd0cb1860e9aa6790f01920b26f4ff5fefe04dd78b59723e3af\",\"signature\":{\"type\":\"function\",\"qualifiedIdentity\":\"tutorial.kastTutorialMessage\",\"receiver\":{\"type\":\"absent\"},\"contextReceivers\":[],\"valueParameters\":[],\"typeParameterCount\":0}}},\"occurrence\":{\"candidateSelector\":\"candidate:v5:-ibvar6b4EOnhxdpyBU_tQ\",\"file\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt\",\"range\":{\"startInclusive\":122,\"endExclusive\":141}},\"provenance\":\"k2-authored-source\",\"coverage\":\"exact-compiler-confirmed\"}]}],\"failures\":[],\"omissions\":[],\"walk_observations\":[],\"reference_observations\":[],\"discovery_observations\":[],\"relation_observations\":[{\"subject\":{\"token\":\"exact:v5:dtv1znPFt-dGNBD9J64zMw\"},\"relation\":\"callers\",\"provider\":\"INTELLIJ_REFERENCES_V2\",\"requested_domain\":\"WORKSPACE\",\"effective_domain\":{\"scope\":{\"type\":\"WORKSPACE\"},\"source_policy\":\"production-and-test\",\"generated_sources\":\"exclude\",\"libraries\":\"exclude\",\"source_sets\":{\"kind\":\"all\"},\"directory\":null,\"package_name\":null,\"declaration_kinds\":[]},\"domain_fingerprint\":\"107e41afaff88fbb1c05b4dc65ab0802ec6ca6216254b0e664e255ff6661b32d\",\"coverage\":{\"type\":\"EXHAUSTED\"},\"scope_exclusions\":[],\"callback_observations\":[],\"callable_observations\":[]}],\"retention\":{\"kind\":\"not_requested\"},\"coverage\":{\"exhaustive\":true},\"page_progress\":{\"rows\":1,\"walk_evidence\":0,\"reference_evidence\":0,\"relation_evidence\":1,\"scope_exclusions\":0,\"callback_observations\":0,\"callable_observations\":0,\"excluded_callbacks\":0,\"omissions\":0,\"failures\":0},\"execution_budget\":{\"mode\":\"RUNNER_CONTROLLED\",\"max_results\":{\"selection\":\"caller\",\"requested\":10,\"configuredDefault\":128,\"operatorCeiling\":2147483646,\"effective\":10,\"clamping\":[]},\"max_returned_bytes\":{\"selection\":\"configured_default\",\"requested\":null,\"configuredDefault\":49152,\"operatorCeiling\":2147483646,\"effective\":49152,\"clamping\":[]}},\"reference_acquisitions\":{\"references\":[{\"previous\":\"exact:v5:rTtzIsHzBJxY7ncpCaKWQw\",\"current\":\"exact:v5:dtv1znPFt-dGNBD9J64zMw\",\"reason\":\"REFERENCE_UNAVAILABLE\"}]},\"live\":{\"root\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast\",\"host\":\"e3251737-280a-4189-9669-5622e4c445d0\",\"epoch\":2,\"contentView\":\"SAVED_PSI_COMMITTED\",\"version\":1}},\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"kast\",\"version\":\"1\"}}},\"jsonrpc\":\"2.0\"}\n",
+      "stderr": "{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"ADMISSION\",\"outcome\":\"STARTED\"}\n{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"EXECUTION\",\"outcome\":\"STARTED\"}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_FRAME\",\"announcedBytes\":1019,\"maximumBytes\":2147483646,\"outcome\":\"ADMITTED\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_BODY\",\"announcedBytes\":1019,\"drainedBytes\":1019,\"outcome\":\"DRAINED\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_DECODED\",\"outcome\":\"RECEIVED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_FRAME\",\"announcedBytes\":4513,\"maximumBytes\":2147483646,\"outcome\":\"ADMITTED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_BODY\",\"announcedBytes\":4513,\"drainedBytes\":4513,\"outcome\":\"DRAINED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_DECODED\",\"outcome\":\"SEMANTIC\"}}\n{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"EXECUTION\",\"outcome\":\"COMPLETED\",\"resultVariant\":\"COMPLETE\"}\n",
+      "elapsedNanos": 989628834,
+      "outcome": "completed",
+      "exitCode": 0
+    },
+    "result": {
+      "original_evidence_summary": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "invocation": {
+        "accumulated_row_count": 1,
+        "preview": {
+          "type": "INLINE",
+          "row_count": 1,
+          "encoded_bytes": 2227
+        },
+        "stop": {
+          "type": "COMPLETED"
+        }
+      },
+      "evidence_window": {
+        "type": "FINAL",
+        "start": 0,
+        "end": 1,
+        "total": 1
+      },
+      "question": {
+        "from": {
+          "type": "references",
+          "values": [
+            {
+              "token": "exact:v5:rTtzIsHzBJxY7ncpCaKWQw"
+            }
+          ]
+        },
+        "steps": [
+          {
+            "type": "related",
+            "relation": "callers"
+          }
+        ],
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "location",
+            "signature"
+          ]
+        },
+        "completion": {
+          "type": "COMPLETE_ONLY",
+          "model": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "impact_accounting": {
+        "type": "NOT_APPLICABLE"
+      },
+      "operation": "query.run",
+      "status": "complete",
+      "items": [
+        {
+          "type": "exact-symbol",
+          "ref": "exact:v5:q1RxIVIBcC5E_aMeApCEGw",
+          "kind": "function",
+          "name": "kastTutorialCaller",
+          "location": {
+            "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+            "range": {
+              "startInclusive": 76,
+              "endExclusive": 145
+            }
+          },
+          "signature": {
+            "type": "function",
+            "qualifiedIdentity": "tutorial.kastTutorialCaller",
+            "receiver": {
+              "type": "absent"
+            },
+            "contextReceivers": [],
+            "valueParameters": [],
+            "typeParameterCount": 0
+          },
+          "connections": [
+            {
+              "meaning": "callers",
+              "source": {
+                "selector": "exact:v5:q1RxIVIBcC5E_aMeApCEGw",
+                "kind": "function",
+                "name": "kastTutorialCaller",
+                "qualifiedIdentity": "tutorial.kastTutorialCaller",
+                "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+                "range": {
+                  "startInclusive": 76,
+                  "endExclusive": 145
+                },
+                "compilerEvidence": {
+                  "identity": "canonical-signature-sha256-v1|48e20cc25155d4af3a8ef8fe93d208075a7f80a7aee41cf1929e3809a75d5388",
+                  "signature": {
+                    "type": "function",
+                    "qualifiedIdentity": "tutorial.kastTutorialCaller",
+                    "receiver": {
+                      "type": "absent"
+                    },
+                    "contextReceivers": [],
+                    "valueParameters": [],
+                    "typeParameterCount": 0
+                  }
+                }
+              },
+              "target": {
+                "selector": "exact:v5:dtv1znPFt-dGNBD9J64zMw",
+                "kind": "function",
+                "name": "kastTutorialMessage",
+                "qualifiedIdentity": "tutorial.kastTutorialMessage",
+                "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+                "range": {
+                  "startInclusive": 18,
+                  "endExclusive": 74
+                },
+                "compilerEvidence": {
+                  "identity": "canonical-signature-sha256-v1|2ef6c0f57ebf1cd0cb1860e9aa6790f01920b26f4ff5fefe04dd78b59723e3af",
+                  "signature": {
+                    "type": "function",
+                    "qualifiedIdentity": "tutorial.kastTutorialMessage",
+                    "receiver": {
+                      "type": "absent"
+                    },
+                    "contextReceivers": [],
+                    "valueParameters": [],
+                    "typeParameterCount": 0
+                  }
+                }
+              },
+              "occurrence": {
+                "candidateSelector": "candidate:v5:-ibvar6b4EOnhxdpyBU_tQ",
+                "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+                "range": {
+                  "startInclusive": 122,
+                  "endExclusive": 141
+                }
+              },
+              "provenance": "k2-authored-source",
+              "coverage": "exact-compiler-confirmed"
+            }
+          ]
+        }
+      ],
+      "failures": [],
+      "omissions": [],
+      "walk_observations": [],
+      "reference_observations": [],
+      "discovery_observations": [],
+      "relation_observations": [
+        {
+          "subject": {
+            "token": "exact:v5:dtv1znPFt-dGNBD9J64zMw"
+          },
+          "relation": "callers",
+          "provider": "INTELLIJ_REFERENCES_V2",
+          "requested_domain": "WORKSPACE",
+          "effective_domain": {
+            "scope": {
+              "type": "WORKSPACE"
+            },
+            "source_policy": "production-and-test",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {
+              "kind": "all"
+            },
+            "directory": null,
+            "package_name": null,
+            "declaration_kinds": []
+          },
+          "domain_fingerprint": "107e41afaff88fbb1c05b4dc65ab0802ec6ca6216254b0e664e255ff6661b32d",
+          "coverage": {
+            "type": "EXHAUSTED"
+          },
+          "scope_exclusions": [],
+          "callback_observations": [],
+          "callable_observations": []
+        }
+      ],
+      "retention": {
+        "kind": "not_requested"
+      },
+      "coverage": {
+        "exhaustive": true
+      },
+      "page_progress": {
+        "rows": 1,
+        "walk_evidence": 0,
+        "reference_evidence": 0,
+        "relation_evidence": 1,
+        "scope_exclusions": 0,
+        "callback_observations": 0,
+        "callable_observations": 0,
+        "excluded_callbacks": 0,
+        "omissions": 0,
+        "failures": 0
+      },
+      "execution_budget": {
+        "mode": "RUNNER_CONTROLLED",
+        "max_results": {
+          "selection": "caller",
+          "requested": 10,
+          "configuredDefault": 128,
+          "operatorCeiling": 2147483646,
+          "effective": 10,
+          "clamping": []
+        },
+        "max_returned_bytes": {
+          "selection": "configured_default",
+          "requested": null,
+          "configuredDefault": 49152,
+          "operatorCeiling": 2147483646,
+          "effective": 49152,
+          "clamping": []
+        }
+      },
+      "reference_acquisitions": {
+        "references": [
+          {
+            "previous": "exact:v5:rTtzIsHzBJxY7ncpCaKWQw",
+            "current": "exact:v5:dtv1znPFt-dGNBD9J64zMw",
+            "reason": "REFERENCE_UNAVAILABLE"
+          }
+        ]
+      },
+      "live": {
+        "root": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+        "host": "e3251737-280a-4189-9669-5622e4c445d0",
+        "epoch": 2,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "version": 1
+      }
+    }
+  },
+  "missing": {
+    "request": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "kastTutorialMissing",
+          "declarationKinds": [
+            "FUNCTION"
+          ],
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "protocol/contract/src/main/kotlin/tutorial",
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      },
+      "verbose": true
+    },
+    "receipt": {
+      "command": [
+        "/Users/amichne/.local/share/kast/installation/bin/kast-mcp-complete"
+      ],
+      "cwd": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+      "stdin": "{\"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"query_symbols\", \"arguments\": {\"request\": {\"type\": \"RUN\", \"source\": {\"type\": \"SEARCH_DECLARATIONS\", \"declarationName\": \"kastTutorialMissing\", \"declarationKinds\": [\"FUNCTION\"], \"scope\": {\"type\": \"DIRECTORY\", \"relativeDirectoryPath\": \"protocol/contract/src/main/kotlin/tutorial\", \"sourceSetNames\": [\"main\"]}}, \"terminalStep\": {\"type\": \"EMIT\", \"output\": {\"type\": \"SYMBOLS\", \"fields\": [\"NAME\", \"LOCATION\", \"SIGNATURE\"]}}, \"executionBudget\": {\"maxResults\": 10}}, \"verbose\": true}}, \"jsonrpc\": \"2.0\"}\n",
+      "stdout": "{\"id\":4,\"result\":{\"content\":[{\"text\":\"{\\\"original_evidence_summary\\\":{\\\"failure_count\\\":0,\\\"omission_count\\\":0,\\\"evidence_count\\\":1},\\\"invocation\\\":{\\\"accumulated_row_count\\\":0,\\\"preview\\\":{\\\"type\\\":\\\"INLINE\\\",\\\"row_count\\\":0,\\\"encoded_bytes\\\":2},\\\"stop\\\":{\\\"type\\\":\\\"COMPLETED\\\"}},\\\"evidence_window\\\":{\\\"type\\\":\\\"FINAL\\\",\\\"start\\\":0,\\\"end\\\":1,\\\"total\\\":1},\\\"question\\\":{\\\"from\\\":{\\\"type\\\":\\\"symbols\\\",\\\"match\\\":{\\\"type\\\":\\\"name\\\",\\\"text\\\":\\\"kastTutorialMissing\\\",\\\"matching\\\":\\\"exact-name\\\"},\\\"scope\\\":{\\\"sourceSets\\\":[\\\"main\\\"],\\\"directory\\\":{\\\"path\\\":\\\"protocol/contract/src/main/kotlin/tutorial\\\",\\\"containment\\\":\\\"descendants\\\"},\\\"packageName\\\":null},\\\"declarationKinds\\\":[\\\"function\\\"]},\\\"steps\\\":[],\\\"output\\\":{\\\"type\\\":\\\"symbols\\\",\\\"fields\\\":[\\\"name\\\",\\\"location\\\",\\\"signature\\\"]},\\\"completion\\\":{\\\"type\\\":\\\"COMPLETE_ONLY\\\",\\\"model\\\":\\\"COMPILER_RESOLVED_STATIC_V1\\\"}},\\\"impact_accounting\\\":{\\\"type\\\":\\\"NOT_APPLICABLE\\\"},\\\"operation\\\":\\\"query.run\\\",\\\"status\\\":\\\"complete\\\",\\\"items\\\":[],\\\"failures\\\":[],\\\"omissions\\\":[],\\\"walk_observations\\\":[],\\\"reference_observations\\\":[],\\\"discovery_observations\\\":[{\\\"universe\\\":{\\\"declaration_language\\\":\\\"kotlin\\\",\\\"match\\\":{\\\"type\\\":\\\"name\\\",\\\"text\\\":\\\"kastTutorialMissing\\\",\\\"matching\\\":\\\"exact-name\\\"},\\\"declaration_kinds\\\":[\\\"function\\\"],\\\"source_policy\\\":\\\"production-and-test\\\",\\\"generated_sources\\\":\\\"exclude\\\",\\\"libraries\\\":\\\"exclude\\\",\\\"source_sets\\\":{\\\"kind\\\":\\\"exact\\\",\\\"names\\\":[\\\"main\\\"]},\\\"directory\\\":{\\\"path\\\":\\\"protocol/contract/src/main/kotlin/tutorial\\\",\\\"containment\\\":\\\"descendants\\\"},\\\"package_name\\\":null},\\\"ordering\\\":\\\"named-candidate-v1\\\",\\\"progress\\\":{\\\"kind\\\":\\\"exhausted\\\"},\\\"observed_stops\\\":[],\\\"examined_work_units\\\":276,\\\"inventory_files\\\":0,\\\"reacquired_files\\\":0,\\\"examined_leaves\\\":0,\\\"inventory_nanoseconds\\\":0,\\\"declaration_scan_nanoseconds\\\":0,\\\"projection_nanoseconds\\\":0}],\\\"relation_observations\\\":[],\\\"retention\\\":{\\\"kind\\\":\\\"not_requested\\\"},\\\"coverage\\\":{\\\"exhaustive\\\":true},\\\"page_progress\\\":{\\\"rows\\\":0,\\\"walk_evidence\\\":0,\\\"reference_evidence\\\":0,\\\"relation_evidence\\\":0,\\\"scope_exclusions\\\":0,\\\"callback_observations\\\":0,\\\"callable_observations\\\":0,\\\"excluded_callbacks\\\":0,\\\"omissions\\\":0,\\\"failures\\\":0},\\\"execution_budget\\\":{\\\"mode\\\":\\\"RUNNER_CONTROLLED\\\",\\\"max_results\\\":{\\\"selection\\\":\\\"caller\\\",\\\"requested\\\":10,\\\"configuredDefault\\\":128,\\\"operatorCeiling\\\":2147483646,\\\"effective\\\":10,\\\"clamping\\\":[]},\\\"max_returned_bytes\\\":{\\\"selection\\\":\\\"configured_default\\\",\\\"requested\\\":null,\\\"configuredDefault\\\":49152,\\\"operatorCeiling\\\":2147483646,\\\"effective\\\":49152,\\\"clamping\\\":[]}},\\\"live\\\":{\\\"root\\\":\\\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast\\\",\\\"host\\\":\\\"e3251737-280a-4189-9669-5622e4c445d0\\\",\\\"epoch\\\":3,\\\"contentView\\\":\\\"SAVED_PSI_COMMITTED\\\",\\\"version\\\":1}}\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"original_evidence_summary\":{\"failure_count\":0,\"omission_count\":0,\"evidence_count\":1},\"invocation\":{\"accumulated_row_count\":0,\"preview\":{\"type\":\"INLINE\",\"row_count\":0,\"encoded_bytes\":2},\"stop\":{\"type\":\"COMPLETED\"}},\"evidence_window\":{\"type\":\"FINAL\",\"start\":0,\"end\":1,\"total\":1},\"question\":{\"from\":{\"type\":\"symbols\",\"match\":{\"type\":\"name\",\"text\":\"kastTutorialMissing\",\"matching\":\"exact-name\"},\"scope\":{\"sourceSets\":[\"main\"],\"directory\":{\"path\":\"protocol/contract/src/main/kotlin/tutorial\",\"containment\":\"descendants\"},\"packageName\":null},\"declarationKinds\":[\"function\"]},\"steps\":[],\"output\":{\"type\":\"symbols\",\"fields\":[\"name\",\"location\",\"signature\"]},\"completion\":{\"type\":\"COMPLETE_ONLY\",\"model\":\"COMPILER_RESOLVED_STATIC_V1\"}},\"impact_accounting\":{\"type\":\"NOT_APPLICABLE\"},\"operation\":\"query.run\",\"status\":\"complete\",\"items\":[],\"failures\":[],\"omissions\":[],\"walk_observations\":[],\"reference_observations\":[],\"discovery_observations\":[{\"universe\":{\"declaration_language\":\"kotlin\",\"match\":{\"type\":\"name\",\"text\":\"kastTutorialMissing\",\"matching\":\"exact-name\"},\"declaration_kinds\":[\"function\"],\"source_policy\":\"production-and-test\",\"generated_sources\":\"exclude\",\"libraries\":\"exclude\",\"source_sets\":{\"kind\":\"exact\",\"names\":[\"main\"]},\"directory\":{\"path\":\"protocol/contract/src/main/kotlin/tutorial\",\"containment\":\"descendants\"},\"package_name\":null},\"ordering\":\"named-candidate-v1\",\"progress\":{\"kind\":\"exhausted\"},\"observed_stops\":[],\"examined_work_units\":276,\"inventory_files\":0,\"reacquired_files\":0,\"examined_leaves\":0,\"inventory_nanoseconds\":0,\"declaration_scan_nanoseconds\":0,\"projection_nanoseconds\":0}],\"relation_observations\":[],\"retention\":{\"kind\":\"not_requested\"},\"coverage\":{\"exhaustive\":true},\"page_progress\":{\"rows\":0,\"walk_evidence\":0,\"reference_evidence\":0,\"relation_evidence\":0,\"scope_exclusions\":0,\"callback_observations\":0,\"callable_observations\":0,\"excluded_callbacks\":0,\"omissions\":0,\"failures\":0},\"execution_budget\":{\"mode\":\"RUNNER_CONTROLLED\",\"max_results\":{\"selection\":\"caller\",\"requested\":10,\"configuredDefault\":128,\"operatorCeiling\":2147483646,\"effective\":10,\"clamping\":[]},\"max_returned_bytes\":{\"selection\":\"configured_default\",\"requested\":null,\"configuredDefault\":49152,\"operatorCeiling\":2147483646,\"effective\":49152,\"clamping\":[]}},\"live\":{\"root\":\"/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast\",\"host\":\"e3251737-280a-4189-9669-5622e4c445d0\",\"epoch\":3,\"contentView\":\"SAVED_PSI_COMMITTED\",\"version\":1}},\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"kast\",\"version\":\"1\"}}},\"jsonrpc\":\"2.0\"}\n",
+      "stderr": "{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"ADMISSION\",\"outcome\":\"STARTED\"}\n{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"EXECUTION\",\"outcome\":\"STARTED\"}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_FRAME\",\"announcedBytes\":1019,\"maximumBytes\":2147483646,\"outcome\":\"ADMITTED\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_BODY\",\"announcedBytes\":1019,\"drainedBytes\":1019,\"outcome\":\"DRAINED\"}}\n{\"hostPid\":13147,\"operation\":\"STATUS\",\"evidence\":{\"type\":\"HOST_RESPONSE_DECODED\",\"outcome\":\"RECEIVED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_FRAME\",\"announcedBytes\":2302,\"maximumBytes\":2147483646,\"outcome\":\"ADMITTED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_BODY\",\"announcedBytes\":2302,\"drainedBytes\":2302,\"outcome\":\"DRAINED\"}}\n{\"hostPid\":13147,\"operation\":\"QUERY_RUN\",\"evidence\":{\"type\":\"HOST_RESPONSE_DECODED\",\"outcome\":\"SEMANTIC\"}}\n{\"component\":\"kast-mcp\",\"tool\":\"query_symbols\",\"stage\":\"EXECUTION\",\"outcome\":\"COMPLETED\",\"resultVariant\":\"COMPLETE\"}\n",
+      "elapsedNanos": 100219458,
+      "outcome": "completed",
+      "exitCode": 0
+    },
+    "result": {
+      "original_evidence_summary": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "invocation": {
+        "accumulated_row_count": 0,
+        "preview": {
+          "type": "INLINE",
+          "row_count": 0,
+          "encoded_bytes": 2
+        },
+        "stop": {
+          "type": "COMPLETED"
+        }
+      },
+      "evidence_window": {
+        "type": "FINAL",
+        "start": 0,
+        "end": 1,
+        "total": 1
+      },
+      "question": {
+        "from": {
+          "type": "symbols",
+          "match": {
+            "type": "name",
+            "text": "kastTutorialMissing",
+            "matching": "exact-name"
+          },
+          "scope": {
+            "sourceSets": [
+              "main"
+            ],
+            "directory": {
+              "path": "protocol/contract/src/main/kotlin/tutorial",
+              "containment": "descendants"
+            },
+            "packageName": null
+          },
+          "declarationKinds": [
+            "function"
+          ]
+        },
+        "steps": [],
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "location",
+            "signature"
+          ]
+        },
+        "completion": {
+          "type": "COMPLETE_ONLY",
+          "model": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "impact_accounting": {
+        "type": "NOT_APPLICABLE"
+      },
+      "operation": "query.run",
+      "status": "complete",
+      "items": [],
+      "failures": [],
+      "omissions": [],
+      "walk_observations": [],
+      "reference_observations": [],
+      "discovery_observations": [
+        {
+          "universe": {
+            "declaration_language": "kotlin",
+            "match": {
+              "type": "name",
+              "text": "kastTutorialMissing",
+              "matching": "exact-name"
+            },
+            "declaration_kinds": [
+              "function"
+            ],
+            "source_policy": "production-and-test",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {
+              "kind": "exact",
+              "names": [
+                "main"
+              ]
+            },
+            "directory": {
+              "path": "protocol/contract/src/main/kotlin/tutorial",
+              "containment": "descendants"
+            },
+            "package_name": null
+          },
+          "ordering": "named-candidate-v1",
+          "progress": {
+            "kind": "exhausted"
+          },
+          "observed_stops": [],
+          "examined_work_units": 276,
+          "inventory_files": 0,
+          "reacquired_files": 0,
+          "examined_leaves": 0,
+          "inventory_nanoseconds": 0,
+          "declaration_scan_nanoseconds": 0,
+          "projection_nanoseconds": 0
+        }
+      ],
+      "relation_observations": [],
+      "retention": {
+        "kind": "not_requested"
+      },
+      "coverage": {
+        "exhaustive": true
+      },
+      "page_progress": {
+        "rows": 0,
+        "walk_evidence": 0,
+        "reference_evidence": 0,
+        "relation_evidence": 0,
+        "scope_exclusions": 0,
+        "callback_observations": 0,
+        "callable_observations": 0,
+        "excluded_callbacks": 0,
+        "omissions": 0,
+        "failures": 0
+      },
+      "execution_budget": {
+        "mode": "RUNNER_CONTROLLED",
+        "max_results": {
+          "selection": "caller",
+          "requested": 10,
+          "configuredDefault": 128,
+          "operatorCeiling": 2147483646,
+          "effective": 10,
+          "clamping": []
+        },
+        "max_returned_bytes": {
+          "selection": "configured_default",
+          "requested": null,
+          "configuredDefault": 49152,
+          "operatorCeiling": 2147483646,
+          "effective": 49152,
+          "clamping": []
+        }
+      },
+      "live": {
+        "root": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+        "host": "e3251737-280a-4189-9669-5622e4c445d0",
+        "epoch": 3,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "version": 1
+      }
+    }
+  },
+  "assertions": "PASSED: exact function, sole caller, same-text exclusion, absent-name empty result, complete status, no failures or omissions",
+  "harness": "Existing McpReplaySession from experiments/host-observation/reproduce_semantic_queries.py",
+  "clientLaunch": "Installed kast-mcp-complete entry point, exact documentation worktree as cwd"
+}

@@ -1,0 +1,3 @@
+# Terms that are forbidden and have no preferred replacement go here.
+# Use Terminology/PreferredTerms.yml when there is a clear replacement.
+
