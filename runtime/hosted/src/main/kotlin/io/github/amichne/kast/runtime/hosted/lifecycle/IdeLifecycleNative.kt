@@ -54,6 +54,8 @@ internal class IdeLifecycleNative(
         }
     }
 
+    fun settlement(): HostNativeSettlement = inspectHostNativeSettlement(::hasActivePreparation)
+
     fun observeProjects() {
         ProjectManager.getInstance()
             .openProjects

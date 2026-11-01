@@ -34,9 +34,10 @@ class LocalBindingReferenceScan<C>(
     private val onWork: (RelationWorkCount) -> Unit = {},
     private val additionalWork: () -> Long = { 0L },
     private val enumerationSuspension: () -> ValueFlowSuspensionCause? = { null },
+    initialObligations: List<ValueFlowObligation> = emptyList(),
 ) {
     private val edges = mutableListOf<ValueTransfer>()
-    private val obligations = mutableListOf<ValueFlowObligation>()
+    private val obligations = initialObligations.distinct().toMutableList()
     private val consumed = request.remainder?.consumed?.toMutableSet() ?: linkedSetOf()
     private val emitted = request.remainder?.emitted?.toMutableSet() ?: linkedSetOf()
     private var work = 1L
@@ -44,6 +45,10 @@ class LocalBindingReferenceScan<C>(
 
     fun read(): ValueFlowRead {
         if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
+            return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
+        if (obligations.any { it.site.basis != request.source.basis })
+            return ValueFlowRead.ContractRejected(ValueFlowStepFailure.BASIS_MISMATCH, count())
+        if (obligations.any { it.site != request.source })
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
         // Reserve one transfer, one new obligation, and one detached address before confirmation.
         if (!fitsCandidate() || !request.budget.resources.permitsWork(MINIMUM_PROGRESS_WORK))

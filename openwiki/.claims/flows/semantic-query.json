@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:53f5eb632a433bcee8647451f1dc677e17237e9ffc28eef615e1df2f0813bde9",
+  "pageVersion": "sha256:2314f6908d19244f4e7d30d9d4bdb173166e1da6669f4fd51ca0a974b076565a",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
       "statement": "Join indexing uses canonical symbol identity, retains all matching row positions in detached immutable snapshots, and checks retained byte capacity before adding each right-side row.",
       "evidence": [
         {
-          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt#L17-L62",
-          "version": "repo-lines-v1:sha256:17d9dd0790db54eab175f54de4939a9e8c40bd582ca118d752bec9494414a2db:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjOWJkYTllMDA2YzMxZDY3MzY1ZThjMzI4MjI4YWJkZjNkYjYzODcxNTY0NGE3NjQ4NmU4MmFiZjRkYWIyZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MDljYWIyNzZmZGJmOGQxYzRiOGNhNGNjMzI3NjkxNDg0OTk2OTFhNGYxMWE5Zjc3NjliMTBiMDhmZGFiNTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1YmQwODY0Y2FjZTkyYjE1NzAyOGY2Y2E0YjEzYjBkOGY5MWY1YzQzMjk2NDE2ZjI4OTkxMjRmZThmMDU1ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViYjY1YTNkZWRhMmRjZGE0NGIxMDEyMjkzNGRmYTlmNzZlM2I2NjA0MzcxOTYzOWI0MTEwMzdhYzAwOWVkZjMifQ"
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt",
+          "version": "repo-file-v1:sha256:9dd8ec156d1071075bb3672d5f49170688279b2efa0bc82b19c999d7b36625d2"
         }
       ]
     },
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:c29b2ccabed4951b11d75a5521b82137373dbd740f8813b099b5b9d158b14fc9"
+          "version": "repo-file-v1:sha256:4436a9094582430c668b7802a7641f6c2a73b0b09a608e97bd906ade5c79499a"
         }
       ]
     },
@@ -38,15 +38,15 @@
       "evidence": [
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactObservedArrivals.kt",
-          "version": "repo-file-v1:sha256:a9414552d1f2cd4d6c5b16265ee02f83b6e9ee60e753552ed8932c774354c78d"
+          "version": "repo-file-v1:sha256:2d27e51e572e51c2f4d25ececc54ef200f66a91faa318e5dd6d93351ecfdca16"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt",
-          "version": "repo-file-v1:sha256:3506e579ca756579d50fb236fd50bb8a650fe1856f907470551f9611928a27a2"
+          "version": "repo-file-v1:sha256:f666f8f68d01ee51752dec25c71f1e610cfbfb1631a1e35b1135b4d46fe425ff"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
-          "version": "repo-file-v1:sha256:4d43ccb202ae677b201141fc0baca23546611c4aad001da84feb10e21035e609"
+          "version": "repo-file-v1:sha256:da227b2815b06fcdfe761f4347bb09fafb1e742f7a50593044cef95af7e8085f"
         }
       ]
     },
@@ -56,15 +56,15 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:68c9a626b222a01f77e3de20f2ec1a81d60081bc2294f6d258b9ef7eef2ef3ca"
+          "version": "repo-file-v1:sha256:e6e52d39b3b443768fbea0ec1a8df85cb8317e7e68a8c8d34bf8c257cba61ef7"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:c29b2ccabed4951b11d75a5521b82137373dbd740f8813b099b5b9d158b14fc9"
+          "version": "repo-file-v1:sha256:4436a9094582430c668b7802a7641f6c2a73b0b09a608e97bd906ade5c79499a"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt",
-          "version": "repo-file-v1:sha256:f501f4f2638fee23e1dc6ce303c3289d09e0a0b566c05fab77b1320bf37b80a8"
+          "version": "repo-file-v1:sha256:0ac1d18cbbe58ee71022a3ed514a40facea1e354fd47cad1857af260e6ab1ccc"
         }
       ]
     },
@@ -78,19 +78,19 @@
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt",
-          "version": "repo-file-v1:sha256:5995430f6c47b4fa3b38389c005298559aedef6c39822a1187e5aa776ab07c0f"
+          "version": "repo-file-v1:sha256:e9e9d0d72334e1e286d428750451aa6b8565fa557020ab32808de14f7cbd2231"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt",
-          "version": "repo-file-v1:sha256:e3284555a9c13118f23fb065595d36ce6c359e32e32bb57c14a13fc1f23c2dbb"
+          "version": "repo-file-v1:sha256:40663b3c677c6b375cadb312303a0f3085f5c3aa0dd74cee7c1f3784b2be9ebc"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt",
-          "version": "repo-file-v1:sha256:ba07b79657961d918536f0ea3a110af2f878f5faeb861d8050ae93771d14a78f"
+          "version": "repo-file-v1:sha256:0d593668a5b4ec1a721d1ea046091e350fc7d42dcdb12895287449e5faeb0f77"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt",
-          "version": "repo-file-v1:sha256:b44f1268e6873e74e0bade219119d8d0d4bb61dda440aebc5a52097872582928"
+          "version": "repo-file-v1:sha256:c4baf707f5cd25485fb8cb4400413ee76c7820aaabb77ab359d9c0a05ea312f2"
         }
       ]
     },
@@ -100,15 +100,15 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
-          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+          "version": "repo-file-v1:sha256:7ea8bd454818eeabba32af0c7ef7ac06b5ddac6a2f6fef9c71626c8f7f0f0b8e"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:877ee3ba0deef8350bea52ae9d00fbd1b1e0ee797454e7936b242f0d633ec5bb"
+          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt",
-          "version": "repo-file-v1:sha256:d23b0e45db2bfe8dd606c91ff52dcdb2d40d4d791f4e4414ef305c20c70b5e5b"
+          "version": "repo-file-v1:sha256:3b93c56957c835d2780989a60fd4972b54cbda4b351a0a6ee287f3a44c4c44ad"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt",
@@ -122,7 +122,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
-          "version": "repo-file-v1:sha256:b4075058124b94361f5e39775e3c61fea2c7dfd70cd6425d8a93c3bd5710eb40"
+          "version": "repo-file-v1:sha256:5e823ccf2a63a1cf786689892826daf1a4a057afa801cf6d70bafd9997d361a7"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
-          "version": "repo-file-v1:sha256:4d43ccb202ae677b201141fc0baca23546611c4aad001da84feb10e21035e609"
+          "version": "repo-file-v1:sha256:da227b2815b06fcdfe761f4347bb09fafb1e742f7a50593044cef95af7e8085f"
         }
       ]
     },
@@ -140,19 +140,19 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:68c9a626b222a01f77e3de20f2ec1a81d60081bc2294f6d258b9ef7eef2ef3ca"
+          "version": "repo-file-v1:sha256:e6e52d39b3b443768fbea0ec1a8df85cb8317e7e68a8c8d34bf8c257cba61ef7"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt",
-          "version": "repo-file-v1:sha256:5995430f6c47b4fa3b38389c005298559aedef6c39822a1187e5aa776ab07c0f"
+          "version": "repo-file-v1:sha256:e9e9d0d72334e1e286d428750451aa6b8565fa557020ab32808de14f7cbd2231"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathBasis.kt",
-          "version": "repo-file-v1:sha256:0d2f1fd7277f3fa51e00ed293ae3e0b05dcd5838fb8b78bf3e43a96397a37b89"
+          "version": "repo-file-v1:sha256:e29b109b34a59a75501a680c6b3bf981dd3eff0be31a34ebe99982981fb311b6"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactModelArrivals.kt",
-          "version": "repo-file-v1:sha256:27b6221ce46d68e9d3e522538b214ae4b35af0aaf2e096c40afe97a07590b256"
+          "version": "repo-file-v1:sha256:7ae36d1e3384fe4c5c1d942aea0dcfcdf5a3433324fe8a266226353a4da48500"
         }
       ]
     },
@@ -162,21 +162,21 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/AutomaticSymbolQueryRunner.kt",
-          "version": "repo-file-v1:sha256:6ef9a4fe3bfe7cf973467e5c179e1d820b18badd43e6607870962018865f6c83"
+          "version": "repo-file-v1:sha256:b525264d169966a2d197cd9942fec34c26a7680a063251926e5610c10ecb9171"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:680933b85bef3cb29892f3bbccee8dedd2c055201681774d70f3544112d9b0b6"
+          "version": "repo-file-v1:sha256:49bc93a739b7e3769f24d2f66f3393607afc2764641894cca312a13e207b0b40"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
-          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+          "version": "repo-file-v1:sha256:7ea8bd454818eeabba32af0c7ef7ac06b5ddac6a2f6fef9c71626c8f7f0f0b8e"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T16:19:14.290Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

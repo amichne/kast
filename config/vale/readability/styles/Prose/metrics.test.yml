@@ -1,0 +1,832 @@
+- name: sentence at threshold passes
+  rule: SentenceLength.yml
+  input: alpha beta gamma delta epsilon alpha beta gamma delta epsilon alpha beta gamma delta
+    epsilon alpha beta gamma delta epsilon alpha beta gamma delta epsilon alpha beta gamma delta
+    epsilon alpha beta gamma delta epsilon.
+  want: ''
+- name: sentence over threshold is reported
+  rule: SentenceLength.yml
+  input: alpha beta gamma delta epsilon alpha beta gamma delta epsilon alpha beta gamma delta
+    epsilon alpha beta gamma delta epsilon alpha beta gamma delta epsilon alpha beta gamma delta
+    epsilon alpha beta gamma delta epsilon alpha.
+  contains: Prose.SentenceLength
+- name: long heading is not a sentence
+  rule: SentenceLength.yml
+  input: '# alpha beta gamma delta epsilon alpha beta gamma delta epsilon alpha beta gamma delta
+    epsilon alpha beta gamma delta epsilon alpha beta gamma delta epsilon alpha beta gamma delta
+    epsilon alpha beta gamma delta epsilon alpha beta gamma delta epsilon.'
+  want: ''
+- name: paragraph at threshold passes
+  rule: ParagraphLength.yml
+  input: The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+  want: ''
+- name: paragraph over threshold is reported
+  rule: ParagraphLength.yml
+  input: The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests.
+  contains: Prose.ParagraphLength
+- name: long list item is not a body paragraph
+  rule: ParagraphLength.yml
+  input: '- The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests.'
+  want: ''
+- name: short section passes
+  rule: SectionLength.yml
+  input: '## Configure
+
+
+    The service accepts new requests.'
+  want: ''
+- name: long leaf section is reported
+  rule: SectionLength.yml
+  input: '# Guide
+
+
+    ## Configure
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.'
+  contains: Prose.SectionLength
+- name: unheaded document is reported
+  rule: SectionLength.yml
+  input: 'The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.
+
+
+    The service accepts new requests.'
+  contains: Prose.SectionLength
+- name: dense substantial prose is reported
+  rule: Complexity.yml
+  input: The asynchronous orchestration infrastructure coordinates authentication, authorization,
+    configuration, synchronization, serialization, and reconciliation across heterogeneous computational
+    environments to guarantee operational consistency. The asynchronous orchestration infrastructure
+    coordinates authentication, authorization, configuration, synchronization, serialization,
+    and reconciliation across heterogeneous computational environments to guarantee operational
+    consistency. The asynchronous orchestration infrastructure coordinates authentication, authorization,
+    configuration, synchronization, serialization, and reconciliation across heterogeneous computational
+    environments to guarantee operational consistency. The asynchronous orchestration infrastructure
+    coordinates authentication, authorization, configuration, synchronization, serialization,
+    and reconciliation across heterogeneous computational environments to guarantee operational
+    consistency. The asynchronous orchestration infrastructure coordinates authentication, authorization,
+    configuration, synchronization, serialization, and reconciliation across heterogeneous computational
+    environments to guarantee operational consistency.
+  contains: Prose.Complexity
+- name: short dense prose is not graded
+  rule: Complexity.yml
+  input: The asynchronous orchestration infrastructure coordinates authentication, authorization,
+    configuration, synchronization, serialization, and reconciliation across heterogeneous computational
+    environments to guarantee operational consistency.
+  want: ''
+- name: plain substantial prose passes
+  rule: Complexity.yml
+  input: The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests. The service accepts new requests. The service accepts
+    new requests. The service accepts new requests. The service accepts new requests. The service
+    accepts new requests. The service accepts new requests. The service accepts new requests.
+    The service accepts new requests.
+  want: ''

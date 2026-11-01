@@ -375,6 +375,7 @@ esac
         shutil.copyfile(Path(__file__).with_name('codex-mcp-registration.py'),
                         self.product / 'share/kast/codex-mcp-registration.py')
         shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
+        shutil.copyfile(Path(__file__).with_name('managed_update_journal.py'), self.product / 'share/kast/managed_update_journal.py')
         shutil.copyfile(Path(__file__).with_name('host-installation.py'), self.product / 'share/kast/host-installation.py')
         (self.product / 'share/kast/ide-host.json').write_text(json.dumps(asdict(ControlMetadataFixture(self.version))))
         self.write_script(self.product / 'share/kast/prune-prior-installations.py', '''#!/usr/bin/env python3
@@ -459,9 +460,10 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
             archive.add(management, arcname='share/kast/libexec/kast-management')
             recovery = self.product / 'share/kast/installation-recovery.py'
             archive.add(recovery, arcname='share/kast/installation-recovery.py')
+            archive.add(self.product / 'share/kast/managed_update_journal.py', arcname='share/kast/managed_update_journal.py')
             archive.add(self.product / 'share/kast/host-installation.py', arcname='share/kast/host-installation.py')
             archive.add(self.product / 'share/kast/ide-host.json', arcname='share/kast/ide-host.json')
-            for index in range(member_count - 7):
+            for index in range(member_count - 8):
                 entry = tarfile.TarInfo(f"share/kast/knowledge/declarations/{index}.json")
                 entry.mode = 0o644
                 entry.size = 2

@@ -1,8 +1,6 @@
 {
   "name": "kast",
   "version": "0.0.0",
-  "description": "Kotlin task tools and a shared Kast skill over the installed runtime.",
-  "hooks": "./hooks/copilot.json",
-  "mcpServers": "./.mcp.json",
+  "description": "Canonical CLI guidance for the installed native Kast command.",
   "skills": "./skills/"
 }

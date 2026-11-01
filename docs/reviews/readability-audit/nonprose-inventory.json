@@ -1,0 +1,134 @@
+{
+  "files": [
+    {
+      "path": "config/ci/semantic-fixture-tasks.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-readable source, task, or revision inventory."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/LICENSE.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Vendored license text, not authored product documentation."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/binary-fir-elements.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-readable source, task, or revision inventory."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/commit.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-readable source, task, or revision inventory."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/callableReference.call.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/callableReference.candidates.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/callableReference.symbol.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/constructors.call.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/constructors.candidates.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/constructors.symbol.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/callArgumentPosition/anonymousFun.call.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/callArgumentPosition/anonymousFun.candidates.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/callArgumentPosition/anonymousFun.symbol.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/callArgumentPosition/defaultArg.call.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/callArgumentPosition/defaultArg.candidates.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/callArgumentPosition/defaultArg.symbol.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/contracts.call.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/contracts.candidates.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/contextSensitiveResolution/contracts.symbol.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/lambdaParameters.call.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/lambdaParameters.candidates.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/kotlin-semantic-coverage/upstream/fixtures/allByPsi/lambdaParameters.symbol.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-consumed semantic fixture expectations."
+    },
+    {
+      "path": "config/vale/styles/config/vocabularies/Kast/accept.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-readable Vale spelling vocabulary."
+    },
+    {
+      "path": "config/vale/styles/config/vocabularies/Slopsentral/accept.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Machine-readable Vale spelling vocabulary."
+    },
+    {
+      "path": "docs/demo/transcript.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Generated presentation transcript owned by docs/demo/render.mjs. The recorded replay and its evidence limits are assessed through docs/demo/README.md."
+    },
+    {
+      "path": "experiments/host-observation/requirements-test.txt",
+      "assessment": "EXCLUDED",
+      "reason": "Dependency input."
+    }
+  ]
+}

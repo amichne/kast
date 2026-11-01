@@ -1,0 +1,37 @@
+{
+  "engine": "vale version 3.25.1",
+  "proseNativeTests": {
+    "passed": 27,
+    "failed": 0,
+    "coverage": true
+  },
+  "starterTerminologyNativeTests": {
+    "passed": 10,
+    "failed": 0,
+    "coverage": true
+  },
+  "kastTerminologyNativeTests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "reportRunnerTests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "ruffFormat": "PASSED",
+  "ruffLint": "PASSED",
+  "strictPyright": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "realRunnerSmoke": {
+    "files": [
+      "README.md",
+      "docs/public/index.mdx"
+    ],
+    "proseExit": 0,
+    "terminologyExit": 0,
+    "report": "build/reports/documentation/readability-runner-smoke/run.json"
+  },
+  "commands": "README.md#compatibility-and-runner-tests"
+}

@@ -111,9 +111,11 @@ def verify_archive(archive: Path, component: Component, record: dict) -> None:
                 names = stream.namelist()
                 if not names or any(not name.startswith("kast-ide-hosted/") or ".." in Path(name).parts for name in names):
                     raise ReleaseRejected(ReleaseFailure.INVALID_ARCHIVE)
+                if len(names) != len(set(names)):
+                    raise ReleaseRejected(ReleaseFailure.INVALID_ARCHIVE)
                 if "kast-ide-hosted/lib/" not in names and not any(name.startswith("kast-ide-hosted/lib/") for name in names):
                     raise ReleaseRejected(ReleaseFailure.INVALID_ARCHIVE)
-                plugin_jar = f"kast-ide-hosted/lib/kast-ide-hosted-{record['hostedPluginVersion']}.jar"
+                plugin_jar = "kast-ide-hosted/lib/kast-ide-hosted.jar"
                 with zipfile.ZipFile(io.BytesIO(stream.read(plugin_jar))) as plugin:
                     metadata = ET.fromstring(plugin.read("META-INF/plugin.xml"))
                     if metadata.findtext("version") != record["hostedPluginVersion"]:

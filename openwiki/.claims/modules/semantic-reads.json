@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4e1c5197eba054d067c716ffb7e77af3e937f16237828212900f2c62a5dd23dc",
+  "pageVersion": "sha256:d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt",
-          "version": "repo-file-v1:sha256:95ba63ad194a920f680015cb606434b1abf934faa0d1075773e25f142f2d7964"
+          "version": "repo-file-v1:sha256:7f39d8d7ba2ca6ceeee574e6edda70061944e1372b3ff882ad1d25fea1a37b6a"
         }
       ]
     },
@@ -38,7 +38,7 @@
       "evidence": [
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt",
-          "version": "repo-file-v1:sha256:ae770d213a28482a5ef5843602d62d4fab3cf0b7eb534a604fe5ba842251d67e"
+          "version": "repo-file-v1:sha256:aa41c1238c336842c7a23dc43c6b0b5f234aeb820b286f49d30fd3af58ed4382"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt",
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
-          "version": "repo-file-v1:sha256:a6fd9b381c379cb51d1d29467a469a44d6623d498322d01ce417fa387261eec0"
+          "version": "repo-file-v1:sha256:7a96a4de51177554321c1d3434803ac309603fca2eff2fc1dbc87871b6a48b77"
         }
       ]
     },
@@ -55,24 +55,20 @@
       "statement": "Exact Kotlin value-site restoration filters same-range lexer tokens and argument containers before selecting an exact-range Kotlin expression within the declaration; role-shape and anchor failures remain finite, and later lexical ownership and K2 binding checks retain semantic authority.",
       "evidence": [
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L296-L305",
-          "version": "repo-lines-v1:sha256:c8d4594368f0e0a139c8f2286a52c199ad7d84b7f7758fa90619e3971bf5109c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMTFmYzNjOTlhYjUyNTNhZDIwZWVkNWQ1NTVhOGM0ODU3OTA1Y2I0YmUxZjc2OTcyM2JhNjQ4YmJhMmZhMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiNzM4YmRmY2ZlMzU1ODZkNGMxMTAxZGUyMGJjMzE1ZDViMThkODdhYzJhYjMxZGEyMzU5YWM3MTc0MWM1NDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzMDkwNTgxNWM4ODgxM2M0NzcwY2ZiOGJhMzQ0MWIxZmJiYjI3NmRhMTc1ODM2NDBiNGUyMmNmMDVjOWEyM2QifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt",
+          "version": "repo-file-v1:sha256:957d825e9ab5b2521d98d31cbe61e99e2c263c4bee34797a83607c605cc845d7"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt#L205-L237",
-          "version": "repo-lines-v1:sha256:b1ce48c1e31f872af81a4ded77d9b8ac7be63e7232b70b0235523da48458d393:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyOGI4MjBjOTg0NjA2M2I4MDJmMjcyZWQyNzQyN2ZmNTdjOGVhZTQ4YmMzNmMwOWZjN2YxYWY1MjhlZTBmOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2NzdmNWNkM2I1ZTI0ZTc4MTY2MzNhNDllOTkwODQ4NzRlYzNhYzdlMjA4ODM2NTk0ZTAxY2Q1YzU2MDM2YjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmZTQyYzgyMzVkNDdlYTkzY2Q2ZjVjNjY1NmY0MGUxNDJmNDlhOGNhMmM5ZTEyZWJiYjMxNDE3ZDBmYTY0YzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlZDM0OTFjODk1NTVhZTAyNzBlZWEyMTlkNDg5OTYzZThjNjM1ODJkYzYzMTY3M2M2MmQ1ZGRlMDU2NGI2NmYifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt",
+          "version": "repo-file-v1:sha256:6545489d7c4c435d5c31ab51fb8fab3cba9ef53c59d6e6f4badfb0471de356a3"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt#L87-L142",
-          "version": "repo-lines-v1:sha256:3ef0e83780d963a8f347ee16597ee4bcd01f0665052fe7388ec2127cc307658a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZTRlM2NlYmQyMWFiNTU3ODY0YTYyNjE1ZDI4Y2I4ZmFhOTNkMGI1NDFjMmY2YjA3MTBkZGYzYjI1ZDM2YzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyNWY5YWRmM2JmYTMzNDU5MDE0OTJiNmEwZjQwNWY0ODE5YmQyNWU0MWJkMjFhOWZhMTA2ZDFhYTIwMmU5N2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmZDJlYzE5YzhjYWMxMGUwZWI0NmNkYzg5ZTJmZWM4OTE0Y2Y5ZTYyNjQ2N2JlOTFjYzI0NTFiOWFmODkzYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YTM2NWE5MGVjMTFlOTA0MzI3NTJjZjkzNzZlYzVlZDM2YjgwYmE1ZThlNjg1NGZjZjk4OTcwZDMwNDQ0NjkifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
+          "version": "repo-file-v1:sha256:e30247217b55acbada2cb1d859c477787b66c04efe6a713f2932fcb6c9ff86ca"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt#L15-L49",
-          "version": "repo-lines-v1:sha256:a40b94d8083046332f62f324236cb580f474b9844d33015508e4f9f986b08553:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3ZGU1NjhiZDkzNjA5NDQ0OWEyNTEzNDlmOTMzODZmMzg1MDdiNGFmMDBiYjFhZTUxZWFkNjRlZTQ0MjE5ZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNmZmNjczNGQ5ZjdkNWQ0NTEwMmMyNjk3YWJjZDhhYjg2MjFkOWQxYWFmZGJmMDI2Mzk3ZDU4NzE5NzI2MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
-        },
-        {
-          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt#L26-L100",
-          "version": "repo-lines-v1:sha256:5f5f379c72157fa2e9ab29497ee55a907ac8c3f311227f88797f506689329895:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiZmFhZjIzMjQ0NjM1N2M2ZjU0NjcxYzY4YTAwMGRlNmU5NzFlNzIxNWY5OGNlOTZiMWQwOTVmZmU5N2JlN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVhMjc5NTlmNTk2NGFlYmFkYmFiM2FmZGE3MDViNWU2ZWNmN2JjNTg1ODQ0NTQzOGQ3NDQ5MGIzNzkwZmIzYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2NjI0NGQwNTk4MzgzNjc1NDI2NGUzMmNjYTU5NTJmNmE0Zjc5YWIxZGJkNGYxNDZlYzQyNTg1MTMxYTEwNmEifQ"
+          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt",
+          "version": "repo-file-v1:sha256:df963848c749301347005d418a87681445644fd16e1d32406b2c5d2c7c23a2cc"
         }
       ]
     },
@@ -81,34 +77,30 @@
       "statement": "Producer seed admission restores the enclosing and expected callable declarations under their retained authorities, checks the exact invocation expression and ownership, and requires compiler confirmation separately from the investigation expansion domain.",
       "evidence": [
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt#L137-L158",
-          "version": "repo-lines-v1:sha256:0ae2e5e9552aa9d11a9276b35ad10897a981196d4eb9e8b272d53eb4f1dd309d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwYTRiZjJjNzc2NzU2NjhhOGY2NGVhM2FlYmEzMzBiOGFiYWUwZmE3YjM0MzM5OWUyZDFlZmJlZDEyZmQxZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3MDhlNmJiYWQ2ODk0NDg3MTgzZjY3NzFiYjg0ZjhlNzBhMmUxNjFiYTZhZTJmZWMyNDcyNmI3Mzc1MmUyNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkMjQ4NTJmZDIxMmViOTA1OTBkMTlkMDJkMWUzYmJjMTg1NDA0ZTllNTNlOTQ2MGIxY2M3NTkzNTdjNDc1ZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MTEyYTNhYmZhMzRjYTdjZDAzYzgzNDJkNGViYWQ0MTY4YTM0NWNkYWIwZGEyZGRmOTZhNDVhMWRkODE0NjYifQ"
-        },
-        {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt#L218-L251",
-          "version": "repo-lines-v1:sha256:2198c57e403e5e8591a5be7aee0b155a167b7246800acc4c4fbcf00396f56253:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2N2ZiZjIxMzg2YzFmZTk2ZTJjYzg3NTM0ZmM4ZjljMjE1YjYwMjhhNzFhMmNhMGExNmYzN2EwNTZkZGNlOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5YWIzYmZlNzVhYzBlMThkYWY1ODQ4YWQzMzgzMjMwMTNkYTEwN2IzNjIwZDVhZjkxNGYwMzA0YjBmNWM4OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIwY2IzYjZiNjE5MWNkOWIyMjkxZTE1MjBkMmZlMDU2MzUyZGZiZWE5ODVmY2RmMjQzNWY4NzlmY2Q1Mzg4N2EifQ"
-        },
-        {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt#L67-L114",
-          "version": "repo-lines-v1:sha256:9f45b6d17c575de89c12fcb6b07dd63a3f90dc1dd0b229367892b33e513f24f1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3ZGJlMTRiMjBlNzVkNzc3ZDM5ZTk4YzlmYjgzNDBmY2Y4N2IyNDdiZjUxZGMzOTE0NDJkNTNkZWU0NjJlNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjZTcyZDg2N2UzNzMyYjViY2M2YjBiMzIzMWVmNWFkYzkwNDBiOGQzMjNmYTkyYzM2ODI0MjhhMTE2OTMyMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0Mjc5YzY3ZGU1ZDc3MGMxOWFmZjE3NDU4YzYyMGFjZTY4ODE2NTZiNjFkM2I2MWIyODg0ZmZjZmU0M2JkODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4Zjk4MjJmMjQ3ODk0MGYyMDhmODEwZTY3YmVmMTJhN2RiNGNmYmZhNWYwMWE1MmFlMGZmOTFlYzBjZTI5OGYifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt",
+          "version": "repo-file-v1:sha256:e641b30243cf247829277a13afa9901de266108ff0ad9ba0ce980ea10c944001"
         }
       ]
     },
     {
       "id": "claim_a60e53048e6a4cd9b3c98d3e85d906d4",
-      "statement": "Request-local value-site diagnostics add a restoration phase and finite shape or anchor outcome counters to the bounded hosted receipt; schema-6 serialization preserves additive observations and explicit provider zeros after completion or rejection without claiming K2 authority or complete flow coverage.",
+      "statement": "Request-local value-site diagnostics add a restoration phase and finite shape or anchor outcome counters to the bounded hosted receipt; schema-16 serialization preserves additive observations and explicit provider zeros after completion or rejection without claiming K2 authority or complete flow coverage.",
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
-          "version": "repo-file-v1:sha256:217516f7598d8c011a4e9dcfd8ddf990b9b8c163d9ebdfadfd4afe6e200c4478"
+          "version": "repo-file-v1:sha256:e30247217b55acbada2cb1d859c477787b66c04efe6a713f2932fcb6c9ff86ca"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnosticEncoding.kt",
+          "version": "repo-file-v1:sha256:ef061e7b405547dfae3f5a58e719ce840ae2cb3cebb086367c4f91f10fa67629"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:f5523937140873d2d926397d83eb47156a1d6069ebfced5f6cf0d5fd6beb2295"
+          "version": "repo-file-v1:sha256:e927156fa4f1cc2d0c52b77d1a14663fa71d590219cffe7ba38ac233ac6cf86f"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt",
-          "version": "repo-file-v1:sha256:4a4a2f9d78cef24143ae074aed040b4f4ee83f94bd81c9df7ebb9e2cf1f6b7a1"
+          "version": "repo-file-v1:sha256:8adb341b21f88f2ece5abfb09829e5a18aff10a49b59877c85a48c6a3736cda1"
         }
       ]
     },
@@ -122,11 +114,11 @@
         },
         {
           "resource": "repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt",
-          "version": "repo-file-v1:sha256:2c7ca12a6e5f02c1d376a07c974c7453ca6a8bc8b224267fc506114e01ae15ea"
+          "version": "repo-file-v1:sha256:b3cbe973c6a4da81bdbc2d0460244679c7203fa96e225ef91fb57d6d7caaa0cc"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:4f480338abe02491d2d2176ebf0078eac348bcf5bd274eda51851f604ed1eab0"
+          "version": "repo-file-v1:sha256:d8b9a27b56b23c219193386ea4480523d1dc13609e304aff8352a5eb09414d98"
         }
       ]
     },
@@ -140,7 +132,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:4f480338abe02491d2d2176ebf0078eac348bcf5bd274eda51851f604ed1eab0"
+          "version": "repo-file-v1:sha256:d8b9a27b56b23c219193386ea4480523d1dc13609e304aff8352a5eb09414d98"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt",
@@ -154,11 +146,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
-          "version": "repo-file-v1:sha256:a6fd9b381c379cb51d1d29467a469a44d6623d498322d01ce417fa387261eec0"
+          "version": "repo-file-v1:sha256:7a96a4de51177554321c1d3434803ac309603fca2eff2fc1dbc87871b6a48b77"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeTryBranchResult.kt",
-          "version": "repo-file-v1:sha256:feda9d645d170e61af6deac350ba1967271d4bbbc08e3dc4e9621ee4b2787b9e"
+          "version": "repo-file-v1:sha256:7480acb4161b375fecd344183a0d99406a1f8d37730d6a4d2a5adf20e9b9ead0"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ReturnFinallyBoundary.kt",
@@ -176,15 +168,15 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt",
-          "version": "repo-file-v1:sha256:2990f04a46c96ca6c53a465dd4435806682a69534dbafb027c801e09cfbca1b1"
+          "version": "repo-file-v1:sha256:0a43a9686870a2bf7638e04b0b15428fa71223baa1bfeed199f0cef10b3313fd"
         },
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijLocalSourceAddress.kt",
-          "version": "repo-file-v1:sha256:a6a8cb53ddaa1a060e5d759034b9fafebe9f2dbe789a2fecaf4f7622c24e48b3"
+          "version": "repo-file-v1:sha256:165e72e0bd1e6a6980cc492ee3ccbae3251c1c288b04facb419480b71dbb7cd9"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijLocalDeclarationAddressProjection.kt",
-          "version": "repo-file-v1:sha256:b5dc31e0ec271f07b126f5082018109731c125c5e7502e139f9cf36bd82022e1"
+          "version": "repo-file-v1:sha256:11b9b10dd8e6c56ceb5489c4e54b0ba16eedcd148b5e5fa13fa0bcfb06051042"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijLocalIdentityObservation.kt",
@@ -198,7 +190,7 @@
       "evidence": [
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDiscoveryAdmission.kt",
-          "version": "repo-file-v1:sha256:4290a72fabb901d2792e36e5cc3b9579841eab359183013e54c62a4d0a30f34b"
+          "version": "repo-file-v1:sha256:1df9619d717cb01f52f41c2606b20c9ccea2d810b4430efbdc95a1b07e4ba80a"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
@@ -220,7 +212,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationOwnerSignature.kt",
-          "version": "repo-file-v1:sha256:12e3581e5fc2a51154f7de3f81ab834f20e2af656bd0b97e97bb10603fb8bff4"
+          "version": "repo-file-v1:sha256:d0bfca21d666d454ffc1406519fc247eec70288da679e9193f9e8dd72688da3d"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentity.kt",
@@ -246,11 +238,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt",
-          "version": "repo-file-v1:sha256:2990f04a46c96ca6c53a465dd4435806682a69534dbafb027c801e09cfbca1b1"
+          "version": "repo-file-v1:sha256:0a43a9686870a2bf7638e04b0b15428fa71223baa1bfeed199f0cef10b3313fd"
         },
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt",
-          "version": "repo-file-v1:sha256:b2d7831effcfdb9c1d5bd92dce48fbcfa2dff2773e64dc90cdf7c0163d930e21"
+          "version": "repo-file-v1:sha256:ee88167947a20685c20b30b0fef48753db01e324ad7f107c51fa8062fccbc621"
         },
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt",
@@ -263,16 +255,16 @@
       "statement": "Declared calls-in-place admission needs one matching EXACTLY_ONCE, AT_MOST_ONCE, AT_LEAST_ONCE, or UNKNOWN effect and a bounded binary digest. Missing or unsupported effects reject. The separate lazy model needs compiler mapping and six reviewed class identities.",
       "evidence": [
         {
-          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt#L10-L31",
-          "version": "repo-lines-v1:sha256:e049edbe2712d2e860b3906e2b69e1f6076fc3ca2d42b726c8b6bca91ea4cd17:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYjUxMDlmMjMzZjYyMTY2YWVlYWJhZjM0OTFkZDY2NGE3Y2FhZGQwOTRjODJiOTU5ODBkYWQ3ODQ3YmM1ZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNGNlNTc0YTdmZDgyMDVmN2M2M2VhMzY1YTJmYTJmZjQyY2VmYzhkYzE3Y2I3NGI3YmYyNDM1OWMxMjYxNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0OWNlZGQ2NzRmN2JhZDM2ZGY5MDM5N2NmMzI5ZWYwZjdjM2FjMzgzMzgxZGVjODZjNjM5MjZkNGQ1NTczNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjYWM2MzVlYmFkZDYxZTFmZjU1NzhkZTkyMzk0MTkwNWM3NDViZjhmY2JhZDRjNTI4YTA0ODM4YzcxNGVlOTEifQ"
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt",
+          "version": "repo-file-v1:sha256:ea259909dbe00ac7de23ff654d1e88b33e9a7425486650a3182c9efd5ad1a066"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKind.kt",
           "version": "repo-file-v1:sha256:be9d95722a94f1130262388d03569e32068e78fd45f4b3b2c371618be6e2af56"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L115-L159",
-          "version": "repo-lines-v1:sha256:dc5fb9250e8625db16d930b066e1bad7f45454f02f64176fd3be6db7f1d2cf79:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMTA2Njk4MWIxM2MwODk2MzU1OTBjMjYxNTI0ODg2Y2Y5OWIwYzg0NDE3MTQ3ZTljZGU3MGQxMzA3MTAwMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZjVkZTkyMTFkMDE4ZTY1ZDZlZTkzOTU1ODcwNzkxOTcyNGRlMTM0MzJhMTEwMzJjNWE4NzExODRkYTQ2ZGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFhNDg3YjI0NThkMjliMTkwYWJhYTYxZDAwODUxYmI4MThmMDA5OThlYTQ3NDI1NTBjNDc5OWQxMzJmNzM5ZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkMWU2YzgxNDQxOTQyMWY1ZTk3Y2NhOGE2MDNkY2UyYjE1MGE5Mzc4NTA2N2M1NzQ4NWI4NDE5NTQ4NTI1YmQifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
+          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
         }
       ]
     },
@@ -282,11 +274,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:5caab847365df145809dde3090a37e539780578941d6ead266269e868441f299"
+          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt#L252-L265",
-          "version": "repo-lines-v1:sha256:6a8de09c8eec00180161011282c62516bb0bd994a20a8d75a08176be08a5ce07:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmY2Q4NWUxMmMwYjJkNmFjZWE2MmQ2NzY4YWM3OGM0YzQ5MTE5NTNhNzRmODIwODdlZjQ1MzdkMzFlMThiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NWIyZWRjZDU3ODQ2NTIwZjYyYWU4OGYzZTk3OTIyZmFlNmU5YjEzNmM4ODJhMmU1YTIyNjAzYjA3OTgwYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkNjBmNWRmMTM4MzYzNWYwYzUyMTc2OTRjMzg5OTdiOGRmZThjNWE3ZGI3YmZkMDM3NTc4MWQ0YjlhYjliZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZmJjZWM5N2I4NzBlYzk3NWM4YTA1MGRhYTI4N2NmM2ViMGFmYmZiNDlkYzk1NDRkZWE5ZTE0MmFlMmRhZGIifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt",
+          "version": "repo-file-v1:sha256:beea67120a0650e85630d34230d0fcfbdceb7fd5b6e5b38bb3f8c2f717b54600"
         }
       ]
     },
@@ -300,7 +292,7 @@
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
-          "version": "repo-file-v1:sha256:b6d88070d4d4e0084bd57ea8f723b1b6a89186944e97297a28d72049b3d37580"
+          "version": "repo-file-v1:sha256:3e7b1950349306ab766caedf11eaf38848bc0afb485fa2eac8f623d864241110"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDeferredSupplierExecution.kt",
@@ -313,30 +305,26 @@
       "statement": "Eligible exact directory searches use completed word-index candidate evidence before bounded VFS supply and PSI. Unsupported identifier forms and implicit Companion keep exhaustive discovery. Oversized sources keep the original PSI path, and both stages share work, cancellation, and retained-byte limits.",
       "evidence": [
         {
-          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt#L190-L242",
-          "version": "repo-lines-v1:sha256:ed7c4ae57456f813a5d15eb5b5063f3e80ed0d9a4a22abda5e52070fd3b55195:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmOTViMTk4ZWUxYWRlNTY2YzYwNzVjZTk1MzAwOTQwZjAyYzM4NTQwNWRiYzgyNzIxZDhmMzEyMjk1YTE4ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxNTJlNmRlMTY5MTM1OTFlZGFmYTJjZjU0Nzg0Y2UyYTMwNDdiZTM3ODA2OGYwNTkyNDE3Zjg3MWQyNWYzMmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1ZTUzZWU2Yjg1NzVlNzJlY2FjNzE2OTdhN2MwOTRiNjg0YzExMzRjYTg2MGM5ZGEwYzc5NzkyM2I2NjE3MzAifQ"
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt",
+          "version": "repo-file-v1:sha256:88285fc66239cf2a57c6b1435181fc9720a2959227eb136bbf92144f5d15b171"
         },
         {
-          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt#L115-L141",
-          "version": "repo-lines-v1:sha256:e107651f8f1f005314cc9529aec0548460601ac7f3150e5db089ccce8c829740:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlYjU3YjVmOTdmNThmNDc1ZDFlMjhjNDliNjVkMjdkMjY5ZDIxMDM4NzYxM2Q2ZGE0ZGZhMTk2N2M5M2RlYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5YzE2ZTZjNmFmNzVkYmViMDcwZTYwMjA0MzBlZTIxY2I2NWVkZmEyNTA0ODEwZTk5NzU2MmMwOWYyMTBlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZWJkNDE1ZDZlNTNiYTVhZWZjZDVmZWE2NjZjZmI0MTg4ODI3NmFjZTEwY2MxYTNmNjQ2YWJlNzdjNzQ5ZmIifQ"
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt",
+          "version": "repo-file-v1:sha256:111b3a6da85e3a04f5ebac6dd1a47af4f883e42706431307cb524a60542779fc"
         },
         {
-          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt#L22-L60",
-          "version": "repo-lines-v1:sha256:02a683ea48da973f13b18c4dab9b4c74c62f8c30ed8e895e21d98bbbdcf36f5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2NGVjMmE1Mzg1NDNlN2Q2ZDMyY2Q0ZmM1NjFjMjU5NjI4OWEzNzgzMDA1YzY3YzJkYjAyYTgyOWMwOWI3NjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjMjlmYmZlNTFlNTJiYzJkMTY1YmY1NjZmNzM1OTlmMjdlYTRlYmU4YTg5OTM0M2NkOWVhMDNkZjRhN2UyY2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjMWFhM2UyMjcwOGJiZmE4YTA4Mjc4NGU1ODhjZjZiNGE2MzY2YjgxYWU0MDkxZGQ4YWQ2OTFkMDZjZmM3NzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc3OGEyODRjNzVlNDNhNTEyNDdhYTUxZTNhNGU1NjcyY2EwZDBlZDM4MzE2ZTQwOTFkMjA5NjYxZTk4NmI4YWQifQ"
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDeclarationName.kt",
+          "version": "repo-file-v1:sha256:a7559988ebdbff4dfae1fd5e07e767c62f2ee9a40f3d0bf4ae19fb79b5b213ae"
         },
         {
-          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDeclarationName.kt#L7-L22",
-          "version": "repo-lines-v1:sha256:faa3a7a989dd5da813f04cfcd034c4b8015e0c3085990d1429d3537adb7a9a96:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4Y2RjYzI1M2IyYTM1OTZhNTk4MDhmNTQzNWU1MjlhYzIyMGQyNThhMmU0ZTQ5OWFjNWJjMmNkODIwOGNmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExNGEzYWUyMjQzMTc0ZTExN2Y1NmVlZTg0NTgxYmQ5MzQ3YjMwZDNhNjc1OWVlZDU4ZGM1MDQwMjA4NjNiYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwZmI5ZDIzM2E0NTRlZGExNmQxZWQ1N2JkMGYxNWI2MDZhNjA3OTUwNjc2MzE0MDY4ZDE5NzRiZDU3ZjdkYmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
-        },
-        {
-          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt#L24-L46",
-          "version": "repo-lines-v1:sha256:4d754177c93c5d89c895f0c9d628b9d69d5cffe75755f5fb044bc2c814c4bc71:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1ZWQyYjc3ZGM2NTZkMjgxZjExMjM1YTA0MmMzNTE3YTIyNDE0NDY4NWI4NGNiZmVkZjdmNmYxMDBhMWI3NjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0MThhNWVmOGJmNTA5YTExZGI2MWM3YzcwMDJlYmViMjFiYWUxOTM0MWY0ZWJmNGQ5ZDdhMjUwMTdlZWE0N2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwMzc4ZDgxMzJhMDExMjJjZmUxMjk5YTRkMDZkODBlNTViMDhlNDU3ODMwOWZiZGRjNTk5YzczMzg0MmZlOTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2ZTg2NWQxZmExZjA3OGM4NjZiNDliMTFiOTdhZDIwYzBlNDMzZWE1ZmY3NTg5ZGI4ZDA1OWJiZjliMmNhMDYifQ"
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt",
+          "version": "repo-file-v1:sha256:6d20c8ff9217c1dedf5ff5faa14b7e72a99dd5a21ebcf7de202163182452d067"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-18T02:29:42.742Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

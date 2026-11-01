@@ -4,7 +4,7 @@ description: "Use compiler-grounded discovery, relationship evidence, an exact c
 icon: "route"
 ---
 
-Use this guide for one authorized function-body change in a connected Kotlin workspace. Success means that the requested behavior passes its project test. The change also keeps the selected scope. Successful tool calls alone do not prove that result.
+Use this guide for one authorized function-body change in a connected Kotlin workspace. Success means that the requested behavior passes its project test and the change stays within the selected scope. Successful tool calls alone do not establish that result.
 
 You need a ready workspace and a supported target. Define the expected result from outside the code under test. For a controlled exercise, use a disposable checkout and one named regression case.
 
@@ -13,17 +13,16 @@ You need a ready workspace and a supported target. Define the expected result fr
 3. [Check the affected calls.](#3-explain-the-affected-relationships)
 4. [Make the change.](#4-make-the-exact-change)
 5. [Prove the result.](#5-establish-the-result)
-6. [Compare whole tasks.](#6-compare-complete-tasks)
 
 ## 1. Define the expected behavior
 
 Write the expected input and output before the source change. Name the nearest invalid case and the source that must stay unchanged. Run the focused project test before the change.
 
-An unrelated compiler failure does not prove the defect. Neither does a missing runner or a test selection with no cases.
+An unrelated compiler failure, a missing runner, or a test selection with no cases leaves the defect unproved.
 
 ## 2. Discover the exact target
 
-Use [scoped declaration discovery](/reference/search) with the known name, directory, source set, and declaration kind. Supply known constraints before discovery. Check each matching signature and location before you select an issued `ref`.
+Use [scoped declaration discovery](/reference/search) with the known name, directory, source set, and declaration kind. Examine each matching signature and location before you select an issued `ref`.
 
 The default `RUNNER_CONTROLLED` mode has no implicit semantic work or time limit. Its default output page holds up to 128 rows and 49,152 bytes. If execution rejects, examine the specific cause before another call.
 
@@ -33,36 +32,26 @@ An explicit `BOUNDED` mode uses work and time grants. More time does not fix a w
 
 Use the selected reference for `TRACE` or a specific relationship query. Keep the expansion scope wide enough to include the callers that the task concerns. Read the completion verdict and the evidence for each claimed relationship.
 
-`TRACE` covers references, implementations or overrides, direct callers, and one further caller layer. Reading more pages does not make an unproved answer proved. Use [retained evidence](/how-to/read-retained-evidence) to inspect produced output without another semantic query.
+`TRACE` covers references, implementations or overrides, direct callers, and one further caller layer. More output pages do not change the completion verdict. Use [retained evidence](/how-to/read-retained-evidence) to inspect produced output without another semantic query.
 
 ## 4. Make the exact change
 
-Read the target's current source. Use [body replacement](/reference/change) only for a supported named function with a block body. Pass the issued exact reference unchanged. Check the change receipt before another write.
+Read the target's current source. Use [body replacement](/reference/change) only for a supported named function with a block body. Pass the issued exact reference unchanged. Examine the change receipt before another write.
 
-If the outcome is uncertain, check source and recovery evidence before another write. After success, use the returned `freshRef` for later exact operations.
+If the outcome is uncertain, inspect the source and recovery evidence before another write. After success, use the returned `freshRef` for later exact operations.
 
 <span id="5-establish-the-result" />
 
 ## 5. Prove the result
 
-Check the diff against the permitted source scope. Use [diagnostics](/how-to/inspect-diagnostics) for the affected files. Run the same focused project test and its invalid case. Report the change receipt. Report the project-test outcome on its own.
+Examine the diff against the permitted source scope. Use [diagnostics](/how-to/inspect-diagnostics) for the affected files. Run the same focused project test and its invalid case. Report the change receipt separately from the project-test result.
 
 Clean diagnostics do not prove every compiler identity. A larger grant cannot repair `compiler-identity-unavailable`, stale references, or missing retained state.
 
-## 6. Compare complete tasks
+<span id="6-compare-complete-tasks" />
 
-For a budget trial, repeat the same task. Keep source revisions, requests, fixtures, and host conditions fixed. Restore only the disposable fixture between runs. Keep response limits equal across profiles.
+## Compare execution profiles
 
-Record these measures for each whole task:
-
-- **Share of tasks that complete:** Count tasks with the expected answer and passing project tests. Divide by all trials.
-- **Whole-task time:** Measure from discovery through the final test. Include retries and recovery.
-- **Extra steps:** Count extra calls, manual budget changes, and unresolved decisions.
-- **Response size:** Actual encoded bytes across all calls and pages.
-- **Memory:** Report host heap use and charged checkpoint bytes as distinct measures.
-- **Editor response:** Record how the editor responds and how cancellation ends during the task.
-- **Coverage and current state:** Keep original completion verdicts, identity evidence, and stale-state rejection outcomes.
-
-Include controls for a smaller work grant, a stale reference, and caller cancellation. Keep a typed rejection distinct from a completed task. Do not raise retention quotas without memory evidence.
-
-These steps define a comparison. They do not report measured time, heap use, or a completed native trial.
+The source-change task ends with the scoped diff, receipt, and project-test result.
+To compare execution profiles, use the contributor procedure for [complete engineering tasks](https://github.com/amichne/kast/blob/main/docs/development.md#compare-complete-engineering-tasks).
+That separate experiment keeps requests, fixtures, host conditions, and measurements comparable.

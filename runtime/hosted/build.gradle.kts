@@ -47,6 +47,28 @@ val ideBuild =
 val ideReleaseLine = ideBuild.substringBefore('.')
 
 val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
+val hostSourceRevision =
+    providers
+        .gradleProperty("kastSourceRevision")
+        .orElse(
+            providers
+                .exec {
+                    workingDir(repositoryRoot.asFile)
+                    commandLine("git", "rev-parse", "HEAD")
+                }
+                .standardOutput
+                .asText
+                .map(String::trim)
+        )
+val hostSourceTree =
+    providers
+        .exec {
+            workingDir(repositoryRoot.asFile)
+            commandLine("git", "rev-parse", "HEAD^{tree}")
+        }
+        .standardOutput
+        .asText
+        .map(String::trim)
 
 tasks.processResources {
     val schema = File(repositoryRoot.asFile, "protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json")
@@ -63,6 +85,8 @@ tasks.processResources {
             "pluginVersion" to project.version.toString(),
             "schemaDigest" to digest(schema),
             "registryDigest" to digest(registry),
+            "sourceRevision" to hostSourceRevision.get(),
+            "sourceTree" to hostSourceTree.get(),
         )
     inputs.properties(values)
     expand(values)
@@ -113,6 +137,8 @@ dependencies {
 
 val hostedPlugin =
     tasks.register<Zip>("hostedPlugin") {
+        val componentVersionSuffix = "-${project.version}.jar"
+        val externalJarPrefixes = setOf("sqlite-jdbc-", "kotlinx-serialization-")
         group = "distribution"
         description = "Packages the project-owned existing-IDE index endpoint."
         archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideReleaseLine.zip")
@@ -166,6 +192,11 @@ val hostedPlugin =
                     "kotlinx-serialization-json-jvm-*.jar",
                 )
             }
+            eachFile {
+                if (externalJarPrefixes.none(name::startsWith) && name.endsWith(componentVersionSuffix))
+                    name = name.removeSuffix(componentVersionSuffix) + ".jar"
+            }
+            duplicatesStrategy = DuplicatesStrategy.FAIL
         }
     }
 

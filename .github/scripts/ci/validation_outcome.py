@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TypeGuard
 
 from required_checks import CompletedChecks, admit_checks
-from validation_scope import ROOT, SHA, Reason, Scope, select
+from validation_scope import ROOT, SHA, NativeCompilation, Reason, Scope, select
 
 WORKFLOW = ".github/workflows/ci.yml"
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
@@ -69,6 +69,7 @@ class SourceValidated:
 SCOPE_OUTCOMES = {
     Scope.DOCUMENTATION: Outcome.DOCS_VALIDATED,
     Scope.SOURCE: Outcome.SOURCE_VALIDATED,
+    Scope.SOURCE_FULL: Outcome.SOURCE_VALIDATED,
     Scope.PRODUCT: Outcome.PRODUCT_VALIDATED,
     Scope.FULL: Outcome.PRODUCT_VALIDATED,
 }
@@ -179,11 +180,13 @@ def record_gate(
     root: Path = ROOT,
     *,
     affected: bool = False,
+    native_compilation: NativeCompilation = NativeCompilation.ENABLED,
 ) -> ValidationRecord | Failure:
     completed = admit_checks(needs)
     if not isinstance(completed, CompletedChecks):
         return Failure.GATE_NOT_COMPLETE
     selection = select(event, base, revision, root, affected=True) if affected else select(event, base, revision, root)
+    selection = selection.with_native_compilation(native_compilation)
     if selection.reason is Reason.CHECKOUT_MISMATCH or completed.scope is not selection.scope:
         return Failure.SELECTION_MISMATCH
     result = SCOPE_OUTCOMES[selection.scope]
@@ -232,6 +235,7 @@ def main() -> None:
             os.environ["GITHUB_EVENT_NAME"],
             json.loads(os.environ["CI_NEEDS"]),
             affected=args.affected,
+            native_compilation=NativeCompilation(os.environ.get("KAST_NATIVE_COMPILATION", "true")),
         )
         if isinstance(record, Failure):
             raise SystemExit(f"validation-outcome: {record.value}")

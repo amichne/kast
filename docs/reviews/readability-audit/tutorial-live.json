@@ -1,0 +1,694 @@
+{
+  "sourceRevision": "dac99b39a0b7b497d5c0e0d5c2a604f5817e5397",
+  "kind": "LIVE_INSTALLED_HOST_TUTORIAL",
+  "fixturePath": "protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+  "limits": [
+    "Existing installation, not a fresh installer run.",
+    "One Kotlin/JVM main source set in the Kast worktree.",
+    "Historical issued references, not reusable examples."
+  ],
+  "discovery": {
+    "request": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "kastTutorialMessage",
+          "declarationKinds": [
+            "FUNCTION"
+          ],
+          "scope": {
+            "type": "PACKAGE",
+            "packageName": "tutorial",
+            "includeSubpackages": false,
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      },
+      "verbose": true
+    },
+    "result": {
+      "original_evidence_summary": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "invocation": {
+        "accumulated_row_count": 1,
+        "preview": {
+          "type": "INLINE",
+          "row_count": 1,
+          "encoded_bytes": 525
+        },
+        "stop": {
+          "type": "COMPLETED"
+        }
+      },
+      "evidence_window": {
+        "type": "FINAL",
+        "start": 0,
+        "end": 1,
+        "total": 1
+      },
+      "question": {
+        "from": {
+          "type": "symbols",
+          "match": {
+            "type": "name",
+            "text": "kastTutorialMessage",
+            "matching": "exact-name"
+          },
+          "scope": {
+            "sourceSets": [
+              "main"
+            ],
+            "directory": null,
+            "packageName": {
+              "name": "tutorial",
+              "containment": "direct"
+            }
+          },
+          "declarationKinds": [
+            "function"
+          ]
+        },
+        "steps": [],
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "location",
+            "signature"
+          ]
+        },
+        "completion": {
+          "type": "COMPLETE_ONLY",
+          "model": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "impact_accounting": {
+        "type": "NOT_APPLICABLE"
+      },
+      "operation": "query.run",
+      "status": "complete",
+      "items": [
+        {
+          "type": "exact-symbol",
+          "ref": "exact:v5:JU5Rc1-wZwnscbXlE9_tfg",
+          "kind": "function",
+          "name": "kastTutorialMessage",
+          "location": {
+            "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+            "range": {
+              "startInclusive": 18,
+              "endExclusive": 74
+            }
+          },
+          "signature": {
+            "type": "function",
+            "qualifiedIdentity": "tutorial.kastTutorialMessage",
+            "receiver": {
+              "type": "absent"
+            },
+            "contextReceivers": [],
+            "valueParameters": [],
+            "typeParameterCount": 0
+          },
+          "connections": []
+        }
+      ],
+      "failures": [],
+      "omissions": [],
+      "walk_observations": [],
+      "reference_observations": [],
+      "discovery_observations": [
+        {
+          "universe": {
+            "declaration_language": "kotlin",
+            "match": {
+              "type": "name",
+              "text": "kastTutorialMessage",
+              "matching": "exact-name"
+            },
+            "declaration_kinds": [
+              "function"
+            ],
+            "source_policy": "production-and-test",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {
+              "kind": "exact",
+              "names": [
+                "main"
+              ]
+            },
+            "directory": null,
+            "package_name": {
+              "name": "tutorial",
+              "containment": "direct"
+            }
+          },
+          "ordering": "named-candidate-v1",
+          "progress": {
+            "kind": "exhausted"
+          },
+          "observed_stops": [],
+          "examined_work_units": 1,
+          "inventory_files": 0,
+          "reacquired_files": 0,
+          "examined_leaves": 0,
+          "inventory_nanoseconds": 0,
+          "declaration_scan_nanoseconds": 0,
+          "projection_nanoseconds": 12549167
+        }
+      ],
+      "relation_observations": [],
+      "retention": {
+        "kind": "not_requested"
+      },
+      "coverage": {
+        "exhaustive": true
+      },
+      "page_progress": {
+        "rows": 1,
+        "walk_evidence": 0,
+        "reference_evidence": 0,
+        "relation_evidence": 0,
+        "scope_exclusions": 0,
+        "callback_observations": 0,
+        "callable_observations": 0,
+        "excluded_callbacks": 0,
+        "omissions": 0,
+        "failures": 0
+      },
+      "execution_budget": {
+        "mode": "RUNNER_CONTROLLED",
+        "max_results": {
+          "selection": "caller",
+          "requested": 10,
+          "configuredDefault": 128,
+          "operatorCeiling": 2147483646,
+          "effective": 10,
+          "clamping": []
+        },
+        "max_returned_bytes": {
+          "selection": "configured_default",
+          "requested": null,
+          "configuredDefault": 49152,
+          "operatorCeiling": 2147483646,
+          "effective": 49152,
+          "clamping": []
+        }
+      },
+      "live": {
+        "root": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+        "host": "0282e818-145c-4070-9191-c1249309497c",
+        "epoch": 2,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "version": 1
+      }
+    }
+  },
+  "callers": {
+    "request": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "exact:v5:JU5Rc1-wZwnscbXlE9_tfg"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "CALLERS"
+          }
+        ],
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      },
+      "verbose": true
+    },
+    "result": {
+      "original_evidence_summary": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "invocation": {
+        "accumulated_row_count": 1,
+        "preview": {
+          "type": "INLINE",
+          "row_count": 1,
+          "encoded_bytes": 2227
+        },
+        "stop": {
+          "type": "COMPLETED"
+        }
+      },
+      "evidence_window": {
+        "type": "FINAL",
+        "start": 0,
+        "end": 1,
+        "total": 1
+      },
+      "question": {
+        "from": {
+          "type": "references",
+          "values": [
+            {
+              "token": "exact:v5:JU5Rc1-wZwnscbXlE9_tfg"
+            }
+          ]
+        },
+        "steps": [
+          {
+            "type": "related",
+            "relation": "callers"
+          }
+        ],
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "location",
+            "signature"
+          ]
+        },
+        "completion": {
+          "type": "COMPLETE_ONLY",
+          "model": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "impact_accounting": {
+        "type": "NOT_APPLICABLE"
+      },
+      "operation": "query.run",
+      "status": "complete",
+      "items": [
+        {
+          "type": "exact-symbol",
+          "ref": "exact:v5:q8NEp9ywUByg7A5nD9L0Jw",
+          "kind": "function",
+          "name": "kastTutorialCaller",
+          "location": {
+            "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+            "range": {
+              "startInclusive": 76,
+              "endExclusive": 145
+            }
+          },
+          "signature": {
+            "type": "function",
+            "qualifiedIdentity": "tutorial.kastTutorialCaller",
+            "receiver": {
+              "type": "absent"
+            },
+            "contextReceivers": [],
+            "valueParameters": [],
+            "typeParameterCount": 0
+          },
+          "connections": [
+            {
+              "meaning": "callers",
+              "source": {
+                "selector": "exact:v5:q8NEp9ywUByg7A5nD9L0Jw",
+                "kind": "function",
+                "name": "kastTutorialCaller",
+                "qualifiedIdentity": "tutorial.kastTutorialCaller",
+                "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+                "range": {
+                  "startInclusive": 76,
+                  "endExclusive": 145
+                },
+                "compilerEvidence": {
+                  "identity": "canonical-signature-sha256-v1|48e20cc25155d4af3a8ef8fe93d208075a7f80a7aee41cf1929e3809a75d5388",
+                  "signature": {
+                    "type": "function",
+                    "qualifiedIdentity": "tutorial.kastTutorialCaller",
+                    "receiver": {
+                      "type": "absent"
+                    },
+                    "contextReceivers": [],
+                    "valueParameters": [],
+                    "typeParameterCount": 0
+                  }
+                }
+              },
+              "target": {
+                "selector": "exact:v5:wT4dtCSdXsnUBKSqU0wsXQ",
+                "kind": "function",
+                "name": "kastTutorialMessage",
+                "qualifiedIdentity": "tutorial.kastTutorialMessage",
+                "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+                "range": {
+                  "startInclusive": 18,
+                  "endExclusive": 74
+                },
+                "compilerEvidence": {
+                  "identity": "canonical-signature-sha256-v1|2ef6c0f57ebf1cd0cb1860e9aa6790f01920b26f4ff5fefe04dd78b59723e3af",
+                  "signature": {
+                    "type": "function",
+                    "qualifiedIdentity": "tutorial.kastTutorialMessage",
+                    "receiver": {
+                      "type": "absent"
+                    },
+                    "contextReceivers": [],
+                    "valueParameters": [],
+                    "typeParameterCount": 0
+                  }
+                }
+              },
+              "occurrence": {
+                "candidateSelector": "candidate:v5:ugr9nvr_o9hHeAMmuTy-xQ",
+                "file": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast/protocol/contract/src/main/kotlin/tutorial/KastTutorial.kt",
+                "range": {
+                  "startInclusive": 122,
+                  "endExclusive": 141
+                }
+              },
+              "provenance": "k2-authored-source",
+              "coverage": "exact-compiler-confirmed"
+            }
+          ]
+        }
+      ],
+      "failures": [],
+      "omissions": [],
+      "walk_observations": [],
+      "reference_observations": [],
+      "discovery_observations": [],
+      "relation_observations": [
+        {
+          "subject": {
+            "token": "exact:v5:wT4dtCSdXsnUBKSqU0wsXQ"
+          },
+          "relation": "callers",
+          "provider": "INTELLIJ_REFERENCES_V2",
+          "requested_domain": "WORKSPACE",
+          "effective_domain": {
+            "scope": {
+              "type": "WORKSPACE"
+            },
+            "source_policy": "production-and-test",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {
+              "kind": "all"
+            },
+            "directory": null,
+            "package_name": null,
+            "declaration_kinds": []
+          },
+          "domain_fingerprint": "97ac9fc50db5e41f28d4aa186f5d406526ae51b814d8ae1fc4b096b51950797d",
+          "coverage": {
+            "type": "EXHAUSTED"
+          },
+          "scope_exclusions": [],
+          "callback_observations": [],
+          "callable_observations": []
+        }
+      ],
+      "retention": {
+        "kind": "not_requested"
+      },
+      "coverage": {
+        "exhaustive": true
+      },
+      "page_progress": {
+        "rows": 1,
+        "walk_evidence": 0,
+        "reference_evidence": 0,
+        "relation_evidence": 1,
+        "scope_exclusions": 0,
+        "callback_observations": 0,
+        "callable_observations": 0,
+        "excluded_callbacks": 0,
+        "omissions": 0,
+        "failures": 0
+      },
+      "execution_budget": {
+        "mode": "RUNNER_CONTROLLED",
+        "max_results": {
+          "selection": "caller",
+          "requested": 10,
+          "configuredDefault": 128,
+          "operatorCeiling": 2147483646,
+          "effective": 10,
+          "clamping": []
+        },
+        "max_returned_bytes": {
+          "selection": "configured_default",
+          "requested": null,
+          "configuredDefault": 49152,
+          "operatorCeiling": 2147483646,
+          "effective": 49152,
+          "clamping": []
+        }
+      },
+      "reference_acquisitions": {
+        "references": [
+          {
+            "previous": "exact:v5:JU5Rc1-wZwnscbXlE9_tfg",
+            "current": "exact:v5:wT4dtCSdXsnUBKSqU0wsXQ",
+            "reason": "REFERENCE_UNAVAILABLE"
+          }
+        ]
+      },
+      "live": {
+        "root": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+        "host": "0282e818-145c-4070-9191-c1249309497c",
+        "epoch": 3,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "version": 1
+      }
+    }
+  },
+  "missing": {
+    "request": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "kastTutorialMissing",
+          "declarationKinds": [
+            "FUNCTION"
+          ],
+          "scope": {
+            "type": "PACKAGE",
+            "packageName": "tutorial",
+            "includeSubpackages": false,
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "terminalStep": {
+          "type": "EMIT",
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      },
+      "verbose": true
+    },
+    "result": {
+      "original_evidence_summary": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "invocation": {
+        "accumulated_row_count": 0,
+        "preview": {
+          "type": "INLINE",
+          "row_count": 0,
+          "encoded_bytes": 2
+        },
+        "stop": {
+          "type": "COMPLETED"
+        }
+      },
+      "evidence_window": {
+        "type": "FINAL",
+        "start": 0,
+        "end": 1,
+        "total": 1
+      },
+      "question": {
+        "from": {
+          "type": "symbols",
+          "match": {
+            "type": "name",
+            "text": "kastTutorialMissing",
+            "matching": "exact-name"
+          },
+          "scope": {
+            "sourceSets": [
+              "main"
+            ],
+            "directory": null,
+            "packageName": {
+              "name": "tutorial",
+              "containment": "direct"
+            }
+          },
+          "declarationKinds": [
+            "function"
+          ]
+        },
+        "steps": [],
+        "output": {
+          "type": "symbols",
+          "fields": [
+            "name",
+            "location",
+            "signature"
+          ]
+        },
+        "completion": {
+          "type": "COMPLETE_ONLY",
+          "model": "COMPILER_RESOLVED_STATIC_V1"
+        }
+      },
+      "impact_accounting": {
+        "type": "NOT_APPLICABLE"
+      },
+      "operation": "query.run",
+      "status": "complete",
+      "items": [],
+      "failures": [],
+      "omissions": [],
+      "walk_observations": [],
+      "reference_observations": [],
+      "discovery_observations": [
+        {
+          "universe": {
+            "declaration_language": "kotlin",
+            "match": {
+              "type": "name",
+              "text": "kastTutorialMissing",
+              "matching": "exact-name"
+            },
+            "declaration_kinds": [
+              "function"
+            ],
+            "source_policy": "production-and-test",
+            "generated_sources": "exclude",
+            "libraries": "exclude",
+            "source_sets": {
+              "kind": "exact",
+              "names": [
+                "main"
+              ]
+            },
+            "directory": null,
+            "package_name": {
+              "name": "tutorial",
+              "containment": "direct"
+            }
+          },
+          "ordering": "named-candidate-v1",
+          "progress": {
+            "kind": "exhausted"
+          },
+          "observed_stops": [],
+          "examined_work_units": 0,
+          "inventory_files": 0,
+          "reacquired_files": 0,
+          "examined_leaves": 0,
+          "inventory_nanoseconds": 0,
+          "declaration_scan_nanoseconds": 0,
+          "projection_nanoseconds": 0
+        }
+      ],
+      "relation_observations": [],
+      "retention": {
+        "kind": "not_requested"
+      },
+      "coverage": {
+        "exhaustive": true
+      },
+      "page_progress": {
+        "rows": 0,
+        "walk_evidence": 0,
+        "reference_evidence": 0,
+        "relation_evidence": 0,
+        "scope_exclusions": 0,
+        "callback_observations": 0,
+        "callable_observations": 0,
+        "excluded_callbacks": 0,
+        "omissions": 0,
+        "failures": 0
+      },
+      "execution_budget": {
+        "mode": "RUNNER_CONTROLLED",
+        "max_results": {
+          "selection": "caller",
+          "requested": 10,
+          "configuredDefault": 128,
+          "operatorCeiling": 2147483646,
+          "effective": 10,
+          "clamping": []
+        },
+        "max_returned_bytes": {
+          "selection": "configured_default",
+          "requested": null,
+          "configuredDefault": 49152,
+          "operatorCeiling": 2147483646,
+          "effective": 49152,
+          "clamping": []
+        }
+      },
+      "live": {
+        "root": "/Users/amichne/.codex-workspaces/worktrees/ios-1fd18c9c-fb95-434e-ad03-80047aeebaee/kast",
+        "host": "0282e818-145c-4070-9191-c1249309497c",
+        "epoch": 3,
+        "contentView": "SAVED_PSI_COMMITTED",
+        "version": 1
+      }
+    }
+  },
+  "fixture": {
+    "source": "package tutorial\n\nfun kastTutorialMessage(): String {\n    return \"Ready\"\n}\n\nfun kastTutorialCaller(): String {\n    return kastTutorialMessage()\n}\n\nfun kastTutorialUnrelated(): String {\n    return \"Ready\"\n}\n",
+    "sha256": "d94d48c04b4eeab5118a86ce87cdbb7126d3e31461dbd9a4c05229b823dce1ef",
+    "removedAfterQueries": true
+  }
+}

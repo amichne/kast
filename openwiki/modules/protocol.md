@@ -55,6 +55,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-85f90144236a7547e4c139cf
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt
   - id: openwiki-source-3a2deddcdbc6513d70de57e5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt
   - id: openwiki-source-6ee6a10decc8306b2fc74bca
@@ -79,10 +81,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-10-14T02:15:18.461Z" }
+generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-31T09:13:30.169Z
 ---
 
 # Protocol
@@ -182,6 +184,14 @@ application lifecycle exchanges. `HostedContractDocument` has a required
 that evidence and plugin provenance. Control management and agent presentation
 identities do not enter the tuple. A hosted behavior break requires a declared
 protocol identity change even without a JSON shape change.
+
+The application lifecycle defines `refresh_host_bundle` for managed installation.
+Its `host_refresh_requested` response acknowledges a request.
+`settle_host_for_reload` prepares the exact cached main JAR before file exchange.
+The live capability is `HOST_PREPARED_RELOAD_REFRESH`.
+Ordinary settlement remains independent of reload preparation.
+`CanonicalHostedContract` fingerprints this request and response with the existing lifecycle types.
+The response carries the settled runtime identity. Loaded replacement identity remains separate evidence.
 
 
 Impact documents retain exact value-site basis, callable identity, source range and role; reviewed model identity/version/provenance; compiler transfers; boundary positions and obligations; original question; and investigation accounting. Required discriminators and closed causes survive canonical wire and CLI projections. Complete projection validates conserved impact closure, while qualified projection validates accounting without discharging unresolved obligations.

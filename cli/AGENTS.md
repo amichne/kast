@@ -1,12 +1,19 @@
 ---
 type: Module Guide
 title: "Kast cli"
-description: "Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections."
+description: "Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-22T05:31:45Z"
-source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
+timestamp: "2026-10-30T22:56:37Z"
+source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
 code_sources:
+  - path: build.gradle.kts
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -16,6 +23,16 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdmission.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostBridge.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedHostCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessCapture.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessState.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessObservation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyHostProfile.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyProfileSelection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt
@@ -35,10 +52,15 @@ code_sources:
 
 ## Purpose
 
-Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections.
+Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections.
 
 ## Key Files
 
+- [KastPublicCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt) - public semantic commands through shared admission and direct execution.
+- [PublicCliArguments.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt) - flags, JSON input modes, and exact catalog selection.
+- [PublicCliDiscovery.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt) - descriptors, schemas, and examples from packaged contracts.
+- [PublicInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt) - public terminal-event precedence and output delivery.
+- [PublicShellExit.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt) - public shell status codes and outcome classification.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - the client-owned stdio MCP process.
 - [McpRunnerInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt) - one query worker, exact cancellation, and worker cleanup.
 - [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, request-only plans, one-shot invocation, and query sessions.
@@ -56,6 +78,7 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 
 ## Subdirectories
 
+- [src/main/kotlin/io/github/amichne/kast/cli/publicshell/](src/main/kotlin/io/github/amichne/kast/cli/publicshell/) - public semantic parsing, discovery, output, exit policy, and invocation lifecycle.
 - [src/main/kotlin/io/github/amichne/kast/cli/direct/](src/main/kotlin/io/github/amichne/kast/cli/direct/) - shared native tool composition.
 - [src/main/kotlin/io/github/amichne/kast/cli/mcp/](src/main/kotlin/io/github/amichne/kast/cli/mcp/) - MCP transport and support tools.
 - [src/main/kotlin/io/github/amichne/kast/cli/rpc/](src/main/kotlin/io/github/amichne/kast/cli/rpc/) - tool RPC and query sessions.
@@ -66,7 +89,14 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 ## Entry Points
 
 - Gradle project: `:cli`.
+- Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
+- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the real launcher, JVM child, and local-peer composition.
 - The public native `kast` executable lives in `distribution/cli`.
+- Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
+- CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
+- `collectReachabilityMetadata` supplies resolved Native Image metadata for that archive. Keep module directories and the `logback-classic` exclusion.
+- Handoff qualification runs `query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.
+- CI imports supply `kastQueryNativeExecutable` together with `kastNativeExecutable`. The `queryExecutableElements` artifact uses the imported query executable.
 - The private installer entry in `KastCliMain.kt` admits only `--version`.
 - The installation places private service control at `share/kast/libexec/kast-service`.
 - [KastToolRpcQuerySessionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt) - query framing and retained delivery.
@@ -74,6 +104,29 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 
 ## Navigation Hints
 
+- The native `distribution/cli` module owns `versions`, `upgrade`, and `install` command admission.
+- The candidate installer coordinates one replacement through the existing journal. It uses private installer JVM adapters for bounded effects.
+- `ManagedControlCli` accepts `prepare`, `commit`, and `abort` with an exact transaction identifier.
+- `ManagedControlAdapter` reuses `InstallationWorkflow` staging, retention, replacement, and rollback owners.
+- Preparation keeps the active Control untouched. Commit needs the recorded settlement phase and exact staged bytes.
+- Abort accepts only an unchanged reservation without a managed composition. Unknown journal entries keep recovery evidence.
+- `ManagedHostCli` uses the existing application lifecycle endpoint. It inspects or settles the exact Host without a workspace import.
+- `ManagedHostBridge` binds the selected launcher, profile, process start, and Host lifetime before an effect.
+- Missing executable metadata needs a bounded native state probe. Only proven exit excludes a process whose executable remains unknown.
+- The shared process-state parser keeps zombie rules identical to native reset. Active or unavailable state remains unresolved.
+- Enumeration diagnostics record finite outcomes and bounded counts on stderr. They contain no process payloads.
+- `LegacyHostProfile` uses explicit installer-only attachment to prove an old Host profile. Dry runs must not request attachment.
+- `LegacyProfileSelection` preserves explicit configuration paths and derives supported macOS defaults from captured runtime properties.
+- Missing vendor, selector, or home facts reject. Configured `idea.paths.customizer` values and independent plugin overrides also reject.
+- Normal stop acknowledgment does not prove process exit. The outer installer separately proves exit and the selected Host after restart.
+- These installer JVM adapters do not change the native public-query path.
+- Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before release qualification.
+
+- Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
+- Packaged discovery and request planning use installed contracts before workspace or host composition.
+- Keep `publicshell` exit and signal policy separate from private RPC and MCP behavior.
+- `PublicInvocationOwner` accepts the first terminal event. `PublicCliInvocation` owns its worker and signal handling.
+- Cancellation requests and child exit do not prove native semantic settlement.
 - Direct MCP and tool RPC sessions default to `COMMON`. Select `--catalog=COMPLETE` before the command for advanced grammar.
 - Keep the selected catalog stable through discovery, public admission, and retained reads. Pi native MCP registration explicitly selects `COMPLETE`.
 

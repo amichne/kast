@@ -57,6 +57,12 @@ internal class IntellijCallbackFlowContext(
 
     fun claimWork(): CallbackWorkAdmission = admitWork()
 
+    fun currentWork(): CallbackWorkAdmission =
+        when (callbackExpiry()) {
+            CallbackExpiryAdmission.EXPIRED -> CallbackWorkAdmission.TIME_LIMIT_REACHED
+            CallbackExpiryAdmission.CURRENT -> claimWork()
+        }
+
     fun permit(): Refinement<Unit, CallbackInvocationFlowCause> =
         when (claimWork()) {
             CallbackWorkAdmission.READY -> Refinement.Refined(Unit)

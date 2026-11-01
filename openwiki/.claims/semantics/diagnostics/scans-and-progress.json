@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8be3a8b2e6404871f6d034e225774e2e5350c6383558442478d19d6726490c06",
+  "pageVersion": "sha256:f5edcff7b805d3ad83d9085c4dedbf827559e6d013512220e3928f56c4ba16f4",
   "claims": [
     {
       "id": "claim_fcb6cc070b3c43f78b90afb1e26c01e3",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt",
-          "version": "repo-file-v1:sha256:cda2fe3841e36543e8a852421f3db1243a095ebab2038701506a980c0177bceb"
+          "version": "repo-file-v1:sha256:b352ab8b65f0f86008c4e1a202b82144dbc8deb262894d73f48faa4d48d1253d"
         },
         {
           "resource": "repo://diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt",
-          "version": "repo-file-v1:sha256:fc957426f64abeb89a967ee52e8f9cdb9cc8dc4e78d14d9ea8433cc805b3e06d"
+          "version": "repo-file-v1:sha256:8c7da3de3ad9da90e47352923e79081faf451e0efb7b80c7ed54ac2de0ce440c"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt",
-          "version": "repo-file-v1:sha256:ced0b3e96d7f90f2835ffaa7c5668b2423d85f8482893c494cf222a50f0d876e"
+          "version": "repo-file-v1:sha256:2d6c504fc06b935712c26d2b3a577278578d43b69541e5522f41b443726b2dd4"
         }
       ]
     },
@@ -39,6 +39,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-30T23:25:02.193Z"
   }
 }

@@ -177,8 +177,10 @@ class SemanticComparisonTest(unittest.TestCase):
         result = r.compare_trials(a, b, same_artifact=False)
         self.assertFalse(result.lessWork, 'Lower transport elapsed time does not prove less native work')
         self.assertIsInstance(result.hostedTimings, r.JoinedTimingComparison)
-        self.assertEqual(130, result.hostedTimings.baseline[0].transport[5].elapsedNanos)
-        self.assertEqual(65, result.hostedTimings.candidate[0].transport[5].elapsedNanos)
+        for expected, cohort in ((130, result.hostedTimings.baseline), (65, result.hostedTimings.candidate)):
+            self.assertEqual([expected], [record.elapsedNanos for record in cohort[0].transport
+                if record.stage == timing.TransportStage.EXECUTION and
+                record.outcome == timing.TransportOutcome.COMPLETED])
         self.assertEqual(a.calls[0].diagnostics[0], result.hostedTimings.baseline[0].reads[0].diagnostic)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'trial.json'

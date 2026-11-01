@@ -41,7 +41,7 @@ internal class NativeValueExpressionFlow(
     private val owner: PsiElement,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
-    allowance: IntellijRelationAllowance,
+    private val allowance: IntellijRelationAllowance,
     private val retained: NativeValueFlowTransfers,
     private val permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ) {
@@ -67,13 +67,7 @@ internal class NativeValueExpressionFlow(
             is Refinement.Rejected -> return
         }
         if (expression is KtDestructuringDeclarationEntry) {
-            NativeValueDestructuring(request.source, scope, projection)
-                .bind(
-                    entry = expression,
-                    permit = permit,
-                    consume = { componentBinding(expression) },
-                    unsupported = { retained.unresolvedAt(it, expression) },
-                )
+            bindDestructuringEntry(expression)
             return
         }
         when (val parent = expression.parent) {
@@ -109,6 +103,25 @@ internal class NativeValueExpressionFlow(
         }
     }
 
+    private fun bindDestructuringEntry(expression: KtDestructuringDeclarationEntry) {
+        NativeValueDestructuring(
+                source = request.source,
+                scope = scope,
+                projection = projection,
+                reviewed =
+                    NativeReviewedComponentScope.Available(
+                        request.source.executionOwner,
+                        receiverContext(request, scope, projection, allowance),
+                    ),
+            )
+            .bind(
+                entry = expression,
+                permit = permit,
+                consume = { componentBinding(expression) },
+                unsupported = { cause, at -> retained.unresolvedAt(cause, at) },
+            )
+    }
+
     private fun containerDestination(expression: KtExpression, container: KtContainerNode) {
         when (val control = container.parent) {
             is KtForExpression ->
@@ -123,13 +136,22 @@ internal class NativeValueExpressionFlow(
     }
 
     private fun destructuringDestination(expression: KtExpression, declaration: KtDestructuringDeclaration) =
-        NativeValueDestructuring(request.source, scope, projection)
+        NativeValueDestructuring(
+                source = request.source,
+                scope = scope,
+                projection = projection,
+                reviewed =
+                    NativeReviewedComponentScope.Available(
+                        request.source.executionOwner,
+                        receiverContext(request, scope, projection, allowance),
+                    ),
+            )
             .read(
                 expression = expression,
                 declaration = declaration,
                 permit = permit,
                 consume = { retained.emitTarget(it.target, it.kind, it.evidence) },
-                unsupported = { retained.unresolvedAt(it, declaration) },
+                unsupported = { cause, at -> retained.unresolvedAt(cause, at) },
             )
 
     private fun returnDestination(expression: KtExpression, returned: KtReturnExpression) {
@@ -137,7 +159,17 @@ internal class NativeValueExpressionFlow(
             observation.count(IntellijReadCounter.VALUE_FLOW_FINALLY_REJECTIONS)
             retained.unresolvedAt(ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED, returned)
         } else if (owner is KtFunctionLiteral)
-            retained.unresolvedAt(ValueFlowUnsupportedCause.NESTED_EXECUTION, returned)
+            nativeExplicitCallbackReturn(
+                    expression = expression,
+                    returned = returned,
+                    function = owner,
+                    observation = observation,
+                    workAllowance = request.budget.resources.workAllowance,
+                )
+                .onCallbackReturn(
+                    { emit(expression, ValueRole.Return, ValueTransferKind.RETURN) },
+                    { retained.unresolvedAt(it, returned) },
+                )
         else emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
     }
 
@@ -175,9 +207,18 @@ internal class NativeValueExpressionFlow(
     }
 
     private fun assignmentDestination(expression: KtExpression, assignment: KtBinaryExpression) {
-        if (nativeExternalInfixCall(assignment, observation))
-            retained.unresolvedAt(ValueFlowUnsupportedCause.EXTERNAL_CALL, assignment)
-        else if (assignment.right === expression) localVersionDestination(assignment)
+        if (nativeExternalInfixCall(assignment, observation)) {
+            val context = receiverContext(request, scope, projection, allowance)
+            when (val role = nativeReviewedTupleRole(expression, assignment, request.source.executionOwner, context)) {
+                is Refinement.Refined ->
+                    when (val selected = role.value) {
+                        is ValueRole.Receiver -> retained.emit(expression, selected, ValueTransferKind.RECEIVER)
+                        is ValueRole.Argument -> retained.emit(expression, selected, ValueTransferKind.ARGUMENT)
+                        else -> retained.unresolvedAt(ValueFlowUnsupportedCause.EXTERNAL_CALL, assignment)
+                    }
+                is Refinement.Rejected -> retained.unresolvedAt(role.failure, assignment)
+            }
+        } else if (assignment.right === expression) localVersionDestination(assignment)
         else retained.unresolvedAt(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW, assignment)
     }
 
@@ -265,7 +306,8 @@ internal class NativeValueExpressionFlow(
 
     private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) =
         NativeValueQualifiedReceiver(
-                source = request.source,
+                request = request,
+                allowance = allowance,
                 scope = scope,
                 projection = projection,
                 retained = retained,

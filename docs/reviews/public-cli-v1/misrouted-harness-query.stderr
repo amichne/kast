@@ -1,0 +1,10 @@
+{"requestId":"b90f0c56-4f87-4a96-a218-8da28a5f0dbf","outcome":{"type":"pending","stage":"OPENING"},"event":"workspace-preparation","preparation":{"stage":"OPENING","elapsedMillis":5,"limitMillis":1020000,"remainingMillis":1019995,"limitingOwner":"PREPARATION_OWNER"}}
+{"requestId":"b90f0c56-4f87-4a96-a218-8da28a5f0dbf","outcome":{"type":"pending","stage":"IMPORTING"},"event":"workspace-preparation","preparation":{"stage":"IMPORTING","elapsedMillis":974,"limitMillis":1020000,"remainingMillis":1019026,"limitingOwner":"PREPARATION_OWNER"}}
+{"requestId":"b90f0c56-4f87-4a96-a218-8da28a5f0dbf","outcome":{"type":"completed"},"event":"workspace-preparation","preparation":{"stage":"ADMISSION","elapsedMillis":17441,"limitMillis":1020000,"remainingMillis":1002559,"limitingOwner":"PREPARATION_OWNER"}}
+{"hostPid":79278,"operation":"STATUS","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":972,"maximumBytes":2147483646,"outcome":"ADMITTED"}}
+{"hostPid":79278,"operation":"STATUS","evidence":{"type":"HOST_RESPONSE_BODY","announcedBytes":972,"drainedBytes":972,"outcome":"DRAINED"}}
+{"hostPid":79278,"operation":"STATUS","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"RECEIVED"}}
+{"hostPid":79278,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_FRAME","announcedBytes":2992,"maximumBytes":2147483646,"outcome":"ADMITTED"}}
+{"hostPid":79278,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_BODY","announcedBytes":2992,"drainedBytes":2992,"outcome":"DRAINED"}}
+{"hostPid":79278,"operation":"QUERY_RUN","evidence":{"type":"HOST_RESPONSE_DECODED","outcome":"SEMANTIC"}}
+18:27:24.260 [kast-public-query] WARN  c.n.s.keyword.UnknownKeywordFactory -- Unknown keyword discriminator - you should define your own Meta Schema. If the keyword is irrelevant for validation, just use a NonValidationKeyword or if it should generate annotations AnnotationKeyword

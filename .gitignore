@@ -22,6 +22,7 @@ tmp/
 *.jar
 *.zip
 *.tar.gz
+!/docs/reviews/native-query-cli/evidence.tar.gz
 *.sandbox/
 hs_err_pid*
 replay_pid*

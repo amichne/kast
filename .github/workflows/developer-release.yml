@@ -27,9 +27,10 @@ jobs:
   publish:
     name: Promote tested bytes to the developer channel
     if: >-
-      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+      vars.KAST_NATIVE_COMPILATION != 'false' &&
+      ((github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.conclusion == 'success') ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -48,6 +49,9 @@ jobs:
         with:
           python-version-file: .python-version
 
+      - name: Set up the pinned script runner
+        run: python3 -m pip install uv==0.12.9
+
       - name: Admit qualified candidate producer and merged source tree
         id: candidate
         env:
@@ -59,7 +63,7 @@ jobs:
           --run-id "$MAIN_RUN_ID" --bundle build/candidate
           --promotion-record build/promotion.json --github-output "$GITHUB_OUTPUT"
 
-      - name: Publish retained candidate and latest pointer
+      - name: Publish retained candidate and main-build catalog
         if: steps.candidate.outputs.publication == 'PUBLISH'
         env:
           BUILD_SOURCE_SHA: ${{ steps.candidate.outputs.source_revision }}

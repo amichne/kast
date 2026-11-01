@@ -12,13 +12,14 @@ internal enum class InstalledToolAdmission {
     UNPROVEN,
 }
 
-/** The native management command owns this fence; absent authority fails closed. */
+/** Installation owners keep these admission markers until their operations complete. */
 internal fun observeInstalledToolAdmission(installation: Path): InstalledToolAdmission =
     try {
         val paths =
             listOf(
                 installation.parent.resolve(INSTALLATION_SHUTDOWN_FENCE),
                 installationResetFence(installation.parent),
+                installation.parent.resolve("recovery/replacement"),
             )
         when {
             paths.any { Files.exists(it, LinkOption.NOFOLLOW_LINKS) } -> InstalledToolAdmission.STOPPED

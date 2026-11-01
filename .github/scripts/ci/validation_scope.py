@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import re
 import subprocess
 from dataclasses import asdict, dataclass
@@ -67,7 +68,40 @@ DOCUMENTATION_PATHS = frozenset(
 DOCUMENTATION_CONSUMER_PATHS = frozenset({
     "docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
     "docs/public/snippets/value-journey.jsx",
+    # These have knowledge links, installer examples, or generated-view consumers.
+    # verify_documentation.py retains those direct checks without product assembly.
+    ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
+    "app-server/docs/public-query-contract.md", "docs/development.md",
+    "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+    "docs/static-query-execution.md", "docs/okf-public.json",
+    "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+    "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
+    "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
+    "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx",
+    "docs/public/search.mdx", "docs/public/explanation/value-journey-evidence.mdx",
+    "experiments/host-observation/README.md",
+    "experiments/host-observation/EVALUATION_CHECKLIST.md",
+    "experiments/host-observation/HOSTED_ENDPOINT.md",
+    "experiments/host-observation/PI_EVALUATION.md",
+    "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
+    "experiments/representation-impact/README.md",
+    "config/vale/styles/config/vocabularies/Kast/accept.txt",
+    "config/vale/styles/config/vocabularies/KastNames/accept.txt",
+    "config/vale/readability/audit.py", "config/vale/readability/audit.py.lock",
+    "config/vale/readability/test_audit.py", "config/vale/readability/pyrightconfig.json",
+    "config/vale/readability/pytest.ini", "config/vale/readability/starter-provenance.json",
 })
+
+
+def documentation_input(path: str) -> bool:
+    """Reviewed file owners, not a repository-wide Markdown or non-Kotlin exemption."""
+    return (
+        path in DOCUMENTATION_PATHS
+        or path in DOCUMENTATION_CONSUMER_PATHS
+        or path.startswith("docs/tooling/value-journey/")
+        or (path.startswith("docs/reviews/readability-audit/") and Path(path).suffix in {".md", ".json", ".txt"})
+        or (path.startswith("config/vale/readability/") and Path(path).suffix in {".ini", ".yml", ".txt"})
+    )
 
 # Bound to settings.gradle.kts by the source-inventory regression. Unknown modules
 # and fixtures must not inherit a narrow plan from a source-set-shaped filename.
@@ -142,7 +176,13 @@ class Check(str, Enum):
 ALL_CHECKS = frozenset(Check)
 PRODUCT_CHECKS = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
 SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE})
+FULL_SOURCE_CHECKS = frozenset({Check.SOURCE, Check.PORTABLE, Check.DOCUMENTATION})
 DOCUMENTATION_CHECKS = frozenset({Check.DOCUMENTATION})
+
+
+class NativeCompilation(str, Enum):
+    ENABLED = "true"
+    DISABLED = "false"
 
 
 class Scope(str, Enum):
@@ -150,6 +190,7 @@ class Scope(str, Enum):
     PRODUCT = "PRODUCT"
     DOCUMENTATION = "DOCUMENTATION"
     SOURCE = "SOURCE"
+    SOURCE_FULL = "SOURCE_FULL"
 
 
 SCOPE_CHECKS = {
@@ -157,6 +198,7 @@ SCOPE_CHECKS = {
     Scope.PRODUCT: PRODUCT_CHECKS,
     Scope.DOCUMENTATION: DOCUMENTATION_CHECKS,
     Scope.SOURCE: SOURCE_CHECKS,
+    Scope.SOURCE_FULL: FULL_SOURCE_CHECKS,
 }
 
 
@@ -173,8 +215,13 @@ class Reason(str, Enum):
 @dataclass(frozen=True)
 class Selection:
     checks: frozenset[Check]
-    reason: Reason
+    reason: Reason | verification_plan.Failure
     plan: verification_plan.Plan | None = None
+
+    def with_native_compilation(self, mode: NativeCompilation) -> "Selection":
+        if mode is NativeCompilation.DISABLED:
+            return Selection(self.checks - {Check.PRODUCT, Check.GATE_GRAPH}, self.reason, self.plan)
+        return self
 
     @property
     def scope(self) -> Scope:
@@ -186,10 +233,10 @@ def path_checks(path: str) -> frozenset[Check]:
     # paths, included-build logic, and unusual filenames keep the full gate.
     if not re.fullmatch(r"[A-Za-z0-9_./-]+", path) or any(part in ("", ".", "..") for part in path.split("/")):
         return ALL_CHECKS
+    if documentation_input(path):
+        return DOCUMENTATION_CHECKS
     if path.startswith((".", "build-logic/")):
         return ALL_CHECKS
-    if path in DOCUMENTATION_PATHS or path in DOCUMENTATION_CONSUMER_PATHS or path.startswith("docs/tooling/value-journey/"):
-        return DOCUMENTATION_CHECKS
     if path.endswith(".kt") and path.startswith(PRODUCT_SOURCE_PREFIXES):
         owner = path.split("/src/", 1)[0]
         return PRODUCT_CHECKS if owner in QUALIFICATION_MODULES else SOURCE_CHECKS
@@ -285,7 +332,7 @@ def select(event: str, base: str, head: str, root: Path = ROOT, *, affected: boo
         plan = verification_plan.plan(root, frozenset(":" + module.replace("/", ":") for module in PRODUCT_MODULES),
                                       paths, head, tree, base, basis, event)
         if isinstance(plan, verification_plan.Failure):
-            return Selection(ALL_CHECKS, Reason.PLAN_REJECTED)
+            return Selection(ALL_CHECKS, plan)
         # A collected source root admits fixture/source-set paths that the legacy inventory cannot classify.
         # Native inputs and non-Kotlin resources keep candidate qualification.
         qualification = any(owner[1:].replace(":", "/") in QUALIFICATION_MODULES for owner in plan.owners)
@@ -303,7 +350,9 @@ def main() -> None:
     parser.add_argument("--github-output", type=Path, required=True)
     parser.add_argument("--affected", action="store_true")
     args = parser.parse_args()
+    native = NativeCompilation(os.environ.get("KAST_NATIVE_COMPILATION", "true"))
     selection = select(args.event, args.base, args.head, affected=True) if args.affected else select(args.event, args.base, args.head)
+    selection = selection.with_native_compilation(native)
     with args.github_output.open("a", encoding="utf-8") as output:
         for check in Check:
             output.write(f"{check.value}={'run' if check in selection.checks else 'skip'}\n")
@@ -311,7 +360,7 @@ def main() -> None:
         if selection.plan is not None:
             output.write("plan=" + json.dumps(asdict(selection.plan), separators=(",", ":")) + "\n")
     selected = ",".join(check.value for check in Check if check in selection.checks)
-    print(f"validation-scope: {selected} ({selection.reason.value})", flush=True)
+    print(f"validation-scope: {selected} ({selection.reason.value}); native-compilation={native.value}", flush=True)
 
 
 if __name__ == "__main__":

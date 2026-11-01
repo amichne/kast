@@ -19,6 +19,17 @@ internal fun ImpactValueSiteReferenceDocument.admitsValueState(): Boolean =
 internal fun ImpactValuePathSegmentDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         ImpactValuePathSegmentDocument.Element -> true
+        is ImpactValuePathSegmentDocument.PairComponent -> origin.admits(basis)
+        is ImpactValuePathSegmentDocument.MapEntryComponent ->
+            when (val origin = entry) {
+                is ImpactReviewedGroupBucketDocument -> slot == origin.slot && origin.admits(basis)
+                is ImpactReviewedInputEntryOriginDocument -> origin.admits(basis)
+                is ImpactReviewedPreservedKeyOriginDocument ->
+                    slot == ImpactMapEntrySlotDocument.KEY && origin.admits(basis)
+                is ImpactReviewedMapEntryCorrelationDocument -> origin.admits(basis)
+                is ImpactReviewedMappedEntryOriginDocument ->
+                    slot == ImpactMapEntrySlotDocument.VALUE && origin.admits(basis)
+            }
         is ImpactValuePathSegmentDocument.Field -> declaration.basis == basis && declaration.validValueDeclaration()
     }
 

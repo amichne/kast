@@ -1,0 +1,22 @@
+extends: existence
+message: "Remove the duplicate punctuation in '%s'."
+level: error
+nonword: true
+vocab: false
+# Ordinary ellipses, semicolons, parentheses, and question marks are allowed.
+tokens:
+  - ',{2,}'
+  - ';{2,}'
+tests:
+  - name: catches duplicate commas and semicolons
+    input: 'First,, read the log;; then retry.'
+    contains:
+      - "',,'"
+      - "';;'"
+  - name: allows normal punctuation
+    input: 'Ready? Wait... then retry; check the log (if needed).'
+    want: ''
+  - name: ignores literal code
+    input: 'Run `for (;;) {}` and inspect `a,,b`.'
+    want: ''
+

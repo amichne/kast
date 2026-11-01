@@ -209,7 +209,7 @@ code_sources:
     symbols:
       - GenerateAgentToolsTask
   - path: agent-tools/.codex-plugin/plugin.json
-  - path: agent-tools/.mcp.json
+  - path: agent-tools/mcp.json
   - path: .agents/plugins/marketplace.json
   - path: packaging/installer_fixture.py
   - path: packaging/run-installed-product.py
@@ -247,6 +247,8 @@ sources:
     resource: repo://.github/scripts/ci/required_checks.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
+  - id: openwiki-source-939501634c56c6ffea2fec6b
+    resource: repo://.github/scripts/release/developer_catalog.py
   - id: openwiki-source-a2d04ca5ecb15353e5b16b35
     resource: repo://.github/scripts/release/publish-developer.sh
   - id: openwiki-source-164e2da859b5277df81c7d94
@@ -283,6 +285,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
   - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
+  - id: openwiki-source-b30c7b16cf2f49971ca55950
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
@@ -307,6 +311,8 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-4c9f1a2f0eff9672edf6ca2f
     resource: repo://packaging/installer_fixture.py
+  - id: openwiki-source-1380068036b00bec817a6579
+    resource: repo://packaging/managed_installation.py
   - id: openwiki-source-8faf23d69764b95242de5e09
     resource: repo://packaging/run-installed-product.py
   - id: openwiki-source-671eb4bdcdbb3b2f0659d4c7
@@ -319,17 +325,18 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-16T07:07:29.171Z" }
+generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T21:29:39.165Z
+    at: 2026-10-31T10:51:42.239Z
 ---
 
 # Distribution and packaging
 
-The control payload includes a versioned Codex marketplace from the canonical `agent-tools` context resources and MCP configuration.
-`kast plugin codex` admits the installed payload before it calls Codex's marketplace and plugin commands.
-Codex owns the installed plugin and its removal.
+The Control payload contains CLI-first Codex and Copilot plugins from the canonical `agent-tools` skill.
+`kast install <harness>` admits the installed bundle and exact provider resources before setup.
+The default composition contains no automatic MCP server or hooks. Explicit `--mcp` selects the optional transport.
+Codex and Copilot own their plugins. Pi uses native skill discovery and exact receipt-owned files.
 Release assembly emits plugin and marketplace ZIPs without a standalone skill archive.
 Query examples come from the public tool schema.
 
@@ -354,7 +361,7 @@ Older payloads without the lifecycle capability reject before effects.
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection. Optional catalog query-session support reuses one bounded child for a logical query and its output drains; it closes before the adapter invocation returns. Catalog discovery and per-RPC native authority checks remain separate. Both adapters default to `$HOME/.local/share/kast/installation/bin/kast-tool-rpc-complete` and preserve an explicit `KAST_TOOL_RPC_COMMAND` transport override; ambient alternate installation selectors cannot redirect their default.
 
 Codex registration uses its plugin manager.
-`kast connect codex` and the compatibility form `kast connect codex mcp` select `kast plugin codex`.
+The retired `connect` and `plugin` setup forms direct callers to `kast install`.
 New App Server registration rejects before effects.
 Legacy receipt variants keep exact destination and payload ownership for cleanup.
 Plugin installation rejects foreign standalone MCP entries before plugin effects.
@@ -570,15 +577,11 @@ Installation and mutation create no broker signing keys. Existing legacy key cle
 
 The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing the argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.
 
-`kast connect codex <mcp|app-server> --force` or
-`kast connect <copilot|pi> --force` authorizes takeover of that integration's
-Kast registration slot. The existing lock and release-manifest admission still
-apply. Registration and receipt preimages are captured before replacement;
-failed transactions restore both. Codex restoration uses the full original
-configuration bytes, preserving fields outside its inspection projection.
-Failed restoration retains its backup and reports the recovery destination.
-Symlinked registration paths reject before mutation. Connecting records
-configuration and does not establish that a client loaded or invoked the tools.
+Harness setup preserves foreign configuration and rejects conflicting resources.
+Only exact receipt-owned legacy registrations migrate after successful provider setup.
+Standalone `kast install skill --output <parent>` exports the complete skill without provider configuration.
+Extra, changed, and symbolic-link entries reject. Identical export preserves the directory.
+Setup records selected guidance, but it does not prove that a client loaded or invoked the tools.
 
 Destructive `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission while retaining canonical root scope and verified daemon retirement. An exterior fence and persistent lock survive root replacement. The fence records retained storage before the old root is moved atomically to a scoped sibling recovery directory. The runtime boundary unloads exact root-derived launchd jobs, removes exact login entries, and retires scoped Kast process incarnations within a bounded deadline. Shared IDEA and Gradle processes are excluded. Erasure accepts only a quiescent typestate; a retirement or cleanup rejection preserves the fence and reports retained storage.
 
@@ -634,15 +637,31 @@ mixed-version result; the completed native proof remains a separate gate.
 
 Checkout installation admits the selected IDEA bundle's executable JBR and Java
 25-or-newer release before Gradle or staging. It scopes that runtime to its children.
-Installed launchers retain and recheck the selected JBR before executing Control;
+Installed JVM launchers retain and recheck the selected JBR before execution;
 an unavailable or older runtime gives repair guidance rather than using ambient Java.
 Both paths require exactly one fully quoted `JAVA_VERSION` declaration. Duplicate
 declarations, an unclosed quote, trailing text, or a valid declaration beside a
-malformed duplicate reject before Gradle or child execution.
+malformed duplicate reject before Gradle or JVM child execution.
+Native query launchers dispatch the installed query executable without JVM setup.
 
 Full native uninstall admits the exact Host removal target and immutable plugin receipt before invoking the private Host owner. A persistent exterior retirement journal preserves payload, executable, configuration and recovery identities so a failure after Control removal can resume without rerunning an erased helper. Cleanup removes only admitted registrations, public executable, private configuration, managed root and the closed user-owned `~/.kast` layout; the management receipt and journal remain until those effects complete.
 
 User-state inventory retains endpoint locks and physical identities through retirement and deletion. Unknown contents, live hosts, changed identities, malformed or unsettled mutation evidence, or an uncheckpointed WAL reject and preserve recovery state. The owning SQLite adapter inspects exact schemas and bounded typed plan, attempt, journal and receipt records read-only; it does not initialize, checkpoint or manufacture recovery. Upgrade does not invoke this full user-state cleanup.
+
+## Managed composition and selection
+
+`kast versions` exposes stable and a five-entry catalog of published main builds.
+The catalog orders immutable identities by main ancestry and keeps original candidate and promotion provenance.
+Upgrade captures one typed selection and persists its tracking or pinned policy with installed identity.
+An unqualified pinned upgrade rejects before release access.
+
+The managed coordinator captures Control, Host, profile, command, configuration, and receipt preimages in one typed journal.
+It fences calls before settlement and coordinates the existing effect owners under admitted locks.
+Stopped state, compatible hot reload, and explicit restart use separate finite strategies.
+Pending recovery precedes selection and consumes only the recorded transaction.
+Unresolved restoration preserves the fence and returns `RECOVERY_REQUIRED`.
+The public stable bootstrap remains a separate compatibility entry point.
+These source rules do not prove a new installed semantic session or successful live reload.
 
 ## Detailed distribution routes
 

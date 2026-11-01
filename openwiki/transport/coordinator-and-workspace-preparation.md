@@ -34,7 +34,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-18T02:29:42.742Z
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Coordinator and workspace preparation

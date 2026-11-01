@@ -9,11 +9,38 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 
 import { ValueJourney } from "/snippets/value-journey.jsx"
 
-A sign-up becomes a customer. Follow that customer into a welcome-email draft, then into a possible element of the returned list.
-The full code stays beside the graph. Hover or focus a connection to highlight its source lines; select it to read the explanation.
-Use **Hide source** when you want more room for the graph.
+Does the returned email draft contain the customer that `createCustomer` produced, or a different customer?
+The declared type alone cannot answer this question. Both customers have the type `Customer`.
 
 This is an authored source illustration, not a live Kast result or a record of execution.
+
+## Read the source path
+
+```kotlin
+data class Signup(val name: String?)
+data class Customer(val name: String?)
+data class WelcomeEmail(val recipient: Customer)
+
+fun Signup.createCustomer(): Customer =
+    Customer(name = name)
+fun Signup.draftWelcomeEmail(): WelcomeEmail =
+    WelcomeEmail(recipient = createCustomer())
+fun prepareEmails(signups: List<Signup>): List<WelcomeEmail> =
+    signups.map { signup ->
+        signup.draftWelcomeEmail()
+    }
+```
+
+`createCustomer` returns a customer. `draftWelcomeEmail` puts that result in the draft's `recipient` field.
+The callback passed to `map` returns the draft. A separate reviewed rule connects that callback result to a possible output list element.
+
+The customer remains inside the draft. It does not become the draft or the list.
+This source path does not prove that the list contains an element at runtime. For example, the input list can be empty.
+
+## Explore the connections
+
+The explorer shows the same source path. Hover or focus a connection to highlight its source lines.
+Select the connection to read its explanation. Use **Hide source** for more room beside the graph.
 
 <ValueJourney />
 

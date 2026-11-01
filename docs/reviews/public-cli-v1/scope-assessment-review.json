@@ -1,0 +1,91 @@
+{
+  "assessment": "ASSESSED",
+  "vale": "PASS_NO_ERROR_FINDINGS",
+  "sourcePaths": "ALL_EXIST",
+  "findings": [
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.Grade",
+      "line": 1,
+      "disposition": "PRESERVED_TECHNICAL_PRECISION",
+      "reason": "The guide preserves exact type names, task paths, and ownership distinctions."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.Diction",
+      "line": 90,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.LongSentence",
+      "line": 147,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.LongSentence",
+      "line": 158,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.LongSentence",
+      "line": 160,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.Diction",
+      "line": 162,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.Diction",
+      "line": 162,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.Diction",
+      "line": 171,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.Diction",
+      "line": 199,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "AGENTS.md",
+      "rule": "Slopsentral.LongSentence",
+      "line": 208,
+      "disposition": "PRESERVED_INHERITED_RULE",
+      "reason": "Unchanged repository instructions remain outside this navigation edit."
+    },
+    {
+      "path": "cli/AGENTS.md",
+      "rule": "Slopsentral.Grade",
+      "line": 1,
+      "disposition": "PRESERVED_TECHNICAL_PRECISION",
+      "reason": "The guide preserves exact type names, task paths, and ownership distinctions."
+    },
+    {
+      "path": "protocol/AGENTS.md",
+      "rule": "Slopsentral.Grade",
+      "line": 1,
+      "disposition": "PRESERVED_TECHNICAL_PRECISION",
+      "reason": "The guide preserves exact type names, task paths, and ownership distinctions."
+    }
+  ]
+}

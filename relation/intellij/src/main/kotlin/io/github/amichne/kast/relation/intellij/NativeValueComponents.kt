@@ -4,6 +4,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ReviewedCallValueBinding
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
@@ -40,6 +41,12 @@ internal sealed interface NativeComponentTarget {
     data class Getter(override val declaration: KtProperty) : Callable {
         override val receiver: ValueReceiverKind = ValueReceiverKind.DISPATCH
     }
+
+    data class Reviewed(
+        override val declaration: PsiNamedElement,
+        override val receiver: ValueReceiverKind,
+        val binding: ReviewedCallValueBinding,
+    ) : Callable
 
     data class Field(val parameter: KtParameter) : NativeComponentTarget
 }
@@ -97,6 +104,10 @@ internal fun nativeComponentReceiver(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueRole.Receiver, ValueFlowUnsupportedCause> {
+    if (target is NativeComponentTarget.Reviewed)
+        return if (target.binding.invocation.executionOwner == executionOwner)
+            Refinement.Refined(ValueRole.Receiver(target.binding.invocation, target.receiver))
+        else Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
     val callable =
         when (
             val selected =

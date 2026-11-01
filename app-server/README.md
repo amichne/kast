@@ -69,6 +69,7 @@ pre-existing flag rejects re-publication instead of discarding its ownership. Co
 values, malformed records, foreign identities and failed command/read-back
 proofs reject activation or cleanup with a finite discovery failure. A service
 stop retains discovery for the existing login job; disablement removes it.
+
 A replacement retires the proven predecessor’s discovery before publishing its
 new identity, including when switching to private mode. An owned launch receipt
 permits cleanup recovery when predecessor readiness is already absent; failed
@@ -90,6 +91,8 @@ observations and release-gate checks.
 
 ## Daemon management
 
+### Registration and status
+
 The running coordinator registers a workspace during Codex attachment and
 semantic demand. Registration no longer writes the registry from a standalone
 CLI process. Private enable and repair retain their installation responsibilities.
@@ -108,6 +111,8 @@ workspace identity and registry revision. Registration remains idempotent.
 The passive status reply includes the loaded release version, ready workspace roots,
 and observed live connection count. The native management CLI reads these fields
 with a deadline and checks the service generation against the readiness receipt.
+
+### Update admission
 
 The private update protocol prepares a candidate, observes its request, cancels a
 seal, or commits it. Active turns, approvals, requests, invocations, workspace
@@ -135,6 +140,8 @@ Public status inspects existing session state without initializing Codex or prob
 an optional upstream. Pending, rejected and closed hosts remain distinct; an
 oversized inventory reports capacity failure instead of an empty inventory.
 
+### Workspace preparation
+
 The management route also owns workspace preparation operations. Preparation opens
 only an exact canonical settings root through the selected IDEA lifecycle client.
 Concurrent requests for that root share one server-generated request ID. Pending
@@ -160,6 +167,8 @@ semantic operation. Cancelled waiters leave the shared preparation running.
 Preparation blockers reach Codex with their finite cause and operation ID, marked
 as known pre-execution failures.
 
+### Changes and project closure
+
 Apply and recovery use the same preparation owner before loading the immutable
 hosted plan. The private local endpoint receives its canonical request without
 an approval key, signature, token, or challenge exchange. The native owner still
@@ -175,6 +184,8 @@ boundary. Wrong hosts, stale projects, other clients, and pending work remain
 rejections. No replacement credential or authorization handshake is introduced.
 
 Service lifecycle, deferred updates and durable storage migration remain subsequent work.
+
+### Service entry point
 
 Launchd starts the private `share/kast/libexec/kast-daemon` entry point directly.
 It accepts no commands and requires the managed readiness environment before
@@ -265,6 +276,9 @@ finite failure code. Cancellation during an attempted change apply runs bounded
 recovery. A complete `prior_state` or `rolled_back` recovery settles the
 invocation as `CANCELLED_AFTER_RECOVERY` and releases the workspace lane;
 incomplete recovery retains an uncertain effect and blocks later work there.
+
+### Display projection
+
 For display, the broker projects its owned `dynamicToolCall` items into the standard
 expandable `mcpToolCall` shape, with the provider namespace as `server`, unchanged
 arguments, and raw text in `result.content`. The final JSON envelope from Kast also
@@ -283,6 +297,8 @@ JSON text. There is no custom Markdown, file-change item, or companion commentar
 Unowned tools pass through unchanged. Both input and projected output must satisfy
 the selected Codex binary's generated schemas.
 
+### Projection evidence
+
 The `tool_display` service-log stage records projection completion or rejection
 without arguments or results. A contradictory lifecycle includes its finite failure
 reason. Display qualification is covered by the App Server tests; the optional
@@ -293,18 +309,22 @@ codex app-server generate-json-schema --experimental --out /tmp/kast-codex-schem
 KAST_CODEX_SCHEMA_DIRECTORY=/tmp/kast-codex-schemas ./gradlew :app-server:test
 ```
 
-The raw shape has been validated against schemas from Codex CLI 0.154.0, 0.156.0,
-and the desktop-bundled Codex 0.153.4. Codex 0.156.0 omits the legacy
+The raw shape passed schema checks from Codex CLI 0.154.0, 0.156.0, and the desktop-bundled Codex 0.153.4. Codex 0.156.0 omits the legacy
 `thread/rollback` schema pair; Kast requires both files or neither and only projects
-that response when the pair was qualified. Desktop renderer source inspection established the missing dynamic content; this does not
-constitute a live visual acceptance test of an installed Kast build.
+that response when the pair was qualified.
+Desktop renderer source inspection established the missing dynamic content.
+That source evidence does not establish live visual acceptance of an installed Kast build.
+
+### Runtime status and its limits
 
 Status separates launchd lifecycle observation, public endpoint kind/path/ownership,
 transport, native protocol, catalog, upstream and semantic readiness. A live launchd
 label is reported as `alive`, not proof of protocol readiness. Canonical status
 uses an identity-correlated coordinator observation and a fresh native handshake.
 Private coordinator status does not start an optional host. `semantic: unobserved`
-remains explicit: a transport or catalog observation grants no IDEA read authority. Startup and invocation logs contain typed stage/outcome evidence.
+remains explicit: a transport or catalog observation grants no IDEA read authority.
+
+Startup and invocation logs contain typed stage/outcome evidence.
 A status document includes the exact service log, saved configuration, workspace
 registry, and `launch-environment` paths. Each service ensure atomically rewrites
 the private launch-environment snapshot with all resolved non-secret settings,

@@ -24,6 +24,13 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val controlArchive: RegularFileProperty
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val qualifiedQueryExecutable: RegularFileProperty
+
+    @get:Input
+    abstract val targetPlatform: Property<String>
+
     @get:Input
     abstract val maximumEntries: Property<Int>
 
@@ -36,8 +43,16 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     fun verify() {
         val root = controlDirectory.get().asFile.toPath()
         val archive = controlArchive.get().asFile
+        val query = root.resolve("bin/kast-query")
+        check(Files.mismatch(query, qualifiedQueryExecutable.get().asFile.toPath()) == -1L) {
+            "control query payload differs from its native producer"
+        }
+        val header = Files.newInputStream(query).use { it.readNBytes(20) }
+        check(nativeQueryHeaderMatches(header, targetPlatform.get())) {
+            "control query payload is not a native executable for ${targetPlatform.get()}"
+        }
         check(archive.length() < maximumArchiveBytes.get()) {
-            "control archive is ${archive.length()} bytes; limit is below 64 MiB"
+            "control archive is ${archive.length()} bytes. It must be less than ${maximumArchiveBytes.get()} bytes."
         }
         val paths = Files.walk(root).use { stream -> stream.limit(maximumEntries.get().toLong() + 2).toList() }
         val entries = paths.map { path -> root.relativize(path).toString() }
@@ -50,22 +65,14 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             .filter(Files::isRegularFile)
             .sumOf(Files::size)
         check(installedBytes < maximumInstalledBytes.get()) {
-            "installed control product is $installedBytes bytes; limit is below 128 MiB"
+            "installed control product is $installedBytes bytes. It must be less than ${maximumInstalledBytes.get()} bytes."
         }
         val required = listOf(
             "bin/kast",
             "bin/kast-tool-rpc",
+            "bin/kast-query",
             "share/kast/adapters/copilot/extension.mjs",
             "share/kast/adapters/pi/extension.ts",
-            "share/kast/agent-tools/.agents/plugins/marketplace.json",
-            "share/kast/agent-tools/plugins/kast/.codex-plugin/plugin.json",
-            "share/kast/agent-tools/plugins/kast/.mcp.json",
-            "share/kast/agent-tools/plugins/kast/references/onboarding.md",
-            "share/kast/agent-tools/plugins/kast/references/query-examples.json",
-            "share/kast/agent-tools/plugins/kast/hooks/session_start.py",
-            "share/kast/agent-tools/plugins/kast/hooks/session_start.py.lock",
-            "share/kast/agent-tools/plugins/kast/hooks/hooks.json",
-            "share/kast/agent-tools/plugins/kast/hooks/copilot.json",
             "share/kast/libexec/kast-daemon",
             "share/kast/libexec/kast-service",
             "share/kast/libexec/kast-management",
@@ -78,14 +85,22 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/knowledge/manifest.json",
             "share/kast/licenses/LICENSE",
         )
-        check(required.all(entries::contains)) { "control product is missing required entries" }
+        check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
+        val defaultPlugin = "share/kast/agent-tools/plugins/kast/"
+        val defaultEffects = listOf(".mcp.json", "mcp.json", "hooks", "skills/kast/scripts")
+        check(entries.none { entry -> defaultEffects.any { effect ->
+            entry == defaultPlugin + effect || entry.startsWith(defaultPlugin + effect + "/")
+        } }) { "default guidance contains automatic MCP, hooks, or Python transport" }
+        check(paths.none { isPrivateDistributionArtifact(root.relativize(it)) }) {
+            "control product contains a private environment or Python cache"
+        }
         val publicExecutables = Files.list(root.resolve("bin")).use { paths ->
             paths.filter(Files::isRegularFile).map { path -> path.fileName.toString() }.toList()
         }
-        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc")) {
+        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc", "kast-query")) {
             "control product must expose the semantic CLI and integration host: $publicExecutables"
         }
-        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
+        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
             "control product kast launcher is not executable"
         }
         check(paths.none(Files::isSymbolicLink)) { "control product contains a symbolic link" }
@@ -113,6 +128,31 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         }
     }
 }
+
+private fun guidanceDistributionEntries(): List<String> {
+    val shared = listOf(
+        ".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
+        "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
+        "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
+        "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json",
+    )
+    val compositions = listOf("", "compositions/mcp/").flatMap { composition ->
+        shared.map { "share/kast/agent-tools/$composition$it" }
+    }
+    val transport = listOf(".mcp.json", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
+        "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py", "skills/kast/scripts/transport.py",
+        "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock")
+    return compositions + transport.map { "share/kast/agent-tools/compositions/mcp/plugins/kast/$it" }
+}
+
+internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Boolean =
+    header.size == 20 && when (platform) {
+        "macos-aarch64" -> header.take(8).map { it.toInt() and 255 } ==
+            listOf(207, 250, 237, 254, 12, 0, 0, 1) && header[12].toInt() == 2
+        "linux-x86_64" -> header.take(6).map { it.toInt() and 255 } ==
+            listOf(127, 69, 76, 70, 2, 1) && header[18].toInt() == 62 && header[19].toInt() == 0
+        else -> false
+    }
 
 @CacheableTask
 abstract class VerifySemanticRuntimeDistributionTask : DefaultTask() {

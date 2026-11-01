@@ -19,9 +19,6 @@ code_sources:
 - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransactionTest.kt
 - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCaptureTest.kt
 - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/ProjectReadEpochVfsOverflowTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-3be5d9cf3fcc7a7b479b3444
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
@@ -34,6 +31,9 @@ sources:
   - id: openwiki-source-333fbc6ad593a072534f0baf
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-30T23:25:02.193Z
 ---
 
 # Imported model and freshness

@@ -9,6 +9,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+import warnings
 import zipfile
 
 import component_release as release
@@ -61,7 +62,7 @@ class ComponentReleaseTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def fixture(self, component: release.Component) -> Path:
+    def fixture(self, component: release.Component, main_jar: str = "kast-ide-hosted.jar", duplicate: bool = False) -> Path:
         if component is release.Component.CONTROL:
             archive = self.root / "kast-control-v2.1.0-macos-aarch64.tar.gz"
             with tarfile.open(archive, "w:gz") as stream:
@@ -82,7 +83,12 @@ class ComponentReleaseTest(unittest.TestCase):
                 plugin.writestr("META-INF/plugin.xml", "<idea-plugin><version>2.1.0</version></idea-plugin>")
                 plugin.writestr("hosted-contract.json", json.dumps(asdict(Contract())))
             with zipfile.ZipFile(archive, "w") as stream:
-                stream.writestr("kast-ide-hosted/lib/kast-ide-hosted-2.1.0.jar", jar.getvalue())
+                stream.writestr("kast-ide-hosted/lib/" + main_jar, jar.getvalue())
+                stream.writestr("kast-ide-hosted/lib/sqlite-jdbc-2.1.0.jar", b"dependency bytes")
+                if duplicate:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", UserWarning)
+                        stream.writestr("kast-ide-hosted/lib/" + main_jar, jar.getvalue())
             (self.root / "host-installation.py").write_text("host installer")
             record = HostRelease(Artifact(archive.name, "sha256:" + release.digest(archive), archive.stat().st_size))
         path = self.root / f"{component.record_prefix}-v2.1.0.json"
@@ -129,6 +135,11 @@ class ComponentReleaseTest(unittest.TestCase):
         admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
         self.assertEqual(len(admitted.assets), 6)
         self.assertFalse(any("control" in asset.name for asset in admitted.assets))
+
+    def test_host_release_rejects_legacy_main_jar_and_duplicate_stable_name(self) -> None:
+        for name, duplicate in (("kast-ide-hosted-2.1.0.jar", False), ("kast-ide-hosted.jar", True)):
+            self.fixture(release.Component.HOST, main_jar=name, duplicate=duplicate)
+            self.assertRejected(release.Component.HOST, release.ReleaseFailure.INVALID_ARCHIVE)
 
     def test_component_version_does_not_accept_other_service_field(self) -> None:
         path = self.fixture(release.Component.CONTROL)

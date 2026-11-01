@@ -32,6 +32,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 object CanonicalQueryCliDocuments {
+    fun classificationFacts(document: kotlinx.serialization.json.JsonObject): QueryClassificationFacts =
+        queryClassificationFacts(document)
+
     /** Exact UTF-8 size of the public items array, including punctuation and retained row identities. */
     fun symbolPreviewBytes(items: List<QueryResultItemDocument.ExactSymbol>): Long = previewBytes(items)
 

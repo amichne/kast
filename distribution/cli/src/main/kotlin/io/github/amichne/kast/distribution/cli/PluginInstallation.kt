@@ -1,6 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -22,6 +24,7 @@ internal enum class PluginInstallStage {
     PLUGIN_INSTALLATION,
     VERIFICATION,
     LEGACY_REGISTRATION_REMOVAL,
+    DEPENDENCY_PREPARATION,
 }
 
 @Serializable
@@ -62,6 +65,10 @@ internal sealed interface PluginInstallOutcome {
     @Serializable
     @SerialName("REJECTED")
     data class Rejected(val stage: PluginInstallStage, val failure: PluginInstallFailure) : PluginInstallOutcome
+
+    @Serializable
+    @SerialName("RECOVERY_REQUIRED")
+    data class RecoveryRequired(val stage: PluginInstallStage, val failure: PluginInstallFailure) : PluginInstallOutcome
 }
 
 internal fun PluginInstallOutcome.asJson(): String = managementJson.encodeToString(this)
@@ -86,21 +93,29 @@ internal fun installCodexPlugin(
         runBounded(arguments, selected)
     },
     codexHome: Path = home.resolve(".codex"),
+    composition: HarnessComposition = HarnessComposition.CliOnly,
+    executeDependency: (List<String>, Map<String, String>) -> ProcessObservation = { arguments, environment ->
+        runGuidanceProvider(arguments, environment, timeoutSeconds = MCP_SETUP_SECONDS)
+    },
 ): PluginInstallOutcome =
     try {
         withRegistrationLock(root) {
-            when (val outcome = installAdmittedCodexPlugin(root, home, codexHome, executeCodex)) {
+            when (
+                val outcome =
+                    installAdmittedCodexPlugin(root, home, codexHome, executeCodex, composition, executeDependency)
+            ) {
                 is PluginInstallOutcome.Installed,
                 is PluginInstallOutcome.AlreadyInstalled ->
                     when (val removal = removeLegacyCodexRegistrations(root, home, executeLegacyCodexAt)) {
                         is PluginObservation.Observed -> outcome
                         is PluginObservation.Rejected ->
-                            PluginInstallOutcome.Rejected(
+                            PluginInstallOutcome.RecoveryRequired(
                                 PluginInstallStage.LEGACY_REGISTRATION_REMOVAL,
                                 removal.failure,
                             )
                     }
-                is PluginInstallOutcome.Rejected -> outcome
+                is PluginInstallOutcome.Rejected,
+                is PluginInstallOutcome.RecoveryRequired -> outcome
             }
         }
     } catch (_: ManagementRejected) {
@@ -134,9 +149,11 @@ private fun installAdmittedCodexPlugin(
     home: Path,
     codexHome: Path,
     executeCodex: (List<String>) -> ProcessObservation,
+    composition: HarnessComposition,
+    executeDependency: (List<String>, Map<String, String>) -> ProcessObservation,
 ): PluginInstallOutcome {
     val bundle =
-        when (val admission = AdmittedPluginBundle.admit(root)) {
+        when (val admission = AdmittedPluginBundle.admit(root, composition)) {
             is PluginObservation.Observed -> admission.value
             is PluginObservation.Rejected ->
                 return PluginInstallOutcome.Rejected(PluginInstallStage.PAYLOAD_ADMISSION, admission.failure)
@@ -146,6 +163,17 @@ private fun installAdmittedCodexPlugin(
         is PluginObservation.Rejected ->
             return PluginInstallOutcome.Rejected(PluginInstallStage.LEGACY_REGISTRATION_INSPECTION, legacy.failure)
     }
+    val legacyFiles = admittedReceipt(root).registrations.filter { it.connection == HarnessConnection.CODEX_APP_SERVER }
+    if (
+        legacyFiles.any {
+            !Files.isRegularFile(Path.of(it.destination), NOFOLLOW_LINKS) ||
+                sha256(Path.of(it.destination)) != it.payloadSha256
+        }
+    )
+        return PluginInstallOutcome.Rejected(
+            PluginInstallStage.LEGACY_REGISTRATION_INSPECTION,
+            PluginInstallFailure.LegacyRegistrationRejected,
+        )
     val marketplace =
         when (val observation = observePluginMarketplace(bundle, executeCodex)) {
             is PluginObservation.Observed -> observation.value
@@ -153,46 +181,62 @@ private fun installAdmittedCodexPlugin(
                 return PluginInstallOutcome.Rejected(PluginInstallStage.MARKETPLACE_INSPECTION, observation.failure)
         }
     val plugin =
-        when (val observation = observeInstalledPlugin(bundle, executeCodex)) {
+        when (val observation = observeInstalledPlugin(bundle, codexHome, executeCodex)) {
             is PluginObservation.Observed -> observation.value
             is PluginObservation.Rejected ->
                 return PluginInstallOutcome.Rejected(PluginInstallStage.PLUGIN_INSPECTION, observation.failure)
         }
     if (marketplace == MarketplacePresence.ABSENT && plugin != PluginPresence.ABSENT)
         return PluginInstallOutcome.Rejected(PluginInstallStage.PLUGIN_INSPECTION, PluginInstallFailure.PluginConflict)
+    when (val preparation = prepareOptionalMcp(bundle, home, executeDependency)) {
+        is PluginObservation.Observed -> Unit
+        is PluginObservation.Rejected ->
+            return PluginInstallOutcome.Rejected(PluginInstallStage.DEPENDENCY_PREPARATION, preparation.failure)
+    }
     if (marketplace == MarketplacePresence.ADMITTED && plugin == PluginPresence.CURRENT)
         return PluginInstallOutcome.AlreadyInstalled(PluginHarness.CODEX)
-    if (marketplace == MarketplacePresence.ABSENT) {
+    if (marketplace == MarketplacePresence.OWNED_OTHER) {
+        val removal =
+            pluginProcessResult(
+                executeCodex(listOf("codex", "plugin", "marketplace", "remove", KAST_MARKETPLACE_NAME, "--json"))
+            )
+        if (removal is PluginObservation.Rejected)
+            return PluginInstallOutcome.RecoveryRequired(PluginInstallStage.MARKETPLACE_REGISTRATION, removal.failure)
+    }
+    if (marketplace != MarketplacePresence.ADMITTED) {
         val result =
             pluginProcessResult(
                 executeCodex(listOf("codex", "plugin", "marketplace", "add", bundle.marketplace.toString(), "--json"))
             )
         if (result is PluginObservation.Rejected)
-            return PluginInstallOutcome.Rejected(PluginInstallStage.MARKETPLACE_REGISTRATION, result.failure)
+            return PluginInstallOutcome.RecoveryRequired(PluginInstallStage.MARKETPLACE_REGISTRATION, result.failure)
         when (val verification = observePluginMarketplace(bundle, executeCodex)) {
             is PluginObservation.Observed ->
                 if (verification.value != MarketplacePresence.ADMITTED)
-                    return PluginInstallOutcome.Rejected(
+                    return PluginInstallOutcome.RecoveryRequired(
                         PluginInstallStage.MARKETPLACE_REGISTRATION,
                         PluginInstallFailure.VerificationRejected,
                     )
             is PluginObservation.Rejected ->
-                return PluginInstallOutcome.Rejected(PluginInstallStage.MARKETPLACE_REGISTRATION, verification.failure)
+                return PluginInstallOutcome.RecoveryRequired(
+                    PluginInstallStage.MARKETPLACE_REGISTRATION,
+                    verification.failure,
+                )
         }
     }
     val installation = pluginProcessResult(executeCodex(listOf("codex", "plugin", "add", KAST_PLUGIN_ID, "--json")))
     if (installation is PluginObservation.Rejected)
-        return PluginInstallOutcome.Rejected(PluginInstallStage.PLUGIN_INSTALLATION, installation.failure)
-    return when (val verification = observeInstalledPlugin(bundle, executeCodex)) {
+        return PluginInstallOutcome.RecoveryRequired(PluginInstallStage.PLUGIN_INSTALLATION, installation.failure)
+    return when (val verification = observeInstalledPlugin(bundle, codexHome, executeCodex)) {
         is PluginObservation.Observed ->
             if (verification.value == PluginPresence.CURRENT) PluginInstallOutcome.Installed(PluginHarness.CODEX)
             else
-                PluginInstallOutcome.Rejected(
+                PluginInstallOutcome.RecoveryRequired(
                     PluginInstallStage.VERIFICATION,
                     PluginInstallFailure.VerificationRejected,
                 )
         is PluginObservation.Rejected ->
-            PluginInstallOutcome.Rejected(PluginInstallStage.VERIFICATION, verification.failure)
+            PluginInstallOutcome.RecoveryRequired(PluginInstallStage.VERIFICATION, verification.failure)
     }
 }
 
