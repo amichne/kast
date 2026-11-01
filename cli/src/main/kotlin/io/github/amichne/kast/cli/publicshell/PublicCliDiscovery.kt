@@ -139,7 +139,9 @@ internal fun publicCliHelp(command: PublicCliCommandId?): String {
             flagsFor(selected).joinToString(" ") { flag ->
                 listOf("[", flag.spelling, if (flag.takesValue) " VALUE" else "", "]").joinToString("")
             }
-    } + "\nSemantic commands emit one JSON document. Use kast describe COMMAND for the selected catalog contract."
+    } +
+        "\nSemantic commands emit one JSON document. Set KAST_OUTPUT_TOON=1 for TOON results. " +
+        "Use kast describe COMMAND for the selected catalog contract."
 }
 
 private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCatalog): PublicCliCommandDescriptor {

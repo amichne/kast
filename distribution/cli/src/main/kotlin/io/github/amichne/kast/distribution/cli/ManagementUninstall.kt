@@ -15,6 +15,7 @@ internal fun uninstallInstallation(
     executeInstaller: (Path, List<String>) -> Int = { script, arguments -> executePrivateInstaller(script, arguments) },
     observe: (UninstallCleanupObservation) -> Unit = { System.err.println(managementJson.encodeToString(it)) },
     executeHost: (List<String>) -> HostRemovalProcessObservation = ::executeHostRemoval,
+    present: (String) -> Unit = ::println,
 ) {
     val receipt = admittedUninstallReceipt(root)
     admitUninstallPayload(root, receipt)
@@ -27,7 +28,7 @@ internal fun uninstallInstallation(
     removeUninstallRegistrations(root, home, receipt, observe)
     cleanupUninstallHomeConfiguration(home, journal.homeConfiguration, observe)
     finishUninstall(root, receipt, journal, observe)
-    println("Removed Kast installation and owned registrations")
+    present("Removed Kast installation and owned registrations")
 }
 
 private fun admitUninstallPayload(root: Path, receipt: ManagementReceipt) {

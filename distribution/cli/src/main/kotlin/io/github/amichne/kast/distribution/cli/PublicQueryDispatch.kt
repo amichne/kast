@@ -22,18 +22,19 @@ internal fun runInstalledPublicQuery(
     arguments: List<String>,
     directory: Path,
     environment: Map<String, String>,
+    output: ManagementOutput = ManagementOutput(),
 ): Int =
     when (val launcher = selectPublicQueryLauncher(environment)) {
         is PublicQueryLauncher.Admitted ->
             try {
                 runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
             } catch (_: IOException) {
-                publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE)
+                publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
             } catch (_: RuntimeException) {
-                publishPublicQueryStartupFailure(PublicQueryStartupFailure.INVOCATION_FAILED)
+                publishPublicQueryStartupFailure(PublicQueryStartupFailure.INVOCATION_FAILED, output)
             }
         PublicQueryLauncher.Unavailable ->
-            publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE)
+            publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
     }
 
 internal sealed interface PublicQueryLauncher {
@@ -92,8 +93,8 @@ private enum class PublicQueryStartupFailure(val exit: Int) {
     INVOCATION_FAILED(1),
 }
 
-private fun publishPublicQueryStartupFailure(failure: PublicQueryStartupFailure): Int {
-    System.out.println(managementJson.encodeToString(PublicQueryStartupRejection(failure)))
+private fun publishPublicQueryStartupFailure(failure: PublicQueryStartupFailure, output: ManagementOutput): Int {
+    output.publish(managementJson.encodeToString(PublicQueryStartupRejection(failure)))
     System.out.flush()
     return if (System.out.checkError()) PUBLIC_OUTPUT_IO_EXIT else failure.exit
 }
@@ -111,6 +112,7 @@ internal fun runOwnedPublicQueryChild(
     command: List<String>,
     directory: Path,
     environment: Map<String, String>,
+    output: OwnedChildOutput = OwnedChildOutput.Inherited,
 ): Int {
     val owner = PublicQueryChildOwner()
     val interrupt = Signal("INT")
@@ -118,7 +120,7 @@ internal fun runOwnedPublicQueryChild(
     // These process-entry handlers stay installed through exit, including after the child is reaped.
     Signal.handle(interrupt) { owner.cancel(PublicQuerySignal.INTERRUPT) }
     Signal.handle(terminate) { owner.cancel(PublicQuerySignal.TERMINATE) }
-    return owner.run {
+    return owner.run(output) {
         ProcessBuilder(command)
             .directory(directory.toFile())
             .apply {
@@ -126,6 +128,7 @@ internal fun runOwnedPublicQueryChild(
                 environment().putAll(environment)
             }
             .inheritIO()
+            .apply { if (output is OwnedChildOutput.Document) redirectOutput(ProcessBuilder.Redirect.PIPE) }
             .start()
     }
 }
@@ -143,7 +146,7 @@ private sealed interface PublicQueryChildState {
 private class PublicQueryChildOwner {
     private var state: PublicQueryChildState = PublicQueryChildState.Pending
 
-    fun run(start: () -> Process): Int {
+    fun run(output: OwnedChildOutput, start: () -> Process): Int {
         val started =
             synchronized(this) {
                 when (val current = state) {
@@ -155,7 +158,7 @@ private class PublicQueryChildOwner {
             }
         return when (started) {
             is PublicQueryChildState.Cancelled -> started.signal.exit
-            is PublicQueryChildState.Running -> reap(started.child)
+            is PublicQueryChildState.Running -> reap(started.child, output)
             PublicQueryChildState.Pending,
             PublicQueryChildState.Reaped -> error("Public query child did not start")
         }
@@ -171,9 +174,16 @@ private class PublicQueryChildOwner {
         }
     }
 
-    private fun reap(child: Process): Int =
+    private fun reap(child: Process, output: OwnedChildOutput): Int =
         try {
-            child.waitFor()
+            val delivery = deliverOwnedChildOutput(child, output)
+            if (delivery is ChildOutputDelivery.Rejected && child.isAlive) child.destroyForcibly()
+            val status = child.waitFor()
+            when (delivery) {
+                ChildOutputDelivery.Delivered -> status
+                is ChildOutputDelivery.Rejected ->
+                    if (status in PublicQuerySignal.entries.map { it.exit }) status else delivery.exit
+            }
         } catch (_: InterruptedException) {
             child.destroy()
             waitForOwnedChild(child)

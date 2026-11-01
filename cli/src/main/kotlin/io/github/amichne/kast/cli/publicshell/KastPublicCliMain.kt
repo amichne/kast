@@ -18,6 +18,9 @@ import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.cli.rpc.costAdvice
 import io.github.amichne.kast.cli.rpc.decodeToolRpcInput
 import io.github.amichne.kast.cli.rpc.presentToolRpcExit
+import io.github.amichne.kast.distribution.output.CliOutputFormat
+import io.github.amichne.kast.distribution.output.cliOutputRejection
+import io.github.amichne.kast.distribution.output.selectCliOutputFormat
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
@@ -40,6 +43,19 @@ import kotlinx.serialization.json.JsonObject
 object KastPublicCliMain {
     @JvmStatic
     fun main(args: Array<String>) {
+        val output = Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel)
+        val format =
+            when (val selected = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> {
+                    val failure =
+                        PublicPreparedOutput(
+                            cliOutputRejection(selected.failure, CliOutputFormat.JSON),
+                            PublicShellExit.INPUT,
+                        )
+                    exitProcess(runPublicCliInvocation({ failure }, output).code)
+                }
+            }
         exitProcess(
             runPublicCliInvocation(
                     {
@@ -49,14 +65,24 @@ object KastPublicCliMain {
                             Path.of("").toAbsolutePath(),
                         )
                     },
-                    Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel),
+                    output,
+                    format,
                 )
                 .code
         )
     }
 }
 
-internal data class PublicPreparedOutput(val text: String, val exit: PublicShellExit)
+internal enum class PublicOutputContent {
+    DOCUMENT,
+    HELP,
+}
+
+internal data class PublicPreparedOutput(
+    val text: String,
+    val exit: PublicShellExit,
+    val content: PublicOutputContent = PublicOutputContent.DOCUMENT,
+)
 
 internal fun preparePublicCli(
     argv: List<String>,
@@ -74,7 +100,11 @@ internal fun preparePublicCli(
         is Refinement.Refined ->
             when (val command = parsed.value) {
                 is PublicCliCommand.Help ->
-                    PublicPreparedOutput(publicCliHelp(command.command).trimEnd(), PublicShellExit.COMPLETE)
+                    PublicPreparedOutput(
+                        publicCliHelp(command.command).trimEnd(),
+                        PublicShellExit.COMPLETE,
+                        PublicOutputContent.HELP,
+                    )
                 is PublicCliCommand.Describe ->
                     PublicPreparedOutput(
                         encodePublicCliDescriptor(describePublicCli(command)),

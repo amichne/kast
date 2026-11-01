@@ -19,6 +19,8 @@ application {
 }
 
 dependencies {
+    implementation(project(":distribution:output"))
+    testImplementation(libs.jtoon)
     implementation(project(":distribution:contract"))
     implementation(project(":distribution:managed"))
     implementation(project(":evidence:sqlite"))

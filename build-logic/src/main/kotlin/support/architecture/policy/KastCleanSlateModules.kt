@@ -24,11 +24,13 @@ internal object KastCleanSlateModules {
             ModuleId.DIAGNOSTIC_CONTRACT,
         ),
         target(ModuleId.DISTRIBUTION_CONTRACT, ModuleRole.CONTRACT, ModuleId.KERNEL),
+        target(ModuleId.DISTRIBUTION_OUTPUT, ModuleRole.TRANSPORT, ModuleId.KERNEL),
         target(
             ModuleId.DISTRIBUTION_CLI,
             ModuleRole.CLI,
             ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.DISTRIBUTION_MANAGED,
+            ModuleId.DISTRIBUTION_OUTPUT,
             ModuleId.EVIDENCE_SQLITE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
@@ -370,6 +372,7 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CLI,
             ModuleRole.CLI,
+            ModuleId.DISTRIBUTION_OUTPUT,
             ModuleId.APP_SERVER,
             ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.DISTRIBUTION_MANAGED,

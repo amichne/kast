@@ -4,10 +4,10 @@ import java.nio.file.Path
 import kotlin.system.exitProcess
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
-internal fun perform(command: ManagementCommand) {
+internal fun perform(command: ManagementCommand, output: ManagementOutput = ManagementOutput()) {
     val environment = System.getenv()
     if (command is ManagementCommand.PublicQuery) {
-        exitProcess(runInstalledPublicQuery(command.arguments, Path.of("").toAbsolutePath(), environment))
+        exitProcess(runInstalledPublicQuery(command.arguments, Path.of("").toAbsolutePath(), environment, output))
     }
     val home = environment["HOME"] ?: throw ManagementRejected("environment", "HOME is unavailable")
     val root =
@@ -17,20 +17,20 @@ internal fun perform(command: ManagementCommand) {
         }
     when (command) {
         is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
-        is ManagementCommand.Status -> printManagementStatus(root, command.json)
+        is ManagementCommand.Status -> printManagementStatus(root, command.json, output)
         is ManagementCommand.Install ->
-            presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json)
-        is ManagementCommand.Versions -> printSelectableBuilds(command.json)
+            presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json, output)
+        is ManagementCommand.Versions -> printSelectableBuilds(command.json, output)
         is ManagementCommand.Disconnect -> {
             val removed = disconnectHarness(root, Path.of(home), command.harness)
-            println(
+            output.message(
                 if (removed) "Removed ${command.harness.publicName} registration"
                 else "${command.harness.publicName} was not registered by this installation"
             )
         }
         is ManagementCommand.Lifecycle -> {
             val outcome = executeInstallationLifecycle(root, Path.of(home), environment, command.operation)
-            if (command.json) println(outcome.asJson())
+            if (output.structured(command.json)) output.publish(outcome.asJson())
             else
                 when (outcome) {
                     is LifecycleOutcome.Stopped ->
@@ -60,13 +60,13 @@ internal fun perform(command: ManagementCommand) {
                     ForceResetOperation.UNINSTALL -> resetPublicInstallation(scope)
                     ForceResetOperation.REINSTALL -> reinstallPublicInstallation(scope, environment)
                 }
-            when (presentForceReset(outcome, command.json)) {
+            when (presentForceReset(outcome, command.json, output)) {
                 ForceResetExit.COMPLETE -> Unit
                 ForceResetExit.INCOMPLETE -> exitProcess(1)
             }
         }
-        is ManagementCommand.Upgrade -> upgradeSelectedBuild(root, Path.of(home), command, environment)
-        ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
+        is ManagementCommand.Upgrade -> upgradeSelectedBuild(root, Path.of(home), command, environment, output)
+        ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home), present = output::message)
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
     }

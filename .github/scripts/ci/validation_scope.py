@@ -111,6 +111,7 @@ PRODUCT_MODULES = frozenset(
         "distribution/contract",
         "distribution/cli",
         "distribution/managed",
+        "distribution/output",
         "protocol/contract",
         "protocol/registry",
         "protocol/wire",
@@ -159,7 +160,7 @@ PRODUCT_SOURCE_PREFIXES = tuple(
 # Candidate preflight examines this inventory against the resolved native task graph.
 NATIVE_INPUT_MODULES = frozenset({
     "change/apply", "change/contract", "change/recovery", "change/verify", "diagnostic/contract",
-    "distribution/cli", "distribution/contract", "distribution/managed", "evidence/contract", "evidence/sqlite",
+    "distribution/cli", "distribution/contract", "distribution/managed", "distribution/output", "evidence/contract", "evidence/sqlite",
     "kernel", "relation/contract", "symbol/contract", "traversal/contract", "workspace/contract",
 })
 QUALIFICATION_MODULES = NATIVE_INPUT_MODULES | {"cli"}

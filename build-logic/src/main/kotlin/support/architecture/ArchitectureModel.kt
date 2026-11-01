@@ -65,6 +65,7 @@ enum class ModuleId(val projectPath: String) {
     DISTRIBUTION_CONTRACT(":distribution:contract"),
     DISTRIBUTION_CLI(":distribution:cli"),
     DISTRIBUTION_MANAGED(":distribution:managed"),
+    DISTRIBUTION_OUTPUT(":distribution:output"),
     PROTOCOL_CONTRACT(":protocol:contract"),
     PROTOCOL_REGISTRY(":protocol:registry"),
     PROTOCOL_WIRE(":protocol:wire"),

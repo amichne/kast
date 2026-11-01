@@ -160,6 +160,9 @@ internal object ModulePolicyValidator {
 
 internal object KastCleanSlateCrossRoleDependencies {
     val all: Set<ProjectDependencyObservation> = setOf(
+        // Both public executables use the same pure result presentation adapter.
+        ProjectDependencyObservation(ModuleId.DISTRIBUTION_CLI, ModuleId.DISTRIBUTION_OUTPUT),
+        ProjectDependencyObservation(ModuleId.CLI, ModuleId.DISTRIBUTION_OUTPUT),
         ProjectDependencyObservation(ModuleId.CHANGE_APPLY, ModuleId.CHANGE_RECOVERY),
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_APPLY),
         ProjectDependencyObservation(ModuleId.CHANGE_VERIFY, ModuleId.CHANGE_RECOVERY),

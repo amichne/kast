@@ -64,6 +64,7 @@ val cleanSlateProjects = listOf(
     ":distribution:contract",
     ":distribution:cli",
     ":distribution:managed",
+    ":distribution:output",
     ":protocol:contract",
     ":protocol:registry",
     ":protocol:wire",

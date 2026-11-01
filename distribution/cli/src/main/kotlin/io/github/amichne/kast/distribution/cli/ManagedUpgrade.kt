@@ -16,7 +16,9 @@ internal sealed interface ManagedUpgradeOutcome {
 
 internal data class ManagedUpgradeExecution(
     val readRelease: (String) -> ReleaseDocumentRead = ::readReleaseDocument,
-    val installer: (List<String>, Path, Map<String, String>) -> Int = ::runOwnedPublicQueryChild,
+    val installer: (List<String>, Path, Map<String, String>) -> Int = { command, directory, environment ->
+        runOwnedPublicQueryChild(command, directory, environment)
+    },
     val notice: (ManagedUpgradeNotice) -> Unit = ::printUpgradeNotice,
 )
 
@@ -36,12 +38,25 @@ internal fun upgradeSelectedBuild(
     home: Path,
     command: ManagementCommand.Upgrade,
     environment: Map<String, String>,
+    output: ManagementOutput = ManagementOutput(),
 ) {
-    when (val outcome = executeManagedUpgrade(root, home, command, environment)) {
+    val selected = command.copy(json = output.structured(command.json))
+    val childOutput =
+        when (output.format) {
+            io.github.amichne.kast.distribution.output.CliOutputFormat.JSON -> OwnedChildOutput.Inherited
+            io.github.amichne.kast.distribution.output.CliOutputFormat.TOON -> OwnedChildOutput.Document(output.format)
+        }
+    val execution =
+        ManagedUpgradeExecution(
+            installer = { arguments, directory, childEnvironment ->
+                runOwnedPublicQueryChild(arguments, directory, childEnvironment, childOutput)
+            }
+        )
+    when (val outcome = executeManagedUpgrade(root, home, selected, environment, execution)) {
         is ManagedUpgradeOutcome.ChildExited -> if (outcome.code != 0) kotlin.system.exitProcess(outcome.code)
-        is ManagedUpgradeOutcome.Rejected -> presentUpgradeRejection(outcome.reason, command.json, "REJECTED")
+        is ManagedUpgradeOutcome.Rejected -> presentUpgradeRejection(outcome.reason, selected.json, "REJECTED", output)
         is ManagedUpgradeOutcome.RecoveryRequired ->
-            presentUpgradeRejection(outcome.reason, command.json, "RECOVERY_REQUIRED")
+            presentUpgradeRejection(outcome.reason, selected.json, "RECOVERY_REQUIRED", output)
     }
 }
 
@@ -193,8 +208,13 @@ private fun invokeUpgradeInstaller(
 
 @Serializable private data class CoreUpgradeRejection(val reason: BuildSelectionFailure, val type: String)
 
-private fun presentUpgradeRejection(reason: BuildSelectionFailure, json: Boolean, type: String) {
-    if (json) println(managementJson.encodeToString(CoreUpgradeRejection(reason, type)))
+private fun presentUpgradeRejection(
+    reason: BuildSelectionFailure,
+    json: Boolean,
+    type: String,
+    output: ManagementOutput,
+) {
+    if (json) output.publish(managementJson.encodeToString(CoreUpgradeRejection(reason, type)))
     System.err.println("kast: upgrade: $reason")
     kotlin.system.exitProcess(1)
 }

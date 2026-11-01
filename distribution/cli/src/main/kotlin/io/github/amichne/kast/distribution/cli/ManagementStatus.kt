@@ -12,7 +12,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-internal fun printManagementStatus(root: Path, json: Boolean) {
+internal fun printManagementStatus(root: Path, json: Boolean, output: ManagementOutput = ManagementOutput()) {
     val commandPath =
         ProcessHandle.current()
             .info()
@@ -20,7 +20,7 @@ internal fun printManagementStatus(root: Path, json: Boolean) {
             .map { Path.of(it).toAbsolutePath().normalize().toString() }
             .orElse("unavailable")
     val status = readStatus(root, commandPath)
-    println(if (json) status.asJson() else status.asText())
+    if (output.structured(json)) output.publish(status.asJson()) else println(status.asText())
 }
 
 @Serializable
