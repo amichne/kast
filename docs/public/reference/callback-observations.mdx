@@ -80,7 +80,7 @@ Calls-in-place evidence keeps `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, o
 
 The compiler selects the formal. The effect belongs to that formal and the reviewed binary identity. If effects are missing, repeated, or not supported, the result returns `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
 
-These kinds describe the declared contract. They do not count calls at runtime. They do not invent sites within dependency bodies.
+These kinds describe the declared contract. They supply neither runtime call counts nor call sites from dependency bodies.
 
 ## Unresolved obligations
 
