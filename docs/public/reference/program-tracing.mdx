@@ -74,7 +74,7 @@ Kast keeps five roles distinct:
 - The formal accepts it, here `submit.block`.
 - The actual call owner contains the invocation, here `forward` with `next()`.
 
-An unused default keeps its formal and expression. Kast does not invent a call. A nested body needs proof for its own invocation route.
+For an unused default, Kast records the formal and expression without a call claim. A nested body needs proof for its own invocation route.
 
 Kast connects anonymous owners through exact supplier bindings and source summaries. It also uses direct calls and admitted library contracts. Each owner keeps its own proof. Lexical containment alone does not complete a route.
 
@@ -95,7 +95,7 @@ The reviewed `kotlin.lazy` model records the initializer supplied for later use.
 
 Here, a producer is the selected constructor or function call whose result the investigation tracks.
 
-Plain request and response paths trace constructor results, arguments, and receivers. They also trace proven immutable field storage and reads. Returns connect to the matching call. Supported nested calls and named locals keep that route. Different fields keep separate provenance. So do separate calls to the same mapper.
+Request and response paths trace constructor results, arguments, receivers, and proven immutable field storage and reads. Returns connect to the matching call. Supported nested calls and named locals keep that route. Each field keeps its own provenance. Each call to a mapper keeps separate provenance.
 
 Interface calls can enter eligible source implementations within the declared domain. Each alternative keeps proof of its implementation and source owner. A complete static target set does not show which target ran.
 
@@ -137,7 +137,9 @@ Value flow needs source proof for supply and invocation. Both must connect to th
 
 An invocation inside an anonymous owner remains unsupported. A named owner for another invocation does not remove that limit. The limit does not exclude anonymous callback suppliers.
 
-Mutable captures keep explicit obligations. So do captures between distinct anonymous owners, unsupported routes, and unresolved owners. A returned callback can remain uncalled. That callback gains no value or result path that depends on invocation. Parameter declarations cannot seed public `IMPACT` queries.
+Mutable captures, captures between distinct anonymous owners, unsupported routes, and unresolved owners keep explicit obligations.
+
+A returned callback can remain uncalled. It gains no value or result path that depends on invocation. Parameter declarations cannot seed public `IMPACT` queries.
 
 ## Completion and limits
 
@@ -198,10 +200,17 @@ Explicit `maxWorkUnits` conflicts with the mode and rejects the request.
 Preparation and transport frames keep their existing limits.
 A runner can set its own timeout. That deadline limits the caller lifetime.
 
-The example separates discovery scope from expansion scope. Discovery uses `scope.sourceSetNames` and `relativeDirectoryPath`. Expansion uses `expansionScope.sourceSets` and optional `directory`.
+The example separates discovery scope from expansion scope:
+
+| Scope | Fields |
+| --- | --- |
+| Discovery | `scope.sourceSetNames` and `relativeDirectoryPath` |
+| Expansion | `expansionScope.sourceSets` and optional `directory` |
+
 The seed's directory does not restrict later destinations. `WORKSPACE` expansion can include test sources, even when discovery selects `main`.
-For production-only relationships, use `SOURCE_DOMAIN` with exact imported source-set names.
-Set `sourcePolicy: "PRODUCTION_ONLY"`. Choose an explicit generated-source policy, as shown.
+
+For production-only relationships, use `SOURCE_DOMAIN` with exact imported source-set names. Set `sourcePolicy: "PRODUCTION_ONLY"`. Choose an explicit generated-source policy, as shown.
+
 These constraints apply before native reads collect results. A later row filter cannot replace them.
 
 Completion still needs exhaustive compiler proof.

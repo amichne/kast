@@ -4,7 +4,7 @@ description: "Read a query beyond its preview without semantic replay or a stron
 icon: "list-checks"
 ---
 
-Use this guide when a query returns a preview, a retained result reference, or a completion rejection with `nextQuery`.
+Use this guide to read more output from a preview, retained result reference, or completion rejection with `nextQuery`.
 
 You need the original response and its issued handles. The original read state and retention lifetime must remain valid.
 
@@ -14,7 +14,7 @@ You need the original response and its issued handles. The original read state a
 
 ## 1. Identify the capability
 
-Read the response's status, coverage, and progress. Then identify the issued capability:
+Read the response's status, coverage, and progress. Select the action for its issued handle:
 
 | Capability | Action |
 | --- | --- |
@@ -43,7 +43,7 @@ For retained symbol rows, substitute the issued result reference and cursor:
 
 Use `next_cursor` from the last reply to read the next page. Match the output to the retained row kind.
 
-Count output rows, not entries in the graph tables. Those entries describe row relationships; they do not set the evidence cursor.
+Count output rows. Graph entries describe row relationships and do not set the evidence cursor.
 
 For retained binding rows, include `"output": {"type": "BINDING_ROWS"}`. [Results](/reference/responses) defines each retained output form.
 
@@ -72,14 +72,16 @@ An evidence-only page can advance without a row. Continue until the response rep
 
 ## 4. Cannot reuse saved state
 
-If a handle rejects, keep its finite cause. Do not substitute an exact reference for a retained result reference.
+If Kast rejects a handle, keep the reported cause. Do not substitute an exact reference for a retained result reference.
 
 If the original state is not available, start a fresh query with current references. A fresh query produces a separate answer.
 
-To reacquire an earlier exact reference, submit a fresh `RUN` with a `SYMBOL_REFS` source. Keep any identity rejection.
-For source text, pass a newly issued reference to `READ_SOURCE.candidateRef`. That action checks its original snapshot; it does not reacquire stale references.
-Neither action updates the immutable retained rows or evidence.
+To reacquire an earlier exact reference, submit a fresh `RUN` with a `SYMBOL_REFS` source. Preserve an identity rejection if Kast returns one.
 
-`RETENTION_UNAVAILABLE` supplies no invented handle. Reading retained evidence does not extend its lifetime. It does not resume semantic work.
+For source text, pass a newly issued reference to `READ_SOURCE.candidateRef`. `READ_SOURCE` checks the reference's original snapshot. It does not reacquire stale references.
+
+Neither action updates retained rows or evidence.
+
+`RETENTION_UNAVAILABLE` provides no result reference for unavailable evidence. Reading retained evidence does not extend its lifetime or resume semantic work.
 
 [Query execution and evidence delivery](/explanation/query-lifecycle) explains the separate owners. [Results](/reference/responses) defines progress and failure variants.

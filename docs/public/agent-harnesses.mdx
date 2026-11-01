@@ -12,8 +12,7 @@ icon: "plug"
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Kast gives your agent guidance for the installed `kast` command.
-These steps assume that Kast already exists on your machine.
+After [installing Kast](/start), install CLI guidance for your agent.
 
 <span id="choose-your-agent" />
 <span id="1-connect-your-agent" />
@@ -22,41 +21,29 @@ These steps assume that Kast already exists on your machine.
 
 <Tabs sync={false}>
   <Tab title="Codex">
-    Install the CLI guidance:
-
     ```shell
     kast install codex
     ```
-
-    Start a fresh Codex session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Copilot">
-    Install the CLI guidance:
-
     ```shell
     kast install copilot
     ```
-
-    Start a fresh Copilot session in your Kotlin repository or worktree.
   </Tab>
   <Tab title="Pi">
-    Install the CLI guidance:
-
     ```shell
     kast install pi
     ```
-
-    Start a fresh Pi session in your Kotlin repository or worktree.
   </Tab>
 </Tabs>
 
-The default composition uses the CLI. It installs no MCP registration or Python hook.
-For optional MCP, add `--mcp` to your agent's command.
-The [integration reference](/reference/integrations#optional-mcp) gives its runtime needs.
+Start a fresh agent session in your Kotlin repository or worktree.
+
+For optional MCP, add `--mcp` to your agent's command. See the [MCP runtime requirements](/reference/integrations#optional-mcp).
 
 ## Refresh guidance
 
-Core replacement does not refresh copied skills or cached provider resources.
+A Kast update does not refresh copied skills or cached provider resources.
 If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before a fresh session.
 Keep `--mcp` if you select the optional MCP composition.
 

@@ -5,9 +5,7 @@ description: "Understand declarations, source relationships, value paths, and th
 icon: "workflow"
 ---
 
-Kast answers questions about your Kotlin source through IntelliJ IDEA's compiler analysis.
-A useful answer identifies the code, explains the relationship, and states the scope and limits of its evidence.
-This page explains those concepts. The linked references define their exact fields and rules.
+Kast uses IntelliJ IDEA's compiler analysis to answer questions about your Kotlin source. A useful answer identifies code and explains its relationships, scope, and evidence limits.
 
 ## Start with a declaration and a source question
 
@@ -19,9 +17,7 @@ fun display(): String = message()
 fun unrelated(): String = "Ready"
 ```
 
-This illustrative source contains three function declarations.
-The call inside `display` refers to `message`. The equal text inside `unrelated` does not make it a caller.
-Kast resolves the call to its declaration, rather than treating matching text as a source relationship.
+The example declares three functions. `display` calls `message`. `unrelated` contains the same text but does not call `message`. Kast resolves the call to its declaration.
 
 A symbol identifies a code element in compiler analysis.
 Kast issues an **exact reference** for a selected declaration, so the next query can use that identity.
@@ -33,7 +29,7 @@ The name `message` alone cannot distinguish declarations with different owners o
 A caller relationship identifies code that calls a declaration.
 An implementation relationship identifies a declaration that implements a contract.
 A value path connects supported transfers of a selected value, such as a return, argument, or field read.
-These relationships answer different questions. A list of callers does not by itself explain where a returned value goes.
+A list of callers alone does not explain where a returned value goes.
 
 The [customer example](/explanation/value-journey) shows a returned customer inside an email draft, then inside a possible list element.
 The customer, draft, and list remain distinct objects.
@@ -46,11 +42,7 @@ Its location inside another function does not prove that the enclosing function 
 
 ## Follow the evidence through the result
 
-Kast uses the saved project and imported model in IDEA.
-It discovers candidates, resolves the identities and relationships needed by the query, and returns the requested fields with evidence for that source state.
-A later edit can make that state stale.
-A fresh query can establish current evidence, but it does not update old retained rows.
-[The query lifecycle](/explanation/query-lifecycle) explains the components behind this sequence.
+Kast uses the saved project and imported model in IDEA. It finds candidates, resolves identities and relationships, then returns the requested fields and evidence. That evidence belongs to the queried source state. A later edit can make it stale. A fresh query can establish current evidence without updating retained rows. [The query lifecycle](/explanation/query-lifecycle) explains this sequence.
 
 Read a result in this order:
 
@@ -59,10 +51,7 @@ Read a result in this order:
 3. Inspect the returned source locations and the relationship each item establishes.
 4. Read more output when the response supplies a continuation or retained-result cursor.
 
-The displayed page and the completed query are different things.
-A preview can omit stored rows from a complete result.
-Conversely, rows preserved after a rejection do not turn that rejection into a complete answer.
-[Results](/reference/responses) defines completion, presentation, and recovery separately.
+A preview can omit stored rows even when the query is complete. Reading every retained row after a rejection does not make the answer complete. [Results](/reference/responses) defines completion, presentation, and recovery.
 
 ## What completion does and does not mean
 
@@ -77,7 +66,7 @@ The [result interpretation](/reference/responses#run-completion) states which ru
 No source result proves that a path executed or can execute in a running application.
 Compiler evidence, reviewed library rules, and admitted models keep their different qualifications.
 A modeled value transfer alone does not establish value correspondence.
-An unsupported transfer means that the evidence stops, not that no transfer exists.
+Evidence stops at an unsupported transfer. The connection remains unproved.
 
 For the small example, a completed caller query can establish the call from `display` to `message` within its scope.
 It does not prove that `display` ran.
@@ -94,7 +83,7 @@ The [source-change guide](/reference/change) gives the supported targets and pro
 
 ## Explore the mechanisms
 
-Use these pages when you need to understand an implementation decision or a limit in a result.
+These pages explain implementation decisions and result limits.
 
 <Columns cols={2}>
   <Card title="Follow one value" icon="route" href="/explanation/value-journey">
