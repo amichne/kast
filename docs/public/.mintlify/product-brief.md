@@ -2,44 +2,50 @@
 
 ## Description
 
-Kast gives agents facts from the Kotlin compiler.
-Readers can see where a value goes and which code depends on a function.
+Kast gives coding agents source relationships from IntelliJ IDEA's compiler analysis.
+The native `kast` command is the primary interface.
 
 ## Primary audience
 
-The main readers are Kotlin developers who already use a coding agent.
-They want to understand what Kast adds.
-The core docs assume the latest Kast release.
+Kotlin developers who already use Codex, Copilot, or Pi are the primary readers.
+The setup path assumes that the Kast CLI is installed.
+It selects the latest qualified development build with `kast upgrade --channel main`.
+
+## Source authority
+
+PR #1144 defines the installation and guidance contract for this documentation change.
+Its reviewed source revision is `647fffc46f6247fac5b0fc632ae019d157bf9020`.
+Keep the documentation aligned with that merged implementation.
+Remove inherited setup commands and release comparisons.
+Do not describe a public bootstrap that the implementation does not supply.
 
 ## Jobs to be done
 
-1. Explore one example through code and a diagram.
-2. Install Kast and connect an agent.
-3. Ask a useful question about the reader's code.
-
-## Motivation
-
-A name or type alone does not prove how code connects.
-Show a route and a changed example before the tool contracts.
-Label each example so readers know whether Kast ran.
+1. Select a qualified development build.
+2. Install CLI guidance for the selected agent.
+3. Ask a useful question about the developer's own code.
 
 ## Navigation and ownership
 
-Lead with three collapsible groups: Discover Kast, Try it on your project, and Get unstuck.
-Keep implementation pages out of the main menus. Link to mechanisms and trust evidence at the bottom of core pages.
-Keep deeper pages in search. Keep detailed schemas collapsed.
-Keep useful page paths. Give each fact one source owner.
-Edit generated contracts through their generator.
+Guides contains Overview, Set up, Examples, and Help.
+Keep Architecture and Reference visible.
+The setup page owns the path from build selection to a first useful answer.
+The installation reference owns build policies and activation outcomes.
+The integration reference owns CLI guidance, skill export, and optional MCP.
+The CLI reference owns common command examples.
+Keep existing routes and anchors. Edit generated contracts through their generator.
 
 ## Claims and limits
 
-Kast supplies facts. The agent interprets them.
-Do not imply that every language, library, or refactor has support.
-An unfinished query does not prove that code is absent. A source link does not prove that code ran or a build passed.
-Keep query output, retained results, and source references distinct.
+The default agent composition supplies CLI guidance.
+MCP needs an explicit `--mcp` selection.
+The persistent Host in IntelliJ IDEA supplies compiler analysis for CLI and MCP.
+Keep installed files, loaded Host identity, agent resources, and workspace readiness distinct.
+A successful resource installation does not prove content in an existing agent session.
+An unfinished query does not prove absence. Source relationships do not prove runtime execution.
 
 ## Visuals
 
-Use the shared value explorer for the core example. Use Beautiful Mermaid to show how Kast works.
-Keep source details behind the Evidence control.
-Use text and shape alongside color to explain routes and missing evidence.
+Keep the value explorer as an optional explanation.
+Label authored illustrations and recorded results with their evidence scope.
+Do not invent successful transcripts or treat playback duration as query latency.
