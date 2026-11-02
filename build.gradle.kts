@@ -407,6 +407,7 @@ val developerPublicationTest = tasks.register<VerificationReportTask>("developer
     group = "verification"
     description = "Proves qualified publication and concurrent discovery admission."
     sourceFiles.from(fileTree(".github/scripts/release") { include("*.py", "pyproject.toml", "uv.lock") })
+    sourceFiles.from(".github/scripts/release/publish-release.sh", ".github/scripts/release/admit-source.sh")
     sourceFiles.from(fileTree(".github/scripts/ci") { include("*.py") })
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--project", ".github/scripts/release", "pytest",

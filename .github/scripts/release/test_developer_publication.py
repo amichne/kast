@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
 from collections.abc import Sequence
@@ -313,6 +316,94 @@ class CandidateFixture(unittest.TestCase):
                     publisher.publish(prepared, remote),
                 )
                 script.consumed()
+
+    def run_stable_publisher(self) -> tuple[subprocess.CompletedProcess[str], Path]:
+        owned = Path(self.temporary.name)
+        repository = owned / "repository"
+        scripts = repository / ".github/scripts/release"
+        scripts.mkdir(parents=True)
+        for name in ("publish-release.sh", "admit-source.sh"):
+            shutil.copy2(Path(__file__).with_name(name), scripts / name)
+        home, commands = owned / "home", owned / "bin"
+        home.mkdir()
+        commands.mkdir()
+        uploaded = owned / "uploaded.txt"
+        gh = commands / "gh"
+        gh.write_text(
+            '#!/bin/sh\ncase "$1 $2" in\n'
+            '"release view") test -f "$KAST_TEST_UPLOAD_LOG" ;;\n'
+            '"release create") printf "%s\\n" "$@" > "$KAST_TEST_UPLOAD_LOG" ;;\n'
+            "*) exit 90 ;;\nesac\n"
+        )
+        gh.chmod(0o700)
+        environment = {
+            "PATH": str(commands) + os.pathsep + os.defpath,
+            "HOME": str(home),
+            "LC_ALL": "C",
+            "GH_TOKEN": "owned-fixture-token",
+            "KAST_TEST_UPLOAD_LOG": str(uploaded),
+        }
+
+        def git(*arguments: str) -> str:
+            return subprocess.check_output(
+                ("git", *arguments),
+                cwd=repository,
+                env=environment,
+                text=True,
+                stderr=subprocess.PIPE,
+            ).strip()
+
+        _ = git("init", "--initial-branch=main")
+        _ = git("add", ".")
+        _ = git(
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-m",
+            "owned publication source",
+        )
+        revision = git("rev-parse", "HEAD")
+        remote = owned / "remote.git"
+        _ = git("clone", "--bare", str(repository), str(remote))
+        _ = git("remote", "add", "origin", str(remote))
+        result = subprocess.run(
+            (
+                "bash",
+                str(scripts / "publish-release.sh"),
+                "--release",
+                f"v{VERSION}",
+                "--commit",
+                revision,
+                "--assets-directory",
+                str(self.payload),
+            ),
+            cwd=repository,
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        return result, uploaded
+
+    def test_stable_upload_contains_the_complete_admitted_asset_inventory(self) -> None:
+        result, uploaded = self.run_stable_publisher()
+        self.assertEqual(0, result.returncode, result.stderr)
+        arguments = uploaded.read_text().splitlines()
+        self.assertEqual(["release", "create", f"v{VERSION}"], arguments[:3])
+        observed = {
+            Path(value.split("#", 1)[0]).name for value in arguments[3 : arguments.index("--repo")]
+        }
+        self.assertEqual({asset.name for asset in self.value.assets}, observed)
+
+    def test_missing_control_record_rejects_before_release_creation(self) -> None:
+        name = f"kast-control-release-v{VERSION}.json"
+        (self.payload / name).unlink()
+        result, uploaded = self.run_stable_publisher()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(f"missing release asset: {self.payload / name}", result.stderr)
+        self.assertFalse(uploaded.exists())
 
 
 class RemoteCatalogTest(unittest.TestCase):
