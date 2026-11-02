@@ -465,9 +465,11 @@ class SourceInventoryTest(unittest.TestCase):
         runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
         self.assertEqual(
             "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
-            "github.ref == 'refs/heads/main' && "
+            "(github.ref == 'refs/heads/main' && "
             "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
-            "vars.KAST_SELF_HOSTED_RUNNER == 'true' && "
+            "vars.KAST_SELF_HOSTED_RUNNER == 'true' || "
+            "(github.event_name == 'workflow_dispatch' && "
+            "github.ref == 'refs/heads/preview/pr-1159-1160-local-mac-20261102')) && "
             "fromJSON('[\"self-hosted\", \"macOS\", \"ARM64\", \"kast-main\"]') || 'macos-15' }}",
             runner,
         )
