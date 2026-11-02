@@ -111,7 +111,11 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 localMetadata = metadata,
                 productVersion = version,
                 existingIdeClient =
-                    io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(userHome, configuration.readLimits),
+                    io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
+                        userHome,
+                        configuration.readLimits,
+                        debug = configuration.debug,
+                    ),
                 appServerManager = InstalledAppServerManager(executable, userHome),
                 codexClientLauncher = installedCodexClientLauncher(executable, userHome),
             )

@@ -11,6 +11,23 @@ import { runInNewContext } from 'node:vm';
 const source = readFileSync(new URL('../../../../pi/mcp-extension.ts', import.meta.url), 'utf8');
 const resources = ['onboarding.md', 'query-schema.json', 'query-examples.json'];
 
+test('Pi CLI hook preserves workspace arguments and reports preparation failure without MCP', async () => {
+  const hook = readFileSync(new URL('../../../../agent-tools/hooks/pi.ts', import.meta.url), 'utf8');
+  const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
+  for (const code of [0, 4]) {
+    const calls = [], notices = [], handlers = new Map();
+    register({
+      on: (event, handler) => handlers.set(event, handler),
+      exec: async (...args) => { calls.push(args); return { code, stdout: 'PREPARATION_REJECTED', stderr: '' }; },
+    });
+    const cwd = '/project with spaces/$literal;value';
+    await handlers.get('session_start')({}, { cwd, ui: { notify: (...args) => notices.push(args) } });
+    assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', cwd], { timeout: 3_780_000 }]]);
+    assert.equal(notices.length, code === 0 ? 0 : 1);
+    assert.deepEqual([...handlers.keys()], ['session_start']);
+  }
+});
+
 test('registry fixture rejects unexpected, duplicate, and unconsumed protocol messages', t => {
   const directory = mkdtempSync(join(tmpdir(), 'kast registry protocol '));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -57,14 +74,14 @@ async function fixture(t, brief = 'Kast shared context\n') {
     'export const homedir = () => ' + JSON.stringify(home) + ';').toString('base64');
   const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(
     stripTypeScriptTypes(source.replace('from "node:os"', 'from "' + osModule + '"'))).toString('base64'));
-  const handlers = new Map(), servers = [], notifications = [];
+  const handlers = new Map(), servers = [], notifications = [], preparations = [];
   register({
     registerMcpServer: (...args) => servers.push(args),
     on: (name, handler) => handlers.set(name, handler),
-    exec: () => assert.fail('Pi context must not start a child process'),
+    exec: async (...args) => { preparations.push(args); return { code: 0, stdout: '{}', stderr: '' }; },
   });
   const ctx = { cwd: workspace, ui: { notify: (...args) => notifications.push(args) } };
-  return { handlers, servers, notifications, ctx, references, workspace, installation };
+  return { handlers, servers, notifications, preparations, ctx, references, workspace, installation };
 }
 
 test('Pi delivers the generated semantic routing policy without probing readiness', async t => {
@@ -178,13 +195,14 @@ function assertContinuesWithoutContext(f, reason) {
   assert.equal(f.notifications.length, 1, 'A context failure does not repeat on every turn');
 }
 
-test('Pi registers native MCP and reads shared context without a child process', async t => {
+test('Pi registers native MCP and delegates preparation to the public executable', async t => {
   const f = await fixture(t);
   assert.deepEqual(f.servers, [['kast', {
     command: 'uv', args: ['run', '--locked', '--script', join(f.installation, 'share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/server.py')], timeout: 3780,
   }]]);
   assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }), undefined);
   await f.handlers.get('session_start')({}, f.ctx);
+  assert.deepEqual(f.preparations, [['kast', ['hook', 'session-start', '--workspace', f.workspace], { timeout: 3_780_000 }]]);
   const expected = 'Other extension context\n\nKast shared context' +
     '\nWorkspace: ' + JSON.stringify(f.workspace) +
     '\nKast skill: ' + JSON.stringify(join(f.references, '../skills/kast/SKILL.md')) +

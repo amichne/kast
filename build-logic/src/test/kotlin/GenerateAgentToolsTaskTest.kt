@@ -17,17 +17,18 @@ class GenerateAgentToolsTaskTest {
     @TempDir lateinit var directory: Path
 
     @Test
-    fun `default composition installs CLI guidance without MCP or Python hooks`() {
+    fun `default composition installs CLI guidance and native preparation hooks without MCP`() {
         val task = task()
         task.generate()
         val output = task.outputDirectory.get().asFile.toPath()
         val plugin = output.resolve("plugins/kast")
         for (manifestPath in listOf(".codex-plugin/plugin.json", ".github/plugin/plugin.json")) {
             val manifest = Json.parseToJsonElement(Files.readString(plugin.resolve(manifestPath))).jsonObject
-            assertTrue("hooks" !in manifest)
+            assertEquals(if (manifestPath.startsWith(".codex")) "./hooks/hooks.json" else "./hooks/copilot.json", manifest.getValue("hooks").jsonPrimitive.content)
             assertTrue("mcpServers" !in manifest)
         }
-        for (path in listOf("hooks", ".mcp.json", "skills/kast/scripts")) assertTrue(Files.notExists(plugin.resolve(path)), path)
+        for (path in listOf("hooks/session_start.py", ".mcp.json", "skills/kast/scripts")) assertTrue(Files.notExists(plugin.resolve(path)), path)
+        for (path in listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts")) assertTrue(Files.isRegularFile(plugin.resolve(path)), path)
         val mcp = Json.parseToJsonElement(Files.readString(output.resolve("compositions/mcp/plugins/kast/.codex-plugin/plugin.json"))).jsonObject
         assertEquals("./.mcp.json", mcp.getValue("mcpServers").jsonPrimitive.content)
         assertTrue(Files.exists(output.resolve(".github/plugin/marketplace.json")))
@@ -41,7 +42,7 @@ class GenerateAgentToolsTaskTest {
         val plugin = output.resolve("plugins/kast")
         val manifest = Json.parseToJsonElement(Files.readString(plugin.resolve(".codex-plugin/plugin.json"))).jsonObject
         assertEquals("1.2.3", manifest.getValue("version").jsonPrimitive.content)
-        assertTrue("hooks" !in manifest)
+        assertEquals("./hooks/hooks.json", manifest.getValue("hooks").jsonPrimitive.content)
         assertEquals("./skills/", manifest.getValue("skills").jsonPrimitive.content)
         assertTrue(Files.exists(plugin.resolve("skills/kast/SKILL.md")))
         assertEquals("./.mcp.json", manifest.getValue("mcpServers").jsonPrimitive.content)

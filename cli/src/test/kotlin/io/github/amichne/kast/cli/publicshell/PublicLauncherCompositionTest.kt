@@ -24,6 +24,25 @@ class PublicLauncherCompositionTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
 
     @Test
+    fun `native session hooks preserve the host envelope without project effects`() {
+        NativePublicFixture(temporary).use { fixture ->
+            val directory = Files.createDirectory(temporary.resolve("non project with spaces"))
+            for (toon in listOf("0", "1")) {
+                val label = "hook-$toon"
+                val child =
+                    fixture.start(
+                        label,
+                        listOf("hook", "session-start", "--workspace", directory.toString()),
+                        environment = mapOf("KAST_OUTPUT_TOON" to toon),
+                    )
+                fixture.assertExit(child, 0, label)
+                assertTrue(oneDocument(Files.readString(temporary.resolve("$label.stdout"))).isEmpty())
+                assertEquals("", Files.readString(temporary.resolve("$label.stderr")))
+            }
+        }
+    }
+
+    @Test
     fun `actual native executables select TOON and preserve result data and exit status`() {
         NativePublicFixture(temporary).use { fixture ->
             for ((index, case) in

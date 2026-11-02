@@ -158,6 +158,7 @@ private constructor(
     }
 }
 
+@kotlinx.serialization.Serializable
 internal enum class ClientInstallationFailure {
     PAYLOAD,
     MANIFEST,

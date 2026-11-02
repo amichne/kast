@@ -98,6 +98,7 @@ private data class RuntimeReadiness(
 
 @Serializable
 internal enum class RuntimeObservationFailure {
+    BROKER_NOT_OBSERVED,
     EPOCH_UNAVAILABLE,
     EPOCH_REJECTED,
     MANIFEST_UNAVAILABLE,
@@ -150,7 +151,7 @@ internal fun observeRuntime(
 ): PassiveRuntimeObservation {
     val epochRaw =
         readBoundedFile(installation.resolve("state/epoch.json"), MAXIMUM_HEADER_BYTES.toLong())
-            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EPOCH_UNAVAILABLE)
+            ?: return PassiveRuntimeObservation.Rejected(missingRuntimeEpoch(installation))
     val epoch =
         try {
             observationJson.decodeFromString<RuntimeEpoch>(epochRaw)
@@ -244,6 +245,25 @@ internal fun observeRuntime(
         projectHostedServices(projection.hostedServices),
     )
 }
+
+/** Missing broker receipts describe broker evidence, never project or compiler readiness. */
+private fun missingRuntimeEpoch(installation: Path): RuntimeObservationFailure =
+    if (
+        !Files.notExists(installation.resolve("state/epoch.json"), LinkOption.NOFOLLOW_LINKS) ||
+            Files.notExists(installation.resolve("config/environment"), LinkOption.NOFOLLOW_LINKS)
+    )
+        RuntimeObservationFailure.EPOCH_UNAVAILABLE
+    else
+        when (val selected = runtimeEndpointMode(installation)) {
+            is Refinement.Rejected -> selected.failure
+            is Refinement.Refined ->
+                when (selected.value) {
+                    io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode.PRIVATE ->
+                        RuntimeObservationFailure.BROKER_NOT_OBSERVED
+                    io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode.CODEX_CONTROL ->
+                        RuntimeObservationFailure.EPOCH_UNAVAILABLE
+                }
+        }
 
 internal fun runtimeStatusRequestDocument(): String = observationJson.encodeToString(RuntimeStatusRequest())
 

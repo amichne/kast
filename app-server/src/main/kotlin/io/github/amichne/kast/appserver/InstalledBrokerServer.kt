@@ -193,6 +193,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                         io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
                             canonicalUserHome,
                             configuration.readLimits,
+                            debug = configuration.debug,
                         ),
                     lifecycleClient =
                         installedWorkspaceLifecycleClient(canonicalUserHome, configuration.selectedIdeHome),

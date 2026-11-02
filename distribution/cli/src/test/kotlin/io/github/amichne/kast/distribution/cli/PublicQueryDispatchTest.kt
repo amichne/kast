@@ -73,6 +73,7 @@ class PublicQueryDispatchTest {
     fun `public namespaces reach the selected JVM without native semantic parsing`() {
         for (arguments in
             listOf(
+                listOf("hook", "session-start", "--workspace", "/project with spaces"),
                 listOf("query", "--name", "OrderService"),
                 listOf("query", "--future-option"),
                 listOf("result", "read", "--ref", "issued token"),

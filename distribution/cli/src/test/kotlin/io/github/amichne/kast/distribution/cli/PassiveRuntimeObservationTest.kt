@@ -89,6 +89,42 @@ class PassiveRuntimeObservationTest {
     }
 
     @Test
+    fun `private endpoint status does not depend on an unused broker epoch`() {
+        Files.createDirectory(temporary.resolve("config"))
+        Files.writeString(temporary.resolve("config/environment"), "KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n")
+        val result = observeRuntime(temporary) { _, _ -> error("Private mode contacted the broker") }
+        assertEquals("BROKER_NOT_OBSERVED", result.loadedVersion.reason)
+        assertEquals("BROKER_NOT_OBSERVED", result.activeWorkspaces.reason)
+    }
+
+    @Test
+    fun `shared endpoint still needs its exact broker epoch`() {
+        Files.createDirectory(temporary.resolve("config"))
+        Files.writeString(temporary.resolve("config/environment"), "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
+        val result = observeRuntime(temporary) { _, _ -> error("Missing epoch contacted the broker") }
+        assertEquals("EPOCH_UNAVAILABLE", result.loadedVersion.reason)
+    }
+
+    @Test
+    fun `private endpoint does not hide damaged epoch or configuration evidence`() {
+        Files.createDirectory(temporary.resolve("config"))
+        val configuration = temporary.resolve("config/environment")
+        Files.writeString(configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n")
+        Files.createDirectory(temporary.resolve("state"))
+        val epoch = Files.writeString(temporary.resolve("state/epoch.json"), "invalid")
+        assertEquals(
+            "EPOCH_REJECTED",
+            observeRuntime(temporary) { _, _ -> error("Unexpected exchange") }.loadedVersion.reason,
+        )
+        Files.delete(epoch)
+        Files.writeString(configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=typo\n")
+        assertEquals(
+            "CONFIGURATION_REJECTED",
+            observeRuntime(temporary) { _, _ -> error("Unexpected exchange") }.loadedVersion.reason,
+        )
+    }
+
+    @Test
     fun `passive management request includes required type and protocol version`() {
         val request = Json.parseToJsonElement(runtimeStatusRequestDocument()).jsonObject
         assertEquals(setOf("type", "version"), request.keys)

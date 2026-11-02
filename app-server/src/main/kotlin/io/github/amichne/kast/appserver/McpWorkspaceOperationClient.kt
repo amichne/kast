@@ -94,7 +94,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
             is Refinement.Rejected -> return rejectedMcpConfiguration()
         }
     val lifecycle = installedWorkspaceLifecycleClient(home, config.selectedIdeHome)
-    val native = ExistingIdeSocketClient(home, config.readLimits)
+    val native = ExistingIdeSocketClient(home, config.readLimits, debug = config.debug)
     val dispatcher = Dispatchers.IO
     val preparations =
         WorkspacePreparations(
@@ -106,7 +106,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
                     }
                 }
             },
-            observer = JsonLineWorkspacePreparationObserver(System.err),
+            observer = JsonLineWorkspacePreparationObserver(System.err, config.debug),
         )
     val demand =
         PreparedWorkspaceDemand(

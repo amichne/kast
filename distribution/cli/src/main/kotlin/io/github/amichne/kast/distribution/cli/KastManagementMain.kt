@@ -73,6 +73,7 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
                 PublicQueryNamespace("result"),
                 PublicQueryNamespace("source"),
                 PublicQueryNamespace("describe"),
+                PublicQueryNamespace("hook"),
             )
     var selected: ManagementCommand? = null
     return try {

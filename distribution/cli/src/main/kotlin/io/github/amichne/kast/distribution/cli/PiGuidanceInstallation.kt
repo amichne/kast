@@ -122,15 +122,14 @@ private fun finishPiComposition(
 ): ProvisionOutcome =
     try {
         val changed =
-            if (target.composition == HarnessComposition.CliWithMcp)
-                !connectHarness(
-                    root,
-                    home,
-                    HarnessConnection.PI,
-                    ownership = RegistrationOwnership.REQUIRE_OWNED,
-                    directory = target.directory,
-                )
-            else disconnectHarness(root, home, Harness.PI)
+            !connectHarness(
+                root,
+                home,
+                HarnessConnection.PI,
+                composition = target.composition,
+                ownership = RegistrationOwnership.REQUIRE_OWNED,
+                directory = target.directory,
+            )
         if (changed) ProvisionOutcome.Installed(target.skill.toString())
         else
             when (completed) {
