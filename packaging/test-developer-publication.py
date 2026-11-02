@@ -318,12 +318,12 @@ class DeveloperPublicationTest(unittest.TestCase):
         ]
         if delayed:
             calls.extend((
-                GhCall.api("GET", f"compare/{newer.mainRevision}...{newer.mainRevision}", Comparison("identical")),
-                GhCall.api("GET", f"compare/{MERGED}...{newer.mainRevision}", Comparison("ahead")),
-                GhCall.api("GET", f"compare/{newer.mainRevision}...{MERGED}", Comparison("behind")),
+                GhCall.api("GET", f"compare/{newer.mainRevision}...{newer.mainRevision}?per_page=1&page=2", Comparison("identical")),
+                GhCall.api("GET", f"compare/{MERGED}...{newer.mainRevision}?per_page=1&page=2", Comparison("ahead")),
+                GhCall.api("GET", f"compare/{newer.mainRevision}...{MERGED}?per_page=1&page=2", Comparison("behind")),
             ))
         else:
-            calls.append(GhCall.api("GET", f"compare/{MERGED}...{MERGED}", Comparison("identical")))
+            calls.append(GhCall.api("GET", f"compare/{MERGED}...{MERGED}?per_page=1&page=2", Comparison("identical")))
         calls.extend((
             GhCall.api("POST", "git/trees", GitTree(next_tree), status=201,
                        request=publisher.GitTreeRequest(TREE, (publisher.GitTreeFile("builds.json", catalog.encode(merged)),
