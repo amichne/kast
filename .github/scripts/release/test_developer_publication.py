@@ -399,10 +399,13 @@ class CandidateFixture(unittest.TestCase):
 
     def test_missing_control_record_rejects_before_release_creation(self) -> None:
         name = f"kast-control-release-v{VERSION}.json"
+        alias = Path(self.temporary.name) / "payload-alias"
+        alias.symlink_to(self.payload, target_is_directory=True)
+        self.payload = alias
         (self.payload / name).unlink()
         result, uploaded = self.run_stable_publisher()
         self.assertNotEqual(0, result.returncode)
-        self.assertIn(f"missing release asset: {self.payload / name}", result.stderr)
+        self.assertIn(f"missing release asset: {self.payload.resolve() / name}", result.stderr)
         self.assertFalse(uploaded.exists())
 
 
