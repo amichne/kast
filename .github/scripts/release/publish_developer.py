@@ -311,7 +311,9 @@ class RemotePublisher:
         return catalog.Snapshot(head, tree_sha, admitted, absent)
 
     def comparison(self, older: str, newer: str) -> str | catalog.Failure:
-        result = self.api("GET", f"compare/{older}...{newer}")
+        # Status describes the whole comparison on every page. Avoid the first
+        # page's unrelated file patches and retain at most one commit record.
+        result = self.api("GET", f"compare/{older}...{newer}?per_page=1&page=2")
         if not isinstance(result, ApiDocument) or not catalog.mapping(result.value):
             return catalog.Failure.MAIN_HISTORY_UNPROVEN
         status = result.value.get("status")
