@@ -434,7 +434,7 @@
         },
         {
             "path": "gradle/libs.versions.toml",
-            "sha256": "d3ec8c14f52de81f1e89ac2152462e9b7109700b7b209e7bc8ccdf4c1c752ecb"
+            "sha256": "2b3eba49249af04a0a0e5b9ce4e5e5a6d3692d7deb4b074ec50a3d6a6d95d3ac"
         },
         {
             "path": "kernel/build.gradle.kts",

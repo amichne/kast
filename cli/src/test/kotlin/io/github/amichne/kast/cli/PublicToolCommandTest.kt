@@ -15,6 +15,29 @@ import org.junit.jupiter.api.Test
 
 class PublicToolCommandTest {
     @Test
+    fun `public command decoding retains the authored execution constraint after serialization upgrade`() {
+        val raw = PublicQueryInputFixture.workConstraint()
+        val graph =
+            (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
+                .factory
+        val parsing =
+            graph.parse(
+                listOf("tool", "query_symbols"),
+                CliRequestDocumentInput.Provided(raw),
+            )
+        val rejected = assertInstanceOf(CliCommandParsing.Rejected::class.java, parsing)
+        val diagnostic = rejected.diagnostic.value.replace(Regex("\\s+"), " ")
+        assertTrue(
+            diagnostic.contains(
+                "executionMode, executionBudget.maxWorkUnits: " +
+                    "RUNNER_CONTROLLED does not accept maxWorkUnits; " +
+                    "remove executionBudget.maxWorkUnits or select BOUNDED."
+            ),
+            diagnostic,
+        )
+    }
+
+    @Test
     fun `public read source command uses exact canonical candidate anchor`() {
         val raw =
             PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)

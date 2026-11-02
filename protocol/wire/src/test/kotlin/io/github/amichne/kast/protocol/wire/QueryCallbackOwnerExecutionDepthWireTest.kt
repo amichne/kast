@@ -14,6 +14,8 @@ import io.github.amichne.kast.protocol.contract.QueryRelationCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -40,8 +42,20 @@ class QueryCallbackOwnerExecutionDepthWireTest {
     }
 
     @Test
+    fun `generated codec rejects the first excessive owner depth`() {
+        assertEquals(WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)), decode(64))
+    }
+
+    @Test
+    @OptIn(ExperimentalSerializationApi::class)
     fun `generated codec rejects far excessive owner depth without exhausting the stack`() {
-        assertEquals(WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)), decode(1000))
+        val encoded = encodedObservationText(1000)
+        // Construct the deliberate negative tree before exercising the production generated-codec guard.
+        val fixtureJson = Json(wireJson) { maxNestingDepth = encoded.length }
+        assertEquals(
+            WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
+            codec().decode(fixtureJson.parseToJsonElement(encoded), WireValueRole.RESULT),
+        )
     }
 
     @Test
@@ -101,13 +115,15 @@ class QueryCallbackOwnerExecutionDepthWireTest {
         )
 
     private fun decode(depth: Int) =
+        codec().decode(wireJson.parseToJsonElement(encodedObservationText(depth)), WireValueRole.RESULT)
+
+    private fun codec() =
         GeneratedWireCodecFactory(wireJson)
             .create(
                 QueryCallbackObservationWireDocument.serializer(),
                 QueryCallbackObservationDocument::toWireDocument,
                 QueryCallbackObservationWireDocument::toContract,
             )
-            .decode(wireJson.parseToJsonElement(encodedObservationText(depth)), WireValueRole.RESULT)
 
     private fun encodedObservationText(depth: Int): String {
         val leafObservation = observation(1)
