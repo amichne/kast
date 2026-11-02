@@ -236,6 +236,7 @@ def gradle(identity: Identity, *tasks: str) -> None:
         [
             "./gradlew",
             "--no-daemon",
+            "--no-parallel",
             "--max-workers=2",
             "-Dorg.gradle.jvmargs=-Xmx5g",
             f"-Pversion={identity.version}",
