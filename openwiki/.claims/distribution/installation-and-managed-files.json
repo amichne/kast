@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5a496b73a4626999951cb885d59aa29684765a364b5bbb8d9ea82d4c38893150",
+  "pageVersion": "sha256:8bae3ae86873885fe891ef1cc0f05b18c2ae20a6aa60ea542210fe7a6c3b30a0",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
+          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -102,7 +102,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         }
       ]
     },
@@ -123,10 +123,32 @@
           "version": "repo-file-v1:sha256:08409a133887702db202539b0e095a90b6cac26db5417c203ca07b5097ad4bef"
         }
       ]
+    },
+    {
+      "id": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
+      "statement": "The cli module produces one native Control executable at share/kast/libexec/kast-management. Thin launchers select all existing Control entry points. The producer guard rejects lib, JARs, class files, a second native image, and a canonical image that differs from its qualified producer. Published-release admission preserves the historical pair when native-control-v1 is absent.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+          "version": "repo-file-v1:sha256:1a389b64405e0ec5990d68f1900345de41caacbc154a8b3ff2485201058359dd"
+        },
+        {
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
+          "version": "repo-file-v1:sha256:91fb02f27d6b68d970556e95239d2959acaedeb5ae93e0a92b38350a2727309b"
+        },
+        {
+          "resource": "repo://packaging/managed_release.py",
+          "version": "repo-file-v1:sha256:053aee7a20ec7d6248a54c19ba2fe0fc7652e7d579cec9fc8033e9a5328a8a95"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:51:42.239Z"
+    "at": "2026-11-02T17:46:24.113Z"
   }
 }

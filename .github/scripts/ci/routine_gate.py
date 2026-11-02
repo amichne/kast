@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Verify the resolved Gradle gate retains its required proofs."""
-from enum import Enum
-from pathlib import Path
 import json
 import re
 import subprocess
+from enum import Enum
+from pathlib import Path
+
 from validation_scope import NATIVE_INPUT_MODULES, PRODUCT_MODULES
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -43,14 +44,14 @@ def inspect(output):
 
 
 def main():
-    command = PRODUCT_GATE_COMMAND + ["--dry-run"]
+    command = [*PRODUCT_GATE_COMMAND, "--dry-run"]
     result = subprocess.run(command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, check=False)
     if result.returncode:
         print(result.stdout)
         return result.returncode
     report = inspect(result.stdout)
-    native_command = ["./gradlew", "-Pversion=0.0.0", ":distribution:cli:nativeCompile", "--dry-run", "--console=plain"]
+    native_command = ["./gradlew", "-Pversion=0.0.0", ":cli:nativeCompile", "--dry-run", "--console=plain"]
     native = subprocess.run(native_command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, check=False)
     if native.returncode:

@@ -8,10 +8,35 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class ControlPayloadInventoryTest {
+    @Test
+    fun `native payload admits without a legacy library directory`(@TempDir root: Path) {
+        Files.createDirectory(root.resolve("bin"))
+        Files.createDirectory(root.resolve("share"))
+        val executable = Files.write(root.resolve("bin/kast"), byteArrayOf(1))
+        val resource = Files.write(root.resolve("share/contract"), byteArrayOf(2))
+        val admitted =
+            assertInstanceOf(ControlInventoryAdmission.Admitted::class.java, ControlPayloadInventory.admit(root))
+        assertEquals(listOf(executable, resource), admitted.files)
+        assertEquals(4, admitted.traversedEntries)
+        assertEquals(2L, admitted.bytes)
+    }
+
+    @Test
+    fun `optional legacy library directory still rejects a link`(@TempDir root: Path) {
+        Files.createDirectory(root.resolve("bin"))
+        Files.createDirectory(root.resolve("share"))
+        Files.createSymbolicLink(root.resolve("lib"), root.parent)
+        assertEquals(
+            ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY),
+            ControlPayloadInventory.admit(root),
+        )
+    }
+
     @Test
     fun `exact traversal boundary succeeds and next file gives a bounded typed failure`(@TempDir root: Path) {
         val physical = root.toRealPath()

@@ -111,7 +111,7 @@ class InstallationWorkflowTest {
         assertEquals("", output)
         assertTrue(!Files.readString(launcher).contains("kast_java_home"))
         assertTrue(
-            Files.readString(installation.resolve("installation/bin/kast-mcp-complete")).contains("kast_java_home")
+            !Files.readString(installation.resolve("installation/bin/kast-mcp-complete")).contains("kast_java_home")
         )
     }
 

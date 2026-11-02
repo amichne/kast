@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.direct
 
+import io.github.amichne.kast.cli.admitNativeControlRoot
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.installationManifestJson
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
@@ -84,9 +85,12 @@ private constructor(
         ): Refinement<InstalledClientContext, ClientInstallationFailure> {
             if (!payload.isAbsolute || payload.normalize() != payload || payload.toRealPath() != payload)
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-            val directory = payload.parent
-            val installation = directory.parent
-            if (!clientPayload(payload) || !Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS))
+            val installation =
+                when (val selected = clientInstallation(payload)) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> return selected
+                }
+            if (!Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS))
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             return when (val manifest = admitManifest(installation)) {
                 is Refinement.Rejected -> manifest
@@ -94,11 +98,19 @@ private constructor(
             }
         }
 
-        private fun clientPayload(payload: Path): Boolean =
+        private fun clientInstallation(payload: Path): Refinement<Path, ClientInstallationFailure> =
             when (payload.parent.fileName.toString()) {
-                "bin" -> payload.fileName.toString() == "kast-query"
-                "lib" -> payload.fileName.toString().endsWith(".jar")
-                else -> false
+                "bin" ->
+                    if (payload.fileName.toString() == "kast-query") Refinement.Refined(payload.parent.parent)
+                    else Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+                "lib" ->
+                    if (payload.fileName.toString().endsWith(".jar")) Refinement.Refined(payload.parent.parent)
+                    else Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+                else ->
+                    when (val native = admitNativeControlRoot(payload)) {
+                        is Refinement.Refined -> native
+                        is Refinement.Rejected -> Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+                    }
             }
 
         private fun admitManifest(installation: Path): Refinement<InstallationManifest, ClientInstallationFailure> {

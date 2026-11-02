@@ -1,5 +1,6 @@
 """Only matching, intact archives authorize the next platform stage."""
 
+import hashlib
 import json
 import subprocess
 import tarfile
@@ -35,18 +36,102 @@ class ReachabilityFixture:
 
 
 class NativeHandoffTest(unittest.TestCase):
-    def test_inputs_and_native_stage_preserve_both_executable_identities(self):
+    def test_qualification_exercises_the_assembled_image_and_preserves_failed_stages(self):
+        identity = Identity("a" * 40, "b" * 40, "0.0.7")
+        image_bytes = bytes.fromhex("cffaedfe0c000001") + b"qualified image"
+        for product_exit, native_exit in ((0, 0), (7, 0), (0, 7)):
+            with (
+                self.subTest(product_exit=product_exit, native_exit=native_exit),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                java = root / "java"
+                java.mkdir()
+                (java / "release").write_bytes(b"qualified toolchain")
+                source = root / "source"
+                source.mkdir()
+                image = root / "image"
+                image.write_bytes(image_bytes)
+                image.chmod(0o755)
+                control = source / f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
+                with tarfile.open(control, "w:gz") as archive:
+                    archive.add(image, arcname="share/kast/libexec/kast-management")
+                (source / f"kast-ide-hosted-v{identity.version}-idea-262.zip").write_bytes(
+                    b"host fixture"
+                )
+                pack(
+                    source,
+                    root / "bundle",
+                    identity,
+                    Kind.RELEASE,
+                    hashlib.sha256(b"qualified toolchain").hexdigest(),
+                )
+                payload = admit(root / "bundle", identity, Kind.RELEASE)
+                if not isinstance(payload, Admitted):
+                    self.fail("matching release rejected")
+                effects = []
+
+                def product_effect(command, *, environment, observed=effects, code=product_exit):
+                    self.assertEqual(["python3", "packaging/run-installed-product.py"], command)
+                    self.assertEqual(
+                        image_bytes,
+                        (
+                            Path(environment["KAST_INSTALLED_PRODUCT"])
+                            / "share/kast/libexec/kast-management"
+                        ).read_bytes(),
+                    )
+                    observed.append("product")
+                    if code:
+                        raise subprocess.CalledProcessError(code, command)
+
+                def native_effect(
+                    observed_identity, *arguments, observed=effects, code=native_exit
+                ):
+                    self.assertEqual(identity, observed_identity)
+                    self.assertEqual(2, len(arguments))
+                    self.assertEqual("publicLauncherTest", arguments[1])
+                    self.assertTrue(arguments[0].startswith("-PkastNativeExecutable="))
+                    selected = Path(arguments[0].removeprefix("-PkastNativeExecutable="))
+                    self.assertEqual(
+                        ("share", "kast", "libexec", "kast-management"), selected.parts[-4:]
+                    )
+                    self.assertEqual(image_bytes, selected.read_bytes())
+                    observed.append("native")
+                    if code:
+                        raise subprocess.CalledProcessError(code, ["./gradlew", *arguments])
+
+                with (
+                    patch.object(native_handoff, "ROOT", root),
+                    patch.dict(native_handoff.os.environ, {"JAVA_HOME": str(java)}),
+                    patch.object(native_handoff.platform, "system", return_value="Darwin"),
+                    patch.object(native_handoff.platform, "machine", return_value="arm64"),
+                    patch.object(native_handoff, "run", side_effect=product_effect) as product,
+                    patch.object(native_handoff, "gradle", side_effect=native_effect) as native,
+                ):
+                    if product_exit or native_exit:
+                        with self.assertRaises(subprocess.CalledProcessError):
+                            native_handoff.qualify(payload)
+                    else:
+                        native_handoff.qualify(payload)
+                    product.assert_called_once()
+                    if product_exit:
+                        native.assert_not_called()
+                        self.assertEqual(["product"], effects)
+                    else:
+                        native.assert_called_once()
+                        self.assertEqual(["product", "native"], effects)
+
+    def test_inputs_and_native_stage_preserve_the_single_executable_identity(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         classes = {
-            "kast": "io.github.amichne.kast.distribution.cli.KastManagementMainKt",
-            "kast-query": "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
+            "kast": "io.github.amichne.kast.cli.KastNativeMain",
         }
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             java = root / "java"
             java.mkdir()
             (java / "release").write_text("qualified toolchain")
-            for name, module in (("kast", "distribution/cli"), ("kast-query", "cli")):
+            for name, module in (("kast", "cli"),):
                 archive = root / module / "build/distributions/native-inputs.tar.gz"
                 archive.parent.mkdir(parents=True)
                 fixture = root / name
@@ -76,7 +161,6 @@ class NativeHandoffTest(unittest.TestCase):
                 self.assertEqual("./gradlew", command[0])
                 self.assertEqual(
                     [
-                        ":distribution:cli:assembleNativeImageInputs",
                         ":cli:assembleNativeImageInputs",
                     ],
                     [argument for argument in command if argument.startswith(":")],
@@ -129,12 +213,13 @@ class NativeHandoffTest(unittest.TestCase):
                     name = Path(command[0]).name
                     if command[1:] == [
                         "-XX:MissingRegistrationReportingMode=Exit",
+                        "--internal-entrypoint=query",
                         "query",
                         "plan",
                         "--name",
                         "OrderService",
                     ]:
-                        self.assertEqual("kast-query", name)
+                        self.assertEqual("kast", name)
                         self.assertEqual(subprocess.STDOUT, stderr)
                         return "query-plan-probe-output\n"
                     self.assertEqual(["--version"] if name == "kast" else ["--help"], command[1:])
@@ -151,18 +236,16 @@ class NativeHandoffTest(unittest.TestCase):
                     ) as inspect,
                 ):
                     native_handoff.native(payload, root / "native-bundle")
-                self.assertEqual(["kast", "kast-query"], compiled)
-                self.assertEqual(2, run.call_count)
-                self.assertEqual(5, inspect.call_count)
+                self.assertEqual(["kast"], compiled)
+                self.assertEqual(1, run.call_count)
+                self.assertEqual(3, inspect.call_count)
                 self.assertEqual(
                     "query-plan-probe-output\n",
-                    (root / "build/reports/native/kast-query/query-plan.stdout").read_text(),
+                    (root / "build/reports/native/query-plan.stdout").read_text(),
                 )
                 self.assertEqual(
                     {"stage": "QUERY_PLAN", "outcome": "COMPLETE", "exitCode": 0},
-                    json.loads(
-                        (root / "build/reports/native/kast-query/query-plan.json").read_text()
-                    ),
+                    json.loads((root / "build/reports/native/query-plan.json").read_text()),
                 )
                 output = admit(root / "native-bundle", identity, Kind.NATIVE)
                 if not isinstance(output, Admitted):
@@ -188,12 +271,13 @@ class NativeHandoffTest(unittest.TestCase):
 
             def inspect_effect(command, *, text, stderr=None):
                 self.assertTrue(text)
-                if command == [str(root / "kast-query"), "--help"]:
-                    return "kast query [--help]\n"
+                if command == [str(root / "kast"), "--version"]:
+                    return "0.0.7\n"
                 self.assertEqual(
                     [
-                        str(root / "kast-query"),
+                        str(root / "kast"),
                         "-XX:MissingRegistrationReportingMode=Exit",
+                        "--internal-entrypoint=query",
                         "query",
                         "plan",
                         "--name",
@@ -215,9 +299,9 @@ class NativeHandoffTest(unittest.TestCase):
                 ) as inspect,
                 self.assertRaisesRegex(SystemExit, "QUERY_PLAN_FAILED"),
             ):
-                native_handoff.compile_native(root, root / "kast-query", identity)
+                native_handoff.compile_native(root, root / "kast", identity)
             self.assertEqual(2, inspect.call_count)
-            report = root / "build/reports/native/kast-query"
+            report = root / "build/reports/native"
             self.assertEqual(
                 {"stage": "QUERY_PLAN", "outcome": "PROCESS_FAILED", "exitCode": 172},
                 json.loads((report / "query-plan.json").read_text()),
@@ -233,17 +317,17 @@ class NativeHandoffTest(unittest.TestCase):
                 patch.object(native_handoff, "run") as compile_effect,
                 self.assertRaisesRegex(SystemExit, "INVALID_RECORD"),
             ):
-                native_handoff.compile_native(root, root / "kast-query", identity)
+                native_handoff.compile_native(root, root / "kast", identity)
             compile_effect.assert_not_called()
 
-    def test_assembly_imports_both_macos_executables(self):
+    def test_assembly_imports_one_macos_executable(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         header = bytes.fromhex("cffaedfe0c000001")
         with tempfile.TemporaryDirectory(prefix="native handoff ") as temporary:
             root = Path(temporary)
             binaries = root / "binaries"
             binaries.mkdir()
-            for name in ("kast", "kast-query"):
+            for name in ("kast",):
                 (binaries / name).write_bytes(header + name.encode())
             bundle = root / "bundle"
             pack(binaries, bundle, identity, Kind.NATIVE, "c" * 64)
@@ -262,14 +346,13 @@ class NativeHandoffTest(unittest.TestCase):
                 gradle.assert_called_once_with(
                     identity,
                     f"-PkastNativeExecutable={imported / 'kast'}",
-                    f"-PkastQueryNativeExecutable={imported / 'kast-query'}",
                     "-PkastControlPlatform=macos-aarch64",
                     "assembleRelease",
                     "generateKastModuleKnowledge",
                 )
                 self.assertEqual(1, run.call_count)
                 self.assertEqual(1, seal.call_count)
-                for name in ("kast", "kast-query"):
+                for name in ("kast",):
                     self.assertEqual((binaries / name).read_bytes(), (imported / name).read_bytes())
                     self.assertEqual(0o755, (imported / name).stat().st_mode & 0o777)
 
@@ -277,10 +360,11 @@ class NativeHandoffTest(unittest.TestCase):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         header = bytes.fromhex("cffaedfe0c000001")
         for files in (
-            {"kast": header},
-            {"kast": header, "kast-query": b"\x7fELF"},
-            {"kast": b"\x7fELF", "kast-query": header},
-            {"kast": header, "kast-query": header, "extra": header},
+            {"missing": header},
+            {"kast-query": header},
+            {"kast": b"\x7fELF"},
+            {"kast": header, "extra": header},
+            {"kast": header, "kast-query": header},
         ):
             with self.subTest(files=tuple(files)), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)

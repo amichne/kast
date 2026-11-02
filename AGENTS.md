@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-30T14:28:03Z"
-source_revision: 2ca945f49f621979a0817d7e29a2b3a6d72633ef
+timestamp: "2026-11-02T16:49:19Z"
+source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -71,13 +71,14 @@ This guide owns repository rules and routes source investigation.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
-- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds both transferred executables to source identity and digest. Mac jobs compile and exercise both executables.
+- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds the transferred Control executable to source identity and digest. Mac jobs compile and exercise that image.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
-- Public native command: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
-- Public semantic JVM entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
-- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task uses a real JVM child and local peer.
+- Unified native entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt`.
+- Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
+- Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
+- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task uses a real native query child and local peer.
 - Private installer version entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.

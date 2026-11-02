@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f5f8a537871aad787ae91e5de39da90058172cbccc99f5984a87df6241bacd3c",
+  "pageVersion": "sha256:0b1cbcd645a4fb7377a73fd820e434afae8841a64e40b9b0ffc8c2b869cf4618",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
-          "version": "repo-file-v1:sha256:3fb9afbed6eb82e167c2ed5e14ccbaa573014e06dd43255aa3bb8464cb9e230d"
+          "version": "repo-file-v1:sha256:7980ac96d67f35a82d84fef7f33e3d9b25383958ea574d36308c1ffd1ae1ad1f"
         }
       ]
     },
@@ -47,6 +47,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-02T17:10:25.214Z"
   }
 }

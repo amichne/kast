@@ -24,7 +24,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T05:05:54.659Z
+    at: 2026-11-02T17:10:25.214Z
 ---
 
 # Knowledge upkeep and coverage assessment

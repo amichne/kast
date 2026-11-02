@@ -223,11 +223,12 @@ class PublicQueryDispatchTest {
     }
 
     @Test
-    fun `selected launcher needs both manifest-owned executable payloads`() {
+    fun `selected launcher needs the manifest-owned wrappers and native executable`() {
         val installation = temporary.toRealPath()
-        val paths = listOf("bin/kast-query", "bin/kast-query-complete")
+        val paths = listOf("bin/kast-query", "bin/kast-query-complete", "share/kast/libexec/kast-management")
         Files.createDirectory(installation.resolve("bin"))
         val payloads = paths.map { relative ->
+            Files.createDirectories(installation.resolve(relative).parent)
             val path = Files.writeString(installation.resolve(relative), "#!/bin/sh\nexit 0\n")
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-xr-x"))
             BundledPayload(relative, "sha256:${sha256(path)}", 493)

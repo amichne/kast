@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c0ab0729e9377f230a77a47e8d5df261eed1c675bd10f68b629ed1021aea6695",
+  "pageVersion": "sha256:b3caec1e51b529a7ded134809cf6fce672c246db35bac451c68c2a1334d0c02c",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -76,7 +76,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
+          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -94,7 +94,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
+          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
         }
       ]
     },
@@ -104,7 +104,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
+          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
@@ -122,7 +122,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
+          "version": "repo-file-v1:sha256:760bcd49423cbb8de0ab93a1a77b77d213ea98f90081b3a39f9075bed7f8887c"
         },
         {
           "resource": "repo://install.sh",
@@ -140,7 +140,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
+          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
@@ -158,7 +158,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:33b82c1e05548949ac7aacde0cd99866ede6bcdedd41248a8d6ad7b8d72b9759"
+          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
         },
         {
           "resource": "repo://packaging/installer_fixture.py",
@@ -258,11 +258,15 @@
     },
     {
       "id": "claim_fc2e6da4c90e48b38aef801aa45c09fd",
-      "statement": "Checkout installation requires the selected IDEA bundled executable JBR with Java 25 or newer before Gradle or staging and scopes its runtime to child processes; installed JVM launchers retain and recheck that runtime without an ambient Java fallback. Both require exactly one fully quoted JAVA_VERSION declaration and reject duplicates and incomplete declarations before execution, including a valid declaration beside a malformed duplicate.",
+      "statement": "Checkout installation needs the selected IDEA executable JBR with Java 25 or newer before Gradle and scopes Java to its children. Exactly one fully quoted JAVA_VERSION declaration is necessary. Installed Control launchers select modes in one native executable without JVM setup and pass nonempty HOME and TMPDIR as system properties.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt",
-          "version": "repo-file-v1:sha256:287f1684f71ccab0de4cc6a4506d5a9edf0293d99e7b73d583fb8b469db7b9a0"
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+        },
+        {
+          "resource": "repo://cli/src/main/native-launchers/bin/kast",
+          "version": "repo-file-v1:sha256:77f53e0c0ab8271b49f6da36c4ae7d2779bc58660779662c571ba4557ae37dc6"
         },
         {
           "resource": "repo://packaging/install-checkout.sh",
@@ -276,7 +280,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
+          "version": "repo-file-v1:sha256:760bcd49423cbb8de0ab93a1a77b77d213ea98f90081b3a39f9075bed7f8887c"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallRetirementJournal.kt",
@@ -306,7 +310,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
         }
       ]
     },
@@ -324,25 +328,33 @@
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:d8c43b0610255ca0907167c14ad51d2e5d448a1e3c67010a07af5935f05e6348"
+          "version": "repo-file-v1:sha256:33ae914c8711d44bab1cdc39f640ca4610ece54d75279332cae0aca5d0a009fb"
         }
       ]
     },
     {
       "id": "claim_5f7d796cedca49cca3847f961bb82235",
-      "statement": "CI pins GraalVM and retains Gradle task outputs, native reachability metadata, encrypted configuration-cache state where a secret is available, and bounded build/native metrics for matched comparisons without changing optimization.",
+      "statement": "CI pins GraalVM and retains Gradle task outputs, native reachability metadata, encrypted configuration-cache state where a secret is available, and bounded build/native metrics for matched comparisons. The cli module produces one unified native executable with -Os and the native handoff transfers its exact bytes.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/build_execution.py",
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
+          "resource": "repo://.github/scripts/ci/native_handoff.py",
+          "version": "repo-file-v1:sha256:344c91d6b27b544fb19098c9113920bff665273afc43ee3fcba128e724727bc4"
         },
         {
-          "resource": "repo://distribution/cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:4d9e01dd3fb1e084f8994a1991f3b736a79da2429b3453c9eb04412c5f9a2472"
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+        },
+        {
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+        },
+        {
+          "resource": "repo://cli/native-image.args",
+          "version": "repo-file-v1:sha256:8aabe6244ca61b8f71d175909ebd42a44d9859d6a256425ee200c9d640b9563c"
         }
       ]
     },
@@ -356,7 +368,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -394,7 +406,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:45bbc3d40344af8397d169870747ef66c576c16e0e9e1f9d665409917a010ffc"
+          "version": "repo-file-v1:sha256:5db08fefde02a9e5c862313225a9d811ccfd750a42db6e1da4eb8b83dc7e0f9c"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
@@ -416,17 +428,61 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
+          "version": "repo-file-v1:sha256:ff7df8f1e028ce4c451aa96cb88be6c6e100d7df4084508c8cf6722bff13df13"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
+        }
+      ]
+    },
+    {
+      "id": "claim_af8fe2699eb44e06a3d75ecd84d5eec2",
+      "statement": "Force retirement admits native worker modes through the shared process adapter, which skips only leading consumed runtime-option families. Management and installer modes remain excluded. Bare -Dfoo, unsupported -X forms, and misplaced selectors remain application data. Unknown modes or unavailable arguments reject before erasure. PID and start identity stay necessary. The native composition case proves retirement of an MCP client with -Xmx256m and removal of disposable Control.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt",
+          "version": "repo-file-v1:sha256:fe34820ea40c160356ef00cf488ee530f34a26797f0cf7ea2a395ec771cfc02b"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
+          "version": "repo-file-v1:sha256:5db08fefde02a9e5c862313225a9d811ccfd750a42db6e1da4eb8b83dc7e0f9c"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt",
+          "version": "repo-file-v1:sha256:7b3789e90cdf091cfc5c65ba5cc28670c26a96428b85153e3cf6b28f3ad2123c"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt",
+          "version": "repo-file-v1:sha256:97e44382c26cb3f081f7cc102eaeaa7c286ec20edb25599962529027d2c3b4e5"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
+          "version": "repo-file-v1:sha256:f71a80f07cd8b750b140955cb8c66a1d7b670f46cb13a8101f373627c7cc744b"
+        }
+      ]
+    },
+    {
+      "id": "claim_c17f927dc53b494e8601ed1439016475",
+      "statement": "Mac qualification imports the assembled Control archive's executable into the existing publicLauncherTest suite before candidate sealing. The workflow initializes the existing Gradle cache owner before qualification and retains the suite's XML and HTML reports.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/native_handoff.py",
+          "version": "repo-file-v1:sha256:344c91d6b27b544fb19098c9113920bff665273afc43ee3fcba128e724727bc4"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:51:42.239Z"
+    "at": "2026-11-02T18:28:45.652Z"
   }
 }

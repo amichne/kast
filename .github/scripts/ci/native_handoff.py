@@ -4,7 +4,7 @@
 # [tool.uv]
 # no-build = true
 # ///
-"""Transfer exact JVM inputs and both target-native executables between CI hosts."""
+"""Transfer exact JVM inputs and one target-native Control executable between CI hosts."""
 
 from __future__ import annotations
 
@@ -250,12 +250,10 @@ def gradle(identity: Identity, *tasks: str) -> None:
 
 
 def stage_inputs(identity: Identity, destination: Path) -> None:
-    gradle(
-        identity, ":distribution:cli:assembleNativeImageInputs", ":cli:assembleNativeImageInputs"
-    )
+    gradle(identity, ":cli:assembleNativeImageInputs")
     with tempfile.TemporaryDirectory(prefix="kast-native-inputs-") as temporary:
         inputs = Path(temporary)
-        for name, module in (("kast", "distribution/cli"), ("kast-query", "cli")):
+        for name, module in (("kast", "cli"),):
             failure = extract(
                 ROOT / module / "build/distributions/native-inputs.tar.gz", inputs / name
             )
@@ -278,11 +276,11 @@ def native(payload: Admitted, destination: Path) -> None:
         failure = unpack(payload, inputs)
         if isinstance(failure, Failure):
             raise SystemExit(failure.value)
-        if set(path.name for path in inputs.iterdir()) != {"kast", "kast-query"}:
+        if set(path.name for path in inputs.iterdir()) != {"kast"}:
             raise SystemExit(Failure.INVALID_RECORD.value)
         with tempfile.TemporaryDirectory(prefix="kast-native-output-") as output_directory:
             output = Path(output_directory)
-            for name in ("kast", "kast-query"):
+            for name in ("kast",):
                 executable_directory = inputs / name / "output"
                 executable_directory.mkdir()
                 executable = executable_directory / name
@@ -314,8 +312,6 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
         [f"-H:ConfigurationFileDirectories={','.join(directories)}"] if directories else []
     )
     report_directory = ROOT / "build/reports/native"
-    if executable.name == "kast-query":
-        report_directory = report_directory / "kast-query"
     metrics = report_directory / "build-output.json"
     metrics.parent.mkdir(parents=True, exist_ok=True)
     run(
@@ -335,16 +331,10 @@ def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
         ],
         cwd=inputs,
     )
-    query = executable.name == "kast-query"
-    result = subprocess.check_output(
-        [str(executable), "--help" if query else "--version"], text=True
-    ).strip()
-    if (query and not result.startswith("kast query [")) or (
-        not query and result != identity.version
-    ):
+    result = subprocess.check_output([str(executable), "--version"], text=True).strip()
+    if result != identity.version:
         raise SystemExit(Failure.IDENTITY_MISMATCH.value)
-    if query:
-        probe_query_plan(executable, report_directory)
+    probe_query_plan(executable, report_directory)
     target = subprocess.check_output(["xcrun", "vtool", "-show-build", str(executable)], text=True)
     _ = (metrics.parent / "macos-build.txt").write_text(target)
     if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:
@@ -357,6 +347,7 @@ def probe_query_plan(executable: Path, report_directory: Path) -> None:
             [
                 str(executable),
                 "-XX:MissingRegistrationReportingMode=Exit",
+                "--internal-entrypoint=query",
                 "query",
                 "plan",
                 "--name",
@@ -383,7 +374,7 @@ def assemble(payload: Admitted, destination: Path) -> None:
     failure = unpack(payload, native_dir)
     if isinstance(failure, Failure):
         raise SystemExit(failure.value)
-    executables = (native_dir / "kast", native_dir / "kast-query")
+    executables = (native_dir / "kast",)
     if set(native_dir.iterdir()) != set(executables):
         raise SystemExit(Failure.WRONG_PLATFORM.value)
     for executable in executables:
@@ -394,7 +385,6 @@ def assemble(payload: Admitted, destination: Path) -> None:
     gradle(
         payload.record.identity,
         f"-PkastNativeExecutable={executables[0]}",
-        f"-PkastQueryNativeExecutable={executables[1]}",
         "-PkastControlPlatform=macos-aarch64",
         "assembleRelease",
         "generateKastModuleKnowledge",
@@ -455,6 +445,11 @@ def qualify(payload: Admitted) -> None:
                 ),
                 "KAST_ACCEPTANCE_JAVA_EXECUTABLE": str(Path(os.environ["JAVA_HOME"]) / "bin/java"),
             },
+        )
+        gradle(
+            identity,
+            f"-PkastNativeExecutable={product / 'share/kast/libexec/kast-management'}",
+            "publicLauncherTest",
         )
 
 

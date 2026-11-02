@@ -20,29 +20,36 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     val workspace: Path = Files.createDirectory(home.resolve("workspace with spaces"))
     val idea: Path = Files.createDirectory(home.resolve("inert-idea"))
     val installation: Path = Files.createDirectories(home.resolve(".local/share/kast/installation"))
-    val payload: Path = installation.resolve("bin/kast-query")
+    val payload: Path = installation.resolve("share/kast/libexec/kast-management")
     private val configuration = installation.resolve("config/environment")
     private val children = mutableListOf<Process>()
     private val queryChildren = mutableListOf<ProcessHandle>()
 
     init {
         Files.createDirectories(payload.parent)
-        Files.copy(requiredExecutable("kast.queryExecutable"), payload)
+        Files.copy(requiredExecutable("kast.publicLauncher"), payload)
         Files.setPosixFilePermissions(payload, PosixFilePermissions.fromString("rwxr-xr-x"))
         Files.createDirectories(configuration.parent)
         Files.writeString(configuration, "KAST_INSTALL_IDEA_HOME=$idea\n")
         Files.createDirectories(installation.resolve("share/kast"))
         Files.writeString(installation.resolve("share/kast/one-shot-observation-v1"), "1\n")
         Files.writeString(workspace.resolve("settings.gradle.kts"), "rootProject.name = \"native-peer\"\n")
+        Files.createDirectories(installation.resolve("bin"))
+        val query = installation.resolve("bin/kast-query")
+        Files.writeString(
+            query,
+            "#!/bin/sh\nexec ${shellWord(payload.toString())} --internal-entrypoint=query \"\$@\"\n",
+        )
+        Files.setPosixFilePermissions(query, PosixFilePermissions.fromString("rwxr-xr-x"))
         val wrapper = installation.resolve("bin/kast-query-complete")
         Files.writeString(
             wrapper,
             "#!/bin/sh\nexport KAST_CONFIGURATION_FILE=${shellWord(configuration.toString())}\n" +
-                "unset KAST_SESSION_ROOT\nexec ${shellWord(payload.toString())} \"\$@\"\n",
+                "unset KAST_SESSION_ROOT\nexec ${shellWord(query.toString())} \"\$@\"\n",
         )
         Files.setPosixFilePermissions(wrapper, PosixFilePermissions.fromString("rwxr-xr-x"))
         val payloads =
-            listOf(payload, wrapper).map { file ->
+            listOf(payload, query, wrapper).map { file ->
                 PayloadFile(installation.relativize(file).toString(), "sha256:${nativeDigest(file)}", 493)
             }
         Files.writeString(

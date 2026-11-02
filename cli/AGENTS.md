@@ -1,11 +1,11 @@
 ---
 type: Module Guide
 title: "Kast cli"
-description: "Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections."
+description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-30T22:56:37Z"
-source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
+timestamp: "2026-11-02T16:49:19Z"
+source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -14,6 +14,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -52,7 +53,7 @@ code_sources:
 
 ## Purpose
 
-Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections.
+Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections.
 
 ## Key Files
 
@@ -90,13 +91,16 @@ Owns the public semantic CLI, private JVM entry points, direct tool sessions, in
 
 - Gradle project: `:cli`.
 - Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
-- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the real launcher, JVM child, and local-peer composition.
-- The public native `kast` executable lives in `distribution/cli`.
+- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the native launcher, native query child, and local-peer composition.
+- `KastNativeMain` composes the existing command owners into one native Control executable.
+- `distribution/cli` owns management commands. `NativeControlInvocation` owns private mode admission.
+- `assembleNativeControlLayout` supplies compatibility launchers and the `native-control-v1` marker.
+- The Control archive contains no `lib/` directory, JARs, or JVM bytecode.
 - Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
 - CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
 - `collectReachabilityMetadata` supplies resolved Native Image metadata for that archive. Keep module directories and the `logback-classic` exclusion.
-- Handoff qualification runs `query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.
-- CI imports supply `kastQueryNativeExecutable` together with `kastNativeExecutable`. The `queryExecutableElements` artifact uses the imported query executable.
+- Handoff qualification runs `--internal-entrypoint=query query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.
+- CI imports supply `kastNativeExecutable`. The `nativeExecutableElements` artifact uses that admitted image.
 - The private installer entry in `KastCliMain.kt` admits only `--version`.
 - The installation places private service control at `share/kast/libexec/kast-service`.
 - [KastToolRpcQuerySessionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt) - query framing and retained delivery.

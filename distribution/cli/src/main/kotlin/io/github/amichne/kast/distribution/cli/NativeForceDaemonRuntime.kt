@@ -134,7 +134,8 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
             else NativeResetSnapshot.Unavailable(ResetInventoryRejection.COMMAND_UNAVAILABLE)
         }
         val args = info.arguments().orElse(null)
-        if (args == null && Path.of(command).fileName.toString() == "java")
+        val executable = Path.of(command)
+        if (args == null && (executable.fileName.toString() == "java" || isNativeControlProcessExecutable(executable)))
             return NativeResetSnapshot.Unavailable(ResetInventoryRejection.ARGUMENTS_UNAVAILABLE)
         return NativeResetSnapshot.Selected(
             LifecycleProcessSnapshot(

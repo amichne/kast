@@ -797,12 +797,44 @@ def inspect_control(
         )
         if isinstance(selection, MainSelection) and selection.identity != identity:
             return Failure.ARTIFACT_INVALID
-        for relative in ("share/kast/libexec/kast-management", "bin/kast-query"):
-            executable = control / relative
-            with executable.open("rb") as stream:
-                header = stream.read(8)
-            if header != b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01" or not os.access(executable, os.X_OK):
+        executable = control / "share/kast/libexec/kast-management"
+        native_header = b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01"
+        with executable.open("rb") as stream:
+            if stream.read(8) != native_header or not os.access(executable, os.X_OK):
                 return Failure.ARTIFACT_INVALID
+        query = control / "bin/kast-query"
+        with query.open("rb") as stream:
+            query_header = stream.read(8)
+        if not os.access(query, os.X_OK):
+            return Failure.ARTIFACT_INVALID
+        native_layout = control / "share/kast/native-control-v1"
+        if native_layout.exists():
+            if native_layout.read_bytes() != b"1\n":
+                return Failure.INSTALLER_CONTRACT_UNSUPPORTED
+            if query_header != b"#!/bin/s" or (control / "lib").exists():
+                return Failure.ARTIFACT_INVALID
+            native_files: list[Path] = []
+            for path in control.rglob("*"):
+                if path.suffix in (".jar", ".class"):
+                    return Failure.ARTIFACT_INVALID
+                if path.is_file():
+                    with path.open("rb") as stream:
+                        if stream.read(4) in (
+                            b"\xcf\xfa\xed\xfe",
+                            b"\xfe\xed\xfa\xcf",
+                            b"\x7fELF",
+                            b"\xce\xfa\xed\xfe",
+                            b"\xfe\xed\xfa\xce",
+                            b"\xca\xfe\xba\xbe",
+                            b"\xbe\xba\xfe\xca",
+                            b"\xca\xfe\xba\xbf",
+                            b"\xbf\xba\xfe\xca",
+                        ):
+                            native_files.append(path)
+            if native_files != [executable]:
+                return Failure.ARTIFACT_INVALID
+        elif query_header != native_header:
+            return Failure.ARTIFACT_INVALID
         if not (control / "share/kast/agent-tools/plugins/kast/skills/kast/SKILL.md").is_file():
             return Failure.INSTALLER_CONTRACT_UNSUPPORTED
         return identity

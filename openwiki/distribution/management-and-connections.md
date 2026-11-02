@@ -18,6 +18,12 @@ code_sources:
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfigurationContractTest.kt
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallationTest.kt
 sources:
+  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
+    resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-f2c689f11ca37c5559bce314
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
+  - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
+    resource: repo://cli/src/main/native-launchers/bin/kast-mcp
   - id: openwiki-source-75e91bf709db8b5e164b1b31
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - id: openwiki-source-b6ffac113b6a09198425b019
@@ -34,10 +40,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-656a2bd4859ff8a64d431829
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-02T17:14:13.237Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T10:29:42.821Z
+    at: 2026-11-02T17:46:24.113Z
 ---
 
 # Native management and harness connections
@@ -46,7 +52,8 @@ verified:
 
 `KastManagementMain` parses the public native `kast` command.
 Its finite command model selects query dispatch, status, versions, guidance installation, lifecycle operations, upgrades, disconnect, or uninstall.
-The operational JVM command graph and transport launchers remain private payloads.
+The `cli` module composes management and the private transport entry points in one native executable.
+Thin private launchers select their existing command and lifecycle owners without a JVM.
 Their internal command families do not add public semantic subcommands.
 
 Passive status reads installed receipts and available runtime evidence.
