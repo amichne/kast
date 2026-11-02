@@ -9,6 +9,30 @@ import support.tasks.VerifyControlDistributionTask
 
 class VerifyControlDistributionTaskTest {
     @Test
+    fun `control rejects a JVM library`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        task.maximumInstalledBytes.set(4096)
+        val library = task.controlDirectory.get().asFile.toPath().resolve("legacy.jar")
+        java.util.jar.JarOutputStream(Files.newOutputStream(library)).use { }
+        assertEquals(
+            "control product contains JVM libraries or bytecode",
+            assertThrows(IllegalStateException::class.java, task::verify).message,
+        )
+    }
+
+    @Test
+    fun `control rejects a second native executable`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        task.maximumInstalledBytes.set(4096)
+        val root = task.controlDirectory.get().asFile.toPath()
+        Files.copy(task.qualifiedControlExecutable.get().asFile.toPath(), root.resolve("extra-native"))
+        assertEquals(
+            "control product must contain exactly one native executable",
+            assertThrows(IllegalStateException::class.java, task::verify).message,
+        )
+    }
+
+    @Test
     fun `CLI default and complete optional MCP composition satisfy the product layout`(@TempDir directory: Path) {
         guidanceFixture(directory).verify()
     }
@@ -39,9 +63,10 @@ class VerifyControlDistributionTaskTest {
 
     private fun guidanceFixture(directory: Path): VerifyControlDistributionTask {
         val task = sizeFixture(directory)
+        task.maximumInstalledBytes.set(23)
         val root = task.controlDirectory.get().asFile.toPath()
         val entries = listOf(
-            "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc",
+            "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query",
             "share/kast/adapters/copilot/extension.mjs", "share/kast/adapters/pi/extension.ts",
             "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
@@ -61,9 +86,10 @@ class VerifyControlDistributionTaskTest {
         for (entry in entries) {
             val file = root.resolve(entry)
             Files.createDirectories(file.parent)
-            Files.write(file, byteArrayOf())
+            if (!Files.exists(file)) Files.write(file, byteArrayOf())
         }
         Files.walk(root).use { paths -> paths.filter(Files::isRegularFile).forEach { it.toFile().setExecutable(true) } }
+        Files.writeString(root.resolve("share/kast/native-control-v1"), "1\n")
         return task
     }
 
@@ -98,14 +124,14 @@ class VerifyControlDistributionTaskTest {
 
     private fun sizeFixture(directory: Path): VerifyControlDistributionTask {
         val root = Files.createDirectories(directory.resolve("product"))
-        val query = Files.createDirectories(root.resolve("bin")).resolve("kast-query")
+        val query = Files.createDirectories(root.resolve("share/kast/libexec")).resolve("kast-management")
         Files.write(query, java.util.HexFormat.of().parseHex("cffaedfe0c000001000000000200000000000000"))
         val archive = Files.write(directory.resolve("archive.tar.gz"), byteArrayOf(1, 2, 3))
         val project = ProjectBuilder.builder().withProjectDir(directory.toFile()).build()
         return project.tasks.register("verifyControl", VerifyControlDistributionTask::class.java).get().apply {
             controlDirectory.set(root.toFile())
             controlArchive.set(archive.toFile())
-            qualifiedQueryExecutable.set(query.toFile())
+            qualifiedControlExecutable.set(query.toFile())
             targetPlatform.set("macos-aarch64")
             maximumEntries.set(16384)
             maximumArchiveBytes.set(4)
@@ -116,7 +142,7 @@ class VerifyControlDistributionTaskTest {
     @Test
     fun `query artifact rejects a substituted payload and a script producer`(@TempDir directory: Path) {
         val root = Files.createDirectories(directory.resolve("product"))
-        val payload = Files.createDirectories(root.resolve("bin")).resolve("kast-query")
+        val payload = Files.createDirectories(root.resolve("share/kast/libexec")).resolve("kast-management")
         val producer = directory.resolve("producer")
         Files.writeString(producer, "#!/bin/sh\nexec java Main\n")
         Files.writeString(payload, "#!/bin/sh\nexec java Other\n")
@@ -125,19 +151,19 @@ class VerifyControlDistributionTaskTest {
         val task = project.tasks.register("verifyControl", VerifyControlDistributionTask::class.java).get().apply {
             controlDirectory.set(root.toFile())
             controlArchive.set(archive.toFile())
-            qualifiedQueryExecutable.set(producer.toFile())
+            qualifiedControlExecutable.set(producer.toFile())
             targetPlatform.set("macos-aarch64")
             maximumEntries.set(16384)
             maximumArchiveBytes.set(64L * 1024 * 1024)
             maximumInstalledBytes.set(128L * 1024 * 1024)
         }
         assertEquals(
-            "control query payload differs from its native producer",
+            "control payload differs from its native producer",
             assertThrows(IllegalStateException::class.java, task::verify).message,
         )
         Files.copy(producer, payload, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         assertEquals(
-            "control query payload is not a native executable for macos-aarch64",
+            "control payload is not a native executable for macos-aarch64",
             assertThrows(IllegalStateException::class.java, task::verify).message,
         )
     }

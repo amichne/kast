@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1c12595a424c9ed024456f480f30966e5569d0364acd303cba782f0bd0f9c9c8",
+  "pageVersion": "sha256:132c2576c3e12dee4665ff826d65aff5d0328b10d94342103f80e8f38befc90d",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -66,7 +66,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:bfc9ee2c88f3150efd6eefa9ccdc4d8c68b198bef0f2d57b36aee8ab8c76f1fc"
+          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
         }
       ]
     },
@@ -119,7 +119,7 @@
       "statement": "The local adapter delegates Java selection to the public installer's admitted IntelliJ home. The unused KAST_LOCAL_JAVA_EXECUTABLE and KAST_LOCAL_JAVA_HOME inputs are absent from installLocal and the catalogue; every configuration source rejects them as UNKNOWN_KEY. The assembled-product acceptance runner retains KAST_ACCEPTANCE_JAVA_EXECUTABLE.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L304-L343",
+          "resource": "repo://build.gradle.kts#L287-L326",
           "version": "repo-lines-v1:sha256:d890641fe9f563dadf81523caa05750e56b0a33fb3bbc0a96a524ea298468819:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZGM3OWM2ZjgxZDZlZDM2NTEzN2JlNGMyNzM4MGEyNGE4ZmI0YzUyNjk1ZDMzYjFkMzRlNzg1MzIzOGVjOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NDkyYzhhODE3ZWQ1MGU1NjYwNzhiZDQ4MmUxMjUzYTdmNDBiYzc5YTI5MWFiZjgzMjkzYWJhYjdhMzQxMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3YzEwN2NkYTEwMzM4OTg2ZDcwMTg0YzgzYmMyMDA2MzczNmU3NTdiMDBjZDVhZGFhMjRiMjI3YThiZDNjNGEifQ"
         },
         {
@@ -138,15 +138,15 @@
     },
     {
       "id": "claim_0645aca128944a82a9153ba627038211",
-      "statement": "The checkout installer admits the selected IDEA JBR before Gradle. Admission needs an executable and one fully quoted JAVA_VERSION declaration with a numeric feature of at least 25. Installed JVM launchers repeat that admission before a child starts. Invalid runtimes reject with repair guidance. Native query launchers omit JVM setup. Neither JVM path selects ambient Java.",
+      "statement": "The checkout installer admits the selected IDEA JBR before Gradle with an executable and one fully quoted JAVA_VERSION declaration of at least 25. Shipped Control launchers select modes in one native executable without a JVM or bundled JVM libraries and explicitly pass nonempty HOME and TMPDIR as system properties.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt#L14-L35",
-          "version": "repo-lines-v1:sha256:e3dfa2e3555a12f55e7ae7bc725e6d5a05c03d19166042345103ad70feb60582:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4YWFkNzgyMzFhNzhkMDdjZWRmYzFkZDEyODUwYzM2NDA3ZTk3YWViZjAyMTIzODVlNzI1YzEwZGYzZjlhOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YTcxNTI1NzJlZTg0ZjEwOTA2Yzc0YjlmMmE5MjQzNGRkYWIwZTNjNDI4MTNiMDRlNTk3ZWZjZWM5NTFiMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljOTJhN2Y4N2EyMWZiOTc5Y2U3YjZkOWU1MjRkNDk5N2U0NGNmZjU4NjI2MzFlMWE0NDhhZGNiMWI2N2YyMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkNWUwZTg5ZTZmNTA4MWU3OTkxMmMyZDkyOTk3YjM5NDhjMTRkYWVlMTc1NzI0NTYxMTk2NDYxNTMzYmRlYjkifQ"
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L459-L464",
-          "version": "repo-lines-v1:sha256:1f386eb60471f34cf5ee2a37335a019e5bcf803d403bf942a15dbcbf825934c1:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWNiNmE1MWYxNWJkODUwOWMxNmUzOGI2ODU5ODcxZmU5ZTFkYjc2MWU3M2Q5NTExZmFhODU0NTNiODcxOGRmNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjZmMjhhODNjMWVkZmE2Yzk0MzEyY2UwN2ZmNzYzZWQyMDcxZjk1Y2U2NGQ2ZjJmYjNmYWIwM2NlMGQ3N2UyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDIxZGU5MDAxZmMzN2ZjYjFmODYzNzAxZDI1M2EzYmJhZTUxM2RkNmE1M2Y5ZWEzZjZjOWQwYjEyYTE1MDE5YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGYwZjlmOWYwZTE5MWY4NTlkNzVkNDUzZWQ2OGUyZTVmOWE2MGRiM2Y0ZWE3NjkwYjQ3OTc3MzI2MmU3NGZkNSJ9"
+          "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
+          "version": "repo-file-v1:sha256:983c6b33c0685f117642778e766ea8d89edf8785d77e1b669431242efb2a9960"
         },
         {
           "resource": "repo://packaging/install-checkout.sh#L41-L72",
@@ -179,6 +179,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T05:05:54.659Z"
+    "at": "2026-11-02T17:10:25.214Z"
   }
 }

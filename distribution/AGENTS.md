@@ -1,11 +1,11 @@
 ---
 type: Module Guide
 title: "Kast distribution"
-description: "Defines installation contracts, the public native management executable, managed filesystem effects, and independent component releases."
+description: "Defines installation contracts, the management command graph, managed filesystem effects, and independent component releases."
 resource: "repo://distribution"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-11-02T16:49:19Z"
+source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
 code_sources:
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
@@ -24,14 +24,15 @@ code_sources:
 
 ## Purpose
 
-Defines installation contracts, the public native management executable, managed filesystem effects, and independent component releases.
+Defines installation contracts, the management command graph, managed filesystem effects, and independent component releases.
 
 ## Key Files
 
 - [ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - typed installed configuration.
 - [ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - the admitted installation tree.
-- [KastManagementMain.kt](cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt) - the public native process entry.
-- [plugin-release.gradle.kts](release/plugin-release.gradle.kts) - Control and Host release tasks.
+- `cli` composes the single native Control executable. This module supplies management commands.
+- [KastManagementMain.kt](cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt) - the management process entry.
+- [`plugin-release.gradle.kts`](release/plugin-release.gradle.kts) - Control and Host release tasks.
 - [component_release.py](release/component_release.py) - component asset records and checksum admission.
 
 ## Subdirectories
@@ -39,7 +40,7 @@ Defines installation contracts, the public native management executable, managed
 - [contract/](contract/) - configuration, bootstrap, transport, and runtime identities.
 - [cli/](cli/AGENTS.md) - the public command and authored lifecycle rules.
 - [managed/](managed/) - installation trees, recovery receipts, IDE discovery, and endpoint effects.
-- [release/](release/) - release records, product gates, SBOMs, and archive assembly.
+- [release/](release/) - release records, product gates, SBOM files, and archive assembly.
 
 ## Entry Points
 

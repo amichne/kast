@@ -1,4 +1,6 @@
 --no-fallback
+--enable-native-access=ALL-UNNAMED
+-H:IncludeResources=management/bootstrap-install.sh
 --exact-reachability-metadata
 -Os
 --emit

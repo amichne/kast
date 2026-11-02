@@ -13,6 +13,7 @@ import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
+import io.github.amichne.kast.distribution.cli.MANAGEMENT_VERSION
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -20,7 +21,6 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.KastPluginVersion
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.io.IOException
-import java.net.URISyntaxException
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -121,6 +121,8 @@ internal class InstalledKastCliComposition : KastCliComposition {
 
 @kotlinx.serialization.Serializable
 internal enum class InstalledKastControlProductFailure {
+    NATIVE_EXECUTABLE_UNAVAILABLE,
+    NATIVE_LAYOUT_INVALID,
     CODE_SOURCE_UNAVAILABLE,
     CODE_SOURCE_INVALID,
     LIBRARY_DIRECTORY_INVALID,
@@ -152,7 +154,7 @@ private sealed interface InstalledLocalMetadataConstruction {
     data class Rejected(val failure: InstalledCompositionFailure) : InstalledLocalMetadataConstruction
 }
 
-/** One control installation proven by the CLI jar and exact `share/kast` resources. */
+/** One control installation admitted from its process code and exact `share/kast` resources. */
 private class InstalledKastControlProduct private constructor(val root: Path) {
     fun kastExecutable(): Path? = admittedFile(root.resolve("bin/kast"), executable = true)
 
@@ -230,13 +232,12 @@ private class InstalledKastControlProduct private constructor(val root: Path) {
     }
 
     /**
-     * Proof transition: `installed CLI package metadata -> Refinement<KastPluginVersion, ...>`.
+     * Proof transition: `generated Control version -> Refinement<KastPluginVersion, ...>`.
      *
-     * Establishes the exact release version embedded in the installed CLI jar. Malformed or absent metadata remains a
-     * closed compatibility failure; raw package metadata is extracted only here.
+     * The version comes from the shared Control build. Malformed metadata remains a closed compatibility failure.
      */
     fun productVersion(): Refinement<KastPluginVersion, IdeHostCompatibilityFailure> =
-        KastPluginVersion.parse(InstalledKastCliComposition::class.java.`package`.implementationVersion.orEmpty())
+        KastPluginVersion.parse(MANAGEMENT_VERSION)
 
     /**
      * Proof transition: `InstalledControlResource -> InstalledControlResourceRead`.
@@ -269,36 +270,17 @@ private class InstalledKastControlProduct private constructor(val root: Path) {
 
     companion object {
         /**
-         * Proof transition: `InstalledKastCliComposition code source -> InstalledKastControlProductAdmission`.
+         * Proof transition: `process code location -> InstalledKastControlProductAdmission`.
          *
-         * Establishes that the provider was loaded from the installation's `lib` directory and owns one sibling
-         * `share/kast` resource directory. [InstalledKastControlProductFailure] is the closed expected failure. Raw URI
-         * and paths remain inside this adapter.
+         * Native execution admits the installed image location. JVM development admits the archive location. Both need
+         * the same `share/kast` resources.
          */
         fun discover(): InstalledKastControlProductAdmission {
-            val codeSource =
-                try {
-                    Path.of(InstalledKastCliComposition::class.java.protectionDomain.codeSource.location.toURI())
-                        .toRealPath()
-                } catch (_: IOException) {
-                    return InstalledKastControlProductAdmission.Rejected(
-                        InstalledKastControlProductFailure.CODE_SOURCE_UNAVAILABLE
-                    )
-                } catch (_: URISyntaxException) {
-                    return InstalledKastControlProductAdmission.Rejected(
-                        InstalledKastControlProductFailure.CODE_SOURCE_INVALID
-                    )
-                }
-            val libraryDirectory =
-                codeSource.parent?.takeIf { it.fileName.toString() == "lib" }
-                    ?: return InstalledKastControlProductAdmission.Rejected(
-                        InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID
-                    )
             val root =
-                libraryDirectory.parent
-                    ?: return InstalledKastControlProductAdmission.Rejected(
-                        InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE
-                    )
+                when (val location = discoverInstalledControlRoot()) {
+                    is Refinement.Refined -> location.value
+                    is Refinement.Rejected -> return InstalledKastControlProductAdmission.Rejected(location.failure)
+                }
             if (!Files.isDirectory(root.resolve("share/kast"))) {
                 return InstalledKastControlProductAdmission.Rejected(
                     InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE

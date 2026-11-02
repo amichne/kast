@@ -415,6 +415,27 @@ class CoordinatorTest(unittest.TestCase):
             "HOST_MUTATION_RECOVERY_UNRESOLVED", rejected.exception.failure.adapterCode
         )
 
+    def test_native_command_preimages_support_large_images_and_keep_a_finite_limit(self) -> None:
+        command = self.home / "large-command"
+        with command.open("wb") as stream:
+            _ = stream.truncate(65 * 1024 * 1024)
+        command.chmod(0o755)
+        preimage = install.saved_file(command, self.home / "command-preimage")
+        assert isinstance(preimage, journal.ManagedFilePresent)
+        with command.open("rb") as stream:
+            expected = hashlib.file_digest(stream, "sha256").hexdigest()
+        self.assertEqual(expected, preimage.sha256)
+        self.assertTrue(install.unchanged_preimage(preimage))
+        self.assertTrue(install.file_matches(command, expected, 0o755))
+        with command.open("ab") as stream:
+            _ = stream.write(b"changed")
+        self.assertFalse(install.unchanged_preimage(preimage))
+        with command.open("wb") as stream:
+            _ = stream.truncate(128 * 1024 * 1024 + 1)
+        with self.assertRaisesRegex(OSError, "record limit exceeded"):
+            _ = install.saved_file(command, self.home / "oversized-preimage")
+        self.assertFalse((self.home / "oversized-preimage").exists())
+
     def test_mode_only_command_change_rejects_rollback_without_claiming_restoration(self) -> None:
         record = self.record()
         command = self.home / "bin/kast"

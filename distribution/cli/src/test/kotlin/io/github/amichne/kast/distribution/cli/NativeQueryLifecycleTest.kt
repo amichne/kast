@@ -14,6 +14,37 @@ import org.junit.jupiter.api.io.TempDir
 
 class NativeQueryLifecycleTest {
     @Test
+    fun `unified image admits only recorded client modes`(@TempDir temporary: Path) {
+        val fixture = fixture(temporary, "share/kast/libexec/kast-management")
+        for (entry in listOf("query", "rpc", "mcp")) {
+            val observed =
+                fixture.snapshot.copy(arguments = listOf("-Duser.home=/selected", "--internal-entrypoint=$entry"))
+            assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit(observed))
+        }
+        for (arguments in
+            listOf(
+                emptyList(),
+                listOf("--internal-entrypoint=service"),
+                listOf("--internal-entrypoint=daemon"),
+                listOf("--internal-entrypoint=unknown"),
+                listOf("query", "--internal-entrypoint=rpc"),
+            )) assertEquals(
+            ShutdownProcessAdmission.Rejected,
+            fixture.admit(fixture.snapshot.copy(arguments = arguments)),
+        )
+        val owned =
+            assertInstanceOf(
+                ShutdownProcessAdmission.Owned::class.java,
+                fixture.admit(fixture.snapshot.copy(arguments = listOf("--internal-entrypoint=query"))),
+            )
+        Files.writeString(fixture.executable, "changed native image")
+        assertEquals(
+            ShutdownProcessAdmission.Rejected,
+            owned.process.revalidate(LifecycleProcessObservation.Present(owned.process.snapshot)),
+        )
+    }
+
+    @Test
     fun `native worker requires exact executable and admitted payload`(@TempDir temporary: Path) {
         val fixture = fixture(temporary)
         val owned = assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit())
@@ -297,9 +328,9 @@ class NativeQueryLifecycleTest {
         )
     }
 
-    private fun fixture(temporary: Path): NativeFixture {
+    private fun fixture(temporary: Path, relative: String = "bin/kast-query"): NativeFixture {
         val installation = temporary.toRealPath().resolve("installation with spaces")
-        val executable = installation.resolve("bin/kast-query")
+        val executable = installation.resolve(relative)
         Files.createDirectories(executable.parent)
         Files.writeString(executable, "native-fixture-bytes")
         assertTrue(executable.toFile().setExecutable(true))
@@ -311,7 +342,7 @@ class NativeQueryLifecycleTest {
                 3,
                 installation.toString(),
                 listOf(
-                    BundledPayload("bin/kast-query", "sha256:${sha256(executable)}", 493),
+                    BundledPayload(relative, "sha256:${sha256(executable)}", 493),
                     BundledPayload("share/kast/one-shot-observation-v1", "sha256:${sha256(marker)}", 420),
                 ),
             )

@@ -20,6 +20,7 @@ plugins {
 val repositoryRoot = project.isolated.rootProject.projectDirectory
 
 dependencies {
+    testFixturesImplementation(libs.serialization.json)
     testImplementation(libs.jimfs)
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)

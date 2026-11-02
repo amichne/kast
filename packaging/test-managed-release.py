@@ -168,6 +168,7 @@ def archive_bytes(
     contract: release.HostedContract,
     marker: bool = True,
     native: bool = True,
+    unified: bool = False,
     source_tree: str = TREE,
     link: str | None = None,
 ) -> tuple[bytes, bytes]:
@@ -181,6 +182,13 @@ def archive_bytes(
         files["share/kast/managed-install-v1"] = b"1\n"
     if native:
         files["bin/kast-query"] = b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01fixture"
+    if unified:
+        files["share/kast/native-control-v1"] = b"1\n"
+        if native:
+            files["bin/kast-query"] = (
+                b'#!/bin/sh\nexec "../share/kast/libexec/kast-management" '
+                b'--internal-entrypoint=query "$@"\n'
+            )
     control = tar_bytes(files, link)
     jar = io.BytesIO()
     with zipfile.ZipFile(jar, "w") as plugin:
@@ -262,10 +270,20 @@ class ReleaseAdmissionTest(unittest.TestCase):
         )
 
     def source(
-        self, version: str, marker: bool = True, native: bool = True, source_tree: str = TREE
+        self,
+        version: str,
+        marker: bool = True,
+        native: bool = True,
+        source_tree: str = TREE,
+        unified: bool = False,
     ) -> Source:
         control, host = archive_bytes(
-            version, self.contract, marker=marker, native=native, source_tree=source_tree
+            version,
+            self.contract,
+            marker=marker,
+            native=native,
+            source_tree=source_tree,
+            unified=unified,
         )
         control_name = f"kast-control-v{version}-{release.PLATFORM}.tar.gz"
         host_name = f"kast-ide-hosted-v{version}-idea-262.zip"
@@ -370,6 +388,13 @@ class ReleaseAdmissionTest(unittest.TestCase):
         assert isinstance(admitted, release.AdmittedComposition)
         self.assertEqual(release.PinnedBuild(admitted.identity), admitted.policy)
         self.assertNotIn(release.STABLE_URL, source.calls)
+
+    def test_single_native_control_admits_its_query_launcher_without_jvm_libraries(self) -> None:
+        source = self.source("1.2.3", unified=True)
+        selected = release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK)
+        admitted = release.download_composition(selected, "262", self.stage, source)
+        self.assertIsInstance(admitted, release.AdmittedComposition)
+        self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
 
     def test_missing_capability_or_native_query_rejects_before_installation_changes(self) -> None:
         for option in ("marker", "native"):

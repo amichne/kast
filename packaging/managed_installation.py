@@ -57,6 +57,8 @@ HOST = module("kast_managed_host", Path(__file__).with_name("host-installation.p
 RECOVERY = module("kast_managed_recovery", Path(__file__).with_name("installation-recovery.py"))
 LIFECYCLE = module("kast_managed_lifecycle", Path(__file__).with_name("installation-lifecycle.py"))
 
+MAXIMUM_FILE_PREIMAGE_BYTES = 128 * 1024 * 1024
+
 
 @dataclass(frozen=True, slots=True)
 class SelectedIdea:
@@ -1028,7 +1030,7 @@ class NativeComposition:
 def saved_file(path: Path, preimage: Path) -> journal_types.ManagedFilePreimage:
     if not os.path.lexists(path):
         return journal_types.ManagedFileAbsent(str(path), "ABSENT")
-    data = read_record(path, 67_108_864)
+    data = read_record(path, MAXIMUM_FILE_PREIMAGE_BYTES)
     _ = preimage.write_bytes(data)
     preimage.chmod(0o600)
     return journal_types.ManagedFilePresent(
@@ -1051,7 +1053,7 @@ def stored_file(path: Path, data: bytes) -> journal_types.ManagedFilePresent:
 def file_matches(path: Path, digest: str, mode: int) -> bool:
     return (
         os.path.lexists(path)
-        and hashlib.sha256(read_record(path, 67_108_864)).hexdigest() == digest
+        and hashlib.sha256(read_record(path, MAXIMUM_FILE_PREIMAGE_BYTES)).hexdigest() == digest
         and stat.S_IMODE(path.stat().st_mode) == mode
     )
 
@@ -1151,7 +1153,8 @@ def unchanged_preimage(preimage: journal_types.ManagedFilePreimage) -> bool:
         return not os.path.lexists(path)
     return (
         os.path.lexists(path)
-        and hashlib.sha256(read_record(path, 67_108_864)).hexdigest() == preimage.sha256
+        and hashlib.sha256(read_record(path, MAXIMUM_FILE_PREIMAGE_BYTES)).hexdigest()
+        == preimage.sha256
         and stat.S_IMODE(path.stat().st_mode) == preimage.mode
     )
 
@@ -1716,7 +1719,9 @@ def abort_preparation(
     for item in preimages:
         if (
             Path(item.preimage).parent != directory
-            or hashlib.sha256(read_record(Path(item.preimage), 67_108_864)).hexdigest()
+            or hashlib.sha256(
+                read_record(Path(item.preimage), MAXIMUM_FILE_PREIMAGE_BYTES)
+            ).hexdigest()
             != item.sha256
         ):
             raise reject(contract.Stage.RECOVERY, contract.Failure.OWNERSHIP_UNPROVEN)
@@ -1726,7 +1731,10 @@ def abort_preparation(
         HOST.finish_managed_lock(host_record, HOST.ManagedHostTerminalPhase.RESTORED)
     for item in preimages:
         path = Path(item.preimage)
-        if hashlib.sha256(read_record(path, 67_108_864)).hexdigest() != item.sha256:
+        if (
+            hashlib.sha256(read_record(path, MAXIMUM_FILE_PREIMAGE_BYTES)).hexdigest()
+            != item.sha256
+        ):
             raise reject(contract.Stage.RECOVERY, contract.Failure.OWNERSHIP_UNPROVEN)
         path.unlink()
     adapter.control_action(composition, transaction, "abort")
@@ -2109,7 +2117,9 @@ def selected_file(
         return current, 0o600, "management"
     if path == Path(core.publicExecutable.destination):
         return (
-            read_record(adapter.control / "share/kast/libexec/kast-management", 67_108_864),
+            read_record(
+                adapter.control / "share/kast/libexec/kast-management", MAXIMUM_FILE_PREIMAGE_BYTES
+            ),
             0o755,
             "command",
         )
@@ -2124,7 +2134,7 @@ def restore_file(
     reservation, core = journal_types.managed_parts(record)
     path = Path(preimage.destination)
     prior = (
-        read_record(Path(preimage.preimage), 67_108_864)
+        read_record(Path(preimage.preimage), MAXIMUM_FILE_PREIMAGE_BYTES)
         if isinstance(preimage, journal_types.ManagedFilePresent)
         else b""
     )

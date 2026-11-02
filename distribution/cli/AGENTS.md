@@ -4,8 +4,8 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and CLI guidance provisioning."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-10-30T22:56:37Z"
-source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
+timestamp: "2026-11-02T16:49:19Z"
+source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
 code_sources:
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
@@ -27,13 +27,13 @@ code_sources:
 
 # Native management CLI
 
-This module owns the public `kast` executable and its management commands.
+This module owns management commands. `cli` composes them into the single native Control executable.
 Route `query`, `result`, `source`, and `describe` through the selected `bin/kast-query-complete` launcher with unchanged argv.
-The query executable owns semantic options, admission, output, and public-shell exit policy.
+The query process mode owns semantic options, admission, output, and public-shell exit policy.
 Keep native dispatch thin and preserve management independence from JVM startup.
 Forward signals only to the owned query child and reap that child.
 Child termination does not prove native semantic settlement.
-The operational JVM CLI and transport launchers remain private managed payloads.
+Compatibility launchers select private modes of the same native executable. Control ships no JVM libraries.
 
 Keep receipt facts separate from passive runtime state.
 Status must not start Java, prepare workspaces, or contact release servers.
@@ -99,17 +99,16 @@ The current public `install.sh` remains active during candidate qualification.
 The candidate path does not establish stable publication or public bootstrap activation.
 Read the [candidate evidence guide](../../docs/reviews/managed-installation-cli.md) for the release limits and source owners.
 
-Run `./gradlew :distribution:cli:test :distribution:cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
+Run `./gradlew :distribution:cli:test :cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
 
 ## Native compilation inputs
 
-`assembleNativeImageInputs` packages JVM libraries and the shared Native Image arguments for the target host.
-`native-image.args` owns portable arguments. `native-image-macos.args` owns Mac linker arguments.
+`cli:assembleNativeImageInputs` packages the unified image inputs for the target host.
+`cli/native-image.args` owns portable arguments. Its Mac counterpart owns linker arguments.
 `collectReachabilityMetadata` supplies resolved metadata for each input archive.
 Keep module directories during transfer and raw native compilation.
-Routine CI admits both transferred executables before Linux assembly.
-It supplies `kastNativeExecutable` and `kastQueryNativeExecutable` together.
-Ordinary local builds keep `nativeCompile` as the executable producer.
+Routine CI admits one transferred executable before Linux assembly.
+It supplies `kastNativeExecutable`. The `cli:nativeCompile` task produces ordinary local builds.
 
 ## Navigation
 

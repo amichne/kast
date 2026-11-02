@@ -43,7 +43,7 @@ internal sealed interface PublicQueryLauncher {
             fun fromInstallation(installation: Path, manifest: BundledManifest): PublicQueryLauncher {
                 val relative = "bin/kast-query-complete"
                 val path = installation.resolve(relative)
-                val executablePayloads = listOf("bin/kast-query", relative)
+                val executablePayloads = listOf("bin/kast-query", relative, "share/kast/libexec/kast-management")
                 return if (
                     executablePayloads.all {
                         payloadOwned(installation, manifest, it) && Files.isExecutable(installation.resolve(it))

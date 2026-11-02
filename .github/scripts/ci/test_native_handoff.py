@@ -35,18 +35,17 @@ class ReachabilityFixture:
 
 
 class NativeHandoffTest(unittest.TestCase):
-    def test_inputs_and_native_stage_preserve_both_executable_identities(self):
+    def test_inputs_and_native_stage_preserve_the_single_executable_identity(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         classes = {
-            "kast": "io.github.amichne.kast.distribution.cli.KastManagementMainKt",
-            "kast-query": "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
+            "kast": "io.github.amichne.kast.cli.KastNativeMain",
         }
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             java = root / "java"
             java.mkdir()
             (java / "release").write_text("qualified toolchain")
-            for name, module in (("kast", "distribution/cli"), ("kast-query", "cli")):
+            for name, module in (("kast", "cli"),):
                 archive = root / module / "build/distributions/native-inputs.tar.gz"
                 archive.parent.mkdir(parents=True)
                 fixture = root / name
@@ -76,7 +75,6 @@ class NativeHandoffTest(unittest.TestCase):
                 self.assertEqual("./gradlew", command[0])
                 self.assertEqual(
                     [
-                        ":distribution:cli:assembleNativeImageInputs",
                         ":cli:assembleNativeImageInputs",
                     ],
                     [argument for argument in command if argument.startswith(":")],
@@ -129,12 +127,13 @@ class NativeHandoffTest(unittest.TestCase):
                     name = Path(command[0]).name
                     if command[1:] == [
                         "-XX:MissingRegistrationReportingMode=Exit",
+                        "--internal-entrypoint=query",
                         "query",
                         "plan",
                         "--name",
                         "OrderService",
                     ]:
-                        self.assertEqual("kast-query", name)
+                        self.assertEqual("kast", name)
                         self.assertEqual(subprocess.STDOUT, stderr)
                         return "query-plan-probe-output\n"
                     self.assertEqual(["--version"] if name == "kast" else ["--help"], command[1:])
@@ -151,18 +150,16 @@ class NativeHandoffTest(unittest.TestCase):
                     ) as inspect,
                 ):
                     native_handoff.native(payload, root / "native-bundle")
-                self.assertEqual(["kast", "kast-query"], compiled)
-                self.assertEqual(2, run.call_count)
-                self.assertEqual(5, inspect.call_count)
+                self.assertEqual(["kast"], compiled)
+                self.assertEqual(1, run.call_count)
+                self.assertEqual(3, inspect.call_count)
                 self.assertEqual(
                     "query-plan-probe-output\n",
-                    (root / "build/reports/native/kast-query/query-plan.stdout").read_text(),
+                    (root / "build/reports/native/query-plan.stdout").read_text(),
                 )
                 self.assertEqual(
                     {"stage": "QUERY_PLAN", "outcome": "COMPLETE", "exitCode": 0},
-                    json.loads(
-                        (root / "build/reports/native/kast-query/query-plan.json").read_text()
-                    ),
+                    json.loads((root / "build/reports/native/query-plan.json").read_text()),
                 )
                 output = admit(root / "native-bundle", identity, Kind.NATIVE)
                 if not isinstance(output, Admitted):
@@ -188,12 +185,13 @@ class NativeHandoffTest(unittest.TestCase):
 
             def inspect_effect(command, *, text, stderr=None):
                 self.assertTrue(text)
-                if command == [str(root / "kast-query"), "--help"]:
-                    return "kast query [--help]\n"
+                if command == [str(root / "kast"), "--version"]:
+                    return "0.0.7\n"
                 self.assertEqual(
                     [
-                        str(root / "kast-query"),
+                        str(root / "kast"),
                         "-XX:MissingRegistrationReportingMode=Exit",
+                        "--internal-entrypoint=query",
                         "query",
                         "plan",
                         "--name",
@@ -215,9 +213,9 @@ class NativeHandoffTest(unittest.TestCase):
                 ) as inspect,
                 self.assertRaisesRegex(SystemExit, "QUERY_PLAN_FAILED"),
             ):
-                native_handoff.compile_native(root, root / "kast-query", identity)
+                native_handoff.compile_native(root, root / "kast", identity)
             self.assertEqual(2, inspect.call_count)
-            report = root / "build/reports/native/kast-query"
+            report = root / "build/reports/native"
             self.assertEqual(
                 {"stage": "QUERY_PLAN", "outcome": "PROCESS_FAILED", "exitCode": 172},
                 json.loads((report / "query-plan.json").read_text()),
@@ -233,17 +231,17 @@ class NativeHandoffTest(unittest.TestCase):
                 patch.object(native_handoff, "run") as compile_effect,
                 self.assertRaisesRegex(SystemExit, "INVALID_RECORD"),
             ):
-                native_handoff.compile_native(root, root / "kast-query", identity)
+                native_handoff.compile_native(root, root / "kast", identity)
             compile_effect.assert_not_called()
 
-    def test_assembly_imports_both_macos_executables(self):
+    def test_assembly_imports_one_macos_executable(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         header = bytes.fromhex("cffaedfe0c000001")
         with tempfile.TemporaryDirectory(prefix="native handoff ") as temporary:
             root = Path(temporary)
             binaries = root / "binaries"
             binaries.mkdir()
-            for name in ("kast", "kast-query"):
+            for name in ("kast",):
                 (binaries / name).write_bytes(header + name.encode())
             bundle = root / "bundle"
             pack(binaries, bundle, identity, Kind.NATIVE, "c" * 64)
@@ -262,14 +260,13 @@ class NativeHandoffTest(unittest.TestCase):
                 gradle.assert_called_once_with(
                     identity,
                     f"-PkastNativeExecutable={imported / 'kast'}",
-                    f"-PkastQueryNativeExecutable={imported / 'kast-query'}",
                     "-PkastControlPlatform=macos-aarch64",
                     "assembleRelease",
                     "generateKastModuleKnowledge",
                 )
                 self.assertEqual(1, run.call_count)
                 self.assertEqual(1, seal.call_count)
-                for name in ("kast", "kast-query"):
+                for name in ("kast",):
                     self.assertEqual((binaries / name).read_bytes(), (imported / name).read_bytes())
                     self.assertEqual(0o755, (imported / name).stat().st_mode & 0o777)
 
@@ -277,10 +274,11 @@ class NativeHandoffTest(unittest.TestCase):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         header = bytes.fromhex("cffaedfe0c000001")
         for files in (
-            {"kast": header},
-            {"kast": header, "kast-query": b"\x7fELF"},
-            {"kast": b"\x7fELF", "kast-query": header},
-            {"kast": header, "kast-query": header, "extra": header},
+            {"missing": header},
+            {"kast-query": header},
+            {"kast": b"\x7fELF"},
+            {"kast": header, "extra": header},
+            {"kast": header, "kast-query": header},
         ):
             with self.subTest(files=tuple(files)), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)

@@ -112,7 +112,9 @@ private class PayloadCollection {
 
     fun collect(root: Path): ControlInventoryAdmission {
         for (name in listOf("bin", "lib", "share")) {
-            when (val step = tree(root.resolve(name))) {
+            val directory = root.resolve(name)
+            if (name == "lib" && Files.notExists(directory, LinkOption.NOFOLLOW_LINKS)) continue
+            when (val step = tree(directory)) {
                 InventoryStep.Accepted -> Unit
                 is InventoryStep.Rejected -> return step.admission
             }

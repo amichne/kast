@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+set -- --internal-entrypoint=service "$@"
+if [ -n "${HOME-}" ]; then set -- "-Duser.home=$HOME" "$@"; fi
+if [ -n "${TMPDIR-}" ]; then set -- "-Djava.io.tmpdir=$TMPDIR" "$@"; fi
+exec "$script_dir/kast-management" "$@"

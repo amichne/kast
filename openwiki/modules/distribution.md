@@ -243,6 +243,8 @@ code_sources:
 sources:
   - id: openwiki-source-3b28c686cbf92ac682eb5142
     resource: repo://.github/scripts/ci/build_execution.py
+  - id: openwiki-source-782f88ea0a8c13260d76dfa4
+    resource: repo://.github/scripts/ci/native_handoff.py
   - id: openwiki-source-27e9613cc8767d52b5cfe287
     resource: repo://.github/scripts/ci/required_checks.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
@@ -261,16 +263,18 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
+  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
+    resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-805b19d15acbc9e33b10fa51
+    resource: repo://cli/native-image.args
   - id: openwiki-source-b19700b4b7bbfa25fb4bb931
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
-  - id: openwiki-source-82001d1847d4403e8e24787a
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - id: openwiki-source-211f90f77f217ad3273b0d4f
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-  - id: openwiki-source-e98296a26c7cb717460f6f68
-    resource: repo://distribution/cli/build.gradle.kts
+  - id: openwiki-source-02ab91cf3c45f7eb0a7c73b8
+    resource: repo://cli/src/main/native-launchers/bin/kast
   - id: openwiki-source-ea2b24fdd206a91568317996
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
@@ -325,10 +329,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T10:51:42.239Z
+    at: 2026-11-02T17:10:25.214Z
 ---
 
 # Distribution and packaging
@@ -340,7 +344,7 @@ Codex and Copilot own their plugins. Pi uses native skill discovery and exact re
 Release assembly emits plugin and marketplace ZIPs without a standalone skill archive.
 Query examples come from the public tool schema.
 
-The `distribution:cli` module builds the native public `kast` management executable with Clikt and GraalVM. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. The operational JVM CLI and transport launchers remain private within the managed payload. Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for its captured control version, ready workspaces, live connection count, and each observed host identity, plugin version and compatibility. Installed and running control versions remain separate; missing live host evidence is unavailable. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions retain the same canonical identity in their session directory. Native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
+The `distribution:cli` module owns the Clikt management implementation. The `cli` module composes it with the existing private entry points in one GraalVM executable. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. Thin private launchers select query, MCP, tool RPC, service, daemon, Codex, or installer modes in the same native executable. The Control archive contains no bundled JVM libraries. Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for its captured control version, ready workspaces, live connection count, and each observed host identity, plugin version and compatibility. Installed and running control versions remain separate; missing live host evidence is unavailable. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions retain the same canonical identity in their session directory. Native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
@@ -405,7 +409,7 @@ A repository secret enables encrypted configuration-cache storage and is unavail
 Successful main candidate reuse skips Gradle setup.
 An authorized full CI dispatch on accepted main can seed the shared cache without automatic developer publication.
 Configured transport does not establish an observed task cache hit or lower build time.
-CI pins GraalVM 25.0.2 and keeps native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons.
+CI pins GraalVM 25.0.2 and keeps native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. The unified producer uses `-Os` and transfers one exact executable through the native handoff.
 Native optimization remains unchanged.
 Stable full and component releases keep explicit versions that affect compiled bytes, so a different version requires another build.
 The existing stable release path rejects active producers before falling back to exact-version construction.
@@ -637,12 +641,10 @@ mixed-version result; the completed native proof remains a separate gate.
 
 Checkout installation admits the selected IDEA bundle's executable JBR and Java
 25-or-newer release before Gradle or staging. It scopes that runtime to its children.
-Installed JVM launchers retain and recheck the selected JBR before execution;
-an unavailable or older runtime gives repair guidance rather than using ambient Java.
-Both paths require exactly one fully quoted `JAVA_VERSION` declaration. Duplicate
-declarations, an unclosed quote, trailing text, or a valid declaration beside a
-malformed duplicate reject before Gradle or JVM child execution.
-Native query launchers dispatch the installed query executable without JVM setup.
+The checkout path needs exactly one fully quoted `JAVA_VERSION` declaration.
+Duplicate declarations, an unclosed quote, trailing text, and incompatible runtimes reject before Gradle starts.
+Installed Control launchers select modes in the shared native executable without JVM setup.
+Nonempty `HOME` and `TMPDIR` values pass through explicit native system properties.
 
 Full native uninstall admits the exact Host removal target and immutable plugin receipt before invoking the private Host owner. A persistent exterior retirement journal preserves payload, executable, configuration and recovery identities so a failure after Control removal can resume without rerunning an erased helper. Cleanup removes only admitted registrations, public executable, private configuration, managed root and the closed user-owned `~/.kast` layout; the management receipt and journal remain until those effects complete.
 

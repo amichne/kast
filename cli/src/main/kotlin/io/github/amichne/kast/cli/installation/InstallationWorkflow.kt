@@ -374,11 +374,11 @@ internal object InstallationWorkflow {
         var completed = false
         try {
             copyControl(plan.request.controlRoot.value, staged)
-            writeLauncher(plan, staged, "kast")
-            writeLauncher(plan, staged, "kast-codex")
-            writeLauncher(plan, staged, "kast-mcp")
-            writeLauncher(plan, staged, "kast-tool-rpc")
-            writeLauncher(plan, staged, "kast-query")
+            writeLauncher(staged, "kast")
+            writeLauncher(staged, "kast-codex")
+            writeLauncher(staged, "kast-mcp")
+            writeLauncher(staged, "kast-tool-rpc")
+            writeLauncher(staged, "kast-query")
             writeInstallationConfiguration(
                 plan = plan,
                 stagedConfiguration = staged.resolve("config/environment"),
@@ -456,10 +456,8 @@ internal object InstallationWorkflow {
         setMode(stagedConfiguration, "rw-------")
     }
 
-    private fun writeLauncher(plan: VerifiedInstallationPlan, staged: Path, executable: String) {
+    private fun writeLauncher(staged: Path, executable: String) {
         val launcher = staged.resolve("bin/$executable-complete")
-        val javaEnvironment =
-            if (executable == "kast-query") "" else installationJavaRuntimeEnvironment(plan.request.javaHome)
         val dispatch =
             if (executable == "kast") {
                 """
@@ -487,7 +485,6 @@ internal object InstallationWorkflow {
             |fi
             |control_executable="${'$'}script_dir/$executable"
             |[ -x "${'$'}control_executable" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
-            |$javaEnvironment
             |unset KAST_SESSION_ROOT
             |if [ -e "${'$'}installation_root/.recovery-detached" ]; then
             |  case "${'$'}{1-} ${'$'}{2-}" in

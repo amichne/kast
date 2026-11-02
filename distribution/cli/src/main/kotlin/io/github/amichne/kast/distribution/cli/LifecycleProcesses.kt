@@ -1,6 +1,9 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
+import io.github.amichne.kast.distribution.contract.NativeControlEntry
+import io.github.amichne.kast.distribution.contract.admitNativeControlInvocation
+import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -32,18 +35,19 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
         override fun payloadUnchanged(): Boolean = true
     }
 
-    private class NativeQuery(
+    private class NativeTool(
         snapshot: LifecycleProcessSnapshot,
         private val installation: Path,
         private val manifest: BundledManifest,
         private val attributes: BasicFileAttributes,
+        private val payload: NativeToolPayload,
     ) : OwnedLifecycleProcess(snapshot) {
         override fun payloadUnchanged(): Boolean =
             try {
-                val executable = installation.resolve(NATIVE_QUERY_EXECUTABLE)
+                val executable = installation.resolve(payload.relative)
                 sameExecutable(attributes, executable) &&
                     Files.isExecutable(executable) &&
-                    payloadOwned(installation, manifest, NATIVE_QUERY_EXECUTABLE) &&
+                    payloadOwned(installation, manifest, payload.relative) &&
                     sameExecutable(attributes, executable)
             } catch (_: IOException) {
                 false
@@ -138,10 +142,36 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
             installation: Path,
             manifest: BundledManifest,
         ): ShutdownProcessAdmission {
-            val executable = installation.resolve(NATIVE_QUERY_EXECUTABLE)
-            if (snapshot.command != executable.toString()) return ShutdownProcessAdmission.Rejected
+            val payload =
+                when (
+                    val selected =
+                        NativeToolPayload.entries.find {
+                            snapshot.command == installation.resolve(it.relative).toString()
+                        }
+                ) {
+                    null -> return ShutdownProcessAdmission.Rejected
+                    else -> selected
+                }
+            if (payload == NativeToolPayload.CONTROL) {
+                val arguments = snapshot.arguments.dropWhile { it.startsWith("-D") || it.startsWith("-XX:") }
+                when (val invocation = admitNativeControlInvocation(arguments)) {
+                    is Refinement.Rejected -> return ShutdownProcessAdmission.Rejected
+                    is Refinement.Refined ->
+                        when (invocation.value.entry) {
+                            NativeControlEntry.QUERY,
+                            NativeControlEntry.MCP,
+                            NativeControlEntry.RPC -> Unit
+                            NativeControlEntry.MANAGEMENT,
+                            NativeControlEntry.SERVICE,
+                            NativeControlEntry.DAEMON,
+                            NativeControlEntry.CODEX,
+                            NativeControlEntry.INSTALLER -> return ShutdownProcessAdmission.Rejected
+                        }
+                }
+            }
+            val executable = installation.resolve(payload.relative)
             val attributes = Files.readAttributes(executable, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
-            val process = NativeQuery(snapshot, installation, manifest, attributes)
+            val process = NativeTool(snapshot, installation, manifest, attributes, payload)
             return process.revalidate(LifecycleProcessObservation.Present(snapshot))
         }
 
@@ -192,7 +222,10 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
     }
 }
 
-private const val NATIVE_QUERY_EXECUTABLE = "bin/kast-query"
+private enum class NativeToolPayload(val relative: String) {
+    LEGACY_QUERY("bin/kast-query"),
+    CONTROL("share/kast/libexec/kast-management"),
+}
 
 internal sealed interface ShutdownProcessAdmission {
     data object Finished : ShutdownProcessAdmission
