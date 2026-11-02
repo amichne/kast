@@ -153,9 +153,13 @@ class AgentOnboardingTest(unittest.TestCase):
             binary.write_text(
                 f"#!{sys.executable}\n"
                 "import json, sys\n"
+                "from dataclasses import asdict, dataclass\n"
+                "@dataclass(frozen=True)\n"
+                "class HookAccepted:\n"
+                "    pass\n"
                 "assert sys.argv[1:] == ['hook', 'session-start']\n"
                 "assert json.load(sys.stdin)['cwd']\n"
-                "print('{}')\n"
+                "print(json.dumps(asdict(HookAccepted())))\n"
             )
             binary.chmod(0o755)
             environment = {

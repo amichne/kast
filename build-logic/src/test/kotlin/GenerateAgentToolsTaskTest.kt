@@ -118,6 +118,17 @@ class GenerateAgentToolsTaskTest {
     }
 
     @Test
+    fun `missing preparation hook rejects before replacing admitted output`() {
+        val task = task()
+        task.generate()
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/pi.ts")
+        val original = output.readBytes()
+        task.sourceDirectory.get().asFile.resolve("hooks/pi.ts").delete()
+        assertThrows(IllegalStateException::class.java) { task.generate() }
+        assertArrayEquals(original, output.readBytes())
+    }
+
+    @Test
     fun `stale examples reject before replacing admitted output`() {
         val task = task()
         task.generate()

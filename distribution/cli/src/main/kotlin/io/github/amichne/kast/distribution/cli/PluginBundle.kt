@@ -177,6 +177,13 @@ private constructor(
                         version.mcpServers != if (composition == HarnessComposition.CliWithMcp) "./.mcp.json" else null
                 )
                     return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
+                if (
+                    version.hooks != null &&
+                        listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts").any {
+                            "$prefix/plugins/kast/$it" !in relativeFiles
+                        }
+                )
+                    return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
                 val mcp =
                     readBoundedFile(base.resolve("compositions/mcp/plugins/kast/.mcp.json"), 65536)
                         ?: readBoundedFile(base.resolve("plugins/kast/.mcp.json"), 65536)

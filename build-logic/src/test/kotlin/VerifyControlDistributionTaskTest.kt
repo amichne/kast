@@ -28,12 +28,21 @@ class VerifyControlDistributionTaskTest {
         val root = task.controlDirectory.get().asFile.toPath()
         val defaultTransport = root.resolve("share/kast/agent-tools/plugins/kast/.mcp.json")
         Files.write(defaultTransport, byteArrayOf())
-        assertEquals("default guidance contains automatic MCP, hooks, or Python transport",
+        assertEquals("default guidance contains automatic MCP or Python transport",
             assertThrows(IllegalStateException::class.java, task::verify).message)
         Files.delete(defaultTransport)
         val environment = Files.createDirectories(root.resolve("share/kast/.venv"))
         Files.write(environment.resolve("pyvenv.cfg"), byteArrayOf())
         assertEquals("control product contains a private environment or Python cache",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+    }
+
+    @Test
+    fun `default guidance rejects an undeclared hook`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        Files.write(task.controlDirectory.get().asFile.toPath().resolve(
+            "share/kast/agent-tools/plugins/kast/hooks/foreign.sh"), byteArrayOf())
+        assertEquals("default guidance contains an undeclared hook",
             assertThrows(IllegalStateException::class.java, task::verify).message)
     }
 
@@ -52,6 +61,7 @@ class VerifyControlDistributionTaskTest {
             listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
                 "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
                 "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
+                "plugins/kast/hooks/hooks.json", "plugins/kast/hooks/copilot.json", "plugins/kast/hooks/pi.ts",
                 "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json").map { prefix + it }
         } + listOf(".mcp.json", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
             "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py", "skills/kast/scripts/transport.py",

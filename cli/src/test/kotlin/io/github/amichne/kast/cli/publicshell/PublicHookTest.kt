@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.publicshell
 import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.cli.direct.ClientInstallationFailure
 import io.github.amichne.kast.kernel.Refinement
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
@@ -90,6 +91,31 @@ class PublicHookTest {
                     as io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Rejected)
                 .failure,
         )
+    }
+
+    @Test
+    fun `every preparation rejection keeps its explicit tag and finite cause`() {
+        Files.writeString(directory.resolve("settings.gradle.kts"), "")
+        val cases =
+            listOf(
+                HookPreparationFailure.Stopped to "stopped",
+                HookPreparationFailure.Unproven to "unproven",
+            ) + ClientInstallationFailure.entries.map { HookPreparationFailure.Installation(it) to "installation" }
+        for ((failure, expected) in cases) {
+            val output =
+                preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) {
+                    Refinement.Rejected(failure)
+                }
+            assertEquals(PublicShellExit.RUNTIME, output.exit)
+            val reply = Json.parseToJsonElement(output.text).jsonObject
+            assertEquals(setOf("type", "failure", "cause"), reply.keys)
+            assertEquals("rejected", reply.getValue("type").jsonPrimitive.content)
+            assertEquals("PREPARATION_REJECTED", reply.getValue("failure").jsonPrimitive.content)
+            val cause = reply.getValue("cause").jsonObject
+            assertEquals(expected, cause.getValue("type").jsonPrimitive.content)
+            if (failure is HookPreparationFailure.Installation)
+                assertEquals(failure.failure.name, cause.getValue("failure").jsonPrimitive.content)
+        }
     }
 
     private fun input(text: String = "") = ByteArrayInputStream(text.toByteArray())
