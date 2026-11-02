@@ -178,7 +178,18 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
                     and report.get("activation") == {"type": "not-requested"}
                     and report.get("status") == "installed" for report in reports),
             "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
+    verify_installed_query(fixture, publication, environment)
     verify_native_uninstall(fixture, pair, product, installation, publication, environment, metadata)
+
+
+def verify_installed_query(fixture: InstallerFixture, publication: Path, environment: dict[str, str]) -> None:
+    """The installed public route must admit its real query launcher before rejecting an empty workspace."""
+    result = subprocess.run([str(publication), "query", "--name", "OrderService"],
+                            cwd=fixture.root / "workspace", env=environment,
+                            capture_output=True, text=True, timeout=60)
+    require(result.returncode == 3 and json.loads(result.stdout) == {
+        "type": "rejected", "failure": "OUT_OF_SCOPE"
+    }, "installed query startup failed:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
 
 
 def verify_native_uninstall(fixture, pair, product, installation, publication, environment, metadata):
