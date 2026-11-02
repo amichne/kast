@@ -18,7 +18,9 @@ class NativeQueryLifecycleTest {
         val fixture = fixture(temporary, "share/kast/libexec/kast-management")
         for (entry in listOf("query", "rpc", "mcp")) {
             val observed =
-                fixture.snapshot.copy(arguments = listOf("-Duser.home=/selected", "--internal-entrypoint=$entry"))
+                fixture.snapshot.copy(
+                    arguments = listOf("-Duser.home=/selected", "-Xmx256m", "--internal-entrypoint=$entry")
+                )
             assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit(observed))
         }
         for (arguments in

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3ec0ce20be13545c3901327148bc5c669f546068636797b6ebe1cbaa631c6a04",
+  "pageVersion": "sha256:34d193ecbe4282d8c0d119f75a6ba8a25b380403afe4d9e411deb94f49946165",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -406,7 +406,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:45bbc3d40344af8397d169870747ef66c576c16e0e9e1f9d665409917a010ffc"
+          "version": "repo-file-v1:sha256:5db08fefde02a9e5c862313225a9d811ccfd750a42db6e1da4eb8b83dc7e0f9c"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
@@ -435,10 +435,36 @@
           "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         }
       ]
+    },
+    {
+      "id": "claim_af8fe2699eb44e06a3d75ecd84d5eec2",
+      "statement": "Force retirement admits native worker modes through the shared process adapter, which skips only leading consumed runtime-option families. Management and installer modes remain excluded. Bare -Dfoo, unsupported -X forms, and misplaced selectors remain application data. Unknown modes or unavailable arguments reject before erasure. PID and start identity stay necessary. The native composition case proves retirement of an MCP client with -Xmx256m and removal of disposable Control.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt",
+          "version": "repo-file-v1:sha256:fe34820ea40c160356ef00cf488ee530f34a26797f0cf7ea2a395ec771cfc02b"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
+          "version": "repo-file-v1:sha256:5db08fefde02a9e5c862313225a9d811ccfd750a42db6e1da4eb8b83dc7e0f9c"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt",
+          "version": "repo-file-v1:sha256:7b3789e90cdf091cfc5c65ba5cc28670c26a96428b85153e3cf6b28f3ad2123c"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt",
+          "version": "repo-file-v1:sha256:97e44382c26cb3f081f7cc102eaeaa7c286ec20edb25599962529027d2c3b4e5"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
+          "version": "repo-file-v1:sha256:f71a80f07cd8b750b140955cb8c66a1d7b670f46cb13a8101f373627c7cc744b"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:10:25.214Z"
+    "at": "2026-11-02T18:00:35.237Z"
   }
 }
