@@ -262,17 +262,12 @@ internal fun integrationFixture(
     temporary: Path,
     connection: HarnessConnection,
     sourceContent: String = "release adapter",
+    composition: HarnessComposition = HarnessComposition.CliWithMcp,
 ): Pair<Path, Path> {
     val root = temporary.resolve("kast")
     val home = temporary.resolve("home")
     val installation = root.resolve("installation")
-    val relative =
-        when (connection) {
-            HarnessConnection.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
-            HarnessConnection.PI -> "share/kast/adapters/pi/extension.ts"
-            HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
-            HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
-        }
+    val relative = integrationSourcePath(connection, composition)
     val source = installation.resolve(relative)
     Files.createDirectories(source.parent)
     Files.createDirectories(home)
@@ -310,3 +305,15 @@ internal fun integrationFixture(
     )
     return root to home
 }
+
+private fun integrationSourcePath(connection: HarnessConnection, composition: HarnessComposition): String =
+    when (connection) {
+        HarnessConnection.COPILOT -> "share/kast/adapters/copilot/extension.mjs"
+        HarnessConnection.PI ->
+            when (composition) {
+                HarnessComposition.CliOnly -> "share/kast/agent-tools/plugins/kast/hooks/pi.ts"
+                HarnessComposition.CliWithMcp -> "share/kast/adapters/pi/extension.ts"
+            }
+        HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
+        HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
+    }

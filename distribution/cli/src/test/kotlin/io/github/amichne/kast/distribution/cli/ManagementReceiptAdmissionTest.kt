@@ -3,7 +3,10 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -28,6 +31,34 @@ class ManagementReceiptAdmissionTest {
             "/home/example/.pi/agent/skills/kast",
             listOf(GuidanceFile("SKILL.md", "e".repeat(64))),
         )
+
+    @Serializable
+    private data class LegacyRegistration(
+        val connection: HarnessConnection,
+        val destination: String,
+        val payloadSha256: String,
+    )
+
+    @Test
+    fun `legacy registrations retain MCP and new receipts explicitly encode composition`() {
+        val legacy =
+            LegacyRegistration(HarnessConnection.PI, "/home/example/.pi/agent/extensions/kast.ts", "e".repeat(64))
+        val decoded = managementJson.decodeFromString<ManagedRegistration>(managementJson.encodeToString(legacy))
+        assertEquals(HarnessComposition.CliWithMcp, decoded.composition)
+        for (composition in HarnessComposition.entries) {
+            val registration = decoded.copy(composition = composition)
+            val encoded = managementJson.parseToJsonElement(managementJson.encodeToString(registration)).jsonObject
+            assertEquals(composition.name, encoded.getValue("composition").jsonPrimitive.content)
+            assertEquals(
+                ReceiptRead.Read(receipt.copy(registrations = listOf(registration))),
+                admit(receipt.copy(registrations = listOf(registration))),
+            )
+        }
+        val unknown = managementJson.encodeToString(decoded).replace("CliWithMcp", "UnknownComposition")
+        org.junit.jupiter.api.assertThrows<kotlinx.serialization.SerializationException> {
+            managementJson.decodeFromString<ManagedRegistration>(unknown)
+        }
+    }
 
     @Test
     fun `legacy tracked receipts and consistent installed identities remain admitted`() {
