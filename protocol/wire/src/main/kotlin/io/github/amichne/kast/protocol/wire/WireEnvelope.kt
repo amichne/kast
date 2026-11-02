@@ -84,6 +84,8 @@ internal fun admitWireEnvelope(document: String): WireEnvelopeAdmission {
     val envelope =
         try {
             wireJson.decodeFromString(WireEnvelopeDocument.serializer(), document)
+        } catch (failure: WirePayloadDecodingException) {
+            return WireEnvelopeAdmission.Rejected(WireFailure.InvalidPayload(failure.role))
         } catch (_: SerializationException) {
             return WireEnvelopeAdmission.Rejected(WireFailure.MalformedEnvelope)
         }
@@ -131,13 +133,15 @@ internal data class WireEnvelopeDocument(
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)
 internal sealed interface WireBodyDocument {
-    @Serializable @SerialName("request") data class Request(val value: JsonElement) : WireBodyDocument
+    @Serializable
+    @SerialName("request")
+    data class Request(@Serializable(with = WireRequestJsonSerializer::class) val value: JsonElement) : WireBodyDocument
 
     @Serializable
     @SerialName("complete")
     data class Complete(
         @EncodeDefault(EncodeDefault.Mode.NEVER) val generation: Long? = null,
-        val result: JsonElement,
+        @Serializable(with = WireResultJsonSerializer::class) val result: JsonElement,
         @EncodeDefault(EncodeDefault.Mode.NEVER) val live: LiveEvidenceDocument? = null,
     ) : WireBodyDocument
 
@@ -145,7 +149,7 @@ internal sealed interface WireBodyDocument {
     @SerialName("qualified")
     data class Qualified(
         @EncodeDefault(EncodeDefault.Mode.NEVER) val generation: Long? = null,
-        val result: JsonElement,
+        @Serializable(with = WireResultJsonSerializer::class) val result: JsonElement,
         val qualification: JsonElement,
         @EncodeDefault(EncodeDefault.Mode.NEVER) val live: LiveEvidenceDocument? = null,
     ) : WireBodyDocument
@@ -153,7 +157,7 @@ internal sealed interface WireBodyDocument {
     @Serializable
     @SerialName("rejected")
     data class Rejected(
-        val rejection: JsonElement,
+        @Serializable(with = WireRejectionJsonSerializer::class) val rejection: JsonElement,
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =

@@ -17,6 +17,9 @@ internal object PublicQueryInputFixture {
 
     fun all(fields: List<String>? = null): String = encode(Source.All(), fields = fields)
 
+    fun workConstraint(): String =
+        json.encodeToString(ConstrainedQuery(ConstrainedRun(Source.All(), Emit(null), WorkBudget(1))))
+
     fun references(values: List<String>): String = encode(Source.References(values))
 
     fun unsupportedStep(): String = encode(Source.All(), steps = listOf(Step("check_diagnostics")))
@@ -25,6 +28,18 @@ internal object PublicQueryInputFixture {
         json.encodeToString(Query.serializer(), Query(Run(source, steps, Emit(fields?.let(::SymbolOutput)))))
 
     @Serializable private data class Query(val request: Run)
+
+    @Serializable private data class ConstrainedQuery(val request: ConstrainedRun)
+
+    @Serializable
+    private data class ConstrainedRun(
+        val source: Source,
+        val terminalStep: Emit,
+        val executionBudget: WorkBudget,
+        val type: String = "RUN",
+    )
+
+    @Serializable private data class WorkBudget(val maxWorkUnits: Long)
 
     @Serializable
     private data class Run(

@@ -84,6 +84,12 @@ class PublicToolExecutionConstraintTest {
             }
         assertWorkConstraint(failure.failure)
         assertEquals(failure.failure.explanation(), failure.message)
+        val stringFailure =
+            assertThrows(PublicToolSerializationException::class.java) {
+                Json.decodeFromString(PublicToolRequestSerializer(PublicToolIdentity.QUERY_SYMBOLS), input.toString())
+            }
+        assertEquals(failure.failure, stringFailure.failure)
+        assertEquals(failure.message, stringFailure.message)
     }
 
     @Test
