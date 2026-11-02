@@ -3,8 +3,13 @@ package io.github.amichne.kast.distribution.cli
 import java.nio.file.Path
 
 /** A saved Codex registration selects plugin migration, never a transport registration. */
-internal fun reconnectHarness(root: Path, home: Path, connection: HarnessConnection, environment: Map<String, String>) {
-    when (connection) {
+internal fun reconnectHarness(
+    root: Path,
+    home: Path,
+    registration: ManagedRegistration,
+    environment: Map<String, String>,
+) {
+    when (registration.connection) {
         HarnessConnection.CODEX_MCP,
         HarnessConnection.CODEX_APP_SERVER ->
             when (
@@ -24,6 +29,14 @@ internal fun reconnectHarness(root: Path, home: Path, connection: HarnessConnect
                     throw ManagementRejected("plugin-migration", outcome.asJson())
             }
         HarnessConnection.PI,
-        HarnessConnection.COPILOT -> connectHarness(root, home, connection)
+        HarnessConnection.COPILOT ->
+            connectHarness(
+                root,
+                home,
+                registration.connection,
+                directory = registration.directory?.let(::admittedConnectionDirectory),
+                environment = environment,
+                composition = registration.composition,
+            )
     }
 }

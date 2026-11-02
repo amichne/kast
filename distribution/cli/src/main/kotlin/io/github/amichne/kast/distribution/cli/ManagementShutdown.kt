@@ -151,7 +151,7 @@ private fun reconnect(
     observe(LifecycleObservation.started(outcome.operation, LifecycleStage.REGISTRATIONS))
     for (registration in prior.registrations.distinctBy { it.connection.harness }) {
         try {
-            reconnectHarness(root, home, registration.connection, environment)
+            reconnectHarness(root, home, registration, environment)
         } catch (_: ManagementRejected) {
             observe(
                 LifecycleObservation.rejected(

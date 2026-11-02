@@ -132,6 +132,7 @@ private fun restorePublicConnection(
         ownership = RegistrationOwnership.REPLACE_SELECTED_SLOT,
         directory = directory,
         environment = environment,
+        composition = registration.composition,
     )
 }
 

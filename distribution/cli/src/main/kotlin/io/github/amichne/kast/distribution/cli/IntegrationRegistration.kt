@@ -174,8 +174,7 @@ internal fun connectHarness(
                         current != digest ||
                             (payload is RegistrationPayload.Launcher && !Files.isExecutable(destination))
                     }
-                val record =
-                    ManagedRegistration(connection, destination.toString(), digest, selectedDirectory.path.toString())
+                val record = ManagedRegistration(connection, destination, digest, selectedDirectory, composition)
                 val next =
                     receipt.copy(
                         registrations = receipt.registrations.filterNot { it.connection == connection } + record

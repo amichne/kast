@@ -107,26 +107,32 @@ class PublicReinstallationTest {
 
     @Test
     fun `receipt recovery repairs the recorded Pi directory with the new adapter`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.PI, "old adapter")
-        val selected = temporary.resolve("selected-pi")
+        for (composition in HarnessComposition.entries) restorePiComposition(composition)
+    }
+
+    private fun restorePiComposition(composition: HarnessComposition) {
+        val case = Files.createDirectory(temporary.resolve(composition.name))
+        val (root, home) = integrationFixture(case, HarnessConnection.PI, "old adapter", composition)
+        val selected = case.resolve("selected-pi")
         val directory =
             (ConnectionDirectory.admit(selected.toString()) as ConnectionDirectoryAdmission.Admitted).directory
-        connectHarness(root, home, HarnessConnection.PI, directory = directory)
+        connectHarness(root, home, HarnessConnection.PI, directory = directory, composition = composition)
         val destination = registrationDestinationFor(root, HarnessConnection.PI, directory)
-        val recovery = temporary.resolve("saved-connections.json")
+        val recovery = case.resolve("saved-connections.json")
         val environment =
             mapOf(
                 "HOME" to home.toString(),
                 "KAST_PUBLIC_RESET_RECOVERY" to recovery.toString(),
-                "PI_CODING_AGENT_DIR" to temporary.resolve("unrelated-pi").toString(),
+                "PI_CODING_AGENT_DIR" to case.resolve("unrelated-pi").toString(),
             )
         assertEquals(LifecycleEffect.Completed, savePublicResetConnections(root, environment))
-        integrationFixture(temporary, HarnessConnection.PI, "new adapter")
+        integrationFixture(case, HarnessConnection.PI, "new adapter", composition)
         assertEquals(LifecycleEffect.Completed, restorePublicResetConnections(root, environment))
         assertTrue(Files.readString(destination).contains("new adapter"))
         val receipt = (readReceipt(root) as ReceiptRead.Read).receipt
         assertEquals(selected.toString(), receipt.registrations.single().directory)
-        assertFalse(Files.exists(temporary.resolve("unrelated-pi")))
+        assertEquals(composition, receipt.registrations.single().composition)
+        assertFalse(Files.exists(case.resolve("unrelated-pi")))
     }
 
     @Test

@@ -227,7 +227,7 @@ internal fun upgradeInstallation(
         .distinctBy { it.connection.harness }
         .forEach { registration ->
             try {
-                reconnectHarness(root, home, registration.connection, environment)
+                reconnectHarness(root, home, registration, environment)
             } catch (_: ManagementRejected) {
                 failures += registration.connection
             }
