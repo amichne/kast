@@ -372,17 +372,17 @@ class RemoteCatalogTest(unittest.TestCase):
             Step("GET", "git/ref/heads/main", response(Ref(Sha("f" * 40)))),
             Step(
                 "GET",
-                f"compare/{entry(1).mainRevision}..." + "f" * 40,
+                f"compare/{entry(1).mainRevision}..." + "f" * 40 + "?per_page=1&page=2",
                 response(Comparison("ahead")),
             ),
             Step(
                 "GET",
-                f"compare/{entry(2).mainRevision}..." + "f" * 40,
+                f"compare/{entry(2).mainRevision}..." + "f" * 40 + "?per_page=1&page=2",
                 response(Comparison("ahead")),
             ),
             Step(
                 "GET",
-                f"compare/{entry(1).mainRevision}...{entry(2).mainRevision}",
+                f"compare/{entry(1).mainRevision}...{entry(2).mainRevision}?per_page=1&page=2",
                 response(Comparison("ahead")),
             ),
         )
@@ -396,7 +396,7 @@ class RemoteCatalogTest(unittest.TestCase):
             Step("GET", "git/ref/heads/main", response(Ref(Sha("f" * 40)))),
             Step(
                 "GET",
-                f"compare/{entry(1).mainRevision}..." + "f" * 40,
+                f"compare/{entry(1).mainRevision}..." + "f" * 40 + "?per_page=1&page=2",
                 response(Comparison("diverged")),
             ),
         )
@@ -407,6 +407,31 @@ class RemoteCatalogTest(unittest.TestCase):
             ),
         )
         invalid.consumed()
+
+    def test_comparison_uses_page_status_without_file_or_commit_evidence(self) -> None:
+        older = entry(1).mainRevision
+        newer = entry(2).mainRevision
+        for status in ("ahead", "behind", "identical", "diverged", "unknown"):
+            with self.subTest(status=status):
+                script = Script(
+                    Step(
+                        "GET",
+                        f"compare/{older}...{newer}?per_page=1&page=2",
+                        response(Comparison(status)),
+                    ),
+                )
+                expected = (
+                    status
+                    if status in ("ahead", "behind", "identical")
+                    else catalog.Failure.MAIN_HISTORY_UNPROVEN
+                )
+                self.assertEqual(
+                    expected,
+                    publisher.RemotePublisher(REPOSITORY, entry(2), script.run).comparison(
+                        older, newer
+                    ),
+                )
+                script.consumed()
 
 
 if __name__ == "__main__":
