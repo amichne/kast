@@ -71,6 +71,30 @@ class ResetInventoryObservationTest {
     }
 
     @Test
+    fun `native and Java processes need observed arguments while a genuine empty array stays empty`() {
+        for (command in listOf("/jdk/bin/java", "/fixture/kast/installation/share/kast/libexec/kast-management")) {
+            val observations = mutableListOf<ResetInventoryObservation>()
+            val missing = ArgumentsProcess(command, Optional.empty())
+            assertEquals(
+                ResetProcessTable.Unavailable,
+                NativeForceDaemonRuntime.collectSnapshots(listOf(missing), "owner", observations::add),
+            )
+            assertEquals(
+                listOf(
+                    ResetInventoryObservation(
+                        ResetInventoryOutcome.Rejected(7, ResetInventoryRejection.ARGUMENTS_UNAVAILABLE)
+                    )
+                ),
+                observations,
+            )
+            val empty = ArgumentsProcess(command, Optional.of(emptyArray()))
+            val admitted =
+                NativeForceDaemonRuntime.collectSnapshots(listOf(empty), "owner", {}) as ResetProcessTable.Observed
+            assertEquals(emptyList<String>(), admitted.processes.single().arguments)
+        }
+    }
+
+    @Test
     fun `each inventory result matches an independent closed encoded shape`() {
         val outcomes =
             listOf(ResetInventoryOutcome.Observed(0)) +
@@ -93,6 +117,20 @@ class ResetInventoryObservationTest {
                 .jsonArray
         invalid.forEach { assertTrue(schema.validate(it.toString(), InputFormat.JSON).isNotEmpty()) }
     }
+}
+
+private class ArgumentsProcess(private val executable: String, private val args: Optional<Array<String>>) :
+    ProcessHandle by UnknownOwnerProcess() {
+    override fun info() =
+        object : ProcessHandle.Info by UnknownOwnerProcess().info() {
+            override fun user(): Optional<String> = Optional.of("owner")
+
+            override fun command(): Optional<String> = Optional.of(executable)
+
+            override fun arguments(): Optional<Array<String>> = args
+
+            override fun startInstant(): Optional<java.time.Instant> = Optional.of(java.time.Instant.ofEpochMilli(101))
+        }
 }
 
 private class CommandMissingProcess : ProcessHandle by UnknownOwnerProcess() {

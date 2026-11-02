@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ba6e34cc79fc27322d5fd300f2a18d2ec4d0a92bcd10976466a6989836bdce8b",
+  "pageVersion": "sha256:be85f8ec23181eb3d938d65e14f44ca844086937c583a8a32d3f5faa63ccab60",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -74,7 +74,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
-          "version": "repo-file-v1:sha256:75e8134123d47e3288ad7d680fb56354b14cf84524746365cd2c1bee8314d6f0"
+          "version": "repo-file-v1:sha256:91fb02f27d6b68d970556e95239d2959acaedeb5ae93e0a92b38350a2727309b"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
@@ -85,6 +85,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:14:13.237Z"
+    "at": "2026-11-02T17:46:24.113Z"
   }
 }

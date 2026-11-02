@@ -2,7 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
-import io.github.amichne.kast.distribution.contract.admitNativeControlInvocation
+import io.github.amichne.kast.distribution.contract.admitNativeControlProcessInvocation
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.Files
@@ -153,8 +153,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                     else -> selected
                 }
             if (payload == NativeToolPayload.CONTROL) {
-                val arguments = snapshot.arguments.dropWhile { it.startsWith("-D") || it.startsWith("-XX:") }
-                when (val invocation = admitNativeControlInvocation(arguments)) {
+                when (val invocation = admitNativeControlProcessInvocation(snapshot.arguments)) {
                     is Refinement.Rejected -> return ShutdownProcessAdmission.Rejected
                     is Refinement.Refined ->
                         when (invocation.value.entry) {

@@ -4,12 +4,15 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and CLI guidance provisioning."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-11-02T16:49:19Z"
-source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
+timestamp: "2026-11-02T17:46:02Z"
+source_revision: 55ec69174cde1a5a74fcb48be2620048d427ad84
 code_sources:
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
@@ -44,6 +47,10 @@ Explicit `uninstall --force` and `reinstall --force` bypass old payload and rece
 These operations still need a canonical deletion scope, an exterior reset fence, and a stable lock.
 Record durable retention intent before atomic detachment.
 Prove retirement of root-scoped jobs and process incarnations before erasure.
+Force retirement admits native worker modes through `NativeControlEntry`.
+Use `admitNativeControlProcessInvocation` for observed process arguments.
+Exclude management and installer modes.
+Reject unavailable process arguments before retirement or erasure.
 
 Remove only the exact selected installation's exterior login entries.
 Never signal shared IDEA or Gradle processes.

@@ -275,6 +275,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-02ab91cf3c45f7eb0a7c73b8
     resource: repo://cli/src/main/native-launchers/bin/kast
+  - id: openwiki-source-6e0cb99be2f37815eed2066a
+    resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt
   - id: openwiki-source-ea2b24fdd206a91568317996
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
@@ -297,12 +299,18 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - id: openwiki-source-a62e12ff14ead337deede61b
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
+  - id: openwiki-source-36e0824ede001594d7142429
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-47ff7393e051378d9c971323
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallRetirementJournal.kt
   - id: openwiki-source-d6537b8c3c1d3e623334d7d1
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt
+  - id: openwiki-source-c6a7f896f4d5f15e0d036721
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt
+  - id: openwiki-source-879895757e79a8add3de70b0
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
@@ -329,10 +337,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
+generated: { by: "codex", at: "2026-11-02T18:00:35.237Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-02T18:00:35.237Z
 ---
 
 # Distribution and packaging
@@ -352,6 +360,12 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload.
 Direct tools and coordinator startup honor the fence.
+Force retirement recognizes worker modes in the canonical native Control image through the shared mode contract.
+The process adapter skips only leading runtime options that the pinned GraalVM parser consumes.
+Bare `-Dfoo`, unsupported `-X` forms, and misplaced selectors stay application data.
+It excludes management and installer modes and rejects an unknown mode or unavailable process arguments before erasure.
+The selected PID and start identity remain necessary through capture and retirement.
+The disposable native force-uninstall case keeps an MCP client alive before removal and asserts its retirement and Control removal.
 Stop disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget.
 Force retirement signals only admitted exact process incarnations with qualified installed classpaths.
 A running selected IDEA host rejects with `HOST_RESTART_REQUIRED`.

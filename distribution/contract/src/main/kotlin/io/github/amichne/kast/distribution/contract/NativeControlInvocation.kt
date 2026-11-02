@@ -19,6 +19,20 @@ enum class NativeControlFailure {
     ENTRYPOINT_REJECTED
 }
 
+/** OS process arguments include native runtime options before the application's selector. */
+fun admitNativeControlProcessInvocation(
+    arguments: List<String>
+): Refinement<NativeControlInvocation, NativeControlFailure> =
+    admitNativeControlInvocation(
+        arguments.dropWhile { argument ->
+            (argument.startsWith("-D") && '=' in argument) ||
+                argument.startsWith("-Djdk.graal.") ||
+                argument.startsWith("-Dgraal.") ||
+                argument.startsWith("-XX:") ||
+                listOf("-Xmn", "-Xms", "-Xmx", "-Xss").any { argument.startsWith(it) }
+        }
+    )
+
 fun admitNativeControlInvocation(arguments: List<String>): Refinement<NativeControlInvocation, NativeControlFailure> =
     when (val first = arguments.firstOrNull()) {
         null -> Refinement.Refined(NativeControlInvocation(NativeControlEntry.MANAGEMENT, arguments))

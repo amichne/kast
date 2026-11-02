@@ -43,7 +43,7 @@ sources:
 generated: { by: "codex", at: "2026-11-02T17:14:13.237Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:14:13.237Z
+    at: 2026-11-02T17:46:24.113Z
 ---
 
 # Native management and harness connections

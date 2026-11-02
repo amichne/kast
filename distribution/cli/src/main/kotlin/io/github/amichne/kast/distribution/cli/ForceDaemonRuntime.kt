@@ -1,5 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.NativeControlEntry
+import io.github.amichne.kast.distribution.contract.admitNativeControlProcessInvocation
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.time.Duration
@@ -85,21 +88,45 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                 } catch (_: IllegalArgumentException) {
                     return ResetProcessSelection.Unrelated
                 }
+            if (isNativeControlProcessExecutable(command) && command.startsWith(root))
+                return nativeSelected(snapshot, root)
             val direct = directSelected(command, root) || shellSelected(command, snapshot.arguments, root)
-            val index = snapshot.arguments.indexOfFirst { it == "-cp" || it == "-classpath" }
-            val java =
-                command.fileName.toString() == "java" &&
-                    index >= 0 &&
-                    index + 2 < snapshot.arguments.size &&
-                    snapshot.arguments[index + 2] in mains &&
-                    classpathSelected(snapshot.arguments[index + 1], root)
+            val java = jvmSelected(command, snapshot.arguments, root)
             val codex = ResetCodexListener.selects(command, snapshot.arguments, root)
             return when {
                 !direct && !java && !codex -> ResetProcessSelection.Unrelated
-                snapshot.pid <= 0 || snapshot.startEpochMillis <= 0 -> ResetProcessSelection.Rejected
-                else -> ResetProcessSelection.Selected(ResetScopedProcess(snapshot, root))
+                else -> admitSnapshot(snapshot, root)
             }
         }
+
+        private fun jvmSelected(command: Path, arguments: List<String>, root: Path): Boolean {
+            val index = arguments.indexOfFirst { it == "-cp" || it == "-classpath" }
+            return command.fileName.toString() == "java" &&
+                index >= 0 &&
+                index + 2 < arguments.size &&
+                arguments[index + 2] in mains &&
+                classpathSelected(arguments[index + 1], root)
+        }
+
+        private fun nativeSelected(snapshot: LifecycleProcessSnapshot, root: Path): ResetProcessSelection =
+            when (val admitted = admitNativeControlProcessInvocation(snapshot.arguments)) {
+                is Refinement.Rejected -> ResetProcessSelection.Rejected
+                is Refinement.Refined ->
+                    when (admitted.value.entry) {
+                        NativeControlEntry.QUERY,
+                        NativeControlEntry.MCP,
+                        NativeControlEntry.RPC,
+                        NativeControlEntry.SERVICE,
+                        NativeControlEntry.DAEMON,
+                        NativeControlEntry.CODEX -> admitSnapshot(snapshot, root)
+                        NativeControlEntry.MANAGEMENT,
+                        NativeControlEntry.INSTALLER -> ResetProcessSelection.Unrelated
+                    }
+            }
+
+        private fun admitSnapshot(snapshot: LifecycleProcessSnapshot, root: Path): ResetProcessSelection =
+            if (snapshot.pid <= 0 || snapshot.startEpochMillis <= 0) ResetProcessSelection.Rejected
+            else ResetProcessSelection.Selected(ResetScopedProcess(snapshot, root))
 
         private fun directSelected(command: Path, root: Path): Boolean {
             if (!command.isAbsolute || command.normalize() != command) return false
@@ -141,6 +168,11 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
             }
     }
 }
+
+internal fun isNativeControlProcessExecutable(command: Path): Boolean =
+    command.isAbsolute &&
+        command.normalize() == command &&
+        command.endsWith(Path.of("share/kast/libexec/kast-management"))
 
 internal sealed interface ResetProcessSelection {
     data class Selected(val process: ResetScopedProcess) : ResetProcessSelection
