@@ -311,17 +311,13 @@ def test_bad_tools_cannot_become_zero_active_time(
     duration: float,
     reason: TimingFailure,
 ) -> None:
-    result = measure(
-        two_responses()
-        + (
-            {
-                "type": "tool_end",
-                "toolCallId": identity,
-                "elapsedMillis": end,
-                "durationMillis": duration,
-            },
-        )
-    )
+    tool: dict[str, JsonValue] = {
+        "type": "tool_end",
+        "toolCallId": identity,
+        "elapsedMillis": end,
+        "durationMillis": duration,
+    }
+    result = measure(two_responses() + (tool,))
     assert result.tool_active_seconds == Unavailable(reason=reason)
     assert result.provider_client_seconds == Available(value=4)
 
