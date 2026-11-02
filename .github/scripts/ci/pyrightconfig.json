@@ -3,6 +3,7 @@
   "typeCheckingMode": "strict",
   "include": [
     "required_checks.py",
+    "fast_checks.py",
     "native_handoff.py",
     "../release/finalize_assets.py",
     "validation_scope.py",

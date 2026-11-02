@@ -51,11 +51,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
+
       - name: Test CI decisions
         run: |
           echo "Semantic fixture switch: $KAST_SEMANTIC_FIXTURES" >> "$GITHUB_STEP_SUMMARY"
-          python3 -m unittest discover -s .github/scripts/ci -p 'test_*.py'
-          python3 .github/scripts/release/test_build_candidate.py
+          uv run --locked --script .github/scripts/ci/fast_checks.py decisions
 
       - name: Select checks
         id: scope
