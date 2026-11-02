@@ -174,12 +174,25 @@ Verify actual Linux retention with the successful main push job and its candidat
 Run the focused checks from the repository root:
 
 ```sh
-python3 -m unittest discover -s .github/scripts/ci -p 'test_*.py'
-python3 .github/scripts/release/test_build_candidate.py
+uv run --locked --script .github/scripts/ci/fast_checks.py
 uv run --locked --project docs/tooling pyright --project .github/scripts/ci/pyrightconfig.json
 python3 .github/scripts/ci/verify_documentation.py
 actionlint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows/developer-release.yml
 ```
+
+`fast_checks.py` owns the cheap check sequence. Its default `local` mode runs CI
+decisions, candidate rules, release preflight suites, and portable packaging tests.
+It accepts an uncommitted tree and stops at the first failed stage.
+CI runs its `decisions` mode before scope selection; the separate portable job
+retains the Linux container boundary. Pre-push uses its `pre-push` mode, which
+adds the unchanged full product gate only after every cheap stage passes.
+
+Use uv 0.12.9 or newer. The script locks its dependencies and selects Python 3.12.
+Initial environment provisioning can use the network. Test execution uses private
+directories and excludes caller credentials, Git repository variables, user Git
+configuration, and pytest filters. The full product gate retains the caller's
+project toolchain and GitHub authentication. Cheap success does not establish
+source or native qualification, and does not replace the remaining checks above.
 
 The decision and rollout modules have a strict Pyright configuration.
 The candidate tests keep product provenance checks and exercise explicit no-publication and rejection paths.

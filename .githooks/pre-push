@@ -21,5 +21,5 @@ done
 [[ "${validate}" == true ]] || exit 0
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || fail "commit or remove working-tree changes before pushing"
 
-echo "kast pre-push: validating ${head} with productBuildGate" >&2
-exec mise exec -- python3 "${repo_root}/distribution/release/run_product_gate.py"
+echo "kast pre-push: fast checks before productBuildGate for ${head}" >&2
+exec mise exec -- uv run --locked --script "${repo_root}/.github/scripts/ci/fast_checks.py" pre-push
