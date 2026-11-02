@@ -185,6 +185,27 @@ The decision and rollout modules have a strict Pyright configuration.
 The candidate tests keep product provenance checks and exercise explicit no-publication and rejection paths.
 Hosted CI must validate the final pull-request head before review completes.
 
+## Reproduce a candidate build
+
+Supply the committed revision and the candidate version from the CI run:
+
+```sh
+bash .github/scripts/ci/reproduce.sh <commit-or-ref> --version <major>.<minor>.<patch>
+```
+
+The version has no default. Missing or malformed versions reject the command before worktree creation.
+
+Set `KAST_RELEASE_JDK_25` to a Java 25 home before the command.
+The helper resolves the ref once and creates a detached worktree at that commit.
+It passes the supplied version to that checkout's `verify.sh` without source changes.
+The command uses the pinned IDEA distribution and ignores `KAST_ACCEPTANCE_IDEA_HOME`.
+
+The printed path identifies the kept checkout. Its parent contains `ci.log` with both output streams.
+The checkout also keeps the build reports after success or failure.
+A failed candidate build preserves its nonzero exit status.
+
+This command runs the complete candidate build and grants no publication authority.
+
 ## Source obligations and qualification
 
 `source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
