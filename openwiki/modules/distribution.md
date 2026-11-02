@@ -337,10 +337,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-02T18:00:35.237Z" }
+generated: { by: "codex", at: "2026-11-02T18:28:45.652Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T18:00:35.237Z
+    at: 2026-11-02T18:28:45.652Z
 ---
 
 # Distribution and packaging
@@ -424,7 +424,8 @@ Successful main candidate reuse skips Gradle setup.
 An authorized full CI dispatch on accepted main can seed the shared cache without automatic developer publication.
 Configured transport does not establish an observed task cache hit or lower build time.
 CI pins GraalVM 25.0.2 and keeps native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. The unified producer uses `-Os` and transfers one exact executable through the native handoff.
-Native optimization remains unchanged.
+Mac qualification imports the executable from the assembled Control archive into the existing `publicLauncherTest` suite before candidate sealing.
+The workflow keeps the native suite's XML and HTML reports with the Mac qualification evidence.
 Stable full and component releases keep explicit versions that affect compiled bytes, so a different version requires another build.
 The existing stable release path rejects active producers before falling back to exact-version construction.
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:34d193ecbe4282d8c0d119f75a6ba8a25b380403afe4d9e411deb94f49946165",
+  "pageVersion": "sha256:b3caec1e51b529a7ded134809cf6fce672c246db35bac451c68c2a1334d0c02c",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -310,7 +310,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:13bbff83ef5d58b5e555d6fa89d82d7a334baaec922b7e7a78ac8181f2f0bb74"
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
         }
       ]
     },
@@ -342,11 +342,11 @@
         },
         {
           "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:d00c9efed1da85a32cfaf911b16a6badf62e60c6f0b3d87fc4cc642a2807fbb2"
+          "version": "repo-file-v1:sha256:344c91d6b27b544fb19098c9113920bff665273afc43ee3fcba128e724727bc4"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:13bbff83ef5d58b5e555d6fa89d82d7a334baaec922b7e7a78ac8181f2f0bb74"
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -368,7 +368,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:13bbff83ef5d58b5e555d6fa89d82d7a334baaec922b7e7a78ac8181f2f0bb74"
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -461,10 +461,28 @@
           "version": "repo-file-v1:sha256:f71a80f07cd8b750b140955cb8c66a1d7b670f46cb13a8101f373627c7cc744b"
         }
       ]
+    },
+    {
+      "id": "claim_c17f927dc53b494e8601ed1439016475",
+      "statement": "Mac qualification imports the assembled Control archive's executable into the existing publicLauncherTest suite before candidate sealing. The workflow initializes the existing Gradle cache owner before qualification and retains the suite's XML and HTML reports.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/native_handoff.py",
+          "version": "repo-file-v1:sha256:344c91d6b27b544fb19098c9113920bff665273afc43ee3fcba128e724727bc4"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T18:00:35.237Z"
+    "at": "2026-11-02T18:28:45.652Z"
   }
 }
