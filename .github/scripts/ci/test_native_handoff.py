@@ -68,14 +68,23 @@ class NativeHandoffTest(unittest.TestCase):
             with (
                 patch.object(native_handoff, "ROOT", root),
                 patch.dict(native_handoff.os.environ, {"JAVA_HOME": str(java)}),
-                patch.object(native_handoff, "gradle") as gradle,
+                patch.object(native_handoff, "run") as prepare,
             ):
                 native_handoff.stage_inputs(identity, root / "input-bundle")
-                gradle.assert_called_once_with(
-                    identity,
-                    ":distribution:cli:assembleNativeImageInputs",
-                    ":cli:assembleNativeImageInputs",
+                prepare.assert_called_once()
+                command = prepare.call_args.args[0]
+                self.assertEqual("./gradlew", command[0])
+                self.assertEqual(
+                    [
+                        ":distribution:cli:assembleNativeImageInputs",
+                        ":cli:assembleNativeImageInputs",
+                    ],
+                    [argument for argument in command if argument.startswith(":")],
                 )
+                self.assertIn("--no-daemon", command)
+                self.assertIn("--no-parallel", command)
+                self.assertIn(f"-Pversion={identity.version}", command)
+                self.assertIn(f"-PkastSourceRevision={identity.revision}", command)
                 payload = admit(root / "input-bundle", identity, Kind.INPUTS)
                 if not isinstance(payload, Admitted):
                     self.fail("matching inputs rejected")
