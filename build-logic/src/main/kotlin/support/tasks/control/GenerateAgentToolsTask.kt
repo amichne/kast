@@ -75,7 +75,8 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("references/onboarding.md", "references/query-schema.json", "references/query-examples.json",
-            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
+            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts",
+            "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
             "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py",
             "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock", "skills/kast/scripts/transport.py")
         check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
