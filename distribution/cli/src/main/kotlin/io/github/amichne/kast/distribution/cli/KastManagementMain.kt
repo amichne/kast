@@ -11,6 +11,10 @@ import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parsers.CommandLineParser
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
+import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
+import io.github.amichne.kast.distribution.output.cliOutputRejection
+import io.github.amichne.kast.kernel.Refinement
 import kotlin.system.exitProcess
 
 fun main(arguments: Array<String>) {
@@ -18,15 +22,25 @@ fun main(arguments: Array<String>) {
         executeInternalInstall(arguments.toList())
         return
     }
+    val output =
+        when (val format = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
+            is Refinement.Refined -> ManagementOutput(format.value)
+            is Refinement.Rejected -> {
+                println(cliOutputRejection(format.failure, CliOutputFormat.JSON))
+                exitProcess(2)
+            }
+        }
     when (val parsed = parseManagementCommand(arguments.toList())) {
         is ManagementParsing.Selected ->
             try {
-                perform(parsed.command)
+                perform(parsed.command, output)
             } catch (failure: ManagementRejected) {
                 System.err.println("kast: ${failure.stage}: ${failure.reason}")
+                output.rejected("${failure.stage}: ${failure.reason}")
                 exitProcess(1)
             }
         is ManagementParsing.Print -> {
+            if (parsed.error) output.rejected(parsed.text)
             (if (parsed.error) System.err else System.out).println(parsed.text)
             if (parsed.error) exitProcess(2)
         }

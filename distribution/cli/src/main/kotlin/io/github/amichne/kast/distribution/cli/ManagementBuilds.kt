@@ -27,9 +27,9 @@ internal fun selectableBuilds(read: (String) -> ReleaseDocumentRead = ::readRele
     }
 }
 
-internal fun printSelectableBuilds(json: Boolean) {
+internal fun printSelectableBuilds(json: Boolean, output: ManagementOutput = ManagementOutput()) {
     val outcome = selectableBuilds()
-    if (json) println(managementJson.encodeToString(outcome))
+    if (output.structured(json)) output.publish(managementJson.encodeToString(outcome))
     else
         when (outcome) {
             is VersionsOutcome.Listed -> println(selectableBuildLines(outcome).joinToString("\n"))

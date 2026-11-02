@@ -73,6 +73,7 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
         arguments: List<String>,
         captureOutput: Boolean = true,
         directory: Path = home,
+        environment: Map<String, String> = emptyMap(),
     ): Process =
         ProcessBuilder(listOf(requiredExecutable("kast.publicLauncher").toString()) + arguments)
             .directory(directory.toFile())
@@ -81,6 +82,7 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
                 environment().clear()
                 environment()["HOME"] = home.toString()
                 environment()["PATH"] = "/usr/bin:/bin"
+                environment().putAll(environment)
                 if (captureOutput) redirectOutput(evidence.resolve("$label.stdout").toFile())
             }
             .start()

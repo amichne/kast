@@ -34,8 +34,13 @@ internal fun installGuidance(
             }
     }
 
-internal fun presentProvisioning(outcome: ProvisionOutcome, json: Boolean) {
-    if (json) println(managementJson.encodeToString(outcome))
+internal fun presentProvisioning(
+    outcome: ProvisionOutcome,
+    jsonRequested: Boolean,
+    output: ManagementOutput = ManagementOutput(),
+) {
+    val json = output.structured(jsonRequested)
+    if (json) output.publish(managementJson.encodeToString(outcome))
     when (outcome) {
         is ProvisionOutcome.Installed -> {
             if (!json) println("Installed Kast guidance at ${outcome.destination}")

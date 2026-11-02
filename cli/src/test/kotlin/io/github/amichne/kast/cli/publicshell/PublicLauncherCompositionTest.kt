@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
+import dev.toonformat.jtoon.JToon
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -21,6 +22,32 @@ import org.junit.jupiter.api.io.TempDir
 @Tag("public-launcher")
 class PublicLauncherCompositionTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
+
+    @Test
+    fun `actual native executables select TOON and preserve result data and exit status`() {
+        NativePublicFixture(temporary).use { fixture ->
+            for ((index, case) in
+                listOf(
+                        listOf("query", "plan", "--name", "OrderService") to 0,
+                        listOf("describe", "query", "--section", "input") to 0,
+                        listOf("query", "--name", "OrderService", "--unknown") to 2,
+                        listOf("status", "--json") to 0,
+                    )
+                    .withIndex()) {
+                val (arguments, exit) = case
+                val standard = fixture.start("json-$index", arguments)
+                fixture.assertExit(standard, exit, "json-$index")
+                val toon = fixture.start("toon-$index", arguments, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
+                fixture.assertExit(toon, exit, "toon-$index")
+                val encoded = Files.readString(temporary.resolve("toon-$index.stdout"))
+                assertFalse(encoded.trimStart().startsWith("{"))
+                assertEquals(
+                    Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
+                    Json.parseToJsonElement(JToon.decodeToJson(encoded)),
+                )
+            }
+        }
+    }
 
     @Test
     fun `native metadata help plans and invalid input avoid host effects and unrequested stdin`() {

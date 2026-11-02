@@ -3,6 +3,11 @@
 Use the installed `kast` command for Kotlin queries without MCP registration.
 The existing IntelliJ Host remains necessary for semantic work.
 
+Set `KAST_OUTPUT_TOON=1` to select TOON for CLI result documents, including errors, plans, descriptors, and management results.
+Unset the variable or set it to `0` for the default output.
+Keep JSON request documents and issued references unchanged.
+Help, version text, stderr diagnostics, MCP, and tool RPC keep their existing formats.
+
 First inspect the installed contract:
 
 ```sh

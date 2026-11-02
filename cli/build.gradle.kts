@@ -99,6 +99,8 @@ tasks.register<Tar>("assembleNativeImageInputs") {
 }
 
 dependencies {
+    implementation(project(":distribution:output"))
+    testImplementation(libs.jtoon)
     testImplementation(testFixtures(project(":app-server")))
     testImplementation(testFixtures(project(":protocol:wire")))
     testImplementation(project(":query:protocol"))

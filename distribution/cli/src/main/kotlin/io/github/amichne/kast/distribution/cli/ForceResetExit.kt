@@ -5,8 +5,12 @@ internal enum class ForceResetExit {
     INCOMPLETE,
 }
 
-internal fun presentForceReset(outcome: ForceResetOutcome, json: Boolean): ForceResetExit {
-    if (json) println(outcome.asJson()) else presentHumanReset(outcome)
+internal fun presentForceReset(
+    outcome: ForceResetOutcome,
+    json: Boolean,
+    output: ManagementOutput = ManagementOutput(),
+): ForceResetExit {
+    if (output.structured(json)) output.publish(outcome.asJson()) else presentHumanReset(outcome)
     return when (outcome) {
         is ForceResetOutcome.Removed,
         is ForceResetOutcome.Installed -> ForceResetExit.COMPLETE

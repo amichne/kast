@@ -178,7 +178,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureModel.kt",
-            "sha256": "6574d463eaaff0bd5088c874ead0f1548853595326a75a097f598e31b6eec51e"
+            "sha256": "385de364a9e5390b77febeb166a2df0cabad4e8a8da2869ef46c556754f0901f"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/ArchitectureVerification.kt",
@@ -234,7 +234,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "3176fd190ae5d6d9f8e839017fd50c0bbfd85b6138ccb0fcf8123f11e53b8082"
+            "sha256": "2c21f819c76576cbf67a86c397d553fe014bf6afd5bed42aee1411838b5d8965"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
@@ -250,11 +250,11 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/validation/ArchitecturePolicyValidator.kt",
-            "sha256": "68d4afe226735bb195b751d3b4729793cb4c5690cae32aef78230d107987aca6"
+            "sha256": "f33908539ed06c886cba77e8ac68896ddcb5c7cd1b63bf341f65e8dd9d256620"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
-            "sha256": "b63cc9b9145f7c1d9cd8d37d34439c2e77d6c49da2bad875e1cf90358f690aff"
+            "sha256": "16fbaaf929777eb8210c615cbb81bbafe3d051831e3ecd4029b7b87efaa20f3a"
         },
         {
             "path": "build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt",
@@ -390,7 +390,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "c2c80c1cebc909324cb18a46b92f43891db787725b0f07167edf019e02aa0274"
+            "sha256": "ff47f5eb30a3e0f1d1cd769025dc9c5a6671510866caf06bec9636c03ba5b93e"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",
@@ -406,7 +406,7 @@
         },
         {
             "path": "distribution/cli/build.gradle.kts",
-            "sha256": "4d9e01dd3fb1e084f8994a1991f3b736a79da2429b3453c9eb04412c5f9a2472"
+            "sha256": "bfd1ee0839f3618f7c68e465039b84f5ee2f87e9da57c7f846620ad473fef2b1"
         },
         {
             "path": "distribution/contract/build.gradle.kts",
@@ -415,6 +415,10 @@
         {
             "path": "distribution/managed/build.gradle.kts",
             "sha256": "306b80ab3f761a5964277537f70f08b5cdf0f7769e33102dae44a71d1f87da08"
+        },
+        {
+            "path": "distribution/output/build.gradle.kts",
+            "sha256": "2cc0b0689091a37a97bea1e2a93e13ffff7a9c3943127680599eb5890de97d17"
         },
         {
             "path": "evidence/contract/build.gradle.kts",
@@ -434,7 +438,7 @@
         },
         {
             "path": "gradle/libs.versions.toml",
-            "sha256": "2b3eba49249af04a0a0e5b9ce4e5e5a6d3692d7deb4b074ec50a3d6a6d95d3ac"
+            "sha256": "38421c6e66435f4ac86fe651e39578a7b02962e29f7c8af8cf407ed6fb612351"
         },
         {
             "path": "kernel/build.gradle.kts",
@@ -486,7 +490,7 @@
         },
         {
             "path": "settings.gradle.kts",
-            "sha256": "451efb90975ea5e1e2c2a27609066b1324412e0d2722e3141e255d417c62fdac"
+            "sha256": "a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
         },
         {
             "path": "source/contract/build.gradle.kts",
@@ -813,7 +817,8 @@
                 ":cli",
                 ":distribution:cli",
                 ":distribution:contract",
-                ":distribution:managed"
+                ":distribution:managed",
+                ":distribution:output"
             ],
             "sourceRoots": [
                 "distribution/contract/src/main/java",
@@ -839,6 +844,22 @@
                 "distribution/managed/src/test/java",
                 "distribution/managed/src/test/kotlin",
                 "distribution/managed/src/test/resources"
+            ]
+        },
+        {
+            "owner": ":distribution:output",
+            "affected": [
+                ":cli",
+                ":distribution:cli",
+                ":distribution:output"
+            ],
+            "sourceRoots": [
+                "distribution/output/src/main/java",
+                "distribution/output/src/main/kotlin",
+                "distribution/output/src/main/resources",
+                "distribution/output/src/test/java",
+                "distribution/output/src/test/kotlin",
+                "distribution/output/src/test/resources"
             ]
         },
         {
@@ -922,6 +943,7 @@
                 ":distribution:cli",
                 ":distribution:contract",
                 ":distribution:managed",
+                ":distribution:output",
                 ":evidence:contract",
                 ":evidence:sqlite",
                 ":evidence:topology-sqlite",

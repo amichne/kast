@@ -1,7 +1,9 @@
 package io.github.amichne.kast.distribution.cli
 
+import dev.toonformat.jtoon.JToon
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.file.Files
@@ -23,6 +25,49 @@ import sun.misc.Signal
 
 class PublicQueryDispatchTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `oversized installer output preserves the output limit cause`() {
+        val child = startOwner(temporary, "oversized-output", toon = true)
+        try {
+            val stdout = child.inputReader().readText()
+            assertTrue(child.waitFor(10, TimeUnit.SECONDS))
+            assertEquals(5, child.exitValue())
+            assertEquals("failure: OUTPUT_LIMIT_EXCEEDED\ntype: rejected\n", stdout)
+        } finally {
+            stopFixture(child)
+        }
+    }
+
+    @Test
+    fun `installer child output uses TOON and keeps its nonzero exit`() {
+        val child = startOwner(temporary, "echo", "issued reference", toon = true)
+        try {
+            val stdout = child.inputReader().readText()
+            assertTrue(child.waitFor(10, TimeUnit.SECONDS))
+            assertEquals(10, child.exitValue())
+            assertEquals("fixture diagnostic\n", child.errorReader().readText())
+            assertEquals(
+                PublicQueryProbeDocument(listOf("issued reference"), temporary.toRealPath().toString(), "selected"),
+                managementJson.decodeFromString<PublicQueryProbeDocument>(JToon.decodeToJson(stdout)),
+            )
+        } finally {
+            stopFixture(child)
+        }
+    }
+
+    @Test
+    fun `invalid installer output rejects and the parent reaps its child`() {
+        val child = startOwner(temporary, "invalid-output", toon = true)
+        try {
+            val stdout = child.inputReader().readText()
+            assertTrue(child.waitFor(10, TimeUnit.SECONDS))
+            assertEquals(6, child.exitValue())
+            assertEquals("failure: OUTPUT_ENCODING_REJECTED\ntype: rejected\n", stdout)
+        } finally {
+            stopFixture(child)
+        }
+    }
 
     @Test
     fun `public namespaces reach the selected JVM without native semantic parsing`() {
@@ -68,10 +113,15 @@ class PublicQueryDispatchTest {
         for (signal in PublicQuerySignal.entries) assertOwnedSignal(signal)
     }
 
-    private fun assertOwnedSignal(signal: PublicQuerySignal) {
+    @Test
+    fun `signals preserve cancellation while installer output is captured`() {
+        for (signal in PublicQuerySignal.entries) assertOwnedSignal(signal, toon = true)
+    }
+
+    private fun assertOwnedSignal(signal: PublicQuerySignal, toon: Boolean = false) {
         ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { listener ->
             listener.soTimeout = 10_000
-            val parent = startOwner(temporary, "peer", listener.localPort.toString())
+            val parent = startOwner(temporary, "peer", listener.localPort.toString(), toon = toon)
             try {
                 listener.accept().use { peer ->
                     peer.soTimeout = 10_000
@@ -193,12 +243,13 @@ class PublicQueryDispatchTest {
         )
     }
 
-    private fun startOwner(directory: Path, vararg arguments: String): Process =
+    private fun startOwner(directory: Path, vararg arguments: String, toon: Boolean = false): Process =
         ProcessBuilder(javaCommand(PublicQueryOwnerFixture::class.java.name) + arguments)
             .directory(directory.toFile())
             .apply {
                 environment().clear()
                 environment()["KAST_PUBLIC_QUERY_FIXTURE"] = "selected"
+                if (toon) environment()["KAST_PUBLIC_OUTPUT_TOON_FIXTURE"] = "1"
             }
             .start()
 
@@ -229,6 +280,9 @@ internal object PublicQueryOwnerFixture {
                 javaCommand(PublicQueryProbe::class.java.name) + arguments,
                 Path.of("").toAbsolutePath(),
                 System.getenv(),
+                if (System.getenv("KAST_PUBLIC_OUTPUT_TOON_FIXTURE") == "1")
+                    OwnedChildOutput.Document(CliOutputFormat.TOON)
+                else OwnedChildOutput.Inherited,
             )
         )
     }
@@ -239,6 +293,13 @@ internal object PublicQueryProbe {
     @JvmStatic
     fun main(arguments: Array<String>) {
         when (arguments.first()) {
+            "oversized-output" ->
+                println(
+                    managementJson.encodeToString(
+                        PublicQueryProbeDocument(listOf("x".repeat(16_777_216)), "owned", "selected")
+                    )
+                )
+            "invalid-output" -> println("invalid JSON")
             "echo" -> {
                 println(
                     managementJson.encodeToString(

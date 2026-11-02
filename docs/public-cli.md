@@ -73,6 +73,28 @@ The CLI reads stdin only for an explicit `--request -`.
 
 ## Select presentation
 
+Set `KAST_OUTPUT_TOON=1` to select [TOON](https://toonformat.dev/guide/getting-started) for CLI result documents:
+
+```sh
+export KAST_OUTPUT_TOON=1
+kast query --name OrderService --in services/orders
+kast describe query --section input
+kast status
+```
+
+The switch covers semantic results, descriptors, plans, startup rejections, and management results.
+Management commands select structured results without `--json` when the switch equals `1`.
+The switch also controls results from commands with `--json`.
+Help, version text, and stderr diagnostics keep their existing formats.
+JSON requests, stored records, Host messages, MCP, and tool RPC keep their existing JSON contracts.
+
+Unset `KAST_OUTPUT_TOON` or set it to `0` to restore the default output.
+An empty value also selects the default.
+Other values reject before command effects with exit `2` and a JSON `INVALID_OUTPUT_FORMAT` result.
+`JToon` encodes the existing JSON projection, so the same result fields and qualifications remain present.
+An encoding rejection returns `OUTPUT_ENCODING_REJECTED` with exit `6` instead of a successful result.
+Installer results that exceed 16 MiB return `OUTPUT_LIMIT_EXCEEDED` with exit `5` before TOON encoding.
+
 Omitted `--fields` preserves the default name and location fields.
 An explicit `--fields ''` requests no optional symbol fields.
 Identity, kind, outcome, qualifications, and recovery evidence remain part of the result.
@@ -83,7 +105,8 @@ Occurrence output rejects `--fields`.
 It does not authorize incomplete semantic proof.
 `--max-returned-bytes` uses the existing presentation allowance.
 That allowance excludes the outer RPC envelope, newline, and stderr.
-The CLI does not truncate JSON to fit an allowance.
+The CLI does not truncate a result to fit an allowance.
+The allowance measures the canonical JSON presentation before TOON encoding.
 
 An explicit `--max-elapsed-ms` supplies the canonical caller grant for `RUN`.
 Omission adds no CLI semantic timeout.
@@ -113,9 +136,10 @@ A selected row subset keeps its incomplete-input qualification.
 
 ## Read output and exit status
 
-Semantic commands emit the existing RPC JSON outcome plus one newline.
+Semantic commands emit the existing RPC JSON outcome plus one newline by default.
 The output shape stays the same in terminals and pipes.
-`--json` explicitly selects this default.
+`KAST_OUTPUT_TOON=1` changes the encoding to TOON.
+`--json` preserves the existing result contract and does not override the environment switch.
 Progress and bounded diagnostics use stderr.
 
 Read the outer outcome and the canonical document together.
@@ -142,11 +166,11 @@ For a pipeline that depends on the producer status, enable `pipefail`:
 
 ```sh
 set -o pipefail
-kast query --request query.json | jq .
+KAST_OUTPUT_TOON=0 kast query --request query.json | jq .
 ```
 
 A formatter does not preserve the producer status by itself.
-Signals and closed pipes can interrupt a JSON record.
+Signals and closed pipes can interrupt a result document.
 Local cancellation or JVM termination does not prove native settlement.
 
 ## Source owners
@@ -155,6 +179,8 @@ Local cancellation or JVM termination does not prove native settlement.
 - `app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt` owns public admission.
 - `cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt` owns direct execution composition.
 - `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt` owns native delegation.
+- `distribution/contract/` owns format selection and its configuration declaration.
+- `distribution/output/` owns the shared `JToon` adapter.
 
 These examples describe the interface.
 The implementation report records which examples and native paths ran.

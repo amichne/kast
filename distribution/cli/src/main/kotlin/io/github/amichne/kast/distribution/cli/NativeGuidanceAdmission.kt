@@ -46,7 +46,12 @@ internal fun inspectGuidanceCommand(root: Path, home: Path, environment: Map<Str
                     pluginProcessResult(
                         runGuidanceProvider(
                             listOf(receipt.executable, "describe"),
-                            environment + mapOf("HOME" to home.toString(), "KAST_INSTALL_ROOT" to root.toString()),
+                            environment +
+                                mapOf(
+                                    "HOME" to home.toString(),
+                                    "KAST_INSTALL_ROOT" to root.toString(),
+                                    "KAST_OUTPUT_TOON" to "0",
+                                ),
                         )
                     )
             ) {

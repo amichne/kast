@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.publicshell
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import dev.toonformat.jtoon.JToon
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -22,6 +23,39 @@ import org.junit.jupiter.api.io.TempDir
 
 class PublicCliProcessTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `TOON switch preserves plans descriptors and rejected results with their exit codes`() {
+        for (args in
+            listOf(
+                listOf("query", "plan", "--name", "OrderService"),
+                listOf("describe", "query", "--section", "examples"),
+                listOf("query", "--name", "OrderService", "--fields", "name,name"),
+                listOf("source", "read"),
+                listOf("result", "read"),
+            )) {
+            val standard = child(args)
+            val toon = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
+            assertEquals(standard.first, toon.first, args.toString())
+            assertFalse(toon.second.trimStart().startsWith("{"), args.toString())
+            assertEquals(
+                Json.parseToJsonElement(standard.second),
+                Json.parseToJsonElement(JToon.decodeToJson(toon.second)),
+            )
+        }
+    }
+
+    @Test
+    fun `zero keeps JSON and unknown TOON settings reject before planning`() {
+        val args = listOf("query", "plan", "--name", "OrderService")
+        assertEquals(child(args), child(args, environment = mapOf("KAST_OUTPUT_TOON" to "0")))
+        val invalid = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "typo"))
+        assertEquals(2, invalid.first)
+        assertEquals(
+            "INVALID_OUTPUT_FORMAT",
+            Json.parseToJsonElement(invalid.second).jsonObject.getValue("failure").jsonPrimitive.content,
+        )
+    }
 
     @Test
     fun `real plan output descriptor validates COMPLETE plans without installation`() {
@@ -179,8 +213,12 @@ class PublicCliProcessTest {
         assertEquals(1, result.second.count { it == '\n' })
     }
 
-    private fun child(args: List<String>, bytes: ByteArray = byteArrayOf()): Pair<Int, String> {
-        val (process, stdout, stderr) = start(args)
+    private fun child(
+        args: List<String>,
+        bytes: ByteArray = byteArrayOf(),
+        environment: Map<String, String> = emptyMap(),
+    ): Pair<Int, String> {
+        val (process, stdout, stderr) = start(args, environment)
         try {
             process.outputStream.use { it.write(bytes) }
             assertTrue(process.waitFor(20, TimeUnit.SECONDS), Files.readString(stderr))
@@ -190,7 +228,7 @@ class PublicCliProcessTest {
         }
     }
 
-    private fun start(args: List<String>): Triple<Process, Path, Path> {
+    private fun start(args: List<String>, environment: Map<String, String> = emptyMap()): Triple<Process, Path, Path> {
         val stdout = Files.createTempFile(temporary, "stdout", ".json")
         val stderr = Files.createTempFile(temporary, "stderr", ".txt")
         val process =
@@ -206,7 +244,10 @@ class PublicCliProcessTest {
                 .directory(temporary.toFile())
                 .redirectOutput(stdout.toFile())
                 .redirectError(stderr.toFile())
-                .apply { environment().clear() }
+                .apply {
+                    environment().clear()
+                    environment().putAll(environment)
+                }
                 .start()
         return Triple(process, stdout, stderr)
     }

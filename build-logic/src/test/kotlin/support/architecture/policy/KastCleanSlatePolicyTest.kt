@@ -7,6 +7,20 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class KastCleanSlatePolicyTest {
     @Test
+    fun `CLI presentation cannot become a hosted dependency`() {
+        val definition = KastArchitecturePolicy.definition()
+        val injected = definition.copy(modules = definition.modules.map { module ->
+            if (module.id == ModuleId.RUNTIME_HOSTED) module.copy(
+                allowedProjectDependencies = module.allowedProjectDependencies + ModuleId.DISTRIBUTION_OUTPUT,
+            ) else module
+        })
+        val invalid = assertInstanceOf<ArchitecturePolicyValidation.Invalid>(ArchitecturePolicyValidator.validate(injected))
+        assertTrue(ArchitecturePolicyFailure.InvalidHostedRuntimeDependencies(
+            emptySet(), setOf(ModuleId.DISTRIBUTION_OUTPUT),
+        ) in invalid.failures)
+    }
+
+    @Test
     fun `terminal policy contains exactly the clean slate project surface`() {
         val architecture = canonicalArchitecture()
 
@@ -16,6 +30,7 @@ class KastCleanSlatePolicyTest {
                 ":distribution:contract",
                 ":distribution:cli",
                 ":distribution:managed",
+                ":distribution:output",
                 ":protocol:contract",
                 ":protocol:registry",
                 ":protocol:wire",

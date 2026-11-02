@@ -6,7 +6,7 @@ class RoutineGateTest(unittest.TestCase):
     def test_native_input_inventory_matches_exact_compilation_owners(self):
         owners = {
             "change:apply", "change:contract", "change:recovery", "change:verify", "diagnostic:contract",
-            "distribution:cli", "distribution:contract", "distribution:managed", "evidence:contract", "evidence:sqlite",
+            "distribution:cli", "distribution:contract", "distribution:managed", "distribution:output", "evidence:contract", "evidence:sqlite",
             "kernel", "relation:contract", "symbol:contract", "traversal:contract", "workspace:contract",
         }
         tasks = {f":{owner}:compileKotlin" for owner in owners}

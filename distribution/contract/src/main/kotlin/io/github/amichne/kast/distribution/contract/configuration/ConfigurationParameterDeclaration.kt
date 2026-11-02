@@ -46,6 +46,8 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
         when (this) {
             ConfigurationParameter.RUNTIME_DIRECTORY ->
                 "Coordinator socket namespace owned by the physical installation state/run directory."
+            ConfigurationParameter.OUTPUT_TOON ->
+                "CLI result encoding. The value 1 selects TOON. The value 0 or an empty value selects default output."
             else -> key.lowercase().replace('_', ' ')
         },
         syntax,
@@ -77,7 +79,9 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
     )
 
 private fun ConfigurationParameter.acceptedSources(): List<ConfigurationSource> =
-    if (mutability == ConfigurationMutability.DERIVED) listOf(ConfigurationSource.PROCESS_ENVIRONMENT)
+    if (this == ConfigurationParameter.OUTPUT_TOON)
+        listOf(ConfigurationSource.PROCESS_ENVIRONMENT, ConfigurationSource.DEFAULT)
+    else if (mutability == ConfigurationMutability.DERIVED) listOf(ConfigurationSource.PROCESS_ENVIRONMENT)
     else
         listOf(ConfigurationSource.COMMAND_LINE, ConfigurationSource.PROCESS_ENVIRONMENT) +
             (if (scope == ConfigurationScope.WORKSPACE) listOf(ConfigurationSource.SAVED_WORKSPACE) else emptyList()) +
