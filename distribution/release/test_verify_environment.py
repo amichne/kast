@@ -68,7 +68,7 @@ class VerifyEnvironmentTest(unittest.TestCase):
                 arguments = (fixture / "build/gradle-arguments").read_text().splitlines()
                 self.assertIn("--no-daemon", arguments)
                 self.assertIn("--no-parallel", arguments)
-                self.assertIn("--max-workers=2", arguments)
+                self.assertIn("--max-workers=1", arguments)
                 self.assertIn("-Pversion=1.2.3", arguments)
                 self.assertIn(f"-PkastSourceRevision={revision}", arguments)
                 self.assertEqual(

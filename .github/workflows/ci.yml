@@ -363,6 +363,25 @@ jobs:
       - name: Exercise the assembled Mac product
         if: needs.source-work.outputs.candidate != 'REUSED'
         run: uv run --locked --script .github/scripts/ci/native_handoff.py qualify --version "0.0.$GITHUB_RUN_NUMBER"
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        if: needs.source-work.outputs.candidate != 'REUSED'
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Verify cold RPC subprocesses on macOS
+        if: needs.source-work.outputs.candidate != 'REUSED'
+        run: >-
+          ./gradlew --no-daemon --no-parallel --max-workers=1
+          -Dorg.gradle.jvmargs=-Xmx5g -Pversion="0.0.$GITHUB_RUN_NUMBER"
+          :cli:test --tests io.github.amichne.kast.cli.rpc.KastToolRpcQuerySessionProcessTest
+          --console=plain
+      - uses: actions/upload-artifact@v7.0.2
+        if: always() && needs.source-work.outputs.candidate != 'REUSED'
+        with:
+          name: macos-query-session-${{ github.run_id }}-${{ github.run_attempt }}
+          path: cli/build/test-results/test/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Seal tested candidate identity
         if: needs.source-work.outputs.candidate != 'REUSED'
         env:
