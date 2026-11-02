@@ -499,8 +499,8 @@
           "claim": "claim_ee41761235244553bcf1a058d83d8d5c",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
           "recordedVersion": "repo-file-v1:sha256:3fb9afbed6eb82e167c2ed5e14ccbaa573014e06dd43255aa3bb8464cb9e230d",
-          "currentVersion": "repo-file-v1:sha256:3fb9afbed6eb82e167c2ed5e14ccbaa573014e06dd43255aa3bb8464cb9e230d",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:7980ac96d67f35a82d84fef7f33e3d9b25383958ea574d36308c1ffd1ae1ad1f",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_26f95245a9504d42b7eff20050887f4d",
