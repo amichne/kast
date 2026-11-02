@@ -11,6 +11,8 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -39,6 +41,13 @@ internal suspend fun serveHostedListener(
         trace.enter(HostedTransportStage.CONNECTION_ADMISSION)
         try {
             connections.acquire()
+            try {
+                // A released slot can be acquired without a suspending cancellation check.
+                currentCoroutineContext().ensureActive()
+            } catch (cancelled: CancellationException) {
+                connections.release()
+                throw cancelled
+            }
         } catch (cancelled: CancellationException) {
             client.close()
             trace.emit(HostedEndpointOutcome.CANCELLED)
