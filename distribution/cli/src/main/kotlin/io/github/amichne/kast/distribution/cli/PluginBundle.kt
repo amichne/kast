@@ -172,7 +172,7 @@ private constructor(
                 if (
                     version.name != "kast" ||
                         !validPluginVersion(version.version) ||
-                        version.hooks != null ||
+                        version.hooks !in setOf(null, "./hooks/hooks.json") ||
                         version.skills != "./skills/" ||
                         version.mcpServers != if (composition == HarnessComposition.CliWithMcp) "./.mcp.json" else null
                 )

@@ -116,8 +116,11 @@ internal class JsonLineExistingIdeResponseObserver(
     private val descriptor: ExistingIdeDescriptor,
     private val operation: ExistingIdeOperation,
     private val output: PrintStream,
+    private val debug: io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch =
+        io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.DISABLED,
 ) : ExistingIdeResponseObserver {
     override fun record(evidence: ExistingIdeResponseEvidence) {
+        if (debug != io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.ENABLED) return
         output.println(
             responseEvidenceJson.encodeToString(
                 ExistingIdeResponseActivity.serializer(),

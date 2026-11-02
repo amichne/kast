@@ -20,5 +20,6 @@
     ],
     "defaultPrompt": "Use Kast to find a declaration and inspect its callers."
   },
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }

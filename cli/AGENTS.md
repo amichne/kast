@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private JVM entry points, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-30T22:56:37Z"
-source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
+timestamp: "2026-11-02T16:16:42Z"
+source_revision: 0482f82ac2b2804a8d6bf0a429657aed3219a747
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -14,6 +14,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -93,6 +94,8 @@ Owns the public semantic CLI, private JVM entry points, direct tool sessions, in
 - Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the real launcher, JVM child, and local-peer composition.
 - The public native `kast` executable lives in `distribution/cli`.
 - Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
+- `PublicHook.kt` owns `kast hook session-start`. It admits host events and uses the existing workspace preparation owner.
+- Hook replies use JSON regardless of `KAST_OUTPUT_TOON`. Non-project directories skip preparation without IDE effects.
 - CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
 - `collectReachabilityMetadata` supplies resolved Native Image metadata for that archive. Keep module directories and the `logback-classic` exclusion.
 - Handoff qualification runs `query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.

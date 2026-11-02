@@ -46,12 +46,12 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         )
         val mcp = agentToolsJson.decodeFromString<AgentMcpDocument>(source.resolve("mcp.json").readText())
         val marketplace = agentToolsJson.decodeFromString<AgentMarketplace>(marketplaceFile.get().asFile.readText())
-        check(manifest.name == "kast" && manifest.hooks == null && manifest.mcpServers == null && manifest.skills == "./skills/") {
-            "The default Kast plugin must select CLI guidance without hooks or MCP"
+        check(manifest.name == "kast" && manifest.hooks == "./hooks/hooks.json" && manifest.mcpServers == null && manifest.skills == "./skills/") {
+            "The default Kast plugin must select CLI guidance and the shared preparation hook"
         }
         val copilot = agentToolsJson.decodeFromString<CopilotPluginManifest>(source.resolve(".github/plugin/plugin.json").readText())
-        check(copilot.name == "kast" && copilot.hooks == null && copilot.mcpServers == null && copilot.skills == "./skills/") {
-            "The default Copilot plugin must select CLI guidance without hooks or MCP"
+        check(copilot.name == "kast" && copilot.hooks == "./hooks/copilot.json" && copilot.mcpServers == null && copilot.skills == "./skills/") {
+            "The default Copilot plugin must select CLI guidance and the shared preparation hook"
         }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
             "-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp/plugins/kast}}/skills/kast/scripts/server.py\"",
@@ -88,7 +88,8 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             val composition = if (withMcp) output.resolve("compositions/mcp") else output
             val plugin = composition.resolve("plugins/kast")
             source.copyRecursively(plugin, overwrite = false)
-            plugin.resolve("hooks").deleteRecursively()
+            plugin.resolve("hooks/session_start.py").delete()
+            plugin.resolve("hooks/session_start.py.lock").delete()
             plugin.resolve("mcp.json").delete()
             if (withMcp) source.resolve("mcp.json").copyTo(plugin.resolve(".mcp.json"))
             if (!withMcp) {

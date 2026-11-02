@@ -2,6 +2,8 @@
 
 The default plugin supplies canonical guidance for the native `kast` command.
 It does not register MCP or install Python hooks.
+Its session hook calls `kast hook session-start` to open and prepare supported Gradle projects in IntelliJ IDEA.
+Non-project directories skip preparation. Invalid events and failed preparation return a nonzero status.
 The persistent IntelliJ IDEA Host owns Kotlin semantics for CLI and MCP.
 
 ## Install guidance
@@ -16,8 +18,19 @@ kast install pi
 
 Codex and Copilot own their plugin resources and configuration.
 Pi discovers the copied skill through its native skill directory.
+Pi also installs the session extension that calls the same command.
 Each command examines the selected installed release and the provider's actual resources.
 Start a fresh agent session after setup.
+Codex needs trust for the installed hook definition before it runs.
+
+Use `kast hook session-start --workspace /absolute/project/path` to request the same preparation from a terminal.
+Without `--workspace`, the command reads a host event with an absolute `cwd` from stdin.
+Successful hook replies contain one empty JSON object. Hook replies ignore `KAST_OUTPUT_TOON`.
+Set `KAST_DEBUG=1` to send preparation and response diagnostics to stderr.
+Normal commands keep these diagnostics silent. Library logs report errors only.
+
+`kast status` reports `BROKER_NOT_OBSERVED` when private-endpoint configuration lacks broker state.
+This reason describes broker evidence. It does not report a failed compiler epoch or establish workspace readiness.
 
 To select optional MCP resources, add `--mcp`:
 

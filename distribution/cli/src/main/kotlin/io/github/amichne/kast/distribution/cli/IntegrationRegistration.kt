@@ -23,8 +23,12 @@ private fun writeStagedPayload(payload: RegistrationPayload, staged: Path) {
 }
 
 @Suppress("ThrowsCount", "ComplexCondition")
-internal fun verifiedBundledSource(installation: Path, connection: HarnessConnection): Path {
-    val source = registrationSourceFor(installation, connection)
+internal fun verifiedBundledSource(
+    installation: Path,
+    connection: HarnessConnection,
+    composition: HarnessComposition = HarnessComposition.CliWithMcp,
+): Path {
+    val source = registrationSourceFor(installation, connection, composition)
     val manifest =
         when (val read = readBundledManifest(installation)) {
             is BundledManifestRead.Read -> read.manifest
@@ -72,6 +76,7 @@ internal fun connectHarness(
         runBounded(arguments, selected)
     },
     recoveryEvidence: (ConnectionRecoveryEvidence) -> Unit = ::printConnectionRecovery,
+    composition: HarnessComposition = HarnessComposition.CliWithMcp,
     commitConfiguration: (Path, ConnectionConfiguration) -> Unit = ::writeConnectionConfiguration,
     commitReceipt: (Path, ManagementReceipt) -> Unit = ::writeManagementReceipt,
 ): Boolean =
@@ -88,7 +93,7 @@ internal fun connectHarness(
                         "installation removal is unfinished; retry uninstall first",
                     )
                 val receipt = admittedReceipt(root)
-                val source = verifiedBundledSource(selectedInstallation(root), connection)
+                val source = verifiedBundledSource(selectedInstallation(root), connection, composition)
                 val payload = registrationPayload(root, source, connection)
                 val digest = payload.digest
                 val prior = receipt.registrations.singleOrNull { it.connection == connection }
