@@ -83,7 +83,8 @@ class VerificationReportTaskTest {
 
     private fun runner(vararg arguments: String): GradleRunner = GradleRunner.create()
         .withProjectDir(root.toFile())
-        .withArguments("examine", "--configuration-cache", "--console=plain", "--max-workers=2", *arguments)
+        // Rescan fixture files before each input-fingerprint assertion.
+        .withArguments("examine", "--configuration-cache", "--no-watch-fs", "--console=plain", "--max-workers=2", *arguments)
 
     private fun run(vararg arguments: String): BuildResult = runner(*arguments).build()
 
