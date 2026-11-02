@@ -5,6 +5,7 @@ sidebarTitle: "Diagnostic entry"
 title: "Diagnostic entry"
 description: "Read an IDEA diagnostic with its source location and reported scope."
 openapi-schema: "reference/callables.openapi.json check_diagnosticsResponse_diagnostic"
+hideFooterPagination: true
 ---
 
 A diagnostic is an IDEA finding. It gives a severity, message, and place in source. The response states which scope the scan covers.
@@ -14,3 +15,5 @@ A complete scan with no findings can prove that IDEA reported none within that a
 Clean IDEA diagnostics do not prove that the project builds. A change receipt proves a distinct source effect. It also records which checks took place.
 
 [Check diagnostics](/how-to/inspect-diagnostics) gives the steps. [Evidence limits](/reference/evidence-boundaries) defines what the result can prove.
+
+Exact reference: [Schemas and samples](/reference/schemas).

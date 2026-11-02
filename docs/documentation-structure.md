@@ -25,6 +25,8 @@ Keep each page in one track. Link to the other tracks for steps, field meanings,
 
 The [reference guidance](https://diataxis.fr/reference/) favors neutral facts and consistent lookup pages. Put task steps in a how-to guide.
 
+The [navigation record](reviews/navigation-density/README.md) records page contracts, contextual links, and density at its examined revision.
+
 ## Public routes
 
 | Purpose | Routes |

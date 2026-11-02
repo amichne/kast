@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="ExtractIdeaDistributionCacheTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-11-02T07:08:57.588Z" hostname="Austins-MacBook-Pro.local" time="1.592">
+  <properties/>
+  <testcase name="fresh workspace restores exact libraries from task cache and changed inputs miss()" classname="ExtractIdeaDistributionCacheTest" time="1.591">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;SUCCESS&gt; but was: &lt;UP_TO_DATE&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;SUCCESS&gt; but was: &lt;UP_TO_DATE&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at ExtractIdeaDistributionCacheTest.fresh workspace restores exact libraries from task cache and changed inputs miss(ExtractIdeaDistributionCacheTest.kt:37)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

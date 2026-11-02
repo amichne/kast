@@ -2,6 +2,7 @@
 title: "Results"
 description: "Read query facts, completion evidence, output pages, and saved-state limits."
 icon: "list-checks"
+hideFooterPagination: true
 ---
 
 A query result reports facts, their coverage, and producer progress. It also states how much output the response includes.
@@ -238,3 +239,5 @@ For an overlapping invocation, `error.code` is `INVOCATION_IN_PROGRESS`. This is
 [MCP concurrency](/reference/limits#mcp-concurrency) describes the per-connection limit and recovery.
 
 `health_check` has its own readiness shape. [The source map](/reference/source-map#query-execution-and-retention) identifies the query and retention owners.
+
+Explanations: [Understand an answer](/explanation), [What an answer proves](/reference/evidence-boundaries).

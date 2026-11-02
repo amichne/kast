@@ -3,7 +3,7 @@
   "views": [
     {
       "route": "architecture/change-lifecycle",
-      "frontmatter": "title: \"Change lifecycle\"\ndescription: \"Follow an exact change from planning and preimage admission to verification or recovery.\"\nicon: \"file-pen-line\"",
+      "frontmatter": "title: \"Change lifecycle\"\ndescription: \"Follow an exact change from planning and preimage admission to verification or recovery.\"\nicon: \"file-pen-line\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/changes/planning-and-write-admission.md",
         "openwiki/changes/receipts-and-recovery.md"
@@ -20,11 +20,12 @@
         "what-verification-establishes",
         "what-verification-proves",
         "which-fact-permits-the-next-phase"
-      ]
+      ],
+      "introduction": "\n\nTask procedures: [Make a targeted change](/reference/change).\n\nExplanations: [Lifecycles](/reference/lifecycles)."
     },
     {
       "route": "architecture/topology",
-      "frontmatter": "title: \"Topology and ownership\"\ndescription: \"Locate the agent adapters, IDEA Host, and stored evidence.\"\nicon: \"network\"",
+      "frontmatter": "title: \"Topology and ownership\"\ndescription: \"Locate the agent adapters, IDEA Host, and stored evidence.\"\nicon: \"network\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/modules/architecture.md",
         "openwiki/runtime/hosted-composition-and-publication.md"
@@ -44,7 +45,7 @@
     },
     {
       "route": "explanation/query-lifecycle",
-      "frontmatter": "title: \"Query execution and evidence delivery\"\nsidebarTitle: \"Query lifecycle\"\ndescription: \"Follow a question through admission, bounded execution, completion proof, atomic publication, and evidence delivery.\"\nicon: \"workflow\"",
+      "frontmatter": "title: \"Query execution and evidence delivery\"\nsidebarTitle: \"Query lifecycle\"\ndescription: \"Follow a question through admission, bounded execution, completion proof, atomic publication, and evidence delivery.\"\nicon: \"workflow\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/queries/execution-and-composition.md",
         "openwiki/queries/retention-and-presentation.md"
@@ -66,11 +67,11 @@
         "source-evidence",
         "state-determines-whether-reuse-remains-legal"
       ],
-      "introduction": "This page explains internal query stages and stored evidence. [How to understand a Kast answer](/explanation) introduces the reader concepts.\n\nFor public requests, use [Query forms](/reference/api). Contract 18 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar."
+      "introduction": "This page explains internal query stages and stored evidence. [How to understand a Kast answer](/explanation) introduces the reader concepts.\n\nFor public requests, use [Query forms](/reference/api). Contract 18 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar.\n\nExact reference: [Results](/reference/responses).\n\nExplanations: [Query reuse](/architecture/query-reuse).\n\nTask procedures: [Read retained output](/how-to/read-retained-evidence)."
     },
     {
       "route": "reference/callbacks",
-      "frontmatter": "title: \"Callback evidence\"\ndescription: \"Interpret anonymous callable ownership, static bindings, and the limits of caller tracing.\"\nicon: \"route\"",
+      "frontmatter": "title: \"Callback evidence\"\ndescription: \"Interpret anonymous callable ownership, static bindings, and the limits of caller tracing.\"\nicon: \"route\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/semantics/relation/callback-supply-and-binding.md",
         "openwiki/semantics/relation/callback-reuse-and-completion.md"
@@ -88,11 +89,12 @@
         "static-bindings-and-unfinished-proof",
         "symbolic-callees-and-known-boundaries",
         "symbolic-callees-and-source-exclusions"
-      ]
+      ],
+      "introduction": "\n\nExact reference: [Callback observation fields](/reference/callback-observations), [Program tracing](/reference/program-tracing)."
     },
     {
       "route": "reference/composition",
-      "frontmatter": "title: \"Composition contracts\"\ndescription: \"Compare canonical identities, keep row kinds and qualifications, and reject unproven absence.\"\nicon: \"git-merge\"",
+      "frontmatter": "title: \"Composition contracts\"\ndescription: \"Compare canonical identities, keep row kinds and qualifications, and reject unproven absence.\"\nicon: \"git-merge\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/queries/execution-and-composition.md"
       ],
@@ -110,7 +112,7 @@
     },
     {
       "route": "reference/evidence-boundaries",
-      "frontmatter": "title: \"What an answer proves\"\ndescription: \"Read coverage, identify evidence limits, and decide when to reuse a reference.\"\nicon: \"shield-check\"",
+      "frontmatter": "title: \"What an answer proves\"\ndescription: \"Read coverage, identify evidence limits, and decide when to reuse a reference.\"\nicon: \"shield-check\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/glossary/evidence-authority.md",
         "openwiki/contracts/operation-outcomes.md"
@@ -131,7 +133,7 @@
     },
     {
       "route": "reference/internals/architecture",
-      "frontmatter": "title: \"How Kast works\"\nsidebarTitle: \"Authority boundaries\"\ndescription: \"See how Kast answers queries through IDEA and decides whether retained results remain usable.\"\nicon: \"workflow\"\nkeywords:\n  - \"architecture\"\n  - \"IntelliJ IDEA\"\n  - \"query\"\n  - \"evidence\"\nmode: \"wide\"",
+      "frontmatter": "title: \"How Kast works\"\nsidebarTitle: \"Authority boundaries\"\ndescription: \"See how Kast answers queries through IDEA and decides whether retained results remain usable.\"\nicon: \"workflow\"\nkeywords:\n  - \"architecture\"\n  - \"IntelliJ IDEA\"\n  - \"query\"\n  - \"evidence\"\nmode: \"wide\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/semantics/workspace/read-authority.md",
         "openwiki/modules/architecture.md"
@@ -154,11 +156,12 @@
         "tracing-within-and-between-functions",
         "who-owns-runtime-state",
         "who-proves-each-fact"
-      ]
+      ],
+      "introduction": "\n\nExplanations: [Lifecycles](/reference/lifecycles), [Background preparation](/reference/internals/background-startup).\n\nExact reference: [Source map](/reference/source-map)."
     },
     {
       "route": "reference/internals/background-startup",
-      "frontmatter": "title: \"Prepare IntelliJ in the background\"\nsidebarTitle: \"Background preparation\"\ndescription: \"Know what Kast starts, what it waits for, and which blockers need your attention.\"\nicon: \"monitor-cog\"",
+      "frontmatter": "title: \"Prepare IntelliJ in the background\"\nsidebarTitle: \"Background preparation\"\ndescription: \"Know what Kast starts, what it waits for, and which blockers need your attention.\"\nicon: \"monitor-cog\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/transport/coordinator-and-workspace-preparation.md",
         "openwiki/runtime/idea-lifecycle-and-refresh.md"
@@ -174,11 +177,12 @@
         "control-when-an-agent-uses-kast",
         "readiness-and-blockers",
         "what-happens-on-the-first-question"
-      ]
+      ],
+      "introduction": "\n\nRecovery: [Help](/troubleshooting).\n\nExplanations: [Lifecycles](/reference/lifecycles)."
     },
     {
       "route": "reference/staleness",
-      "frontmatter": "title: \"Staleness and reference reuse\"\nsidebarTitle: \"Retention and invalidation\"\ndescription: \"Understand read epochs, content admission, exact-reference reacquisition, and retained-state rejection.\"\nicon: \"history\"",
+      "frontmatter": "title: \"Staleness and reference reuse\"\nsidebarTitle: \"Retention and invalidation\"\ndescription: \"Understand read epochs, content admission, exact-reference reacquisition, and retained-state rejection.\"\nicon: \"history\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/semantics/workspace/model-and-freshness.md",
         "openwiki/topology/live-dependencies-and-reuse.md"
@@ -199,11 +203,12 @@
         "retained-evidence-needs-its-original-state",
         "source-evidence",
         "what-can-change-the-read-state"
-      ]
+      ],
+      "introduction": "\n\nExplanations: [Query reuse](/architecture/query-reuse).\n\nTask procedures: [Read retained output](/how-to/read-retained-evidence).\n\nRecovery: [Contract and state recovery](/reference/troubleshooting)."
     },
     {
       "route": "reference/symbols",
-      "frontmatter": "title: \"Symbol identity and source fields\"\ndescription: \"Use exact compiler references, locations, and signatures without guessing identity.\"\nicon: \"braces\"",
+      "frontmatter": "title: \"Symbol identity and source fields\"\ndescription: \"Use exact compiler references, locations, and signatures without guessing identity.\"\nicon: \"braces\"\nhideFooterPagination: true",
       "concepts": [
         "openwiki/semantics/symbol/discovery-and-identity.md",
         "openwiki/contracts/source-identity.md"
@@ -216,7 +221,7 @@
         "output-selection-example",
         "public-fields"
       ],
-      "introduction": "This page explains declaration identity and the source contracts that use it. The shared contracts include source APIs other than `query_symbols`.\n\nFor `query_symbols`, `READ_SOURCE.candidateRef` checks the issued snapshot. It does not reacquire a stale exact reference. A fresh `RUN` can reacquire an exact reference after current compiler identity checks. It does not refresh retained rows or source snapshots. [Query forms](/reference/api#actions) defines the current public actions."
+      "introduction": "This page explains declaration identity and the source contracts that use it. The shared contracts include source APIs other than `query_symbols`.\n\nFor `query_symbols`, `READ_SOURCE.candidateRef` checks the issued snapshot. It does not reacquire a stale exact reference. A fresh `RUN` can reacquire an exact reference after current compiler identity checks. It does not refresh retained rows or source snapshots. [Query forms](/reference/api#actions) defines the current public actions.\n\nTask procedures: [Find and trace code](/reference/search).\n\nExplanations: [Staleness](/reference/staleness)."
     }
   ],
   "authored": [

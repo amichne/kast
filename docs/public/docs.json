@@ -38,6 +38,44 @@
               "start",
               "search",
               "troubleshooting"
+            ],
+            "expanded": true
+          },
+          {
+            "group": "Explore guides",
+            "pages": [
+              {
+                "group": "Task guides",
+                "pages": [
+                  "how-to",
+                  "reference/search",
+                  "how-to/inspect-diagnostics",
+                  "how-to/read-retained-evidence",
+                  "reference/query-pipelines",
+                  "reference/change",
+                  "how-to/complete-engineering-task"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Setup and maintenance",
+                "pages": [
+                  "agent-harnesses",
+                  "reference/installation",
+                  "reference/integrations",
+                  "reference/management",
+                  "reference/troubleshooting"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Tutorials",
+                "pages": [
+                  "tutorials",
+                  "tutorials/first-query"
+                ],
+                "expanded": false
+              }
             ]
           }
         ]
@@ -46,27 +84,44 @@
         "tab": "Architecture",
         "groups": [
           {
-            "group": "Understand Kast",
+            "group": "Understand an answer",
             "pages": [
               "explanation",
-              "explanation/value-journey",
-              "reference/internals/architecture",
-              "explanation/query-lifecycle",
-              "architecture/query-reuse",
-              "reference/staleness",
-              "architecture/topology",
-              "architecture/change-lifecycle"
+              "explanation/value-journey"
             ]
           },
           {
-            "group": "Further reading",
+            "group": "Explore mechanisms",
             "pages": [
-              "reference/evidence-boundaries",
-              "reference/program-tracing",
-              "reference/callbacks",
-              "reference/lifecycles",
-              "reference/internals/background-startup",
-              "explanation/value-journey-evidence"
+              {
+                "group": "Evidence and tracing",
+                "pages": [
+                  "reference/evidence-boundaries",
+                  "reference/callbacks",
+                  "explanation/value-journey-evidence"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Query execution",
+                "pages": [
+                  "explanation/query-lifecycle",
+                  "architecture/query-reuse",
+                  "reference/staleness"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Runtime and ownership",
+                "pages": [
+                  "reference/internals/architecture",
+                  "architecture/topology",
+                  "reference/lifecycles",
+                  "reference/internals/background-startup",
+                  "architecture/change-lifecycle"
+                ],
+                "expanded": false
+              }
             ]
           }
         ]
@@ -75,7 +130,7 @@
         "tab": "Reference",
         "groups": [
           {
-            "group": "Interface reference",
+            "group": "Overview and CLI",
             "pages": [
               "reference",
               "reference/cli",
@@ -83,27 +138,12 @@
             ]
           },
           {
-            "group": "Task details",
-            "pages": [
-              "how-to",
-              "reference/search",
-              "how-to/inspect-diagnostics",
-              "how-to/read-retained-evidence",
-              "reference/query-pipelines",
-              "reference/change",
-              "how-to/complete-engineering-task",
-              "reference/troubleshooting",
-              "reference/management",
-              "tutorials",
-              "tutorials/first-query"
-            ]
-          },
-          {
-            "group": "Semantic contracts",
+            "group": "Query contracts",
             "pages": [
               "reference/api",
               "reference/responses",
               "reference/symbols",
+              "reference/program-tracing",
               "reference/callback-observations",
               "reference/composition",
               "reference/limits"
@@ -114,14 +154,11 @@
             "pages": [
               "reference/mcp-catalog",
               "reference/rpc-catalog",
-              "reference/compatibility",
-              "reference/installation",
-              "reference/integrations",
-              "agent-harnesses"
+              "reference/compatibility"
             ]
           },
           {
-            "group": "Schemas and examples",
+            "group": "Schemas and samples",
             "openapi": {
               "source": "reference/callables.openapi.json",
               "directory": "reference/callables"

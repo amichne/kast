@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.15, pytest-9.0.3, pluggy-1.7.0
+rootdir: /Users/amichne/.codex/worktrees/6bd6/kast/.github/scripts/release
+configfile: pyproject.toml
+collected 10 items / 9 deselected / 1 selected
+
+.github/scripts/release/test_developer_publication.py .                  [100%]
+
+======================= 1 passed, 9 deselected in 0.48s ========================

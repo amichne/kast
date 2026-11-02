@@ -5,6 +5,7 @@ sidebarTitle: "Query item"
 title: "Query item"
 description: "Decode a query row and keep its exact identity and evidence."
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_queryResultItem"
+hideFooterPagination: true
 ---
 
 The output form selects the kind of row. A row can hold a symbol, source occurrence, traversal record, binding, value path, or impact witness.
@@ -16,3 +17,5 @@ An occurrence row keeps facts about a source site. A traversal row keeps facts a
 The result that produced the rows owns their coverage and stated limits. A selected row cannot prove coverage of rows left out.
 
 [Query outputs](/reference/api#choose-the-result-you-need) defines valid forms. [Composition](/reference/composition) defines row changes and identity checks.
+
+Exact reference: [Schemas and samples](/reference/schemas).
