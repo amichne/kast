@@ -4,6 +4,7 @@ sidebarTitle: "Query reuse"
 description: "Understand early file exclusion, shared TRACE expansion, prepared reference inventories, and route-preserving IMPACT reads."
 icon: "repeat"
 keywords: ["query", "reuse", "TRACE", "IMPACT", "discovery"]
+hideFooterPagination: true
 ---
 
 import { ExactNameDiscoveryDiagram } from "/snippets/diagrams/exact-name-discovery.jsx"
@@ -107,3 +108,5 @@ For reuse across source states, continue with [retention and invalidation](/refe
   - [Reference inventory reuse](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt) owns the slot and its key. [Its tests](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt) cover reuse and rejection.
   - [IMPACT tasks](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt) own read reuse, remainders, and route expansion.
 </Accordion>
+
+Explanations: [Query execution](/explanation/query-lifecycle).

@@ -3,6 +3,7 @@ title: "Tool RPC reply"
 description: "Select the catalog, operation document, or process failure from a Tool RPC reply."
 openapi-schema: "reference/callables.openapi.json ToolRpcReply"
 mode: "wide"
+hideFooterPagination: true
 ---
 
 The reply's `type` selects a catalog, tool document, or process failure. The inner tool document keeps its own semantic status.
@@ -12,3 +13,5 @@ The reply's `type` selects a catalog, tool document, or process failure. The inn
 An unknown reply kind means the contracts do not match. Keep a process failure distinct from a rejected semantic answer.
 
 [Tool RPC](/reference/rpc-catalog#decode) defines commands and session states. [Lifecycles](/reference/lifecycles) names each call's owners.
+
+Exact reference: [Schemas and samples](/reference/schemas).

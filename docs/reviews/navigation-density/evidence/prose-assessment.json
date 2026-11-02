@@ -1,0 +1,2049 @@
+[
+  {
+    "path": "docs/documentation-structure.md",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 2370,
+            "fleschKincaidGrade": 7.54,
+            "sentences": 167,
+            "words": 1410,
+            "wordsPerSentence": 8.44
+          },
+          "path": "docs/documentation-structure.md",
+          "sourceSha256": "ca2d12813930d1ac7a000393f9a29dfede41b2b0c9f3a5c5956372a8c621a73c",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/agent-harnesses.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 192,
+            "fleschKincaidGrade": 7.1,
+            "sentences": 19,
+            "words": 111,
+            "wordsPerSentence": 5.84
+          },
+          "path": "docs/public/agent-harnesses.mdx",
+          "sourceSha256": "ea30832ef618dc0056d2f72cb04c0516906dbbb2e7634bd31e0823ed09a52d15",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/architecture/change-lifecycle.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 11.74 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 18,
+            "fleschKincaidGrade": 11.74,
+            "sentences": 4,
+            "words": 8,
+            "wordsPerSentence": 2.0
+          },
+          "path": "docs/public/architecture/change-lifecycle.mdx",
+          "sourceSha256": "17f13f2da08b7c07fc4052e38d499839bc51ad295b3d98dfcd20e698f02d1f1d",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/architecture/query-reuse.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 932,
+            "fleschKincaidGrade": 7.43,
+            "sentences": 67,
+            "words": 556,
+            "wordsPerSentence": 8.3
+          },
+          "path": "docs/public/architecture/query-reuse.mdx",
+          "sourceSha256": "af4864408aacdd846e98cec8b7d35b2be8968a0ebf7c3712c787f76787bab501",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/explanation.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 9.10 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 1271,
+            "fleschKincaidGrade": 9.1,
+            "sentences": 68,
+            "words": 732,
+            "wordsPerSentence": 10.76
+          },
+          "path": "docs/public/explanation.mdx",
+          "sourceSha256": "4aa19d344cea5379386a9d9661a5493ac1eab05a36338827bf4e395f0717b074",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/explanation/query-lifecycle.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 94,
+            "fleschKincaidGrade": 6.72,
+            "sentences": 10,
+            "words": 55,
+            "wordsPerSentence": 5.5
+          },
+          "path": "docs/public/explanation/query-lifecycle.mdx",
+          "sourceSha256": "633d2ddab6130e63565627ff42f62b398ecf3e648551072399cb94f9897ad780",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/how-to.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 128,
+            "fleschKincaidGrade": 7.47,
+            "sentences": 12,
+            "words": 73,
+            "wordsPerSentence": 6.08
+          },
+          "path": "docs/public/how-to.mdx",
+          "sourceSha256": "42266d176b87135e82ed5255b7bd0db45d59ea046d089920ccd18a81f2ac85a8",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/how-to/complete-engineering-task.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.36 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 771,
+            "fleschKincaidGrade": 8.36,
+            "sentences": 48,
+            "words": 448,
+            "wordsPerSentence": 9.33
+          },
+          "path": "docs/public/how-to/complete-engineering-task.mdx",
+          "sourceSha256": "00ab554be9231bab0c1b79882cb17f34561bf878b8026df3813124fb89a9af1c",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/how-to/inspect-diagnostics.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 372,
+            "fleschKincaidGrade": 7.62,
+            "sentences": 27,
+            "words": 219,
+            "wordsPerSentence": 8.11
+          },
+          "path": "docs/public/how-to/inspect-diagnostics.mdx",
+          "sourceSha256": "51c0dd4d5bd1362a4b2026214e210254f24ff688418e761bf9bd81491193c6df",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/how-to/read-retained-evidence.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 617,
+            "fleschKincaidGrade": 7.62,
+            "sentences": 47,
+            "words": 360,
+            "wordsPerSentence": 7.66
+          },
+          "path": "docs/public/how-to/read-retained-evidence.mdx",
+          "sourceSha256": "d47fa1dbbab8c535f26956036c2871a19404e7ff7a5dff4d67600c300d658312",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/callbacks.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 12.29 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 16,
+            "fleschKincaidGrade": 12.29,
+            "sentences": 3,
+            "words": 7,
+            "wordsPerSentence": 2.33
+          },
+          "path": "docs/public/reference/callbacks.mdx",
+          "sourceSha256": "958ebbf23b92e8d99139ff5f603d71c7b1071c0690e7cc5645764da6a7696abc",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/change.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 632,
+            "fleschKincaidGrade": 7.5,
+            "sentences": 47,
+            "words": 373,
+            "wordsPerSentence": 7.94
+          },
+          "path": "docs/public/reference/change.mdx",
+          "sourceSha256": "e0f3a7017fd9812f9bec71f3889f7ceb14ab1b958bb46f161061cf1486c86c78",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/installation.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.83 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 1016,
+            "fleschKincaidGrade": 8.83,
+            "sentences": 71,
+            "words": 562,
+            "wordsPerSentence": 7.92
+          },
+          "path": "docs/public/reference/installation.mdx",
+          "sourceSha256": "8f35b37eaea9c6dc9ee5afb9c27e2daf20ef7130e1bf16b60153bb94e7e68705",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/integrations.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 499,
+            "fleschKincaidGrade": 6.56,
+            "sentences": 41,
+            "words": 306,
+            "wordsPerSentence": 7.46
+          },
+          "path": "docs/public/reference/integrations.mdx",
+          "sourceSha256": "02344004dee62b26a014622c20b50bb055440437728798f239f5998b7d77b581",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/internals/architecture.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 16.17 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 21,
+            "fleschKincaidGrade": 16.17,
+            "sentences": 4,
+            "words": 8,
+            "wordsPerSentence": 2.0
+          },
+          "path": "docs/public/reference/internals/architecture.mdx",
+          "sourceSha256": "10d0880fe5664350b4388b2ecfd82908b97aee2a9af20a74c3d742d55ebe0473",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/internals/background-startup.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 23.15 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 13,
+            "fleschKincaidGrade": 23.15,
+            "sentences": 4,
+            "words": 4,
+            "wordsPerSentence": 1.0
+          },
+          "path": "docs/public/reference/internals/background-startup.mdx",
+          "sourceSha256": "cf54181f5a1ba6e50d33a02855e460ee8fc09315ce8e179c9bdd1eccebb29312",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/management.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.98 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 695,
+            "fleschKincaidGrade": 8.98,
+            "sentences": 48,
+            "words": 382,
+            "wordsPerSentence": 7.96
+          },
+          "path": "docs/public/reference/management.mdx",
+          "sourceSha256": "293a9fd464a6194dad5486219b97f3a464344ff73cbc0ef21e816753c237f4bc",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/mcp-catalog.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.85 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 524,
+            "fleschKincaidGrade": 8.85,
+            "sentences": 32,
+            "words": 297,
+            "wordsPerSentence": 9.28
+          },
+          "path": "docs/public/reference/mcp-catalog.mdx",
+          "sourceSha256": "7e4a873a290dc6920628f4767f363a82151999e967a225be5412c21a58e36d09",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/diagnostic.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 144,
+            "fleschKincaidGrade": 6.31,
+            "sentences": 11,
+            "words": 91,
+            "wordsPerSentence": 8.27
+          },
+          "path": "docs/public/reference/models/diagnostic.mdx",
+          "sourceSha256": "5dee9579d64beda0f12b987a63427d617fb236a9e0e724df13a8c097aa05a6da",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/live-evidence.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 149,
+            "fleschKincaidGrade": 7.51,
+            "sentences": 9,
+            "words": 92,
+            "wordsPerSentence": 10.22
+          },
+          "path": "docs/public/reference/models/live-evidence.mdx",
+          "sourceSha256": "b5222233c77b0dab511feb56ff72f40bcb2663a0e05b396429b4c48f8ff77fe2",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/mcp-investigation-result.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 119,
+            "fleschKincaidGrade": 7.65,
+            "sentences": 8,
+            "words": 71,
+            "wordsPerSentence": 8.88
+          },
+          "path": "docs/public/reference/models/mcp-investigation-result.mdx",
+          "sourceSha256": "c811e39507d2651a5118631f9a2d340f64c642c5b063d5ab36007bc30c5a449b",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/mcp-read-result.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 111,
+            "fleschKincaidGrade": 6.15,
+            "sentences": 9,
+            "words": 70,
+            "wordsPerSentence": 7.78
+          },
+          "path": "docs/public/reference/models/mcp-read-result.mdx",
+          "sourceSha256": "a7ba3c8bf1da288af31bd60ccb04e01525eb6c7c19e90988131748a58c4fd639",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/mcp-tool-call-result.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 124,
+            "fleschKincaidGrade": 5.63,
+            "sentences": 10,
+            "words": 81,
+            "wordsPerSentence": 8.1
+          },
+          "path": "docs/public/reference/models/mcp-tool-call-result.mdx",
+          "sourceSha256": "3d056e1560794549de62c6c9ef2f8c0d3b31a74d031b945ac334595f673f7d2c",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/query-item.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 179,
+            "fleschKincaidGrade": 6.1,
+            "sentences": 13,
+            "words": 116,
+            "wordsPerSentence": 8.92
+          },
+          "path": "docs/public/reference/models/query-item.mdx",
+          "sourceSha256": "7f938576344b805b5d6e83c11f6308a3771797d1e64e962d644acb57f03d97c6",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/relation-fact.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 139,
+            "fleschKincaidGrade": 6.08,
+            "sentences": 9,
+            "words": 93,
+            "wordsPerSentence": 10.33
+          },
+          "path": "docs/public/reference/models/relation-fact.mdx",
+          "sourceSha256": "0eb079b925d7152e1a949567049b6212bb28fb90dcdd2e0ef9495fa6ccc04b1e",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/models/tool-rpc-reply.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 112,
+            "fleschKincaidGrade": 7.01,
+            "sentences": 10,
+            "words": 66,
+            "wordsPerSentence": 6.6
+          },
+          "path": "docs/public/reference/models/tool-rpc-reply.mdx",
+          "sourceSha256": "5efb78bdb0e9de8bb059e589e2b7eb67a84ed1c7aa578dd62ec8173d3ce5c1a4",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/query-pipelines.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 974,
+            "fleschKincaidGrade": 7.73,
+            "sentences": 79,
+            "words": 559,
+            "wordsPerSentence": 7.08
+          },
+          "path": "docs/public/reference/query-pipelines.mdx",
+          "sourceSha256": "a6709646cc26b4e15db9c4eb3b6720582d5ac674d81c33d918725056a710eff5",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/responses.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.10 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 2110,
+            "fleschKincaidGrade": 8.1,
+            "sentences": 151,
+            "words": 1211,
+            "wordsPerSentence": 8.02
+          },
+          "path": "docs/public/reference/responses.mdx",
+          "sourceSha256": "03564bc51d081177650b936a6cc69611791e473c01f7f0a4cdb3f7399728b020",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/rpc-catalog.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 481,
+            "fleschKincaidGrade": 7.29,
+            "sentences": 40,
+            "words": 282,
+            "wordsPerSentence": 7.05
+          },
+          "path": "docs/public/reference/rpc-catalog.mdx",
+          "sourceSha256": "c88682b06eb84da2363734914047aec912f599786bc63e333f8fa64f990ea223",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/schemas.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 465,
+            "fleschKincaidGrade": 7.27,
+            "sentences": 48,
+            "words": 265,
+            "wordsPerSentence": 5.52
+          },
+          "path": "docs/public/reference/schemas.mdx",
+          "sourceSha256": "0dbb7dd0615c6fd643b32fea14871575220506a3e35f999a84068ca7dbe5cbf2",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/search.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.37 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 957,
+            "fleschKincaidGrade": 8.37,
+            "sentences": 67,
+            "words": 543,
+            "wordsPerSentence": 8.1
+          },
+          "path": "docs/public/reference/search.mdx",
+          "sourceSha256": "6625b5dbb9d9e1434a09fd380009ff2e9373709a122e1ef69412a74020a93229",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/source-map.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 10.07 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 329,
+            "fleschKincaidGrade": 10.07,
+            "sentences": 27,
+            "words": 167,
+            "wordsPerSentence": 6.19
+          },
+          "path": "docs/public/reference/source-map.mdx",
+          "sourceSha256": "5386f66aa77ece29daf00ad2e910719b019f92886672681948ac40825c9308e7",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/staleness.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 10.84 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 28,
+            "fleschKincaidGrade": 10.84,
+            "sentences": 5,
+            "words": 13,
+            "wordsPerSentence": 2.6
+          },
+          "path": "docs/public/reference/staleness.mdx",
+          "sourceSha256": "03fdb9323179f8c188f87a3feb68c680b284f1f6da090625c374b4fca34c4dc1",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/symbols.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 113,
+            "fleschKincaidGrade": 6.18,
+            "sentences": 11,
+            "words": 69,
+            "wordsPerSentence": 6.27
+          },
+          "path": "docs/public/reference/symbols.mdx",
+          "sourceSha256": "db8d35b8bc7f15098df65f11126c05d8993583560d7bb6ca0c5c31f9e8ace899",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/troubleshooting.mdx",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 8.16 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 677,
+            "fleschKincaidGrade": 8.16,
+            "sentences": 46,
+            "words": 391,
+            "wordsPerSentence": 8.5
+          },
+          "path": "docs/public/reference/troubleshooting.mdx",
+          "sourceSha256": "63fe86a4c5515ec874043825f284675a7822930b27ca4c9b083d20e766b4489a",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/reference/walkthrough.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 318,
+            "fleschKincaidGrade": 7.01,
+            "sentences": 26,
+            "words": 190,
+            "wordsPerSentence": 7.31
+          },
+          "path": "docs/public/reference/walkthrough.mdx",
+          "sourceSha256": "2b80dff3f4b792a0e82037eb886bd494ba3ccc5b184169108c5ef829c4cc619a",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/search.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 197,
+            "fleschKincaidGrade": 6,
+            "sentences": 17,
+            "words": 124,
+            "wordsPerSentence": 7.29
+          },
+          "path": "docs/public/search.mdx",
+          "sourceSha256": "bcbdde8e1c9ced1b0b4987ad19b3ba97c0591db34f3a9aa7b98fd99bb6a6fe22",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/start.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 415,
+            "fleschKincaidGrade": 6.71,
+            "sentences": 36,
+            "words": 250,
+            "wordsPerSentence": 6.94
+          },
+          "path": "docs/public/start.mdx",
+          "sourceSha256": "5c5e17e216408d033befd10f08d5d98b59f8b929e1247dd942d3b5ca4ba846fd",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/troubleshooting.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 443,
+            "fleschKincaidGrade": 7.95,
+            "sentences": 32,
+            "words": 256,
+            "wordsPerSentence": 8.0
+          },
+          "path": "docs/public/troubleshooting.mdx",
+          "sourceSha256": "6640f1535c89cd2a99d1343929d57347a81822b6cc39bae81cc94e57dd8866e1",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/public/tutorials/first-query.mdx",
+    "exitCode": 0,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [],
+          "metrics": {
+            "estimatedSyllables": 500,
+            "fleschKincaidGrade": 6.59,
+            "sentences": 39,
+            "words": 309,
+            "wordsPerSentence": 7.92
+          },
+          "path": "docs/public/tutorials/first-query.mdx",
+          "sourceSha256": "37b6abb9343111e23905c489d5bd13845a94b0923cfb17e3d0d76275b89f39d9",
+          "terminology": {
+            "type": "IN_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/reviews/navigation-density/README.md",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 10.33 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 1902,
+            "fleschKincaidGrade": 10.33,
+            "sentences": 103,
+            "words": 1017,
+            "wordsPerSentence": 9.87
+          },
+          "path": "docs/reviews/navigation-density/README.md",
+          "sourceSha256": "2258e48f0f009832d6be23615e3e6ef0d2ab2e89213e818932f0c84eb4a74dbb",
+          "terminology": {
+            "type": "OUT_OF_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/reviews/navigation-density/contextual-links.md",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 9.05 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 211,
+            "fleschKincaidGrade": 9.05,
+            "sentences": 13,
+            "words": 118,
+            "wordsPerSentence": 9.08
+          },
+          "path": "docs/reviews/navigation-density/contextual-links.md",
+          "sourceSha256": "f2c8cf47888d5bc91e34bb1832cb67fa62199d18822d3b4fbe39e6274f441d0e",
+          "terminology": {
+            "type": "OUT_OF_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/reviews/navigation-density/density.md",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 10.82 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 1834,
+            "fleschKincaidGrade": 10.82,
+            "sentences": 111,
+            "words": 936,
+            "wordsPerSentence": 8.43
+          },
+          "path": "docs/reviews/navigation-density/density.md",
+          "sourceSha256": "cc50c337d3842de39af6cf39b2b40a417b47e25cc31d074581dab38349ab481e",
+          "terminology": {
+            "type": "OUT_OF_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/reviews/navigation-density/page-contracts.md",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 9.20 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 9810,
+            "fleschKincaidGrade": 9.2,
+            "sentences": 843,
+            "words": 5168,
+            "wordsPerSentence": 6.13
+          },
+          "path": "docs/reviews/navigation-density/page-contracts.md",
+          "sourceSha256": "57cf9fd53a2ff022995426ae4dadb661dd0c369cf14fd047afcea8f720fd9005",
+          "terminology": {
+            "type": "OUT_OF_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  },
+  {
+    "path": "docs/reviews/navigation-density/prose-findings.md",
+    "exitCode": 1,
+    "report": {
+      "comprehension": {
+        "type": "NOT_ASSESSED"
+      },
+      "documents": [
+        {
+          "findings": [
+            {
+              "category": "READABILITY",
+              "line": 1,
+              "message": "Estimated Flesch-Kincaid grade 9.79 exceeds the shared advisory target of 8.",
+              "rule": "Slopsentral.Grade",
+              "severity": "warning",
+              "span": [
+                1,
+                1
+              ],
+              "type": "FINDING"
+            }
+          ],
+          "metrics": {
+            "estimatedSyllables": 349,
+            "fleschKincaidGrade": 9.79,
+            "sentences": 20,
+            "words": 190,
+            "wordsPerSentence": 9.5
+          },
+          "path": "docs/reviews/navigation-density/prose-findings.md",
+          "sourceSha256": "675456a92da7a65b1897e00bf609ba27d2509b25c6a4185bd7ee1b8e462b38c7",
+          "terminology": {
+            "type": "OUT_OF_SCOPE"
+          },
+          "type": "DOCUMENT_ASSESSMENT"
+        }
+      ],
+      "engine": {
+        "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+        "type": "VALE",
+        "version": "3.24.0"
+      },
+      "glossary": {
+        "entries": 23,
+        "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+        "type": "CHECKED"
+      },
+      "schemaVersion": 1,
+      "type": "ASSESSED"
+    },
+    "stderr": ""
+  }
+]

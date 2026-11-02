@@ -1,0 +1,94 @@
+product-gate: latest published stable release v0.50.2 from amichne/kast; building current checkout
+Isolated Projects is an incubating feature.
+Calculating task graph as configuration cache cannot be reused because an input to build file 'build.gradle.kts' has changed.
+semantic-fixtures: SKIPPED; set KAST_SEMANTIC_FIXTURES=true to enable
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+[native-image-plugin] Using GraalVM reachability metadata repository version 1.0.15
+[native-image-plugin] Using GraalVM reachability metadata repository version 1.0.15
+> Task :build-logic:compileJsonContractsTestKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsTestJava NO-SOURCE
+> Task :build-logic:processJsonContractsTestResources NO-SOURCE
+> Task :build-logic:jsonContractsTestClasses UP-TO-DATE
+> Task :build-logic:pluginUnderTestMetadata UP-TO-DATE
+> Task :build-logic:jsonContractsTest UP-TO-DATE
+> Task :build-logic:compileTestKotlin FROM-CACHE
+> Task :build-logic:compileTestJava NO-SOURCE
+> Task :build-logic:processTestResources NO-SOURCE
+> Task :build-logic:testClasses UP-TO-DATE
+
+> Task :developerPublicationTest FAILED
+......................... [ 60%]
+.......F........                                           [100%]
+=================================== FAILURES ===================================
+_ CandidateFixture.test_missing_control_record_rejects_before_release_creation _
+
+self = <test_developer_publication.CandidateFixture testMethod=test_missing_control_record_rejects_before_release_creation>
+
+    def test_missing_control_record_rejects_before_release_creation(self) -> None:
+        name = f"kast-control-release-v{VERSION}.json"
+        (self.payload / name).unlink()
+        result, uploaded = self.run_stable_publisher()
+        self.assertNotEqual(0, result.returncode)
+>       self.assertIn(f"missing release asset: {self.payload / name}", result.stderr)
+E       AssertionError: 'missing release asset: /tmp/tmpxpg4g7kv/candidate/payload/kast-control-release-v0.0.123.json' not found in 'From /tmp/tmpxpg4g7kv/remote\n * branch            main       -> FETCH_HEAD\n * [new branch]      main       -> origin/main\npublish-release: missing release asset: /private/tmp/tmpxpg4g7kv/candidate/payload/kast-control-release-v0.0.123.json\n'
+
+.github/scripts/release/test_developer_publication.py:405: AssertionError
+=========================== short test summary info ============================
+FAILED .github/scripts/release/test_developer_publication.py::CandidateFixture::test_missing_control_record_rejects_before_release_creation
+1 failed, 40 passed, 61 subtests passed in 0.81s
+
+
+> Task :build-logic:validatePlugins UP-TO-DATE
+
+> Task :preparePythonTestEnvironment
+Requirement already satisfied: jsonschema==4.26.0 in ./build/python-tests/env/lib/python3.14/site-packages (from -r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1)) (4.26.0)
+Requirement already satisfied: PyYAML==6.0.3 in ./build/python-tests/env/lib/python3.14/site-packages (from -r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 2)) (6.0.3)
+Requirement already satisfied: attrs>=22.2.0 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1)) (26.1.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1)) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1)) (0.37.0)
+Requirement already satisfied: rpds-py>=0.25.0 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1)) (2026.9.1)
+
+> Task :build-logic:test
+> Task :build-logic:check
+Kotlin build report is written to file:///Users/amichne/.codex/worktrees/6bd6/kast/build/reports/kotlin-build/kast-build-2026-11-02-02-13-18-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex/worktrees/6bd6/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':developerPublicationTest' (registered in build file 'build.gradle.kts').
+> :developerPublicationTest failed with exit code 1. Report: /Users/amichne/.codex/worktrees/6bd6/kast/build/reports/validation/developerPublicationTest.txt
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 57s
+18 actionable tasks: 3 executed, 1 from cache, 14 up-to-date
+Configuration cache entry stored.
+
+See the profiling report at: file:///Users/amichne/.codex/worktrees/6bd6/kast/build/reports/profile/profile-2026-11-02-02-12-22.html
+A fine-grained performance profile is available: use the --scan option.

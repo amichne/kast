@@ -1,0 +1,429 @@
+{
+  "docs/documentation-structure.md": {},
+  "docs/public/agent-harnesses.mdx": {
+    "docs/public/agent-harnesses.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "HowTo.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/",
+        "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/architecture/change-lifecycle.mdx": {},
+  "docs/public/architecture/query-reuse.mdx": {},
+  "docs/public/explanation.mdx": {
+    "docs/public/explanation.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.91 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/explanation/query-lifecycle.mdx": {},
+  "docs/public/how-to.mdx": {},
+  "docs/public/how-to/complete-engineering-task.mdx": {
+    "docs/public/how-to/complete-engineering-task.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.39 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/how-to/inspect-diagnostics.mdx": {},
+  "docs/public/how-to/read-retained-evidence.mdx": {},
+  "docs/public/reference/callbacks.mdx": {},
+  "docs/public/reference/change.mdx": {},
+  "docs/public/reference/installation.mdx": {
+    "docs/public/reference/installation.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "HowTo.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/",
+        "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      },
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.75 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/integrations.mdx": {
+    "docs/public/reference/integrations.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "HowTo.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/",
+        "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/internals/architecture.mdx": {},
+  "docs/public/reference/internals/background-startup.mdx": {},
+  "docs/public/reference/management.mdx": {
+    "docs/public/reference/management.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "HowTo.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/",
+        "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      },
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.94 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      },
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          28
+        ],
+        "Check": "HowTo.Reference",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/#the-language-of-how-to-guides",
+        "Message": "7 table rows. Refer to the reference for the full list of options rather than carrying it here.",
+        "Severity": "suggestion",
+        "Match": "| Outcome | Meaning | Exit |",
+        "Line": 62
+      }
+    ]
+  },
+  "docs/public/reference/mcp-catalog.mdx": {
+    "docs/public/reference/mcp-catalog.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.85 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/models/diagnostic.mdx": {},
+  "docs/public/reference/models/live-evidence.mdx": {},
+  "docs/public/reference/models/mcp-investigation-result.mdx": {},
+  "docs/public/reference/models/mcp-read-result.mdx": {},
+  "docs/public/reference/models/mcp-tool-call-result.mdx": {},
+  "docs/public/reference/models/query-item.mdx": {},
+  "docs/public/reference/models/relation-fact.mdx": {},
+  "docs/public/reference/models/tool-rpc-reply.mdx": {},
+  "docs/public/reference/query-pipelines.mdx": {},
+  "docs/public/reference/responses.mdx": {
+    "docs/public/reference/responses.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.08 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/rpc-catalog.mdx": {},
+  "docs/public/reference/schemas.mdx": {},
+  "docs/public/reference/search.mdx": {
+    "docs/public/reference/search.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 8.33 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/source-map.mdx": {
+    "docs/public/reference/source-map.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Slopsentral.Grade",
+        "Description": "",
+        "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+        "Message": "Estimated Flesch-Kincaid grade 9.84 exceeds the shared advisory target of 8.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      },
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          3
+        ],
+        "Check": "Reference.Examples",
+        "Description": "",
+        "Link": "https://diataxis.fr/reference/#provide-examples",
+        "Message": "Reference provides examples. There is no code block on this page.",
+        "Severity": "suggestion",
+        "Match": "---",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/staleness.mdx": {
+    "docs/public/reference/staleness.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          3
+        ],
+        "Check": "Reference.Examples",
+        "Description": "",
+        "Link": "https://diataxis.fr/reference/#provide-examples",
+        "Message": "Reference provides examples. There is no code block on this page.",
+        "Severity": "suggestion",
+        "Match": "---",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/symbols.mdx": {
+    "docs/public/reference/symbols.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          3
+        ],
+        "Check": "Reference.Examples",
+        "Description": "",
+        "Link": "https://diataxis.fr/reference/#provide-examples",
+        "Message": "Reference provides examples. There is no code block on this page.",
+        "Severity": "suggestion",
+        "Match": "---",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/reference/troubleshooting.mdx": {},
+  "docs/public/reference/walkthrough.mdx": {},
+  "docs/public/search.mdx": {},
+  "docs/public/start.mdx": {
+    "docs/public/start.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "HowTo.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/",
+        "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/troubleshooting.mdx": {
+    "docs/public/troubleshooting.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "HowTo.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/how-to-guides/",
+        "Message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  },
+  "docs/public/tutorials/first-query.mdx": {
+    "docs/public/tutorials/first-query.mdx": [
+      {
+        "Action": {
+          "Name": "",
+          "Params": null
+        },
+        "Suggestions": [],
+        "Span": [
+          1,
+          1
+        ],
+        "Check": "Tutorial.Steps",
+        "Description": "",
+        "Link": "https://diataxis.fr/tutorials/",
+        "Message": "A tutorial walks the learner through numbered steps; there is no numbered list here.",
+        "Severity": "warning",
+        "Match": "",
+        "Line": 1
+      }
+    ]
+  }
+}

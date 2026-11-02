@@ -1,0 +1,269 @@
+Fetching distribution.
+Downloading https://services.gradle.org/distributions/gradle-9.8.2-bin.zip
+..............10%..............20%...............30%..............40%...............50%..............60%...............70%..............80%...............90%..............100%
+
+Welcome to Gradle 9.8.2!
+
+Here are the highlights of this release:
+ - Java 27 support
+ - Maven mirror settings reuse
+ - Linked problem locations in build output
+
+For more details see https://docs.gradle.org/9.8.2/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :cli:verifyMintlifyCallableReference verifyJsonContracts verifyKnowledgeBase knowledgeImpact
+semantic-fixtures: SKIPPED; set KAST_SEMANTIC_FIXTURES=true to enable
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:generateExternalPluginSpecBuilders
+> Task :build-logic:extractPrecompiledScriptPluginPlugins
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:generateScriptPluginAdapters
+> Task :build-logic:pluginDescriptors
+> Task :build-logic:processResources
+> Task :build-logic:compileJsonContractsKotlin
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks
+> Task :build-logic:generatePrecompiledScriptPluginAccessors
+> Task :build-logic:compileKotlin
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:classes
+> Task :build-logic:jar
+
+> Configure project :cli
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/build.gradle.kts:37:13: 'val fallback: Property<Boolean>!' is deprecated. Deprecated in Java.
+
+> Configure project :distribution:cli
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/distribution/cli/build.gradle.kts:72:13: 'val fallback: Property<Boolean>!' is deprecated. Deprecated in Java.
+
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:managed:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:output:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :cli:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:output:processResources NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :distribution:managed:processResources NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :cli:processResources
+> Task :distribution:contract:processResources
+> Task :app-server:processResources
+> Task :protocol:contract:processResources
+
+> Task :app-server:verifyPublicQueryGeneratorRules
+.................................
+----------------------------------------------------------------------
+Ran 33 tests in 0.528s
+
+OK
+
+> Task :app-server:verifyPublicQueryGeneration
+Checked 69 public tool artifacts
+
+> Task :preparePythonTestEnvironment
+Collecting jsonschema==4.26.0 (from -r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1))
+  Using cached jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting PyYAML==6.0.3 (from -r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 2))
+  Using cached pyyaml-6.0.3-cp314-cp314-macosx_11_0_arm64.whl.metadata (2.4 kB)
+Collecting attrs>=22.2.0 (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1))
+  Using cached attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1))
+  Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1))
+  Using cached referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.25.0 (from jsonschema==4.26.0->-r /Users/amichne/.codex/worktrees/6bd6/kast/experiments/host-observation/requirements-test.txt (line 1))
+  Using cached rpds_py-2026.9.1-cp314-cp314-macosx_11_0_arm64.whl.metadata (4.1 kB)
+Using cached jsonschema-4.26.0-py3-none-any.whl (90 kB)
+Using cached pyyaml-6.0.3-cp314-cp314-macosx_11_0_arm64.whl (173 kB)
+Using cached attrs-26.1.0-py3-none-any.whl (67 kB)
+Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+Using cached referencing-0.37.0-py3-none-any.whl (26 kB)
+Using cached rpds_py-2026.9.1-cp314-cp314-macosx_11_0_arm64.whl (341 kB)
+Installing collected packages: rpds-py, PyYAML, attrs, referencing, jsonschema-specifications, jsonschema
+
+Successfully installed PyYAML-6.0.3 attrs-26.1.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 referencing-0.37.0 rpds-py-2026.9.1
+
+> Task :knowledgeImpact
+OpenWiki impact: 68 changed file(s), 1 impacted concept(s)
+- openwiki/contracts/public-tools.md: docs/public/docs.json
+
+> Task :knowledgeBaseTest
+........
+----------------------------------------------------------------------
+Ran 8 tests in 6.348s
+
+OK
+
+> Task :kernel:compileKotlin
+> Task :kernel:compileJava NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar
+
+> Task :verifyJsonContracts
+JSON contract syntax check: 628 fingerprints, 0 violations. Report: /Users/amichne/.codex/worktrees/6bd6/kast/build/reports/json-contracts/report.json
+
+> Task :verifyKnowledgeBase
+OpenWiki citations: 65 concept(s), 21 reserved file(s), 0 issue(s)
+
+> Task :workspace:contract:compileKotlin
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/SourceRoot.kt:44:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/SourceRoot.kt:53:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt:75:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt:82:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt:96:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar
+> Task :distribution:contract:compileKotlin
+> Task :distribution:contract:compileJava NO-SOURCE
+> Task :distribution:contract:classes
+> Task :distribution:contract:jar
+> Task :distribution:output:compileKotlin
+> Task :distribution:output:compileJava NO-SOURCE
+> Task :distribution:output:classes UP-TO-DATE
+> Task :distribution:output:jar
+
+> Task :symbol:contract:compileKotlin
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt:57:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt:70:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt:94:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt:108:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt:119:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt:90:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt:117:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt:166:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt:60:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/NativeRelationFact.kt:11:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/NativeRelationFact.kt:88:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/NativeRelationOutcome.kt:77:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt:78:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolTextMatch.kt:40:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryCandidate.kt:133:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryCandidate.kt:232:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryOutcome.kt:92:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt:57:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt:358:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar
+> Task :distribution:managed:compileKotlin
+> Task :distribution:managed:compileJava NO-SOURCE
+> Task :distribution:managed:classes UP-TO-DATE
+> Task :distribution:managed:jar
+
+> Task :protocol:contract:compileKotlin
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt:222:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt:262:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt:347:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt:393:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetReport.kt:23:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetReport.kt:62:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionLimitDocument.kt:40:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt:34:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallableObservationDocument.kt:49:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallableObservationDocument.kt:143:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackFactoryBodyCallsDocument.kt:29:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackFactoryCaptureDocument.kt:14:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackFactoryReturnDocument.kt:17:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackGraphBoundaryDocument.kt:12:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackGraphCauseDocument.kt:8:2 This declaration needs opt-in. Its usage should be marked with '@kotlinx.serialization.ExperimentalSerializationApi' or '@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)'
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackGraphCauseDocument.kt:58:2 This declaration needs opt-in. Its usage should be marked with '@kotlinx.serialization.ExperimentalSerializationApi' or '@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)'
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt:69:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackParameterSupplierDocument.kt:22:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionCauseDocument.kt:9:2 This declaration needs opt-in. Its usage should be marked with '@kotlinx.serialization.ExperimentalSerializationApi' or '@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)'
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryEvidenceWindowDocument.kt:58:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackFlowDocument.kt:29:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackValueDocument.kt:24:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryInvocationDocument.kt:55:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultDocuments.kt:68:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt:108:2 This declaration needs opt-in. Its usage should be marked with '@kotlinx.serialization.ExperimentalSerializationApi' or '@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)'
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt:26:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRowWindowDocument.kt:17:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryTextMatchDocument.kt:19:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryWalkDocuments.kt:41:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryWalkDocuments.kt:48:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadReferenceAcquisitions.kt:20:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationOmissionDocument.kt:50:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceLineRangeDocument.kt:11:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt:59:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleIngress.kt:57:9 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt:50:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt:170:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt:217:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TopologyCoverageModels.kt:97:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TopologyCoverageModels.kt:170:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalPartialExpansionDocument.kt:16:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes
+> Task :protocol:contract:jar
+> Task :protocol:registry:compileKotlin
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar
+
+> Task :protocol:wire:compileKotlin
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt:145:74 This declaration needs opt-in. Its usage should be marked with '@kotlinx.serialization.ExperimentalSerializationApi' or '@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)'
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt:145:90 This declaration needs opt-in. Its usage should be marked with '@kotlinx.serialization.ExperimentalSerializationApi' or '@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)'
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryCompletionRejectionCliDocument.kt:119:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryDiscoveryObservationCliDocument.kt:19:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar
+
+> Task :app-server:compileKotlin
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt:188:83 Redundant call of conversion method.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt:455:43 Redundant call of conversion method.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/CoordinatorControlProtocol.kt:19:82 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/CoordinatorStatus.kt:138:17 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt:245:34 Unnecessary safe call on a non-null receiver of type 'JsonObject'.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt:553:41 Unnecessary safe call on a non-null receiver of type 'JsonObject'.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt:555:46 Unnecessary safe call on a non-null receiver of type 'JsonObject'.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt:572:34 Unnecessary safe call on a non-null receiver of type 'JsonObject'.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt:224:13 Redundant creation of Json format. Creating instances for each use can be slow.
+
+> Task :app-server:compileJava NO-SOURCE
+> Task :app-server:classes
+> Task :app-server:jar
+
+> Task :cli:compileKotlin
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt:57:37 Cast is redundant.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt:43:28 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationMigration.kt:48:28 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationValidation.kt:33:28 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt:82:28 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt:37:9 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt:390:17 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex/worktrees/6bd6/kast/cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorInstallationReplacement.kt:325:28 Redundant creation of Json format. Creating instances for each use can be slow.
+
+> Task :cli:compileJava NO-SOURCE
+> Task :cli:classes
+> Task :cli:projectMintlifyCallableReference
+> Task :cli:verifyMintlifyCallableReference
+Kotlin build report is written to file:///Users/amichne/.codex/worktrees/6bd6/kast/build/reports/kotlin-build/kast-build-2026-11-02-02-07-52-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex/worktrees/6bd6/kast/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 2m 33s
+44 actionable tasks: 44 executed
+Configuration cache entry stored.

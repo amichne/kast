@@ -3,6 +3,7 @@ title: "MCP readiness result"
 description: "The direct MCP readiness result for health_check."
 openapi-schema: "reference/callables.openapi.json health_checkSemanticResult"
 mode: "wide"
+hideFooterPagination: true
 ---
 
 The direct `health_check` result reports the workspace binding and whether it is ready. A complete reply keeps its findings in `data`. A rejected reply gives a specific error.
@@ -10,3 +11,5 @@ The direct `health_check` result reports the workspace binding and whether it is
 Readiness applies to the call's workspace state. It does not prove a later symbol identity, a link between symbols, or a complete query.
 
 [MCP](/reference/mcp-catalog) defines the session and result wrapper. [Workspace preparation](/reference/lifecycles#workspace-preparation-lifecycle) describes what happens before a query can run.
+
+Exact reference: [Schemas and samples](/reference/schemas).

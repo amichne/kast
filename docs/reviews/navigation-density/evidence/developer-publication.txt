@@ -1,0 +1,22 @@
+Using CPython 3.13.15
+Creating virtual environment at: .github/scripts/release/.venv
+Installed 10 packages in 339ms
+......................... [ 60%]
+.......F........                                           [100%]
+=================================== FAILURES ===================================
+_ CandidateFixture.test_missing_control_record_rejects_before_release_creation _
+
+self = <test_developer_publication.CandidateFixture testMethod=test_missing_control_record_rejects_before_release_creation>
+
+    def test_missing_control_record_rejects_before_release_creation(self) -> None:
+        name = f"kast-control-release-v{VERSION}.json"
+        (self.payload / name).unlink()
+        result, uploaded = self.run_stable_publisher()
+        self.assertNotEqual(0, result.returncode)
+>       self.assertIn(f"missing release asset: {self.payload / name}", result.stderr)
+E       AssertionError: 'missing release asset: /tmp/tmp10sksuw2/candidate/payload/kast-control-release-v0.0.123.json' not found in 'From /tmp/tmp10sksuw2/remote\n * branch            main       -> FETCH_HEAD\n * [new branch]      main       -> origin/main\npublish-release: missing release asset: /private/tmp/tmp10sksuw2/candidate/payload/kast-control-release-v0.0.123.json\n'
+
+.github/scripts/release/test_developer_publication.py:405: AssertionError
+=========================== short test summary info ============================
+FAILED .github/scripts/release/test_developer_publication.py::CandidateFixture::test_missing_control_record_rejects_before_release_creation
+1 failed, 40 passed, 61 subtests passed in 1.13s

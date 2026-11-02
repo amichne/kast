@@ -3,6 +3,7 @@ title: "MCP tool call result"
 description: "The JSON-RPC tools/call result wrapper returned by direct Kast MCP."
 openapi-schema: "reference/callables.openapi.json McpToolCallResult"
 mode: "wide"
+hideFooterPagination: true
 ---
 
 The MCP wrapper puts display text in `content[]`. It puts a checked tool document in `structuredContent`. `isError` reports a failed tool call.
@@ -12,3 +13,5 @@ The inner document has its own status and evidence. `health_check` uses a distin
 A reply that crosses the transport intact does not prove that the semantic work is complete. A failed tool call can lack structured semantic evidence.
 
 [MCP](/reference/mcp-catalog) defines how to find and call tools. [Results](/reference/responses) defines the proof and output within each document.
+
+Exact reference: [Schemas and samples](/reference/schemas).
