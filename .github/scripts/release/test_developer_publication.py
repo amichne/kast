@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
 from collections.abc import Sequence
@@ -11,12 +14,13 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
 
+from validation_outcome import Outcome, ProductValidated, SourceValidated, ValidationRecord
+from validation_scope import Scope
+
 import build_candidate as candidate
 import developer_catalog as catalog
 import publish_developer as publisher
 from test_developer_catalog import entry
-from validation_outcome import Outcome, ProductValidated, SourceValidated, ValidationRecord
-from validation_scope import Scope
 
 REPOSITORY = "amichne/kast"
 BUILD = "a" * 40
@@ -313,6 +317,94 @@ class CandidateFixture(unittest.TestCase):
                 )
                 script.consumed()
 
+    def run_stable_publisher(self) -> tuple[subprocess.CompletedProcess[str], Path]:
+        owned = Path(self.temporary.name)
+        repository = owned / "repository"
+        scripts = repository / ".github/scripts/release"
+        scripts.mkdir(parents=True)
+        for name in ("publish-release.sh", "admit-source.sh"):
+            shutil.copy2(Path(__file__).with_name(name), scripts / name)
+        home, commands = owned / "home", owned / "bin"
+        home.mkdir()
+        commands.mkdir()
+        uploaded = owned / "uploaded.txt"
+        gh = commands / "gh"
+        gh.write_text(
+            '#!/bin/sh\ncase "$1 $2" in\n'
+            '"release view") test -f "$KAST_TEST_UPLOAD_LOG" ;;\n'
+            '"release create") printf "%s\\n" "$@" > "$KAST_TEST_UPLOAD_LOG" ;;\n'
+            "*) exit 90 ;;\nesac\n"
+        )
+        gh.chmod(0o700)
+        environment = {
+            "PATH": str(commands) + os.pathsep + os.defpath,
+            "HOME": str(home),
+            "LC_ALL": "C",
+            "GH_TOKEN": "owned-fixture-token",
+            "KAST_TEST_UPLOAD_LOG": str(uploaded),
+        }
+
+        def git(*arguments: str) -> str:
+            return subprocess.check_output(
+                ("git", *arguments),
+                cwd=repository,
+                env=environment,
+                text=True,
+                stderr=subprocess.PIPE,
+            ).strip()
+
+        _ = git("init", "--initial-branch=main")
+        _ = git("add", ".")
+        _ = git(
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-m",
+            "owned publication source",
+        )
+        revision = git("rev-parse", "HEAD")
+        remote = owned / "remote.git"
+        _ = git("clone", "--bare", str(repository), str(remote))
+        _ = git("remote", "add", "origin", str(remote))
+        result = subprocess.run(
+            (
+                "bash",
+                str(scripts / "publish-release.sh"),
+                "--release",
+                f"v{VERSION}",
+                "--commit",
+                revision,
+                "--assets-directory",
+                str(self.payload),
+            ),
+            cwd=repository,
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        return result, uploaded
+
+    def test_stable_upload_contains_the_complete_admitted_asset_inventory(self) -> None:
+        result, uploaded = self.run_stable_publisher()
+        self.assertEqual(0, result.returncode, result.stderr)
+        arguments = uploaded.read_text().splitlines()
+        self.assertEqual(["release", "create", f"v{VERSION}"], arguments[:3])
+        observed = {
+            Path(value.split("#", 1)[0]).name for value in arguments[3 : arguments.index("--repo")]
+        }
+        self.assertEqual({asset.name for asset in self.value.assets}, observed)
+
+    def test_missing_control_record_rejects_before_release_creation(self) -> None:
+        name = f"kast-control-release-v{VERSION}.json"
+        (self.payload / name).unlink()
+        result, uploaded = self.run_stable_publisher()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(f"missing release asset: {self.payload / name}", result.stderr)
+        self.assertFalse(uploaded.exists())
+
 
 class RemoteCatalogTest(unittest.TestCase):
     def test_catalog_and_legacy_pointer_share_one_commit_and_nonforced_ref_update(self) -> None:
@@ -372,17 +464,17 @@ class RemoteCatalogTest(unittest.TestCase):
             Step("GET", "git/ref/heads/main", response(Ref(Sha("f" * 40)))),
             Step(
                 "GET",
-                f"compare/{entry(1).mainRevision}..." + "f" * 40,
+                f"compare/{entry(1).mainRevision}..." + "f" * 40 + "?per_page=1&page=2",
                 response(Comparison("ahead")),
             ),
             Step(
                 "GET",
-                f"compare/{entry(2).mainRevision}..." + "f" * 40,
+                f"compare/{entry(2).mainRevision}..." + "f" * 40 + "?per_page=1&page=2",
                 response(Comparison("ahead")),
             ),
             Step(
                 "GET",
-                f"compare/{entry(1).mainRevision}...{entry(2).mainRevision}",
+                f"compare/{entry(1).mainRevision}...{entry(2).mainRevision}?per_page=1&page=2",
                 response(Comparison("ahead")),
             ),
         )
@@ -396,7 +488,7 @@ class RemoteCatalogTest(unittest.TestCase):
             Step("GET", "git/ref/heads/main", response(Ref(Sha("f" * 40)))),
             Step(
                 "GET",
-                f"compare/{entry(1).mainRevision}..." + "f" * 40,
+                f"compare/{entry(1).mainRevision}..." + "f" * 40 + "?per_page=1&page=2",
                 response(Comparison("diverged")),
             ),
         )
@@ -407,6 +499,31 @@ class RemoteCatalogTest(unittest.TestCase):
             ),
         )
         invalid.consumed()
+
+    def test_comparison_uses_page_status_without_file_or_commit_evidence(self) -> None:
+        older = entry(1).mainRevision
+        newer = entry(2).mainRevision
+        for status in ("ahead", "behind", "identical", "diverged", "unknown"):
+            with self.subTest(status=status):
+                script = Script(
+                    Step(
+                        "GET",
+                        f"compare/{older}...{newer}?per_page=1&page=2",
+                        response(Comparison(status)),
+                    ),
+                )
+                expected = (
+                    status
+                    if status in ("ahead", "behind", "identical")
+                    else catalog.Failure.MAIN_HISTORY_UNPROVEN
+                )
+                self.assertEqual(
+                    expected,
+                    publisher.RemotePublisher(REPOSITORY, entry(2), script.run).comparison(
+                        older, newer
+                    ),
+                )
+                script.consumed()
 
 
 if __name__ == "__main__":
