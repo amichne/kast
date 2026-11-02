@@ -11,12 +11,13 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
 
+from validation_outcome import Outcome, ProductValidated, SourceValidated, ValidationRecord
+from validation_scope import Scope
+
 import build_candidate as candidate
 import developer_catalog as catalog
 import publish_developer as publisher
 from test_developer_catalog import entry
-from validation_outcome import Outcome, ProductValidated, SourceValidated, ValidationRecord
-from validation_scope import Scope
 
 REPOSITORY = "amichne/kast"
 BUILD = "a" * 40
