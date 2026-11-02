@@ -59,7 +59,7 @@ esac
 control_name="kast-control-v${version}-$control_platform.tar.gz"
 # Name the admitted top-level payloads explicitly; archiving `.` creates a root
 # member that the release installer's traversal-safe extractor correctly rejects.
-tar -czf "$assets/$control_name" -C "$control_product" bin lib share
+tar -czf "$assets/$control_name" -C "$control_product" bin share
 plugin_name="${plugin_archive##*/}"
 asset_names=("$control_name")
 host_version=""

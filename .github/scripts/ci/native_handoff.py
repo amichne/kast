@@ -446,6 +446,11 @@ def qualify(payload: Admitted) -> None:
                 "KAST_ACCEPTANCE_JAVA_EXECUTABLE": str(Path(os.environ["JAVA_HOME"]) / "bin/java"),
             },
         )
+        gradle(
+            identity,
+            f"-PkastNativeExecutable={product / 'share/kast/libexec/kast-management'}",
+            "publicLauncherTest",
+        )
 
 
 def main() -> None:
