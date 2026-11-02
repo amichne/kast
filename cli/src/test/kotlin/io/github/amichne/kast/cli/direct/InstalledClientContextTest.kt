@@ -8,6 +8,7 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -53,6 +54,12 @@ class InstalledClientContextTest {
         Files.writeString(marker, "1\n")
         val record = checkNotNull(OneShotInvocationRecord.begin(context))
         val directory = payload.parent.parent.resolve("state/run/one-shot")
+        for (privateDirectory in listOf(directory.parent, directory)) {
+            assertEquals(
+                PosixFilePermissions.fromString("rwx------"),
+                Files.getPosixFilePermissions(privateDirectory),
+            )
+        }
         assertEquals(1L, Files.list(directory).use { it.count() })
         record.close()
         assertEquals(0L, Files.list(directory).use { it.count() })
