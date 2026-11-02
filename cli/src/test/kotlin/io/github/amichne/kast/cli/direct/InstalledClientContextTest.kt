@@ -18,6 +18,27 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstalledClientContextTest {
     @Test
+    fun `unified native payload preserves manifest identity and rejects replacement`(@TempDir temporary: Path) {
+        val payload = installedPayload(temporary.toRealPath(), "share/kast/libexec/kast-management")
+        val installation = temporary.toRealPath().resolve("path with spaces/installation")
+        val context = admitted(payload)
+        assertEquals(installation, context.installation)
+        assertEquals(
+            installation.resolve("config/environment").toString(),
+            context.environment["KAST_CONFIGURATION_FILE"],
+        )
+        assertEquals(InstalledToolAdmission.AVAILABLE, context.observe())
+        val detached = installation.resolve(".recovery-detached")
+        Files.writeString(detached, "detached")
+        assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
+        assertInstanceOf(Refinement.Rejected::class.java, InstalledClientContext.admit(payload, emptyMap()))
+        Files.delete(detached)
+        Files.writeString(payload, "replacement")
+        assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
+        assertInstanceOf(Refinement.Rejected::class.java, InstalledClientContext.admit(payload, emptyMap()))
+    }
+
+    @Test
     fun `one admitted native context binds configuration and records only while unfenced`(@TempDir temporary: Path) {
         val payload = installedPayload(temporary.toRealPath(), "bin/kast-query")
         val context = admitted(payload)

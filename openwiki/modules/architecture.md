@@ -45,22 +45,28 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
+  - id: openwiki-source-5c861b8d15a750f35fef8a31
+    resource: repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt
   - id: openwiki-source-dfe8403e5aee6d5722e08a79
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - id: openwiki-source-0e95ec5f9ce3c00f4f50719c
     resource: repo://build-logic/src/test/kotlin/support/architecture/WorkspaceRefreshEffectBoundaryTest.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
+  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
+    resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-e98296a26c7cb717460f6f68
+    resource: repo://distribution/cli/build.gradle.kts
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-10-31T05:30:47.008Z" }
+generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T05:30:47.008Z
+    at: 2026-11-02T17:10:25.214Z
 ---
 
 # Verified module architecture
@@ -79,7 +85,12 @@ Every module role requires its matching Gradle convention. Validated module poli
 - IntelliJ and filesystem/SQLite modules own explicit effects.
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
-- `distribution:cli` is the isolated native management surface. Its production project dependencies are `distribution:contract`, `distribution:managed`, and the durable `evidence:sqlite` owner for read-only settled mutation-state inspection. The exact distribution-to-SQLite edge is named in policy; general CLI-to-SQLite dependencies remain rejected. It reuses the managed selected-IDE metadata owner and retains no IntelliJ, semantic, MCP implementation, or App Server implementation dependency. Shutdown fence writes remain confined to the exact lifecycle effect owner.
+- `distribution:cli` owns the management implementation and depends on `distribution:contract`, `distribution:managed`, `distribution:output`, and `evidence:sqlite`.
+  The SQLite owner supplies read-only inspection of settled mutation state.
+  Architecture policy names the exact distribution-to-SQLite edge and rejects general CLI-to-SQLite dependencies.
+  The module keeps no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.
+  The `cli` module composes this management implementation through one named policy edge and produces the shared native Control executable.
+  Shutdown fence writes stay within the exact lifecycle effect owner.
 - The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool submits the exact canonical plan identity to current native mutation admission.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.

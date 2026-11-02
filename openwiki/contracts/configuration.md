@@ -53,12 +53,12 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
+  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
+    resource: repo://cli/build.gradle.kts
   - id: openwiki-source-b5958cf441728188e2493589
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
   - id: openwiki-source-0934da5590f6da4c7a9cd885
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationMigration.kt
-  - id: openwiki-source-82001d1847d4403e8e24787a
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - id: openwiki-source-5f9ee1677dd5352d4bd1273d
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
   - id: openwiki-source-211f90f77f217ad3273b0d4f
@@ -67,6 +67,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-db07d240b5fb033a752d32dc
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
+  - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
+    resource: repo://cli/src/main/native-launchers/bin/kast-mcp
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
@@ -85,10 +87,10 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-31T05:05:54.659Z" }
+generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T05:05:54.659Z
+    at: 2026-11-02T17:10:25.214Z
 ---
 
 # Installation configuration
@@ -195,7 +197,7 @@ effects. `KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
 user settings. Explicit staging qualifies the replacement payload through the existing lifecycle owner.
 Completion removes the exact owned fence without service activation. It does not create another installation.
 
-The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
+The private daemon entry point is a declared raw-environment ingress owner. It examines managed readiness inputs and the saved-configuration rejection marker before coordinator admission. Its installed launcher selects the daemon mode in the shared native executable. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. These launchers add no saved configuration setting or Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, or repair to the existing owners.
 
 Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY` selects a control-only upgrade and `KAST_HOST_VERSION` selects host provenance only for a paired or host installation. Local checkout routing retains `KAST_LOCAL_COMPONENT`, `KAST_LOCAL_PROFILE`, and `KAST_LOCAL_HOST_RELEASE_RECORD`. Checkout Control-only assembly builds and forwards only the Control payload and clears any inherited `KAST_HOST_VERSION` before invoking the public installer. Host and paired checkout assembly retain their generated Host version. Control-only replacement retains the admitted saved configuration and workspace registration; it starts fresh control state and session ownership.
@@ -211,7 +213,12 @@ and `KAST_LOCAL_JAVA_HOME` are removed from the catalogue and reject as
 neither input. The assembled-product acceptance runner retains its separate
 `KAST_ACCEPTANCE_JAVA_EXECUTABLE` binding.
 
-The checkout installer admits the selected IDEA bundled JBR with executable and Java release feature >=25 before Gradle, setting Java only for its own children. Installed JVM launchers recheck their recorded selected JBR before child startup. Both require exactly one `JAVA_VERSION` declaration with a fully quoted numeric feature; duplicate declarations, missing quotes and trailing text reject before execution, including a valid declaration beside a malformed duplicate. Missing or incompatible runtime rejects with repair guidance. Ambient Java does not select either runtime. Native query launchers omit JVM setup.
+The checkout installer admits the selected IDEA bundled JBR before Gradle and scopes Java to its children.
+Admission needs an executable and exactly one fully quoted `JAVA_VERSION` declaration with a numeric feature of at least 25.
+Duplicate declarations, missing quotes, trailing text, and incompatible runtimes reject with repair guidance.
+Ambient Java does not select that runtime.
+Shipped Control launchers select modes in one native executable and need no JVM or bundled JVM libraries.
+The launchers pass `HOME` and `TMPDIR` as explicit native system properties when those variables contain values.
 
 ## Imported model inputs
 

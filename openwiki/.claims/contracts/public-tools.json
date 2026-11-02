@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7694d2a40e1c0650181b9c8849c7e58710fca8f62f295a4c3598b0f68c96ac47",
+  "pageVersion": "sha256:0129cf210dc135fb446b1483ebc1b1b0d2f80eb4238de62d3b57a87924d3a07c",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -200,7 +200,7 @@
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "version": "repo-file-v1:sha256:32bcd225d2772e66c8b0ab231fd8062260991c22f3f6a839f811b422446edc83"
+          "version": "repo-file-v1:sha256:7f2aca4c76cc357b4a01e36cd2f74ee2004ebd515faec19cf8f8775ec649c482"
         },
         {
           "resource": "repo://pi/extension.ts",
@@ -391,6 +391,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-02T17:10:25.214Z"
   }
 }

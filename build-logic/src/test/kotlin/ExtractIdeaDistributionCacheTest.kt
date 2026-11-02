@@ -63,7 +63,8 @@ class ExtractIdeaDistributionCacheTest {
 
     private fun run(project: Path): TaskOutcome? = GradleRunner.create()
         .withProjectDir(project.toFile())
-        .withArguments("extract", "--build-cache", "--configuration-cache", "--console=plain", "--max-workers=2")
+        // Rescan fixture files before each input-fingerprint assertion.
+        .withArguments("extract", "--build-cache", "--configuration-cache", "--no-watch-fs", "--console=plain", "--max-workers=2")
         .build().task(":extract")?.outcome
 
     private fun archive(project: Path, libraries: Map<String, String>) {

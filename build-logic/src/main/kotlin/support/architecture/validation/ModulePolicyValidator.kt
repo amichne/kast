@@ -160,6 +160,8 @@ internal object ModulePolicyValidator {
 
 internal object KastCleanSlateCrossRoleDependencies {
     val all: Set<ProjectDependencyObservation> = setOf(
+        // The unified Control entry composes the existing management command owner.
+        ProjectDependencyObservation(ModuleId.CLI, ModuleId.DISTRIBUTION_CLI),
         // Both public executables use the same pure result presentation adapter.
         ProjectDependencyObservation(ModuleId.DISTRIBUTION_CLI, ModuleId.DISTRIBUTION_OUTPUT),
         ProjectDependencyObservation(ModuleId.CLI, ModuleId.DISTRIBUTION_OUTPUT),

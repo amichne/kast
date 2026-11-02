@@ -30,14 +30,20 @@ class NativeGuidanceContractTest {
         val installation = selectedInstallation(root)
         val original = assertInstanceOf<BundledManifestRead.Read>(readBundledManifest(installation)).manifest
         val payloads =
-            listOf("bin/kast-query", "bin/kast-query-complete").map { relative ->
+            listOf("bin/kast-query", "bin/kast-query-complete", "share/kast/libexec/kast-management").map { relative ->
+                Files.createDirectories(installation.resolve(relative).parent)
                 val path = Files.writeString(installation.resolve(relative), "unused fixture payload")
                 path.toFile().setExecutable(true, false)
                 BundledPayload(relative, "sha256:${sha256(path)}", 493)
             }
         Files.writeString(
             installation.resolve("installation.json"),
-            managementJson.encodeToString(original.copy(payloadFiles = original.payloadFiles + payloads)),
+            managementJson.encodeToString(
+                original.copy(
+                    payloadFiles =
+                        original.payloadFiles.filterNot { old -> payloads.any { it.path == old.path } } + payloads
+                )
+            ),
         )
         val receipt = requireOwnedExecutable(root)
         val launcher = Path.of(receipt.executable)

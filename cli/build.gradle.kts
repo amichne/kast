@@ -31,8 +31,8 @@ graalvmNative {
     binaries {
         configureEach { javaLauncher.set(nativeImageLauncher) }
         named("main") {
-            imageName.set("kast-query")
-            mainClass.set("io.github.amichne.kast.cli.publicshell.KastPublicCliMain")
+            imageName.set("kast")
+            mainClass.set("io.github.amichne.kast.cli.KastNativeMain")
             sharedLibrary.set(false)
             fallback.set(false)
             buildArgs.addAll(
@@ -51,19 +51,15 @@ graalvmNative {
     }
 }
 
-val importedQueryExecutable = providers.gradleProperty("kastQueryNativeExecutable")
+val importedNativeExecutable = providers.gradleProperty("kastNativeExecutable")
 
-require(importedQueryExecutable.isPresent == providers.gradleProperty("kastNativeExecutable").isPresent) {
-    "Imported native executables need both management and query artifacts"
-}
-
-configurations.consumable("queryExecutableElements") {
-    if (importedQueryExecutable.isPresent) {
+configurations.consumable("nativeExecutableElements") {
+    if (importedNativeExecutable.isPresent) {
         outgoing.artifact(
             layout.file(
-                importedQueryExecutable.map {
+                importedNativeExecutable.map {
                     File(it).also { path ->
-                        require(path.isAbsolute) { "Imported query executable needs an absolute path" }
+                        require(path.isAbsolute) { "Imported Control executable needs an absolute path" }
                     }
                 }
             )
@@ -73,20 +69,20 @@ configurations.consumable("queryExecutableElements") {
     }
 }
 
-val queryNativeImageOptions =
+val nativeImageOptions =
     tasks.register<WriteProperties>("nativeImageOptions") {
         destinationFile.set(layout.buildDirectory.file("native-inputs/image.properties"))
-        property("mainClass", "io.github.amichne.kast.cli.publicshell.KastPublicCliMain")
+        property("mainClass", "io.github.amichne.kast.cli.KastNativeMain")
     }
 
 tasks.register<Tar>("assembleNativeImageInputs") {
     group = "distribution"
-    description = "Packages the query client inputs for native compilation on the target host."
+    description = "Packages the unified Control inputs for native compilation on the target host."
     into("lib") {
         from(tasks.named("jar"))
         from(configurations.runtimeClasspath)
     }
-    from(queryNativeImageOptions.flatMap { it.destinationFile })
+    from(nativeImageOptions.flatMap { it.destinationFile })
     from(tasks.named<CollectReachabilityMetadata>("collectReachabilityMetadata").flatMap { it.into }) {
         into("reachability-metadata")
     }
@@ -99,6 +95,9 @@ tasks.register<Tar>("assembleNativeImageInputs") {
 }
 
 dependencies {
+    testImplementation(libs.ktor.client.cio)
+    testImplementation(libs.ktor.client.websockets)
+    implementation(project(":distribution:cli"))
     implementation(project(":distribution:output"))
     testImplementation(libs.jtoon)
     testImplementation(testFixtures(project(":app-server")))
@@ -430,4 +429,23 @@ configurations.consumable("providerCatalogueElements") {
 
 configurations.consumable("cliInstallationElements") {
     outgoing.artifact(tasks.named<Sync>("installDist").map { it.destinationDir })
+}
+
+val assembleNativeControlLayout =
+    tasks.register<Sync>("assembleNativeControlLayout") {
+        into(layout.buildDirectory.dir("native-control-layout"))
+        from("src/main/native-launchers") { filePermissions { unix("755") } }
+        from("native-control-v1") { into("share/kast") }
+        from(repositoryRoot.file("copilot/task-extension.mjs")) {
+            into("share/kast/adapters/copilot")
+            rename { "extension.mjs" }
+        }
+        from(repositoryRoot.file("pi/mcp-extension.ts")) {
+            into("share/kast/adapters/pi")
+            rename { "extension.ts" }
+        }
+    }
+
+configurations.consumable("nativeControlLayoutElements") {
+    outgoing.artifact(assembleNativeControlLayout.map { it.destinationDir })
 }

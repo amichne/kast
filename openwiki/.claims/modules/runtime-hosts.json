@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2aa48f35e46d81ecc32a3549b12b783d70dc2409fc209c7427fe5bc8ae193891",
+  "pageVersion": "sha256:2d83da63753a0848a674b97f58cae7e6fc745a6fc57a8a1e9d95ba7038952313",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
-          "version": "repo-file-v1:sha256:3fb9afbed6eb82e167c2ed5e14ccbaa573014e06dd43255aa3bb8464cb9e230d"
+          "version": "repo-file-v1:sha256:7980ac96d67f35a82d84fef7f33e3d9b25383958ea574d36308c1ffd1ae1ad1f"
         }
       ]
     },
@@ -17,7 +17,7 @@
       "statement": "Peer disconnection or extra input terminates hosted dispatch with explicit IO_UNAVAILABLE or INVALID_REQUEST rejection instead of a semantic success.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L63-L87",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L72-L96",
           "version": "repo-lines-v1:sha256:1694c5f9f367336e6c1daf7e0fa656cd12a57eb7a59d8a578326a66cfeeef677:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MjNiYzFjMzY2ZGJmYjJiZjhiZjJmMmNjNzdlNDQzMGJkMmM3Y2NjZDI2MTliZTRjNmJkYTdjYThhMWRiYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZGM0MzY3ODU0MjFjYjc2MmVkYjMwNmVmZWVmOTZmMDM3OTY1Y2JiMDRmZmRmOWMzM2MxMzVlMjJjZmMzZWMifQ"
         }
       ]
@@ -345,6 +345,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T09:49:39.493Z"
+    "at": "2026-11-02T17:10:25.214Z"
   }
 }

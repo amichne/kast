@@ -12,7 +12,6 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.nio.file.Files
-import java.util.zip.ZipFile
 
 @CacheableTask
 abstract class VerifyControlDistributionTask : DefaultTask() {
@@ -26,7 +25,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
-    abstract val qualifiedQueryExecutable: RegularFileProperty
+    abstract val qualifiedControlExecutable: RegularFileProperty
 
     @get:Input
     abstract val targetPlatform: Property<String>
@@ -43,13 +42,13 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     fun verify() {
         val root = controlDirectory.get().asFile.toPath()
         val archive = controlArchive.get().asFile
-        val query = root.resolve("bin/kast-query")
-        check(Files.mismatch(query, qualifiedQueryExecutable.get().asFile.toPath()) == -1L) {
-            "control query payload differs from its native producer"
+        val executable = root.resolve("share/kast/libexec/kast-management")
+        check(Files.mismatch(executable, qualifiedControlExecutable.get().asFile.toPath()) == -1L) {
+            "control payload differs from its native producer"
         }
-        val header = Files.newInputStream(query).use { it.readNBytes(20) }
+        val header = Files.newInputStream(executable).use { it.readNBytes(20) }
         check(nativeQueryHeaderMatches(header, targetPlatform.get())) {
-            "control query payload is not a native executable for ${targetPlatform.get()}"
+            "control payload is not a native executable for ${targetPlatform.get()}"
         }
         check(archive.length() < maximumArchiveBytes.get()) {
             "control archive is ${archive.length()} bytes. It must be less than ${maximumArchiveBytes.get()} bytes."
@@ -59,6 +58,19 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val payloadEntries = entries.filter(String::isNotEmpty)
         check(payloadEntries.size <= maximumEntries.get()) {
             "control product contains ${payloadEntries.size} entries; limit is ${maximumEntries.get()}"
+        }
+        check(entries.none { entry ->
+            entry == "lib" || entry.startsWith("lib/") || entry.endsWith(".jar") || entry.endsWith(".class")
+        }) { "control product contains JVM libraries or bytecode" }
+        val nativeExecutables = paths.filter(Files::isRegularFile).filter { path ->
+            Files.newInputStream(path).use { input ->
+                java.util.HexFormat.of().formatHex(input.readNBytes(4)) in setOf(
+                    "cffaedfe", "feedfacf", "cefaedfe", "feedface", "cafebabe", "bebafeca", "cafebabf", "bfbafeca", "7f454c46",
+                )
+            }
+        }
+        check(nativeExecutables == listOf(executable)) {
+            "control product must contain exactly one native executable"
         }
         logger.lifecycle("Control inventory: entries={}, remaining={}", payloadEntries.size, maximumEntries.get() - payloadEntries.size)
         val installedBytes = paths
@@ -77,6 +89,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/libexec/kast-service",
             "share/kast/libexec/kast-management",
             "share/kast/install.sh",
+            "share/kast/native-control-v1",
             "share/kast/operation-registry.json",
             "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json",
@@ -86,6 +99,9 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/licenses/LICENSE",
         )
         check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
+        check(Files.readString(root.resolve("share/kast/native-control-v1")) == "1\n") {
+            "control native layout marker is unsupported"
+        }
         val defaultPlugin = "share/kast/agent-tools/plugins/kast/"
         val defaultEffects = listOf(".mcp.json", "mcp.json", "skills/kast/scripts")
         check(entries.none { entry -> defaultEffects.any { effect ->
@@ -111,24 +127,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val forbidden = listOf("kast-indexer", "idea-home", "plugins/Kotlin", "plugins/gradle")
         check(entries.none { entry -> forbidden.any(entry::contains) }) {
             "control product contains semantic runtime payload"
-        }
-        val forbiddenJarEntries = listOf(
-            "com/intellij/",
-            "io/github/amichne/kast/indexer/",
-            "org/jetbrains/kotlin/idea/",
-        )
-        val embeddedRuntimeEntry = paths
-            .filter { path -> Files.isRegularFile(path) && path.fileName.toString().endsWith(".jar") }
-            .firstNotNullOfOrNull { jar ->
-                ZipFile(jar.toFile()).use { archiveFile ->
-                    archiveFile.entries().asSequence()
-                        .map { entry -> entry.name }
-                        .firstOrNull { entry -> forbiddenJarEntries.any(entry::startsWith) }
-                        ?.let { entry -> "${root.relativize(jar)}!/$entry" }
-                }
-            }
-        check(embeddedRuntimeEntry == null) {
-            "control product embeds semantic runtime entry $embeddedRuntimeEntry"
         }
     }
 }

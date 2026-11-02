@@ -5,10 +5,16 @@ description: "Explains Control and Host installation ownership, managed receipts
 tags: [kast, distribution]
 
 sources:
+  - id: openwiki-source-a387d9d545afff426d34a10a
+    resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
+  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
+    resource: repo://cli/build.gradle.kts
   - id: openwiki-source-5f9ee1677dd5352d4bd1273d
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - id: openwiki-source-f2c689f11ca37c5559bce314
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
   - id: openwiki-source-069607880d661efb9c5fbc84
@@ -19,16 +25,18 @@ sources:
     resource: repo://packaging/installation-lifecycle.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
+  - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
+    resource: repo://packaging/managed_release.py
   - id: openwiki-source-b1af9cf4e2649975cc7bdf86
     resource: repo://packaging/managed_update_journal.py
   - id: openwiki-source-2a77c42fb15d42188a60711b
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-10-31T10:51:42.239Z" }
+generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T10:51:42.239Z
+    at: 2026-11-02T17:10:25.214Z
 ---
 
 
@@ -40,7 +48,8 @@ verified:
 The public shell installer selects a published stable or developer channel.
 Developer selection uses published channel evidence, independently of the checkout and installed version.
 The checkout installer is a separate adapter for local development.
-It admits the selected IDEA JBR before Gradle or an installed child JVM starts.
+It admits the selected IDEA JBR before Gradle starts.
+Installed Control launchers need no JVM.
 
 Control owns the management executable, coordinator, adapters, private launchers, and installed configuration.
 Host owns the IDEA plugin and semantic runtime.
@@ -60,7 +69,11 @@ The managed composition coordinator owns Host settlement, replacement, and activ
 Saved shared endpoints migrate to private settings. Explicit shared selections reject before effects.
 
 The managed root contains one ordinary `installation` directory.
-The native public command and private transport payloads keep separate locations and owners.
+The `cli` module produces one native Control executable at `share/kast/libexec/kast-management`.
+Thin launchers select management, query, MCP, tool RPC, service, daemon, Codex, or installer entry points in that executable.
+The Control archive contains no `lib` directory, JARs, or class files.
+The producer guard rejects a second native image and compares the canonical executable with its qualified producer.
+Published-release admission keeps support for the historical pair of native executables when the new layout marker is absent.
 `ManagedInstallationOwnedTree` admits exact destructive-recovery trees under the physical selected installation.
 Its admission rejects aliases and symlink substitutions before deletion.
 Unknown paths do not become owned because their names resemble Kast artifacts.

@@ -1,4 +1,0 @@
---no-fallback
--Os
---enable-native-access=ALL-UNNAMED
--H:IncludeResources=management/bootstrap-install.sh

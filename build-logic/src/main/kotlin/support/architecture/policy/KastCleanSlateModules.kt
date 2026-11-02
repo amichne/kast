@@ -372,6 +372,7 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.CLI,
             ModuleRole.CLI,
+            ModuleId.DISTRIBUTION_CLI,
             ModuleId.DISTRIBUTION_OUTPUT,
             ModuleId.APP_SERVER,
             ModuleId.DISTRIBUTION_CONTRACT,

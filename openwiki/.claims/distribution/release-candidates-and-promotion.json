@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fea58d24890866d4f564c0b643b071c94a721e6270480c2e9cbb0c75e9910c5e",
+  "pageVersion": "sha256:39b6a60b55f8e59cedb15d99d33b39e45eebc70f585eaea0a8b5cccfcea3be6f",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:4689257e5e954d21fa0b83b3f1f7e25f6b676e693e09cf4f6061f9ea59c5dfdf"
+          "version": "repo-file-v1:sha256:13bbff83ef5d58b5e555d6fa89d82d7a334baaec922b7e7a78ac8181f2f0bb74"
         }
       ]
     },
@@ -50,7 +50,7 @@
         },
         {
           "resource": "repo://.github/scripts/release/publish_developer.py",
-          "version": "repo-file-v1:sha256:0189fb0af0e77df347a245739ff5df4d2ad6bf9e1b3596dca87037cf4fea3341"
+          "version": "repo-file-v1:sha256:f095afe38633b13aff1287c76d49a7039c069ca436ef1618b062b4f537562726"
         }
       ]
     },
@@ -60,13 +60,13 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_release.py",
-          "version": "repo-file-v1:sha256:4626bb76708c5ad5743dc2296dccd5c61a14bfbc902452b733358c5fd01f5903"
+          "version": "repo-file-v1:sha256:053aee7a20ec7d6248a54c19ba2fe0fc7652e7d579cec9fc8033e9a5328a8a95"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-02T17:10:25.214Z"
   }
 }

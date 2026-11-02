@@ -328,7 +328,7 @@ class SourceValidationTest(unittest.TestCase):
 
     def test_native_compilation_staging_and_release_assembly_reject(self):
         for task in (
-            ":distribution:cli:nativeCompile", ":distribution:cli:nativeTestCompile", ":stageKastControlProduct",
+            ":cli:nativeCompile", ":cli:nativeTestCompile", ":stageKastControlProduct",
             ":installedProductTest", ":assembleRelease", ":assembleKastControlDist",
             ":runtime:hosted:hostedPlugin", ":app-server:verifyReleaseRuntimeAdmission", ":generateHostReleaseRecord",
         ):

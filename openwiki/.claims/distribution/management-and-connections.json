@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:eee6bb42a86aba875b3ec55d3dbda22df57741c05f4eacb44a3f27f43ae8bfa9",
+  "pageVersion": "sha256:ba6e34cc79fc27322d5fd300f2a18d2ec4d0a92bcd10976466a6989836bdce8b",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:f4517c0267ebed7008ecde3a7463a3c663328d2607b9cf98a95ddd0b63dd87a9"
+          "version": "repo-file-v1:sha256:5c487f30e333d55c19700e8873438322414898e527b77664e76d2a7ca4a6ee3c"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt",
-          "version": "repo-file-v1:sha256:cb471dcd96443c1ebc20b22b13dda2c746eb422df3e0bf69520acb09a8a47f86"
+          "version": "repo-file-v1:sha256:4d06336da9cc522e588c6ca43533a3f515ee76b5ffa2a19cbfe8695de7ca44af"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt",
@@ -56,17 +56,35 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
+          "version": "repo-file-v1:sha256:ff7df8f1e028ce4c451aa96cb88be6c6e100d7df4084508c8cf6722bff13df13"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt",
           "version": "repo-file-v1:sha256:dd5afcd94edfb98161cf4ef10d09d89d4780ed410a64516bc10e87c31ac6ed68"
         }
       ]
+    },
+    {
+      "id": "claim_5d949b9c85fc4b4d92534baf50c7be0d",
+      "statement": "The cli module composes management and private transport entry points in one native executable. Thin private launchers select the existing command and lifecycle owners without a JVM.",
+      "evidence": [
+        {
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
+          "version": "repo-file-v1:sha256:75e8134123d47e3288ad7d680fb56354b14cf84524746365cd2c1bee8314d6f0"
+        },
+        {
+          "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
+          "version": "repo-file-v1:sha256:983c6b33c0685f117642778e766ea8d89edf8785d77e1b669431242efb2a9960"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:29:42.821Z"
+    "at": "2026-11-02T17:14:13.237Z"
   }
 }

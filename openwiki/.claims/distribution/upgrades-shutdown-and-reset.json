@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7745c4521051d3858569fde6c1105243a10be401f2e055b3dec1af466dc3f38f",
+  "pageVersion": "sha256:903ffb2a377fcf76b1ed0509d898983753f8265f69b9a1f9fd2518a83742eb3d",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:716512f464ef4d8447b09ccaa62e6a51f7247a030a80e77760c56be10ebded2d"
+          "version": "repo-file-v1:sha256:ff7df8f1e028ce4c451aa96cb88be6c6e100d7df4084508c8cf6722bff13df13"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -96,7 +96,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -126,13 +126,13 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:305c7256bf2c3fc91290306c851bcebf403669e2213493239c170d448bc5a3db"
+          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-31T10:51:42.239Z"
+    "at": "2026-11-02T17:10:25.214Z"
   }
 }

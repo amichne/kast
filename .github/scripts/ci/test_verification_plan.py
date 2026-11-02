@@ -58,7 +58,7 @@ class VerificationPlanTest(unittest.TestCase):
                 self.assertIn(":verifySelectedKotlinSemanticCoverage", plan.tasks)
                 self.assert_semantic_population(plan, expected & {":runtime:hosted", ":relation:intellij"})
                 self.assertNotIn(":installedProductTest", plan.tasks)
-                self.assertNotIn(":distribution:cli:nativeCompile", plan.tasks)
+                self.assertNotIn(":cli:nativeCompile", plan.tasks)
                 self.assertNotIn(":topology:build:check", plan.tasks)
 
     def test_query_delivery_javascript_keeps_app_server_generation_consumers(self):
