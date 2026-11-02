@@ -35,7 +35,7 @@ source_revision="$(
     --expected-source-revision "${expected_source_revision}"
 )"
 
-./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g \
+./gradlew --no-daemon --no-parallel --max-workers=1 -Dorg.gradle.jvmargs=-Xmx5g \
   -PkastNativeBuildMetrics=true -Pversion="${version}" -PkastSourceRevision="${source_revision}" \
   productBuildGate assembleRelease generateKastModuleKnowledge --profile --info
 
