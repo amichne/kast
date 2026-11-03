@@ -147,6 +147,8 @@ def test_plan_keeps_both_engines_and_every_publication_obligation(tmp_path: Path
     }
     assert steps[0].commands[0].arguments[0] == "/root/vale-3.24"
     assert "/reader/vale-3.25" in steps[3].commands[0].arguments
+    assert str(tmp_path / "build/prose/current-reader-corpus.txt") in steps[3].commands[0].arguments
+    assert "docs/reviews/readability-audit/corpus.txt" not in steps[3].commands[0].arguments
     assert all(
         "verify_documentation.py" not in part
         for step in steps

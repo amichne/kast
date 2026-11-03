@@ -10,9 +10,8 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-import pytest
-
 import okf_public
+import pytest
 import reader_contracts
 from publication import (
     Failure,
@@ -298,6 +297,7 @@ def test_completed_rendered_receipt_keeps_each_gate_and_limit(root: Path) -> Non
         "themes",
         "screenshots",
         "bounded-measurements",
+        "candidate-preview-provenance",
     )
     evidence = (InputDigest("docs/reviews/proof.txt", sha("passed\n")),)
     receipt = wire(
@@ -310,7 +310,7 @@ def test_completed_rendered_receipt_keeps_each_gate_and_limit(root: Path) -> Non
         )
     )
     obligations, limits = assess_receipt(root, receipt, state, ReceiptKind.RENDERED)
-    assert len(obligations) == 8
+    assert len(obligations) == 9
     assert all(item.status == State.PASSED for item in obligations)
     assert limits == ("The fixture does not establish live-site behavior.",)
 
@@ -335,7 +335,7 @@ def test_missing_rendered_obligations_remain_not_run(root: Path) -> None:
         )
     )
     obligations, _ = assess_receipt(root, receipt, state, ReceiptKind.RENDERED)
-    assert len(obligations) == 8
+    assert len(obligations) == 9
     assert all(item.status == State.NOT_RUN for item in obligations)
 
 
@@ -375,11 +375,12 @@ def test_changed_receipt_evidence_rejects_replay(root: Path) -> None:
     assert obligations[-1].status == State.MISMATCHED
 
 
-def test_unsafe_association_content_rejects_at_ingress() -> None:
+@pytest.mark.parametrize("path", ["../outside", "docs/public/\0.mdx"])
+def test_unsafe_association_content_rejects_at_ingress(path: str) -> None:
     raw: object = [
         {
             "route": "start",
-            "content": [{"path": "../outside", "sha256": "0" * 64}],
+            "content": [{"path": path, "sha256": "0" * 64}],
             "claims": [],
             "generatedOwners": [],
             "reviewedSourceRevision": "1" * 40,

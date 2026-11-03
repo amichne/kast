@@ -47,10 +47,10 @@ sources:
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Agent context and harness delivery
@@ -138,7 +138,7 @@ A successful fixture or tool catalog does not prove a real Copilot or Pi session
 - [extension.ts](../../pi/extension.ts)
 - [session_start.py](../../agent-tools/hooks/session_start.py)
 - [onboarding.template.md](../../agent-tools/onboarding.template.md)
-- [mcp-extension.ts](../../pi/mcp-extension.ts)
+- [`mcp-extension.ts`](../../pi/mcp-extension.ts)
 - [CopilotFixtureProjection.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/copilot/CopilotFixtureProjection.kt)
 
 ## Read next

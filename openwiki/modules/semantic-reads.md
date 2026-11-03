@@ -263,10 +263,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Semantic read domains
@@ -275,13 +275,13 @@ Local `val`, `var`, and named functions use the symbol contract's admitted local
 declaration address. Symbol, relation and source adapters keep independent
 module-owned K2 projections into that same pure contract. Exact compiler owner
 identity, file/range and bounded lexical anchors distinguish shadowed bindings;
-the relation adapter no longer uses an ad hoc local-function string. Discovery
+the relation adapter no longer uses an separate local-function string. Discovery
 applies cheap scope, kind and name constraints before capacity accounting and
 includes eligible descendants of excluded containers. Library-inclusive local
 supplementation uses the existing bounded collector with source ownership and
 duplicate admission before capacity.
 
-Finite local projection failures retain bounded observation counters for missing
+Finite local projection failures keep bounded observation counters for missing
 owners, invalid addresses, unsupported compiler types and work exhaustion,
 without recording names or source payloads. Local mutable identity does not
 establish assignment flow. Actual compiler binding and projection parity still
@@ -290,7 +290,7 @@ require native qualification against the exact candidate.
 Local containing-owner projection also handles enum-entry overrides with absent
 callable IDs. Source and relation require K2 initializer/entry ownership, exact
 initializer equality, the entry callable identity and compiler member name,
-matching symbol discovery's proof. Success and every unavailable case retain
+matching symbol discovery's proof. Success and every unavailable case keep
 bounded existing compiler-identity counters and finite termination causes. The
 local owner path preserves qualified signature facts and global qualified
 admission, without adding dependencies between IntelliJ adapter modules.
@@ -306,7 +306,7 @@ and termination labels explain the native boundary without logging paths.
 
 Symbol discovery returns bounded candidates; exact resolution refines a candidate into compiler identity. Source reads, relation reads, traversal, and diagnostics consume exact, workspace-bound requests rather than re-parsing loose names.
 
-An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read; the source adapter revalidates the exact anchor and committed document before returning text. Returned text and line coordinates retain that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.
+An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read. Before the source adapter returns text, it makes sure that the exact anchor and committed document remain valid. Returned text and line coordinates keep that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.
 
 Read contracts share `SemanticReadAuthority`, retaining either a published lease
 or original-owner live IDE admission. Symbol, relation, and diagnostic services
@@ -317,14 +317,14 @@ current-read validation. The pure owners do not inspect or acquire an IDE.
 
 Discovery constraints survive declaration candidate selection,
 exact refinement, relation endpoints, source snapshots, and continuation
-fingerprints. Relation and diagnostic facts retain detached `SemanticReadIdentity`.
+fingerprints. Relation and diagnostic facts keep detached `SemanticReadIdentity`.
 Published write and topology boundaries continue to require publication evidence.
 
 Native symbol and relation scopes establish path, current model, and file-index
 membership without reading PSI packages in `GlobalSearchScope.contains`.
 Package admission occurs after provider collection or exact PSI lookup, with
 closed admitted, outside-scope, and unsupported outcomes. Discovery, exact
-restoration, relation subjects, and relation targets retain this check. Text and
+restoration, relation subjects, and relation targets keep this check. Text and
 legacy symbol-relation callbacks collect bounded references before projection;
 collection exhaustion remains qualified rather than complete.
 
@@ -332,9 +332,9 @@ Scoped indexed-word discovery uses the same `PsiSearchHelper` occurrence path
 and compiled scope. Callback capture is bounded and thread-safe; scope and kind
 admission precede capture capacity, while package PSI admission follows callbacks.
 Projection verifies the word against the current document, identifies the nearest
-supported declaration owner, and deduplicates detached owner candidates before
+supported declaration owner, and removes duplicate detached owner candidates before
 exact refinement. Imports, file-level comments and unsupported nearest owners
-retain incomplete-coverage evidence instead of acquiring an outer owner. A
+keep incomplete-coverage evidence instead of acquiring an outer owner. A
 bounded line exemplar is independent of relation facts. Existing counters and
 native/projection timings measure admitted capture and projection work; they do
 not measure actual AST loads or establish an elapsed-time improvement.
@@ -380,7 +380,7 @@ missing and mismatched evidence outcomes.
 - Start in `relation:contract` for semantic edge meaning.
 - Start in `traversal:contract` for bounded multi-hop state.
 - Start in `query:contract` for cross-domain composition.
-- Start in [`query:protocol`](query-protocol.md) for shared request admission, reference codecs, and canonical result projection.
+- Start in [`query:protocol`](query-protocol.md) for shared request admission, reference encoding and decoding adapters, and canonical result projection.
 
 Read [semantic query](../flows/semantic-query.md) for execution order and [compiler identity](../glossary/compiler-identity.md) for the key refinement.
 
@@ -390,7 +390,7 @@ For reference relations, a K2 identity that differs from the selected subject
 proves an indexed candidate is unrelated and is dismissed without an omission.
 An unavailable K2 identity still qualifies coverage as unresolved.
 
-Compiler-confirmed reference observations retain the selected target, occurrence
+Compiler-confirmed reference observations keep the selected target, occurrence
 file/range, context, authority and provenance separately from declaration
 ownership. A resolved declaration owner can project a real relation fact.
 Imports, aliases and file-level annotations remain file-scoped observations;
@@ -399,27 +399,27 @@ declaration owner or a call edge. Native `ReferencesSearch` prepares one bounded
 detached inventory over the original admitted search universe. Sorted file,
 range and provider locators give the successor a direct candidate position;
 restoration does not replay the consumed compiler-confirmation prefix. An
-unavailable or unretainable inventory terminates with its exact limitation.
+inventory that is unavailable or cannot be kept terminates with its exact limitation.
 Native locator accounting charges detached UTF-16 text and fixed object overhead
 independently of JSON projection estimates. It preserves every descriptor and
 scope identity. The native inventory gauge records the prepared state's required
-bytes, or the bounded failed attempt including its first unbufferable locator.
+bytes, or the bounded failed attempt including its first locator that cannot fit the buffer.
 These values govern retention admission; they are not measured JVM heap sizes.
 The same retained provider state owns detached definitions and callee inventories.
-Native definitions retain normalized declaration locators together with the
+Native definitions keep normalized declaration locators together with the
 original scoped provider file. Restoration rechecks that file's scope membership
-before compiler-confirming the normalized declaration. Callee discovery retains
+before compiler-confirming the normalized declaration. Discovery of callees retains
 exact call sites in the selected declaration. Compiler refinement restores only
 the unconsumed suffix. The inventory owns its preparation unit and consumed-item
 cursor, so a continuation cannot independently reconstruct cursor progress.
 This preserves the original provider universe and compiler emission policy.
 
 Traversal observations bind each partial expansion to its original subject and
-depth. They retain known minima and detailed provider, measurement, sample and
-remediation evidence. Samples retain at most three distinct located observations.
+depth. They keep known minima and detailed provider, measurement, sample and
+remediation evidence. Samples keep at most three distinct located observations.
 The owned sample collection proves whether all observed locations remain or a
 further distinct location was discarded. Complete samples do not claim that
-every omitted input supplied a location. Wire and CLI projections retain this
+every omitted input supplied a location. Wire and CLI projections keep this
 complete or truncated proof beside the bounded locations. Observed omissions and unvisited expansions survive an
 aggregate checkpoint as inherited evidence. An unmeasured resumable budget or
 provider boundary describes pending work; exact successor exhaustion can
@@ -429,10 +429,10 @@ The scoped `ALL` path starts with admitted model-owned source roots and retains 
 lexical frontier of unopened VFS directory/file partitions. Each directory is
 expanded once into a bounded detached child snapshot; each active Kotlin file
 resumes from its next source offset after reacquiring PSI. No global inventory
-or consumed PSI prefix is replayed behind the continuation. The remainder binds
+or consumed PSI prefix is replayed behind the continuation. The remaining frontier binds
 scope, target, constraints, authority and provider ordering; its advancing input
 revision and discovered/completed file counts distinguish progress from
-exhaustion. An unavailable, oversized or unretainable partition produces a
+exhaustion. A partition that is unavailable, oversized, or cannot be kept produces a
 finite blocked cause rather than an unusable successor. Current ALL source
 ordering is `kotlin-file-source-v2`, then declaration source offset. ALL and named
 declaration observations explicitly declare a Kotlin language universe even
@@ -441,10 +441,10 @@ PSI fixtures exercise native traversal; installed K2 qualification remains a
 separate proof boundary. Timings and counts for partition discovery, file
 reacquisition, examined leaves and projection survive query composition as
 bounded observations. Metadata is charged to returned bytes and checkpoint
-retention without consuming semantic row capacity. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
+retention without consuming semantic row capacity. Generated primary-constructor properties keep K2 property identity. Java reference endpoints keep compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
 
 Search planning applies cheap scope and declaration-family constraints before
-expensive work. Project-only fuzzy declarations retain ranked scoped Kotlin-file enumeration;
+expensive work. Project-only fuzzy declarations keep ranked scoped Kotlin-file enumeration;
 `ALL` uses the detached partition producer. Mixed declaration families use one
 symbol discovery request. Exact searches outside the directory-partition route
 use the short-name indexes for requested families. Kind exclusion
@@ -466,7 +466,7 @@ path because the word index can omit them. Index collection and directory
 preparation share work, cancellation, and retained-byte limits. Incomplete index
 reads preserve qualification rather than establish absence.
 
-Fuzzy discovery ranks exact, case-insensitive, single-edit, and subsequence name evidence before compiler refinement. A bounded lexical queue retains the best admitted candidates across the selected source files. Exact package selection uses `KotlinExactPackagesIndex`; directory and source-set membership constrain file enumeration before capacity. `DISCOVERY_FILES` bounds lexical file retention independently of semantic work, and lexical retain/replace/drop counters distinguish ranking from compiler refinement. The synthetic 200-module fixture covers deletion and transposition with excluded-directory, package, and test-source noise.
+Fuzzy discovery ranks exact, case-insensitive, single-edit, and subsequence name evidence before compiler refinement. A bounded lexical queue keeps the highest-ranked admitted candidates across the selected source files. Exact package selection uses `KotlinExactPackagesIndex`; directory and source-set membership constrain file enumeration before capacity. `DISCOVERY_FILES` bounds lexical file retention independently of semantic work, and lexical keep/replace/drop counters distinguish ranking from compiler refinement. The synthetic 200-module fixture covers deletion and transposition with excluded-directory, package, and test-source noise.
 
 Traversal charges measured one-hop elapsed time rather than the granted time
 ceiling. Cumulative page progress proves advancing resumable checkpoints. The
@@ -483,7 +483,7 @@ an exhausted overrun is terminal. An over-budget page cannot claim completion.
 Exact K2 callable projection distinguishes native callable identity, compiler-owned
 enum-entry initializer membership, and finite unavailable ownership stages.
 Bounded counters and termination reasons expose that boundary without recording
-names, source payloads, references, or live compiler objects. Enum-entry membership
+names, source payloads, references, or live compiler objects. The membership of an enum entry
 is established only through the compiler containing-symbol chain and equality
 with the enum entry's initializer, never from PSI naming.
 
@@ -513,9 +513,9 @@ these boundaries without claiming installed IDE qualification.
 Source cursors carry a detached snapshot, selected region, semantic request,
 emitted-entity ordinal, and advancing structural traversal revision. Pending
 work retains source ranges, provider descriptors, structural parents and depths,
-same-node parameter phases, and already-proven lookahead entities. Native
+same-node parameter phases, and already-proven next entities. Native
 restoration resumes these locators directly; it does not traverse and refine the
-consumed entity prefix. A successor may keep its emitted ordinal when bounded
+consumed entity prefix. A successor can keep its emitted ordinal when bounded
 work advances through excluded containers before another eligible entity. The hosted source state store owns these cursors and
 encoded output suffixes under one publication session. It checks authority and
 request identity before native reads; only final admitted publication exposes
@@ -525,8 +525,8 @@ Byte, entry and original token-age bounds apply to the shared owner. Admission,
 deduplication and publication require the complete dependency closure to remain
 live under the same semantic request and authority. A younger output page cannot
 extend an older cursor's deadline, and a running cursor cannot become another
-attempt's deduplicated successor. One-shot source projections use the cursorless
-port and cannot advertise retained cursor capacity.
+attempt's successor through deduplication. One-shot source projections use the
+port without a cursor and cannot advertise retained cursor capacity.
 
 Source continuation admission preserves finite causes before invoking the provider:
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
@@ -546,8 +546,8 @@ declaration position plus its compiler signature. Both directions refine a
 literal lambda boundary only when a successful K2 call maps that argument to an
 ordinary function parameter of the selected inline callable. Each intervening boundary must pass;
 returned/stored lambdas, non-inline callbacks, `noinline`, and `crossinline`
-are excluded as proven non-caller boundaries. Accessors remain unsupported.
-Unresolved/ambiguous argument mappings retain `UNRESOLVED_TARGET`. The admitted
+are excluded as proven non-caller boundaries. Property getters and setters remain unsupported.
+Unresolved/ambiguous argument mappings keep `UNRESOLVED_TARGET`. The admitted
 named owner survives until endpoint projection; the inner occurrence,
 independent target resolution, scope and lifetime remain unchanged. Owner
 counters distinguish admitted, excluded, and unavailable boundaries. Kotlin
@@ -573,11 +573,11 @@ enumeration reports its consumed callback work, including replayed identities
 and interrupted attempts; analysis spends one remaining unit per complete file.
 Every stage validates the original authority before further work and publication. An empty intermediate page cannot establish absence, and an
 indivisible compiler unit that overruns its time grant rejects explicitly.
-The complete-scope diagnostic and mutation verification adapters retain their
+The complete-scope diagnostic and mutation verification adapters keep their
 existing contracts. The public request carries an opaque continuation and an independent
 execution budget. Qualified replies distinguish enumeration, analysis and retained
 output stops. The inventory has no numeric total until enumeration exhausts.
-Encoded output suffixes retain the original scan continuation, coverage and order.
+Encoded output suffixes keep the original scan continuation, coverage and order.
 
 The directory adapter streams the existing Kotlin file-type index through
 `processValues`, after source-domain and path constraints. It retains only a
@@ -615,11 +615,11 @@ this does not prove a per-ID work bound for a long excluded-only native prefix.
 That strict native internal-work qualification remains separate from the compiled
 callback, replay, exclusion-capacity and elapsed-rejection tests.
 
-Diagnostic resumes preserve the original path, authority and `max_diagnostics` semantic choice. Execution grants may change. Checkpoint admission charges the retained query and authority identity against both the per-checkpoint and aggregate retention bounds. Admitted rejections preserve the actual execution grant report and a finite recovery direction; that direction authorizes no setting change or epoch migration.
+Diagnostic resumes preserve the original path, authority and `max_diagnostics` semantic choice. Execution grants can change. Checkpoint admission charges the retained query and authority identity against both the per-checkpoint and aggregate retention bounds. Admitted rejections preserve the actual execution grant report and a finite recovery direction; that direction authorizes no setting change or epoch migration.
 
-Diagnostic response replay keys retain normalized caller grant selections,
+Diagnostic response replay keys keep normalized caller grant selections,
 including configured-default selections, rather than an invocation's fluctuating
-host elapsed-time capacity. The same caller request and basis therefore retain
+host elapsed-time capacity. The same caller request and basis therefore keep
 identical semantic pages and continuation tokens when the host deadline clamp
 changes. A changed caller grant shapes a distinct execution. Every invocation
 still publishes its own requested/effective report; replay does not reuse an old
@@ -649,7 +649,7 @@ token's original deadline. Active claims preserve physical storage until release
 without permitting fresh admission or publication after expiry. A younger page's
 validity ends at the oldest referenced dependency's deadline. The source owner
 also prunes expired or broken pages outside active claims. Expiry, capacity, retirement and semantic request
-checks retain their distinct finite meaning. Source and diagnostic owner gauges
+checks keep their distinct finite meaning. Source and diagnostic owner gauges
 report current retained bytes and entry counts, with an independent maximum byte
 high-water mark. These values estimate detached quota accounting, not JVM heap.
 
@@ -659,10 +659,10 @@ Definition expansion normalizes Kotlin origin, navigation and light-element
 representations before declaration descriptors and K2 confirmation. Equivalent
 supported representations share a canonical provider identity; Java members
 remain eligible for the existing proof. Unsupported wrappers remain omissions,
-and platform cancellation propagates. This normalization does not deduplicate
+and platform cancellation propagates. This normalization does not remove duplicates from
 occurrence pipelines or replace their explicit distinct stage.
 
-Native read diagnostics retain returned discovery/relation page counters in
+Native read diagnostics keep returned discovery/relation page counters in
 addition to existing work counters and phase observations. Each hosted request
 initializes both page counters to an observed zero; only a returned native page
 increments its counter. These measurements stay outside model-facing output and
@@ -731,9 +731,9 @@ does not supply the enclosing result, and exception entry never carries a
 successfully produced try value into a catch fallback.
 
 Explicit returns and throws remain separate control-flow outcomes. Unit and
-nonnullable Nothing results do not manufacture a normal value edge. Any admitted
+non-null Nothing results do not manufacture a normal value edge. Any admitted
 path crossing a try boundary with finally retains `FINALLY_UNSUPPORTED`, including
-an explicit return bypass; internal paths may still be useful. Bounded counters
+an explicit return bypass; internal paths can still be useful. Bounded counters
 record candidate admission and finite type, abrupt-completion and finally
 rejections without source payloads. This supported static model does not prove
 runtime path feasibility.
@@ -769,13 +769,13 @@ Admission needs the exact initializer mapping and one reviewed set of six class 
 An archive change or an unknown class set rejects admission.
 The supplier proof keeps the lexical declaration separately from its execution context.
 Declaration execution accepts named callables and property declarations after source containment succeeds.
-Accessor execution keeps the property, accessor kind, and exact source region.
-Initializer execution keeps the class and exact initializer region.
+Execution of a property getter or setter keeps the property, getter-or-setter kind, and exact source region.
+Class initializer execution keeps the class and exact initializer region.
 Both adapter paths need K2 equality with the containing declaration.
 
 Direct anonymous execution needs a nonempty compiler-confirmed route from a named callable.
 Each route keeps every parent, body, invocation occurrence, and SEMANTIC BASIS.
-An uninvoked outer callback keeps its activation obligation.
+An outer callback without an invocation keeps its activation obligation.
 
 The static graph distinguishes the deferred supply from an immediate invocation.
 A class-reference edge keeps constructor occurrences when the requested target is a class declaration.

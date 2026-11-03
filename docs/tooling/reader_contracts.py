@@ -176,8 +176,8 @@ def _route(value: str) -> bool:
 
 
 def _destination(value: str) -> bool:
-    parsed = urlsplit(value)
-    return not parsed.scheme and not parsed.netloc and not parsed.query and _route(parsed.path)
+    path, marker, fragment = value.partition("#")
+    return _route(path) and (not marker or re.fullmatch(r"[a-z0-9_-]+", fragment) is not None)
 
 
 def parse_contracts(value: object) -> ReaderContracts | Failure:
@@ -249,7 +249,8 @@ def parse_contracts(value: object) -> ReaderContracts | Failure:
             return Failure(Code.INPUT, "Density needs a status and reason")
         status, reason = disposition["status"], disposition["reason"]
         if (
-            status not in {"ACCEPTED", "REVIEW_REQUIRED"}
+            not isinstance(status, str)
+            or status not in {"ACCEPTED", "REVIEW_REQUIRED"}
             or not isinstance(reason, str)
             or not reason.strip()
         ):

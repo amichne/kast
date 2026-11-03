@@ -44,10 +44,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-656a2bd4859ff8a64d431829
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Native management and harness connections
@@ -58,7 +58,7 @@ verified:
 Its finite command model selects query dispatch, status, versions, guidance installation, lifecycle operations, upgrades, disconnect, or uninstall.
 The `cli` module composes management and the private transport entry points in one native executable.
 Thin private launchers select their existing command and lifecycle owners without a JVM.
-Their internal command families do not add public semantic subcommands.
+Their internal command families do not add public semantic commands.
 
 Passive status reads installed receipts and available runtime evidence.
 The output separates installed and loaded identities, update policy, pending recovery, registrations, workspaces, and in-flight requests.
@@ -119,7 +119,7 @@ These mechanisms alone do not establish that a running IDEA loaded the selected 
 - [ManagementStatus.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)
 - [ConnectionConfiguration.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt)
 - [PluginInstallation.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt)
-- [codex-mcp-registration.py](../../packaging/codex-mcp-registration.py)
+- [`codex-mcp-registration.py`](../../packaging/codex-mcp-registration.py)
 - [ConfigurationSchemaDocument.kt](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt)
 
 ## Read next

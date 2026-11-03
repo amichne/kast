@@ -262,7 +262,7 @@ def plan(
                         "--vale-bin",
                         reader_vale,
                         "--corpus",
-                        "docs/reviews/readability-audit/corpus.txt",
+                        str(output / "current-reader-corpus.txt"),
                         "--output",
                         str(output / "reader"),
                     )
@@ -374,6 +374,8 @@ def run(
     )
     if not paths:
         return Failure("input", "The prose scope is empty")
+    current_corpus = output / "current-reader-corpus.txt"
+    current_corpus.write_text("\n".join(path for path in paths if path.startswith("docs/public/")))
     checks: list[Check] = []
     all_findings: list[Finding] = []
 
@@ -422,7 +424,7 @@ def run(
                 audit_run = reader_output / "run.json"
                 if audit_run.is_file():
                     refs.append(evidence(audit_run))
-                    refs.append(evidence(root / "docs/reviews/readability-audit/corpus.txt"))
+                    refs.append(evidence(current_corpus))
                 if result.returncode not in {0, 1}:
                     state, reason = State.FAILED, "The frozen reader audit failed"
             elif result.returncode != 0:
@@ -463,7 +465,7 @@ def run(
         tuple(checks),
         (
             "Prose metrics do not establish reader comprehension, native task execution, or current semantic truth.",
-            "The frozen reader audit keeps Vale 3.25.1 and separate prose and terminology stages. Root policy keeps Vale 3.24.0.",
+            "The reader audit keeps the existing Vale 3.25.1 profiles and separate stages on the current public corpus. Root policy keeps Vale 3.24.0.",
             "Historical request captures remain revision-scoped and do not establish current request admission.",
         ),
         "completed" if all(check.status == State.PASSED for check in checks) else "failed",

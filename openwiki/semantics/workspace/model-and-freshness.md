@@ -30,10 +30,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
   - id: openwiki-source-333fbc6ad593a072534f0baf
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Imported model and freshness
@@ -43,7 +43,7 @@ verified:
 Workspace admission consumes the project that IDEA already owns.
 `DetachedModelCapture` projects the current imported model into detached source and dependency facts.
 It does not replace IDEA's Gradle import, indexing, or project lifetime with a second importer.
-Unavailable or untrusted model state remains a rejection.
+Model state that is unavailable or not trusted remains a rejection.
 
 Named Gradle source scope keeps source-set names and imported ownership together.
 The native capture admits the exact project and requested root before source enumeration.

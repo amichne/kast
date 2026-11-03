@@ -2,6 +2,15 @@
 
 import hashlib
 import json
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from http.client import HTTPConnection
 from pathlib import Path
 
 import pytest
@@ -13,9 +22,13 @@ from run import (
     Snapshot,
     State,
     footprint,
+    http_readiness,
     is_dom,
     is_envelope,
+    owned_preview,
     receipt,
+    stop_preview_group,
+    wait_for_preview,
 )
 
 
@@ -71,6 +84,18 @@ def test_browser_response_rejects_false_success_shapes() -> None:
     assert not is_envelope({"success": True, "data": "empty", "error": None})
 
 
+def test_known_outcome_unknown_keeps_native_failure_classification() -> None:
+    assert is_envelope(
+        {
+            "success": False,
+            "data": None,
+            "error": "The command reached the daemon without a response.",
+            "code": "outcome_unknown",
+        }
+    )
+    assert not is_envelope({"success": True, "data": {}, "error": None, "code": "outcome_unknown"})
+
+
 def test_failed_route_keeps_measurements_unknown() -> None:
     state = State(
         "/reference/callables/query-symbols",
@@ -119,3 +144,195 @@ def test_success_without_measurements_rejects() -> None:
 def test_unrun_state_cannot_claim_measurement() -> None:
     with pytest.raises(ValueError, match="cannot contain a measurement"):
         _ = State("/", "initial", "not-run", Footprint(1, 0, 1), dom(), None, "unavailable")
+
+
+def test_repeated_route_cannot_replace_missing_representatives(tmp_path: Path) -> None:
+    _ = (tmp_path / "report.json").write_text("{}\n")
+    _ = (tmp_path / "capture.png").write_bytes(b"fixture-image")
+    snapshot: Snapshot = {
+        "type": "DOCUMENTATION_INPUTS",
+        "sourceRevision": "a" * 40,
+        "inputs": [],
+        "inputsDigest": "b" * 64,
+    }
+    names = (
+        "desktop-light",
+        "desktop-dark",
+        "mobile-light",
+        "mobile-dark",
+        "browser-zoom-200-dark",
+        "keyboard-focus",
+    )
+    states = [
+        State("/", name, "passed", Footprint(2, 0, 2), dom(), "capture.png", None)
+        for _ in range(5)
+        for name in names
+    ]
+    result = receipt(snapshot, states, tmp_path, input_match=True, root=tmp_path)
+    assert '"status": "passed"' not in json.dumps(result["checks"])
+
+
+def test_external_preview_keeps_unassessed_provenance_explicit(tmp_path: Path) -> None:
+    _ = (tmp_path / "report.json").write_text("{}\n")
+    snapshot: Snapshot = {
+        "type": "DOCUMENTATION_INPUTS",
+        "sourceRevision": "a" * 40,
+        "inputs": [],
+        "inputsDigest": "b" * 64,
+    }
+    result = receipt(snapshot, [], tmp_path, input_match=True, root=tmp_path)
+    assert '"name": "candidate-preview-provenance"' in json.dumps(result["checks"])
+
+
+@contextmanager
+def http_child(
+    *, status: int = 200, content_type: str = "text/html", supervised: bool = False
+) -> Iterator[tuple[subprocess.Popen[str], str]]:
+    """The child proves only the readiness transport, not Mintlify rendering."""
+    program = """
+import http.server, sys
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(int(sys.argv[1]))
+        self.send_header('Content-Type', sys.argv[2])
+        self.end_headers()
+        self.wfile.write(b'<!doctype html><html><title>fixture</title></html>')
+    def log_message(self, *args):
+        pass
+server = http.server.HTTPServer(('127.0.0.1', 0), Handler)
+print(server.server_port, flush=True)
+server.serve_forever()
+"""
+    command = [sys.executable, "-c", program, str(status), content_type]
+    if supervised:
+        supervisor = "import subprocess,sys; child=subprocess.Popen(sys.argv[1:]); sys.stdin.read(); child.terminate(); child.wait()"
+        command = [sys.executable, "-c", supervisor, *command]
+    with subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        start_new_session=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as process:
+        try:
+            assert process.stdout is not None
+            port = process.stdout.readline().strip()
+            assert port.isdecimal(), "The HTTP fixture did not start."
+            yield process, "http://127.0.0.1:" + port
+        finally:
+            os.killpg(process.pid, signal.SIGTERM)
+            _ = process.wait(timeout=5)
+
+
+def test_silent_http_child_establishes_transport_readiness() -> None:
+    with http_child() as (process, origin):
+        connection = HTTPConnection("127.0.0.1", int(origin.rsplit(":", 1)[1]), timeout=1)
+        try:
+            connection.request("GET", "/")
+            response = connection.getresponse()
+            assert response.status == 200
+            assert response.read().startswith(b"<!doctype html>")
+        finally:
+            connection.close()
+        _ = wait_for_preview(origin, process, time.monotonic() + 0.05)
+
+
+def test_ready_log_cannot_replace_failed_http() -> None:
+    with http_child(status=503) as (process, origin):
+        with pytest.raises(BrowserFailure, match="PREVIEW_START"):
+            _ = wait_for_preview(origin, process, time.monotonic() + 0.05)
+
+
+def test_exited_preview_cannot_use_a_ready_log() -> None:
+    with subprocess.Popen([sys.executable, "-c", "raise SystemExit(7)"], text=True) as process:
+        assert process.wait(timeout=5) == 7
+        with pytest.raises(BrowserFailure, match="PREVIEW_EXITED:7"):
+            _ = wait_for_preview("http://127.0.0.1:1", process, time.monotonic() + 1)
+
+
+def test_unrelated_live_child_cannot_own_http_readiness() -> None:
+    with http_child() as (_, origin):
+        with subprocess.Popen(
+            [sys.executable, "-c", "import sys;sys.stdin.read()"],
+            stdin=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        ) as unrelated:
+            try:
+                with pytest.raises(BrowserFailure, match="PREVIEW_LISTENER_NOT_OWNED"):
+                    _ = wait_for_preview(origin, unrelated, time.monotonic() + 1)
+            finally:
+                assert unrelated.stdin is not None
+                unrelated.stdin.close()
+                _ = unrelated.wait(timeout=5)
+
+
+@pytest.mark.parametrize("port", [-1, 0, 65536])
+def test_invalid_http_port_is_a_finite_failure(port: int) -> None:
+    with pytest.raises(BrowserFailure, match="PREVIEW_ORIGIN_INVALID"):
+        _ = http_readiness("http://localhost:" + str(port), 0.01)
+
+
+def test_listener_from_actual_descendant_is_admitted() -> None:
+    with http_child(supervised=True) as (process, origin):
+        owner = wait_for_preview(origin, process, time.monotonic() + 1)
+        assert process.pid not in owner.listeners
+        assert len(owner.listeners) == 1
+        owner.examine()
+
+
+def test_preoccupied_port_is_rejected_before_mintlify_launch() -> None:
+    from collections import deque
+
+    with http_child() as (_, origin):
+        port = int(origin.rsplit(":", 1)[1])
+        with pytest.raises(BrowserFailure, match="PREVIEW_PORT_OCCUPIED"):
+            with owned_preview(port, deque()):
+                pytest.fail("A different server cannot create a preview witness.")
+
+
+def test_listener_witness_expires_when_its_process_exits() -> None:
+    with http_child() as (process, origin):
+        owner = wait_for_preview(origin, process, time.monotonic() + 1)
+    with pytest.raises(BrowserFailure, match="PREVIEW_EXITED"):
+        owner.examine()
+
+
+def test_browser_command_rejects_expired_preview_before_effect() -> None:
+    with http_child() as (process, origin):
+        owner = wait_for_preview(origin, process, time.monotonic() + 1)
+    browser = Browser("unused-expired-preview-session")
+    browser.preview_owner = owner
+    with pytest.raises(BrowserFailure, match="PREVIEW_EXITED"):
+        _ = browser.call("version")
+
+
+def test_cleanup_stops_surviving_descendant_after_root_exit() -> None:
+    descendant = "import signal;signal.signal(signal.SIGTERM, signal.SIG_IGN);print('ready',flush=True);signal.pause()"
+    launcher = "import subprocess,sys;subprocess.Popen([sys.executable,'-c',sys.argv[1]])"
+    with http_child() as (unrelated, unrelated_origin):
+        with subprocess.Popen(
+            [sys.executable, "-c", launcher, descendant],
+            stdout=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        ) as process:
+            try:
+                assert process.stdout is not None
+                assert select.select([process.stdout], [], [], 5)[0], "The fixture did not start."
+                assert process.stdout.readline() == "ready\n"
+                assert process.wait(timeout=5) == 0
+                assert not select.select([process.stdout], [], [], 0)[0]
+                stop_preview_group(process)
+                assert select.select([process.stdout], [], [], 1)[0], (
+                    "An owned descendant keeps the pipe open."
+                )
+                assert process.stdout.read() == ""
+                assert unrelated.poll() is None
+                assert http_readiness(unrelated_origin, 1).value == "ready"
+            finally:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass

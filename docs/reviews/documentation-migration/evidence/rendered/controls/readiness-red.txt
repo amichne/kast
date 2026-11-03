@@ -1,0 +1,23 @@
+.............FFF                                                         [100%]
+=================================== FAILURES ===================================
+____________ test_silent_http_child_establishes_transport_readiness ____________
+docs/tooling/rendered/test_run.py:202: in test_silent_http_child_establishes_transport_readiness
+    wait_for_preview(origin, process, threading.Event(), time.monotonic() + 0.05)
+docs/tooling/rendered/run.py:300: in wait_for_preview
+    raise BrowserFailure("PREVIEW_START_FAILED")
+E   run.BrowserFailure: PREVIEW_START_FAILED
+__________________ test_ready_log_cannot_replace_failed_http ___________________
+docs/tooling/rendered/test_run.py:209: in test_ready_log_cannot_replace_failed_http
+    with pytest.raises(BrowserFailure, match="PREVIEW_START"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'run.BrowserFailure'>
+__________________ test_exited_preview_cannot_use_a_ready_log __________________
+docs/tooling/rendered/test_run.py:218: in test_exited_preview_cannot_use_a_ready_log
+    with pytest.raises(BrowserFailure, match="PREVIEW_EXITED:7"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'run.BrowserFailure'>
+=========================== short test summary info ============================
+FAILED docs/tooling/rendered/test_run.py::test_silent_http_child_establishes_transport_readiness
+FAILED docs/tooling/rendered/test_run.py::test_ready_log_cannot_replace_failed_http
+FAILED docs/tooling/rendered/test_run.py::test_exited_preview_cannot_use_a_ready_log
+3 failed, 13 passed in 0.34s

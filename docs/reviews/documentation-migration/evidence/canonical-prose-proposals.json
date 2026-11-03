@@ -1,0 +1,3458 @@
+{
+  "sourceRevision": "cbf13253648ad7fef8dd977162e507465b344623",
+  "proposals": [
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 184,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            50,
+            52
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            63,
+            65
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 186,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            58,
+            60
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            71,
+            73
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 187,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.appserver` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.appserver` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            68,
+            70
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            81,
+            83
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 188,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.change` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.change` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            65,
+            67
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            78,
+            80
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 189,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.codex` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.codex` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            64,
+            66
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            77,
+            79
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 190,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.ide` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            62,
+            64
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            75,
+            77
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 192,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.product` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.product` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            66,
+            68
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            79,
+            81
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 193,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.source` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.source` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            65,
+            67
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            78,
+            80
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 194,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.tool` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.tool` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            63,
+            65
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            76,
+            78
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 195,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.command.workspace` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.command.workspace` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            68,
+            70
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            81,
+            83
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 196,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.direct` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.direct` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            57,
+            59
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            70,
+            72
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 197,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.ide` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            54,
+            56
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            67,
+            69
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 200,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.mcp` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.mcp` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            54,
+            56
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            67,
+            69
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 202,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "| `cli` | `io.github.amichne.kast.cli.rpc` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |",
+      "proposed": "| `cli` | `io.github.amichne.kast.cli.rpc` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            54,
+            56
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "rpc",
+          "span": [
+            67,
+            69
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 272,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "- [settings.gradle.kts](../../settings.gradle.kts)",
+      "proposed": "- [`settings.gradle.kts`](../../settings.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            13,
+            18
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/architecture/functional-packages.md",
+      "line": 273,
+      "sourceSha256": "217d0ad087257c22df16bfb98023957c5873d3fd5d4755d1ce78087278bc5568",
+      "original": "- [build.gradle.kts](../../runtime/hosted/build.gradle.kts)",
+      "proposed": "- [`build.gradle.kts`](../../runtime/hosted/build.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            10,
+            15
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/changes/planning-and-write-admission.md",
+      "line": 52,
+      "sourceSha256": "4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d",
+      "original": "`DerivedMutationPostimage` derives the postimage from the admitted preimage and the planned mutations.",
+      "proposed": "`DerivedMutationPostimage` derives the source after the change from the admitted preimage and the planned mutations.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            40,
+            48
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/changes/planning-and-write-admission.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/changes/receipts-and-recovery.md",
+      "line": 42,
+      "sourceSha256": "6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "original": "Path, schema, plan codec, and receipt failures remain distinct outcomes.",
+      "proposed": "Path, schema, plan encoding and decoding adapter, and receipt failures remain distinct outcomes.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codec",
+          "span": [
+            20,
+            24
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/changes/receipts-and-recovery.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/changes/receipts-and-recovery.md",
+      "line": 52,
+      "sourceSha256": "6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "original": "Live verification reobserves the current original owner, imported model, saved postimage, and compiler anchor.",
+      "proposed": "Live verification examines again the current original owner, imported model, saved source after the change, and compiler anchor.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "reobserves",
+          "span": [
+            19,
+            28
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            80,
+            88
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/changes/receipts-and-recovery.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/changes/receipts-and-recovery.md",
+      "line": 67,
+      "sourceSha256": "6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "original": "Independent source examination can establish the known postimage without a repeated mutation.",
+      "proposed": "Independent source examination can establish the known source after the change without a repeated mutation.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            56,
+            64
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/changes/receipts-and-recovery.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/changes/receipts-and-recovery.md",
+      "line": 71,
+      "sourceSha256": "6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "original": "The service keeps undurable or terminal-persistence failures explicit when it cannot persist a stronger recovery result.",
+      "proposed": "The service keeps failures to persist or terminal-persistence failures explicit when it cannot persist a stronger recovery result.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "undurable",
+          "span": [
+            19,
+            27
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/changes/receipts-and-recovery.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/configuration.md",
+      "line": 98,
+      "sourceSha256": "909e974ab12e9a560479b2bf3124f59b45c04949c9fa8e165a091de5e87cfbf2",
+      "original": "The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. The installer validates its staged saved file through the same source, resolution, and app-server owner admissions without invoking a retired CLI command. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.",
+      "proposed": "The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it from the ambient environment throughout the system. The installer validates its staged saved file through the same source, resolution, and app-server owner admissions without invoking a retired CLI command. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "ambiently",
+          "span": [
+            214,
+            222
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/configuration.md",
+      "line": 174,
+      "sourceSha256": "909e974ab12e9a560479b2bf3124f59b45c04949c9fa8e165a091de5e87cfbf2",
+      "original": "The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. Explicit opening revalidates product metadata and the executable, allowing any supported `262.*` patch update. Inspection and installation never launch IDEA.",
+      "proposed": "The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. An explicit open makes sure that product metadata and the executable remain valid for each supported `262.*` patch update. Inspection and installation never launch IDEA.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            352,
+            362
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/configuration.md",
+      "line": 218,
+      "sourceSha256": "909e974ab12e9a560479b2bf3124f59b45c04949c9fa8e165a091de5e87cfbf2",
+      "original": "Duplicate declarations, missing quotes, trailing text, and incompatible runtimes reject with repair guidance.",
+      "proposed": "Duplicate declarations, missing quotes, trailing text, and incompatible runtime environments reject with repair guidance.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "runtimes",
+          "span": [
+            73,
+            80
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/installed-knowledge.md",
+      "line": 40,
+      "sourceSha256": "17ff87b31a2034bbf4f3bccc4e5336c2e33422c741e559757bc1a0a1b22a05d6",
+      "original": "The isolated Kotlin PSI extractor supplies source headers and KDoc. Its output",
+      "proposed": "The isolated Kotlin PSI extractor supplies source headers and Kotlin documentation comments. Its output",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "KDoc",
+          "span": [
+            63,
+            66
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/installed-knowledge.md",
+      "line": 56,
+      "sourceSha256": "17ff87b31a2034bbf4f3bccc4e5336c2e33422c741e559757bc1a0a1b22a05d6",
+      "original": "| `modules/.../declarations/<id>.json` | Source header, KDoc, source path and exact governing guides |",
+      "proposed": "| `modules/.../declarations/<id>.json` | Source header, Kotlin documentation comments, source path and exact governing guides |",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "KDoc",
+          "span": [
+            57,
+            60
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 152,
+      "sourceSha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
+      "original": "The kast_semantic_read receipt keeps diagnostic estimates and counters separately from serialized response size.",
+      "proposed": "The `kast_semantic_read` receipt keeps diagnostic estimates and counters separately from serialized response size.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "kast_semantic_read",
+          "span": [
+            5,
+            22
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/operation-outcomes.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 188,
+      "sourceSha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
+      "original": "beside it. Missing report metadata retains the unadmitted variant; explicit null",
+      "proposed": "beside it. Missing report metadata retains the variant without an admitted grant; explicit null",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unadmitted",
+          "span": [
+            48,
+            57
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/operation-outcomes.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 210,
+      "sourceSha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
+      "original": "for both unadmitted and budget-bearing rejections. The wire retains the finite",
+      "proposed": "for rejections with and without an admitted grant. The wire retains the finite",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unadmitted",
+          "span": [
+            10,
+            19
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/operation-outcomes.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 240,
+      "sourceSha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
+      "original": "Hosted hard deadline exhaustion cannot publish an unvalidated result. It returns",
+      "proposed": "Hosted hard deadline exhaustion cannot publish an result without established validity. It returns",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unvalidated",
+          "span": [
+            51,
+            61
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/operation-outcomes.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 247,
+      "sourceSha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
+      "original": "Ledger construction also checks every applicable reviewed origin, transfer, transformation, consumer expectation and boundary alternative. Native branch accounting keeps each route's exact origin history and preceding model steps, so one modeled route cannot supply another route's missing branch. Omission rejects with `MISSING_BRANCH`. Nonmatching or unvisited models remain retained without creating a route; an explicit execution cutoff retains its unresolved obligation.",
+      "proposed": "Ledger construction also checks every applicable reviewed origin, transfer, transformation, consumer expectation and boundary alternative. Native branch accounting keeps each route's exact origin history and preceding model steps, so one modeled route cannot supply another route's missing branch. Omission rejects with `MISSING_BRANCH`. Models without a match or visit remain retained without creating a route; an explicit execution cutoff retains its unresolved obligation.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Nonmatching",
+          "span": [
+            339,
+            349
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/operation-outcomes.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 200,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "Its optional `steps` are ordered nonterminal transformations.",
+      "proposed": "Its optional `steps` are ordered transformations before the terminal step.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "nonterminal",
+          "span": [
+            34,
+            44
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 290,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.",
+      "proposed": "The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Each nullable DTO field lowers null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Nullable",
+          "span": [
+            639,
+            646
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 292,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits exact impact producers, declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued output continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, binding rows, value paths, or impact witness sections according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.",
+      "proposed": "`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits exact impact producers, declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued output continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, binding rows, value paths, or impact witness sections according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Each nullable run control normalizes before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Nullable",
+          "span": [
+            1475,
+            1482
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 302,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "`where` admits a closed visibility or primitive predicate. Primitive predicates select compiler-grounded `name`, `kind`, or `file`, a finite comparison operator, and a nonblank literal bounded to 512 characters at public admission. The facade lowers a typed public predicate into the canonical predicate type. `concat` accepts the same exact-reference or retained-result input shapes used as query sources, preserves stream order and multiplicity, and revalidates exact references under the current authority and query budget. `intersect`, `union`, and `difference` require a retained result on the right and compare canonical semantic identity, not names or token spelling. `difference` requires complete right coverage and no right failures or producer progress before it can establish absence. `distinct_symbols` removes duplicates only at its explicit stage. `join` reads a retained symbol result on the right, keyed solely by canonical identity. Inner join emits one typed binding row per matching pair, preserving multiplicity and both cells' exact references, relation connections and proven occurrence facts. `project_binding` selects one named cell from binding rows before symbol stages resume. Semi and anti join keep the left symbol stream. Unknown projection names reject during admission. Anti join requires complete right membership and rejects incomplete right input. Joined binding rows retain and page under their own row type; they may seed later queries through typed projection, but cannot serve as a symbol join right input. A mismatched read-result output rejects. `walk` admits a relation, optional positive maximum depth, and optional breadth-first or bounded-fan-out strategy; it reuses the traversal domain operation under the query budget. Query walk observations retain expanded frontier, progress, strategy, partial expansions, and incomplete coverage, with no separate public traversal continuation.",
+      "proposed": "`where` admits a closed visibility or primitive predicate. Primitive predicates select compiler-grounded `name`, `kind`, or `file`, a finite comparison operator, and a nonblank literal bounded to 512 characters at public admission. The facade lowers a typed public predicate into the canonical predicate type. `concat` accepts the same exact-reference or retained-result input shapes used as query sources, preserves stream order and multiplicity, and makes sure that exact references remain valid under the current authority and query budget. `intersect`, `union`, and `difference` require a retained result on the right and compare canonical semantic identity, not names or token spelling. `difference` requires complete right coverage and no right failures or producer progress before it can establish absence. `distinct_symbols` removes duplicates only at its explicit stage. `join` reads a retained symbol result on the right, keyed solely by canonical identity. Inner join emits one typed binding row per matching pair, preserving multiplicity and both cells' exact references, relation connections and proven occurrence facts. `project_binding` selects one named cell from binding rows before symbol stages resume. Semi and anti join keep the left symbol stream. Unknown projection names reject during admission. Anti join requires complete right membership and rejects incomplete right input. Joined binding rows retain and page under their own row type; they may seed later queries through typed projection, but cannot serve as a symbol join right input. A mismatched read-result output rejects. `walk` admits a relation, optional positive maximum depth, and optional breadth-first or bounded-fan-out strategy; it reuses the traversal domain operation under the query budget. Query walk observations retain expanded frontier, progress, strategy, partial expansions, and incomplete coverage, with no separate public traversal continuation.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            453,
+            463
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 306,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant disjointness in the generated provider schema.",
+      "proposed": "MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant mutual exclusion in the generated provider schema.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "disjointness",
+          "span": [
+            246,
+            257
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 316,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests retain presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned cutover grammar. Declaration discovery, containing-declaration location discovery, and scoped indexed-word discovery resolve to exact rows inside query. File discovery has no public route. `add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body, preserves its signature and surrounding source, and rejects expression bodies, contracts, and unsupported targets.",
+      "proposed": "The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests retain presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned transition grammar. Declaration discovery, containing-declaration location discovery, and scoped indexed-word discovery resolve to exact rows inside query. File discovery has no public route. `add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body, preserves its signature and surrounding source, and rejects expression bodies, contracts, and unsupported targets.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "cutover",
+          "span": [
+            418,
+            424
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 325,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "coverage. Phrases, qualified literals and regexes fail admission. Retained and",
+      "proposed": "coverage. Phrases, qualified literals and regular expressions fail admission. Retained and",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "regexes",
+          "span": [
+            43,
+            49
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 390,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "no public accessor.",
+      "proposed": "no public retrieval method.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "accessor",
+          "span": [
+            11,
+            18
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 407,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "nonnull `execution_budget` report. The existing reason string or query rejection",
+      "proposed": "non-null `execution_budget` report. The existing reason string or query rejection",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "nonnull",
+          "span": [
+            1,
+            7
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 408,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "object retains its shape. An omitted report describes an unadmitted rejection;",
+      "proposed": "object retains its shape. An omitted report describes a rejection without an admitted grant;",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unadmitted",
+          "span": [
+            58,
+            67
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 430,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "`workspace_lifecycle` is a hosted effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.",
+      "proposed": "`workspace_lifecycle` is a hosted tool with external effects with action-specific tagged inputs for inspect, open, present, sync, `configure_sync`, release, close, `request_user_close` and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "effectful",
+          "span": [
+            35,
+            43
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "configure_sync",
+          "span": [
+            119,
+            132
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "request_user_close",
+          "span": [
+            151,
+            168
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 459,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "An `IMPACT` source declares producer invocation anchors with exact enclosing and callable references, an expansion domain, `KOTLIN_FORWARD_V1` semantics, a declaration inventory, and explicit representation or boundary models. Native admission revalidates the exact sites and model positions under current authority before execution. `VALUE_PATHS` reports compiler transfers, reviewed model applications and terminal obligations without inferring representation from names.",
+      "proposed": "An `IMPACT` source declares producer invocation anchors with exact enclosing and callable references, an expansion domain, `KOTLIN_FORWARD_V1` semantics, a declaration inventory, and explicit representation or boundary models. Before execution, native admission makes sure that the exact sites and model positions remain valid under current authority. `VALUE_PATHS` reports compiler transfers, reviewed model applications and terminal obligations without inferring representation from names.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            245,
+            255
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 502,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "supertypes. The object and its members keep distinct local compiler identities;",
+      "proposed": "`supertypes`. The object and its members keep distinct local compiler identities;",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "supertypes",
+          "span": [
+            1,
+            10
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/public-tools.md",
+      "line": 516,
+      "sourceSha256": "2bc93a21d19a4d643ce7fdc90d3cb0759d262b2d7e5f64a5d6bd4cee1163bc2d",
+      "original": "Its `execution` variant keeps declaration, accessor, initializer, or ordered direct-invocation evidence.",
+      "proposed": "Its `execution` variant keeps declaration, property getter or setter, initializer, or ordered direct-invocation evidence.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "accessor",
+          "span": [
+            44,
+            51
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "line": 113,
+      "sourceSha256": "229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "original": "and revalidates it afterward before returning detached output.",
+      "proposed": "and makes sure that it remains valid afterward before returning detached output.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            5,
+            15
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/source-identity.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "line": 164,
+      "sourceSha256": "229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "original": "results expose only `ref`; `symbol_id` has no public accessor. Exact selectors still bind",
+      "proposed": "results expose only `ref`; `symbol_id` has no public retrieval method. Exact selectors still bind",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "accessor",
+          "span": [
+            54,
+            61
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/source-identity.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "line": 213,
+      "sourceSha256": "229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "original": "descriptors, parent/depth proofs and proven lookahead stay in that snapshot.",
+      "proposed": "descriptors, parent/depth proofs and proven next entity stay in that snapshot.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "lookahead",
+          "span": [
+            45,
+            53
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/source-identity.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "line": 232,
+      "sourceSha256": "229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "original": "Anonymous objects retain their actual compiler supertypes and owner-relative",
+      "proposed": "Anonymous objects retain their actual compiler `supertypes` and owner-relative",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "supertypes",
+          "span": [
+            48,
+            57
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/source-identity.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "line": 234,
+      "sourceSha256": "229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "original": "the label only for actual object-literal PSI, then revalidates the exact range",
+      "proposed": "the label only for actual object-literal PSI, then makes sure that the exact range remains valid",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            52,
+            62
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/source-identity.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/build-and-architecture.md",
+      "line": 67,
+      "sourceSha256": "777cebc285c1d582ae5bb6cb9bd169ba2ca0c1bc9c7ebaccae004db2e8552e84",
+      "original": "The shared quality convention applies ktfmt, Detekt, and Kotlin file-length gates.",
+      "proposed": "The shared quality convention applies `ktfmt`, `detekt`, and Kotlin file-length gates.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "ktfmt",
+          "span": [
+            39,
+            43
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt",
+          "span": [
+            46,
+            51
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/build-and-architecture.md",
+      "line": 95,
+      "sourceSha256": "777cebc285c1d582ae5bb6cb9bd169ba2ca0c1bc9c7ebaccae004db2e8552e84",
+      "original": "- [settings.gradle.kts](../../settings.gradle.kts)",
+      "proposed": "- [`settings.gradle.kts`](../../settings.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            13,
+            18
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/build-and-architecture.md",
+      "line": 96,
+      "sourceSha256": "777cebc285c1d582ae5bb6cb9bd169ba2ca0c1bc9c7ebaccae004db2e8552e84",
+      "original": "- [kast.architecture.gradle.kts](../../build-logic/src/main/kotlin/kast.architecture.gradle.kts)",
+      "proposed": "- [`kast.architecture.gradle.kts`](../../build-logic/src/main/kotlin/kast.architecture.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "kast",
+          "span": [
+            4,
+            7
+          ]
+        },
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            22,
+            27
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/build-and-architecture.md",
+      "line": 101,
+      "sourceSha256": "777cebc285c1d582ae5bb6cb9bd169ba2ca0c1bc9c7ebaccae004db2e8552e84",
+      "original": "- [kast.kotlin-quality.gradle.kts](../../build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts)",
+      "proposed": "- [`kast.kotlin-quality.gradle.kts`](../../build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "kast",
+          "span": [
+            4,
+            7
+          ]
+        },
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            24,
+            29
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/contracts-and-generation.md",
+      "line": 58,
+      "sourceSha256": "a857405a63e617895834c878862a7a23111317996c6f7ed1f3350ae08ee77f05",
+      "original": "`OperationWireTable` binds operations to their wire codecs.",
+      "proposed": "`OperationWireTable` binds operations to their wire encoding and decoding adapters.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codecs",
+          "span": [
+            53,
+            58
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/contracts-and-generation.md",
+      "line": 104,
+      "sourceSha256": "a857405a63e617895834c878862a7a23111317996c6f7ed1f3350ae08ee77f05",
+      "original": "- [kast.public-query-contract.gradle.kts](../../build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts)",
+      "proposed": "- [`kast.public-query-contract.gradle.kts`](../../build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "kast",
+          "span": [
+            4,
+            7
+          ]
+        },
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            31,
+            36
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/contracts-and-generation.md",
+      "line": 108,
+      "sourceSha256": "a857405a63e617895834c878862a7a23111317996c6f7ed1f3350ae08ee77f05",
+      "original": "- [build.gradle.kts](../../cli/build.gradle.kts)",
+      "proposed": "- [`build.gradle.kts`](../../cli/build.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            10,
+            15
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/development/knowledge-upkeep.md",
+      "line": 115,
+      "sourceSha256": "ee3de68e7a3b8376a070ee39612357f1a9afcddcf94c39a15a0cd3975e36e13c",
+      "original": "- [build.gradle.kts](../../build.gradle.kts)",
+      "proposed": "- [`build.gradle.kts`](../../build.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            10,
+            15
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/distribution/installation-and-managed-files.md",
+      "line": 101,
+      "sourceSha256": "3b8c06952939fadba24574fa217be4352e2ebd7b2c15382d53432c70d97a1ed5",
+      "original": "If the device identifier changes, admission keeps the recorded inode and owner constraints and consistently rebases recorded device identities.",
+      "proposed": "If the device identifier changes, admission keeps the recorded inode and owner constraints and keeps a consistent mapping from recorded device identities to their current identities.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "rebases",
+          "span": [
+            109,
+            115
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/distribution/management-and-connections.md",
+      "line": 61,
+      "sourceSha256": "a755a87e85d46fb20dc07085568ab5cf95a331ac4524f163517a720a7164b445",
+      "original": "Their internal command families do not add public semantic subcommands.",
+      "proposed": "Their internal command families do not add public semantic commands.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "subcommands",
+          "span": [
+            60,
+            70
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/distribution/management-and-connections.md",
+      "line": 122,
+      "sourceSha256": "a755a87e85d46fb20dc07085568ab5cf95a331ac4524f163517a720a7164b445",
+      "original": "- [codex-mcp-registration.py](../../packaging/codex-mcp-registration.py)",
+      "proposed": "- [`codex-mcp-registration.py`](../../packaging/codex-mcp-registration.py)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            10,
+            12
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/distribution/release-candidates-and-promotion.md",
+      "line": 129,
+      "sourceSha256": "c5ab39986ce018d473d7f1979c97e645880b98de65d9a5a852f670d7ef54a834",
+      "original": "- [plugin-release.gradle.kts](../../distribution/release/plugin-release.gradle.kts)",
+      "proposed": "- [`plugin-release.gradle.kts`](../../distribution/release/plugin-release.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            19,
+            24
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/change-lifecycle.md",
+      "line": 83,
+      "sourceSha256": "8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
+      "original": "deterministic postimage. Its `ChangePlanningBasis.Live`",
+      "proposed": "deterministic source after the change. Its `ChangePlanningBasis.Live`",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            15,
+            23
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/change-lifecycle.md",
+      "line": 135,
+      "sourceSha256": "8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
+      "original": "postimage, the adapter calls the pinned platform's per-file",
+      "proposed": "source after the change, the adapter calls the pinned platform's per-file",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            1,
+            9
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/change-lifecycle.md",
+      "line": 137,
+      "sourceSha256": "8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
+      "original": "physical observation. Completion and exact postimage refinement emit typed",
+      "proposed": "physical observation. Completion and exact refinement of the source after the change emit typed",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            44,
+            52
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/change-lifecycle.md",
+      "line": 170,
+      "sourceSha256": "8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
+      "original": "Recovery can prove the exact prior state or roll back an exact matching postimage; divergence,",
+      "proposed": "Recovery can prove the exact prior state or roll back an exact matching source after the change; divergence,",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            73,
+            81
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/change-lifecycle.md",
+      "line": 215,
+      "sourceSha256": "8ac6f8096d26dd73411f0091291d57ab0eda9a70e026db46be5c176cbcc9ff4a",
+      "original": "Durable live-plan row envelopes use storage version 1 independently of each embedded plan document codec. Issuance and reload check the same storage owner before checksum, document decoding and exact plan identity checks. Add-declaration plan codec version 2 retains explicit traversal expansion scope; replacement-body codec version 1 remains independently supported. A current embedded plan does not admit an unknown storage-row version, and an old embedded add-declaration plan does not become valid merely because its row envelope is supported.",
+      "proposed": "Durable live-plan row envelopes use storage version 1 independently of each embedded plan document format. Issuance and reload check the same storage owner before checksum, document decoding and exact plan identity checks. Add-declaration plan format version 2 retains explicit traversal expansion scope; replacement-body plan format version 1 remains independently supported. A current embedded plan does not admit an unknown storage-row version, and an old embedded add-declaration plan does not become valid merely because its row envelope is supported.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codec",
+          "span": [
+            100,
+            104
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "codec",
+          "span": [
+            244,
+            248
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "codec",
+          "span": [
+            321,
+            325
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/host-observation.md",
+      "line": 27,
+      "sourceSha256": "d0c36733adebb711228ff202519450669eb4a57499323d2ce582694171141f4e",
+      "original": "The manual experiment is separate from Kast runtime composition. Preflight validates the exact installed build/engine and detaches project descriptors without registrations. Attach revalidates host incarnation and explicit project identity, reserves one shared admission directory, and installs VFS, indexing-history, and dumb-mode listeners under an original session owner.",
+      "proposed": "The manual experiment is separate from Kast runtime composition. Preflight validates the exact installed build/engine and detaches project descriptors without registrations. Attach makes sure that the host incarnation and explicit project identity remain valid, reserves one shared admission directory, and installs VFS, indexing-history, and dumb-mode listeners under an original session owner.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            182,
+            192
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/host-observation.md",
+      "line": 31,
+      "sourceSha256": "d0c36733adebb711228ff202519450669eb4a57499323d2ce582694171141f4e",
+      "original": "An exact-session stop request, project disposal, or failure closes admission. An independent finalizer disconnects registrations and waits for admitted callbacks and owned tasks. A stalled owner reports retirement as unconfirmed and keeps its shared admission. Only established retirement permits a terminal status and retention proof; a failed contender cannot clean up another session.",
+      "proposed": "An exact-session stop request, project disposal, or failure closes admission. An independent cleanup coordinator disconnects registrations and waits for admitted callbacks and owned tasks. A stalled owner reports retirement as unconfirmed and keeps its shared admission. Only established retirement permits a terminal status and retention proof; a failed contender cannot clean up another session.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "finalizer",
+          "span": [
+            94,
+            102
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 545,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 5 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence. It records the first entry to each native phase before an opaque call, plus cumulative phase durations after drainage: source-partition preparation, declaration scan, exact refinement, reference inventory/partition/confirmation, diagnostic scope admission/enumeration/K2 analysis, freshness validation, retention, encoding, and cancellation drainage. Counters distinguish candidate and semantic work from retained-state accounting; the latter is a quota estimate rather than process heap measurement.",
+      "proposed": "The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain available to compile for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 5 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence. It records the first entry to each native phase before an opaque call, plus cumulative phase durations after drainage: source-partition preparation, declaration scan, exact refinement, reference inventory/partition/confirmation, diagnostic scope admission/enumeration/K2 analysis, freshness validation, retention, encoding, and cancellation drainage. Counters distinguish candidate and semantic work from retained-state accounting; the latter is a quota estimate rather than process heap measurement.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "buildable",
+          "span": [
+            175,
+            183
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 583,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "Transport output cursors are replayable until expiry or eviction. Equal retained requests",
+      "proposed": "Kast can replay transport output cursors until expiry or eviction. Equal retained requests",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "replayable",
+          "span": [
+            30,
+            39
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 614,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "The source owner applies shared entry, charged-byte, and original-age bounds to detached cursor proofs, suffixes, published pages, and claims. Admission, deduplication and publication validate the complete dependency closure against the same semantic request and authority. A running cursor cannot become another attempt's deduplicated successor. Expiry preserves active claims' physical dependency storage, then removes expired entries and broken dependent pages that no active claim owns. A retained expired dependency rejects publication as `EXPIRED`; an absent or unavailable dependency rejects as `DEPENDENCY_UNAVAILABLE`. Oversized entries fail before issuance; retirement clears every entry.",
+      "proposed": "The source owner applies shared entry, charged-byte, and original-age bounds to detached cursor proofs, suffixes, published pages, and claims. Admission, deduplication and publication validate the complete dependency closure against the same semantic request and authority. A running cursor cannot become another attempt's successor through deduplication. Expiry preserves active claims' physical dependency storage, then removes expired entries and broken dependent pages that no active claim owns. A retained expired dependency rejects publication as `EXPIRED`; an absent or unavailable dependency rejects as `DEPENDENCY_UNAVAILABLE`. Oversized entries fail before issuance; retirement clears every entry.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicated",
+          "span": [
+            324,
+            335
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 616,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the smaller of hosted `QUERY_CONTINUATION_*` and native `SOURCE_CONTINUATION_*` bounds in the same owner. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.",
+      "proposed": "Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission keeps the pipeline task before it starts. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the smaller of hosted `QUERY_CONTINUATION_*` and native `SOURCE_CONTINUATION_*` bounds in the same owner. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unstarted",
+          "span": [
+            320,
+            328
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 671,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "proofs, a same-node parameter phase, and proven lookahead. Each successor",
+      "proposed": "proofs, a same-node parameter phase, and proven next entity. Each successor",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "lookahead",
+          "span": [
+            49,
+            57
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 757,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "Query `take` steps and query fanout fields are unsupported and reject at the",
+      "proposed": "Query `take` steps and query fan-out fields are unsupported and reject at the",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "fanout",
+          "span": [
+            30,
+            35
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 758,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "public wire boundary; traversal bounded fanout remains a supported strategy",
+      "proposed": "public wire boundary; traversal bounded fan-out remains a supported strategy",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "fanout",
+          "span": [
+            41,
+            46
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 773,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "preserve the full occurrence multiset; changing page boundaries does not promise",
+      "proposed": "preserve the full occurrence collection with duplicates; changing page boundaries does not promise",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "multiset",
+          "span": [
+            30,
+            37
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 795,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "produce separate recovery guidance; neither turns an unvalidated accumulator",
+      "proposed": "produce separate recovery guidance; neither turns an accumulator without established validity",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unvalidated",
+          "span": [
+            54,
+            64
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/hosted-query.md",
+      "line": 851,
+      "sourceSha256": "570182dcc10f0b31b92918f57126130a25c86d42d75dfa16b736fec94896f18a",
+      "original": "Guarded peer-site acquisition precedes source impact admission. The existing application registry passively selects an already registered exact peer; the query does not open, import or trust a root. One child `HostedQueryService` read revalidates the target under its own authority, uses single evaluation and final freshness validation, and returns a completed receipt. The parent's original accounting owner debits the child's aggregate work and whole wall time once. Source admission reserves the retained peer payload before native source work. Resume and retained presentation do not repeat peer acquisition.",
+      "proposed": "Guarded peer-site acquisition precedes source impact admission. The existing application registry passively selects an already registered exact peer; the query does not open, import or trust a root. One child `HostedQueryService` read makes sure that the target remains valid under its own authority, uses single evaluation and final freshness validation, and returns a completed receipt. The parent's original accounting owner debits the child's aggregate work and whole wall time once. Source admission reserves the retained peer payload before native source work. Resume and retained presentation do not repeat peer acquisition.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            236,
+            246
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/request-dispatch.md",
+      "line": 145,
+      "sourceSha256": "5fa05084f76de3f38427fd05a782015e25a14162021b6ce1a44c48ff0b6ae1ef",
+      "original": "Canonical semantic-read handlers delegate request admission, reference codecs,",
+      "proposed": "Canonical semantic-read handlers delegate request admission, reference encoding and decoding adapters,",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codecs",
+          "span": [
+            72,
+            77
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/request-dispatch.md",
+      "line": 204,
+      "sourceSha256": "5fa05084f76de3f38427fd05a782015e25a14162021b6ce1a44c48ff0b6ae1ef",
+      "original": "schema before presentation. Output-contract rejection retains a deduplicated set",
+      "proposed": "schema before presentation. Output-contract rejection retains a set without duplicates",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicated",
+          "span": [
+            65,
+            76
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/request-dispatch.md",
+      "line": 206,
+      "sourceSha256": "5fa05084f76de3f38427fd05a782015e25a14162021b6ce1a44c48ff0b6ae1ef",
+      "original": "validator messages, source values and reference tokens do not enter this evidence.",
+      "proposed": "validation owner messages, source values and reference tokens do not enter this evidence.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "validator",
+          "span": [
+            1,
+            9
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/request-dispatch.md",
+      "line": 207,
+      "sourceSha256": "5fa05084f76de3f38427fd05a782015e25a14162021b6ce1a44c48ff0b6ae1ef",
+      "original": "Serializable failure DTOs preserve existing failure and correction fields and",
+      "proposed": "Failure DTOs with `@Serializable` preserve existing failure and correction fields and",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Serializable",
+          "span": [
+            1,
+            12
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/semantic-query.md",
+      "line": 179,
+      "sourceSha256": "2314f6908d19244f4e7d30d9d4bdb173166e1da6669f4fd51ca0a974b076565a",
+      "original": "The `where` stage admits a closed visibility or primitive predicate. Primitive predicates compare compiler-grounded name, kind, or file text without a source read. `concat` admits exact references or retained rows at any stage and schedules them after the upstream stream, preserving order and multiplicity. Later predicates and relation hops see both inputs. `intersect`, `union`, and `difference` use canonical semantic identity; intersection combines bilateral evidence, while `difference` requires complete right coverage without failures or producer progress to establish absence. `union` lowers to concat followed by distinct. `distinct_symbols` keeps the first row and its evidence for each canonical identity, including across resume. Composed inputs share the parent work and checkpoint budget. Public RESUME supplies an output continuation. The internal runner follows issued semantic checkpoints under the remaining original grant. `QueryStateStore` restores the admitted plan and pending work, so completed prefix stages and old tokens are not reacquired.",
+      "proposed": "The `where` stage admits a closed visibility or primitive predicate. Primitive predicates compare compiler-grounded name, kind, or file text without a source read. `concat` admits exact references or retained rows at any stage and schedules them after the upstream stream, preserving order and multiplicity. Later predicates and relation hops see both inputs. `intersect`, `union`, and `difference` use canonical semantic identity; intersection combines bilateral evidence, while `difference` requires complete right coverage without failures or producer progress to establish absence. `union` lowers to `concat` followed by distinct. `distinct_symbols` keeps the first row and its evidence for each canonical identity, including across resume. Composed inputs share the parent work and checkpoint budget. Public RESUME supplies an output continuation. The internal runner follows issued semantic checkpoints under the remaining original grant. `QueryStateStore` restores the admitted plan and pending work, so completed prefix stages and old tokens are not reacquired.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "concat",
+          "span": [
+            605,
+            610
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/semantic-query.md",
+      "line": 198,
+      "sourceSha256": "2314f6908d19244f4e7d30d9d4bdb173166e1da6669f4fd51ca0a974b076565a",
+      "original": "Unranked source-owned `ALL_DECLARATIONS` uses the versioned `KOTLIN_FILE_SOURCE_V2` ordering: lexical admitted file path, then declaration start offset. An immutable source-root/VFS partition frontier retains unopened directories and files, plus a detached offset for the active file. Each successor advances an input revision; it never rebuilds the consumed file or declaration prefix. Native objects are reacquired inside the admitted read, and exact K2 refinement remains required before emission. Four supported declaration families are classes, functions, properties, and type aliases, including nested eligible descendants of excluded containers.",
+      "proposed": "Without a relevance rank, source-owned `ALL_DECLARATIONS` uses the versioned `KOTLIN_FILE_SOURCE_V2` ordering: lexical admitted file path, then declaration start offset. An immutable source-root/VFS partition frontier retains unopened directories and files, plus a detached offset for the active file. Each successor advances an input revision; it never rebuilds the consumed file or declaration prefix. Native objects are reacquired inside the admitted read, and exact K2 refinement remains required before emission. Four supported declaration families are classes, functions, properties, and type aliases, including nested eligible descendants of excluded containers.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Unranked",
+          "span": [
+            1,
+            8
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/semantic-query.md",
+      "line": 205,
+      "sourceSha256": "2314f6908d19244f4e7d30d9d4bdb173166e1da6669f4fd51ca0a974b076565a",
+      "original": "text discovery deduplicates containing owners and retains one verified exemplar",
+      "proposed": "text discovery removes duplicate containing owners and retains one verified exemplar",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicates",
+          "span": [
+            16,
+            27
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/flows/workspace-publication.md",
+      "line": 31,
+      "sourceSha256": "de57b1e24e380e96149e9c9b7e55f8b8dde7bf5701d804caa7055bc4776f4c3b",
+      "original": "The isolated transition coordinator and importer are retired from the active Gradle graph. Topology extraction, graph operations and snapshot publication remain buildable in separate modules for upcoming work. Production semantic requests instead use the original open IDEA project's live authority. No second importer or persisted topology is started as a read prerequisite.",
+      "proposed": "The isolated transition coordinator and importer are retired from the active Gradle graph. Topology extraction, graph operations and snapshot publication remain available to compile in separate modules for upcoming work. Production semantic requests instead use the original open IDEA project's live authority. No second importer or persisted topology is started as a read prerequisite.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "buildable",
+          "span": [
+            162,
+            170
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/glossary/compiler-identity.md",
+      "line": 82,
+      "sourceSha256": "91eb043cc6327bfb3bcb8b9f62e5eed32034f34b3baf08bebffbc658ad20ed73",
+      "original": "local address and actual ordered supertypes. Members retain the anonymous",
+      "proposed": "local address and actual ordered `supertypes`. Members retain the anonymous",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "supertypes",
+          "span": [
+            34,
+            43
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/knowledge/installed-projection-and-retrieval.md",
+      "line": 74,
+      "sourceSha256": "fdc38be1d46532d94023573eaa7998bfa5ff73d1fa766260326086eb1d2e8265",
+      "original": "A nested guide can govern one source subtree without widening to every declaration in its parent module.",
+      "proposed": "A nested guide can govern one source directory tree without widening to every declaration in its parent module.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "subtree",
+          "span": [
+            38,
+            44
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/knowledge/installed-projection-and-retrieval.md",
+      "line": 83,
+      "sourceSha256": "fdc38be1d46532d94023573eaa7998bfa5ff73d1fa766260326086eb1d2e8265",
+      "original": "`KnowledgeResourcePath` accepts only the defined namespaces and canonical components.",
+      "proposed": "`KnowledgeResourcePath` accepts only the defined resource prefixes and canonical components.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "namespaces",
+          "span": [
+            50,
+            59
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 84,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "- `query:protocol` has the service role and owns shared semantic-read request admission, reference codecs, and canonical projection using contract dependencies.",
+      "proposed": "- `query:protocol` has the service role and owns shared semantic-read request admission, reference encoding and decoding adapters, and canonical projection using contract dependencies.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codecs",
+          "span": [
+            100,
+            105
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 86,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "- The existing-IDE host connects proven contracts to effectful adapters.",
+      "proposed": "- The existing-IDE host connects proven contracts to adapters with external effects.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "effectful",
+          "span": [
+            54,
+            62
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 115,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "Module `check` tasks depend on Spotless, Detekt's aggregate type-resolved",
+      "proposed": "Module `check` tasks depend on Spotless, `detekt` aggregate type-resolved",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt's",
+          "span": [
+            42,
+            49
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 117,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "production and 600-line test limits. Source-set-specific Detekt tasks remain",
+      "proposed": "production and 600-line test limits. Source-set-specific `detekt` tasks remain",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt",
+          "span": [
+            58,
+            63
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 119,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "The Detekt configuration defines the structural rules. These gates are",
+      "proposed": "The `detekt` configuration defines the structural rules. These gates are",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt",
+          "span": [
+            5,
+            10
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 122,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "Checked-in [baselines](../../config/README.md) admit existing Detekt findings",
+      "proposed": "Checked-in [baselines](../../config/README.md) admit existing `detekt` findings",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt",
+          "span": [
+            63,
+            68
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 123,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "and fixed per-file ceilings for oversized files. New Detekt finding identities,",
+      "proposed": "and fixed per-file ceilings for oversized files. New `detekt` finding identities,",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt",
+          "span": [
+            54,
+            59
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 126,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "them. Detekt's finding identities do not bound growth within an existing finding.",
+      "proposed": "them. `detekt` finding identities do not bound growth within an existing finding.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Detekt's",
+          "span": [
+            7,
+            14
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/architecture.md",
+      "line": 128,
+      "sourceSha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "original": "Spotless uses ktfmt Kotlinlang style at 120 columns for authored Kotlin and",
+      "proposed": "Spotless uses `ktfmt` `kotlinlangStyle` style at 120 columns for authored Kotlin and",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "ktfmt",
+          "span": [
+            15,
+            19
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "Kotlinlang",
+          "span": [
+            21,
+            30
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/modules/architecture.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/change.md",
+      "line": 59,
+      "sourceSha256": "03a11f99920a7332928564dd2eacc02d64dc80396d76f68edfbe7fc9955b11f0",
+      "original": "Planning is pure. Application first derives a deterministic postimage from the",
+      "proposed": "Planning is pure. Application first derives a deterministic source after the change from the",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "postimage",
+          "span": [
+            61,
+            69
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 353,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "Release assembly emits plugin and marketplace ZIPs without a standalone skill archive.",
+      "proposed": "Release assembly emits plugin and marketplace ZIP archives without a standalone skill archive.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "ZIPs",
+          "span": [
+            47,
+            50
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 356,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "The `distribution:cli` module owns the Clikt management implementation. The `cli` module composes it with the existing private entry points in one GraalVM executable. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. Thin private launchers select query, MCP, tool RPC, service, daemon, Codex, or installer modes in the same native executable. The Control archive contains no bundled JVM libraries. Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for its captured control version, ready workspaces, live connection count, and each observed host identity, plugin version and compatibility. Installed and running control versions remain separate; missing live host evidence is unavailable. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions retain the same canonical identity in their session directory. Native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.",
+      "proposed": "The `distribution:cli` module owns the `Clikt` management implementation. The `cli` module composes it with the existing private entry points in one GraalVM executable. It reads a separate management ownership receipt and retains the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. Thin private launchers select query, MCP, tool RPC, service, daemon, Codex, or installer modes in the same native executable. The Control archive contains no bundled JVM libraries. Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace. The running coordinator supplies a bounded passive projection for its captured control version, ready workspaces, live connection count, and each observed host identity, plugin version and compatibility. Installed and running control versions remain separate; missing live host evidence is unavailable. One-shot tool RPC calls publish a bounded process identity record while executing; MCP sessions retain the same canonical identity in their session directory. Native status counts only records whose exact process incarnation remains live. Unavailable observations remain distinct from verified empty results.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Clikt",
+          "span": [
+            40,
+            44
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 358,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.",
+      "proposed": "Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime download adapter, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "downloader",
+          "span": [
+            256,
+            265
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 371,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "Force retirement signals only admitted exact process incarnations with qualified installed classpaths.",
+      "proposed": "Force retirement signals only admitted exact process incarnations with qualified installed class paths.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "classpaths",
+          "span": [
+            92,
+            101
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 488,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "atomically installs only the plugin. IntelliJ's ordinary restart loads the selected",
+      "proposed": "atomically installs only the plugin. An ordinary IntelliJ IDEA restart loads the selected",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "IntelliJ's",
+          "span": [
+            38,
+            47
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 492,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. An untrusted same-version payload or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.",
+      "proposed": "Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. A same-version payload without trust proof or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "untrusted",
+          "span": [
+            590,
+            598
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 509,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "directory, then moves payload/state and recovery bundles aside before restaging.",
+      "proposed": "directory, then moves payload/state and recovery bundles aside before another staging step.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "restaging",
+          "span": [
+            71,
+            79
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 598,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing the argument from its bounded bytes yields the retained service plist for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.",
+      "proposed": "The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. The login LaunchAgent retains the service label and daemon executable, adding only the private login argument. Offline recovery admits that entry only when removing the argument from its bounded bytes yields the retained service property-list document for the exact Codex-home profile; it also recognizes the older one-shot entry. The assembled-product check verifies the private launchers are present and executable; their argument and readiness rules remain with their Kotlin owners.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "plist",
+          "span": [
+            512,
+            516
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 606,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "Destructive `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission while retaining canonical root scope and verified daemon retirement. An exterior fence and persistent lock survive root replacement. The fence records retained storage before the old root is moved atomically to a scoped sibling recovery directory. The runtime boundary unloads exact root-derived launchd jobs, removes exact login entries, and retires scoped Kast process incarnations within a bounded deadline. Shared IDEA and Gradle processes are excluded. Erasure accepts only a quiescent typestate; a retirement or cleanup rejection preserves the fence and reports retained storage.",
+      "proposed": "Destructive `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission while retaining canonical root scope and verified daemon retirement. An exterior fence and persistent lock survive root replacement. The fence records retained storage before the old root is moved atomically to a scoped sibling recovery directory. The runtime boundary unloads exact root-derived launchd jobs, removes exact login entries, and retires scoped Kast process incarnations within a bounded deadline. Shared IDEA and Gradle processes are excluded. Erasure accepts only a quiescent typed state; a retirement or cleanup rejection preserves the fence and reports retained storage.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "typestate",
+          "span": [
+            599,
+            607
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 652,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "and the observed restart_read instruction. This harness intentionally accepts only",
+      "proposed": "and the observed `restart_read` instruction. This harness intentionally accepts only",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "restart_read",
+          "span": [
+            18,
+            29
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 653,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "those two rejection stages. At most three independent RUNs are permitted, with every rejection retained.",
+      "proposed": "those two rejection stages. At most three independent `RUN` calls are permitted, with every rejection retained.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "RUNs",
+          "span": [
+            55,
+            58
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 661,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "Duplicate declarations, an unclosed quote, trailing text, and incompatible runtimes reject before Gradle starts.",
+      "proposed": "Duplicate declarations, an unclosed quote, trailing text, and incompatible runtime environments reject before Gradle starts.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "runtimes",
+          "span": [
+            76,
+            83
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 667,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "User-state inventory retains endpoint locks and physical identities through retirement and deletion. Unknown contents, live hosts, changed identities, malformed or unsettled mutation evidence, or an uncheckpointed WAL reject and preserve recovery state. The owning SQLite adapter inspects exact schemas and bounded typed plan, attempt, journal and receipt records read-only; it does not initialize, checkpoint or manufacture recovery. Upgrade does not invoke this full user-state cleanup.",
+      "proposed": "User-state inventory retains endpoint locks and physical identities through retirement and deletion. Unknown contents, live hosts, changed identities, malformed or unsettled mutation evidence, or a WAL without a completed checkpoint reject and preserve recovery state. The owning SQLite adapter inspects exact schemas and bounded typed plan, attempt, journal and receipt records read-only; it does not initialize, checkpoint or manufacture recovery. Upgrade does not invoke this full user-state cleanup.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "uncheckpointed",
+          "span": [
+            200,
+            213
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/distribution.md",
+      "line": 692,
+      "sourceSha256": "6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
+      "original": "It consistently rebases the receipt's device identities before it examines the current destination and inventory.",
+      "proposed": "It keeps a consistent mapping from the receipt's device identities to their current identities before it examines the current destination and inventory.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "rebases",
+          "span": [
+            17,
+            23
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/index.md",
+      "line": 4,
+      "sourceSha256": "dcd745be8b867376f880ca7b99f2b3d403288f4bb793352c2aa230cae0d13a3a",
+      "original": "- [Semantic change](change.md) - Supported source changes move through closed intent, pure planning, exact admission, effectful application, verification, and recovery.",
+      "proposed": "- [Semantic change](change.md) - Supported source changes move through closed intent, pure planning, exact admission, application with external effects, verification, and recovery.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "effectful",
+          "span": [
+            119,
+            127
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Generated index: change the linked canonical page description through its native PageJob and regenerate. Do not edit this index directly."
+    },
+    {
+      "path": "openwiki/modules/protocol.md",
+      "line": 201,
+      "sourceSha256": "52b8eec4a5ac249ac442f204a5de6365d9ce06e0dfe16749322f44c6337ade58",
+      "original": "Keyless mutation uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay may retain admitted historical v1 evidence without granting current mutation authority.",
+      "proposed": "Mutation without a key uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay may retain admitted historical v1 evidence without granting current mutation authority.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Keyless",
+          "span": [
+            1,
+            7
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 277,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota among typed execution checkpoints, immutable retained results, detached output suffixes, and request claims; their tokens and restoration outcomes remain separate. Each producer token admits one active claim. Concurrent use yields `CONTINUATION_IN_USE`; a published page replays its immutable facts and successor without semantic work. Hosted execution stages allocations under the claim, then commits the fitted page and its successor after freshness, deadline, and cancellation drainage. Discard releases only that attempt's allocations. Committing a producer replaces its consumed execution or output payload with the immutable published page and required dependency identities; the consumed payload no longer counts as retained work. Live pages retain their dependency closure under the same quota. Each token keeps its original age; a younger page remains usable only while all advertised dependencies are valid. Active claims pin physical storage through drainage without admitting expired inputs to a new request. Initial composition pins its exact inputs and rechecks their original age at publication, including discarded output. Replay never renews token age. Capacity and unavailable state produce finite rejection rather than a native restart. An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.",
+      "proposed": "`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens keep their encoding format. `QueryStateStore` shares one bounded, expiring quota among typed execution checkpoints, immutable retained results, detached output suffixes, and request claims; their tokens and restoration outcomes remain separate. Each producer token admits one active claim. Concurrent use yields `CONTINUATION_IN_USE`; a published page replays its immutable facts and successor without semantic work. Hosted execution stages allocations under the claim, then commits the fitted page and its successor after freshness, deadline, and cancellation drainage. Discard releases only that attempt's allocations. Committing a producer replaces its consumed execution or output payload with the immutable published page and required dependency identities; the consumed payload no longer counts as retained work. Live pages retain their dependency closure under the same quota. Each token keeps its original age; a younger page remains usable only while all advertised dependencies are valid. Active claims pin physical storage through drainage without admitting expired inputs to a new request. Initial composition pins its exact inputs and rechecks their original age at publication, including discarded output. Replay never renews token age. Capacity and unavailable state produce finite rejection rather than a native restart. An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codec",
+          "span": [
+            924,
+            928
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 301,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "the unadmitted failure variant; null or malformed reports reject at the boundary.",
+      "proposed": "the failure variant without an admitted grant; null or malformed reports reject at the boundary.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unadmitted",
+          "span": [
+            5,
+            14
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 332,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "deduplicates at most 64 files per request, and retains no source payload or platform",
+      "proposed": "keeps at most 64 distinct files per request, and retains no source payload or platform",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicates",
+          "span": [
+            1,
+            12
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 379,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "The public source-admission boundary retains the supplied source authority. Pure peer selection permits only exact reviewed continuation targets with an independent root and complete declaration inventory; ordinary producers, requested sites and representation claims remain on the source basis. A completed child read must prove each selected target under its own full authority. Admission rejects missing, duplicate or unrequested peer proof and reserves its aggregate work and retained storage before source native effects. The modeled edge ends at an unresolved peer terminal; no target flow task is scheduled. Model syntax, compiler binding, reviewed representation meaning and retained historical presentation remain distinct evidence levels.",
+      "proposed": "The public source-admission boundary retains the supplied source authority. Pure peer selection permits only exact reviewed continuation targets with an independent root and complete declaration inventory; ordinary producers, requested sites and representation claims remain on the source basis. A completed child read must prove each selected target under its own full authority. Admission rejects peer proof that is missing, repeated, or not requested and reserves its aggregate work and retained storage before source native effects. The modeled edge ends at an unresolved peer terminal; no target flow task is scheduled. Model syntax, compiler binding, reviewed representation meaning and retained historical presentation remain distinct evidence levels.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unrequested",
+          "span": [
+            422,
+            432
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 387,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "Retained value-path and witness pages project detached ledger evidence without reacquiring producers, revalidating models or executing value-flow reads. Draining pages preserves unresolved original obligations and terminal reasons, including `OUTPUT_ITEM_TOO_LARGE`. Incomplete proof returns typed completion rejection and evidence-only retained reads; presentation cannot manufacture investigation completion. The local snapshot and cursor tests establish retained identity and qualification contracts, not installed IDE qualification.",
+      "proposed": "Retained value-path and witness pages project detached ledger evidence. They do not reacquire producers, admit models again, or do value-flow reads. Draining pages preserves unresolved original obligations and terminal reasons, including `OUTPUT_ITEM_TOO_LARGE`. Incomplete proof returns typed completion rejection and evidence-only retained reads; presentation cannot manufacture investigation completion. The local snapshot and cursor tests establish retained identity and qualification contracts, not installed IDE qualification.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidating",
+          "span": [
+            103,
+            114
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 404,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "The compact DTO keeps producer and destination sites, current representation alternatives, ordered model provenance, terminal cause and boundary obligations. It omits compiler transfer payloads and full rule/history payloads because its path ordinal and row ID expand that exact original `VALUE_PATHS` row on the same retained result. No new store, cursor, row kind or semantic evaluator is introduced. The canonical accounting validator checks finding ordinal/count consistency, unique page row IDs and nonempty present representation alternatives, and retains the selected-view qualification over original closure. Focused tests compare wide and one-row presentation, exact full-row expansion, encoded finite variants and rejected identity context with a semantic executor that must remain unused. These are local contract proofs; installed qualification is separate.",
+      "proposed": "The compact DTO keeps producer and destination sites, current representation alternatives, ordered model provenance, terminal cause and boundary obligations. It omits compiler transfer payloads and full rule/history payloads because its path ordinal and row ID expand that exact original `VALUE_PATHS` row on the same retained result. No new store, cursor, row kind or semantic evaluator is introduced. The canonical accounting validation owner checks finding ordinal/count consistency, unique page row IDs and nonempty present representation alternatives, and retains the selected-view qualification over original closure. Focused tests compare wide and one-row presentation, exact full-row expansion, encoded finite variants and rejected identity context with a semantic executor that must remain unused. These are local contract proofs; installed qualification is separate.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "validator",
+          "span": [
+            429,
+            437
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 452,
+      "sourceSha256": "2a7c4faef314b94c82658aef0628ae3ba0a4d6b785d6f86dda393abe77d72b2e",
+      "original": "The execution projection preserves declaration, accessor, initializer, or ordered direct-invocation evidence.",
+      "proposed": "The execution projection preserves declaration, property getter or setter, initializer, or ordered direct-invocation evidence.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "accessor",
+          "span": [
+            49,
+            56
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 298,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "`runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or topology backend in the shipped runtime graph. The retained topology modules and their separate SQLite adapter remain buildable for upcoming work.",
+      "proposed": "`runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or topology backend in the shipped runtime graph. The retained topology modules and their separate SQLite adapter remain available to compile for upcoming work.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "buildable",
+          "span": [
+            435,
+            443
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 332,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability.",
+      "proposed": "Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without another target selection. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "retargeting",
+          "span": [
+            114,
+            124
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 385,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.",
+      "proposed": "Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing a response that exceeds the size limit or cannot be encoded fails.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unencodable",
+          "span": [
+            386,
+            396
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 402,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "unapplied configuration changes. Status leaves semantic readiness unobserved rather than",
+      "proposed": "configuration changes that were not applied. Status leaves semantic readiness unobserved rather than",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unapplied",
+          "span": [
+            1,
+            9
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 482,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.",
+      "proposed": "Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire property-list document matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "plist",
+          "span": [
+            270,
+            274
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 483,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "On enable, the login variant of the exact service plist is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.",
+      "proposed": "On enable, the login variant of the exact service property-list document is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "plist",
+          "span": [
+            51,
+            55
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/runtime-hosts.md",
+      "line": 586,
+      "sourceSha256": "dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
+      "original": "The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read revalidates the complete target basis before restoring declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.",
+      "proposed": "The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read makes sure that the complete target basis remains valid before it restores declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            241,
+            251
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 278,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "the relation adapter no longer uses an ad hoc local-function string. Discovery",
+      "proposed": "the relation adapter no longer uses an separate local-function string. Discovery",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "hoc",
+          "span": [
+            43,
+            45
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 309,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read; the source adapter revalidates the exact anchor and committed document before returning text. Returned text and line coordinates retain that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.",
+      "proposed": "An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read; the source adapter makes sure that the exact anchor and committed document remain valid before it returns text. Returned text and line coordinates retain that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            181,
+            191
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 335,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "supported declaration owner, and deduplicates detached owner candidates before",
+      "proposed": "supported declaration owner, and removes duplicate detached owner candidates before",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicates",
+          "span": [
+            34,
+            45
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 383,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "- Start in [`query:protocol`](query-protocol.md) for shared request admission, reference codecs, and canonical result projection.",
+      "proposed": "- Start in [`query:protocol`](query-protocol.md) for shared request admission, reference encoding and decoding adapters, and canonical result projection.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "codecs",
+          "span": [
+            90,
+            95
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 402,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "unavailable or unretainable inventory terminates with its exact limitation.",
+      "proposed": "inventory that is unavailable or cannot be kept terminates with its exact limitation.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unretainable",
+          "span": [
+            16,
+            27
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 406,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "bytes, or the bounded failed attempt including its first unbufferable locator.",
+      "proposed": "bytes, or the bounded failed attempt including its first locator that cannot fit the buffer.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unbufferable",
+          "span": [
+            58,
+            69
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 411,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "before compiler-confirming the normalized declaration. Callee discovery retains",
+      "proposed": "before compiler-confirming the normalized declaration. Discovery of callees retains",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Callee",
+          "span": [
+            56,
+            61
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 435,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "exhaustion. An unavailable, oversized or unretainable partition produces a",
+      "proposed": "exhaustion. A partition that is unavailable, oversized, or cannot be kept produces a",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "unretainable",
+          "span": [
+            42,
+            53
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 486,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "names, source payloads, references, or live compiler objects. Enum-entry membership",
+      "proposed": "names, source payloads, references, or live compiler objects. The membership of an enum entry",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Enum",
+          "span": [
+            63,
+            66
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 516,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "same-node parameter phases, and already-proven lookahead entities. Native",
+      "proposed": "same-node parameter phases, and already-proven next entities. Native",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "lookahead",
+          "span": [
+            48,
+            56
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 528,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "attempt's deduplicated successor. One-shot source projections use the cursorless\nport and cannot advertise retained cursor capacity.",
+      "proposed": "attempt's successor through deduplication. One-shot source projections use the\nport without a cursor and cannot advertise retained cursor capacity.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicated",
+          "span": [
+            11,
+            22
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "cursorless",
+          "span": [
+            71,
+            80
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 549,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "are excluded as proven non-caller boundaries. Accessors remain unsupported.",
+      "proposed": "are excluded as proven non-caller boundaries. Property getters and setters remain unsupported.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Accessors",
+          "span": [
+            47,
+            55
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 662,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "and platform cancellation propagates. This normalization does not deduplicate",
+      "proposed": "and platform cancellation propagates. This normalization does not remove duplicates from",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deduplicate",
+          "span": [
+            67,
+            77
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 734,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "nonnullable Nothing results do not manufacture a normal value edge. Any admitted",
+      "proposed": "non-null Nothing results do not manufacture a normal value edge. Any admitted",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "nonnullable",
+          "span": [
+            1,
+            11
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 772,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "Accessor execution keeps the property, accessor kind, and exact source region.",
+      "proposed": "Execution of a property getter or setter keeps the property, getter-or-setter kind, and exact source region.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Accessor",
+          "span": [
+            1,
+            8
+          ]
+        },
+        {
+          "rule": "Vale.Spelling",
+          "match": "accessor",
+          "span": [
+            40,
+            47
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 773,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "Initializer execution keeps the class and exact initializer region.",
+      "proposed": "Class initializer execution keeps the class and exact initializer region.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Initializer",
+          "span": [
+            1,
+            11
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/semantic-reads.md",
+      "line": 778,
+      "sourceSha256": "d9129f6243418a1a44fc8a5dbf163873ecffe7106afcc869342cd7f1616d3f1f",
+      "original": "An uninvoked outer callback keeps its activation obligation.",
+      "proposed": "An outer callback without an invocation keeps its activation obligation.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "uninvoked",
+          "span": [
+            4,
+            12
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/workspace.md",
+      "line": 53,
+      "sourceSha256": "d9a6b1e750c884a7d2f407388e0f3f330cc0a23ed2f42662d2b38696f6fa9336",
+      "original": "`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains each request before releasing its independently owned permit. Multiple reads may overlap within `HOST_CONNECTIONS`. Before epoch admission, the host may wait when IDEA preempts a sample or the sample moves. After model capture, the host acquires native read access, revalidates the expected epoch, and admits its authority in one synchronized transition. Canonical dispatch uses a single evaluation: epoch movement rejects the query rather than silently replacing its scope. A fresh request may admit the next epoch. Older requests cannot clear newer continuation or reference storage, and retirement cannot resurrect storage.",
+      "proposed": "`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains each request before releasing its independently owned permit. Multiple reads may overlap within `HOST_CONNECTIONS`. Before epoch admission, the host may wait when IDEA preempts a sample or the sample moves. After model capture, the host acquires native read access, makes sure that the expected epoch remains valid, and admits its authority in one synchronized transition. Canonical dispatch uses a single evaluation: epoch movement rejects the query rather than silently replacing its scope. A fresh request may admit the next epoch. Older requests cannot clear newer continuation or reference storage, and retirement cannot resurrect storage.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "revalidates",
+          "span": [
+            391,
+            401
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/modules/workspace.md",
+      "line": 55,
+      "sourceSha256": "d9a6b1e750c884a7d2f407388e0f3f330cc0a23ed2f42662d2b38696f6fa9336",
+      "original": "A live read epoch is an optimistic consistency boundary, not a frozen copy of files or an MVCC snapshot. Its signals include PSI modification, root-filtered VFS batches, project/workspace-model and root-model changes, indexing cycles, project/Gradle root identity and import timestamps. Saved documents and committed PSI remain admission requirements; disposal or unavailable/indexing state rejects observation. A change may invalidate the workspace's queries even when their selected files were untouched. Epoch revisions are owner-local admission identities, not a count of edits.",
+      "proposed": "A live read epoch is an optimistic consistency boundary, not a frozen copy of files or an MVCC snapshot. Its signals include PSI modification, root-filtered VFS batches, project/workspace-model and root-model changes, indexing cycles, project/Gradle root identity and import timestamps. Saved documents and committed PSI remain admission requirements; disposal or unavailable/indexing state rejects observation. A change may invalidate queries in the workspace even when their selected files were untouched. Epoch revisions are owner-local admission identities, not a count of edits.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "workspace's",
+          "span": [
+            441,
+            451
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/queries/execution-and-composition.md",
+      "line": 63,
+      "sourceSha256": "0433993a7a5315312d4a9e163cc5c45d97b8a54d261f9321dc9b402371877ded",
+      "original": "`QueryService` runs the admitted plan through an ordered deque of typed tasks.",
+      "proposed": "`QueryService` runs the admitted plan through an ordered double-ended queue of typed tasks.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "deque",
+          "span": [
+            58,
+            62
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/queries/execution-and-composition.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/queries/trace-and-completion.md",
+      "line": 62,
+      "sourceSha256": "871df9987d1510529cb588c16357763f00009d151ee9728ae6cf0b30ffd9929d",
+      "original": "Classlike seeds add implementations and member work.",
+      "proposed": "Class-like seeds add implementations and member work.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "Classlike",
+          "span": [
+            1,
+            9
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/queries/trace-and-completion.md",
+      "line": 124,
+      "sourceSha256": "871df9987d1510529cb588c16357763f00009d151ee9728ae6cf0b30ffd9929d",
+      "original": "For forEach and other installed dependencies, the admitted formal's actual effect and qualified binary identity determine the result.",
+      "proposed": "For `forEach` and other installed dependencies, the admitted formal's actual effect and qualified binary identity determine the result.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "forEach",
+          "span": [
+            5,
+            11
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/queries/trace-and-completion.md",
+      "line": 155,
+      "sourceSha256": "871df9987d1510529cb588c16357763f00009d151ee9728ae6cf0b30ffd9929d",
+      "original": "maxResults and maxReturnedBytes bound output pages without granting completion.",
+      "proposed": "`maxResults` and maxReturnedBytes bound output pages without granting completion.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "maxResults",
+          "span": [
+            1,
+            10
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "line": 115,
+      "sourceSha256": "330ae833550b6113d52869a42844947c18b6d31decd033fb93d7dcb89695b0cd",
+      "original": "Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded querySession.",
+      "proposed": "Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded `querySession`.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "querySession",
+          "span": [
+            88,
+            99
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "line": 139,
+      "sourceSha256": "330ae833550b6113d52869a42844947c18b6d31decd033fb93d7dcb89695b0cd",
+      "original": "kast stop fences new calls and automatic restart before retirement.",
+      "proposed": "`kast stop` fences new calls and automatic restart before retirement.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "kast",
+          "span": [
+            1,
+            4
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "line": 93,
+      "sourceSha256": "51ab802f2fe3992f2c7ef4ad6173063286510ed8d8000c110b61656d8761c440",
+      "original": "CALLEES uses the named target or anonymous body of an exhaustive supplier inventory.",
+      "proposed": "`CALLEES` uses the named target or anonymous body of an exhaustive supplier inventory.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "CALLEES",
+          "span": [
+            1,
+            7
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/semantics/relation/callback-reuse-and-completion.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/relation/callback-supply-and-binding.md",
+      "line": 110,
+      "sourceSha256": "770519af8d1371582c433ab5b40a176e308050641d9d6fe511ca95ef95f203a0",
+      "original": "owner_bindings keeps nested supply, mapping, and recursive execution proof.",
+      "proposed": "`owner_bindings` keeps nested supply, mapping, and recursive execution proof.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "owner_bindings",
+          "span": [
+            1,
+            14
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/semantics/relation/callback-supply-and-binding.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/relation/callback-supply-and-binding.md",
+      "line": 112,
+      "sourceSha256": "770519af8d1371582c433ab5b40a176e308050641d9d6fe511ca95ef95f203a0",
+      "original": "callable_observations keeps symbolic formal calls and compiler targets without source.",
+      "proposed": "`callable_observations` keeps symbolic formal calls and compiler targets without source.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "callable_observations",
+          "span": [
+            1,
+            21
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/semantics/relation/callback-supply-and-binding.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/relation/callback-supply-and-binding.md",
+      "line": 141,
+      "sourceSha256": "770519af8d1371582c433ab5b40a176e308050641d9d6fe511ca95ef95f203a0",
+      "original": "The anonymous body's issued candidateSelector supplies READ_SOURCE.candidateRef under its admitted source snapshot.",
+      "proposed": "The anonymous body's issued `candidateSelector` supplies READ_SOURCE.candidateRef under its admitted source snapshot.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "candidateSelector",
+          "span": [
+            29,
+            45
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/semantics/relation/callback-supply-and-binding.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/source/anchors-and-paging.md",
+      "line": 63,
+      "sourceSha256": "01a75cd18915aae5bea08f1c90b4da9be0e6bbe5a9d2c264b255cfa2867a7b5b",
+      "original": "A matching lookahead proves that a suffix remains.",
+      "proposed": "A matching next entity proves that a suffix remains.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "lookahead",
+          "span": [
+            12,
+            20
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/symbol/discovery-and-identity.md",
+      "line": 74,
+      "sourceSha256": "258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50",
+      "original": "The classlike AST path has an admitted parser and source binding.",
+      "proposed": "The class-like AST path has an admitted parser and source binding.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "classlike",
+          "span": [
+            5,
+            13
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/semantics/workspace/model-and-freshness.md",
+      "line": 46,
+      "sourceSha256": "57566d07455e699038a5741716b26f7f50529320c2c4094722c727fab949a777",
+      "original": "Unavailable or untrusted model state remains a rejection.",
+      "proposed": "Model state that is unavailable or not trusted remains a rejection.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "untrusted",
+          "span": [
+            16,
+            24
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/semantics/workspace/model-and-freshness.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/topology/graph-queries.md",
+      "line": 39,
+      "sourceSha256": "987b0cb383fb1f85b15790eccc81e673192a6e2aeba10df24896044853fd1f16",
+      "original": "Reachability returns a shortest path, an unknown endpoint, or an unreachable result.",
+      "proposed": "The reachability operation returns a shortest path, an unknown endpoint, or an unreachable result.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "Reachability",
+          "span": [
+            1,
+            12
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/topology/live-dependencies-and-reuse.md",
+      "line": 87,
+      "sourceSha256": "0ed492fdcc4be9ee1362ee7c8d12b2fa22d1e4a0065bac1eed2a86e7bcd89a25",
+      "original": "- [build.gradle.kts](../../runtime/hosted/build.gradle.kts)",
+      "proposed": "- [`build.gradle.kts`](../../runtime/hosted/build.gradle.kts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "gradle",
+          "span": [
+            10,
+            15
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/topology/live-dependencies-and-reuse.mdx"
+      ],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/transport/harness-delivery.md",
+      "line": 141,
+      "sourceSha256": "ed5d6de9a42cb494e1e55cb4f0f81ad9f7460b660e47470a295a1168bca9affb",
+      "original": "- [mcp-extension.ts](../../pi/mcp-extension.ts)",
+      "proposed": "- [`mcp-extension.ts`](../../pi/mcp-extension.ts)",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "mcp",
+          "span": [
+            4,
+            6
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Preserve the technical proposition. Format established identifiers as code and rewrite ordinary prose without changing rules, vocabulary, or qualifications."
+    },
+    {
+      "path": "openwiki/transport/index.md",
+      "line": 7,
+      "sourceSha256": "6ee903585e34a5e6a799bc622f4c1a37d1438bd3cfbd1e0252690230dee7f1a9",
+      "original": "- [Invocation fences and durable thread records](invocations-and-durable-records.md) - Explains durable invocation admission, uncertain outcomes, bounded active work, private sharded records, and current thread ownership.",
+      "proposed": "- [Invocation fences and durable thread records](invocations-and-durable-records.md) - Explains durable invocation admission, uncertain outcomes, bounded active work, private partitioned records, and current thread ownership.",
+      "errors": [
+        {
+          "rule": "Vale.Spelling",
+          "match": "sharded",
+          "span": [
+            176,
+            182
+          ]
+        }
+      ],
+      "projections": [],
+      "rationale": "Generated index: change the linked canonical page description through its native PageJob and regenerate. Do not edit this index directly."
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 144,
+      "sourceSha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
+      "original": "Implicit object conversion selects the applicable kotlin.Any.toString member or override.",
+      "proposed": "Implicit object conversion selects the applicable `kotlin.Any.toString` member or override.",
+      "errors": [
+        {
+          "rule": "Vale.Terms",
+          "match": "kotlin",
+          "span": [
+            51,
+            56
+          ]
+        }
+      ],
+      "projections": [
+        "docs/public/snippets/okf/contracts/operation-outcomes.mdx"
+      ],
+      "rationale": "Reader terminology3.25.1 identified an unformatted qualified Kotlin member. Preserve its exact identifier as code."
+    }
+  ],
+  "status": "PROPOSED_FOR_NATIVE_REVIEW",
+  "schemaVersion": 1
+}

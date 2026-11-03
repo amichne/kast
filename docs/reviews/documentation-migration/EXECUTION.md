@@ -4,6 +4,8 @@ The baseline is `7de04069e2a4a781a603ff51b3f9016b66108790` from refreshed `origi
 The task branch is `docs/complete-documentation-migration`.
 The specification is Page `page_24c255c01b2c81919ef284f94b6c5079`, sequence 1.
 Current Slopsentral main is `110e904fd8cf70c27d1f6547e21320dc569a91ea`.
+The implementation checkpoint is `cbf13253648ad7fef8dd977162e507465b344623`.
+Final receipts record their candidate revision and exact input digests separately.
 
 ## Acceptance contract
 
@@ -13,81 +15,125 @@ The migration preserves product behavior, installation policy, schema contracts,
 
 | Criterion | State | Evidence or next action |
 | --- | --- | --- |
-| Refresh exact main and preserve unrelated work | Passed | Clean detached checkout, fetch, fast-forward pull, task branch |
-| Recompute owners and inventory | Passed | 65 concepts and sidecars, 10 views, 17 selected concepts, 46 authored owners, 61 navigation entries |
-| Reconcile product brief and six generated links | Remaining | Examine current installer and generator owners |
-| Native read-only assessment | Remaining | Native adapter and fixtures under `docs/tooling/markdown` |
-| Reject canonical prose drift before update no-op | Remaining | All 65 baseline page digests match their sidecars |
-| Close seven canonical gaps in three batches | Remaining | Native OpenWiki run `b0239e21-26f0-45f8-8832-294058924c14` starts in planning |
-| Bind authored assertions to content and claim statements | Remaining | Extend existing publication manifest |
-| Maintain reader contracts and derived edges | Remaining | Extend existing manifest, keep historical reports unchanged |
-| Measure first-use complexity and resolve density queue | Remaining | Fixed scenario and fact-preserving dispositions |
-| Record bounded rendered measurements and representative checks | Remaining | Real pinned Mintlify preview and browser |
-| Enforce exact-candidate publication admission | Remaining | Extend existing documentation lane |
-| Required local and hosted gates | Not run | Run after implementation and refresh |
-| Independent final review | Not run | Review exact integrated diff |
-| Merge and live publication | Not run | Push and PR authorized, final merge authority needs examination |
+| Refresh exact main and preserve unrelated work | Passed | Clean checkout, fetch, fast-forward pull, task branch. Target remains the baseline after the final refresh. |
+| Recompute owners and inventory | Passed | 65 canonical concepts and sidecars, 407 unique Claims, 850 evidence references, 561 unique resources. |
+| Keep public owners distinct | Passed | 10 views select 17 concepts, 46 authored routes, five generated callable routes, 61 navigation entries. |
+| Reconcile product brief and six generated links | Passed | Current installer source, callable generator, glossary generator, and focused parity procedures. |
+| Native read-only assessment | Passed | Locked OpenWiki 0.6.1 adapter, 21 fixtures, network-denied procedures, and full canonical assessment. |
+| Reject prose drift before update no-op | Passed | Native no-op and later changed-prose fixture, plus all 65 page-to-sidecar digests. |
+| Close seven canonical gaps | Passed | Native page lifecycle, source review, preserved authored references, and generator parity. |
+| Bind authored assertions to content and Claim statements | Passed | 56 manifest associations plus five callable generator identities. Final reviewed hashes bind the corrected prose and unchanged Claim statements. |
+| Maintain reader contracts and derived edges | Passed | 61 contracts and 376 derived edges. Navigation parents come from docs.json. |
+| Measure first use and resolve density queue | Passed with limits | Author profile C = (1, 0, 1; 464, 5). Reader evaluation and native task remain NOT_RUN. |
+| Assess prose and terminology | Passed with advisories | Zero lexical errors. Independent review accepts 255 exact identities for 257 reported advisories. Final receipt remains necessary. |
+| Record rendered measurements | Failed / not run | Four ordinary routes and 18 explorer states passed sampled procedures. Five recursive callable measurements remain unknown. |
+| Enforce exact-candidate publication | Passed with limits | Distinct native, parity, association, reader, prose, and rendered obligations. Missing callable evidence rejects admission. |
+| Required local gates | Passed at checkpoint | Product gate, focused Gradle guards, and documentation procedures passed. Final candidate needs its own evidence. |
+| Independent final review | Passed with limits | Malformed input, duplicate states, preview ownership, three prose defects, and omitted public facts received specific repairs. |
+| PR delivery | Not run | Commit, push, and draft PR remain authorized. |
+| Merge and live publication | Not run | Rejected rendered evidence prevents publication acceptance. Final merge also needs explicit authorization. |
 
-## Implementation checkpoint
+## Established outcomes
 
-The native adapter passes 21 focused cases, including native no-op and later prose-drift rejection.
-The network-denied assessment and native no-op procedures pass.
-Publication admission passes 23 focused cases, including imported content, changed Claim statements, projected introductions, and malformed receipts.
-The documentation runner passes 449 Python tooling cases at this checkpoint.
-Focused callable generation, JSON contracts, knowledge citations, and knowledge impact pass.
-The refreshed target remains `7de04069e2a4a781a603ff51b3f9016b66108790`.
+The native adapter uses ClaimsStore, OpenWikiIgnore, RepositoryEvidenceResolver, and runClaimsPreflight.
+It keeps current, stale, unresolved, failed, and explicitly unassessed outcomes distinct.
+It binds the producer, source revision, scope, native inputs, and page digests without finalization or tracked writes.
+The complete canonical assessment reports 407 current Claims, zero stale Claims, and zero unresolved Claims.
+A clean assessment does not advance semantic verification.
 
-The manifest now binds 56 public MDX consumers, including generated views with authored introductions.
-The five callable routes keep their generator identities and parity procedure.
-The product brief now describes the checkout-free bootstrap that current `install.sh` supplies.
-The generators supply all six previously deferred contextual links.
+Native OpenWiki owns canonical prose, Claim sidecars, metadata, and indexes.
+The public contract, tracing, reuse, and lifecycle batches now have accepted canonical owners.
+The richer authored references keep their examples, exclusions, defaults, and failure semantics.
+Independent source review corrected callback storage estimates, named dependency-example scope, default preparation hooks, and debug-only response diagnostics.
 
-Native OpenWiki completed four scoped runs and reconciled inherited stale evidence.
-Canonical content now covers the seven named gaps without deleting the richer public references.
-Independent source review found and resolved omitted value-path classification and string-content facts.
-It also corrected callback storage estimates and the scope of named dependency examples.
-Default preparation hooks and debug-only response diagnostics replace inherited claims that no longer match source.
+The manifest binds imported authored bytes, referenced Claim statements, and generated owner bytes.
+A change to either side invalidates its association until another review.
+The five callable routes keep their existing generator identities.
+The product brief now describes the checkout-free bootstrap from current install.sh.
+The existing generators supply all six deferred contextual links.
 
-The generated public views preserve their manifest-owned routes and legacy anchors.
-Architecture no longer repeats the module inventory in both authority and topology explanations.
+The density review removes repeated module architecture from Read authority.
+Topology and ownership keeps that inventory, with legacy anchors preserved.
+Evidence limits keeps evidence authority and the canonical outcome projection to preserve unique public failure, recovery, and impact facts.
+Results supplies the reader-specific reference.
 Several explanations grew after factual reconciliation. No complete complexity-reduction claim follows.
+The manifest keeps explicit density dispositions and static measurement limits.
 
-## Current evidence limits
+## Evidence and limits
 
-The initial full prose run exposed 228 blocking lexical findings across canonical pages and generated snippets.
-These findings remain failures. No policy, vocabulary, or threshold changed to conceal them.
-The historical reader corpus also names the retired `experiments/task-access/SKILL.md`.
-The current runner must derive its corpus from maintained inputs while preserving the historical corpus and both pinned policies.
+The current reader scenario starts at Overview on a supported Mac with IDEA, a Kotlin project, Python, and an existing agent.
+Set up contains installation, agent guidance, and a useful caller query.
+The only unresolved decision selects a known function in that project.
+The author profile is D = 1, K = 0, H = 1, W = 464, and L = 5.
+Imported content and every static panel contribute to W and L.
+JSX and recursive schema expansion remain separately qualified.
+Word counts do not establish reader comprehension or native task completion.
 
-Pinned Mintlify `4.2.841` fails on the unchanged recursive query-symbols schema with `impossible schema combination`.
-A disposable `4.2.1189` comparison also fails. No schema or renderer pin changed.
-Four ordinary representative routes and 18 explorer states pass their sampled rendered procedures.
-The five callable measurements remain failed or not-run.
+The initial prose run exposed 228 blocking lexical findings.
+Native reconciliation corrected those findings without policy, vocabulary, or threshold changes.
+The historical reader corpus names a retired experiment.
+The current runner derives maintained inputs while preserving the historical corpus and both pinned Vale policies.
+The accepted dispositions keep 257 reported advisories visible through 255 distinct source-bound identities.
+Repeated identical alerts share one exact identity.
+The final prose receipt must keep these limits visible.
+An ASSESSED result does not mean a clean report.
+
+Pinned Mintlify 4.2.841 does not complete the unchanged recursive query-symbols route within 25 seconds.
+The native reducer emits `impossible schema combination`.
+A disposable lossless conjunction rewrite removes reducer errors but still times out and exhausts the heap.
+A qualified Node 24 successor comparison with Mintlify 4.2.1189 also times out.
+No schema or renderer pin changed.
+The controls establish these local outcomes without a claim that one error caused another.
+The hosted control stops at a Vercel Security Checkpoint and supplies no callable outcome.
+
+The renderer therefore cannot supply the missing recursive measurements or qualify publication.
+Its bounded expansion implementation also needs a real rendered callable before acceptance.
+Screenshots record sampled states. They do not establish an accepted pixel comparison.
+Only equal platform, browser bytes, preview bundle, fonts, viewport, theme, and zoom permit that comparison.
 Investigation captures precede final source stability and cannot qualify the candidate.
 
 GitHub deployment `7503304256` reports success for `d79fceffa9ae3617a4d215d87260908ea657dc88` at `https://kast.michne.com`.
-That deployment does not establish publication of this task branch.
-
-Continue with lexical reconciliation, current prose receipts, final rendered receipts, exact-source repository gates, independent review, and the authorized PR workflow.
-
-## Baseline evidence
-
-All 65 canonical page digests agree with their native sidecars.
-The committed public projection reports 98 `MATCHED` and 15 `NOT_ASSESSED` evidence references.
-These counts describe the recorded comparison, not native freshness or semantic truth.
-Historical review results remain at their recorded revisions.
-
-The connected Mintlify account lists `personal-733eb95b` and `slopsentral`, without a Kast deployment.
+That deployment does not establish publication of this branch.
+The connected Mintlify account lists two other projects without Kast.
 This connector result does not establish that the public site is unavailable.
 
-## Work ownership and resume
+## Commands and evidence
 
-The coordinator owns canonical reconciliation, publication associations, workflow integration, and final delivery.
-The native-assessment agent owns the TypeScript adapter, lock, fixtures, and assessment command.
-The reader-contracts agent owns reader metadata, derived reports, density dispositions, and contextual-link generators.
-The rendered-checks agent owns the browser suite and rendered evidence.
+The retained controls reside in `evidence/rendered/controls/report.json` and its linked files.
+The RED/GREEN link procedures reside in `evidence/contextual-links-red-green.md`.
+Independent integration findings reside in `evidence/final-integration-review.md`.
+The final command logs and receipts reside under `build/reports/documentation/`.
+CI uploads that directory as `documentation-evidence-<candidate-sha>`.
 
-Continue with the first dependency-ready stage after each checkpoint.
-Keep completed evidence, unresolved obligations, and the next action in this record.
-The decisive oracle rejects stale, unresolved, unassessed, failed, mismatched, or incomplete candidate evidence.
-A passing byte comparison never establishes semantic truth, native execution, or reader comprehension.
+The required local procedures are:
+
+```shell
+mise exec -- python3 .github/scripts/ci/verify_documentation.py
+mise exec -- ./gradlew :cli:verifyMintlifyCallableReference verifyJsonContracts verifyKnowledgeBase knowledgeImpact --console=plain
+mise exec -- python3 distribution/release/run_product_gate.py
+mise exec -- node docs/tooling/markdown/evidence-assess.ts --root "$PWD" --scope canonical
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/publication.py --rendered-report build/reports/documentation/rendered/receipt.json --prose-report build/reports/documentation/prose/receipt.json --report build/reports/documentation/publication.json
+```
+
+The tooling README documents both receipt producers and their pinned environments.
+Semantic fixtures remain off unless their explicit switch enables them.
+Product assembly does not establish real reader evaluation, native first use, or live deployment.
+
+## Resume and delivery
+
+The coordinator owns shared contracts, canonical reconciliation, association review, and final delivery.
+Independent agents review evidence, reader contracts, prose, rendered effects, and final integration.
+The owned-process cleanup stops surviving descendants after wrapper exit.
+Commit the reviewed candidate.
+Then collect source-bound receipts and required gates before the authorized push and PR.
+Continue through hosted checks and inspect a preview when the service supplies one.
+Do not merge or publish a candidate that fails publication admission.
+
+If the renderer remains blocked, keep a draft PR and the rejected receipt.
+The next external action needs a renderer that completes the unchanged callable schema.
+After that repair, implement and examine the declared finite expansion scope against the real DOM.
+Then repeat source-bound rendered admission before final authorization.
+
+For rollback after an authorized deployment, revert the migration through a normal PR.
+Run the same repository gates and inspect the deployment for that revert commit.
+Keep current product schemas and installation policy unchanged.

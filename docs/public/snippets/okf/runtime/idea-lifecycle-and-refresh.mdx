@@ -56,10 +56,6 @@ Later callers need a new owner and fresh admission.
 The focused state tests establish command conflicts, joined identities, refresh sequencing, and finite failures.
 Only the native fixture can establish an actual IDEA project or Gradle import transition.
 
-<a id="okf-runtime-idea-lifecycle-and-refresh-focused-tests" />
-
-## Focused tests
-
 <a id="okf-runtime-idea-lifecycle-and-refresh-public-lifecycle-responsibilities" />
 
 ## Public lifecycle responsibilities
@@ -86,7 +82,7 @@ An uncertain read does not create that write fence.
 These hosted lane rules do not impose identical concurrency on every transport.
 
 MCP starts a stdio session and exposes tools through tools/list.
-Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded querySession.
+Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded `querySession`.
 Hosted dynamic calls also need client protocol, thread ownership, and workspace binding.
 Disconnect removes the recorded client connection without automatically retiring the shared daemon or IDEA project.
 Upgrades need new catalogs and the selected Host loaded before semantic admission.
@@ -110,14 +106,14 @@ Daemon startup admits the installed executable, selected runtime, settings, and 
 Readiness records and a socket exchange identify a service generation.
 An old record or occupied socket alone cannot establish that generation.
 Stop, reset, and replacement fences reject automatic startup when their state is unknown.
-kast stop fences new calls and automatic restart before retirement.
+`kast stop` fences new calls and automatic restart before retirement.
 A daemon restart never replays writes. A Host restart ends its live authority.
 
 The [public lifecycle reference](https://github.com/amichne/kast/blob/main/docs/public/reference/lifecycles.mdx) keeps its owner table, request diagram, and operational lookup links.
 
-<a id="okf-runtime-idea-lifecycle-and-refresh-lifecycle-evidence" />
+<a id="okf-runtime-idea-lifecycle-and-refresh-focused-tests" />
 
-## Lifecycle evidence
+## Focused tests
 
 - [HostedVfsRefreshTest.kt](https://github.com/amichne/kast/blob/main/runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedVfsRefreshTest.kt)
 - [HostedGradleRevisionTest.kt](https://github.com/amichne/kast/blob/main/runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleRevisionTest.kt)

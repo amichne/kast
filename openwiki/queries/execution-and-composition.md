@@ -37,10 +37,10 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt
   - id: openwiki-source-d681a34840e8a5d442cc3f25
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Query stages and composition
@@ -60,7 +60,7 @@ Occurrence and value-path streams do not silently become symbol streams.
 
 ## One interpreter owns execution
 
-`QueryService` runs the admitted plan through an ordered deque of typed tasks.
+`QueryService` runs the admitted plan through an ordered double-ended queue of typed tasks.
 Discovery, exact lookup, source reads, relations, traversal, joins, and impact work use their existing domain operations.
 The interpreter owns task order, emitted rows, work and byte accounting, qualifications, and continuation construction.
 `PipelineCheckpoint` keeps the detached pending work and existing stage history.
@@ -89,8 +89,6 @@ Public automatic accumulation and final completion belong to the canonical proto
 
 The focused tests distinguish row admission, complete-right rejection, and resumed composition.
 They establish interpreter behavior with explicit domain operations, without installed-host semantic proof.
-
-## Focused tests
 
 ## Query work reuse
 
@@ -129,7 +127,7 @@ Completion needs that whole ledger even when a preview selects one path.
 The [public reuse explanation](../../docs/public/architecture/query-reuse.mdx) keeps the four diagrams and their reader-specific presentation.
 Its source links at `722ae03fc1` describe that recorded revision and do not establish a new native run.
 
-## Focused reuse tests
+## Focused tests
 
 - [ExactNameCandidateFilesTest.kt](../../symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ExactNameCandidateFilesTest.kt)
 - [ReferenceInventoryReuseTest.kt](../../relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt)

@@ -47,10 +47,10 @@ sources:
     resource: repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackDirectoryIsolationTest.kt
   - id: openwiki-source-3729941e30572a88593a1c00
     resource: repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt
-generated: { by: "codex", at: "2026-11-03T05:24:15.950Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:24:15.950Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # TRACE and compiler-static completion
@@ -59,7 +59,7 @@ verified:
 
 `TRACE` expands through the existing relation and source operations inside the query interpreter.
 For a seed, it gathers references and direct callers where the declaration is callable.
-Classlike seeds add implementations and member work.
+Class-like seeds add implementations and member work.
 Function and property seeds add overrides.
 Implementation arrivals gather their uses before one further caller layer.
 
@@ -121,7 +121,7 @@ Missing or conflicting effects remain proof gaps rather than becoming declared U
 Native fixtures expect declared callsInPlace effects for with, apply, and let in their selected standard library.
 They expect map to preserve missing-effect gaps.
 These statements describe fixture expectations rather than a new native execution.
-For forEach and other installed dependencies, the admitted formal's actual effect and qualified binary identity determine the result.
+For `forEach` and other installed dependencies, the admitted formal's actual effect and qualified binary identity determine the result.
 The reviewed lazy model proves initializer supply without proving a property read or initializer execution.
 
 IMPACT tracks constructor results, arguments, receivers, supported immutable storage, reads, and matching returns.
@@ -152,12 +152,12 @@ Presentation preserves the original interpretation and completion obligations.
 RUNNER_CONTROLLED is the public default without implicit semantic time or work quotas.
 Explicit maxElapsedMs includes model capture. Explicit maxWorkUnits rejects.
 Caller cancellation and disconnection stop execution.
-maxResults and maxReturnedBytes bound output pages without granting completion.
+`maxResults` and maxReturnedBytes bound output pages without granting completion.
 BOUNDED remains an explicit selection of configured grants and ceilings.
 
 The [public tracing reference](../../docs/public/reference/program-tracing.mdx) keeps the illustrated Kotlin route, exact request, diagrams, and lookup links.
 
-## Tracing evidence
+## Focused tests
 
 - [QueryTraceTest.kt](../../query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryTraceTest.kt)
 - [CompleteOnlyCallbackQueryTest.kt](../../query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt)

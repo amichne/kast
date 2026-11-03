@@ -32,10 +32,10 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
   - id: openwiki-source-7a39aa76a4978e328131bbf1
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Callback supply and invocation bindings
@@ -79,8 +79,6 @@ Contract tests establish range and binding invariants.
 Native callback fixtures establish compiler mappings under their controlled project.
 Neither layer establishes actual runtime callback activation in an unmeasured application.
 
-## Focused tests
-
 ## Public observation variants
 
 Each callback observation keeps its exact source occurrence, lexical container, anonymous body, and named-edge policy.
@@ -107,9 +105,9 @@ INCOMPLETE prevents that absence claim.
 NOT_APPLICABLE describes a directly invoked body without a formal to scan.
 Each parameter call keeps its forwardings array, including an empty array.
 Forwarding hops keep source formal, supplied expression, and destination binding.
-owner_bindings keeps nested supply, mapping, and recursive execution proof.
+`owner_bindings` keeps nested supply, mapping, and recursive execution proof.
 Missing execution proof keeps NESTED_CALLBACK_EXECUTION or its more specific cause.
-callable_observations keeps symbolic formal calls and compiler targets without source.
+`callable_observations` keeps symbolic formal calls and compiler targets without source.
 
 ## Static route navigation
 
@@ -118,7 +116,7 @@ PROVEN supplies supported steps from the named lexical owner.
 UNPROVEN keeps an established prefix, cause, and original unresolved flow.
 NOT_COMPUTED proves no route.
 Each step keeps source, target, depth, and supply, forwarding, or invocation evidence.
-Formal nodes retain the supplier binding. Distinct wrapper calls do not share nodes merely through a common formal.
+Formal nodes keep the supplier binding. Distinct wrapper calls do not share nodes merely through a common formal.
 Breadth-first depth starts at one and counts transitions.
 Supply and invocation are separate transitions. Supply alone cannot reach an anonymous body.
 WALK.maximumDepth limits named expansion without trimming an observation's supported route.
@@ -138,11 +136,11 @@ FINALLY_UNSUPPORTED and ABRUPT_COMPLETION preserve unsupported control-flow effe
 Work, time, result, and byte limits keep their separate causes.
 An empty call list cannot erase an incomplete scan or unresolved proof.
 
-The anonymous body's issued candidateSelector supplies READ_SOURCE.candidateRef under its admitted source snapshot.
+The anonymous body's issued `candidateSelector` supplies READ_SOURCE.candidateRef under its admitted source snapshot.
 It does not select the enclosing named function.
 The [public field reference](../../../docs/public/reference/callback-observations.mdx) keeps its field tables and literal READ_SOURCE request.
 
-## Observation evidence
+## Focused tests
 
 - [KotlinCallbackSupplyTest.kt](../../../relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/KotlinCallbackSupplyTest.kt)
 - [DeclaredCallbackInvocationKindTest.kt](../../../relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKindTest.kt)

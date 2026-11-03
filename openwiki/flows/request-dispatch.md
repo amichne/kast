@@ -1,7 +1,7 @@
 ---
 type: Runtime Flow
 title: Request dispatch
-description: Hosted requests retain canonical outcomes through native evaluation, bounded encoding and host projection.
+description: Hosted requests keep canonical outcomes through native evaluation, bounded encoding and host projection.
 resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
 code_sources:
@@ -92,10 +92,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Request dispatch
@@ -111,7 +111,7 @@ host request
   -> host projection
 ```
 
-Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
+Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters can change presentation, but they must preserve qualification and rejection.
 The Codex-facing provider prepends a bounded search or diagnostic summary when the validated result has enough coverage evidence. The unchanged machine document follows, retaining opaque references, budgets, and exact qualifications.
 
 The optional exact-symbol source projection is performed by the query evaluator inside this same hosted read, before typed query result projection. It uses the source read port rather than a second client exchange, preserving the query's authority, budget, and finite source failure.
@@ -127,7 +127,7 @@ effective elapsed allowance. Projection, retained-output restoration and encodin
 run inside that allowance, followed by final host freshness validation and the
 completion check before publication. Exhaustion or a regressed clock rejects with
 `BUDGET_EXCEEDED` and the actual admitted report; this is distinct from a resumable
-diagnostic stage stop. Other read operations retain their existing host-containment
+diagnostic stage stop. Other read operations keep their existing host-containment
 completion policy. Host timeout and cancellation drainage remain independently
 owned by the existing executor.
 
@@ -142,7 +142,7 @@ erasing retention, expiry or conflicting-claim evidence as generic staleness.
 
 Public query RUN has no completion selector and enters one complete-only executor. Public RESUME admits only output continuation; semantic checkpoint continuation stays inside the bounded evaluator. A retained evidence read performs no provider work and preserves the original question and completion rejection.
 
-Canonical semantic-read handlers delegate request admission, reference codecs,
+Canonical semantic-read handlers delegate request admission, reference encoding and decoding adapters,
 and outcome projection to [`query:protocol`](../modules/query-protocol.md).
 The host remains responsible for current workspace or live IDE authority and
 budgets. Shared protocol code does not launch workers or admit projects.
@@ -190,10 +190,10 @@ protocol shapes, while desktop rendering remains unqualified.
 The entire `change` CLI family routes to the existing-IDE path before installed
 bootstrap. Hosted ingress admits `AddDeclaration` planning; the one-call coordinator
 retains exact plan identity through private canonical apply/recovery operations. The endpoint protocol is version
-3. Its added change routes retain canonical complete/qualified/rejected envelopes;
+3. Its added change routes keep canonical complete/qualified/rejected envelopes;
 missing hosts, unsupported intents and inadmissible writes cannot fall back to an
 isolated worker. A stored verified apply receipt is historical evidence, so its
-original host may differ from the current endpoint; current reads still require
+original host can differ from the current endpoint; current reads still need
 the admitted endpoint owner.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
@@ -201,10 +201,10 @@ See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/ope
 The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Eager `query_symbols` owns declaration discovery and pipelines through `query.run`; `check_diagnostics` owns `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. Every `tool` command uses a versioned daemon RPC that re-admits its selected public schema and exact root before native demand. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The broker validates each encoded provider result against its qualified output
-schema before presentation. Output-contract rejection retains a deduplicated set
+schema before presentation. Output-contract rejection retains a set without duplicates
 of closed schema-keyword and field observations. Unknown fields remain `UNKNOWN`;
-validator messages, source values and reference tokens do not enter this evidence.
-Serializable failure DTOs preserve existing failure and correction fields and
+validation owner messages, source values and reference tokens do not enter this evidence.
+Failure DTOs with `@Serializable` preserve existing failure and correction fields and
 carry these observations as `outputViolationEvidence`.
 
 Kast provider qualification retains the canonical `OperationEffect` in the broker
@@ -213,7 +213,7 @@ invocation. If its admitted effect is `NONE` or `INTELLIJ_READ`, the adapter mar
 the invocation's effects known and the workspace lane serves its next request.
 Output validity and semantic success remain separate from this settlement decision.
 
-All writing effects and unknown provider effects retain recovery-required
+All writing effects and unknown provider effects keep recovery-required
 handling after output rejection. The four exact canonical-root discovery failures
 remain known because they occur before native dispatch. Other provider failures,
 cancellation, and timeouts remain uncertain even for reads; read metadata cannot
@@ -222,25 +222,25 @@ recovery completes in `prior_state` or `rolled_back`; its workspace lane can the
 serve later requests. Deterministic gates test queued and later calls, mutation
 without replay, independent workspaces, and retirement held across cancellation/deadline.
 
-`HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
+`HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection keep the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally keeps semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures keep their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
 
-Model-facing Codex replies retain one JSON envelope as their final content item.
+Model-facing Codex replies keep one JSON envelope as their final content item.
 Search and diagnostic presentation can precede it with a bounded human summary;
 compact source presentation can precede it with unchanged returned source text.
 Terminal broker admission,
-capacity and cancellation paths also retain typed JSON rejection or cancellation
+capacity and cancellation paths also keep typed JSON rejection or cancellation
 data; uncertainty is not converted into success. A supported native desktop
 display receives the same bounded result as structured content. Display parsing
 cannot alter execution authority or the broker's recovery settlement.
 
 An existing-host read failure carries an execution report only after semantic budget admission. Timeout and final revalidation preserve the report together with the finite failure and stage; encoded-output and retention refusal preserve the report at the publication boundary. CLI schema admission then refines the report through the canonical decoder before forwarding the hosted failure document.
 
-Compact source results retain ordered source and structure sections through CLI
+Compact source results keep ordered source and structure sections through CLI
 schema admission. The source-specific production-provider presenter emits the
 unchanged returned source first and the structured result afterward. Other
-operation presentations retain their existing dispatch behavior.
+operation presentations keep their existing dispatch behavior.
 
-Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
+Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs keep request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
 
 Agent lifecycle dispatch calls the App Server-owned lifecycle client and selected application control endpoint directly. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits the exact local close confirmation; session-wide acceptance does not. The invocation transports that typed confirmation privately and preserves finite lifecycle blockers through the output schema. Native semantic dispatch remains passive; the coordinator prepares the workspace through the lifecycle owner before sending a semantic request. If exact host identity changes during the final inspection, no semantic operation has been sent; the coordinator invalidates that preparation and tries once with a fresh incarnation.
 

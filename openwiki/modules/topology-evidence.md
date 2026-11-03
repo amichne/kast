@@ -31,10 +31,10 @@ sources:
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/CompleteTopologyGeneration.kt
   - id: openwiki-source-3be5d9cf3fcc7a7b479b3444
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Durable change evidence and retained topology
@@ -54,7 +54,7 @@ The graph service and `evidence:topology-sqlite` remain separate from hosted com
 They keep generation proofs, compiler-backed extraction, graph algorithms, historical publication, and restart-safe snapshots.
 Existing tests cover extraction rejection, graph identity, snapshot corruption, and failed-publication retention.
 
-Retained SQLite relation reads use the shared immutable provider inventory and continuation contract. The `PUBLISHED_TOPOLOGY_V1` provider carries already confirmed published facts, their exact lease, and their snapshot digest. Each resumed page consumes the remaining inventory with an advancing ordinal; it neither rebuilds the relation inventory nor replays consumed facts. A different snapshot under the same generation cannot consume that remainder. Native locators still require fresh compiler confirmation.
+Retained SQLite relation reads use the shared immutable provider inventory and continuation contract. The `PUBLISHED_TOPOLOGY_V1` provider carries already confirmed published facts, their exact lease, and their snapshot digest. Each resumed page consumes the remaining inventory with an advancing ordinal; it neither rebuilds the relation inventory nor replays consumed facts. A different snapshot under the same generation cannot consume the rest of that inventory. Native locators still need fresh compiler confirmation.
 
 Production relation and traversal reads use the current IDEA index through the live read authority. Historical published-evidence contracts remain interpretable; the plugin never fabricates a generation from a live epoch. The isolated workspace publication implementation remains retired.
 

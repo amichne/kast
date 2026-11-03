@@ -41,10 +41,10 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
   - id: openwiki-source-d3ccbe593611586a04efc776
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Installed knowledge projection and retrieval
@@ -71,7 +71,7 @@ It keeps full guide content and the guide's own scope and digest.
 
 Module-level guidance uses the module directory.
 Declaration-level guidance uses the exact source path.
-A nested guide can govern one source subtree without widening to every declaration in its parent module.
+A nested guide can govern one source directory tree without widening to every declaration in its parent module.
 Duplicate resources, invalid paths, incorrect guide sets, and oversized resources reject the projection.
 The resource limit is 8 MiB.
 
@@ -80,7 +80,7 @@ The resource limit is 8 MiB.
 `InstalledKnowledgeReader` first admits the installed manifest.
 A simple selection searches shallow descriptors and keeps at most 20 ranked matches.
 A JSON resource path selects one admitted manifest, module, declaration, or guide resource.
-`KnowledgeResourcePath` accepts only the defined namespaces and canonical components.
+`KnowledgeResourcePath` accepts only the defined resource prefixes and canonical components.
 Traversal components, foreign resources, changed digests, and mismatched descriptors remain finite lookup failures.
 
 The retained private JVM command family connects to this reader.

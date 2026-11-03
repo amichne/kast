@@ -33,10 +33,10 @@ sources:
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 
@@ -98,7 +98,7 @@ A recovery-only invocation does not select a new release.
 
 `host-installation.py` admits the Host release and plugin destination before effects.
 The active receipt records the plugin root, destination, and artifact inventory with filesystem identities.
-If the device identifier changes, admission keeps the recorded inode and owner constraints and consistently rebases recorded device identities.
+If the device identifier changes, admission keeps the recorded inode and owner constraints and keeps a consistent mapping from recorded device identities to their current identities.
 The current root and destination must remain stable through the inventory examination.
 
 Reinstall needs the exact current inventory.

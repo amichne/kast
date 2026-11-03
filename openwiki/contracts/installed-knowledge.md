@@ -27,17 +27,17 @@ sources:
     resource: repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - id: openwiki-source-b4184b3e65833677c17e8554
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Installed knowledge
 
 The retired `kast knowledge` command searched installed declaration descriptors and read listed resources. The assets and parser remain in the control product for now, but the private executable no longer exposes the command. These descriptors concern Kast's shipped source, not the user's open project.
 
-The isolated Kotlin PSI extractor supplies source headers and KDoc. Its output
+The isolated Kotlin PSI extractor supplies source headers and Kotlin documentation comments. Its output
 retains `KOTLIN_PSI_SYNTAX`, Kotlin-only named-declaration coverage, no type
 resolution and no inherited documentation. Complete and rejected extraction
 reports are closed serialized variants. A failed input cannot produce a partial
@@ -53,7 +53,7 @@ entire parent module.
 | --- | --- |
 | `manifest.json` | Version, source revision, evidence, module and guide descriptors |
 | `modules/.../index.json` | Shallow declaration descriptors and module guidance |
-| `modules/.../declarations/<id>.json` | Source header, KDoc, source path and exact governing guides |
+| `modules/.../declarations/<id>.json` | Source header, Kotlin documentation comments, source path and exact governing guides |
 | `guides/...json` | Complete guide content, scope and SHA-256 |
 
 Generation rejects duplicate identities, resource collisions, incorrect guidance
@@ -64,7 +64,7 @@ or guide content hashes. Unsupported schema versions, unknown fields, oversized
 files, path escapes and symbolic links reject. Search returns at most 20 shallow
 matches; it does not read declaration bodies.
 
-The focused parser and projection tests retain the internal asset contract.
+The focused parser and projection tests keep the internal asset contract.
 `installedProductTest` verifies archive contents and rejects former semantic CLI
 commands from the private executable.
 

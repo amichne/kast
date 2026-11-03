@@ -32,10 +32,10 @@ sources:
     resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T01:04:37.434Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Source anchors and structural pages
@@ -60,7 +60,7 @@ The final entity predicate decides which eligible entities consume the output pa
 An excluded container can still contain eligible descendants.
 
 The collector keeps an explicit collecting, page-full, or stopped state.
-A matching lookahead proves that a suffix remains.
+A matching next entity proves that a suffix remains.
 Out-of-order native entities reject the collector contract.
 An unmatched declaration cannot exhaust the requested result capacity merely because it appears first.
 

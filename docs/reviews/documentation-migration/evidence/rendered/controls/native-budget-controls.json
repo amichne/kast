@@ -1,0 +1,144 @@
+[
+  {
+    "name": "original",
+    "budget": 1000,
+    "errorCount": 0,
+    "messages": [],
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1048576,
+                  "minLength": 1,
+                  "pattern": "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\x00-\\x1F\\x7F]+)$"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "normalized",
+    "budget": 1000,
+    "errorCount": 0,
+    "messages": [],
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1048576,
+                  "minLength": 1,
+                  "pattern": "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)[^\\x00-\\x1F\\x7F]+)$"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "original",
+    "budget": 1001,
+    "errorCount": 1,
+    "messages": [
+      "Error processing schema: {\"path\":[\"#\",\"properties\",\"path\"],\"depth\":1,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}"
+    ],
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "oneOf": [
+                {
+                  "type": "any"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "normalized",
+    "budget": 1001,
+    "errorCount": 0,
+    "messages": [],
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "oneOf": [
+                {
+                  "type": "any"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "original",
+    "budget": 1440,
+    "errorCount": 1,
+    "messages": [
+      "Error processing schema: {\"path\":[\"#\",\"properties\",\"path\"],\"depth\":1,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}"
+    ],
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "oneOf": [
+                {
+                  "type": "any"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "normalized",
+    "budget": 1440,
+    "errorCount": 0,
+    "messages": [],
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "oneOf": [
+                {
+                  "type": "any"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+]

@@ -2,8 +2,8 @@
   "concepts": [
     {
       "path": "openwiki/changes/planning-and-write-admission.md",
-      "sha256": "4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d",
-      "claimsSha256": "c533ba93702d950a5708ae3a922e6a0e1fb9fae72709279ab25d8b416b9d6069",
+      "sha256": "e5ce73ab140e48f9eb4d5df3b5219bc97564be4c096a1b8c2af0cb41335b9ae3",
+      "claimsSha256": "836fc2ac9dd6bca56448608b6849e5a68ce88d7d4519016b26ca3366ab1e6272",
       "evidence": [
         {
           "claim": "claim_ff1f6ede0c994f92bbe64a21db0bea0b",
@@ -44,8 +44,8 @@
     },
     {
       "path": "openwiki/changes/receipts-and-recovery.md",
-      "sha256": "6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
-      "claimsSha256": "2b827fa960e80e2dc9729e9cdbfa91d5b1bb9289b4b86a8d1929b9c4545f84e5",
+      "sha256": "f3d52cede33f45070d7675345c77fcb3fa31861c6a12e136cf3d339f36568b79",
+      "claimsSha256": "7eac08239ed0021ad0eed411d3ad87e5056efa2a37763591acad503440e16564",
       "evidence": [
         {
           "claim": "claim_dc2d49cf58b747fc88ba662decc24659",
@@ -79,8 +79,8 @@
     },
     {
       "path": "openwiki/contracts/operation-outcomes.md",
-      "sha256": "baaaccbac09b4cec259d1150002178c1b0608414db499f48345540a2ae06b5b2",
-      "claimsSha256": "aaac62d577cf9a62f38cf856206cf67a3be08891abe14d370d7288d7e3e45e82",
+      "sha256": "d66d2d797710e948e03766404f343495e3827cb27c0e417165f3c936d37d8127",
+      "claimsSha256": "f6a051a0cf061afd235859333fcd03cae08c55b442dbb8730da0e5180b97ba31",
       "evidence": [
         {
           "claim": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -268,8 +268,8 @@
     },
     {
       "path": "openwiki/contracts/source-identity.md",
-      "sha256": "229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
-      "claimsSha256": "68723517c717f86f9cef6a56b2d436113f7fa0a2a506d1f33f2a49f2aea89461",
+      "sha256": "5656f59cb97ff664ed7da5a95d4a428b8c998b444ab003439a8e92417b24a889",
+      "claimsSha256": "f2d7660bb2e0de7b094eaf1d6bb967186718ac3ad68b2cbc266fe568ec2a6e08",
       "evidence": [
         {
           "claim": "claim_f7d072d0792940888833dd8e689c0570",
@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
-      "claimsSha256": "c2aa35e5142d40bf6f916f02c5859d7226ed7803a91be5f58e371678272a05ce",
+      "sha256": "0616f179c2e4e3605d50af5483f2e3a615db3f14f1ba5eba2a4ed22ba765d845",
+      "claimsSha256": "f24f9935b06577f345709e7b651dd30e27edbb8b3d51c412d80ed7f7f8056247",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -513,8 +513,8 @@
     },
     {
       "path": "openwiki/queries/execution-and-composition.md",
-      "sha256": "0433993a7a5315312d4a9e163cc5c45d97b8a54d261f9321dc9b402371877ded",
-      "claimsSha256": "4bf92883e3bedd6f778e00dcaddeded75ac74923cdd796cfda8d7f09b2c0fd7c",
+      "sha256": "211c69fa978f72dcc442c55a78a27df26513b8c749cd5047b79bd62435575ed0",
+      "claimsSha256": "2f0d9eed99f8863aa17254783d5bc3c1530ca07bc5c652342100433944bd700f",
       "evidence": [
         {
           "claim": "claim_b7f827aae9f340ae985ef5bf0eb5ab82",
@@ -681,8 +681,8 @@
     },
     {
       "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
-      "sha256": "330ae833550b6113d52869a42844947c18b6d31decd033fb93d7dcb89695b0cd",
-      "claimsSha256": "ed415c6489349efb0de1f9bbc1a31a63fd8ac1397cb2025966fe92a385b6f5b1",
+      "sha256": "a513d1f926aca105a7a40bf068ca6af596107fc337f9a918d82d19c11fd67071",
+      "claimsSha256": "29031227288734d413ea900b0622f4a8ce74a3b57c530ab173da12026f44540f",
       "evidence": [
         {
           "claim": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -779,8 +779,8 @@
     },
     {
       "path": "openwiki/semantics/relation/callback-reuse-and-completion.md",
-      "sha256": "51ab802f2fe3992f2c7ef4ad6173063286510ed8d8000c110b61656d8761c440",
-      "claimsSha256": "d7db38ad99fb910edcf595cb5200456b8b03c4ad78507c792cfbeb931b9476c6",
+      "sha256": "dfaf0d567abbcbc083f3027ad17a5c997b4657d12fe51794164cded790c1464c",
+      "claimsSha256": "9d73d2c6165a382729839944be13eb06bc35c6853f8a266dabf2672c87beac60",
       "evidence": [
         {
           "claim": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
@@ -884,8 +884,8 @@
     },
     {
       "path": "openwiki/semantics/relation/callback-supply-and-binding.md",
-      "sha256": "770519af8d1371582c433ab5b40a176e308050641d9d6fe511ca95ef95f203a0",
-      "claimsSha256": "8d3cd8689e6cd854eddae51d786cadf3fd42340a53e7cf61e9ad986bc74d02ff",
+      "sha256": "34c1dafe056c517e9883f082595a5d89f618aff0f9d45db5a4d25fdd90553dd1",
+      "claimsSha256": "6fe999c68df194838bd7537da9e2a623cca6549996426727cf5287991555d109",
       "evidence": [
         {
           "claim": "claim_1c2e0b7673bd4f38bdb1b7ebfc49034b",
@@ -947,8 +947,8 @@
     },
     {
       "path": "openwiki/semantics/symbol/discovery-and-identity.md",
-      "sha256": "258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50",
-      "claimsSha256": "f9ff2ed4c1f62a29ee9753833ed65017709d43512460fd1a03d1a9394333dad9",
+      "sha256": "62bd0ab70186ebf5b777ad9f5b33e2fbde1e930883b53fcaadd4ff6fbb82a824",
+      "claimsSha256": "58b534a88989c7c0f17ed96dd6b56b32ba658bb4b5696c3e681b851fac4c6d9a",
       "evidence": [
         {
           "claim": "claim_8c0d2193cfc6423db92d99f0cda80e68",
@@ -982,8 +982,8 @@
     },
     {
       "path": "openwiki/semantics/workspace/model-and-freshness.md",
-      "sha256": "57566d07455e699038a5741716b26f7f50529320c2c4094722c727fab949a777",
-      "claimsSha256": "eeb97127ca8ce4108c7fc741b42618a442d2f7b7243064029567db4c4faf8ebf",
+      "sha256": "afc07838553f8bb35ad07c53ce39392861847bb83f77c7e563e2f64982506ddf",
+      "claimsSha256": "9ed21072de2dd506dfef37ff332073c6bfe3552373df9d9b0a9780f73130c2ba",
       "evidence": [
         {
           "claim": "claim_74d7122619d54a03bab3bd3cb1810841",
@@ -1059,8 +1059,8 @@
     },
     {
       "path": "openwiki/topology/live-dependencies-and-reuse.md",
-      "sha256": "0ed492fdcc4be9ee1362ee7c8d12b2fa22d1e4a0065bac1eed2a86e7bcd89a25",
-      "claimsSha256": "68695d2964be116102c94761732469e6a0b68086f8d27ee8a10a2710a9129a43",
+      "sha256": "5887d5b9b00cfd51ac75c7eb2741d2495446dde1f4369bc4339ad35894ae97e6",
+      "claimsSha256": "a0e7b78600f8b893433bbfee7e55ec4aba17500d23e8c8c2959be6a8ff3153b7",
       "evidence": [
         {
           "claim": "claim_8b4558b4ee2349efad79e24bde383051",

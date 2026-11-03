@@ -8,7 +8,7 @@
         {
           "category": "READABILITY",
           "line": 1,
-          "message": "Estimated Flesch-Kincaid grade 9.25 exceeds the shared advisory target of 8.",
+          "message": "Estimated Flesch-Kincaid grade 9.15 exceeds the shared advisory target of 8.",
           "rule": "Slopsentral.Grade",
           "severity": "warning",
           "span": [
@@ -19,14 +19,14 @@
         }
       ],
       "metrics": {
-        "estimatedSyllables": 695,
-        "fleschKincaidGrade": 9.25,
-        "sentences": 39,
-        "words": 392,
-        "wordsPerSentence": 10.05
+        "estimatedSyllables": 717,
+        "fleschKincaidGrade": 9.15,
+        "sentences": 41,
+        "words": 405,
+        "wordsPerSentence": 9.88
       },
       "path": "/Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/docs/tooling/rendered/README.md",
-      "sourceSha256": "1c7a66f3978f6195ed683617c3e7a958b5a7124c207068c073dbcfc6fa0ee5f7",
+      "sourceSha256": "64abe8bdb39723437f30d186daeb04591f6cb4d4976c29acba3f57ec5c6f28ca",
       "terminology": {
         "type": "IN_SCOPE"
       },

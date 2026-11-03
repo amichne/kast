@@ -44,6 +44,7 @@ REQUIRED_RENDERED = frozenset(
         "themes",
         "screenshots",
         "bounded-measurements",
+        "candidate-preview-provenance",
     }
 )
 REQUIRED_PROSE = frozenset(
@@ -160,7 +161,7 @@ def _sha(value: object) -> TypeGuard[str]:
 
 
 def _safe_path(value: object) -> TypeGuard[str]:
-    if not isinstance(value, str) or not value or "\\" in value:
+    if not isinstance(value, str) or not value or "\\" in value or "\0" in value:
         return False
     path = PurePosixPath(value)
     return (

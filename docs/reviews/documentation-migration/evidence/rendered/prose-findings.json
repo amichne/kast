@@ -6,9 +6,10 @@
       "rule": "Slopsentral.Grade",
       "path": "docs/tooling/rendered/README.md",
       "line": 1,
-      "grade": 9.25,
+      "grade": 9.15,
       "disposition": "keep",
-      "reason": "Exact environment identities, command syntax, and evidence limits remain necessary."
+      "reason": "Exact environment identities, command syntax, and evidence limits remain necessary.",
+      "sourceSha256": "64abe8bdb39723437f30d186daeb04591f6cb4d4976c29acba3f57ec5c6f28ca"
     },
     {
       "rule": "Slopsentral.Grade",
@@ -16,7 +17,8 @@
       "line": 1,
       "grade": 8.86,
       "disposition": "keep",
-      "reason": "The historical report keeps separate outcome, scope, and source identity qualifications."
+      "reason": "The historical report keeps separate outcome, scope, and source identity qualifications.",
+      "sourceSha256": "2d7527eee431e583045914dfc0f13640d5b3f7f611cc2061720abacd6771b781"
     }
   ],
   "limits": [

@@ -210,10 +210,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-03T06:25:30.717Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T06:25:30.717Z
 ---
 
 # Query protocol
@@ -243,15 +243,25 @@ and evidence vocabulary around their domain operations. The existing-IDE host us
 Diagnostic progress retains the requested path alongside file inventory and analyzed files. The CLI derives discovered, analyzed, skipped, and exhaustive coverage from that progress, and labels the result as IDE file diagnostics.
 
 `QueryReferenceAuthority` separates reference issuance and restoration from
-execution authority. Published references retain their generation. Live
+execution authority. Published references keep their generation. Live
 references require a freshly admitted authority from the original host; decoded
 root, host, epoch, version, and content view must match it. Restoration does not
 open an IDE or prove a declaration is current. Native read adapters must still
 revalidate scope, location, compiler evidence, and content.
 
-Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects. `concat` appends inputs; a following `distinct_symbols` retains the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol, occurrence, traversal, and binding rows and preserve column names even when no rows match. Reference occurrences retain compiler-confirmed targets separately from declaration ownership. Declaration-only composition requires a proven declaration cell; file-scoped imports cannot become declaration or call graph endpoints. Binding rows cannot serve as symbol join right inputs; read-result requires the matching output kind while preserving row IDs and evidence. Public RESUME supplies only issued output continuation. The internal runner follows semantic checkpoints under the remaining original grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
+Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection.
 
-Selector documents retain directory, package, declaration-kind, and exact Gradle
+`intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or keeps producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects.
+
+`concat` appends inputs; a following `distinct_symbols` keeps the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result.
+
+The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol, occurrence, traversal, and binding rows and preserve column names even when no rows match. Reference occurrences keep compiler-confirmed targets separately from declaration ownership. Declaration-only composition needs a proven declaration cell; file-scoped imports cannot become declaration or call graph endpoints.
+
+Binding rows cannot serve as symbol join right inputs; read-result needs the matching output kind while preserving row IDs and evidence. Public RESUME supplies only issued output continuation. The internal runner follows semantic checkpoints under the remaining original grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page.
+
+A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
+
+Selector documents keep directory, package, declaration-kind, and exact Gradle
 source-set constraints for source-owned declaration candidates and exact symbols.
 Relation occurrences and diagnostic locations issue range candidates consumed by
 internal source extraction; these do not grant exact symbol authority. No public file candidate
@@ -274,17 +284,27 @@ restores the original plan, authority, and remaining work; no separate public
 traversal or relation token is issued. Query relation expansion returns
 individual occurrence items and structured omissions through `query.run`.
 
-`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. `QueryStateStore` shares one bounded, expiring quota among typed execution checkpoints, immutable retained results, detached output suffixes, and request claims; their tokens and restoration outcomes remain separate. Each producer token admits one active claim. Concurrent use yields `CONTINUATION_IN_USE`; a published page replays its immutable facts and successor without semantic work. Hosted execution stages allocations under the claim, then commits the fitted page and its successor after freshness, deadline, and cancellation drainage. Discard releases only that attempt's allocations. Committing a producer replaces its consumed execution or output payload with the immutable published page and required dependency identities; the consumed payload no longer counts as retained work. Live pages retain their dependency closure under the same quota. Each token keeps its original age; a younger page remains usable only while all advertised dependencies are valid. Active claims pin physical storage through drainage without admitting expired inputs to a new request. Initial composition pins its exact inputs and rechecks their original age at publication, including discarded output. Replay never renews token age. Capacity and unavailable state produce finite rejection rather than a native restart. An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles with 31 and 35 characters, respectively. Lookup restores the full version-2/3 token before the existing authority, scope, and evidence checks. Short-digest collisions return the inline selector and keep the prior handle. Canonical query documents keep `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The hosted model projection omits it; `distinct_symbols` and set stages use the canonical equality owner without exposing an equality key.
+
+Published test composition keeps inline transport by default. Source declaration identities and candidate targets use the same host issuer. They preserve its returned candidate token unchanged. A successful source read does not upgrade a candidate to an exact reference. Source snapshot tokens keep their encoding format.
+
+`QueryStateStore` shares one bounded, expiring quota among typed execution checkpoints, immutable retained results, detached output suffixes, and request claims; their tokens and restoration outcomes remain separate. Each producer token admits one active claim. Concurrent use yields `CONTINUATION_IN_USE`; a published page replays its immutable facts and successor without semantic work. Hosted execution stages allocations under the claim, then commits the fitted page and its successor after freshness, deadline, and cancellation drainage. Discard releases only that attempt's allocations.
+
+Publication replaces the producer's consumed execution or output payload with an immutable published page. That page keeps the necessary dependency identities. The consumed payload no longer counts as retained work. Live pages keep their dependency closure under the same quota.
+
+Each token keeps its original age; a younger page remains usable only while all advertised dependencies are valid. Active claims pin physical storage through drainage without admitting expired inputs to a new request. Initial composition pins its exact inputs and rechecks their original age at publication, including discarded output. Replay never renews token age. Capacity and unavailable state produce finite rejection rather than a native restart.
+
+An unfinished query walk keeps its domain continuation with strategy, maximum depth, cumulative progress, and earlier provider limitations inside that execution checkpoint.
 
 Query relation omission projection retains the exact subject and relation,
 provider/version, page-local observed or unmeasured omissions, bounded source
 samples and a closed remediation. Budget stops qualify that page's unmeasured
-remainder; they do not manufacture observed missing facts. Known occurrence
+rest; they do not manufacture observed missing facts. Known occurrence
 facts remain separate from incomplete enumeration. Query walk
-projection retains cumulative progress, independent reference occurrences, historical omissions, and page-local partial node expansions;
-a bounded-fan-out remainder is explicitly unexamined rather than silently absent. Traversal checkpoints carry complete omission objects, including provider, measured or unmeasured meaning, bounded sample, and remediation, through later pages. Query filters, retained inputs, set stages, and joins preserve producer observation provenance independently of emitted rows.
+projection retains cumulative progress, independent reference occurrences, historical omissions, and page-local partial node expansions.
+The rest of a bounded-fan-out traversal stays explicitly unexamined rather than silently absent. Traversal checkpoints carry complete omission objects, including provider, measured or unmeasured meaning, bounded sample, and remediation, through later pages. Query filters, retained inputs, set stages, and joins preserve producer observation provenance independently of emitted rows.
 
-Internal query-page qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An admitted upstream checkpoint permits resumption even when the page emits no rows; retained-output fitting can require an increased allowance. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; Verbose CLI fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Internal query-page qualification owns necessary closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An admitted upstream checkpoint permits resumption even when the page emits no rows; retained-output fitting can need an increased allowance. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; Verbose CLI fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;
@@ -298,7 +318,7 @@ variants and mismatched checkpoint families.
 
 An admitted rejection in query or source carries its existing
 finite reason plus the required execution-budget report. Missing metadata retains
-the unadmitted failure variant; null or malformed reports reject at the boundary.
+the failure variant without an admitted grant; null or malformed reports reject at the boundary.
 The [outcome contract](../contracts/operation-outcomes.md) separates this admission
 evidence from successful semantic results.
 Canonical read failures derive a closed recovery direction from their reason.
@@ -320,16 +340,16 @@ See [source identity](../contracts/source-identity.md#source-output-format).
 
 ## Explicit exact reacquisition
 
-Fresh first-page query and source requests may reacquire an exact reference after
+Fresh first-page query and source requests can reacquire an exact reference after
 strict restoration reports a stale handle. The previous exact token is only a key into the running owner's
 separate detached locator store. Current admission, the same host/root and model
 source owner, unchanged saved committed owning-file bytes, and one fresh exact K2
 match are required. The service checks freshness again before new issuance.
 No prior source snapshot, relation, continuation or mutation approval becomes
-current through reacquisition; those paths retain strict restoration.
+current through reacquisition; those paths keep strict restoration.
 
 Capture is optional for ordinary issuance: it runs inside exact compiler lookup,
-deduplicates at most 64 files per request, and retains no source payload or platform
+keeps at most 64 distinct files per request, and retains no source payload or platform
 object. Each file is limited to 1 MiB and charged one work unit plus one per 4 KiB
 of bytes actually read against the admitted capture allowance. Admission reserves
 room for a single EOF probe byte; length movement rejects with finite data.
@@ -360,7 +380,7 @@ remain finite rejections. Compiler refinement runs outside native index callback
 Capture, candidate work and elapsed recovery time consume the same request grant
 as the semantic operation. Exhaustion remains a distinct work- or time-limit
 failure. Successful results optionally carry `reference_acquisitions`, including
-qualified partial results, so the caller can retain the fresh handle.
+qualified partial results, so the caller can keep the fresh handle.
 
 Scoped original-document reacquisition reserves exact compiler lookup work before
 granting the remaining work to content hashing, and charges both under the
@@ -369,14 +389,14 @@ compiler lookup or before publishing a confirmed result. Finite work/time
 rejections preserve the retained local reference facts.
 
 Continuation restoration, explicit original-document inspection, source snapshots
-and change planning retain strict authority. A refreshed read handle cannot
+and change planning keep strict authority. A refreshed read handle cannot
 refresh a previous page or authorize a write against changed document content.
 
-Source reads retain [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper retains the complete cause, including internal obligations and finite reference lookup evidence.
+Source reads keep [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper keeps the complete cause, including internal obligations and finite reference lookup evidence.
 
 Impact source admission parses the expansion domain and closed model syntax before native acquisition. One aggregate grant owns seed, declaration and boundary-site revalidation. The admitted plan retains those current proofs, so resume restores them rather than reacquiring seeds or bindings. The existing query-state result retains the investigation ledger, value-path row kind and original closure; witness sections are presentations of that ledger.
 
-The public source-admission boundary retains the supplied source authority. Pure peer selection permits only exact reviewed continuation targets with an independent root and complete declaration inventory; ordinary producers, requested sites and representation claims remain on the source basis. A completed child read must prove each selected target under its own full authority. Admission rejects missing, duplicate or unrequested peer proof and reserves its aggregate work and retained storage before source native effects. The modeled edge ends at an unresolved peer terminal; no target flow task is scheduled. Model syntax, compiler binding, reviewed representation meaning and retained historical presentation remain distinct evidence levels.
+The public source-admission boundary retains the supplied source authority. Pure peer selection permits only exact reviewed continuation targets with an independent root and complete declaration inventory; ordinary producers, requested sites and representation claims remain on the source basis. A completed child read must prove each selected target under its own full authority. Admission rejects peer proof that is missing, repeated, or not requested and reserves its aggregate work and retained storage before source native effects. The modeled edge ends at an unresolved peer terminal; no target flow task is scheduled. Model syntax, compiler binding, reviewed representation meaning and retained historical presentation remain distinct evidence levels.
 
 ## Original impact result retention
 
@@ -384,7 +404,7 @@ The public source-admission boundary retains the supplied source authority. Pure
 
 The existing `QueryStateStore` issues identities for every captured row. Initial preview and retained reads carry contiguous windows within that snapshot, with the original result end. Prefix and suffix fitting advance only emitted row positions. Presentation cursors grant no semantic execution. Internal evaluator pages project rows and progress without capturing or issuing retained results.
 
-Retained value-path and witness pages project detached ledger evidence without reacquiring producers, revalidating models or executing value-flow reads. Draining pages preserves unresolved original obligations and terminal reasons, including `OUTPUT_ITEM_TOO_LARGE`. Incomplete proof returns typed completion rejection and evidence-only retained reads; presentation cannot manufacture investigation completion. The local snapshot and cursor tests establish retained identity and qualification contracts, not installed IDE qualification.
+Retained value-path and witness pages project detached ledger evidence. They do not reacquire producers, admit models again, or do value-flow reads. Draining pages preserves unresolved original obligations and terminal reasons, including `OUTPUT_ITEM_TOO_LARGE`. Incomplete proof returns typed completion rejection and evidence-only retained reads; presentation cannot manufacture investigation completion. The local snapshot and cursor tests establish retained identity and qualification contracts, not installed IDE qualification.
 
 Impact retained-storage charge uses a request-local visitor over actual shared
 immutable objects, separate from row identity and compiler identity. References
@@ -401,7 +421,7 @@ conservative byte guard; storage limits remain independent of output bytes.
 
 `QueryImpactFinding` admits the original path ordinal against the ledger path count and retains that same immutable path object. The `FINDINGS` witness section derives one entry per original path. `RetainedQueryPresentation` checks the full retained path order and issued row count, then passes the matching original row-ID slice through `QueryOutcomeProjection` and `QueryProjectedEvidence`. The witness projector checks the entry ordinals and original path objects before constructing the required link; missing context rejects instead of supplying a draft identity.
 
-The compact DTO keeps producer and destination sites, current representation alternatives, ordered model provenance, terminal cause and boundary obligations. It omits compiler transfer payloads and full rule/history payloads because its path ordinal and row ID expand that exact original `VALUE_PATHS` row on the same retained result. No new store, cursor, row kind or semantic evaluator is introduced. The canonical accounting validator checks finding ordinal/count consistency, unique page row IDs and nonempty present representation alternatives, and retains the selected-view qualification over original closure. Focused tests compare wide and one-row presentation, exact full-row expansion, encoded finite variants and rejected identity context with a semantic executor that must remain unused. These are local contract proofs; installed qualification is separate.
+The compact DTO keeps producer and destination sites, current representation alternatives, ordered model provenance, terminal cause and boundary obligations. It omits compiler transfer payloads and full rule/history payloads because its path ordinal and row ID expand that exact original `VALUE_PATHS` row on the same retained result. No new store, cursor, row kind or semantic evaluator is introduced. The canonical accounting validation owner checks finding ordinal/count consistency, unique page row IDs and nonempty present representation alternatives, and retains the selected-view qualification over original closure. Focused tests compare wide and one-row presentation, exact full-row expansion, encoded finite variants and rejected identity context with a semantic executor that must remain unused. These are local contract proofs; installed qualification is separate.
 
 ### Pending and finalized impact retention
 
@@ -411,18 +431,18 @@ Pending path reads remain evidence-only with original qualified coverage, and pe
 
 ## Requested-site relationship accounting
 
-The source may name a bounded, ordered requested-site universe independently of its producers. Count, duplicate, basis and declaration-inventory checks precede native effects. The existing site revalidation port proves each exact role and invocation claim once, with reused admitted model-site proofs where available. The immutable requested-site value retains the actual request, compiler proof and observed work; substituted requests, foreign bases and work beyond the child grant reject.
+The source can name a bounded, ordered requested-site universe independently of its producers. Count, duplicate, basis and declaration-inventory checks precede native effects. The existing site revalidation port proves each exact role and invocation claim once, with reused admitted model-site proofs where available. The immutable requested-site value keeps the actual request, compiler proof and observed work; substituted requests, foreign bases and work beyond the child grant reject.
 
-Native admission shares the source's aggregate work and checkpoint-storage grants. Its site byte grant is remaining checkpoint capacity, independently of encoded output bytes. The source and final ledger retain these proofs through the existing storage visitor and checkpoint owner.
+Native admission shares the source's aggregate work and checkpoint-storage grants. Its site byte grant is remaining checkpoint capacity, independently of encoded output bytes. The source and final ledger keep these proofs through the existing storage visitor and checkpoint owner.
 
 The ledger derives one finite outcome per requested site from original paths. Reached links preserve original ordinals and row IDs alongside any separate exact site and domain exclusions. An unmatched site retains a required `REQUESTED_SITE_RELATIONSHIP` obligation. `SITE_ACCOUNTING` presents those outcomes and native admission receipts through the existing retained witness window and byte fitter; it performs no new flow traversal or site revalidation. These local contracts require separate installed qualification.
 
-Compiler path steps retain their transfer evidence through model applications,
+Compiler path steps keep their transfer evidence through model applications,
 path history, ledger retention and value-path paging. Public projection preserves
 the closed transfer variant. Normal branch results keep exact try and branch
 anchors, a typed alternative, and the normal-completion condition. A compact finding still expands
 the original path with that proof. Transfer evidence is charged by the existing
-retained-storage visitor; byte and work exhaustion retain the existing typed
+retained-storage visitor; byte and work exhaustion keep the existing typed
 qualifications and continuation owners.
 
 Local addresses survive exact selectors, references, joins, deduplication and
@@ -430,7 +450,7 @@ source projection. Their versioned signature and lexical ownership anchors are
 charged under the existing query retained-storage owner. Identity admission does
 not add mutable assignment flow or prove deferred execution.
 
-Declared binary callback contracts retain their compiler target separately from
+Declared binary callback contracts keep their compiler target separately from
 authored source handles. Projection preserves the semantic basis, exact source
 occurrence, source owner, formal parameter position and binary class digest.
 Contract evidence does not invent a dependency body invocation; nested callback
@@ -449,7 +469,7 @@ These charges estimate quota use and do not measure JVM heap use.
 
 Deferred dependency projection keeps the source supplier declaration, exact formal position, compiler target, model, and six class digests.
 Its binding has no invocation-kind field or invented invocation record.
-The execution projection preserves declaration, accessor, initializer, or ordered direct-invocation evidence.
+The execution projection preserves declaration, property getter or setter, initializer, or ordered direct-invocation evidence.
 Canonical retention includes the supplier signature, execution proof, and every binary digest.
 The public document preserves the original SEMANTIC BASIS and source containment.
 

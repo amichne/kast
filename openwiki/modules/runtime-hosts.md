@@ -287,15 +287,15 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Runtime and process hosts
 
-`runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or topology backend in the shipped runtime graph. The retained topology modules and their separate SQLite adapter remain buildable for upcoming work.
+`runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or topology backend in the shipped runtime graph. The retained topology modules and their separate SQLite adapter remain available to compile for upcoming work.
 
 The plugin archive contains the semantic contracts, services, IntelliJ adapters and durable change stores. Its name binds the independent hosted-plugin version and IDEA release line. Runtime admission retains exact observed IDEA/Kotlin identities while allowing the configured release-line compatibility policy. The historical [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md) states the tested baseline; a build or schema check alone does not expand that qualification.
 
@@ -313,23 +313,23 @@ sending subsequent operations. Older hosts without it reject. The loaded plugin
 reads provenance and contract from its own packaged runtime; control replacement
 cannot change these files. Every later connection repeats admission.
 
-`HostedSemanticServices` composes request-scoped symbol, source, relation and diagnostic services from one admitted project/read context. Canonical queries, planning and post-write verification share this factory. It does not retain a project read across requests or supply project-opening authority.
+`HostedSemanticServices` composes request-scoped symbol, source, relation and diagnostic services from one admitted project/read context. Canonical queries, planning and post-write verification share this factory. It does not keep a project read across requests or supply project-opening authority.
 
-`HostedResponse` retains the original complete, qualified or rejected outcome alongside its encoded document. Encoding and response-size failures retain the original semantic result. The endpoint observer reports semantic classification rather than treating every written frame as completion. [Hosted queries](../flows/hosted-query.md) describes lifetime and cancellation.
+`HostedResponse` keeps the original complete, qualified or rejected outcome alongside its encoded document. Encoding and response-size failures keep the original semantic result. The endpoint observer reports semantic classification rather than treating every written frame as completion. [Hosted queries](../flows/hosted-query.md) describes lifetime and cancellation.
 
 The hosted provider admits public intent tools and supported changes through the existing IDEA plugin. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
 
 Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools reject shutdown, reset, or replacement-journal markers and unproven absence before workspace discovery or dispatch.
 An empty journal directory or dangling symbolic link still blocks calls until final removal. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
 
-App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory.
+App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects keep uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory.
 
 New Codex threads with Kast tools admit the nearest canonical `settings.gradle.kts` owner or the explicit exact owner before registration and binding.
 Ordinary threads outside Gradle projects pass upstream without a Kast binding.
 Unbound resume and fork requests also pass upstream.
 Explicit Kast roots still need the canonical settings owner.
 
-Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability.
+Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without another target selection. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability.
 
 Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; canonical changes use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
@@ -341,11 +341,11 @@ The [installed knowledge contract](../contracts/installed-knowledge.md) describe
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
 
-HostedSemanticServices projects the context’s admitted time allowance into query and diagnostic-scope budgets; configured capacities remain separately available. Schema-4 receipts retain the effective allowance, remaining host time, completion reserve and finite admission outcome.
+HostedSemanticServices projects the context’s admitted time allowance into query and diagnostic-scope budgets; configured capacities remain separately available. Schema-4 receipts keep the effective allowance, remaining host time, completion reserve and finite admission outcome.
 
 `HostedReferenceStore` retains at most 16,384 token entries and 32 MiB of token UTF-8 bytes by default, with typed read-limit overrides. It clears the previous table on an admitted epoch change or project disposal. Repeated references reuse the same handle, and current-epoch handles are never evicted for capacity. When a new entry cannot fit, issuance keeps the valid inline token and records `REFERENCE_INLINE_CAPACITY`. No PSI, source payload, or in-process authority is retained in the table.
 
-`HostedQueryResponse` bounds the actual encoded query bytes. An oversized positive result becomes a qualified prefix carrying `BYTE_LIMIT_REACHED`, all existing limitations, the original proven lower bound, and every item failure. If mandatory evidence alone cannot fit, the response remains rejected.
+`HostedQueryResponse` bounds the actual encoded query bytes. An oversized positive result becomes a qualified prefix carrying `BYTE_LIMIT_REACHED`, all existing limitations, the original proven lower bound, and every item failure. If necessary evidence alone cannot fit, the response remains rejected.
 
 Runtime installation admission uses the shared distribution traversal budget rather than the historical 4,096-path broker ceiling. `PAYLOAD_LIMIT_EXCEEDED` remains distinct through coordinator, service, and client failure projections. Both lifecycle transitions and standalone recovery fences block startup.
 
@@ -353,7 +353,7 @@ Runtime installation admission uses the shared distribution traversal budget rat
 proves existing-project admission checks at that instant; `unavailable` retains
 the closed failure and conditional recovery guidance. It creates no semantic
 read permit, source epoch, import, or indexing wait. Query admission still checks
-saved content and current authority. Older hosts may omit the new observation;
+saved content and current authority. Older hosts can omit the new observation;
 absence provides no readiness proof.
 
 `HostedQueryContinuations` owns three bounded stores for the current project read
@@ -375,14 +375,14 @@ Current-byte, entry-count and byte high-water gauges remain separate for each
 owner and estimate quota accounting rather than heap memory. See the
 [hosted retention bounds](../flows/hosted-query.md#hosted-continuation-retention-bounds).
 
-Connection admission bounds parallel semantic dispatch; each hosted read independently owns a bounded lifetime permit. Epoch ownership transitions and mutation application retain their narrower synchronization.
+Connection admission bounds parallel semantic dispatch; each hosted read independently owns a bounded lifetime permit. Epoch ownership transitions and mutation application keep their narrower synchronization.
 `CONNECTION_RELEASE` is emitted after the admitted connection's semaphore permit
 is released, so native fault fixtures can wait for a correlated drain witness
 before the next health request. The structured observer retains finite outcomes,
 durations and byte counts without request or response payloads. Read rejection
 projection preserves any admitted execution report through fitting and encoding.
 
-Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.
+Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing a response that exceeds the size limit or cannot be encoded fails.
 
 Enabled persistent Codex integration defaults to installation-owned private discovery.
 The CLI supplies its endpoint explicitly and the desktop façade attaches to the
@@ -399,7 +399,7 @@ before sending the Kast status protocol.
 Status reports lifecycle, endpoint ownership, native protocol, catalog and upstream
 observations separately. Service status requires the requested service identity;
 configuration inspection retains the proven incumbent identity so it can report
-unapplied configuration changes. Status leaves semantic readiness unobserved rather than
+configuration changes that were not applied. Status leaves semantic readiness unobserved rather than
 inferring IDEA authority. Installed transport acceptance does not qualify stock
 interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.
@@ -409,12 +409,16 @@ The hosted endpoint also composes a workspace refresh owner outside `workspace:i
 Fresh semantic reads additionally use `ReacquiringQueryReferences`, backed by the
 separate detached exact-locator store. Its request-local accounting charges
 recovery work and elapsed time before admitting the remaining semantic budget.
-Older-epoch locators can be evicted to retain current handles. Continuation stores
+Older-epoch locators can be evicted to keep current handles. Continuation stores
 and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. A dead endpoint with the same root and socket can be reclaimed after a plugin upgrade without matching its old capability catalog; the absent PID, exclusive lock and unchanged file identities still govern retirement. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` requires the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and keeps at most 256 operation records. The endpoint reuses existing ownership and framed transport. After a plugin upgrade, Kast can reclaim a dead endpoint with the same root and socket without matching its old capability catalog. The absent PID, exclusive lock, and unchanged file identities still govern retirement. Project semantic services remain project-scoped.
+
+The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` needs the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation.
+
+If an import is active, existing-project opening waits for it. It requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows keep one evaluation.
 
 Host settlement reads the reconstructed mutation journal and decoded receipts in one SQLite snapshot.
 An applied record settles only when its receipt preserves the exact binding and recovery digest chain.
@@ -441,7 +445,7 @@ a changed contract rejects before execution. Mutation authority remains with cur
 
 Catalog qualification emits one bounded typed stage/outcome observation per contract
 read. It retains source, document, projection, metadata, input-schema and output-schema
-failures without logging catalog contents. Request unions may nest, but every
+failures without logging catalog contents. Request unions can nest, but every
 leaf must be a closed object; empty unions and open leaves reject.
 
 The coordinator also owns `/kast-management` on the same private Unix socket.
@@ -464,7 +468,7 @@ The coordinator retains workspace preparation operations independently of Codex
 admission and management connection lifetimes. Exact canonical settings roots
 coalesce to one request ID and native open operation. Native pending observations
 must preserve host/request identity and advance monotonically through opening,
-importing and admission. Completed records retain root, host and project identity;
+importing and admission. Completed records keep root, host and project identity;
 they are historical observations, not authority to skip fresh native admission.
 Blocked operations and elapsed deadlines do not automatically replay opening.
 A bounded 256-record table rejects excess roots without discarding evidence. Close
@@ -477,13 +481,13 @@ the historical record remains. A second change rejects. Transport failures never
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-Hosted provider calls use the shared workspace demand owner and the existing-IDE client. Canonical mutations preserve exact plan identity. Complete, qualified and rejected outcomes retain distinct replies. The former `/kast-operation` CLI RPC route is removed.
+Hosted provider calls use the shared workspace demand owner and the existing-IDE client. Canonical mutations preserve exact plan identity. Complete, qualified and rejected outcomes keep distinct replies. The former `/kast-operation` CLI RPC route is removed.
 
-Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
-On enable, the login variant of the exact service plist is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.
+Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire property-list document matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
+On enable, the login variant of the exact service property-list document is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.
 Installation activation and new-release retirement use a separate private
 service-control entry point. It admits registration, enable, disable, stop, destructive repair. Older installed
-releases retain their admitted public CLI disable path only during retirement.
+releases keep their admitted public CLI disable path only during retirement.
 The legacy login bootstrap is admitted only from an exact generated file under
 owned, physical LaunchAgents directories with private file permissions. Enable,
 disable, and destructive repair reject a foreign or changed agent before service
@@ -503,12 +507,12 @@ remain typed failures. Migration observations contain only stage and outcome.
 
 Thread bindings use private digest shards and lazy per-thread validation. A missing
 historical workspace does not prevent opening the daemon or using another bound
-workspace. Current records retain catalog, working directory, workspace and typed
+workspace. Current records keep catalog, working directory, workspace and typed
 installation/epoch ownership; conflicting rewrites reject. Locked legacy migration
 validates historical identity without claiming current filesystem authority,
 verifies a stage, publishes its version marker atomically and retains the source.
 Legacy records return `NEW_CONVERSATION_REQUIRED` and cannot be overwritten by a
-new binding. Codex history is outside this store. Read/write failures retain their
+new binding. Codex history is outside this store. Read/write failures keep their
 finite causes through broker projection. Both durable stores share the scoped
 `PrivateRecordFiles` effect owner; their record schemas and transition rules remain
 separate.
@@ -518,7 +522,7 @@ owners supply finite blockers. Status alone never seals. The quiescence check an
 seal share the mutex used by lazy frontend creation, session ingress and management
 mutations. A seal rejects new work; cancellation reopens only an uncommitted seal,
 and commit is idempotent. Pending upstream requests are bounded and lost requests
-retain reconciliation uncertainty. Structured update observations contain finite
+keep reconciliation uncertainty. Structured update observations contain finite
 stages/outcomes without identities or payloads. The installed management client
 qualifies each update reply against the exact daemon target, candidate digest and
 request identity; malformed pending blockers and mismatched commit or cancel
@@ -568,7 +572,7 @@ bounded without including paths, process identities or payloads.
 
 The hosted service factory now supplies the K2 value-flow adapter, exact producer seeds, callable model revalidation and boundary-site revalidation from the same admitted project, source model and observation capability. Successful native acquisition contributes measured work and time to the shared request accounting; model interpretation remains outside the compiler adapter.
 
-Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Site revalidation rejection counts also begin at explicit zero and retain actual increments through receipt publication. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.
+Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Site revalidation rejection counts also begin at explicit zero and keep actual increments through receipt publication. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.
 
 With debug configuration enabled, the existing client response boundary emits private typed frame, body and
 admission activity. Frame bounds precede body acquisition; finite canonical-wire,
@@ -583,7 +587,7 @@ intervals are not inclusive traversal duration or CPU measurements.
 
 `HostedCanonicalQuery` supplies an explicit retention observation callback to the canonical protocol. The adapter maps the sole invocation issuer's capture start and success, each closed capture failure, and issuance outcomes into existing bounded `RETENTION` diagnostics. It records no source payload or handles and creates no new state or semantic authority. Typed adapter tests and the actual diagnostic serializer golden cover success and rejection signals.
 
-The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read revalidates the complete target basis before restoring declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.
+The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read makes sure that the complete target basis remains valid before it restores declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.
 
 One-shot Tool RPC invocation checks compiled `AgentToolName` registrations without
 constructing discovery schemas. The complete hosted and direct catalogs are projected

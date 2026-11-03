@@ -34,7 +34,7 @@ No complete complexity reduction follows from source counts or a successful docu
 The manifest owns the accepted dispositions. The historical report remains unchanged at its original revision.
 
 - Query pipelines keeps composition, source context, continuation, and absence rules with their required examples.
-- Evidence limits keeps authority, outcome variants, recovery, and impact accounting together to support interpretation of one answer.
+- Evidence limits keeps evidence authority and the canonical outcome projection to preserve unique failure, recovery, and impact facts. Results supplies the reader-specific reference.
 - Callback evidence keeps supplier identity, invocation proof, dependency effects, reuse, and completion together. Exact encoded fields remain in the linked reference.
 - Query lifecycle keeps execution and evidence delivery together. Its diagrams distinguish retention, atomic publication, and presentation.
 - Read authority removes the duplicated module-architecture projection. Topology and ownership keeps those facts, and the original route preserves its scoped anchors.
@@ -48,7 +48,7 @@ No disposition permits schema changes, omitted examples, weaker source qualifica
 
 ## Executed procedures
 
-- Passed: `mise exec -- uv run --locked --project docs/tooling pytest docs/tooling/test_reader_contracts.py` selected 22 cases.
+- Passed: `mise exec -- uv run --locked --project docs/tooling pytest docs/tooling/test_reader_contracts.py` selected 28 cases in the final source review.
 - Passed: strict Pyright with the documentation project's configuration.
 - Passed: Ruff formatting and lint rules on both new modules.
 - Passed: the existing glossary selector after its generator added the explanation link.

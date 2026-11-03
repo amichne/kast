@@ -1,0 +1,47 @@
+{
+  "baselineRevision": "cbf13253648ad7fef8dd977162e507465b344623",
+  "examinedHead": "cbf13253648ad7fef8dd977162e507465b344623",
+  "inputsDigest": "3a4b2156d2455291ea12da1fd4da13517bde53cd6da34f16ace8b0272c975f1c",
+  "reviewedFiles": [
+    {
+      "path": ".github/workflows/docs.yml",
+      "sha256": "3adc296b4793421e9c05e49713f56e67e9c0116f612f7b4c1bf8d5e0c6de3639"
+    },
+    {
+      "path": ".github/workflows/openwiki-update.yml",
+      "sha256": "43b706f081841771af02a46c46277c8c0004a542ed7d2f1991453020969630e4"
+    },
+    {
+      "path": ".github/scripts/ci/verify_documentation.py",
+      "sha256": "312776694e7ff521aaaa3333c7d2d6d5e5664988bdd7bbf436d49b79e5d68f1d"
+    },
+    {
+      "path": "docs/okf-public.json",
+      "sha256": "628ba4ece06099eab787804e52483768a8bb1c27d4134eba269ccc5c81f88a7f"
+    },
+    {
+      "path": "docs/tooling/reader_contracts.py",
+      "sha256": "0e01d60af116d2946fa3514a1daf54e7cd977f2fc9dab04267923ae8754fc98d"
+    },
+    {
+      "path": "docs/tooling/prose_assessment.py",
+      "sha256": "f02702f215445e439be2074a3efcd1e3e31a1d33e90fcc5951893bd9e823af2d"
+    },
+    {
+      "path": "docs/tooling/rendered/run.py",
+      "sha256": "d586db4e957bba4c6690d54c9f8b26fb8917b988f9f218e3d4268e0bd4a57f90"
+    },
+    {
+      "path": "docs/tooling/rendered/test_run.py",
+      "sha256": "4e465938a04dc5eab746e44e485aebedc1531744881b9e3650691427354d0c7c"
+    },
+    {
+      "path": "docs/tooling/test_reader_contracts.py",
+      "sha256": "ba07f1d42b43e04475e58776bf9f566d23ffcdb4e6d7e86ee36a2454505616e7"
+    },
+    {
+      "path": "docs/tooling/test_prose_assessment.py",
+      "sha256": "7fa552dc847944ad301c1722b7005a0f88547f7e03974ef27cc0150d7751ce5d"
+    }
+  ]
+}

@@ -87,15 +87,15 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-11-02T17:10:25.214Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Installation configuration
 
-The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. The installer validates its staged saved file through the same source, resolution, and app-server owner admissions without invoking a retired CLI command. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
+The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it from the ambient environment throughout the system. The installer validates its staged saved file through the same source, resolution, and app-server owner admissions without invoking a retired CLI command. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
 
 Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../build-policy/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
 
@@ -107,7 +107,7 @@ still rejects invalid or unavailable selections.
 
 The installed default selects `installation/config/environment` under the
 managed Kast root. The selected file must have an ordinary canonical absolute
-path. Symlinks in the file or its ancestors reject. Bounded reads retain the
+path. Symlinks in the file or its ancestors reject. Bounded reads keep the
 selected configuration's provenance and check file identity again after reading.
 
 `KAST_APP_SERVER_PUBLIC_ENDPOINT` defaults to `private`.
@@ -130,7 +130,9 @@ The migration record contains only the known key, source version, and admitted c
 
 See [distribution](../modules/distribution.md).
 
-The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Client exchange time strictly exceeds host connection time, and each provider invocation deadline strictly exceeds client exchange time; equality rejects with `InconsistentBounds`. Semantic configuration may equal host query configuration because semantic admission reserves completion time. Default request diagnostics include the effective policy.
+The `KAST_READ_*` declarations keep parameter identity, admitted values, and provenance through model/epoch capture and semantic budgets. They keep those same facts through native collection, source paging, diagnostic scope enumeration, transport, and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds.
+
+Client exchange time strictly exceeds host connection time. Each provider invocation deadline strictly exceeds client exchange time. Equality in either comparison rejects with `InconsistentBounds`. Semantic configuration can equal host query configuration because semantic admission reserves completion time. Default request diagnostics include the effective policy.
 
 The fixed `broker.kast.schema.maximum_bytes` declaration is 1 MiB, aligned with
 the existing broker catalog allowance. It bounds schema qualification's combined
@@ -171,7 +173,7 @@ The [native qualification](../../docs/reviews/concurrent-semantic-reads.md) moti
 Saturation returns a finite admission rejection when a connection
 has reached the application; the OS backlog is a separate finite capacity.
 
-The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. Explicit opening revalidates product metadata and the executable, allowing any supported `262.*` patch update. Inspection and installation never launch IDEA.
+The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. An explicit open makes sure that product metadata and the executable remain valid for each supported `262.*` patch update. Inspection and installation never launch IDEA.
 
 The catalogue rejects removed isolated-runtime setup inputs as `UNKNOWN_KEY` at every source: `KAST_NETWORK_CONFIG`, `KAST_TRUST_DONOR_JAVA_HOME`, `KAST_IDE_CONFIG_HOME`, `KAST_INSTALL_RUNTIME_ARCHIVE`, `KAST_INSTALL_RUNTIME_SHA256`, `KAST_RUNTIME_BASE_URL`, `KAST_LOCAL_RUNTIME_ARCHIVE`, and `KAST_SEMANTIC_RUNTIME_ARCHIVE`. Remove these assignments from saved configuration and the calling environment. The catalogue no longer advertises indexer transport limits or derived JVM settings owned by the retired indexer and workspace importer.
 
@@ -189,7 +191,7 @@ Kast has one installation at `$HOME/.local/share/kast/installation`.
 Control and Host have independent artifact and effect ownership within that
 installation. Installation and management ingress reject alternate root bindings;
 `XDG_DATA_HOME` does not select another installation. The root and installer bin
-paths retain their HOME-derived proofs in typed request values.
+paths keep their HOME-derived proofs in typed request values.
 
 The derived `KAST_INSTALL_PROFILE` accepts only persistent. Session installation
 is retired, and checkout session requests reject before Gradle or installation
@@ -200,9 +202,9 @@ Completion removes the exact owned fence without service activation. It does not
 The private daemon entry point is a declared raw-environment ingress owner. It examines managed readiness inputs and the saved-configuration rejection marker before coordinator admission. Its installed launcher selects the daemon mode in the shared native executable. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. These launchers add no saved configuration setting or Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, or repair to the existing owners.
 
-Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY` selects a control-only upgrade and `KAST_HOST_VERSION` selects host provenance only for a paired or host installation. Local checkout routing retains `KAST_LOCAL_COMPONENT`, `KAST_LOCAL_PROFILE`, and `KAST_LOCAL_HOST_RELEASE_RECORD`. Checkout Control-only assembly builds and forwards only the Control payload and clears any inherited `KAST_HOST_VERSION` before invoking the public installer. Host and paired checkout assembly retain their generated Host version. Control-only replacement retains the admitted saved configuration and workspace registration; it starts fresh control state and session ownership.
+Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY` selects a control-only upgrade and `KAST_HOST_VERSION` selects host provenance only for a paired or host installation. Local checkout routing keeps `KAST_LOCAL_COMPONENT`, `KAST_LOCAL_PROFILE`, and `KAST_LOCAL_HOST_RELEASE_RECORD`. Checkout Control-only assembly builds and forwards only the Control payload and clears any inherited `KAST_HOST_VERSION` before invoking the public installer. Host and paired checkout assembly keep their generated Host version. Control-only replacement keeps the admitted saved configuration and workspace registration; it starts fresh control state and session ownership.
 
-Exact-version reinstall cold-stages only Control with `--stage-only`, then the existing fenced lifecycle owner activates it. Staging requires no Host artifact and cannot be combined with the bounded `--control-only` upgrade, whose activation and live host checks are mandatory.
+Exact-version reinstall cold-stages only Control with `--stage-only`, then the existing fenced lifecycle owner activates it. Staging needs no Host artifact and cannot be combined with the bounded `--control-only` upgrade, whose activation and live host checks are necessary.
 
 The native private-installer boundary removes inherited Host-version and installation selectors, retains ordinary process inputs, and supplies its owned report destination. After admitting installation ownership, install and uninstall explicitly forward that selected root; a foreign ambient root cannot redirect those effects. The recorded public command destination remains a separate publication receipt fact and never selects another installation.
 
@@ -215,7 +217,7 @@ neither input. The assembled-product acceptance runner retains its separate
 
 The checkout installer admits the selected IDEA bundled JBR before Gradle and scopes Java to its children.
 Admission needs an executable and exactly one fully quoted `JAVA_VERSION` declaration with a numeric feature of at least 25.
-Duplicate declarations, missing quotes, trailing text, and incompatible runtimes reject with repair guidance.
+Duplicate declarations, missing quotes, trailing text, and incompatible runtime environments reject with repair guidance.
 Ambient Java does not select that runtime.
 Shipped Control launchers select modes in one native executable and need no JVM or bundled JVM libraries.
 The launchers pass `HOME` and `TMPDIR` as explicit native system properties when those variables contain values.

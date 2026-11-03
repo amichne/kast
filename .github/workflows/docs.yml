@@ -78,6 +78,9 @@ jobs:
       - name: Install locked rendered runner
         run: npm ci --ignore-scripts --engine-strict --prefix docs/tooling/rendered
 
+      - name: Install preview ownership tools
+        run: sudo apt-get install --yes lsof procps
+
       - name: Install exact Chrome for rendered evidence
         run: sudo "$(command -v node)" "$GITHUB_WORKSPACE/.github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js" install chrome@155.0.8059.84 --path "$GITHUB_WORKSPACE/build/documentation/browsers" --install-deps
 

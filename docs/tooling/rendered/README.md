@@ -33,6 +33,11 @@ mise exec -- uv run --locked --script docs/tooling/rendered/run.py --preview --b
 ```
 
 The runner owns its preview process and browser session.
+The browser starts after the owned server returns HTML.
+The runner uses `lsof` and `ps` to bind the listener to the launched process and its descendants.
+Missing inspection tools reject provenance.
+Each browser effect examines that owner before and after its request.
+Preview logs supply diagnostics.
 It pins Mintlify client `0.0.3547` through the supported `--client-version` option.
 It keeps at most 80 preview lines, with at most 500 characters per line.
 Cleanup stops only its process group and named browser session.

@@ -24,12 +24,16 @@ import shutil
 import signal
 import subprocess
 import threading
+import time
 from collections import deque
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from enum import StrEnum
+from http.client import HTTPConnection, HTTPException
 from pathlib import Path
-from typing import Literal, TypedDict, TypeGuard
+from typing import Literal, NotRequired, TypedDict, TypeGuard
+from urllib.parse import urlsplit
 
 from jsonschema import ValidationError, validate
 
@@ -53,6 +57,7 @@ class Envelope(TypedDict):
     success: bool
     data: dict[str, object] | None
     error: str | None
+    code: NotRequired[Literal["outcome_unknown"]]
 
 
 class InputDigest(TypedDict):
@@ -110,7 +115,20 @@ def is_envelope(value: object) -> TypeGuard[Envelope]:
                     "success": {"type": "boolean"},
                     "data": {"type": ["object", "null"]},
                     "error": {"type": ["string", "null"]},
+                    "code": {"const": "outcome_unknown"},
                 },
+                "allOf": [
+                    {
+                        "if": {"required": ["code"]},
+                        "then": {
+                            "properties": {
+                                "success": {"const": False},
+                                "data": {"type": "null"},
+                                "error": {"type": "string"},
+                            }
+                        },
+                    }
+                ],
             },
         )
     except ValidationError:
@@ -130,6 +148,8 @@ class Preview:
     origin: str
     version: str
     staticDigest: str
+    ownerProcessId: int
+    listenerPids: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -180,6 +200,7 @@ def required_program(name: str) -> str:
 class Browser:
     def __init__(self, session: str, executable: Path | None = None) -> None:
         self.session = session
+        self.preview_owner: PreviewOwnership | None = None
         self.binary = HERE / "node_modules/.bin/agent-browser"
         version = "155.0.8059.84"
         base = Path.home() / ".agent-browser/browsers" / ("chrome-" + version)
@@ -192,6 +213,8 @@ class Browser:
             self.executable = executable.resolve()
 
     def call(self, *arguments: str, source: str | None = None) -> dict[str, object]:
+        if self.preview_owner is not None:
+            self.preview_owner.examine()
         try:
             result = subprocess.run(
                 [
@@ -211,12 +234,16 @@ class Browser:
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             raise BrowserFailure(type(error).__name__) from error
+        if self.preview_owner is not None:
+            self.preview_owner.examine()
         try:
             envelope: object = json.loads(result.stdout)
         except (json.JSONDecodeError, UnicodeDecodeError) as error:
             raise BrowserFailure("BROWSER_RESPONSE_INVALID") from error
         if not is_envelope(envelope):
             raise BrowserFailure("BROWSER_RESPONSE_INVALID")
+        if envelope.get("code") == "outcome_unknown":
+            raise BrowserFailure("BROWSER_OUTCOME_UNKNOWN:" + (envelope["error"] or "")[:1000])
         if result.returncode or envelope["success"] is not True or envelope["data"] is None:
             raise BrowserFailure((envelope["error"] or "BROWSER_COMMAND_FAILED")[:1000])
         return envelope["data"]
@@ -293,10 +320,168 @@ def environment(browser: Browser) -> dict[str, str]:
     }
 
 
+class HttpReadiness(StrEnum):
+    READY = "ready"
+    HTTP_REJECTED = "http-rejected"
+    INVALID_CONTENT = "invalid-content"
+    UNAVAILABLE = "unavailable"
+    TIMED_OUT = "timed-out"
+
+
+def preview_endpoint(origin: str) -> tuple[str, int]:
+    try:
+        parsed = urlsplit(origin)
+        host, port = parsed.hostname, parsed.port
+    except ValueError as error:
+        raise BrowserFailure("PREVIEW_ORIGIN_INVALID") from error
+    if (
+        parsed.scheme != "http"
+        or host not in {"localhost", "127.0.0.1", "::1"}
+        or port is None
+        or not 1 <= port <= 65535
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path not in {"", "/"}
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise BrowserFailure("PREVIEW_ORIGIN_INVALID")
+    return host, port
+
+
+def listener_pids(port: int) -> frozenset[int]:
+    result = subprocess.run(
+        [required_program("lsof"), "-nP", "-a", "-iTCP:" + str(port), "-sTCP:LISTEN", "-Fp"],
+        text=True,
+        capture_output=True,
+        timeout=5,
+        check=False,
+    )
+    if result.returncode == 1 and not result.stdout.strip() and not result.stderr.strip():
+        return frozenset()
+    lines = result.stdout.splitlines()
+    if (
+        result.returncode != 0
+        or not lines
+        or any(not re.fullmatch(r"(?:p[1-9][0-9]*|f[0-9]+)", line) for line in lines)
+    ):
+        raise BrowserFailure("PREVIEW_LISTENER_INSPECTION_FAILED")
+    return frozenset(int(line[1:]) for line in lines if line.startswith("p"))
+
+
+def is_preview_descendant(pid: int, root_pid: int) -> bool:
+    seen: set[int] = set()
+    while pid > 1 and pid not in seen and len(seen) < 256:
+        if os.getpgid(pid) != root_pid:
+            return False
+        if pid == root_pid:
+            return True
+        seen.add(pid)
+        result = subprocess.run(
+            [required_program("ps"), "-o", "ppid=", "-p", str(pid)],
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        parent = result.stdout.strip()
+        if result.returncode != 0 or not parent.isdecimal():
+            return False
+        pid = int(parent)
+    return False
+
+
+@dataclass(frozen=True)
+class PreviewOwnership:
+    process: subprocess.Popen[str]
+    port: int
+    listeners: frozenset[int]
+
+    def examine(self) -> None:
+        exit_code = self.process.poll()
+        if exit_code is not None:
+            raise BrowserFailure("PREVIEW_EXITED:" + str(exit_code))
+        current = listener_pids(self.port)
+        if not current or current != self.listeners:
+            raise BrowserFailure("PREVIEW_LISTENER_CHANGED")
+        try:
+            owned = all(is_preview_descendant(pid, self.process.pid) for pid in current)
+        except ProcessLookupError as error:
+            raise BrowserFailure("PREVIEW_LISTENER_CHANGED") from error
+        if not owned:
+            raise BrowserFailure("PREVIEW_LISTENER_NOT_OWNED")
+
+
+def http_readiness(origin: str, timeout: float) -> HttpReadiness:
+    host, port = preview_endpoint(origin)
+    connection = HTTPConnection(host, port, timeout=timeout)
+    try:
+        connection.request("GET", "/")
+        response = connection.getresponse()
+        if response.status != 200:
+            return HttpReadiness.HTTP_REJECTED
+        content_type = response.headers.get_content_type()
+        prefix = response.read(64).lstrip().lower()
+        if content_type != "text/html" or not prefix.startswith((b"<!doctype html", b"<html")):
+            return HttpReadiness.INVALID_CONTENT
+    except TimeoutError:
+        return HttpReadiness.TIMED_OUT
+    except (OSError, HTTPException):
+        return HttpReadiness.UNAVAILABLE
+    finally:
+        connection.close()
+    return HttpReadiness.READY
+
+
+def wait_for_preview(
+    origin: str, process: subprocess.Popen[str], deadline: float
+) -> PreviewOwnership:
+    """Admit HTTP readiness only from the launched process tree."""
+    _, port = preview_endpoint(origin)
+    last = HttpReadiness.UNAVAILABLE
+    pause = threading.Event()
+    while True:
+        exit_code = process.poll()
+        if exit_code is not None:
+            raise BrowserFailure("PREVIEW_EXITED:" + str(exit_code))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise BrowserFailure("PREVIEW_START_FAILED:" + last.value)
+        last = http_readiness(origin, min(2, remaining))
+        if last == HttpReadiness.READY:
+            owner = PreviewOwnership(process, port, listener_pids(port))
+            owner.examine()
+            return owner
+        _ = pause.wait(min(0.1, max(0, deadline - time.monotonic())))
+
+
+def stop_preview_group(process: subprocess.Popen[str]) -> None:
+    """Retire the exact session group created for the owned preview."""
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        _ = process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    finally:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    _ = process.wait(timeout=5)
+
+
 @contextmanager
-def owned_preview(port: int, diagnostics: deque[str]) -> Iterator[Preview]:
+def owned_preview(
+    port: int, diagnostics: deque[str], browser: Browser | None = None
+) -> Iterator[Preview]:
+    origin = f"http://localhost:{port}"
+    _ = preview_endpoint(origin)
+    if listener_pids(port):
+        raise BrowserFailure("PREVIEW_PORT_OCCUPIED")
     config: dict[str, str] = json.loads(HERE.joinpath("environment.json").read_text())
-    ready = threading.Event()
     command = [
         str(ROOT / ".github/tools/mintlify/node_modules/.bin/mint"),
         "dev",
@@ -323,14 +508,11 @@ def owned_preview(port: int, diagnostics: deque[str]) -> Iterator[Preview]:
         def consume() -> None:
             for line in stream:
                 diagnostics.append(line[-500:])
-                if "preview ready" in line:
-                    ready.set()
 
         reader = threading.Thread(target=consume, daemon=True)
         reader.start()
         try:
-            if not ready.wait(60):
-                raise BrowserFailure("PREVIEW_START_FAILED")
+            owner = wait_for_preview(origin, process, time.monotonic() + 60)
             client = Path.home() / ".mintlify/previews" / str(port) / "mint"
             actual = (client / "mint-version.txt").read_text().strip()
             if actual != config["mintlifyClientVersion"]:
@@ -344,15 +526,17 @@ def owned_preview(port: int, diagnostics: deque[str]) -> Iterator[Preview]:
                 digest.update(str(asset.relative_to(static)).encode())
                 digest.update(b"\0")
                 digest.update(hashlib.sha256(asset.read_bytes()).digest())
-            yield Preview(f"http://localhost:{port}", actual, digest.hexdigest())
+            owner.examine()
+            if browser is not None:
+                browser.preview_owner = owner
+            yield Preview(
+                origin, actual, digest.hexdigest(), process.pid, tuple(sorted(owner.listeners))
+            )
+            owner.examine()
         finally:
-            if process.poll() is None:
-                os.killpg(process.pid, signal.SIGTERM)
-                try:
-                    _ = process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    _ = process.wait(timeout=5)
+            if browser is not None:
+                browser.preview_owner = None
+            stop_preview_group(process)
             reader.join(timeout=5)
 
 
@@ -487,7 +671,13 @@ def run_routes(browser: Browser, origin: str, routes: list[str], output: Path) -
 
 
 def receipt(
-    snapshot: Snapshot, states: list[State], output: Path, *, input_match: bool, root: Path = ROOT
+    snapshot: Snapshot,
+    states: list[State],
+    output: Path,
+    *,
+    input_match: bool,
+    root: Path = ROOT,
+    preview: Preview | None = None,
 ) -> dict[str, object]:
     required = set(ROUTES[:5])
     report_path = output / "report.json"
@@ -505,6 +695,7 @@ def receipt(
         for state in states
         if state.screenshot is not None
     )
+    evidence = list({item["path"]: item for item in evidence}.values())
     evidence.sort(key=lambda item: item["path"])
     expected_names = {
         "representative-pages": {"desktop-light"},
@@ -525,9 +716,12 @@ def receipt(
     checks: list[dict[str, object]] = []
     for name, names in expected_names.items():
         selected = [state for state in states if state.route in required and state.name in names]
+        expected_states = {(route, state_name) for route in required for state_name in names}
+        actual_states = {(state.route, state.name) for state in selected}
         passed = (
             input_match
-            and len(selected) == len(required) * len(names)
+            and actual_states == expected_states
+            and len(selected) == len(actual_states)
             and all(state.status == "passed" for state in selected)
             and (name != "screenshots" or all(state.screenshot is not None for state in selected))
         )
@@ -565,6 +759,16 @@ def receipt(
             "reason": "The explorer has all 18 declared step states. Every callable needs a rendered recursive scope before full measurement acceptance.",
         }
     )
+    checks.append(
+        {
+            "name": "candidate-preview-provenance",
+            "status": "passed" if preview is not None and input_match else "not-run",
+            "evidence": evidence,
+            "reason": "The owned preview consumed the unchanged candidate inputs."
+            if preview is not None and input_match
+            else "An external preview has no exact-source witness, or the candidate inputs changed during collection.",
+        }
+    )
     return {
         "schemaVersion": 1,
         "kind": "KAST_DOCUMENTATION_RENDERED",
@@ -598,17 +802,21 @@ def main() -> int:
     browser = Browser(arguments.session, arguments.browser_executable)
     states: list[State] = []
     runtime: dict[str, str] = {}
+    admitted_preview: Preview | None = None
     diagnostics: deque[str] = deque(maxlen=80)
     routes: list[str] = arguments.routes or list(ROUTES)
     try:
         runtime = environment(browser)
         if arguments.preview:
-            with owned_preview(arguments.port, diagnostics) as preview:
+            with owned_preview(arguments.port, diagnostics, browser) as preview:
                 runtime = runtime | {
                     "mintClient": preview.version,
                     "mintClientStaticDigest": preview.staticDigest,
+                    "previewOwnerProcessId": str(preview.ownerProcessId),
+                    "previewListenerPids": ",".join(str(pid) for pid in preview.listenerPids),
                 }
                 states = run_routes(browser, preview.origin, routes, output)
+            admitted_preview = preview
         else:
             states = run_routes(browser, arguments.origin, routes, output)
     except (
@@ -649,7 +857,7 @@ def main() -> int:
     }
     _ = (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     publication_receipt = receipt(
-        before, states, output, input_match=before == after and arguments.preview
+        before, states, output, input_match=before == after, preview=admitted_preview
     )
     _ = (output / "receipt.json").write_text(json.dumps(publication_receipt, indent=2) + "\n")
     return 0 if publication_receipt["status"] == "completed" else 1

@@ -1,0 +1,21 @@
+{
+  "components": 369,
+  "failures": [
+    {
+      "name": "query_symbolsResponse_queryResultItem",
+      "messages": [
+        "Error processing schema: {\"path\":[\"#\",\"anyOf\",\"4\",\"properties\",\"item\",\"properties\",\"witness\",\"anyOf\",\"8\",\"properties\",\"rejection\",\"anyOf\",\"0\",\"properties\",\"domain\",\"anyOf\",\"1\",\"properties\",\"domain\",\"properties\",\"directory\",\"anyOf\",\"0\",\"properties\",\"path\"],\"depth\":12,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}",
+        "Error processing schema: {\"path\":[\"#\",\"anyOf\",\"4\",\"properties\",\"item\",\"properties\",\"witness\",\"anyOf\",\"8\",\"properties\",\"rejection\",\"anyOf\",\"0\",\"properties\",\"domain\",\"anyOf\",\"1\",\"properties\",\"domain\",\"properties\",\"package_name\",\"anyOf\",\"0\",\"properties\",\"name\"],\"depth\":12,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}",
+        "Error processing schema: {\"path\":[\"#\",\"anyOf\",\"4\",\"properties\",\"item\",\"properties\",\"witness\",\"anyOf\",\"8\",\"properties\",\"rejection\",\"anyOf\",\"1\",\"properties\",\"domain\",\"anyOf\",\"1\",\"properties\",\"domain\",\"properties\",\"directory\",\"anyOf\",\"0\",\"properties\",\"path\"],\"depth\":12,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}"
+      ]
+    },
+    {
+      "name": "query_symbolsSemanticResult_queryResultItem",
+      "messages": [
+        "Error processing schema: {\"path\":[\"#\",\"anyOf\",\"4\",\"properties\",\"item\",\"properties\",\"witness\",\"anyOf\",\"8\",\"properties\",\"rejection\",\"anyOf\",\"0\",\"properties\",\"domain\",\"anyOf\",\"1\",\"properties\",\"domain\",\"properties\",\"directory\",\"anyOf\",\"0\",\"properties\",\"path\"],\"depth\":12,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}",
+        "Error processing schema: {\"path\":[\"#\",\"anyOf\",\"4\",\"properties\",\"item\",\"properties\",\"witness\",\"anyOf\",\"8\",\"properties\",\"rejection\",\"anyOf\",\"0\",\"properties\",\"domain\",\"anyOf\",\"1\",\"properties\",\"domain\",\"properties\",\"package_name\",\"anyOf\",\"0\",\"properties\",\"name\"],\"depth\":12,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}",
+        "Error processing schema: {\"path\":[\"#\",\"anyOf\",\"4\",\"properties\",\"item\",\"properties\",\"witness\",\"anyOf\",\"8\",\"properties\",\"rejection\",\"anyOf\",\"1\",\"properties\",\"domain\",\"anyOf\",\"1\",\"properties\",\"domain\",\"properties\",\"directory\",\"anyOf\",\"0\",\"properties\",\"path\"],\"depth\":12,\"error\":\"\\nimpossible schema combination\\nschema 1: [\\n  {\\n    \\\"type\\\": \\\"any\\\"\\n  }\\n]\\nschema 2: [\\n  {\\n    \\\"type\\\": \\\"string\\\",\\n    \\\"minLength\\\": 1,\\n    \\\"maxLength\\\": 1048576\\n  }\\n]\"}"
+      ]
+    }
+  ]
+}

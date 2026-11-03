@@ -7,7 +7,6 @@ from dataclasses import asdict
 from pathlib import Path
 
 import pytest
-
 from reader_contracts import (
     Code,
     DensityDisposition,
@@ -94,6 +93,37 @@ def test_duplicate_contract_rejects() -> None:
     raw = json.loads(json.dumps(asdict(metadata())))
     raw["pages"] = [raw["pages"][0], raw["pages"][0]]
     assert isinstance(parse_contracts(raw), Failure)
+
+
+@pytest.mark.parametrize("status", [{}, []])
+def test_malformed_density_status_returns_finite_failure(status: object) -> None:
+    raw = json.loads(json.dumps(asdict(metadata())))
+    raw["pages"][0]["densityDisposition"]["status"] = status
+    result = parse_contracts(raw)
+    assert isinstance(result, Failure)
+    assert result.code == Code.INPUT
+
+
+@pytest.mark.parametrize("field", ["primaryContinuation", "recoveryDestination"])
+def test_malformed_destination_returns_finite_failure(field: str) -> None:
+    raw = json.loads(json.dumps(asdict(metadata())))
+    raw["pages"][0][field] = "//["
+    result = parse_contracts(raw)
+    assert isinstance(result, Failure)
+    assert result.code == Code.INPUT
+
+
+@pytest.mark.parametrize(
+    "destination", ["/start#3-ask-about-your-code", "/start#okf-source_identity"]
+)
+def test_legal_fragment_destinations_keep_their_exact_spelling(destination: str) -> None:
+    raw = json.loads(json.dumps(asdict(metadata())))
+    raw["pages"][0]["primaryContinuation"] = destination
+    raw["pages"][0]["recoveryDestination"] = destination
+    result = parse_contracts(raw)
+    assert isinstance(result, ReaderContracts)
+    assert result.pages[0].primaryContinuation == destination
+    assert result.pages[0].recoveryDestination == destination
 
 
 def test_navigation_derives_parents_and_rejects_duplicate_route() -> None:

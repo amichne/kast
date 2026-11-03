@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d0c36733adebb711228ff202519450669eb4a57499323d2ce582694171141f4e",
+  "pageVersion": "sha256:990063d89efd4923d6931c938436941a397ad50c5c255281316411e5e408e859",
   "claims": [
     {
       "id": "claim_d2fd15ebc96a46f3a6d2199470e2a0cf",
@@ -17,7 +17,7 @@
       "statement": "An observer stop targets the original session owner; missing retirement acknowledgment does not authorize removing shared admission or disposing another engine's registrations.",
       "evidence": [
         {
-          "resource": "repo://experiments/host-observation/README.md#L43-L45",
+          "resource": "repo://experiments/host-observation/README.md#L46-L48",
           "version": "repo-lines-v1:sha256:1ec5ecf71958d94248ae3c6c82e3ac9f65ddec8c4e15276259f01b5fcc6e2816:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzVhMjMwZDcyNWJmNzRhN2RmYTYyMTkxYWZmNmJiNDRmZThhN2UyZmM2NzQzOWM2OGJkNGYzZGI0Y2ZiMDA2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGU1NGQyZDhjY2ZiMjJmZWEyOGI3OWQ5ZmVkNmQ1NzU4NTk2MGU0N2M5YmQyNzg3YzhmM2U5ZWE1MTJhNjRmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjM5ZDQ2MDkyNzBlODExYTM2YmUzZThhMmFhZmMxMDc4ZmVmNzgxNDA5MjI1NzgyMThlMDA3ZWI4MjFhYTgxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDc3ZmMwZDUxNGE3NzZmNTQyYzE0NTllYWVjOGQ4NjE4ZTJmNzBiNzQ1YTlmNDU1MTg0MmQxN2FlZjNhNzI0ZSJ9"
         }
       ]
@@ -25,6 +25,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T02:00:02.467Z"
+    "at": "2026-11-03T05:45:59.282Z"
   }
 }

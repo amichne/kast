@@ -29,7 +29,7 @@ Occurrence and value-path streams do not silently become symbol streams.
 
 ## One interpreter owns execution
 
-`QueryService` runs the admitted plan through an ordered deque of typed tasks.
+`QueryService` runs the admitted plan through an ordered double-ended queue of typed tasks.
 Discovery, exact lookup, source reads, relations, traversal, joins, and impact work use their existing domain operations.
 The interpreter owns task order, emitted rows, work and byte accounting, qualifications, and continuation construction.
 `PipelineCheckpoint` keeps the detached pending work and existing stage history.
@@ -60,10 +60,6 @@ Public automatic accumulation and final completion belong to the canonical proto
 
 The focused tests distinguish row admission, complete-right rejection, and resumed composition.
 They establish interpreter behavior with explicit domain operations, without installed-host semantic proof.
-
-<a id="okf-queries-execution-and-composition-focused-tests" />
-
-## Focused tests
 
 <a id="okf-queries-execution-and-composition-query-work-reuse" />
 
@@ -104,9 +100,9 @@ Completion needs that whole ledger even when a preview selects one path.
 The [public reuse explanation](https://github.com/amichne/kast/blob/main/docs/public/architecture/query-reuse.mdx) keeps the four diagrams and their reader-specific presentation.
 Its source links at `722ae03fc1` describe that recorded revision and do not establish a new native run.
 
-<a id="okf-queries-execution-and-composition-focused-reuse-tests" />
+<a id="okf-queries-execution-and-composition-focused-tests" />
 
-## Focused reuse tests
+## Focused tests
 
 - [ExactNameCandidateFilesTest.kt](https://github.com/amichne/kast/blob/main/symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ExactNameCandidateFilesTest.kt)
 - [ReferenceInventoryReuseTest.kt](https://github.com/amichne/kast/blob/main/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt)

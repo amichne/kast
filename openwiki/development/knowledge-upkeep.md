@@ -31,10 +31,10 @@ sources:
     resource: repo://docs/tooling/publication.py
   - id: openwiki-source-7268f9708ec0a94462a131a0
     resource: repo://docs/tooling/reader_contracts.py
-generated: { by: "codex", at: "2026-11-03T05:20:37.443Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:20:37.443Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Knowledge upkeep and coverage assessment
@@ -112,7 +112,7 @@ Keep the report and examine every substantive warning against the source meaning
 - [AGENTS.md](../../AGENTS.md)
 - [code_kb.py](../../.github/scripts/code_kb.py)
 - [openwiki-update.yml](../../.github/workflows/openwiki-update.yml)
-- [build.gradle.kts](../../build.gradle.kts)
+- [`build.gradle.kts`](../../build.gradle.kts)
 - [functional-packages.md](../architecture/functional-packages.md)
 
 ## Read next

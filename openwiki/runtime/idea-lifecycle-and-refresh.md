@@ -38,10 +38,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt
   - id: openwiki-source-c3d765f6a0f5ed9757d16a3a
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
-generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # IDEA lifecycle and explicit refresh
@@ -86,8 +86,6 @@ Later callers need a new owner and fresh admission.
 The focused state tests establish command conflicts, joined identities, refresh sequencing, and finite failures.
 Only the native fixture can establish an actual IDEA project or Gradle import transition.
 
-## Focused tests
-
 ## Public lifecycle responsibilities
 
 Optional MCP registration, client sessions, workspace preparation, semantic requests, and the coordinator daemon have distinct owners.
@@ -112,7 +110,7 @@ An uncertain read does not create that write fence.
 These hosted lane rules do not impose identical concurrency on every transport.
 
 MCP starts a stdio session and exposes tools through tools/list.
-Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded querySession.
+Tool RPC supplies its installed catalog before a one-shot call and can admit a bounded `querySession`.
 Hosted dynamic calls also need client protocol, thread ownership, and workspace binding.
 Disconnect removes the recorded client connection without automatically retiring the shared daemon or IDEA project.
 Upgrades need new catalogs and the selected Host loaded before semantic admission.
@@ -136,12 +134,12 @@ Daemon startup admits the installed executable, selected runtime, settings, and 
 Readiness records and a socket exchange identify a service generation.
 An old record or occupied socket alone cannot establish that generation.
 Stop, reset, and replacement fences reject automatic startup when their state is unknown.
-kast stop fences new calls and automatic restart before retirement.
+`kast stop` fences new calls and automatic restart before retirement.
 A daemon restart never replays writes. A Host restart ends its live authority.
 
 The [public lifecycle reference](../../docs/public/reference/lifecycles.mdx) keeps its owner table, request diagram, and operational lookup links.
 
-## Lifecycle evidence
+## Focused tests
 
 - [HostedVfsRefreshTest.kt](../../runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedVfsRefreshTest.kt)
 - [HostedGradleRevisionTest.kt](../../runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleRevisionTest.kt)

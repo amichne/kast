@@ -1,0 +1,11 @@
+{
+  "path": "docs/reviews/documentation-migration/evidence/final-integration-review.md",
+  "sha256": "348c72472042c8fd2cd414a63ec15ef8a9aad2a7b811188c7e51aeb25f63b92b",
+  "advisories": [
+    {
+      "rule": "Slopsentral.Grade",
+      "line": 1,
+      "reason": "The report preserves exact contract names, source identities, and the distinctions between failure outcomes."
+    }
+  ]
+}
