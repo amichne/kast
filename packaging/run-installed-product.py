@@ -185,7 +185,7 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
 def verify_installed_query(fixture: InstallerFixture, publication: Path, environment: dict[str, str]) -> None:
     """The installed public route must admit its real query launcher before rejecting an empty workspace."""
     result = subprocess.run([str(publication), "query", "--name", "OrderService"],
-                            cwd=fixture.root / "workspace", env=environment,
+                            cwd=fixture.root / "workspace", env={**environment, "KAST_OUTPUT_TOON": "0"},
                             capture_output=True, text=True, timeout=60)
     require(result.returncode == 3 and json.loads(result.stdout) == {
         "type": "rejected", "failure": "OUT_OF_SCOPE"
