@@ -32,7 +32,10 @@ class PublicCliMissingMetadataTest {
                 .directory(temporary.toFile())
                 .redirectOutput(stdout.toFile())
                 .redirectError(stderr.toFile())
-                .apply { environment().clear() }
+                .apply {
+                    environment().clear()
+                    environment()["KAST_OUTPUT_TOON"] = "0"
+                }
                 .start()
         try {
             assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Metadata failure waited for stdin")

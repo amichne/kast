@@ -113,6 +113,7 @@ class ManagedUpgradeTest {
                 .apply {
                     environment().clear()
                     environment()["HOME"] = home.toString()
+                    environment()["KAST_OUTPUT_TOON"] = "0"
                 }
                 .start()
         try {

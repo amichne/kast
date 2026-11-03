@@ -165,6 +165,7 @@ class PublicQueryDispatchTest {
                 .apply {
                     environment().clear()
                     environment()["HOME"] = temporary.toString()
+                    environment()["KAST_OUTPUT_TOON"] = "0"
                 }
                 .start()
         try {
