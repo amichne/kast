@@ -1,0 +1,436 @@
+{
+  "lifecycle": {
+    "effectiveLaunch": {
+      "browserLaunched": true,
+      "engine": "chrome",
+      "launchHash": 9954068799004895925
+    },
+    "launched": false,
+    "relaunchedBrowser": false,
+    "restartedBackground": false,
+    "restoreStatus": "not_configured",
+    "reused": true,
+    "saveStatus": "not_attempted"
+  },
+  "origin": "https://kast.michne.com/reference/callables/workspace-lifecycle",
+  "refs": {
+    "e353": {
+      "name": "Hide navigation",
+      "role": "button"
+    },
+    "e354": {
+      "name": "Skip to main content",
+      "role": "link"
+    },
+    "e355": {
+      "name": "Pages",
+      "role": "navigation"
+    },
+    "e356": {
+      "name": "",
+      "role": "generic"
+    },
+    "e357": {
+      "name": "Guides",
+      "role": "link"
+    },
+    "e358": {
+      "name": "Architecture",
+      "role": "link"
+    },
+    "e359": {
+      "name": "Reference",
+      "role": "link"
+    },
+    "e360": {
+      "name": "Kast home page logo",
+      "role": "link"
+    },
+    "e361": {
+      "name": "Overview",
+      "role": "link"
+    },
+    "e362": {
+      "name": "Set up",
+      "role": "link"
+    },
+    "e363": {
+      "name": "Examples",
+      "role": "link"
+    },
+    "e364": {
+      "name": "Help",
+      "role": "link"
+    },
+    "e365": {
+      "name": "How Kast works",
+      "role": "link"
+    },
+    "e366": {
+      "name": "Reference",
+      "role": "link"
+    },
+    "e367": {
+      "name": "Security",
+      "role": "link"
+    },
+    "e368": {
+      "name": "github",
+      "role": "link"
+    },
+    "e369": {
+      "name": "Powered by This documentation is built and hosted on Mintlify, a developer documentation platform",
+      "role": "link"
+    },
+    "e370": {
+      "name": "Switch to system theme",
+      "role": "button"
+    },
+    "e371": {
+      "name": "Switch to light theme",
+      "role": "button"
+    },
+    "e372": {
+      "name": "Switch to dark theme",
+      "role": "button"
+    },
+    "e373": {
+      "name": "Kast home page logo",
+      "role": "link"
+    },
+    "e374": {
+      "name": "Pagination",
+      "role": "navigation"
+    },
+    "e375": {
+      "name": "Switch to system theme",
+      "role": "button"
+    },
+    "e376": {
+      "name": "Switch to light theme",
+      "role": "button"
+    },
+    "e377": {
+      "name": "Switch to dark theme",
+      "role": "button"
+    },
+    "e378": {
+      "name": "Open search",
+      "role": "button"
+    },
+    "e379": {
+      "name": "Overview and CLI",
+      "role": "heading"
+    },
+    "e380": {
+      "name": "Query contracts",
+      "role": "heading"
+    },
+    "e381": {
+      "name": "Client contracts",
+      "role": "heading"
+    },
+    "e382": {
+      "name": "Schemas and samples",
+      "role": "heading"
+    },
+    "e383": {
+      "name": "Source owners",
+      "role": "heading"
+    },
+    "e384": {
+      "name": "GitHub",
+      "role": "link"
+    },
+    "e385": {
+      "name": "Set up Kast",
+      "role": "link"
+    },
+    "e386": {
+      "name": "Breadcrumb",
+      "role": "navigation"
+    },
+    "e387": {
+      "name": "Previous: Replace body",
+      "role": "link"
+    },
+    "e388": {
+      "name": "MCP tool call result The JSON-RPC tools/call result wrapper returned by direct Kast MCP. Next",
+      "role": "link"
+    },
+    "e389": {
+      "name": "Workspace lifecycle",
+      "role": "heading"
+    },
+    "e390": {
+      "name": "MCP contract",
+      "role": "link"
+    },
+    "e391": {
+      "name": "tool RPC contract",
+      "role": "link"
+    },
+    "e392": {
+      "name": "Schemas and samples",
+      "role": "link"
+    },
+    "e393": {
+      "name": "Body",
+      "role": "heading"
+    },
+    "e394": {
+      "name": "Response",
+      "role": "heading"
+    },
+    "e395": {
+      "name": "Reference overview",
+      "role": "link"
+    },
+    "e396": {
+      "name": "Native CLI",
+      "role": "link"
+    },
+    "e397": {
+      "name": "Glossary",
+      "role": "link"
+    },
+    "e398": {
+      "name": "Query forms",
+      "role": "link"
+    },
+    "e399": {
+      "name": "Results",
+      "role": "link"
+    },
+    "e400": {
+      "name": "Symbol identity and source fields",
+      "role": "link"
+    },
+    "e401": {
+      "name": "Program tracing",
+      "role": "link"
+    },
+    "e402": {
+      "name": "Callback observation fields",
+      "role": "link"
+    },
+    "e403": {
+      "name": "Composition contracts",
+      "role": "link"
+    },
+    "e404": {
+      "name": "Limits and failure categories",
+      "role": "link"
+    },
+    "e405": {
+      "name": "MCP contract",
+      "role": "link"
+    },
+    "e406": {
+      "name": "Tool RPC contract",
+      "role": "link"
+    },
+    "e407": {
+      "name": "Platform and compatibility",
+      "role": "link"
+    },
+    "e408": {
+      "name": "Schemas and samples",
+      "role": "link"
+    },
+    "e409": {
+      "name": "Query walkthrough",
+      "role": "link"
+    },
+    "e410": {
+      "name": "Detailed schemas",
+      "role": "button"
+    },
+    "e411": {
+      "name": "Source map for Kast contracts",
+      "role": "link"
+    },
+    "e412": {
+      "name": "Copy page",
+      "role": "button"
+    },
+    "e413": {
+      "name": "More actions",
+      "role": "button"
+    },
+    "e414": {
+      "name": "close",
+      "role": "tab"
+    },
+    "e415": {
+      "name": "inspect",
+      "role": "tab"
+    },
+    "e416": {
+      "name": "open",
+      "role": "tab"
+    },
+    "e417": {
+      "name": "present",
+      "role": "tab"
+    },
+    "e418": {
+      "name": "release",
+      "role": "tab"
+    },
+    "e419": {
+      "name": "request_user_close",
+      "role": "tab"
+    },
+    "e420": {
+      "name": "status",
+      "role": "tab"
+    },
+    "e421": {
+      "name": "",
+      "role": "generic"
+    },
+    "e422": {
+      "name": "",
+      "role": "generic"
+    },
+    "e423": {
+      "name": "",
+      "role": "generic"
+    },
+    "e424": {
+      "name": "",
+      "role": "generic"
+    },
+    "e425": {
+      "name": "completed",
+      "role": "tab"
+    },
+    "e426": {
+      "name": "rejected",
+      "role": "tab"
+    },
+    "e427": {
+      "name": "",
+      "role": "generic"
+    },
+    "e428": {
+      "name": "",
+      "role": "generic"
+    },
+    "e429": {
+      "name": "blocked",
+      "role": "tab"
+    },
+    "e430": {
+      "name": "closed",
+      "role": "tab"
+    },
+    "e431": {
+      "name": "configured",
+      "role": "tab"
+    },
+    "e432": {
+      "name": "host_refresh_requested",
+      "role": "tab"
+    },
+    "e433": {
+      "name": "host_resumed",
+      "role": "tab"
+    },
+    "e434": {
+      "name": "host_settled",
+      "role": "tab"
+    },
+    "e435": {
+      "name": "host_settling",
+      "role": "tab"
+    },
+    "e436": {
+      "name": "host_stop_requested",
+      "role": "tab"
+    },
+    "e437": {
+      "name": "inspected",
+      "role": "tab"
+    },
+    "e438": {
+      "name": "opened",
+      "role": "tab"
+    },
+    "e439": {
+      "name": "pending",
+      "role": "tab"
+    },
+    "e440": {
+      "name": "presented",
+      "role": "tab"
+    },
+    "e441": {
+      "name": "released",
+      "role": "tab"
+    },
+    "e442": {
+      "name": "synced",
+      "role": "tab"
+    },
+    "e443": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e444": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e445": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e446": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e447": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e448": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e449": {
+      "name": "Callable schemas",
+      "role": "button"
+    },
+    "e450": {
+      "name": "Transport results",
+      "role": "button"
+    },
+    "e451": {
+      "name": "Semantic results",
+      "role": "button"
+    },
+    "e452": {
+      "name": "Query symbols",
+      "role": "link"
+    },
+    "e453": {
+      "name": "Check diagnostics",
+      "role": "link"
+    },
+    "e454": {
+      "name": "Add declaration",
+      "role": "link"
+    },
+    "e455": {
+      "name": "Replace body",
+      "role": "link"
+    },
+    "e456": {
+      "name": "Workspace lifecycle",
+      "role": "link"
+    }
+  },
+  "removedRefs": [],
+  "snapshot": "- link \"Skip to main content\" [ref=e354]\n- navigation \"Pages\" [ref=e355]\n  - generic \"Kast home pageSearch Kast\u2318KOverview and CLIReference overviewNative CLIGlossaryQuery contractsQuery\" [ref=e356] focusable [tabindex]\n    - link \"Kast home page logo\" [ref=e373]\n    - button \"Switch to system theme\" [ref=e375]\n    - button \"Switch to light theme\" [ref=e376]\n    - button \"Switch to dark theme\" [ref=e377]\n    - button \"Open search\" [ref=e378]\n    - heading \"Overview and CLI\" [level=3, ref=e379]\n    - link \"Reference overview\" [ref=e395]\n    - link \"Native CLI\" [ref=e396]\n    - link \"Glossary\" [ref=e397]\n    - heading \"Query contracts\" [level=3, ref=e380]\n    - link \"Query forms\" [ref=e398]\n    - link \"Results\" [ref=e399]\n    - link \"Symbol identity and source fields\" [ref=e400]\n    - link \"Program tracing\" [ref=e401]\n    - link \"Callback observation fields\" [ref=e402]\n    - link \"Composition contracts\" [ref=e403]\n    - link \"Limits and failure categories\" [ref=e404]\n    - heading \"Client contracts\" [level=3, ref=e381]\n    - link \"MCP contract\" [ref=e405]\n    - link \"Tool RPC contract\" [ref=e406]\n    - link \"Platform and compatibility\" [ref=e407]\n    - heading \"Schemas and samples\" [level=3, ref=e382]\n    - link \"Schemas and samples\" [ref=e408]\n    - link \"Query walkthrough\" [ref=e409]\n    - button \"Detailed schemas\" [expanded=true, ref=e410]\n    - button \"Callable schemas\" [expanded=true, ref=e449]\n    - link \"Query symbols\" [ref=e452]\n    - link \"Check diagnostics\" [ref=e453]\n    - link \"Add declaration\" [ref=e454]\n    - link \"Replace body\" [ref=e455]\n    - link \"Workspace lifecycle\" [ref=e456]\n    - button \"Transport results\" [expanded=false, ref=e450]\n    - button \"Semantic results\" [expanded=false, ref=e451]\n    - heading \"Source owners\" [level=3, ref=e383]\n    - link \"Source map for Kast contracts\" [ref=e411]\n  - link \"GitHub\" [ref=e384]\n  - link \"Set up Kast\" [ref=e385]\n- link \"Guides\" [ref=e357]\n- link \"Architecture\" [ref=e358]\n- link \"Reference\" [ref=e359]\n- navigation \"Breadcrumb\" [ref=e386]\n- heading \"Workspace lifecycle\" [level=1, ref=e389]\n- button \"Copy page\" [ref=e412]\n- button \"More actions\" [expanded=false, ref=e413]\n- link \"MCP contract\" [ref=e390]\n- link \"tool RPC contract\" [ref=e391]\n- link \"Schemas and samples\" [ref=e392]\n- heading \"Body\" [level=4, ref=e393]\n- tab \"close\" [selected, ref=e414]\n- tab \"inspect\" [ref=e415]\n- tab \"open\" [ref=e416]\n- tab \"present\" [ref=e417]\n- tab \"release\" [ref=e418]\n- tab \"request_user_close\" [ref=e419]\n- tab \"status\" [ref=e420]\n- link \"Navigate to header\" [ref=e443]\n- generic \"type\" [ref=e421] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e444]\n- generic \"target\" [ref=e422] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e445]\n- generic \"requestId\" [ref=e423] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e446]\n- generic \"verbose\" [ref=e424] clickable [cursor:pointer, onclick]\n- heading \"Response\" [level=4, ref=e394]\n- tab \"completed\" [selected, ref=e425]\n- tab \"rejected\" [ref=e426]\n- link \"Navigate to header\" [ref=e447]\n- generic \"status\" [ref=e427] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e448]\n- generic \"document\" [ref=e428] clickable [cursor:pointer, onclick]\n- tab \"blocked\" [selected, ref=e429]\n- tab \"closed\" [ref=e430]\n- tab \"configured\" [ref=e431]\n- tab \"host_refresh_requested\" [ref=e432]\n- tab \"host_resumed\" [ref=e433]\n- tab \"host_settled\" [ref=e434]\n- tab \"host_settling\" [ref=e435]\n- tab \"host_stop_requested\" [ref=e436]\n- tab \"inspected\" [ref=e437]\n- tab \"opened\" [ref=e438]\n- tab \"pending\" [ref=e439]\n- tab \"presented\" [ref=e440]\n- tab \"released\" [ref=e441]\n- tab \"synced\" [ref=e442]\n- navigation \"Pagination\" [ref=e374]\n  - link \"Previous: Replace body\" [ref=e387]\n  - link \"MCP tool call result The JSON-RPC tools/call result wrapper returned by direct Kast MCP. Next\" [ref=e388]\n- link \"Kast home page logo\" [ref=e360]\n- link \"Overview\" [ref=e361]\n- link \"Set up\" [ref=e362]\n- link \"Examples\" [ref=e363]\n- link \"Help\" [ref=e364]\n- link \"How Kast works\" [ref=e365]\n- link \"Reference\" [ref=e366]\n- link \"Security\" [ref=e367]\n- link \"github\" [ref=e368]\n- link \"Powered by This documentation is built and hosted on Mintlify, a developer documentation platform\" [ref=e369]\n- button \"Switch to system theme\" [ref=e370]\n- button \"Switch to light theme\" [ref=e371]\n- button \"Switch to dark theme\" [ref=e372]\n- button \"Hide navigation\" [expanded=true, ref=e353]"
+}

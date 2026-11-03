@@ -1,0 +1,1013 @@
+{
+  "schemaVersion": 1,
+  "kind": "KAST_PARTIAL_LIVE_CALLABLE_RENDERING",
+  "sourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f",
+  "origin": "https://kast.michne.com",
+  "deploymentCheckId": 125984267194,
+  "deploymentCompletedAt": "2026-11-03T14:37:21Z",
+  "localTooling": {
+    "node": "v24.21.0",
+    "agentBrowser": "agent-browser 0.39.1",
+    "chrome": "Google Chrome for Testing 155.0.8059.84",
+    "chromeExecutableSha256": "240a57379cffd4efe2ec7f29396a3d3e566f18dd2f7e0484f092f224a0a8b362",
+    "mint": "4.2.841",
+    "mintClient": "0.0.3547"
+  },
+  "platform": {
+    "system": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64"
+  },
+  "producer": {
+    "canonicalInspectSha256": "446f3116a4734ea799ece91ef27d44145d7c2f7b81cda6d0fd084ab2e62e4f71",
+    "diagnosticInspectSha256": "0b56729f995f83d80dac80b9dbd3febd5573ee81787982e468b1123a1f88f5ae",
+    "selectorChange": "Replace #content with #api-playground-2-operation-page for the hosted callable layout. Keep the counting and visibility rules.",
+    "procedure": {
+      "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/capture-procedure.py.txt",
+      "sha256": "afd877539a966a36bb6cbab458f6db03f34374d4a022c2e8833556e6d86d6bdf"
+    }
+  },
+  "states": [
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "name": "desktop-light",
+      "status": "passed",
+      "footprint": {
+        "W": 280,
+        "L": 0,
+        "initialViewportW": 185
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-desktop-light.json",
+        "sha256": "015c4e24a4e85db90ff5e65d152e01006f940688427a8abce859ab4873449735"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-desktop-light.png",
+        "sha256": "ff39671c51cd4300bf036bbc0f7c544af21b7426b9d58e2928f50d09626baf68"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "name": "mobile-light",
+      "status": "passed",
+      "footprint": {
+        "W": 281,
+        "L": 85,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-mobile-light.json",
+        "sha256": "2b6eeea4d407fcf1b3fd5309803e3c333d6831bb8f843832d056702d582c2f94"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-mobile-light.png",
+        "sha256": "4cec2c6631a921663e260bc50b44ba891d1ad3dfa90dbfaed45497b586b90d1c"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "name": "desktop-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 280,
+        "L": 0,
+        "initialViewportW": 185
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-desktop-dark.json",
+        "sha256": "16dd8c4f0b404dfb9df2a23d3bb64b71f12a89737e0cb773be60b7c9184671f2"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-desktop-dark.png",
+        "sha256": "bdc74ade85b805774d22f1bbe2c49c3032843c5fd55d4c41b0e07a43b9d8544d"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "name": "mobile-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 281,
+        "L": 85,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-mobile-dark.json",
+        "sha256": "699555cfc5702877dd5f7ede6b536a94eee4942a3194612d935a20b83f482c8b"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-mobile-dark.png",
+        "sha256": "478e5cbbc8aa0becf39d418d414f517372f9ba604e0de3e175bbcd156242f34e"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "name": "browser-zoom-200-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 281,
+        "L": 85,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-browser-zoom-200-dark.json",
+        "sha256": "f7cc009aab5834f488f6a8d7d926edc04177071ef444754aabfbd1e31fe88c36"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-browser-zoom-200-dark.png",
+        "sha256": "9f84c589ddf73a96be0bb021e2cd586a44412a2162c4a12cdb4f9e04f8113b79"
+      },
+      "viewport": {
+        "deviceScaleFactor": 2,
+        "height": 500,
+        "visualScale": 1,
+        "width": 720
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "name": "keyboard-focus",
+      "status": "passed",
+      "footprint": {
+        "W": 280,
+        "L": 0,
+        "initialViewportW": 185
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-keyboard-focus.json",
+        "sha256": "ed7fd786abe76cb534e88643cae1b3f5ab116a0cef36e3b01bcc3a304052f9cc"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-keyboard-focus.png",
+        "sha256": "e597db82f16560824739cca0608686ffbc6a28484a9cfb1ba9b676639e82c34b"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": true,
+        "name": "tool RPC contract",
+        "outline": "rgb(143, 167, 255) auto 1px",
+        "tag": "A",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "name": "desktop-light",
+      "status": "passed",
+      "footprint": {
+        "W": 169,
+        "L": 0,
+        "initialViewportW": 150
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-desktop-light.json",
+        "sha256": "3996b7574c93d0b440678c5f7084485f733a6c1aae0d84160a167c2ae9215768"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-desktop-light.png",
+        "sha256": "94bd25a045aa1a2df84c3a7449916ca4f31f58c9098842362cba010eee9c8176"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "name": "mobile-light",
+      "status": "passed",
+      "footprint": {
+        "W": 170,
+        "L": 9,
+        "initialViewportW": 50
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-mobile-light.json",
+        "sha256": "8dcb466704d2768289650b46f8345a50a604d17f3bbfb4924d41caa39c589b91"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-mobile-light.png",
+        "sha256": "0d8427c35697f54720f9f76386ed8dc067b510cc2de1c2bc9959acfc74d94ef1"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "name": "desktop-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 169,
+        "L": 0,
+        "initialViewportW": 150
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-desktop-dark.json",
+        "sha256": "4ddacf07355b52da6049c519d01c858de177c071b25b7d9fb8a157d7c566ef7a"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-desktop-dark.png",
+        "sha256": "61c95b358bf873a5f51ad6be67c29409fd469942ec4096a164c89c7228bc1180"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "name": "mobile-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 170,
+        "L": 9,
+        "initialViewportW": 50
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-mobile-dark.json",
+        "sha256": "870f2bcfcafbb9d61bc7f6cc01845d74fe1c53a9c470e55081e175d3844134c2"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-mobile-dark.png",
+        "sha256": "03184856ddb96a3258e78d860251800b90e7dded94faa5c6d5f6659cd029f659"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "name": "browser-zoom-200-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 170,
+        "L": 9,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-browser-zoom-200-dark.json",
+        "sha256": "7a2d254b18024c8b4ee9327b8d649a7f205957a7a9e03687e2d24eb1e9d8aec9"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-browser-zoom-200-dark.png",
+        "sha256": "089bd9f151fa02541ac44be7157193187fdac4b8409662be6395fec5e53714f2"
+      },
+      "viewport": {
+        "deviceScaleFactor": 2,
+        "height": 500,
+        "visualScale": 1,
+        "width": 720
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "name": "keyboard-focus",
+      "status": "passed",
+      "footprint": {
+        "W": 169,
+        "L": 0,
+        "initialViewportW": 150
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-keyboard-focus.json",
+        "sha256": "d83d0c5b977d657ca23aaf4411838c03c4e17f2d0257d7286497b34fadedf69c"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-keyboard-focus.png",
+        "sha256": "7c72a02e958e36c993649353b69d71754b5d637b84d63e63cc8de081a9ff1ed1"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": true,
+        "name": "tool RPC contract",
+        "outline": "rgb(143, 167, 255) auto 1px",
+        "tag": "A",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "name": "desktop-light",
+      "status": "passed",
+      "footprint": {
+        "W": 165,
+        "L": 0,
+        "initialViewportW": 146
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-desktop-light.json",
+        "sha256": "37479833ebae657c374742b324f8bfbbdfb39157c7fde0e995a3af8c141db7ab"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-desktop-light.png",
+        "sha256": "ec1c3a32a7be0bcbe9e1f0e7bcbb9eb7f4f4ac9dccdebcd9c45d54c5e6c66386"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "name": "mobile-light",
+      "status": "passed",
+      "footprint": {
+        "W": 166,
+        "L": 9,
+        "initialViewportW": 50
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-mobile-light.json",
+        "sha256": "2a852b786a3d6ce4ad22bfbb9cd2121e5be9e11c7e6e3a2e5c2c43e5789b51b0"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-mobile-light.png",
+        "sha256": "a13872ece72e1b66ae43d9ed9f513eb4b96360d8b9fe9465605611d3338cf6bc"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "name": "desktop-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 165,
+        "L": 0,
+        "initialViewportW": 146
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-desktop-dark.json",
+        "sha256": "2676475f97f6738fc716eebc8a143afd5e34c2b695230fbde5303f960d7a5f32"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-desktop-dark.png",
+        "sha256": "b38164ab1257c6077b1dc31b46825bcbc7d064d6015effe11b893e7da7533913"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "name": "mobile-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 166,
+        "L": 9,
+        "initialViewportW": 50
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-mobile-dark.json",
+        "sha256": "7a4e02e20280fbfda5d610496f324ed473a6c00a559b9d947b42ba72bdea264a"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-mobile-dark.png",
+        "sha256": "461d16c46c0f743d93494c299354d2f0e37bc73080a9a9974981b5555d669e84"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "name": "browser-zoom-200-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 166,
+        "L": 9,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-browser-zoom-200-dark.json",
+        "sha256": "d7c5fbd375773445ead3617622204de37766809962b3bf93839974ff33e76414"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-browser-zoom-200-dark.png",
+        "sha256": "742b6f1f7499a7019101ba90f660f19c40dddb698579d1b0f970164b73297803"
+      },
+      "viewport": {
+        "deviceScaleFactor": 2,
+        "height": 500,
+        "visualScale": 1,
+        "width": 720
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "name": "keyboard-focus",
+      "status": "passed",
+      "footprint": {
+        "W": 165,
+        "L": 0,
+        "initialViewportW": 146
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-keyboard-focus.json",
+        "sha256": "5bf05f3df211ec0a6e1611e515f7e2cded3dbad5b1cc4529381f6c34932d4001"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-keyboard-focus.png",
+        "sha256": "b727b65a280e5b3a0167c9d36ff9335b65e7e412a102546e438106c2e36f3831"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": true,
+        "name": "tool RPC contract",
+        "outline": "rgb(143, 167, 255) auto 1px",
+        "tag": "A",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "name": "desktop-light",
+      "status": "passed",
+      "footprint": {
+        "W": 145,
+        "L": 0,
+        "initialViewportW": 107
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-desktop-light.json",
+        "sha256": "fdea9d80e96986a3ba7a1980b3cf0e935c1df9bbe1e9554f3abf448d0e3f7cc2"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-desktop-light.png",
+        "sha256": "99f5eba8aee5321507347ce55d26430093fe95dd3bfdfcf13b98743e397cb690"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "name": "mobile-light",
+      "status": "passed",
+      "footprint": {
+        "W": 146,
+        "L": 21,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-mobile-light.json",
+        "sha256": "17e39fdbfc83aa124a50f9c97b34d17215116c38b8b0dfedefe78467fb41a935"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-mobile-light.png",
+        "sha256": "ce76a4edc49dae816db71d22d1204692eebdd670f628e0e063bff92acca70e7a"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "light",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(0, 0, 0) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "name": "desktop-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 145,
+        "L": 0,
+        "initialViewportW": 107
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-desktop-dark.json",
+        "sha256": "7f283b3bc156d4b4e6ca5795d0c459e49d6b74f10faa3cd64249843419f64152"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-desktop-dark.png",
+        "sha256": "2c23027e78d118f31296503d745e2a57e2e975b6d4b1820687413e014cc32a9e"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "name": "mobile-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 146,
+        "L": 21,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-mobile-dark.json",
+        "sha256": "9c58a6ece2544f5532d27acc763daaf55df6eb94c4c80181f03423fd1760edf5"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-mobile-dark.png",
+        "sha256": "61dd4e5cc4deea22824b68d61a764e187d7efd5da975cb5a783382c64eec50c9"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 844,
+        "visualScale": 1,
+        "width": 390
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "name": "browser-zoom-200-dark",
+      "status": "passed",
+      "footprint": {
+        "W": 146,
+        "L": 21,
+        "initialViewportW": 10
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-browser-zoom-200-dark.json",
+        "sha256": "9dfeb6f89bfea7a42816c75e016f271d5a359179969aeb098aeee1a21a721bd9"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-browser-zoom-200-dark.png",
+        "sha256": "c58def7f48ee98e716fe5afa63fc4eb72639fe420d8a7e58365159867150425a"
+      },
+      "viewport": {
+        "deviceScaleFactor": 2,
+        "height": 500,
+        "visualScale": 1,
+        "width": 720
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": false,
+        "name": "",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "tag": "BODY",
+        "visible": true
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "name": "keyboard-focus",
+      "status": "passed",
+      "footprint": {
+        "W": 145,
+        "L": 0,
+        "initialViewportW": 107
+      },
+      "dom": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-keyboard-focus.json",
+        "sha256": "d2cad62ec6d97cde9d6032233af3cfa0d906d595477fab357325d44292a885f3"
+      },
+      "screenshot": {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-keyboard-focus.png",
+        "sha256": "af11568a4e400ee94acf22ecd68c2f15671667c3126b46a5b8b5c7f44f3e8458"
+      },
+      "viewport": {
+        "deviceScaleFactor": 1,
+        "height": 1000,
+        "visualScale": 1,
+        "width": 1440
+      },
+      "theme": "dark",
+      "documentOverflow": false,
+      "missingImageAlternatives": 0,
+      "focus": {
+        "boxShadow": "none",
+        "focusVisible": true,
+        "name": "tool RPC contract",
+        "outline": "rgb(143, 167, 255) auto 1px",
+        "tag": "A",
+        "visible": true
+      }
+    }
+  ],
+  "limits": [
+    "This live evidence concerns the provider-declared deployed revision, not the dirty working tree or a local candidate preview.",
+    "The hosted framework version is unknown. Local Mintlify CLI/client pins do not identify the hosted renderer.",
+    "Every W/L value describes one exposed DOM state. Full prose across hidden tabs, closed schema details, and recursive expansion remains unknown.",
+    "These captures do not supply a full publication receipt, complete recursive scope, approved pixel baseline, reader evaluation, or native Kast task evidence.",
+    "The query-symbols route is excluded from this bounded four-route investigation. Its earlier timeout remains a separate unresolved obligation.",
+    "A passed capture means DOM admission and screenshot capture. It does not assert all schema controls, complete accessibility, or every interactive variant.",
+    "The recorded procedure is an inert historical text artifact. The maintained browser runner remains docs/tooling/rendered/run.py."
+  ],
+  "snapshots": [
+    "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-snapshot.json",
+    "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/add-declaration-snapshot.json",
+    "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/replace-body-snapshot.json",
+    "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-snapshot.json"
+  ],
+  "status": "partial",
+  "summary": [
+    {
+      "route": "/reference/callables/check-diagnostics",
+      "desktopExposedState": {
+        "W": 280,
+        "L": 0,
+        "initialViewportW": 185
+      },
+      "mobileExposedState": {
+        "W": 281,
+        "L": 85,
+        "initialViewportW": 10
+      },
+      "completeProfile": {
+        "D": null,
+        "K": null,
+        "H": null,
+        "W": null,
+        "L": null
+      },
+      "sampledAssertions": {
+        "allSixCaptures": "passed",
+        "noDocumentHorizontalOverflow": "passed",
+        "nativeZoom200": "passed",
+        "visibleKeyboardFocus": "passed"
+      }
+    },
+    {
+      "route": "/reference/callables/add-declaration",
+      "desktopExposedState": {
+        "W": 169,
+        "L": 0,
+        "initialViewportW": 150
+      },
+      "mobileExposedState": {
+        "W": 170,
+        "L": 9,
+        "initialViewportW": 50
+      },
+      "completeProfile": {
+        "D": null,
+        "K": null,
+        "H": null,
+        "W": null,
+        "L": null
+      },
+      "sampledAssertions": {
+        "allSixCaptures": "passed",
+        "noDocumentHorizontalOverflow": "passed",
+        "nativeZoom200": "passed",
+        "visibleKeyboardFocus": "passed"
+      }
+    },
+    {
+      "route": "/reference/callables/replace-body",
+      "desktopExposedState": {
+        "W": 165,
+        "L": 0,
+        "initialViewportW": 146
+      },
+      "mobileExposedState": {
+        "W": 166,
+        "L": 9,
+        "initialViewportW": 50
+      },
+      "completeProfile": {
+        "D": null,
+        "K": null,
+        "H": null,
+        "W": null,
+        "L": null
+      },
+      "sampledAssertions": {
+        "allSixCaptures": "passed",
+        "noDocumentHorizontalOverflow": "passed",
+        "nativeZoom200": "passed",
+        "visibleKeyboardFocus": "passed"
+      }
+    },
+    {
+      "route": "/reference/callables/workspace-lifecycle",
+      "desktopExposedState": {
+        "W": 145,
+        "L": 0,
+        "initialViewportW": 107
+      },
+      "mobileExposedState": {
+        "W": 146,
+        "L": 21,
+        "initialViewportW": 10
+      },
+      "completeProfile": {
+        "D": null,
+        "K": null,
+        "H": null,
+        "W": null,
+        "L": null
+      },
+      "sampledAssertions": {
+        "allSixCaptures": "passed",
+        "noDocumentHorizontalOverflow": "passed",
+        "nativeZoom200": "passed",
+        "visibleKeyboardFocus": "passed"
+      }
+    }
+  ],
+  "visualReview": {
+    "status": "partial",
+    "reviewed": [
+      {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/check-diagnostics-desktop-light.png",
+        "sha256": "ff39671c51cd4300bf036bbc0f7c544af21b7426b9d58e2928f50d09626baf68",
+        "finding": "The desktop capture shows the title, the transport qualification, the schema return link, and readable input descriptions."
+      },
+      {
+        "path": "docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables/workspace-lifecycle-mobile-dark.png",
+        "sha256": "61dd4e5cc4deea22824b68d61a764e187d7efd5da975cb5a783382c64eec50c9",
+        "finding": "The mobile capture shows the title and response sample. The sample consumes the rest of the first viewport before the input descriptions."
+      }
+    ],
+    "limits": [
+      "Only these two captures received visual review. Other captures supply unreviewed visual evidence.",
+      "No approved baseline pixel comparison or reader evaluation ran. Internal code-panel scrolling was not examined."
+    ]
+  }
+}

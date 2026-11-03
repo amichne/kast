@@ -1,5 +1,11 @@
 {
   "schemaVersion": 1,
+  "assets": [
+    {
+      "source": "docs/public/reference/examples/query-walkthrough.json",
+      "destination": "docs/public/examples/query-walkthrough.json"
+    }
+  ],
   "views": [
     {
       "route": "architecture/change-lifecycle",

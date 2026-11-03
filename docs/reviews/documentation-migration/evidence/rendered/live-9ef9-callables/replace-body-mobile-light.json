@@ -1,0 +1,284 @@
+{
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "code": [
+    "{\n  \"status\": \"completed\",\n  \"document\": {\n    \"status\": \"complete\",\n    \"planIdentity\": \"<string>\",\n    \"application\": {},\n    \"plan\": {}\n  }\n}"
+  ],
+  "controls": [
+    {
+      "expanded": null,
+      "label": "200",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "Copy the contents from the code block",
+      "pressed": null,
+      "selected": null
+    },
+    {
+      "expanded": null,
+      "label": "completed",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "rejected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "complete",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "rejected",
+      "pressed": null,
+      "selected": "false"
+    }
+  ],
+  "documentOverflow": false,
+  "focus": {
+    "boxShadow": "none",
+    "focusVisible": false,
+    "name": "",
+    "outline": "rgb(0, 0, 0) none 3px",
+    "tag": "BODY",
+    "visible": true
+  },
+  "fonts": [
+    {
+      "sha256": "57b28aaaffc46f85ed5b5adeda22bc7bce0fcdbf3e6f84850c327765fe6fdc6b",
+      "url": "{origin}/_mintlify/assets/fonts/PaperMono-Variable.woff2"
+    },
+    {
+      "sha256": "f546c4f8b45bd7c37fe7b5c0312ac31483dc5ce23705bbd6cfc77282b3297abf",
+      "url": "{origin}/_mintlify/assets/fonts/google/s/suse/v4/MwQ5bhb078Wt2V9BPQ.woff2"
+    }
+  ],
+  "headingCount": 1,
+  "missingImageAlternatives": 0,
+  "route": "/reference/callables/replace-body",
+  "segments": [
+    {
+      "initialViewport": true,
+      "text": "Replace body"
+    },
+    {
+      "initialViewport": true,
+      "text": "Inputs and response fields for replace_body."
+    },
+    {
+      "initialViewport": true,
+      "text": "200"
+    },
+    {
+      "initialViewport": true,
+      "text": "This callable is not an HTTP endpoint. Its schemas describe the hosted tool. Direct MCP and tool RPC wrap the same semantic document differently. See the"
+    },
+    {
+      "initialViewport": true,
+      "text": "MCP contract"
+    },
+    {
+      "initialViewport": true,
+      "text": "or"
+    },
+    {
+      "initialViewport": true,
+      "text": "tool RPC contract"
+    },
+    {
+      "initialViewport": true,
+      "text": ". Return to"
+    },
+    {
+      "initialViewport": true,
+      "text": "Schemas and samples"
+    },
+    {
+      "initialViewport": true,
+      "text": "for related contracts."
+    },
+    {
+      "initialViewport": false,
+      "text": "Body"
+    },
+    {
+      "initialViewport": false,
+      "text": "application/json"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "exactTarget"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "Opaque exact-symbol reference returned by Kast. Copy it unchanged."
+    },
+    {
+      "initialViewport": false,
+      "text": "Required string length:"
+    },
+    {
+      "initialViewport": false,
+      "text": "1 - 1048576"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "body"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "One complete Kotlin block body, including braces. Syntax errors and trailing input are rejected."
+    },
+    {
+      "initialViewport": false,
+      "text": "Required string length:"
+    },
+    {
+      "initialViewport": false,
+      "text": "1 - 1048576"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "verbose"
+    },
+    {
+      "initialViewport": false,
+      "text": "boolean"
+    },
+    {
+      "initialViewport": false,
+      "text": "default:"
+    },
+    {
+      "initialViewport": false,
+      "text": "false"
+    },
+    {
+      "initialViewport": false,
+      "text": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+    },
+    {
+      "initialViewport": false,
+      "text": "Response"
+    },
+    {
+      "initialViewport": false,
+      "text": "200 - application/json"
+    },
+    {
+      "initialViewport": false,
+      "text": "Invocation envelope: completed contains a semantic document; rejected contains a boundary diagnostic. A completed invocation may still contain a qualified or rejected semantic outcome."
+    },
+    {
+      "initialViewport": false,
+      "text": "completed"
+    },
+    {
+      "initialViewport": false,
+      "text": "rejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "status"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "Process outcome."
+    },
+    {
+      "initialViewport": false,
+      "text": "Allowed value:"
+    },
+    {
+      "initialViewport": false,
+      "text": "\"completed\""
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "document"
+    },
+    {
+      "initialViewport": false,
+      "text": "complete \u00b7 object"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "complete"
+    },
+    {
+      "initialViewport": false,
+      "text": "rejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "Show"
+    },
+    {
+      "initialViewport": false,
+      "text": "child attributes"
+    }
+  ],
+  "theme": "light",
+  "title": "Replace body",
+  "viewport": {
+    "deviceScaleFactor": 1,
+    "height": 844,
+    "visualScale": 1,
+    "width": 390
+  }
+}

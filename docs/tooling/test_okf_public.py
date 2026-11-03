@@ -11,7 +11,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pytest
-
 from okf_public import (
     ROOT,
     Authored,
@@ -81,14 +80,25 @@ class ClaimsDocument:
 
 
 @dataclass(frozen=True)
+class AssetDocument:
+    source: str
+    destination: str
+
+
+@dataclass(frozen=True)
 class ManifestDocument:
     views: tuple[View, ...]
     authored: tuple[Authored, ...] = ()
     schemaVersion: int = 1
+    assets: tuple[AssetDocument, ...] = ()
 
 
-def manifest_without_introduction(manifest: Manifest) -> str:
-    document = asdict(ManifestDocument(manifest.views, manifest.authored))
+def manifest_without_introduction(
+    manifest: Manifest, assets: tuple[AssetDocument, ...] = ()
+) -> str:
+    document = asdict(ManifestDocument(manifest.views, manifest.authored, assets=assets))
+    if not assets:
+        document.pop("assets")
     for view in document["views"]:
         view.pop("introduction", None)
     return json.dumps(document)
@@ -410,3 +420,182 @@ def test_write_does_not_invent_a_missing_authored_page(tmp_path: Path) -> None:
     assert isinstance(result, Failure)
     assert result.code is Code.INPUT
     assert list((tmp_path / "docs/public").iterdir()) == []
+
+
+def test_configured_legacy_json_asset_is_restored_and_checked(tmp_path: Path) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    source = "docs/public/reference/examples/query-walkthrough.json"
+    destination = "docs/public/examples/query-walkthrough.json"
+    original = b'{\r\n  "captured": "historical \\u263a"\r\n}\r\n'
+    source_path = tmp_path / source
+    source_path.parent.mkdir(parents=True)
+    source_path.write_bytes(original)
+    serialized = manifest_without_introduction(manifest, (AssetDocument(source, destination),))
+    parsed = parse_manifest(serialized)
+    assert isinstance(parsed, Manifest)
+    assert output_paths(parsed).paths == (
+        "docs/public/snippets/okf",
+        "docs/public/reference/example.mdx",
+        destination,
+    )
+    (tmp_path / "docs/okf-public.json").write_text(serialized)
+    git = shutil.which("git")
+    assert git is not None
+    subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
+    subprocess.run([git, "add", "."], cwd=tmp_path, check=True)
+    assert not isinstance(run(tmp_path, write=True), Failure)
+    assert (tmp_path / destination).read_bytes() == original
+    assert (tmp_path / source).read_bytes() == original
+    assert not isinstance(run(tmp_path, write=False), Failure)
+    (tmp_path / destination).write_bytes(original + b" ")
+    assert run(tmp_path, write=False) == Failure(Code.DRIFT, destination)
+    assert not isinstance(run(tmp_path, write=True), Failure)
+    assert (tmp_path / destination).read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"source": "../outside.json"},
+        {"source": "/docs/public/source.json"},
+        {"source": "docs/public/../source.json"},
+        {"source": "docs/public//source.json"},
+        {"source": "docs/public/source.mdx"},
+        {"source": None},
+        {"destination": "docs/public/examples/../../docs.json"},
+        {"destination": "/docs/public/examples/example.json"},
+        {"destination": "docs/public/examples//example.json"},
+        {"destination": "docs/public/docs.json"},
+        {"destination": "docs/public/reference/callables.openapi.json"},
+        {"destination": "docs/public/examples/AGENTS.md"},
+        {"destination": "docs/public/examples/example.mdx"},
+        {"destination": []},
+        {"unknown": "field"},
+    ],
+)
+def test_asset_paths_and_shape_reject_unsafe_states(
+    tmp_path: Path, change: dict[str, object]
+) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    item = asdict(
+        AssetDocument("docs/public/reference/example.json", "docs/public/examples/example.json")
+    )
+    item.update(change)
+    document = json.loads(manifest_without_introduction(manifest))
+    document["assets"] = [item]
+    assert parse_manifest(json.dumps(document)) == Failure(Code.INPUT, "docs/okf-public.json")
+
+
+@pytest.mark.parametrize("assets", [None, False, {}, "alias", [None], [3], [[]]])
+def test_asset_inventory_rejects_nonarray_or_nonrecord_values(
+    tmp_path: Path, assets: object
+) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    document = json.loads(manifest_without_introduction(manifest))
+    document["assets"] = assets
+    assert parse_manifest(json.dumps(document)) == Failure(Code.INPUT, "docs/okf-public.json")
+
+
+@pytest.mark.parametrize(
+    "assets",
+    [
+        (
+            AssetDocument("docs/public/reference/one.json", "docs/public/examples/copy.json"),
+            AssetDocument("docs/public/reference/two.json", "docs/public/examples/copy.json"),
+        ),
+        (AssetDocument("docs/public/examples/one.json", "docs/public/examples/one.json"),),
+        (
+            AssetDocument("docs/public/examples/one.json", "docs/public/examples/two.json"),
+            AssetDocument("docs/public/examples/two.json", "docs/public/examples/three.json"),
+        ),
+        (
+            AssetDocument("docs/public/examples/one.json", "docs/public/examples/two.json"),
+            AssetDocument("docs/public/examples/two.json", "docs/public/examples/one.json"),
+        ),
+    ],
+)
+def test_assets_cannot_collide_or_overwrite_sources(
+    tmp_path: Path, assets: tuple[AssetDocument, ...]
+) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    assert parse_manifest(manifest_without_introduction(manifest, assets)) == Failure(
+        Code.INPUT, "docs/okf-public.json"
+    )
+
+
+@pytest.mark.parametrize("state", ["missing", "untracked", "symlink"])
+def test_asset_requires_an_existing_tracked_contained_source(tmp_path: Path, state: str) -> None:
+    manifest, tracked = fixture(tmp_path)
+    source = "docs/public/reference/example.json"
+    source_path = tmp_path / source
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text('{"historical": true}\n')
+    parsed = parse_manifest(
+        manifest_without_introduction(
+            manifest, (AssetDocument(source, "docs/public/examples/example.json"),)
+        )
+    )
+    assert isinstance(parsed, Manifest)
+    tracked = tracked | {source}
+    expected = Code.IO
+    if state == "missing":
+        source_path.unlink()
+    elif state == "untracked":
+        tracked = tracked - {source}
+        expected = Code.TRACKING
+    else:
+        target = tmp_path / "original.json"
+        source_path.rename(target)
+        source_path.symlink_to(target)
+        expected = Code.PATH
+    assert project(tmp_path, parsed, tracked) == Failure(expected, source)
+
+
+def test_asset_destination_symlink_cannot_change_another_file(tmp_path: Path) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    source = "docs/public/reference/example.json"
+    destination = "docs/public/examples/example.json"
+    (tmp_path / source).parent.mkdir(parents=True)
+    (tmp_path / source).write_text('{"historical": true}\n')
+    (tmp_path / destination).parent.mkdir(parents=True)
+    target = tmp_path / "protected.json"
+    target.write_bytes(b"protected unrelated bytes\n")
+    (tmp_path / destination).symlink_to(target)
+    (tmp_path / "docs/okf-public.json").write_text(
+        manifest_without_introduction(manifest, (AssetDocument(source, destination),))
+    )
+    git = shutil.which("git")
+    assert git is not None
+    subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
+    subprocess.run([git, "add", "."], cwd=tmp_path, check=True)
+    assert run(tmp_path, write=True) == Failure(Code.PATH, destination)
+    assert target.read_bytes() == b"protected unrelated bytes\n"
+    assert (tmp_path / destination).is_symlink()
+
+
+@pytest.mark.parametrize("write", [False, True])
+@pytest.mark.parametrize("origin", ["removed-declaration", "stray-file"])
+def test_undeclared_legacy_json_remains_visible_and_unchanged(
+    tmp_path: Path, write: bool, origin: str
+) -> None:
+    manifest, _tracked = fixture(tmp_path)
+    source = "docs/public/reference/example.json"
+    destination = "docs/public/examples/example.json"
+    (tmp_path / source).parent.mkdir(parents=True)
+    (tmp_path / source).write_bytes(b'{"historical": true}\n')
+    configured = (AssetDocument(source, destination),) if origin == "removed-declaration" else ()
+    metadata = tmp_path / "docs/okf-public.json"
+    metadata.write_text(manifest_without_introduction(manifest, configured))
+    git = shutil.which("git")
+    assert git is not None
+    subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
+    subprocess.run([git, "add", "."], cwd=tmp_path, check=True)
+    assert not isinstance(run(tmp_path, write=True), Failure)
+    metadata.write_text(manifest_without_introduction(manifest))
+    alias = tmp_path / destination
+    if origin == "stray-file":
+        alias.parent.mkdir(parents=True, exist_ok=True)
+        alias.write_bytes(b"unrecognized user bytes\n")
+    before = alias.read_bytes()
+    assert run(tmp_path, write=write) == Failure(Code.DRIFT, destination)
+    assert alias.read_bytes() == before

@@ -1,0 +1,78 @@
+{
+  "id": 125984267194,
+  "name": "Mintlify Deployment",
+  "node_id": "CR_kwDOR0U4Gs8AAAAdVT9bug",
+  "head_sha": "9ef9e65825b09f5e031322ab98f310276e2eb51f",
+  "external_id": "6ae9f157c81e6432c3216f31",
+  "url": "https://api.github.com/repos/amichne/kast/check-runs/125984267194",
+  "html_url": "https://github.com/amichne/kast/runs/125984267194",
+  "details_url": "https://mintlify.com",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-03T14:36:48Z",
+  "completed_at": "2026-11-03T14:37:21Z",
+  "output": {
+    "title": "Deployment Succeeded",
+    "summary": "Your changes are now live at https://kast.michne.com!",
+    "text": "```\nVerified update permissions\nFetching and validating config file...\nFetching .mintignore file...\nFetching ASSISTANT.md file...\nDiscovering assistant skills...\nSuccessfully validated docs.json\nNo .mintignore file found\nNo Assistant.md file found\nNo assistant skills found\nNo docsConfig evaluation needed\nDocsConfig evaluation complete\nFetched all file paths\nFetched 1 OpenApi file(s):\n  - reference/callables.openapi.json\nFetched 0 AsyncApi file(s)\nGenerated OpenAPI pages for navigation\nSkipped AsyncAPI navigation generation\nNo SDK reference pages configured\nNo GraphQL reference pages configured\nNo GraphQL deployment changes required\nPersisted 5 generated API page(s)\nNo GraphQL deployment changes required\nSuccessfully updated API reference metadata.\nNo stale files found\nUpdating all paths...\nSuccessfully updated deployment\nNo LaTeX detected\nSuccessfully saved config\nNo stale tracked assets found\nUpdating navigation...\nNavigation updated\nQueued editor nav regeneration\nQueued search indexing\nSuccessfully deleted stale OpenAPI document(s)\nSuccessfully deleted stale AsyncAPI document(s)\nSuccessfully deleted stale tracked asset(s)\nSnapshot built (62 page(s))\nBuild is now live\nContextual starter questions are not enabled.\nCached valid paths\nStarting page revalidation...\nRevalidating all pages...\nRevalidating 79 paths\nPage revalidation complete\nQueued update of llms-full.txt\nPrewarming all paths\nUpdated deployment cache\nSkipped post-activation contextual starter questions.\nSkipped post-activation search indexing\nSkipped post-activation page revalidation\nSkipped post-activation update of llms-full.txt\n```",
+    "annotations_count": 0,
+    "annotations_url": "https://api.github.com/repos/amichne/kast/check-runs/125984267194/annotations"
+  },
+  "check_suite": {
+    "id": 112877380585
+  },
+  "app": {
+    "id": 222410,
+    "client_id": "Iv1.1cf7b780ca980674",
+    "slug": "mintlify",
+    "node_id": "A_kwHOBYs-Es4AA2TK",
+    "owner": {
+      "login": "mintlify",
+      "id": 93011474,
+      "node_id": "O_kgDOBYs-Eg",
+      "avatar_url": "https://avatars.githubusercontent.com/u/93011474?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/mintlify",
+      "html_url": "https://github.com/mintlify",
+      "followers_url": "https://api.github.com/users/mintlify/followers",
+      "following_url": "https://api.github.com/users/mintlify/following{/other_user}",
+      "gists_url": "https://api.github.com/users/mintlify/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/mintlify/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/mintlify/subscriptions",
+      "organizations_url": "https://api.github.com/users/mintlify/orgs",
+      "repos_url": "https://api.github.com/users/mintlify/repos",
+      "events_url": "https://api.github.com/users/mintlify/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/mintlify/received_events",
+      "type": "Organization",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "name": "Mintlify",
+    "description": "> [!IMPORTANT]  \r\n> Do not install the Mintlify GitHub App through GitHub - you must do it through [the dashboard](https://dashboard.mintlify.com) in order for the connection point from your Mintlify account to your GitHub account to be made.\r\n\r\n\r\nA GitHub app that allows you to:\r\n\r\n- Sync your GitHub repository with your docs.\r\n- Share previews of your docs with instant preview links.\r\n- Receive CI checks for syntax errors in your PRs.\r\n- Enable non-technical members of the team to contribute to the docs through our web editor.\r\n\r\nTry now on https://dashboard.mintlify.com",
+    "external_url": "https://mintlify.com",
+    "html_url": "https://github.com/apps/mintlify",
+    "created_at": "2022-07-25T01:47:53Z",
+    "updated_at": "2026-08-14T03:43:58Z",
+    "permissions": {
+      "checks": "write",
+      "contents": "write",
+      "deployments": "write",
+      "issues": "write",
+      "metadata": "read",
+      "pull_requests": "write"
+    },
+    "events": [
+      "create",
+      "delete",
+      "issues",
+      "issue_comment",
+      "public",
+      "pull_request",
+      "pull_request_review",
+      "pull_request_review_comment",
+      "push",
+      "repository"
+    ]
+  },
+  "pull_requests": []
+}
