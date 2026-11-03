@@ -242,7 +242,7 @@ Set up keeps the first useful result on the same page.
 The shared prose assessment passes without findings for all four pages.
 Root Vale keeps two structural advisories for numbered setup headings and independent recovery cases.
 The reader assessment preserves `D = 1`, `K = 0`, and `H = 1` for the unchanged first-use scenario.
-The added result guidance increases `W` from 464 to 605 words. `L` remains five nonblank code lines.
+The added result guidance increases `W` from 464 to 574 words. `L` remains five nonblank code lines.
 This edit makes no complete-profile reduction or reader-comprehension claim.
 Evidence resides under `build/reports/documentation/core-pages/`.
 
@@ -259,5 +259,9 @@ The projector parity procedure passes.
 The first documentation lane passes 510 tooling cases and 21 native adapter cases before projection rejects an intermediate native state.
 That intermediate run does not count as final acceptance.
 The execution report keeps a grade advisory for historical technical detail.
-Exact-source assessments, rendered review, and hosted gates remain pending at this checkpoint.
-The next action is to commit the reviewed candidate and collect its final evidence.
+The first candidate passes the product gate, all ten prose procedures, and 70 source obligations.
+All 24 scoped rendered states pass.
+Screenshot review finds repetition between Overview's description and introduction.
+The final trim removes that repetition and keeps the supported facts.
+Exact-source receipts for the final candidate and hosted gates remain pending at this checkpoint.
+The next action is to commit the trimmed candidate and collect its final evidence.
