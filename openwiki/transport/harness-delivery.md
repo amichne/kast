@@ -37,6 +37,8 @@ sources:
     resource: repo://cli/src/main/js/query-presentation.mjs
   - id: openwiki-source-268c7ef978bdd77cf949ddc4
     resource: repo://cli/src/main/resources/query-delivery.schema.json
+  - id: openwiki-source-d7ab95cd1102533a511cd820
+    resource: repo://cli/src/test/js/native-onboarding.test.mjs
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
   - id: openwiki-source-552a7d3faff1f8e990a51c96
@@ -47,10 +49,10 @@ sources:
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "codex", at: "2026-11-03T17:39:06.252Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:45:59.282Z
+    at: 2026-11-03T17:39:06.252Z
 ---
 
 # Agent context and harness delivery
@@ -75,7 +77,7 @@ The generated compositions select native preparation hooks.
 Legacy Python hook resources remain source material outside that default composition.
 
 The optional Pi extension registers Kast through native `registerMcpServer`.
-Its session-start event first calls `kast hook session-start` for the exact workspace.
+Its session-start event starts `kast hook session-start` asynchronously for the exact workspace.
 Preparation failure emits a bounded warning.
 It reads bounded local context directly with Node and adds that brief before model requests.
 A rejected resource produces one warning while later turns and native MCP remain available.
