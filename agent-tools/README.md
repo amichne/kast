@@ -19,6 +19,8 @@ kast install pi
 Codex and Copilot own their plugin resources and configuration.
 Pi discovers the copied skill through its native skill directory.
 Pi also installs the session extension that calls the same command.
+Pi starts preparation in the background without a wait during session startup.
+Preparation failures produce a warning after startup.
 Each command examines the selected installed release and the provider's actual resources.
 Start a fresh agent session after setup.
 Codex needs trust for the installed hook definition before it runs.

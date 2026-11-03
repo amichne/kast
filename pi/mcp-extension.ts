@@ -70,9 +70,13 @@ export default function (pi: ExtensionAPI) {
     timeout: 3780,
   });
   let context: ContextResult | { type: "not_started" } = { type: "not_started" };
-  pi.on("session_start", async (_event, ctx) => {
-    const prepared = await pi.exec("kast", ["hook", "session-start", "--workspace", ctx.cwd], { timeout: 3_780_000 });
-    if (prepared.code !== 0) ctx.ui.notify("Kast workspace preparation failed. " + prepared.stdout.slice(0, 2048), "warning");
+  pi.on("session_start", (_event, ctx) => {
+    void pi.exec("kast", ["hook", "session-start", "--workspace", ctx.cwd], { timeout: 3_780_000 }).then(
+      result => {
+        if (result.code !== 0) ctx.ui.notify("Kast workspace preparation failed. " + result.stdout.slice(0, 2048), "warning");
+      },
+      () => ctx.ui.notify("Kast workspace preparation failed to start.", "warning"),
+    );
     context = { type: "not_started" };
     context = readContext(installation, ctx.cwd);
     if (context.type === "rejected") {

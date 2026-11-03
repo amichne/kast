@@ -27,7 +27,7 @@ class PublicLauncherCompositionTest {
     fun `native session hooks preserve the host envelope without project effects`() {
         NativePublicFixture(temporary).use { fixture ->
             val directory = Files.createDirectory(temporary.resolve("non project with spaces"))
-            for (toon in listOf("0", "1")) {
+            for (toon in listOf("0", "1", "")) {
                 val label = "hook-$toon"
                 val child =
                     fixture.start(
@@ -56,7 +56,7 @@ class PublicLauncherCompositionTest {
                 val (arguments, exit) = case
                 val standard = fixture.start("json-$index", arguments)
                 fixture.assertExit(standard, exit, "json-$index")
-                val toon = fixture.start("toon-$index", arguments, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
+                val toon = fixture.start("toon-$index", arguments, environment = emptyMap())
                 fixture.assertExit(toon, exit, "toon-$index")
                 val encoded = Files.readString(temporary.resolve("toon-$index.stdout"))
                 assertFalse(encoded.trimStart().startsWith("{"))

@@ -47,7 +47,7 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
             ConfigurationParameter.RUNTIME_DIRECTORY ->
                 "Coordinator socket namespace owned by the physical installation state/run directory."
             ConfigurationParameter.OUTPUT_TOON ->
-                "CLI result encoding. The value 1 selects TOON. The value 0 or an empty value selects default output."
+                "CLI result encoding. The value 0 selects JSON. The value 1 or an empty value selects TOON."
             else -> key.lowercase().replace('_', ' ')
         },
         syntax,

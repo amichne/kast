@@ -55,7 +55,7 @@ test('registry fixture rejects unexpected, duplicate, and unconsumed protocol me
   }
 });
 
-async function fixture(t, brief = 'Kast shared context\n') {
+async function fixture(t, brief = 'Kast shared context\n', exec) {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'kast pi $ literal ')));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const installation = join(home, '.local/share/kast/installation');
@@ -78,10 +78,54 @@ async function fixture(t, brief = 'Kast shared context\n') {
   register({
     registerMcpServer: (...args) => servers.push(args),
     on: (name, handler) => handlers.set(name, handler),
-    exec: async (...args) => { preparations.push(args); return { code: 0, stdout: '{}', stderr: '' }; },
+    exec: (...args) => {
+      preparations.push(args);
+      return exec ? exec(...args) : Promise.resolve({ code: 0, stdout: '{}', stderr: '' });
+    },
   });
   const ctx = { cwd: workspace, ui: { notify: (...args) => notifications.push(args) } };
   return { handlers, servers, notifications, preparations, ctx, references, workspace, installation };
+}
+
+for (const composition of ['CLI', 'MCP']) {
+  for (const outcome of ['complete', 'rejected', 'launch-failed']) {
+    test('Pi ' + composition + ' starts preparation eagerly without blocking startup: ' + outcome, async t => {
+      const preparation = Promise.withResolvers();
+      const calls = [], handlers = new Map();
+      let notifications = [];
+      const exec = (...args) => { calls.push(args); return preparation.promise; };
+      let ctx, session;
+      if (composition === 'MCP') {
+        const f = await fixture(t, 'Kast shared context\n', exec);
+        ctx = f.ctx;
+        session = f.handlers.get('session_start');
+        notifications = f.notifications;
+        handlers.set('before_agent_start', f.handlers.get('before_agent_start'));
+      } else {
+        const hook = readFileSync(new URL('../../../../agent-tools/hooks/pi.ts', import.meta.url), 'utf8');
+        const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
+        register({ on: (event, handler) => handlers.set(event, handler), exec });
+        ctx = { cwd: '/project with spaces/$literal;value', ui: { notify: (...args) => notifications.push(args) } };
+        session = handlers.get('session_start');
+      }
+      const startup = session({}, ctx);
+      assert.equal(startup, undefined, 'The session handler must return while preparation is pending');
+      assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', ctx.cwd], { timeout: 3_780_000 }]]);
+      assert.deepEqual(notifications, []);
+      if (composition === 'MCP') {
+        assert.ok(handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt.includes('Kast shared context'));
+      }
+      if (outcome === 'launch-failed') preparation.reject(new Error('private launch details'));
+      else preparation.resolve({ code: outcome === 'complete' ? 0 : 4, stdout: 'x'.repeat(4096), stderr: '' });
+      await preparation.promise.catch(() => {});
+      assert.deepEqual(notifications, outcome === 'complete' ? [] : [[
+        outcome === 'launch-failed'
+          ? 'Kast workspace preparation failed to start.'
+          : 'Kast workspace preparation failed. ' + 'x'.repeat(2048),
+        'warning',
+      ]]);
+    });
+  }
 }
 
 test('Pi delivers the generated semantic routing policy without probing readiness', async t => {

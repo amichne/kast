@@ -127,6 +127,7 @@ tasks.named<Test>("test") {
         .files(File(repositoryRoot.asFile, "copilot/extension.mjs"), File(repositoryRoot.asFile, "pi/extension.ts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(File(repositoryRoot.asFile, "pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(File(repositoryRoot.asFile, "agent-tools/hooks/pi.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-session.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)

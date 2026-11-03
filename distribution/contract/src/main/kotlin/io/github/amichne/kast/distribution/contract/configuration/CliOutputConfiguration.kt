@@ -19,7 +19,7 @@ fun selectCliOutputFormat(value: String?): Refinement<CliOutputFormat, CliOutput
     when (value) {
         null,
         "",
-        "0" -> Refinement.Refined(CliOutputFormat.JSON)
         "1" -> Refinement.Refined(CliOutputFormat.TOON)
+        "0" -> Refinement.Refined(CliOutputFormat.JSON)
         else -> Refinement.Rejected(CliOutputFailure.INVALID_OUTPUT_FORMAT)
     }

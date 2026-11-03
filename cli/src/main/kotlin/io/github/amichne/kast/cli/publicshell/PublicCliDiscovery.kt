@@ -140,7 +140,7 @@ internal fun publicCliHelp(command: PublicCliCommandId?): String {
                 listOf("[", flag.spelling, if (flag.takesValue) " VALUE" else "", "]").joinToString("")
             }
     } +
-        "\nSemantic commands emit one JSON document. Set KAST_OUTPUT_TOON=1 for TOON results. " +
+        "\nSemantic commands emit one TOON document. Set KAST_OUTPUT_TOON=0 for JSON results. " +
         "Use kast describe COMMAND for the selected catalog contract."
 }
 

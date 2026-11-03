@@ -44,6 +44,7 @@ class NativeControlCompositionTest {
                     environment().clear()
                     environment()["HOME"] = directory.toString()
                     environment()["PATH"] = "/usr/bin:/bin"
+                    environment()["KAST_OUTPUT_TOON"] = "0"
                 }
                 .start()
         child.outputStream.close()

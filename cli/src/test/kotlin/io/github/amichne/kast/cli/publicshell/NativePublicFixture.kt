@@ -80,7 +80,7 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
         arguments: List<String>,
         captureOutput: Boolean = true,
         directory: Path = home,
-        environment: Map<String, String> = emptyMap(),
+        environment: Map<String, String> = mapOf("KAST_OUTPUT_TOON" to "0"),
     ): Process =
         ProcessBuilder(listOf(requiredExecutable("kast.publicLauncher").toString()) + arguments)
             .directory(directory.toFile())

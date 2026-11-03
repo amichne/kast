@@ -73,23 +73,22 @@ The CLI reads stdin only for an explicit `--request -`.
 
 ## Select presentation
 
-Set `KAST_OUTPUT_TOON=1` to select [TOON](https://toonformat.dev/guide/getting-started) for CLI result documents:
+CLI result documents use [TOON](https://toonformat.dev/guide/getting-started) by default:
 
 ```sh
-export KAST_OUTPUT_TOON=1
 kast query --name OrderService --in services/orders
 kast describe query --section input
 kast status
 ```
 
 The switch covers semantic results, descriptors, plans, startup rejections, and management results.
-Management commands select structured results without `--json` when the switch equals `1`.
+Management commands select structured results without `--json` when TOON is selected.
 The switch also controls results from commands with `--json`.
 Help, version text, and stderr diagnostics keep their existing formats.
 JSON requests, stored records, Host messages, MCP, and tool RPC keep their existing JSON contracts.
 
-Unset `KAST_OUTPUT_TOON` or set it to `0` to restore the default output.
-An empty value also selects the default.
+Set `KAST_OUTPUT_TOON=0` to select JSON.
+An unset or empty variable selects TOON, as does `KAST_OUTPUT_TOON=1`.
 Other values reject before command effects with exit `2` and a JSON `INVALID_OUTPUT_FORMAT` result.
 `JToon` encodes the existing JSON projection, so the same result fields and qualifications remain present.
 An encoding rejection returns `OUTPUT_ENCODING_REJECTED` with exit `6` instead of a successful result.
@@ -136,9 +135,9 @@ A selected row subset keeps its incomplete-input qualification.
 
 ## Read output and exit status
 
-Semantic commands emit the existing RPC JSON outcome plus one newline by default.
+Semantic commands emit the existing RPC outcome in TOON with a final newline by default.
 The output shape stays the same in terminals and pipes.
-`KAST_OUTPUT_TOON=1` changes the encoding to TOON.
+`KAST_OUTPUT_TOON=0` changes the encoding to JSON.
 `--json` preserves the existing result contract and does not override the environment switch.
 Progress and bounded diagnostics use stderr.
 

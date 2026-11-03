@@ -308,7 +308,7 @@ enum class ConfigurationParameter(
         mutability = ConfigurationMutability.DERIVED,
     ),
     ASCII("KAST_ASCII", ConfigurationSyntax.SWITCH, ConfigurationScope.INSTALLATION, defaultValue = "0"),
-    OUTPUT_TOON("KAST_OUTPUT_TOON", ConfigurationSyntax.SWITCH, ConfigurationScope.REQUEST, defaultValue = "0"),
+    OUTPUT_TOON("KAST_OUTPUT_TOON", ConfigurationSyntax.SWITCH, ConfigurationScope.REQUEST, defaultValue = "1"),
     DEBUG(
         "KAST_DEBUG",
         ConfigurationSyntax.SWITCH,

@@ -26,7 +26,11 @@ class PublicCliProcessTest {
 
     @Test
     fun `session hook skips a non project with one empty host envelope`() {
-        val result = child(listOf("hook", "session-start", "--workspace", temporary.toString()))
+        val result =
+            child(
+                listOf("hook", "session-start", "--workspace", temporary.toString()),
+                environment = emptyMap(),
+            )
         assertEquals(0, result.first)
         assertEquals(emptySet<String>(), Json.parseToJsonElement(result.second).jsonObject.keys)
         val toon =
@@ -71,7 +75,20 @@ class PublicCliProcessTest {
     @Test
     fun `zero keeps JSON and unknown TOON settings reject before planning`() {
         val args = listOf("query", "plan", "--name", "OrderService")
-        assertEquals(child(args), child(args, environment = mapOf("KAST_OUTPUT_TOON" to "0")))
+        val standard = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "0"))
+        assertEquals(
+            "planned",
+            Json.parseToJsonElement(standard.second).jsonObject.getValue("type").jsonPrimitive.content,
+        )
+        for (environment in listOf(emptyMap(), mapOf("KAST_OUTPUT_TOON" to ""), mapOf("KAST_OUTPUT_TOON" to "1"))) {
+            val toon = child(args, environment = environment)
+            assertEquals(standard.first, toon.first)
+            assertFalse(toon.second.trimStart().startsWith("{"))
+            assertEquals(
+                Json.parseToJsonElement(standard.second),
+                Json.parseToJsonElement(JToon.decodeToJson(toon.second)),
+            )
+        }
         val invalid = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "typo"))
         assertEquals(2, invalid.first)
         assertEquals(
@@ -239,7 +256,7 @@ class PublicCliProcessTest {
     private fun child(
         args: List<String>,
         bytes: ByteArray = byteArrayOf(),
-        environment: Map<String, String> = emptyMap(),
+        environment: Map<String, String> = mapOf("KAST_OUTPUT_TOON" to "0"),
     ): Pair<Int, String> {
         val (process, stdout, stderr) = start(args, environment)
         try {
@@ -251,7 +268,10 @@ class PublicCliProcessTest {
         }
     }
 
-    private fun start(args: List<String>, environment: Map<String, String> = emptyMap()): Triple<Process, Path, Path> {
+    private fun start(
+        args: List<String>,
+        environment: Map<String, String> = mapOf("KAST_OUTPUT_TOON" to "0"),
+    ): Triple<Process, Path, Path> {
         val stdout = Files.createTempFile(temporary, "stdout", ".json")
         val stderr = Files.createTempFile(temporary, "stderr", ".txt")
         val process =

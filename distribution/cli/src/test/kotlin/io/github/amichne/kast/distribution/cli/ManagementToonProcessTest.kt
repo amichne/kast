@@ -24,6 +24,20 @@ class ManagementToonProcessTest {
     }
 
     @Test
+    fun `unset and empty output settings select TOON by default`() {
+        val standard = child(listOf("status", "--json"))
+        for (flag in listOf(null, "")) {
+            val toon = child(listOf("status"), flag)
+            assertEquals(standard.first, toon.first)
+            assertTrue(toon.second.startsWith("commandPath:"))
+            assertEquals(
+                Json.parseToJsonElement(standard.second),
+                Json.parseToJsonElement(JToon.decodeToJson(toon.second)),
+            )
+        }
+    }
+
+    @Test
     fun `startup rejection keeps its failure and nonzero exit in TOON`() {
         val result = child(listOf("query"), "1")
         assertEquals(4, result.first)
@@ -38,7 +52,7 @@ class ManagementToonProcessTest {
         assertTrue(Files.notExists(temporary.resolve(".local")))
     }
 
-    private fun child(args: List<String>, flag: String = "0"): Pair<Int, String> {
+    private fun child(args: List<String>, flag: String? = "0"): Pair<Int, String> {
         val stdout = Files.createTempFile(temporary, "stdout", ".txt")
         val stderr = Files.createTempFile(temporary, "stderr", ".txt")
         val process =
@@ -56,7 +70,8 @@ class ManagementToonProcessTest {
                 .apply {
                     environment().clear()
                     environment()["HOME"] = temporary.toString()
-                    environment()["KAST_OUTPUT_TOON"] = flag
+                    if (flag == null) environment().remove("KAST_OUTPUT_TOON")
+                    else environment()["KAST_OUTPUT_TOON"] = flag
                 }
                 .start()
         try {
