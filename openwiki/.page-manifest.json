@@ -37,11 +37,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/contracts/operation-outcomes.md": {
+      "gitHead": "cbf13253648ad7fef8dd977162e507465b344623",
+      "sourceFingerprint": "sha256:fa3a9d93efe9c235bc4a7ade0b3322a790455a79257c157f28b92d2d8de1224d",
       "pageVersion": "sha256:d66d2d797710e948e03766404f343495e3827cb27c0e417165f3c936d37d8127",
       "completedBy": "codex",
-      "completedRunId": "58c3ea3a-52bb-4dc5-bf01-e7db56a7b62d",
-      "gitHead": "cbf13253648ad7fef8dd977162e507465b344623",
-      "sourceFingerprint": "sha256:fa3a9d93efe9c235bc4a7ade0b3322a790455a79257c157f28b92d2d8de1224d"
+      "completedRunId": "58c3ea3a-52bb-4dc5-bf01-e7db56a7b62d"
     },
     "/openwiki/contracts/operation-registry.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -72,11 +72,11 @@
       "completedRunId": "94e57efe-bb81-4238-9379-4305d9bb5c90"
     },
     "/openwiki/development/build-and-architecture.md": {
-      "gitHead": "cbf13253648ad7fef8dd977162e507465b344623",
-      "sourceFingerprint": "sha256:7d666f893a574d9461d9b97705ced7ce34d069266f0de3e2e3005ef054636d34",
-      "pageVersion": "sha256:a03e5e2dcea3baecea79679ea260e1f086b573be08edd9ec92297e8a91338f37",
+      "pageVersion": "sha256:e2874da5f4f0d144bd17595693a59cbb7df07de5bfc3d6de93d6f9c6a60fa624",
       "completedBy": "codex",
-      "completedRunId": "192ffb55-7ede-4cd8-89b0-7b7e855dfa57"
+      "completedRunId": "d66d5243-40ad-4040-97ba-ed1ac399ef8e",
+      "gitHead": "06cfd51982fe4b35316d6502d114e41e6a70960f",
+      "sourceFingerprint": "sha256:adc4ed9bd68d78bea0e6862f5845e0c012f847028d70a093734e0848620967f6"
     },
     "/openwiki/development/contracts-and-generation.md": {
       "gitHead": "cbf13253648ad7fef8dd977162e507465b344623",

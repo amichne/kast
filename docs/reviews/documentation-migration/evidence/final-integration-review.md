@@ -105,3 +105,28 @@ No further demonstrated defect remains in the reviewed integration changes.
 Exact-head receipts, the required repository gates, and hosted CI remain separate acceptance procedures.
 The source review does not turn the recorded rendering limit into a passed result.
 It does not establish native Kast execution, reader comprehension, merge approval, or a live deployment.
+
+## Canonical dependency scope repair
+
+This review examined only `validation_scope.py` and `test_validation_scope.py` after source revision `06cfd51982fe4b35316d6502d114e41e6a70960f`.
+The production delta removes five pages from the narrow documentation allowlist.
+An independent AST comparison found exactly those five removals and no added paths.
+The classifier's control flow remains unchanged.
+
+Each isolated change to `api`, `callback-observations`, `lifecycles`, `limits`, or `program-tracing` now selects `ALL_CHECKS`.
+The independent `index.mdx` control still selects the documentation lane.
+The generic fixture and malformed-link cases now use that independent control.
+Their rejection assertions remain in place.
+
+The frozen PR 1130 inventory keeps its 113 distinct paths.
+Its expected result now reflects the larger current dependency scope.
+That result strengthens gate selection. It does not weaken the historical inventory or remove a qualification.
+
+Passed: four focused test methods cover the frozen inventory, all five pages, current canonical dependencies, and unsupported dependency forms.
+`ci-canonical-scope-independent.txt` preserves the result.
+The coordinator's wider GREEN log reports 140 decision cases, 25 candidate cases, and 30 release-preflight cases.
+That log explicitly excludes source and native qualification.
+
+No demonstrated defect remains in this two-file repair.
+The coordinator owns the stale Claim reconciliation and the exact-head gate repeat.
+The reviewer changed no CI source.

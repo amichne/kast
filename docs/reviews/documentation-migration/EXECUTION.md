@@ -97,6 +97,23 @@ That deployment does not establish publication of this branch.
 The connected Mintlify account lists two other projects without Kast.
 This connector result does not establish that the public site is unavailable.
 
+## Final gate correction
+
+The first final pre-push run rejected five public pages that became canonical dependencies.
+The narrow documentation allowlist still included those pages.
+The repair removes them from that allowlist, so the existing unknown-input rule selects every gate.
+The frozen historical diff now needs every gate under the current dependency graph.
+Its recorded path inventory remains unchanged.
+The negative dependency fixtures now use the independent Overview page.
+The guard still rejects inline, encoded, HTML, reference-style, and resource references to narrow inputs.
+
+The focused RED run reported seven failures and 138 passes.
+The intended failures covered the five full-gate cases, the current dependency inventory, and the frozen diff.
+The GREEN run passed the CI decisions, candidate, and release-preflight procedures.
+Native OpenWiki reconciled the unchanged CI Claim after source review.
+The canonical page body kept its exact digest.
+No test, schema, terminology policy, or measurement definition became weaker.
+
 ## Commands and evidence
 
 The retained controls reside in `evidence/rendered/controls/report.json` and its linked files.

@@ -1001,7 +1001,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/development/build-and-architecture.md",
-        "sourceSha256": "a03e5e2dcea3baecea79679ea260e1f086b573be08edd9ec92297e8a91338f37",
+        "sourceSha256": "e2874da5f4f0d144bd17595693a59cbb7df07de5bfc3d6de93d6f9c6a60fa624",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.05 exceeds the shared advisory target of 8.",

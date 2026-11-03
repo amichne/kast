@@ -19,14 +19,14 @@
         }
       ],
       "metrics": {
-        "estimatedSyllables": 1410,
+        "estimatedSyllables": 1750,
         "fleschKincaidGrade": 10.17,
-        "sentences": 74,
-        "words": 766,
-        "wordsPerSentence": 10.35
+        "sentences": 93,
+        "words": 948,
+        "wordsPerSentence": 10.19
       },
       "path": "/Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/docs/reviews/documentation-migration/evidence/final-integration-review.md",
-      "sourceSha256": "348c72472042c8fd2cd414a63ec15ef8a9aad2a7b811188c7e51aeb25f63b92b",
+      "sourceSha256": "2844fa729797bb481c072c69b14f77549f275964255e8d26beb41e4ad7715eb0",
       "terminology": {
         "type": "OUT_OF_SCOPE"
       },

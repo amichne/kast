@@ -1,0 +1,121 @@
+fast-checks: ci-decisions STARTED
+..................................................................................... [ 60%]
+........................FF.............................                                                       [100%]
+=================================== FAILURES ===================================
+_ SourceInventoryTest.test_documentation_allowlist_excludes_every_openwiki_referenced_path _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_documentation_allowlist_excludes_every_openwiki_referenced_path>
+
+    def test_documentation_allowlist_excludes_every_openwiki_referenced_path(self):
+        root = Path(__file__).resolve().parents[3]
+>       self.assert_openwiki_dependencies_excluded(root)
+
+.github/scripts/ci/test_validation_scope.py:553:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.github/scripts/ci/test_validation_scope.py:604: in assert_openwiki_dependencies_excluded
+    self.assertNotIn(
+E   AssertionError: 'docs/public/reference/api.mdx' unexpectedly found in frozenset({'docs/public/explanation.mdx', 'docs/public/reference/rpc-catalog.mdx', 'docs/public/reference/integrations.mdx', 'docs/public/index.mdx', 'docs/public/reference/composition.mdx', 'docs/public/reference/callbacks.mdx', 'docs/public/reference/management.mdx', 'docs/public/reference/source-map.mdx', 'docs/public/how-to/complete-engineering-task.mdx', 'docs/public/reference/query-pipelines.mdx', 'docs/public/reference.mdx', 'docs/public/reference/search.mdx', 'docs/public/reference/internals/architecture.mdx', 'docs/public/explanation/query-lifecycle.mdx', 'docs/public/reference/models/relation-fact.mdx', 'docs/public/reference/models/mcp-tool-call-result.mdx', 'docs/public/reference/lifecycles.mdx', 'docs/public/agent-harnesses.mdx', 'docs/public/reference/models/mcp-investigation-result.mdx', 'docs/public/tutorials.mdx', 'docs/public/reference/program-tracing.mdx', 'docs/public/reference/mcp-catalog.mdx', 'docs/public/reference/models/tool-rpc-reply.mdx', 'docs/public/reference/api.mdx', 'docs/public/reference/troubleshooting.mdx', 'docs/public/reference/models/mcp-read-result.mdx', 'docs/public/reference/callback-observations.mdx', 'docs/public/reference/limits.mdx', 'docs/public/reference/staleness.mdx', 'docs/public/reference/schemas.mdx', 'docs/public/how-to.mdx', 'docs/public/reference/evidence-boundaries.mdx', 'docs/public/troubleshooting.mdx', 'docs/public/reference/models/live-evidence.mdx', 'docs/public/tutorials/first-query.mdx', 'docs/public/reference/internals/background-startup.mdx', 'docs/public/reference/walkthrough.mdx', 'docs/public/reference/models/diagnostic.mdx', 'docs/public/how-to/inspect-diagnostics.mdx', 'docs/public/reference/models/mcp-change-result.mdx', 'docs/public/reference/models/query-item.mdx', 'docs/public/how-to/read-retained-evidence.mdx'}) : openwiki/contracts/public-tools.md:288: OpenWiki dependencies require the full knowledge-base gate
+_ SourceInventoryTest.test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand>
+
+    def test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand(self):
+        # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).
+        inventory = Path(__file__).parent / "fixtures/pr1130-paths.txt"
+        paths = tuple(inventory.read_text().splitlines())
+        self.assertEqual(113, len(paths))
+        self.assertEqual(113, len(set(paths)))
+        self.assertFalse(any(path.endswith((".kt", ".kts")) for path in paths))
+>       self.assertEqual(ALL_CHECKS, classify_paths(paths))
+E       AssertionError: Items in the first set but not the second:
+E       <Check.GATE_GRAPH: 'gate_graph'>
+E       <Check.PRODUCT: 'product'>
+E       <Check.SOURCE: 'source'>
+E       <Check.PORTABLE: 'portable'>
+
+.github/scripts/ci/test_validation_scope.py:538: AssertionError
+_ SourceInventoryTest.test_reconciled_public_contracts_keep_full_checks (page='api') _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_reconciled_public_contracts_keep_full_checks>
+
+    def test_reconciled_public_contracts_keep_full_checks(self):
+        for page in ("api", "callback-observations", "lifecycles", "limits", "program-tracing"):
+            with self.subTest(page=page):
+>               self.assertEqual(ALL_CHECKS, classify_paths((f"docs/public/reference/{page}.mdx",)))
+E               AssertionError: Items in the first set but not the second:
+E               <Check.GATE_GRAPH: 'gate_graph'>
+E               <Check.PRODUCT: 'product'>
+E               <Check.SOURCE: 'source'>
+E               <Check.PORTABLE: 'portable'>
+
+.github/scripts/ci/test_validation_scope.py:549: AssertionError
+_ SourceInventoryTest.test_reconciled_public_contracts_keep_full_checks (page='callback-observations') _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_reconciled_public_contracts_keep_full_checks>
+
+    def test_reconciled_public_contracts_keep_full_checks(self):
+        for page in ("api", "callback-observations", "lifecycles", "limits", "program-tracing"):
+            with self.subTest(page=page):
+>               self.assertEqual(ALL_CHECKS, classify_paths((f"docs/public/reference/{page}.mdx",)))
+E               AssertionError: Items in the first set but not the second:
+E               <Check.GATE_GRAPH: 'gate_graph'>
+E               <Check.PRODUCT: 'product'>
+E               <Check.SOURCE: 'source'>
+E               <Check.PORTABLE: 'portable'>
+
+.github/scripts/ci/test_validation_scope.py:549: AssertionError
+_ SourceInventoryTest.test_reconciled_public_contracts_keep_full_checks (page='lifecycles') _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_reconciled_public_contracts_keep_full_checks>
+
+    def test_reconciled_public_contracts_keep_full_checks(self):
+        for page in ("api", "callback-observations", "lifecycles", "limits", "program-tracing"):
+            with self.subTest(page=page):
+>               self.assertEqual(ALL_CHECKS, classify_paths((f"docs/public/reference/{page}.mdx",)))
+E               AssertionError: Items in the first set but not the second:
+E               <Check.GATE_GRAPH: 'gate_graph'>
+E               <Check.PRODUCT: 'product'>
+E               <Check.SOURCE: 'source'>
+E               <Check.PORTABLE: 'portable'>
+
+.github/scripts/ci/test_validation_scope.py:549: AssertionError
+_ SourceInventoryTest.test_reconciled_public_contracts_keep_full_checks (page='limits') _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_reconciled_public_contracts_keep_full_checks>
+
+    def test_reconciled_public_contracts_keep_full_checks(self):
+        for page in ("api", "callback-observations", "lifecycles", "limits", "program-tracing"):
+            with self.subTest(page=page):
+>               self.assertEqual(ALL_CHECKS, classify_paths((f"docs/public/reference/{page}.mdx",)))
+E               AssertionError: Items in the first set but not the second:
+E               <Check.GATE_GRAPH: 'gate_graph'>
+E               <Check.PRODUCT: 'product'>
+E               <Check.SOURCE: 'source'>
+E               <Check.PORTABLE: 'portable'>
+
+.github/scripts/ci/test_validation_scope.py:549: AssertionError
+_ SourceInventoryTest.test_reconciled_public_contracts_keep_full_checks (page='program-tracing') _
+
+self = <test_validation_scope.SourceInventoryTest testMethod=test_reconciled_public_contracts_keep_full_checks>
+
+    def test_reconciled_public_contracts_keep_full_checks(self):
+        for page in ("api", "callback-observations", "lifecycles", "limits", "program-tracing"):
+            with self.subTest(page=page):
+>               self.assertEqual(ALL_CHECKS, classify_paths((f"docs/public/reference/{page}.mdx",)))
+E               AssertionError: Items in the first set but not the second:
+E               <Check.GATE_GRAPH: 'gate_graph'>
+E               <Check.PRODUCT: 'product'>
+E               <Check.SOURCE: 'source'>
+E               <Check.PORTABLE: 'portable'>
+
+.github/scripts/ci/test_validation_scope.py:549: AssertionError
+=========================== short test summary info ============================
+FAILED .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_documentation_allowlist_excludes_every_openwiki_referenced_path
+FAILED .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand
+SUBFAILED(page='api') .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_reconciled_public_contracts_keep_full_checks
+SUBFAILED(page='callback-observations') .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_reconciled_public_contracts_keep_full_checks
+SUBFAILED(page='lifecycles') .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_reconciled_public_contracts_keep_full_checks
+SUBFAILED(page='limits') .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_reconciled_public_contracts_keep_full_checks
+SUBFAILED(page='program-tracing') .github/scripts/ci/test_validation_scope.py::SourceInventoryTest::test_reconciled_public_contracts_keep_full_checks
+7 failed, 138 passed, 809 subtests passed in 12.12s
+fast-checks: ci-decisions PROCESS_FAILED exit=1 elapsedMs=12424

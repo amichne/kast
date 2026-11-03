@@ -1,0 +1,14 @@
+fast-checks: ci-decisions STARTED
+..................................................................................... [ 60%]
+.......................................................                                                       [100%]
+140 passed, 814 subtests passed in 11.64s
+fast-checks: ci-decisions PASSED exit=0 elapsedMs=11930
+fast-checks: candidate STARTED
+......................... [100%]
+25 passed, 47 subtests passed in 0.15s
+fast-checks: candidate PASSED exit=0 elapsedMs=396
+fast-checks: release-preflight STARTED
+..............................         [100%]
+30 passed, 34 subtests passed in 2.01s
+fast-checks: release-preflight PASSED exit=0 elapsedMs=2266
+fast-checks: passed; source and native qualification were not run
