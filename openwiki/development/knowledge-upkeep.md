@@ -21,10 +21,20 @@ sources:
     resource: repo://AGENTS.md
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+  - id: openwiki-source-6506da7d406f804b7ef3a6df
+    resource: repo://docs/tooling/markdown/evidence-assess.ts
+  - id: openwiki-source-13b7644050eecaa683409f39
+    resource: repo://docs/tooling/markdown/evidence-native.ts
+  - id: openwiki-source-7177b22fefe1052541d9b757
+    resource: repo://docs/tooling/okf_public.py
+  - id: openwiki-source-1dc1f7665b2e88f8623231f1
+    resource: repo://docs/tooling/publication.py
+  - id: openwiki-source-7268f9708ec0a94462a131a0
+    resource: repo://docs/tooling/reader_contracts.py
+generated: { by: "codex", at: "2026-11-03T05:20:37.443Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T05:20:37.443Z
 ---
 
 # Knowledge upkeep and coverage assessment
@@ -60,6 +70,29 @@ If source drift invalidates the plan, start from the current native run state an
 Do not repair a rejected lifecycle by editing sidecars or run metadata directly.
 
 ## Repository gates and their limits
+
+The native TypeScript adapter uses OpenWiki 0.6.1 ClaimsStore, OpenWikiIgnore, RepositoryEvidenceResolver, and runClaimsPreflight.
+Its read-only assessment never finalizes or changes verification timestamps.
+Completed reports distinguish current, stale, and unresolved Claims.
+Unresolved takes precedence over stale. Operational exceptions produce failed assessments.
+Missing or empty Claim sets, orphaned sidecars, and canonical page-digest mismatches remain explicit failures of admission.
+Public scope combines projected concepts with canonical owners referenced by authored associations.
+The complete canonical corpus receives a separate assessment.
+Reports bind the source revision, producer, native inputs, pages, sidecars, and resolved evidence digests.
+Input drift during assessment rejects the snapshot.
+
+The update workflow examines page-to-sidecar agreement before native update.
+A prose mismatch cannot enter a no-op or inherit verification through a metadata-only digest refresh.
+Routine update pull requests include canonical knowledge and projector-owned outputs.
+They exclude workflow definitions and engineering instructions.
+Partial page progress remains reviewable without a claim of complete canonical or publication acceptance.
+
+The publication manifest also owns reader contracts and reviewed authored associations.
+Associations bind the full imported content to Claim identities and statement digests or exact generated contract bytes.
+Edits to either side create a new review obligation.
+Navigation parents derive from docs.json. Parsed outgoing edges determine incoming edges.
+Reader measurements distinguish complete static footprints from unmeasured rendered expansion.
+Author review, actual reader evaluation, and native task execution remain separate evidence.
 
 `knowledgeImpact` reports concepts affected by changed cited sources.
 `verifyKnowledgeBase` examines Markdown links, source paths, and exact declaration citations.

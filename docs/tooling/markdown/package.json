@@ -3,12 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "24.21.0" },
-  "scripts": { "check": "tsc --noEmit" },
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit && npm run test:evidence",
+    "test:evidence": "node --test evidence-native.test.ts"
+  },
   "dependencies": {
     "mdast-util-from-markdown": "2.0.2",
     "mdast-util-frontmatter": "2.0.1",
-    "micromark-extension-frontmatter": "2.0.0"
+    "micromark-extension-frontmatter": "2.0.0",
+    "openwiki": "0.6.1"
   },
   "devDependencies": {
     "@types/node": "24.0.0",

@@ -1,0 +1,26 @@
+{
+  "assessorSourceRevision": "110e904fd8cf70c27d1f6547e21320dc569a91ea",
+  "status": "ASSESSED",
+  "dispositions": [
+    {
+      "rule": "Slopsentral.Grade",
+      "path": "docs/tooling/rendered/README.md",
+      "line": 1,
+      "grade": 9.25,
+      "disposition": "keep",
+      "reason": "Exact environment identities, command syntax, and evidence limits remain necessary."
+    },
+    {
+      "rule": "Slopsentral.Grade",
+      "path": "docs/reviews/documentation-migration/evidence/rendered/README.md",
+      "line": 1,
+      "grade": 8.86,
+      "disposition": "keep",
+      "reason": "The historical report keeps separate outcome, scope, and source identity qualifications."
+    }
+  ],
+  "limits": [
+    "The glossary excludes historical review reports.",
+    "Neither a grade nor an ASSESSED outcome proves reader comprehension."
+  ]
+}

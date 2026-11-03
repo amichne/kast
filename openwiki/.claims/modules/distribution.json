@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b3caec1e51b529a7ded134809cf6fce672c246db35bac451c68c2a1334d0c02c",
+  "pageVersion": "sha256:6444ce5cb4dcfe9cd01174363a4ba99814ce8f0fbebdab7f5ddbdef0bec71b90",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:63192b73621d69224301e9658aa30f7c4fd192304924389c5e19e3a4249c6a23"
+          "version": "repo-file-v1:sha256:a1bc58727a1a8ec61b1a39890cfbeafe68f9051f2740f4e156d9262b1e6f202d"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
@@ -112,7 +112,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
-          "version": "repo-file-v1:sha256:a83b08d6dc545490ef1a34916dd291793ef3cca0b0c8900e1d9f52843194f494"
+          "version": "repo-file-v1:sha256:3c7b0af9f203e311a990b3009aa43c98b3a5d1df2c07ece053250eef33f98519"
         }
       ]
     },
@@ -166,7 +166,7 @@
         },
         {
           "resource": "repo://packaging/run-installed-product.py",
-          "version": "repo-file-v1:sha256:88e53e97ec515d58577c6d0af5a5aac042130e31bebacee284d9a9c4a208ff07"
+          "version": "repo-file-v1:sha256:1c3aec745fc9ae8671e9227a2f5b96a22d83e57b99a2f44b6f50f5c45ca89145"
         }
       ]
     },
@@ -266,7 +266,7 @@
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast",
-          "version": "repo-file-v1:sha256:77f53e0c0ab8271b49f6da36c4ae7d2779bc58660779662c571ba4557ae37dc6"
+          "version": "repo-file-v1:sha256:b2710696b1c843e7f10c9f1cd3d80dc226d9844dd87fbc128fa7355c6b1b2c0c"
         },
         {
           "resource": "repo://packaging/install-checkout.sh",
@@ -310,7 +310,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
         }
       ]
     },
@@ -346,7 +346,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -368,7 +368,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -432,7 +432,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
+          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
         }
       ]
     },
@@ -472,7 +472,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:5953444ab798ead2d4bb75a2ad3d49e536294ebb6d1a4d2d5e089e4393fa823f"
+          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
         },
         {
           "resource": "repo://build.gradle.kts",
@@ -483,6 +483,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T18:28:45.652Z"
+    "at": "2026-11-03T05:16:29.521Z"
   }
 }

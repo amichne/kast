@@ -28,6 +28,48 @@ The migration preserves product behavior, installation policy, schema contracts,
 | Independent final review | Not run | Review exact integrated diff |
 | Merge and live publication | Not run | Push and PR authorized, final merge authority needs examination |
 
+## Implementation checkpoint
+
+The native adapter passes 21 focused cases, including native no-op and later prose-drift rejection.
+The network-denied assessment and native no-op procedures pass.
+Publication admission passes 23 focused cases, including imported content, changed Claim statements, projected introductions, and malformed receipts.
+The documentation runner passes 449 Python tooling cases at this checkpoint.
+Focused callable generation, JSON contracts, knowledge citations, and knowledge impact pass.
+The refreshed target remains `7de04069e2a4a781a603ff51b3f9016b66108790`.
+
+The manifest now binds 56 public MDX consumers, including generated views with authored introductions.
+The five callable routes keep their generator identities and parity procedure.
+The product brief now describes the checkout-free bootstrap that current `install.sh` supplies.
+The generators supply all six previously deferred contextual links.
+
+Native OpenWiki completed four scoped runs and reconciled inherited stale evidence.
+Canonical content now covers the seven named gaps without deleting the richer public references.
+Independent source review found and resolved omitted value-path classification and string-content facts.
+It also corrected callback storage estimates and the scope of named dependency examples.
+Default preparation hooks and debug-only response diagnostics replace inherited claims that no longer match source.
+
+The generated public views preserve their manifest-owned routes and legacy anchors.
+Architecture no longer repeats the module inventory in both authority and topology explanations.
+Several explanations grew after factual reconciliation. No complete complexity-reduction claim follows.
+
+## Current evidence limits
+
+The initial full prose run exposed 228 blocking lexical findings across canonical pages and generated snippets.
+These findings remain failures. No policy, vocabulary, or threshold changed to conceal them.
+The historical reader corpus also names the retired `experiments/task-access/SKILL.md`.
+The current runner must derive its corpus from maintained inputs while preserving the historical corpus and both pinned policies.
+
+Pinned Mintlify `4.2.841` fails on the unchanged recursive query-symbols schema with `impossible schema combination`.
+A disposable `4.2.1189` comparison also fails. No schema or renderer pin changed.
+Four ordinary representative routes and 18 explorer states pass their sampled rendered procedures.
+The five callable measurements remain failed or not-run.
+Investigation captures precede final source stability and cannot qualify the candidate.
+
+GitHub deployment `7503304256` reports success for `d79fceffa9ae3617a4d215d87260908ea657dc88` at `https://kast.michne.com`.
+That deployment does not establish publication of this task branch.
+
+Continue with lexical reconciliation, current prose receipts, final rendered receipts, exact-source repository gates, independent review, and the authorized PR workflow.
+
 ## Baseline evidence
 
 All 65 canonical page digests agree with their native sidecars.

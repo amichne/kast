@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "nodeVersion": "v24.21.0",
+  "agentBrowserVersion": "agent-browser 0.39.1",
+  "browserVersion": "155.0.8059.84",
+  "mintlifyVersion": "4.2.841",
+  "mintlifyClientVersion": "0.0.3547",
+  "viewports": [
+    {"name": "desktop", "width": 1440, "height": 1000},
+    {"name": "mobile", "width": 390, "height": 844}
+  ],
+  "screenshotComparison": "Only compare captures with equal platform, browser executable digest, preview bundle digest, font digests, viewport, theme, and zoom."
+}

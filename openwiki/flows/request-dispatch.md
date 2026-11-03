@@ -92,10 +92,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-09T14:15:56.247Z" }
+generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:07:02.262Z
 ---
 
 # Request dispatch
@@ -154,7 +154,7 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-Private client response activity distinguishes frame admission, body draining,
+With debug configuration enabled, private client response activity distinguishes frame admission, body draining,
 strict JSON decoding, canonical wire decoding, live-basis admission and prepared
 completion admission. The finite cause remains diagnostic data alongside the
 existing finite public rejection. Announced lengths are checked against the

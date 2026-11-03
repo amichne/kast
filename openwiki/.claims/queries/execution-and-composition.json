@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:622e1f4de318414d4088e86f5b9576de9739ee3eb5dbad31c56fbd509df7680d",
+  "pageVersion": "sha256:0433993a7a5315312d4a9e163cc5c45d97b8a54d261f9321dc9b402371877ded",
   "claims": [
     {
       "id": "claim_b7f827aae9f340ae985ef5bf0eb5ab82",
@@ -39,10 +39,50 @@
           "version": "repo-file-v1:sha256:9dd8ec156d1071075bb3672d5f49170688279b2efa0bc82b19c999d7b36625d2"
         }
       ]
+    },
+    {
+      "id": "claim_e295df4c22ab403baa6a6c4ecc496fc5",
+      "statement": "Exact-name candidate-file exclusion exists only after complete index acquisition; unsupported names use exhaustive discovery, and VFS inventory, compiler refinement, coverage and resource limits remain independent.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt",
+          "version": "repo-file-v1:sha256:111b3a6da85e3a04f5ebac6dd1a47af4f883e42706431307cb524a60542779fc"
+        }
+      ]
+    },
+    {
+      "id": "claim_773f95f687a44f00b45ac52eedff0453",
+      "statement": "TRACE groups all scoped callable arrivals before one downstream CALLERS read while retaining matching exact capabilities and occurrence evidence within its fixed topology.",
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt",
+          "version": "repo-file-v1:sha256:588e6fc362dc5d20e5dcc74ca11d0902619668a3e6ee4c1a7813f5d534e210bd"
+        }
+      ]
+    },
+    {
+      "id": "claim_9202cad29e434468be035287c1dad1aa",
+      "statement": "The invocation-owned reference inventory slot keys authority, subject, scope and purpose, admits only eligible cursor-zero bounded inventories, and preserves distinct miss, found and unavailable outcomes before relation confirmation.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt",
+          "version": "repo-file-v1:sha256:692c7475a19b3caaa54f3be6b47c2005eeedd000707901e8f469fc13759dc4c7"
+        }
+      ]
+    },
+    {
+      "id": "claim_39213c09be6c49b2901c3d21df45fcd8",
+      "statement": "IMPACT reuses settled reads while preserving each producer and ordered route history, finite failures, unfinished work and original ledger obligations; a selected preview cannot establish whole-investigation completion.",
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
+          "version": "repo-file-v1:sha256:da227b2815b06fcdfe761f4347bb09fafb1e742f7a50593044cef95af7e8085f"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T05:07:02.262Z"
   }
 }

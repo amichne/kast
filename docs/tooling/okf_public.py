@@ -79,6 +79,15 @@ class Manifest:
 
 
 @dataclass(frozen=True, slots=True)
+class OutputPaths:
+    paths: tuple[str, ...]
+
+
+def output_paths(manifest: Manifest) -> OutputPaths:
+    return OutputPaths((OUTPUT, *(f"docs/public/{view.route}.mdx" for view in manifest.views)))
+
+
+@dataclass(frozen=True, slots=True)
 class _Concept:
     path: str
     sha256: str
@@ -186,7 +195,13 @@ def _read(root: Path, name: str) -> str | Failure:
 
 def parse_manifest(text: str) -> Manifest | Failure:
     raw = _json(text, MANIFEST)
-    if not _record(raw) or set(raw) != {"schemaVersion", "views", "authored"}:
+    if not _record(raw) or not {"schemaVersion", "views", "authored"} <= set(raw) <= {
+        "schemaVersion",
+        "views",
+        "authored",
+        "readerContracts",
+        "associations",
+    }:
         return Failure(Code.INPUT, MANIFEST)
     if type(raw["schemaVersion"]) is not int or raw["schemaVersion"] != 1:
         return Failure(Code.INPUT, MANIFEST)
@@ -590,9 +605,15 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
+    mode.add_argument("--output-paths", action="store_true")
     parser.add_argument("--repo", type=Path, default=ROOT)
     args = parser.parse_args()
-    result = run(args.repo.resolve(), args.write)
+    if args.output_paths:
+        source = _read(args.repo.resolve(), MANIFEST)
+        manifest = source if isinstance(source, Failure) else parse_manifest(source)
+        result = manifest if isinstance(manifest, Failure) else output_paths(manifest)
+    else:
+        result = run(args.repo.resolve(), args.write)
     print(json.dumps(asdict(result), indent=2))
     return 1 if isinstance(result, Failure) else 0
 

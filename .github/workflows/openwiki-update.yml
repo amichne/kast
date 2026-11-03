@@ -38,6 +38,9 @@ jobs:
         # mermaid + jsdom are optional; they add high-fidelity validation of Mermaid diagrams. Remove if your wiki has none.
         run: npm install --global openwiki@0.6.1 mermaid@11.16.0 jsdom@29.1.1
 
+      - name: Reject unreconciled canonical prose before native update
+        run: node docs/tooling/markdown/evidence-assess.ts --root "$GITHUB_WORKSPACE" --scope canonical --check-pages
+
       - name: Run OpenWiki
         id: openwiki
         continue-on-error: true
@@ -67,12 +70,16 @@ jobs:
       - name: List OpenWiki update paths
         id: paths
         if: ${{ !cancelled() }}
-        # CLAUDE.md is listed only when present: git add fails on a missing path
-        # and then stages nothing.
         run: |
-          paths=openwiki,AGENTS.md,.github/workflows/openwiki-update.yml,docs/public
-          if [ -e CLAUDE.md ]; then paths="$paths,CLAUDE.md"; fi
-          echo "list=$paths" >> "$GITHUB_OUTPUT"
+          uv run --locked --project docs/tooling python docs/tooling/okf_public.py --output-paths > "$RUNNER_TEMP/okf-output-paths.json"
+          python3 - "$RUNNER_TEMP/okf-output-paths.json" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          paths = ["openwiki", *json.loads(Path(sys.argv[1]).read_text())["paths"]]
+          with Path(sys.argv[2]).open("a") as output:
+              output.write("list=" + ",".join(paths) + "\n")
+          PY
 
       - name: Create OpenWiki update pull request
         id: create-pr
@@ -90,8 +97,8 @@ jobs:
 
             When the result is `failure`, this PR intentionally preserves only the
             pages completed before the failure, with their public projections.
-            A rejected projection prevents this PR. Merge it to make that progress the
-            baseline for the next scheduled run.
+            A rejected projection prevents this PR. Partial progress does not satisfy
+            the publication assessment or the complete canonical review.
 
       - name: Annotate OpenWiki update pull request
         if: ${{ !cancelled() && steps.create-pr.outputs.pull-request-url != '' }}

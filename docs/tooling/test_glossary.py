@@ -996,6 +996,7 @@ def test_public_glossary_keeps_canonical_definitions_and_sources() -> None:
     glossary = load_glossary(ROOT / "docs/glossary.json")
     assert not isinstance(glossary, Rejected)
     public = render_public_mdx(glossary)
+    assert "[How to understand a Kast answer](/explanation)" in public
     assert public == (ROOT / "docs/public/glossary.mdx").read_text()
     for entry in glossary.entries:
         assert f"## {entry.term}\n\n{entry.definition}\n" in public

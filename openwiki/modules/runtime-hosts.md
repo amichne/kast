@@ -287,10 +287,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-31T09:43:22.050Z" }
+generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T05:07:02.262Z
 ---
 
 # Runtime and process hosts
@@ -570,7 +570,7 @@ The hosted service factory now supplies the K2 value-flow adapter, exact produce
 
 Each semantic diagnostic receipt initializes seed-read, declaration-model, boundary-site-model and value-flow provider counters to zero before observations. Site revalidation rejection counts also begin at explicit zero and retain actual increments through receipt publication. Retained-page captures can therefore distinguish an observed zero from an unavailable counter. These bounded, host/epoch-correlated runtime measurements do not grant compiler, model or completion authority.
 
-The existing client response boundary emits private typed frame, body and
+With debug configuration enabled, the existing client response boundary emits private typed frame, body and
 admission activity. Frame bounds precede body acquisition; finite canonical-wire,
 live-basis and completion causes survive in diagnostic evidence beside the
 existing public failure. No response payload or opaque identity is logged.

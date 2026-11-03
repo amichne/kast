@@ -46,10 +46,10 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
-generated: { by: "codex", at: "2026-10-16T06:54:44.448Z" }
+generated: { by: "codex", at: "2026-11-03T05:16:29.521Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:16:29.521Z
 ---
 
 # Direct MCP and tool RPC
@@ -75,7 +75,8 @@ Modern requests need the supported protocol version.
 The server distinguishes initialization, discovery, tool listing, calls, and unsupported methods.
 
 Legacy initialization or the first admitted modern request starts workspace preparation once.
-The same session owner serves later semantic demand and health requests without a separate setup hook.
+The same session owner serves later semantic demand and health requests.
+Installed agent preparation hooks remain a separate caller of the existing preparation owner.
 Tool annotations describe the preparation effect as well as the tool's nominal read behavior.
 Preparation can save editor buffers and refresh the project.
 A read query therefore does not imply an entirely effect-free client invocation.

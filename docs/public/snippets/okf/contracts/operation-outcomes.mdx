@@ -10,6 +10,107 @@ Recorded evidence differs from current source or needs further assessment. This 
 
 ## Operation outcomes
 
+<a id="okf-contracts-operation-outcomes-public-result-interpretation" />
+
+## Public result interpretation
+
+The public response separates semantic completion, producer progress, and output delivery.
+`kast.query.run.v9` identifies the RUN response contract.
+Each public RUN uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`.
+Complete coverage describes the declared supported domain.
+Semantic completion also needs the model's proof obligations.
+Qualified output without rows does not prove absence.
+
+Source-symbol TRACE uses `SOURCE_RELATIONSHIPS` with `callbackEffects: EVIDENCE_ONLY`.
+Source filters and deduplication preserve that interpretation before TRACE.
+Explicit relation operations, traversal, composition, retained sources, and impact sources keep stricter callback proof.
+Compiler mapping failures, stale dependency evidence, and exhausted grants still prevent completion.
+Static source relationships never prove runtime execution.
+
+`COMPLETION_UNPROVEN` keeps its specific cause and original coverage.
+Successful retention adds a result reference, preview, original question, and public `nextQuery` arguments.
+The canonical question has a different grammar from those public arguments.
+`policyProgress: EVIDENCE_ONLY` and `POLICY_REJECTED_EVIDENCE` preserve rejection through later output reads.
+An optional `seedQuery` starts another investigation from proved preview identities.
+It does not cover omitted rows or unfinished scope.
+Failed retention reports the storage cause without a result reference.
+
+<a id="okf-contracts-operation-outcomes-rows-evidence-and-handles" />
+
+## Rows, evidence, and handles
+
+`invocation.accumulated_row_count` counts logical rows across admitted pages.
+`INLINE` includes all produced rows. `PREFIX` includes an ordered portion within the row and encoded-byte limits.
+The preview records its row count and the UTF-8 bytes of its encoded items array.
+An output preview never changes producer coverage.
+
+Row and evidence cursors advance independently.
+An evidence-only page can advance `evidence_window` without changing its row cursor.
+Evidence order is failures, omissions, walk, reference, discovery, then relation observations.
+`MORE` keeps the next evidence position. `FINAL` marks the stored end.
+After the last row, evidence can advance while the row cursor stays at the accumulated count.
+
+Public `RESUME` accepts an issued `query-output:v1` token and only shows produced output.
+`READ_RESULT` shows immutable retained rows and evidence.
+Neither operation visits new files or restarts discovery.
+`retention_unavailable` records loss of the remaining suffix.
+A missing continuation never proves completion.
+
+Exact symbol references select fresh `SYMBOL_REFS` queries with current compiler admission.
+Retained-result references identify original results. Row IDs belong to their owning result.
+An anonymous `candidateSelector` supplies `READ_SOURCE.candidateRef`.
+Source reads check the issued snapshot and do not reacquire exact-reference authority.
+Owner retirement, a changed epoch, expiry, and eviction can block retained output.
+
+<a id="okf-contracts-operation-outcomes-value-path-relationships" />
+
+## Value-path relationships
+
+Full paths and compact findings keep classification separate from evidence authority.
+ESTABLISHED with EXACT means that each admitted step preserves the tracked value.
+ESTABLISHED with DERIVED keeps established content construction.
+NOT_ESTABLISHED identifies the first step without proved correspondence and its cause.
+A later exact step cannot restore missing proof or erase earlier derivation.
+Compiler, reviewed-library, and supplied model evidence remain distinct.
+A modeled representation or modeled interface alone produces NOT_ESTABLISHED.
+
+Kotlin string templates consume the established result of each embedded expression.
+A nullable String contributes content only under its non-null condition.
+Its null alternative constructs literal null without source-content contribution.
+A null-only result keeps an explicit constant-construction record.
+Repeated template entries keep distinct occurrences even when they reach the same requested site.
+A constant getter or conversion can discard its input while its own String result contributes content.
+Implicit object conversion selects the applicable kotlin.Any.toString member or override.
+An unsupported conversion keeps its exact entry and selected-member evidence.
+
+<a id="okf-contracts-operation-outcomes-compact-output-and-transport-envelopes" />
+
+## Compact output and transport envelopes
+
+Callback proof records consume their admitted result grant.
+Their conservative byte estimates describe storage without a separate byte quota or encoded-output allowance.
+A result-limit rejection keeps its admitted prefix and unresolved proof.
+The kast_semantic_read receipt keeps diagnostic estimates and counters separately from serialized response size.
+These estimates do not measure heap use or establish semantic completion.
+
+Compact output is the default. `verbose: true` adds detail without stronger semantic evidence.
+Compact row node IDs join `relation_graph.nodes`.
+Connection IDs join `connection_witnesses`. Reference-edge witness IDs join `witnesses`.
+These IDs belong to the graph's retained basis and cannot select live declarations.
+Each node keeps its exact selector. `relation_graph.detail` supplies a detailed retained read.
+Table joins do not advance row or evidence cursors.
+`knownMinimum` counts proved logical output, including sent rows, rather than candidates or remaining pages.
+
+Direct MCP returns the operation document in `result.structuredContent` and text.
+Tool RPC and completed hosted calls carry `document`.
+A distinct MCP rejection sets `result.isError: true` and reports `type: MCP_REJECTED`, `status: rejected`, and `error`.
+`INVOCATION_IN_PROGRESS` rejects overlapping tool calls on that connection.
+It does not report a semantic rejection or establish that the active query failed.
+`health_check` retains its separate readiness shape.
+
+The [public results reference](https://github.com/amichne/kast/blob/main/docs/public/reference/responses.mdx) keeps reader-specific tables, examples, and lookup links.
+Its five-row preview example is an illustration, without a captured execution claim.
+
 Text discovery uses existing exact-symbol query outcomes. Composition rejects
 more than 1000 distinct lexical match exemplars for one owner with the finite
 `TEXT_MATCH_LIMIT_EXCEEDED` execution reason. Wire and installed projections

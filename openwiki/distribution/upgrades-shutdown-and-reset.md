@@ -51,7 +51,7 @@ sources:
 generated: { by: "codex", at: "2026-10-31T10:43:14.711Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T05:07:02.262Z
 ---
 
 # Upgrade, shutdown, and guarded reset

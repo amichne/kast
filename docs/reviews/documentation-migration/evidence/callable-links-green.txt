@@ -1,0 +1,241 @@
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :cli:test --tests io.github.amichne.kast.cli.MintlifyCallableReferenceTest :cli:generateMintlifyCallableReference
+semantic-fixtures: SKIPPED; set KAST_SEMANTIC_FIXTURES=true to enable
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :distribution:managed:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :cli:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:cli:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:output:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:recovery:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:apply:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:sqlite:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:verify:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :cli:processResources UP-TO-DATE
+> Task :app-server:processResources UP-TO-DATE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :app-server:processTestFixturesResources NO-SOURCE
+> Task :change:apply:processResources NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :cli:processTestResources UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :change:verify:processResources NO-SOURCE
+> Task :change:contract:processResources NO-SOURCE
+> Task :evidence:contract:processResources NO-SOURCE
+> Task :change:recovery:processResources NO-SOURCE
+> Task :distribution:cli:processResources UP-TO-DATE
+> Task :distribution:managed:processResources NO-SOURCE
+> Task :distribution:contract:processResources UP-TO-DATE
+> Task :distribution:output:processResources NO-SOURCE
+> Task :evidence:sqlite:processResources NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :protocol:wire:processTestFixturesResources NO-SOURCE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :source:contract:processResources NO-SOURCE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :distribution:cli:generateManagementVersion
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar
+> Task :distribution:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :distribution:contract:compileJava NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :distribution:contract:classes UP-TO-DATE
+> Task :distribution:output:compileKotlin UP-TO-DATE
+> Task :distribution:output:compileJava NO-SOURCE
+> Task :distribution:output:classes UP-TO-DATE
+> Task :distribution:output:jar
+> Task :distribution:managed:compileKotlin UP-TO-DATE
+> Task :distribution:managed:compileJava NO-SOURCE
+> Task :distribution:managed:classes UP-TO-DATE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :evidence:contract:compileKotlin UP-TO-DATE
+> Task :evidence:contract:compileJava NO-SOURCE
+> Task :evidence:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :evidence:contract:jar
+> Task :diagnostic:contract:jar
+> Task :workspace:contract:jar
+> Task :distribution:managed:jar
+> Task :distribution:contract:jar
+> Task :symbol:contract:jar
+> Task :workspace:contract:compileTestFixturesKotlin
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar
+
+> Task :app-server:verifyPublicQueryGeneratorRules
+.................................
+----------------------------------------------------------------------
+Ran 33 tests in 0.501s
+
+OK
+
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:registry:jar
+
+> Task :app-server:verifyPublicQueryGeneration
+Checked 69 public tool artifacts
+
+> Task :app-server:compileKotlin UP-TO-DATE
+> Task :app-server:compileJava NO-SOURCE
+> Task :app-server:classes UP-TO-DATE
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :source:contract:jar
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar
+> Task :change:contract:compileKotlin UP-TO-DATE
+> Task :change:contract:compileJava NO-SOURCE
+> Task :change:contract:classes UP-TO-DATE
+> Task :change:recovery:compileKotlin UP-TO-DATE
+> Task :change:recovery:compileJava NO-SOURCE
+> Task :change:recovery:classes UP-TO-DATE
+> Task :change:apply:compileKotlin UP-TO-DATE
+> Task :change:apply:compileJava NO-SOURCE
+> Task :change:apply:classes UP-TO-DATE
+> Task :change:verify:compileKotlin UP-TO-DATE
+> Task :change:verify:compileJava NO-SOURCE
+> Task :change:verify:classes UP-TO-DATE
+> Task :change:recovery:jar
+> Task :evidence:sqlite:compileKotlin UP-TO-DATE
+> Task :evidence:sqlite:compileJava NO-SOURCE
+> Task :evidence:sqlite:classes UP-TO-DATE
+> Task :change:apply:jar
+> Task :relation:contract:jar
+> Task :evidence:sqlite:jar
+> Task :change:verify:jar
+> Task :change:contract:jar
+> Task :query:contract:compileKotlin UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:protocol:compileKotlin UP-TO-DATE
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :protocol:wire:jar
+> Task :query:contract:jar
+> Task :protocol:contract:jar
+> Task :query:protocol:jar
+> Task :app-server:jar
+> Task :app-server:compileTestFixturesKotlin
+> Task :app-server:compileTestFixturesJava NO-SOURCE
+> Task :app-server:testFixturesClasses UP-TO-DATE
+> Task :app-server:testFixturesJar
+> Task :query:protocol:compileTestFixturesKotlin
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar
+> Task :protocol:wire:compileTestFixturesKotlin
+> Task :protocol:wire:compileTestFixturesJava NO-SOURCE
+> Task :protocol:wire:testFixturesClasses UP-TO-DATE
+> Task :protocol:wire:testFixturesJar
+> Task :distribution:cli:compileKotlin
+> Task :distribution:cli:compileJava NO-SOURCE
+> Task :distribution:cli:classes UP-TO-DATE
+> Task :distribution:cli:jar
+> Task :cli:compileKotlin
+> Task :cli:compileJava NO-SOURCE
+> Task :cli:classes UP-TO-DATE
+> Task :cli:jar
+> Task :cli:generateMintlifyCallableReference
+
+> Task :cli:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/CliCommandGraphContractTest.kt:170:24 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt:117:23 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/KastDaemonBootstrapTest.kt:81:21 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/SourceReadCliContractTest.kt:144:24 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/direct/DirectCatalogArgumentsTest.kt:92:25 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationIdeSelectionTest.kt:38:13 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationIdeSelectionTest.kt:123:13 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationIdeSelectionTest.kt:217:37 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationReplacementReceiptTest.kt:28:47 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/installation/ReplacementInstallationWorkflowTest.kt:274:13 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt:354:33 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt:401:33 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:59:34 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:63:17 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:78:25 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:139:34 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:166:34 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:189:25 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:205:34 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:222:34 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeToolTest.kt:237:34 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativePublicFixture.kt:57:13 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativePublicPeer.kt:95:21 'when' is exhaustive so 'else' is redundant here.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionHeaderTest.kt:181:27 Redundant creation of Json format. Creating instances for each use can be slow.
+
+> Task :cli:compileTestJava NO-SOURCE
+> Task :cli:testClasses UP-TO-DATE
+> Task :cli:test
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/build/reports/kotlin-build/kast-build-2026-11-03-00-10-01-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 22s
+78 actionable tasks: 40 executed, 38 up-to-date
+Configuration cache entry stored.

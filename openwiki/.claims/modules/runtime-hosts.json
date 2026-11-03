@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2d83da63753a0848a674b97f58cae7e6fc745a6fc57a8a1e9d95ba7038952313",
+  "pageVersion": "sha256:dc09cb44c2c2089d1367cf41cb5a27812eefd15386a1a03ef4f6a10b9dc4a540",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -84,15 +84,15 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
-          "version": "repo-file-v1:sha256:5819901694fb399530247f72388bc0c9620e17bfc15b0ff9a1e3ed7dc0f605fd"
+          "version": "repo-file-v1:sha256:1e785987b13330c23e92af50188ee7a43c91103f8255be46f689f5b731d35d7c"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
           "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L65-L83",
-          "version": "repo-lines-v1:sha256:04bc291eddf6cce084a9e62f8d64f4d0414623329d356c290eb45551709b808b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMWI5OTVhZjI2YzA2ZjhhZmY1MmIwZThjMjBlZTc5ZmM1NzVhZmQ3MGQ3MjU2Njk0ZjNlMzcxMDYyNjRkMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiMDNiYTMzNGMzODQ3NWEwYjY0ZTk3NjIwYTU5NDZmNWFiZjk0MWJiYjZkYzQzYjQ2NWZiZDJmOWQzNTFiODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5NTQxYWFkNjRiZjg3YTE4Mjg4YTNlMTRkZGE4NzdkZjM1MzZlMmUzZjk1ZTI2N2QzOTg1NjBhM2U3ODFlYmQifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L69-L87",
+          "version": "repo-lines-v1:sha256:55c4f64603ea930c94eb7754d2c494fc77a02d794dc795abc0cbd4a2fd360ecc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMWI5OTVhZjI2YzA2ZjhhZmY1MmIwZThjMjBlZTc5ZmM1NzVhZmQ3MGQ3MjU2Njk0ZjNlMzcxMDYyNjRkMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiMDNiYTMzNGMzODQ3NWEwYjY0ZTk3NjIwYTU5NDZmNWFiZjk0MWJiYjZkYzQzYjQ2NWZiZDJmOWQzNTFiODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5NTQxYWFkNjRiZjg3YTE4Mjg4YTNlMTRkZGE4NzdkZjM1MzZlMmUzZjk1ZTI2N2QzOTg1NjBhM2U3ODFlYmQifQ"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt",
@@ -172,7 +172,7 @@
     },
     {
       "id": "claim_e073644efa88452eb37b1a498f39049b",
-      "statement": "The existing client response boundary records bounded private typed frame, body and finite admission causes without logging payloads or opaque identities or changing public failure authority.",
+      "statement": "With debug configuration enabled, the existing client response interface records bounded private typed frame, body and finite admission causes without payloads or opaque identities and preserves public failure authority.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseCause.kt",
@@ -180,7 +180,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
-          "version": "repo-file-v1:sha256:ea827caee7329908e7e6a2869840eb2a8043d75e0e88fdafba37567b7c45a635"
+          "version": "repo-file-v1:sha256:9fac46c6a7e5b0fe9c0e103958b904a3f7387e9784deab7eb58ec77931617f0e"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
@@ -345,6 +345,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:10:25.214Z"
+    "at": "2026-11-03T05:07:02.262Z"
   }
 }

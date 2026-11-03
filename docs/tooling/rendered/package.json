@@ -1,0 +1,12 @@
+{
+  "name": "kast-documentation-rendered",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "dependencies": {
+    "agent-browser": "0.39.1"
+  }
+}

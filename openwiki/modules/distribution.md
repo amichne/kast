@@ -337,17 +337,18 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-02T18:28:45.652Z" }
+generated: { by: "codex", at: "2026-11-03T05:16:29.521Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T18:28:45.652Z
+    at: 2026-11-03T05:16:29.521Z
 ---
 
 # Distribution and packaging
 
 The Control payload contains CLI-first Codex and Copilot plugins from the canonical `agent-tools` skill.
 `kast install <harness>` admits the installed bundle and exact provider resources before setup.
-The default composition contains no automatic MCP server or hooks. Explicit `--mcp` selects the optional transport.
+The default composition includes native preparation hooks without an automatic MCP server.
+Explicit `--mcp` selects the optional transport.
 Codex and Copilot own their plugins. Pi uses native skill discovery and exact receipt-owned files.
 Release assembly emits plugin and marketplace ZIPs without a standalone skill archive.
 Query examples come from the public tool schema.

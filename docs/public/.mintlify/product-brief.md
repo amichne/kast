@@ -8,16 +8,17 @@ The native `kast` command is the primary interface.
 ## Primary audience
 
 Kotlin developers who already use Codex, Copilot, or Pi are the primary readers.
-The setup path assumes that the Kast CLI is installed.
-It selects the latest qualified development build with `kast upgrade --channel main`.
+The setup path supports a first installation without a checkout or an existing Kast CLI.
+The remote installer selects the latest qualified development build with `--developer-latest --skip-codex-plugin`.
+An existing installation uses `kast upgrade --channel main --restart-ide`.
 
 ## Source authority
 
-PR #1144 defines the installation and guidance contract for this documentation change.
-Its reviewed source revision is `647fffc46f6247fac5b0fc632ae019d157bf9020`.
-Keep the documentation aligned with that merged implementation.
-Remove inherited setup commands and release comparisons.
-Do not describe a public bootstrap that the implementation does not supply.
+The migration baseline is `7de04069e2a4a781a603ff51b3f9016b66108790`.
+`install.sh` owns the public bootstrap and developer-channel selection.
+The management CLI owns upgrades and agent guidance.
+`docs/public/start.mdx` owns the complete first-use procedure.
+Keep commands and qualifications aligned with those source owners.
 
 ## Jobs to be done
 

@@ -926,6 +926,8 @@ def render_public_mdx(glossary: Glossary) -> str:
         [
             "## Read an answer",
             "",
+            "[How to understand a Kast answer](/explanation) introduces the answer's evidence and limits.",
+            "",
             "[Evidence limits](/reference/evidence-boundaries) explains what each fact can prove. "
             "[Results](/reference/responses) defines the fields in an answer.",
             "",

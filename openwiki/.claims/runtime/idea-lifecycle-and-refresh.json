@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:46b0c62630050e3b63e51245a4b85b2a38821860dc8342c54932a98a0e0c58e3",
+  "pageVersion": "sha256:330ae833550b6113d52869a42844947c18b6d31decd033fb93d7dcb89695b0cd",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -39,10 +39,66 @@
           "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
         }
       ]
+    },
+    {
+      "id": "claim_80d7cba10f654efa9a0f95eac3382f7b",
+      "statement": "Client registration, sessions, workspace preparation, semantic requests and daemon generation remain separate proofs; hosted workspace execution admits one semantic permit and bounded queue with uncertain-write settlement fencing.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
+          "version": "repo-file-v1:sha256:5aceec734dcf5d1f2d4df673ff5554051b2d8fe9e07519f93f4246996fe91767"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt",
+          "version": "repo-file-v1:sha256:4f5e06e50436c587eef84a642e85e684076fe51089bb919fdac8425dc93a4d69"
+        }
+      ]
+    },
+    {
+      "id": "claim_6841e7e3c40a485aaee1af9d7abbb523",
+      "statement": "WorkspacePreparations coalesces work per canonical root, opens once and polls issued status within a 17-minute readiness allowance, while lifecycle frame deadlines remain separate from later semantic execution.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
+          "version": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243"
+        },
+        {
+          "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationExecutionBudget.kt",
+          "version": "repo-file-v1:sha256:74f0a6c45de95fa10be39413fc52fb46c0d67c9b0a7341a50338e2cbe6154b0a"
+        }
+      ]
+    },
+    {
+      "id": "claim_7734d5f14fe74d3bb4546106a864e74b",
+      "statement": "Settled preparation can request one bounded model-reload recovery, while later input changes stay pending until import covers them and finite operation history returns UNKNOWN_OPERATION after reclamation.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
+          "version": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt",
+          "version": "repo-file-v1:sha256:c60d21c3c571d8bd3a48431af4f88f0367e98efbe53362581452f89f9cf35673"
+        }
+      ]
+    },
+    {
+      "id": "claim_922672bb50324e35aeec6d9d0651c996",
+      "statement": "Daemon startup and retirement admit installation identity and lifecycle fences under shared ownership; records and occupied sockets alone do not establish a current generation, and restarting a daemon grants no write replay or renewed Host authority.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
+          "version": "repo-file-v1:sha256:1e785987b13330c23e92af50188ee7a43c91103f8255be46f689f5b731d35d7c"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt",
+          "version": "repo-file-v1:sha256:2abc2275ec88e1d1ed4ec8e892e1ed9287f79c5f2044e823d106884dbc9930a6"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T05:07:02.262Z"
   }
 }

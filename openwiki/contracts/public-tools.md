@@ -90,6 +90,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt
   - id: openwiki-source-6699d194831006a24f8c790c
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - id: openwiki-source-9577b7564213b6b964c79590
+    resource: repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - id: openwiki-source-25b472ce8bd658b8f8006f96
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
   - id: openwiki-source-82cf2cb34e9f56bad15bc34f
@@ -108,6 +110,8 @@ sources:
     resource: repo://copilot/extension.mjs
   - id: openwiki-source-9202c39abfaacebb6448e73f
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt
+  - id: openwiki-source-4c3bfb0ba56fa265cf888602
+    resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
   - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
@@ -180,13 +184,108 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-89238fabaeb4e17c02186073
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+  - id: openwiki-source-2b629829f5e5fae7962e2e68
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt
+generated: { by: "codex", at: "2026-11-03T05:07:02.262Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T05:07:02.262Z
 ---
 
 # Public intent tools
+
+## Public request grammar and scope
+
+Contract 18 gives RUN exactly one non-null `terminalStep`, tagged `EMIT` or `TRACE`.
+Its optional `steps` are ordered nonterminal transformations.
+EMIT accepts compatible output variants. TRACE accepts only symbol output and owns `expansionScope` directly.
+Omitted or null output selects symbol names and locations.
+Explicit `SYMBOLS` needs `fields`. An empty list keeps identity and kind alone.
+RUN-level `output`, `traceOptions`, and TRACE inside `steps` reject.
+Other actions reject `terminalStep`. `READ_RESULT.output` belongs to that action.
+
+The four query actions are RUN, output-only RESUME, retained READ_RESULT, and anchored READ_SOURCE.
+READ_SOURCE accepts an issued candidate, exact symbol, or source selector as `candidateRef`.
+It checks the original source snapshot rather than reacquiring compiler identity.
+
+Discovery sources are `SEARCH_DECLARATIONS`, `SEARCH_TEXT`, `ALL_DECLARATIONS`, `AT_LOCATION`, `SYMBOL_REFS`, `RESULT`, and `IMPACT`.
+Declaration names match exact case unless fuzzy matching is explicit.
+SEARCH_TEXT admits one case-sensitive ASCII identifier word, without phrases, qualified literals, substrings, or regular expressions.
+ALL_DECLARATIONS includes supported nested Kotlin declarations and orders them by file path and source offset.
+AT_LOCATION selects the nearest containing named declaration at a UTF-16 offset, rather than a call target.
+Default discovery covers workspace subdirectories in `main` and `test`.
+Directory, package, source-set, and kind constraints restrict seeds.
+They do not restrict later relationship destinations.
+
+WHERE filters confirmed visibility or literal name, kind, and file values.
+DISTINCT_SYMBOLS keeps the first row for each canonical identity at its pipeline position.
+EXPAND_RELATION reads one hop. WALK requests the reachable graph unless an explicit depth limits it.
+CONCAT preserves order and duplicates. UNION, INTERSECT, and DIFFERENCE compare canonical identities.
+JOIN supplies INNER, SEMI, and ANTI forms. PROJECT_BINDING selects a named cell.
+Difference and anti join need complete right-hand coverage to prove absence.
+Omitted, null, and empty steps select no transformations.
+EMIT admits at most 1000 transformations. TRACE admits 999 before its canonical suffix.
+Output variants are SYMBOLS, OCCURRENCES, TRAVERSAL_RECORDS, BINDING_ROWS, VALUE_PATHS, and IMPACT_WITNESS.
+File-scoped import occurrences cannot become declaration endpoints for later expansion.
+
+TRACE includes seeds, reference owners, implementations or overrides, direct callers, and one further caller layer.
+Type seeds also supply direct callable members without inventing calls from the type.
+WORKSPACE is the default for TRACE, EXPAND_RELATION, and exhaustive WALK.
+An explicit WALK depth defaults to RETAINED_SEED.
+SOURCE_DOMAIN needs source sets, source policy, and generated-source policy.
+Its optional directory includes subdirectories by default.
+Explicit destination scope applies before native enumeration.
+An explicit maximum depth includes nodes at that depth without expanding from them.
+Resource exhaustion cannot shorten the requested extent into a complete answer.
+
+IMPACT uses exact whole-call UTF-16 producer anchors with enclosing and callable identities.
+It needs explicit declarations, domain, `KOTLIN_FORWARD_V1`, and reviewed models.
+An empty model array supplies none. Requested sites keep their declared formal indices rather than named-argument source order.
+Public sites do not accept retained execution-owner, value-path, or call-stack fields.
+IMPACT admits no transformation steps.
+Its witness sections are PRODUCERS, MODELS, NATIVE_READS, READ_REJECTIONS, FINDINGS, and SITE_ACCOUNTING.
+Before ledger finalization, witness reads reject with `RESULT_FIELD_UNAVAILABLE`.
+An empty preview does not prove that no paths exist.
+More presentation bytes expose existing paths without discharging their proof obligations.
+
+## Execution, retention, and finite failures
+
+RUN defaults to `RUNNER_CONTROLLED` without implicit semantic time, work, result, or internal retention quotas.
+Explicit `maxElapsedMs` includes model capture. Explicit `maxWorkUnits` rejects in this mode.
+Cancellation and disconnection stop execution. Presentation pages remain finite.
+`BOUNDED` selects configured grants and ceilings.
+
+| Bounded query field | Default |
+| --- | --- |
+| `maxElapsedMs` | 15,000 ms |
+| `maxWorkUnits` | 2,000,000 work units |
+| `maxResults` | 128 rows |
+| `maxReturnedBytes` | 49,152 bytes |
+
+Source reads default to 10,000 work units and 128 entities, with 15,000 ms and 49,152 bytes.
+The four execution ceilings default to 2,147,483,646.
+Operator ceilings, transport capacity, and remaining host time can lower the admitted grant.
+The host query deadline defaults to 30,000 ms.
+Time, work, result, and byte allowances remain separate.
+The response reports admission rather than merely echoing a requested value.
+
+Each bounded checkpoint defaults to 33,554,432 charged bytes.
+Each continuation store defaults to 134,217,728 charged bytes, 64 entries, and a 600,000 ms lifetime.
+The checkpoint allowance cannot exceed the store allowance.
+These conservative charges do not measure heap use.
+Runner-controlled quota bypass does not renew external token lifetimes or prove completion.
+Public RESUME only presents output, without continuing unfinished semantic work.
+
+Completion failures distinguish unsupported output, unproved completion, unproved investigation, unavailable retention, and unavailable result fields.
+They preserve original qualifications and finite causes.
+Expired or foreign retained state cannot recover through a larger grant.
+Clean file diagnostics do not prove every declaration identity.
+A missing write response, timeout, or cancellation does not prove absence of a source effect.
+Write recovery uses its plan and phase evidence before another write.
+
+Root `verbose` is a non-null boolean with default false.
+The installed catalog remains authoritative for an installed release.
+The [query reference](../../docs/public/reference/api.mdx) and [limit reference](../../docs/public/reference/limits.mdx) keep exact lookup tables and request examples.
 
 The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
 

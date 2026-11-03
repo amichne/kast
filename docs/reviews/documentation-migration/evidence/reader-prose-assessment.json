@@ -1,0 +1,122 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 10.12 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 521,
+        "fleschKincaidGrade": 10.12,
+        "sentences": 32,
+        "words": 275,
+        "wordsPerSentence": 8.59
+      },
+      "path": "docs/public/.mintlify/product-brief.md",
+      "sourceSha256": "15e7a08af1fa62aa647c4c5d1e209c49181cbe16401ae89ba29d0d785099456e",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [],
+      "metrics": {
+        "estimatedSyllables": 829,
+        "fleschKincaidGrade": 5.72,
+        "sentences": 74,
+        "words": 528,
+        "wordsPerSentence": 7.14
+      },
+      "path": "docs/public/glossary.mdx",
+      "sourceSha256": "1556ef4c821b70b97c2505fab5db3cf9edddfde4081110d7852a414b47a89f00",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 12.27 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 1128,
+        "fleschKincaidGrade": 12.27,
+        "sentences": 49,
+        "words": 571,
+        "wordsPerSentence": 11.65
+      },
+      "path": "docs/reviews/documentation-migration/reader-review.md",
+      "sourceSha256": "7d6965b8b8b28bd33578843670a54e0e4da87474c90619c1c46fefc6daffe635",
+      "terminology": {
+        "type": "OUT_OF_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 10.86 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 129,
+        "fleschKincaidGrade": 10.86,
+        "sentences": 7,
+        "words": 67,
+        "wordsPerSentence": 9.57
+      },
+      "path": "docs/reviews/documentation-migration/evidence/contextual-links-red-green.md",
+      "sourceSha256": "6149c730af4a36f3e4f01d2a32f0185c1b2356d25339583ff7526cb9e1519ba8",
+      "terminology": {
+        "type": "OUT_OF_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "glossary": {
+    "entries": 23,
+    "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+    "type": "CHECKED"
+  },
+  "schemaVersion": 1,
+  "type": "ASSESSED"
+}

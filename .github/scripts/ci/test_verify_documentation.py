@@ -45,6 +45,16 @@ class DocumentationProofTest(unittest.TestCase):
             commands(()),
         )
 
+    def test_documentation_lane_keeps_native_claim_and_reader_obligations(self):
+        plan = commands(())
+        package = json.loads(Path("docs/tooling/markdown/package.json").read_text())
+        self.assertIn("test:evidence", package["scripts"]["check"])
+        self.assertIn(
+            ("uv", "run", "--locked", "--project", "docs/tooling", "python",
+             "docs/tooling/reader_contracts.py", "--report",
+             "build/reports/documentation/reader-contracts.json"), plan,
+        )
+
     def test_navigation_exposes_reader_sections_and_legacy_example(self):
         config = json.loads(Path("docs/public/docs.json").read_text())
         tabs = config["navigation"]["tabs"]

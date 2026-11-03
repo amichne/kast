@@ -25,14 +25,32 @@ code_sources:
 sources:
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - id: openwiki-source-32409ff9180fb1de21a3dea3
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - id: openwiki-source-03a0b1a7c53feb2ca69eaad8
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
   - id: openwiki-source-1d161f3eb7933044519fd33a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-d69d2f9483e3ef07d3d7af62
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
   - id: openwiki-source-1368a6d1e2827cd0501cec50
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
+  - id: openwiki-source-185b35d3438d124da26fc35f
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathClassificationDocument.kt
+  - id: openwiki-source-01b72c0031ed69c6870649b2
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
+  - id: openwiki-source-a69c24d60edd91bff2c95c93
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryInvocationDocument.kt
   - id: openwiki-source-ddbecea6a66f516818cd6c13
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
+  - id: openwiki-source-298cd684b4ea067ededc36fe
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryCompletionRejectionCliDocument.kt
+  - id: openwiki-source-f25255e9bb017d304eee3d17
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt
+  - id: openwiki-source-9bbe0b51f46e3181b77fd01f
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultCliDocuments.kt
+  - id: openwiki-source-c73506fa551638aea61f2ad6
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactClassification.kt
   - id: openwiki-source-9fcd90db4b894268639790f3
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
   - id: openwiki-source-4be8493dd702830e9781ac13
@@ -43,13 +61,114 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt
   - id: openwiki-source-8abcd99add0585ea126a3883
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+  - id: openwiki-source-f59335e3d2864a9877a4b4c2
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt
+  - id: openwiki-source-c02d6c9ee1cca469a96beea5
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackFlowRetention.kt
+  - id: openwiki-source-4c00982fad30a76a898b74f1
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringContent.kt
+  - id: openwiki-source-6b9226c3dcd93a43cae28064
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringConversion.kt
+generated: { by: "codex", at: "2026-11-03T05:24:15.950Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:24:15.950Z
 ---
 
 # Operation outcomes
+
+## Public result interpretation
+
+The public response separates semantic completion, producer progress, and output delivery.
+`kast.query.run.v9` identifies the RUN response contract.
+Each public RUN uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`.
+Complete coverage describes the declared supported domain.
+Semantic completion also needs the model's proof obligations.
+Qualified output without rows does not prove absence.
+
+Source-symbol TRACE uses `SOURCE_RELATIONSHIPS` with `callbackEffects: EVIDENCE_ONLY`.
+Source filters and deduplication preserve that interpretation before TRACE.
+Explicit relation operations, traversal, composition, retained sources, and impact sources keep stricter callback proof.
+Compiler mapping failures, stale dependency evidence, and exhausted grants still prevent completion.
+Static source relationships never prove runtime execution.
+
+`COMPLETION_UNPROVEN` keeps its specific cause and original coverage.
+Successful retention adds a result reference, preview, original question, and public `nextQuery` arguments.
+The canonical question has a different grammar from those public arguments.
+`policyProgress: EVIDENCE_ONLY` and `POLICY_REJECTED_EVIDENCE` preserve rejection through later output reads.
+An optional `seedQuery` starts another investigation from proved preview identities.
+It does not cover omitted rows or unfinished scope.
+Failed retention reports the storage cause without a result reference.
+
+## Rows, evidence, and handles
+
+`invocation.accumulated_row_count` counts logical rows across admitted pages.
+`INLINE` includes all produced rows. `PREFIX` includes an ordered portion within the row and encoded-byte limits.
+The preview records its row count and the UTF-8 bytes of its encoded items array.
+An output preview never changes producer coverage.
+
+Row and evidence cursors advance independently.
+An evidence-only page can advance `evidence_window` without changing its row cursor.
+Evidence order is failures, omissions, walk, reference, discovery, then relation observations.
+`MORE` keeps the next evidence position. `FINAL` marks the stored end.
+After the last row, evidence can advance while the row cursor stays at the accumulated count.
+
+Public `RESUME` accepts an issued `query-output:v1` token and only shows produced output.
+`READ_RESULT` shows immutable retained rows and evidence.
+Neither operation visits new files or restarts discovery.
+`retention_unavailable` records loss of the remaining suffix.
+A missing continuation never proves completion.
+
+Exact symbol references select fresh `SYMBOL_REFS` queries with current compiler admission.
+Retained-result references identify original results. Row IDs belong to their owning result.
+An anonymous `candidateSelector` supplies `READ_SOURCE.candidateRef`.
+Source reads check the issued snapshot and do not reacquire exact-reference authority.
+Owner retirement, a changed epoch, expiry, and eviction can block retained output.
+
+## Value-path relationships
+
+Full paths and compact findings keep classification separate from evidence authority.
+ESTABLISHED with EXACT means that each admitted step preserves the tracked value.
+ESTABLISHED with DERIVED keeps established content construction.
+NOT_ESTABLISHED identifies the first step without proved correspondence and its cause.
+A later exact step cannot restore missing proof or erase earlier derivation.
+Compiler, reviewed-library, and supplied model evidence remain distinct.
+A modeled representation or modeled interface alone produces NOT_ESTABLISHED.
+
+Kotlin string templates consume the established result of each embedded expression.
+A nullable String contributes content only under its non-null condition.
+Its null alternative constructs literal null without source-content contribution.
+A null-only result keeps an explicit constant-construction record.
+Repeated template entries keep distinct occurrences even when they reach the same requested site.
+A constant getter or conversion can discard its input while its own String result contributes content.
+Implicit object conversion selects the applicable kotlin.Any.toString member or override.
+An unsupported conversion keeps its exact entry and selected-member evidence.
+
+## Compact output and transport envelopes
+
+Callback proof records consume their admitted result grant.
+Their conservative byte estimates describe storage without a separate byte quota or encoded-output allowance.
+A result-limit rejection keeps its admitted prefix and unresolved proof.
+The kast_semantic_read receipt keeps diagnostic estimates and counters separately from serialized response size.
+These estimates do not measure heap use or establish semantic completion.
+
+Compact output is the default. `verbose: true` adds detail without stronger semantic evidence.
+Compact row node IDs join `relation_graph.nodes`.
+Connection IDs join `connection_witnesses`. Reference-edge witness IDs join `witnesses`.
+These IDs belong to the graph's retained basis and cannot select live declarations.
+Each node keeps its exact selector. `relation_graph.detail` supplies a detailed retained read.
+Table joins do not advance row or evidence cursors.
+`knownMinimum` counts proved logical output, including sent rows, rather than candidates or remaining pages.
+
+Direct MCP returns the operation document in `result.structuredContent` and text.
+Tool RPC and completed hosted calls carry `document`.
+A distinct MCP rejection sets `result.isError: true` and reports `type: MCP_REJECTED`, `status: rejected`, and `error`.
+`INVOCATION_IN_PROGRESS` rejects overlapping tool calls on that connection.
+It does not report a semantic rejection or establish that the active query failed.
+`health_check` retains its separate readiness shape.
+
+The [public results reference](../../docs/public/reference/responses.mdx) keeps reader-specific tables, examples, and lookup links.
+Its five-row preview example is an illustration, without a captured execution claim.
 
 Text discovery uses existing exact-symbol query outcomes. Composition rejects
 more than 1000 distinct lexical match exemplars for one owner with the finite

@@ -275,10 +275,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
+generated: { by: "codex", at: "2026-11-03T05:16:29.521Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:16:29.521Z
 ---
 
 # Existing-IDE semantic query
@@ -397,7 +397,7 @@ decoding reject contradictory evidence before CLI projection.
 It rejects a publication envelope on this path. Typed host rejection remains
 available when admission fails before operation authority exists.
 
-The private existing-IDE response activity records the announced frame size and
+With debug configuration enabled, private existing-IDE response activity records the announced frame size and
 configured limit, body drain outcome, and finite decoding/admission stage and
 cause. An over-limit frame is rejected before body reading or decoding. These
 bounded stderr records retain the host process and operation, without recording
