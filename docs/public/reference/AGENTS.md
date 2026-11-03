@@ -4,8 +4,8 @@ title: "Public reference engineering rules"
 description: "Defines authored reference pages and the generators for callable contracts and shared OKF views."
 resource: "repo://docs/public/reference"
 tags: [kast, navigation]
-timestamp: "2026-10-31T12:39:38Z"
-source_revision: 647fffc46f6247fac5b0fc632ae019d157bf9020
+timestamp: "2026-11-03T07:50:15Z"
+source_revision: 016574b654214a76800c4116b1993ca72829da91
 code_sources:
   - path: cli/build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
@@ -13,6 +13,7 @@ code_sources:
   - path: docs/public/reference/callables.openapi.json
   - path: docs/okf-public.json
   - path: docs/tooling/okf_public.py
+  - path: docs/tooling/rendered/run.py
 ---
 
 # Public reference ownership
@@ -30,5 +31,6 @@ code_sources:
   schemas plus direct MCP and tool RPC result types. Never edit it directly.
 - Update the callable artifact with `./gradlew :cli:generateMintlifyCallableReference` from the
   repository root.
-- Run `./gradlew :cli:verifyMintlifyCallableReference` to reject projection drift, then run
-  `mint validate` from `docs/public` to verify Mintlify can render the generated OpenAPI document.
+- Run `./gradlew :cli:verifyMintlifyCallableReference` to reject projection drift.
+- Run `mint validate` from `docs/public` to examine Mintlify input syntax. This procedure does not establish rendered callable behavior.
+- Use `docs/tooling/rendered/run.py` for browser evidence. Keep failed routes and unknown recursive measurements visible.

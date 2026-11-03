@@ -207,12 +207,14 @@ For the shared prose assessment, set `KAST_WRITING_SKILL` to the installed `skil
 ```shell
 uv run --locked --script "$KAST_WRITING_SKILL/scripts/assess_text.py" \
   --vale-bin "$(mise which vale)" \
+  --glossary docs/glossary.json \
   README.md AGENTS.md docs/documentation-structure.md
 ```
 
 List each changed prose file. Save JSON reports under `build/reports/documentation/`. Keep engine, policy, and file digests. Keep each finding's source location.
 
-Assessment report v2 omits glossary data. Keep its findings apart from the Kast glossary report and source digest.
+At Slopsentral revision `110e904fd8cf70c27d1f6547e21320dc569a91ea`, the shared procedure emits `schemaVersion: 1`.
+With `--glossary`, it records glossary metadata. Keep shared prose findings separate from the Kast glossary gate.
 
 Past reports keep their recorded schema and glossary fields. Do not claim that they prove the current state.
 
