@@ -229,6 +229,30 @@ qualified findings. The configuration catalogue exposes
 `kast.read.query.checkpoint.bytes`. A configured checkpoint must fit the total
 continuation retention grant. Increasing a result-page grant does not enlarge it.
 
+## Run cheap checks before building
+
+Run the local feedback loop while editing, including on an uncommitted tree:
+
+```shell
+uv run --locked --script .github/scripts/ci/fast_checks.py
+```
+
+Use uv 0.12.9 or newer. The script selects Python 3.12 and locked test dependencies.
+The first invocation can download that environment. After provisioning it, add
+`--offline` to `uv run` to reject dependency downloads.
+
+The command runs CI decisions, candidate and release rules, and the portable
+packaging inventory. Each stage reports its outcome and elapsed time. A failed
+stage stops later stages. The tests use private home and temporary directories
+without caller credentials, Git repository variables, or user test filters.
+This command starts no Gradle build, native compilation, or release-catalog query.
+It does not require a clean commit or authenticate to GitHub.
+
+Passing these checks does not qualify Kotlin source, a Linux container, native
+binaries, or a release. Continue with the focused module checks for changed code.
+The [CI policy](../.github/scripts/ci/README.md#ci-validation-and-cache-policy)
+describes the separate source and product gates.
+
 ## Build and install the checkout
 
 Gradle provisions the pinned Python dependencies for its schema tests in
@@ -236,17 +260,22 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 packages or the interpreter search path retained by an existing Gradle daemon.
 
 Install the repository's pre-push gate once per Git clone. It preserves other
-hooks and runs `productBuildGate` on a clean checked-out commit before a push.
-Pre-push fetches the published GitHub release catalog on every invocation.
-It builds the checkout with the highest stable semantic version.
-It requires authenticated `gh` access and fails if the catalog is unavailable or has no published stable version. Local tags and a previous gate run cannot supply a fallback:
+hooks and requires a clean checked-out commit before a push. Pre-push runs the
+cheap checks first, then the existing `productBuildGate` through `mise`.
+A cheap failure stops before release-catalog access or Gradle configuration.
+After cheap checks pass, the product gate fetches the published GitHub release
+catalog and builds with the highest stable semantic version.
+It requires authenticated `gh` access and fails if the catalog is unavailable or
+has no published stable version. Local tags and a previous gate run cannot supply
+a fallback:
 
 ```shell
 ./.githooks/install.sh
-# Run the same gate manually, refreshing the published version first:
-python3 distribution/release/run_product_gate.py
+# Run cheap checks followed by the full product gate manually:
+mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py pre-push
 ```
 
+The manual command does not enforce the hook's clean-tree or pushed-HEAD checks.
 The wrapper logs the selected release version before starting Gradle. It builds
 the current checkout with that version; it does not download or validate released
 binaries. Exact release-candidate builds continue to pass their intended version

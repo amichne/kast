@@ -4,10 +4,11 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-11-02T16:49:19Z"
-source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
+timestamp: "2026-11-03T00:02:20Z"
+source_revision: 974ee2f06564da9532382a97aef401affb308700
 code_sources:
   - path: build.gradle.kts
+  - path: .github/scripts/ci/fast_checks.py
   - path: .vale.ini
   - path: docs/glossary.json
   - path: config/vale/styles/Kast/Terminology.yml
@@ -66,6 +67,7 @@ This guide owns repository rules and routes source investigation.
 
 - Build and tests: `./gradlew build`.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
+- Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree. Pre-push still needs the full product gate.
 - Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. The full pre-push gate remains necessary.
 - Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
