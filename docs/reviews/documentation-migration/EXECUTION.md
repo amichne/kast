@@ -216,3 +216,16 @@ Its sampled focus, zoom, and document overflow assertions pass.
 Hosted selectors differ from local preview selectors, so the diagnostic measurement records that substitution explicitly.
 Full recursive footprints remain unknown.
 The report creates no publication receipt and makes no full acceptance claim.
+
+## Durable review identity
+
+The first follow-up CI passes source obligations, packaging, prose, and every generated parity procedure.
+Source qualification rejects its review identity because commit `cbf13253648ad7fef8dd977162e507465b344623` is absent from the fresh clone.
+That commit belonged to the branch before the squash merge.
+The failure preserves the publication rule instead of admitting an unresolved identity.
+
+The repair changes only each association's reviewed revision to merged main `9ef9e65825b09f5e031322ab98f310276e2eb51f`.
+All 56 content closures, Claim statement hashes, and generated owner hashes remain unchanged.
+Every association passes explicit assessment against those accepted bytes.
+The merged main revision is an ancestor of the follow-up candidate.
+No parser, schema, test, or identity requirement changes.
