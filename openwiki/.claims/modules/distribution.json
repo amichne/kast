@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5e0f34630ccc8df6eb5a810ea057999e5f5aa1752d14670deb5675bd59f28a1e",
+  "pageVersion": "sha256:6f0e5f83bd19d245e70ce62571e599829d56885bd370872af9ce8757a2759f61",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -166,7 +166,7 @@
         },
         {
           "resource": "repo://packaging/run-installed-product.py",
-          "version": "repo-file-v1:sha256:1c3aec745fc9ae8671e9227a2f5b96a22d83e57b99a2f44b6f50f5c45ca89145"
+          "version": "repo-file-v1:sha256:90db956cb602aff73a0d4e6697c64556a3c7620d7fdcdbe4577e4a05bde5910d"
         }
       ]
     },
@@ -252,7 +252,7 @@
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:8618bfa9029949869f6f05c1aaf9b93d0de9dc746c903e242b64b6c6c66aae12"
+          "version": "repo-file-v1:sha256:54237f470edcc7f8fe6ee9314c6bf513996ba7adcc5cf73aa03cfee0b5449fac"
         }
       ]
     },
@@ -262,7 +262,7 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+          "version": "repo-file-v1:sha256:f2998026d8da7a973648a0ddf55d7ba8f75da26cf5fdbd11f8a132f50d02521d"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast",
@@ -350,7 +350,7 @@
         },
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+          "version": "repo-file-v1:sha256:f2998026d8da7a973648a0ddf55d7ba8f75da26cf5fdbd11f8a132f50d02521d"
         },
         {
           "resource": "repo://cli/native-image.args",
@@ -483,6 +483,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "at": "2026-11-03T17:39:06.252Z"
   }
 }

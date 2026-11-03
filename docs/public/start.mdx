@@ -14,7 +14,7 @@ hideFooterPagination: true
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Use the native `kast` CLI with Codex, Copilot, or Pi.
+Install Kast, add guidance for your existing agent, and find callers of a function in your Kotlin project.
 
 ## Before you start
 
@@ -42,7 +42,9 @@ For an initial installation, run:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
 ```
 
-This command needs no checkout or existing `kast` installation. It selects the latest qualified development build and resets stale Kast state. The agent guidance is installed in step 2.
+This command needs no checkout or existing `kast` installation.
+It selects the latest qualified development build and resets stale Kast state.
+Step 2 adds the agent guidance.
 
 Restart IDEA after installation to load the Kast Host.
 If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
@@ -65,6 +67,8 @@ If the shell cannot find `kast`, add the command directory from the installer ou
 <span id="2-restart-your-tools" />
 <span id="3-connect-your-agent" />
 
+Choose the tab for your existing agent.
+
 <Tabs sync={false}>
   <Tab title="Codex">
     ```shell
@@ -84,6 +88,7 @@ If the shell cannot find `kast`, add the command directory from the installer ou
 </Tabs>
 
 These commands install guidance for the native CLI.
+The default setup needs no MCP registration.
 
 Start a fresh agent session in the same Kotlin repository or worktree.
 If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
@@ -100,9 +105,18 @@ Give your agent the function's file and name.
 Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
 
-The first query can wait for Gradle import and indexing. Use the returned source locations to inspect the answer.
+The first query can wait for Gradle import and indexing.
 
-Try [example questions](/search), read the [CLI reference](/reference/cli), or use [Help](/troubleshooting).
+### Inspect your first answer
+
+Open the returned source locations and compare them with the callers you know.
+The answer describes source relationships. It does not prove that those calls ran.
+
+If the query cannot finish, read its reported cause and recovery action.
+An unfinished query with no matches does not prove absence.
+Use [Help](/troubleshooting) for installation, agent, or query problems.
+
+After the first answer, try [example questions](/search) or read the [CLI reference](/reference/cli).
 
 For a controlled exercise, use the optional [first-query tutorial](/tutorials/first-query).
 

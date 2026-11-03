@@ -426,7 +426,7 @@
       {
         "route": "/",
         "role": "orientation",
-        "outcome": "Connect Kast to your coding agent. Find callers, trace supported value paths, and inspect problems in your Kotlin project with source locations.",
+        "outcome": "Find callers and trace supported value paths with compiler analysis from IntelliJ IDEA. Choose the setup path for the existing agent.",
         "scope": [
           "State product fit and a concrete outcome.",
           "Route readers to setup, examples, or the value illustration."
@@ -439,7 +439,7 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
+          "reason": "Keep one setup action, one caller question, its source-evidence limit, and direct recovery. The added result guidance increases prose without another first-use decision or page transition."
         }
       },
       {
@@ -448,7 +448,7 @@
         "outcome": "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project.",
         "scope": [
           "Complete ordinary installation and agent guidance.",
-          "Reach a useful answer with source-backed source evidence."
+          "Reach a useful answer with source locations and stated evidence limits."
         ],
         "exclusions": "Required trips through reference, architecture, or the tutorial.",
         "sourceOwner": "docs/public/start.mdx",
@@ -458,7 +458,7 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
+          "reason": "Keep all prerequisites, installer and upgrade commands, agent tabs, and a first useful question. Added result guidance belongs beside that question. No reference page becomes a prerequisite."
         }
       },
       {
@@ -477,7 +477,7 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
+          "reason": "Each question keeps its prompt beside the expected evidence and its limit. Diagnostics keeps the optional MCP agent task distinct from the Tool RPC interface."
         }
       },
       {
@@ -496,7 +496,7 @@
         "recoveryDestination": "/start",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
+          "reason": "Keep each symptom beside its recovery action. Retained output and uncertain edits keep their distinct recovery rules. The explicit return section prevents a dependency on browser history."
         }
       },
       {
@@ -1699,7 +1699,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -1717,7 +1717,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -3879,7 +3879,7 @@
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "32da651f79fd4c0eab63d047ecaab69bf573a000b22a10e360b344908f4bfe69"
+          "sha256": "8842227698fdd7a5fe8182296ca4ec5e6336a9fff6f45dda08e895aff1ad6b4d"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -4343,7 +4343,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "reference",
@@ -5661,7 +5661,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -5679,7 +5679,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "reference/compatibility",
@@ -6405,7 +6405,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -6423,7 +6423,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "reference/internals/architecture",
@@ -7708,7 +7708,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -7726,7 +7726,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "reference/models/diagnostic",
@@ -11963,7 +11963,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -11981,7 +11981,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "reference/schemas",
@@ -13394,7 +13394,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -13432,7 +13432,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "reference/staleness",
@@ -14113,7 +14113,7 @@
       "content": [
         {
           "path": "docs/public/search.mdx",
-          "sha256": "bcbdde8e1c9ced1b0b4987ad19b3ba97c0591db34f3a9aa7b98fd99bb6a6fe22"
+          "sha256": "a638a144d426a74387b9842d8d0f61d713e5c705fa765b03efa0441711badb1a"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -14484,12 +14484,17 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_15cf525b6b144e00aead91770f1b3e50",
           "statementSha256": "d20589c38902dd6435da4cc1073177c485111f99949d2bc6039629fa09749cd7"
+        },
+        {
+          "page": "openwiki/queries/trace-and-completion.md",
+          "claimId": "claim_405359a71fe7488b920de4c8e614f1ed",
+          "statementSha256": "3e5dec1405017cfefb031ffc0575da135584ba8dbef5fd56d52fc6894e08523b"
         }
       ],
       "generatedOwners": [
@@ -14502,7 +14507,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "start",
@@ -14513,7 +14518,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "5c5e17e216408d033befd10f08d5d98b59f8b929e1247dd942d3b5ca4ba846fd"
+          "sha256": "6a4dbe185118d0508fd1f6b2292593085909808876e7aaad903d6e2e946bb97e"
         }
       ],
       "claims": [
@@ -15010,7 +15015,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "a2e1f6bee4a79f64c09d635fbecad352c07c9c2f7e8f202c23118698e8dbabe8"
+          "statementSha256": "a151ea749809b1fbb7b632227abb945e2637d72ca484d799347f62edf9830006"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -15028,7 +15033,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "troubleshooting",
@@ -15039,7 +15044,7 @@
         },
         {
           "path": "docs/public/troubleshooting.mdx",
-          "sha256": "6640f1535c89cd2a99d1343929d57347a81822b6cc39bae81cc94e57dd8866e1"
+          "sha256": "01b35a76da7c67a66065ee710e899008fb6622cf811926c67d678ceb9fdabc3c"
         }
       ],
       "claims": [
@@ -15289,7 +15294,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
     },
     {
       "route": "tutorials",

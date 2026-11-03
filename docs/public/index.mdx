@@ -1,7 +1,7 @@
 ---
-title: "See what your Kotlin change affects"
+title: "Understand your Kotlin code before you change it"
 sidebarTitle: "Overview"
-description: "Connect Kast to your coding agent. Find callers, trace supported value paths, and inspect problems in your Kotlin project with source locations."
+description: "Find callers and trace supported value paths with source locations you can inspect."
 keywords:
   - "Kotlin"
   - "coding agents"
@@ -15,8 +15,8 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <span id="what-kast-adds" />
 
-Kast gives your coding agent source relationships from IntelliJ IDEA's compiler analysis.
-Use the native `kast` command with Codex, Copilot, or Pi to investigate your Kotlin code.
+Use the native `kast` command with Codex, Copilot, or Pi.
+IntelliJ IDEA supplies compiler analysis for your Kotlin project.
 
 <span id="try-it-on-your-project" />
 
@@ -24,7 +24,7 @@ Use the native `kast` command with Codex, Copilot, or Pi to investigate your Kot
 
 <Columns cols={1}>
   <Card title="Set up Kast" icon="arrow-right" href="/start">
-    Install Kast and give your agent guidance for the CLI.
+    Install Kast, add agent guidance, and find callers in your own project.
   </Card>
 </Columns>
 
@@ -35,8 +35,9 @@ For Apple silicon Macs, Kotlin Gradle projects, and IntelliJ IDEA 262. [Setup re
 <span id="use-the-agent-you-already-use" />
 
 <span id="use-the-evidence-for-your-next-decision" />
+<span id="ask-about-your-code" />
 
-## Ask about your code
+## Start with one function
 
 Give your agent the function's file and name.
 
@@ -44,10 +45,15 @@ Give your agent the function's file and name.
 Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
 
-Try [another question](/search), or use the [CLI reference](/reference/cli) for terminal commands.
+Use the returned source locations to inspect each caller before an edit.
+A caller result describes source relationships. It does not prove that those calls ran.
+
+For another task, choose [an example question](/search) or use the [CLI reference](/reference/cli) for terminal commands.
 
 <span id="a-name-match-does-not-explain-a-value-path" />
 
-For a visual explanation, [follow a value through code](/explanation/value-journey).
+To see how a value path differs from a name match, [follow a value through code](/explanation/value-journey).
+
+If setup or a query stops, use [Help](/troubleshooting) to choose the next action.
 
 <DeeperReading />

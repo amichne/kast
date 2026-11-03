@@ -17,9 +17,13 @@ After [setup](/start), give your agent a function, file, or directory. Choose a 
 
 ## What depends on this function?
 
+Give your agent the function's file and name.
+
 <Prompt description="Find callers before an edit" actions={["copy"]}>
 Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
 </Prompt>
+
+Read the caller locations before an edit. Source relationships do not prove that a call ran.
 
 ## Where does this value go?
 
@@ -27,13 +31,19 @@ Use the Kast CLI to find the callers of this function. Show the source locations
 Use the Kast CLI to trace this function's result. Show where it goes and where the evidence stops.
 </Prompt>
 
+Read the reported source locations and evidence gaps. Keep the stated scope with your conclusion.
+
 ## What problems does IDEA report?
 
-The optional [MCP composition](/reference/integrations#optional-mcp) exposes a diagnostics task.
+Use the optional [MCP composition](/reference/integrations#optional-mcp) for the `diagnostics` agent task.
+The [diagnostics guide](/how-to/inspect-diagnostics) also describes the Tool RPC interface.
 
 <Prompt description="Inspect the code you changed" actions={["copy"]}>
 Use Kast to inspect IDEA diagnostics in the code we changed.
 </Prompt>
+
+Read each problem's location and the reported coverage.
+An empty result with incomplete coverage does not prove that the scope has no problems.
 
 <span id="which-implementation-matters" />
 
@@ -46,7 +56,6 @@ Find [implementations](/reference/search), [make a targeted change](/reference/c
 If Kast cannot finish, ask your agent for the reported cause and recovery action. Use [Help](/troubleshooting) for setup problems.
 
 Use the [CLI reference](/reference/cli) for declaration, caller, source, and retained-result commands.
-
 
 Task procedures: [Task guides](/how-to), [Inspect IDEA diagnostics](/how-to/inspect-diagnostics).
 

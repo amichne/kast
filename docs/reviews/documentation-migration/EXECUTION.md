@@ -229,3 +229,39 @@ All 56 content closures, Claim statement hashes, and generated owner hashes rema
 Every association passes explicit assessment against those accepted bytes.
 The merged main revision is an ancestor of the follow-up candidate.
 No parser, schema, test, or identity requirement changes.
+
+## Core reader pages
+
+The source baseline is `314b0779e7bd0bffbc40238ab4fea063b08762f4`.
+The scope is Overview, Set up, Examples, and Help.
+The edit adds concrete result guidance beside each question and recovery action.
+It preserves the commands, prompts, prerequisite versions, routes, and existing fragments.
+Overview keeps one primary setup action.
+Set up keeps the first useful result on the same page.
+
+The shared prose assessment passes without findings for all four pages.
+Root Vale keeps two structural advisories for numbered setup headings and independent recovery cases.
+The reader assessment preserves `D = 1`, `K = 0`, and `H = 1` for the unchanged first-use scenario.
+The added result guidance increases `W` from 464 to 574 words. `L` remains five nonblank code lines.
+This edit makes no complete-profile reduction or reader-comprehension claim.
+Evidence resides under `build/reports/documentation/core-pages/`.
+
+Independent source review catches an old Overview fragment and an overly broad MCP instruction.
+The edit restores the fragment and scopes MCP to the `diagnostics` agent task.
+The fresh native assessment finds five stale Claims from intervening main changes.
+The full native run reconciles ten stale Claim obligations across seven pages.
+Nine statements remain unchanged. The Pi statement now names asynchronous preparation.
+Six focused Pi cases pass, without a real-host claim.
+The full canonical assessment reports 407 current Claims, 65 matched pages, and no orphan sidecars.
+The stable native checkpoint records the baseline revision without source drift.
+All 56 associations pass after review of changed content and eight consumers of the revised Pi statement.
+The projector parity procedure passes.
+The first documentation lane passes 510 tooling cases and 21 native adapter cases before projection rejects an intermediate native state.
+That intermediate run does not count as final acceptance.
+The execution report keeps a grade advisory for historical technical detail.
+The first candidate passes the product gate, all ten prose procedures, and 70 source obligations.
+All 24 scoped rendered states pass.
+Screenshot review finds repetition between Overview's description and introduction.
+The final trim removes that repetition and keeps the supported facts.
+Exact-source receipts for the final candidate and hosted gates remain pending at this checkpoint.
+The next action is to commit the trimmed candidate and collect its final evidence.
