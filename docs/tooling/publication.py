@@ -144,6 +144,56 @@ class PublicationReport:
     producer: Literal["kast-documentation-publication-v1"] = "kast-documentation-publication-v1"
 
 
+@dataclass(frozen=True, slots=True)
+class SourceRequest:
+    prose_path: str
+
+
+@dataclass(frozen=True, slots=True)
+class PublicationRequest:
+    rendered_path: str
+    prose_path: str
+
+
+@dataclass(frozen=True, slots=True)
+class SourceReport:
+    sourceRevision: str
+    inputs: tuple[InputDigest, ...]
+    inputsDigest: str
+    obligations: tuple[Obligation, ...]
+    decision: Literal["qualified", "rejected"]
+    nativeAssessment: object
+    limits: tuple[str, ...]
+    rendered: Obligation
+    publication: Literal["not-assessed"] = "not-assessed"
+    type: Literal["DOCUMENTATION_SOURCE_QUALIFICATION"] = "DOCUMENTATION_SOURCE_QUALIFICATION"
+    producer: Literal["kast-documentation-source-v1"] = "kast-documentation-source-v1"
+
+
+def conclude_source(
+    current: Snapshot,
+    obligations: tuple[Obligation, ...],
+    native: object,
+    limits: tuple[str, ...],
+) -> SourceReport:
+    return SourceReport(
+        current.sourceRevision,
+        current.inputs,
+        current.inputsDigest,
+        obligations,
+        "qualified"
+        if obligations and all(item.status == State.PASSED for item in obligations)
+        else "rejected",
+        native,
+        limits,
+        Obligation(
+            "rendered",
+            State.NOT_ASSESSED,
+            "Source qualification does not assess rendered behavior or authorize publication. Run full publication assessment before publication.",
+        ),
+    )
+
+
 def _record(value: object) -> TypeGuard[dict[str, object]]:
     return isinstance(value, dict)
 
@@ -616,7 +666,9 @@ def native_assessment(root: Path) -> object:
     return result
 
 
-def assess(root: Path, rendered_path: str, prose_path: str) -> PublicationReport | Failure:
+def assess(
+    root: Path, request: SourceRequest | PublicationRequest
+) -> PublicationReport | SourceReport | Failure:
     current = snapshot(root)
     if isinstance(current, Failure):
         return current
@@ -738,7 +790,10 @@ def assess(root: Path, rendered_path: str, prose_path: str) -> PublicationReport
     limits: list[str] = [
         "Evidence currentness does not establish semantic truth, native task completion, or reader comprehension."
     ]
-    for path, kind in ((rendered_path, ReceiptKind.RENDERED), (prose_path, ReceiptKind.PROSE)):
+    receipts = [(request.prose_path, ReceiptKind.PROSE)]
+    if isinstance(request, PublicationRequest):
+        receipts.append((request.rendered_path, ReceiptKind.RENDERED))
+    for path, kind in receipts:
         receipt_obligations, receipt_limits = assess_receipt(root, _load(root, path), current, kind)
         obligations.extend(receipt_obligations)
         limits.extend(receipt_limits)
@@ -751,6 +806,9 @@ def assess(root: Path, rendered_path: str, prose_path: str) -> PublicationReport
                 "Candidate inputs changed during publication assessment",
             )
         )
+    native_result = asdict(native) if isinstance(native, Failure) else native
+    if isinstance(request, SourceRequest):
+        return conclude_source(current, tuple(obligations), native_result, tuple(limits))
     decision = (
         "accepted"
         if obligations and all(item.status == State.PASSED for item in obligations)
@@ -762,7 +820,7 @@ def assess(root: Path, rendered_path: str, prose_path: str) -> PublicationReport
         current.inputsDigest,
         tuple(obligations),
         decision,
-        asdict(native) if isinstance(native, Failure) else native,
+        native_result,
         tuple(limits),
     )
 
@@ -771,18 +829,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     _ = parser.add_argument("--root", type=Path, default=ROOT)
     _ = parser.add_argument("--report", type=Path)
-    _ = parser.add_argument("--snapshot", action="store_true")
+    modes = parser.add_mutually_exclusive_group()
+    _ = modes.add_argument("--snapshot", action="store_true")
+    _ = modes.add_argument(
+        "--source-only",
+        action="store_true",
+        help="Qualify source inputs without publication or browser admission",
+    )
     _ = parser.add_argument(
         "--rendered-report", default="build/reports/documentation/rendered.json"
     )
     _ = parser.add_argument("--prose-report", default="build/reports/documentation/prose.json")
     arguments = parser.parse_args()
     root = arguments.root.resolve()
-    result = (
-        snapshot(root)
-        if arguments.snapshot
-        else assess(root, arguments.rendered_report, arguments.prose_report)
+    request = (
+        SourceRequest(arguments.prose_report)
+        if arguments.source_only
+        else PublicationRequest(arguments.rendered_report, arguments.prose_report)
     )
+    result = snapshot(root) if arguments.snapshot else assess(root, request)
     encoded = json.dumps(asdict(result), indent=2) + "\n"
     if arguments.report is None:
         print(encoded, end="")
@@ -793,7 +858,7 @@ def main() -> int:
         2
         if isinstance(result, Failure)
         else 0
-        if isinstance(result, Snapshot) or result.decision == "accepted"
+        if isinstance(result, Snapshot) or result.decision in {"accepted", "qualified"}
         else 1
     )
 

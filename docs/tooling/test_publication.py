@@ -10,8 +10,9 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-import okf_public
 import pytest
+
+import okf_public
 import reader_contracts
 from publication import (
     Failure,
@@ -423,3 +424,85 @@ def test_snapshot_binds_current_prose_dispositions_while_excluding_report_artifa
     assert second.inputsDigest != first.inputsDigest
     _ = (root / "docs/reviews/proof.txt").write_text("The report artifact changed.\n")
     assert current(root).inputsDigest == second.inputsDigest
+
+
+def test_source_qualification_keeps_rendering_unassessed() -> None:
+    import publication
+
+    result = publication.conclude_source(
+        Snapshot("1" * 40, (), "2" * 64),
+        (publication.Obligation("native-assessment", State.PASSED, "Current evidence"),),
+        {},
+        (),
+    )
+    assert result.type == "DOCUMENTATION_SOURCE_QUALIFICATION"
+    assert result.decision == "qualified"
+    assert result.publication == "not-assessed"
+    assert result.rendered.status == State.NOT_ASSESSED
+    assert "publication" in result.rendered.detail.lower()
+
+
+def test_source_qualification_rejects_incomplete_source_evidence() -> None:
+    import publication
+
+    for state in (State.FAILED, State.STALE, State.UNRESOLVED, State.NOT_RUN, State.MISMATCHED):
+        result = publication.conclude_source(
+            Snapshot("1" * 40, (), "2" * 64),
+            (publication.Obligation("native-assessment", state, "Not accepted"),),
+            {},
+            (),
+        )
+        assert result.decision == "rejected"
+        assert result.publication == "not-assessed"
+
+
+def test_source_report_cannot_supply_a_rendered_receipt(root: Path) -> None:
+    import publication
+
+    state = current(root)
+    result = publication.conclude_source(
+        state,
+        (publication.Obligation("native-assessment", State.PASSED, "Current evidence"),),
+        {},
+        (),
+    )
+    obligations, _ = assess_receipt(root, asdict(result), state, ReceiptKind.RENDERED)
+    assert all(item.status != State.PASSED for item in obligations)
+
+
+def test_assessment_modes_share_source_failures_but_only_publication_reads_rendered(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import publication
+
+    def unavailable_native(_root: Path) -> Failure:
+        return Failure("native", "Controlled unavailable store")
+
+    def unavailable_projection(_root: Path, _write: bool) -> okf_public.Failure:
+        return okf_public.Failure(okf_public.Code.IO, "Controlled unavailable projection")
+
+    def unavailable_readers(_root: Path, _revision: str) -> reader_contracts.Failure:
+        return reader_contracts.Failure(
+            reader_contracts.Code.INPUT, "Controlled invalid reader contract"
+        )
+
+    monkeypatch.setattr(publication, "native_assessment", unavailable_native)
+    monkeypatch.setattr(okf_public, "run", unavailable_projection)
+    monkeypatch.setattr(reader_contracts, "assess", unavailable_readers)
+    source = publication.assess(root, publication.SourceRequest("missing-prose.json"))
+    full = publication.assess(
+        root, publication.PublicationRequest("missing-rendered.json", "missing-prose.json")
+    )
+    assert isinstance(source, publication.SourceReport)
+    assert isinstance(full, publication.PublicationReport)
+    assert source.decision == full.decision == "rejected"
+    assert source.publication == "not-assessed"
+    assert source.rendered.status == State.NOT_ASSESSED
+    assert all(item.name != "rendered" for item in source.obligations)
+    assert any(
+        item.name == "prose" and item.status == State.NOT_ASSESSED for item in source.obligations
+    )
+    assert any(
+        item.name == "rendered" and item.status == State.NOT_ASSESSED for item in full.obligations
+    )
+    assert tuple(item for item in full.obligations if item.name != "rendered") == source.obligations

@@ -72,11 +72,11 @@
       "completedRunId": "94e57efe-bb81-4238-9379-4305d9bb5c90"
     },
     "/openwiki/development/build-and-architecture.md": {
+      "gitHead": "06cfd51982fe4b35316d6502d114e41e6a70960f",
+      "sourceFingerprint": "sha256:adc4ed9bd68d78bea0e6862f5845e0c012f847028d70a093734e0848620967f6",
       "pageVersion": "sha256:e2874da5f4f0d144bd17595693a59cbb7df07de5bfc3d6de93d6f9c6a60fa624",
       "completedBy": "codex",
-      "completedRunId": "d66d5243-40ad-4040-97ba-ed1ac399ef8e",
-      "gitHead": "06cfd51982fe4b35316d6502d114e41e6a70960f",
-      "sourceFingerprint": "sha256:adc4ed9bd68d78bea0e6862f5845e0c012f847028d70a093734e0848620967f6"
+      "completedRunId": "d66d5243-40ad-4040-97ba-ed1ac399ef8e"
     },
     "/openwiki/development/contracts-and-generation.md": {
       "gitHead": "cbf13253648ad7fef8dd977162e507465b344623",
@@ -86,11 +86,11 @@
       "completedRunId": "192ffb55-7ede-4cd8-89b0-7b7e855dfa57"
     },
     "/openwiki/development/knowledge-upkeep.md": {
-      "gitHead": "cbf13253648ad7fef8dd977162e507465b344623",
-      "sourceFingerprint": "sha256:9f3c7507960c227e66542bae03605f22842fa0020455928bba9ae51bdc8c46b7",
-      "pageVersion": "sha256:27136d8555e5e8c5c69e790d610eebdffaf520e4cb5e3c31260faaf067cca840",
+      "pageVersion": "sha256:1cf8493de617f396d5bdaa8058d6ed8b9ec617bd0a3382c75418600c9fbaeecd",
       "completedBy": "codex",
-      "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
+      "completedRunId": "ee061a63-7d7c-44a9-8c42-f8bc34b17ff4",
+      "gitHead": "e94e5a77d07b08f750ac728b9a3f0ad71df26bc2",
+      "sourceFingerprint": "sha256:8b81f1f867468091ea57c396c08d8b2eb0f3f05a7701e6adbf74e4497486e5b6"
     },
     "/openwiki/development/testing-and-native-qualification.md": {
       "gitHead": "7de04069e2a4a781a603ff51b3f9016b66108790",

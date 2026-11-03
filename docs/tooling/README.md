@@ -113,15 +113,28 @@ It counts imported content and hidden panels without treating static counts as r
 `publication.py` admits the exact candidate after the native, projection, reader, prose, contract, and rendered procedures complete.
 Reviewed associations bind imported authored bytes, canonical Claim statements, and contract-owner bytes.
 A change to either side needs a new review.
-The report preserves failed, stale, unresolved, unassessed, and mismatched obligations separately.
+The report preserves `failed`, `stale`, `unresolved`, `not-assessed`, and `mismatched` obligations separately.
 
 ```shell
 mise exec -- uv run --locked --project docs/tooling python docs/tooling/reader_contracts.py --report build/reports/documentation/reader-contracts.json
 mise exec -- uv run --locked --project docs/tooling python docs/tooling/publication.py --rendered-report build/reports/documentation/rendered/receipt.json --prose-report build/reports/documentation/prose/receipt.json --report build/reports/documentation/publication.json
 ```
 
+Routine PR CI qualifies source inputs without a browser.
+It runs the same native, association, projection, reader, prose, and contract obligations.
+The source report records rendered behavior and publication as `not-assessed`.
+A qualified source report cannot supply a rendered receipt.
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/publication.py --source-only --prose-report build/reports/documentation/prose/receipt.json --report build/reports/documentation/source-qualification.json
+```
+
+Before publication, run the rendered procedure and the full publication command for the exact candidate.
+Source qualification does not grant publication authority.
+
 The [rendered runner](rendered/README.md) defines its browser, preview, interaction, and screenshot scope.
-The prose runner keeps root Vale 3.24.0 separate from the reader audit's Vale 3.25.1.
+The prose runner uses root Vale `3.24.0`.
+The reader audit uses Vale `3.25.1`.
 Its source-bound advisory dispositions preserve each rule, location, and review reason.
 Neither successful admission nor prose metrics prove reader comprehension or native task completion.
 
@@ -147,7 +160,7 @@ If projection fails, the workflow does not create that pull request.
 The provenance report keeps page and sidecar digests, Claim identities, resources, recorded versions, and current file digests.
 `MATCHED` means that a whole-file evidence digest matches current bytes.
 `CHANGED` means that those bytes differ. `NOT_ASSESSED` keeps opaque or range versions without a freshness claim.
-The public view qualifies changed and unassessed evidence.
+The public view qualifies changed evidence and evidence without assessment.
 No digest comparison proves semantic truth.
 
 Missing source files, untracked evidence, unreconciled page edits, parser failures, and undeclared public pages reject the projection.

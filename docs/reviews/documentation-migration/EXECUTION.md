@@ -163,3 +163,23 @@ Then repeat source-bound rendered admission before final authorization.
 For rollback after an authorized deployment, revert the migration through a normal PR.
 Run the same repository gates and inspect the deployment for that revert commit.
 Keep current product schemas and installation policy unchanged.
+
+## Useful source integration
+
+The user authorized useful merges after review of the browser failures.
+The source lane now omits browser installation and preview effects.
+`publication.py --source-only` keeps every source obligation under the existing assessment owner.
+Its distinct report records rendered behavior and publication as `not-assessed`.
+The default publication command still needs exact-source prose and rendered receipts.
+Source integration does not establish full migration completion or publication readiness.
+
+The refreshed target includes `8480393cb9`, which bounds source-graph feedback and cancellation.
+The latest merge request supersedes the earlier instruction to keep the entire candidate without a merge until publication admission.
+The callable renderer remains unresolved.
+Its failed and unrun measurements remain evidence limits after source integration.
+No schema, measurement definition, or rendered obligation changes.
+
+Focused separation procedures cover qualified source evidence, failed source evidence, and rejection of a source report as a rendered receipt.
+The RED run reported three missing-function failures and 24 passes.
+The GREEN run passed all 28 publication procedures.
+The next action is independent review, required source gates, and the authorized merge after terminal green checks.

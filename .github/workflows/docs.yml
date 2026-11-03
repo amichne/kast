@@ -75,34 +75,12 @@ jobs:
           --dispositions docs/reviews/documentation-migration/prose-dispositions.json
           --report build/reports/documentation/prose/receipt.json
 
-      - name: Install locked rendered runner
-        run: npm ci --ignore-scripts --engine-strict --prefix docs/tooling/rendered
-
-      - name: Install preview ownership tools
-        run: sudo apt-get install --yes lsof procps
-
-      - name: Install exact Chrome for rendered evidence
-        run: |
-          kast_node="$(mise which node)"
-          printf 'Resolved Node: %s\n' "$kast_node"
-          "$kast_node" --version
-          sudo "$kast_node" "$GITHUB_WORKSPACE/.github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js" install chrome@155.0.8059.84 --path "$GITHUB_WORKSPACE/build/documentation/browsers" --install-deps
-
-      - name: Assess rendered candidate
-        id: rendered
-        continue-on-error: true
-        run: >-
-          uv run --locked --script docs/tooling/rendered/run.py --preview
-          --browser-executable build/documentation/browsers/chrome/linux-155.0.8059.84/chrome-linux64/chrome
-          --output build/reports/documentation/rendered
-
-      - name: Admit exact documentation candidate
+      - name: Qualify exact documentation source
         if: ${{ !cancelled() }}
         run: >-
-          uv run --locked --project docs/tooling python docs/tooling/publication.py
-          --rendered-report build/reports/documentation/rendered/receipt.json
+          uv run --locked --project docs/tooling python docs/tooling/publication.py --source-only
           --prose-report build/reports/documentation/prose/receipt.json
-          --report build/reports/documentation/publication.json
+          --report build/reports/documentation/source-qualification.json
 
       - name: Keep documentation evidence
         if: ${{ !cancelled() }}
