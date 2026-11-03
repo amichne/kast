@@ -31,7 +31,7 @@ DOCUMENTS = (
 CANONICAL_PREFIX = '/bin/bash -c "$(curl -fsSL '
 # Admit the interpreter once; the collision child's PATH has no host utility fallback.
 BASH = Path(shutil.which('bash', path=os.defpath)).resolve(strict=True)
-TOOL_PATH = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
+TOOL_PATH = str(Path(sys.executable).parent) + os.pathsep + os.defpath
 
 
 @dataclass(frozen=True)
