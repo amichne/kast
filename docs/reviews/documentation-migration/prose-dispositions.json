@@ -1037,13 +1037,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/development/knowledge-upkeep.md",
-        "sourceSha256": "27136d8555e5e8c5c69e790d610eebdffaf520e4cb5e3c31260faaf067cca840",
+        "sourceSha256": "1cf8493de617f396d5bdaa8058d6ed8b9ec617bd0a3382c75418600c9fbaeecd",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep source-impact assessment, native Claim review, and publication evidence. Preserve exact identifiers `AGENTS.md`, `knowledgeImpact`, `verifyKnowledgeBase`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep source-impact assessment, native Claim review, and publication evidence. Preserve exact identifiers `AGENTS.md`, `knowledgeImpact`, `verifyKnowledgeBase`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Native reconciliation changes only the verification timestamp. Independent review confirms identical canonical prose. Keep the grade-12 advisory and the reader-comprehension limit."
     },
     {
       "finding": {
