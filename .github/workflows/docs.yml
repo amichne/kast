@@ -17,7 +17,7 @@ concurrency:
 jobs:
   validate:
     name: Validate Mintlify site
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,6 +34,11 @@ jobs:
 
       - name: Install locked documentation runner
         run: python3 -m pip install --disable-pip-version-check uv==0.12.9
+
+      - name: Install declared tools and separate reader Vale
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          install_args: java node vale@3.24.0 vale@3.25.1
 
       - name: Verify parser and glossary contracts
         run: python3 .github/scripts/ci/verify_documentation.py
@@ -55,3 +60,32 @@ jobs:
       - name: Validate Mintlify build
         working-directory: docs/public
         run: '"${{ github.workspace }}/.github/tools/mintlify/node_modules/.bin/mint" validate'
+
+      - name: Examine Mintlify links
+        working-directory: docs/public
+        run: '"${{ github.workspace }}/.github/tools/mintlify/node_modules/.bin/mint" broken-links'
+
+      - name: Assess prose and contract evidence
+        id: prose
+        continue-on-error: true
+        run: >-
+          uv run --locked --project docs/tooling python docs/tooling/prose_assessment.py
+          --vale-bin "$(mise where vale@3.24.0)/vale"
+          --reader-vale-bin "$(mise where vale@3.25.1)/vale"
+          --dispositions docs/reviews/documentation-migration/prose-dispositions.json
+          --report build/reports/documentation/prose/receipt.json
+
+      - name: Qualify exact documentation source
+        if: ${{ !cancelled() }}
+        run: >-
+          uv run --locked --project docs/tooling python docs/tooling/publication.py --source-only
+          --prose-report build/reports/documentation/prose/receipt.json
+          --report build/reports/documentation/source-qualification.json
+
+      - name: Keep documentation evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: documentation-evidence-${{ github.event.pull_request.head.sha || github.sha }}
+          path: build/reports/documentation/
+          if-no-files-found: error

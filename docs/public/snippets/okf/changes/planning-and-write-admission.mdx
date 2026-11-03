@@ -30,7 +30,7 @@ The live plan keeps detached proof. It does not create a published workspace lea
 
 `LiveMutationAuthority.prepare` compares the plan's basis with the current original owner and imported model.
 It then examines the exact source identity, saved content, writable state, and planned write entry.
-`DerivedMutationPostimage` derives the postimage from the admitted preimage and the planned mutations.
+`DerivedMutationPostimage` derives the source after the change from the admitted preimage and the planned mutations.
 Overlap, out-of-range writes, stale content, and a mismatched write set reject before the native write.
 
 The authority permanently claims the exact plan's application before durable recovery preparation.

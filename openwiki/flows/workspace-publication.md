@@ -18,17 +18,17 @@ sources:
     resource: repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/WorkspacePublication.kt
   - id: openwiki-source-2bfd7835755c09f5e5d91344
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadLease.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Historical workspace publication
 
 Earlier isolated-runtime contracts describe `Dirty -> Settling -> Refreshing -> Reconciling -> Verifying -> Ready`, with a revalidated atomic publication before issuing a generation lease. The lifecycle and generation types remain historical contract vocabulary.
 
-The isolated transition coordinator and importer are retired from the active Gradle graph. Topology extraction, graph operations and snapshot publication remain buildable in separate modules for upcoming work. Production semantic requests instead use the original open IDEA project's live authority. No second importer or persisted topology is started as a read prerequisite.
+The isolated transition coordinator and importer are retired from the active Gradle graph. Topology extraction, graph operations and snapshot publication remain available to compile in separate modules for upcoming work. Production semantic requests instead use the original open IDEA project's live authority. No second importer or persisted topology is started as a read prerequisite.
 
 A historical `SemanticReadLease` still carries the canonical root and a published generation. Its guard permits effects only while that proof remains current. A `LiveSemanticReadAuthority` carries a different host/epoch/content identity and cannot enter that guard. Neither wire decoding nor a diagnostic receipt promotes historical evidence into current authority.
 

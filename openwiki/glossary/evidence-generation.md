@@ -10,20 +10,20 @@ code_sources:
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceTransitionState.kt
     symbols: [PublishedWorkspaceGeneration]
   - path: evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/WorkspacePublication.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-d69d2f9483e3ef07d3d7af62
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Evidence generation
 
 An evidence generation identifies the published workspace state against which a semantic payload was proven. It is not wall-clock time, a cache freshness hint, or a transport sequence number.
 
-Published semantic payloads retain their generation through
+Published semantic payloads keep their generation through
 `EvidenceBasis.Published`. Workspace publication advances the generation only
 through its authority, and published read guards compare it with the canonical
 root. Live IDE reads use `EvidenceBasis.Live` and a separate host/epoch/content

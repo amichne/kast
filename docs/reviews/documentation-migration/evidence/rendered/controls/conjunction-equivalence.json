@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "mechanism": "Associative relocation of existing type and length assertions into the first allOf conjunct. Existing pattern assertions remain unchanged.",
+  "uniqueSchemaShapes": 7,
+  "instanceCases": 91,
+  "structuralInverse": "exact original JSON restored",
+  "tagDefaultExampleControls": 7595,
+  "controls": "exact same values at the same JSON pointers",
+  "schemas": [
+    {
+      "schemaIndex": 0,
+      "originalSha256": "2d2031eac0f8b728e5e9ee4b9eb89900af28fb8d989868da61cd58abb7202fbf",
+      "cases": 10,
+      "outcome": "passed"
+    },
+    {
+      "schemaIndex": 1,
+      "originalSha256": "082ff2c83ec4fb214925f067b495ff40cf3286877884ed1942dbb8abc06d26d7",
+      "cases": 11,
+      "outcome": "passed"
+    },
+    {
+      "schemaIndex": 2,
+      "originalSha256": "824290503397147039c289716f2e6764b20935587dc3343e4bc3da1827733ef5",
+      "cases": 21,
+      "outcome": "passed"
+    },
+    {
+      "schemaIndex": 3,
+      "originalSha256": "5c1863bac808124bd94a8ce54f0e04e9a8d3ba23091c9ae8d7ea4ab432e14b9c",
+      "cases": 13,
+      "outcome": "passed"
+    },
+    {
+      "schemaIndex": 4,
+      "originalSha256": "fd9c9ae49e8faaf41a30646883a03739185902e6b02ea80b20826593ece596df",
+      "cases": 13,
+      "outcome": "passed"
+    },
+    {
+      "schemaIndex": 5,
+      "originalSha256": "2e180926ec0e9e9f125c78384a4b03e0bc399d2d5d10d3aad55146ecb7274840",
+      "cases": 11,
+      "outcome": "passed"
+    },
+    {
+      "schemaIndex": 6,
+      "originalSha256": "95a466915436694a3b063228060e5aa50e54c9aaec02371f315ef7d638769066",
+      "cases": 12,
+      "outcome": "passed"
+    }
+  ],
+  "limits": [
+    "Instance cases prove the listed accepted and rejected examples. Exact conjunction associativity supports the general relocation argument.",
+    "No real-preview success follows from this schema result."
+  ]
+}

@@ -24,10 +24,10 @@ sources:
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
   - id: openwiki-source-c1b372e04845c7dde01c9691
     resource: repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Live dependency proofs and fact reuse
@@ -84,7 +84,7 @@ Measure installed latency separately from cache counts or reduced source work.
 - [SemanticDependencySnapshot.kt](../../topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt)
 - [IntellijSemanticDependencyCapture.kt](../../topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt)
 - [SemanticCallbackFactStore.kt](../../topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt)
-- [build.gradle.kts](../../runtime/hosted/build.gradle.kts)
+- [`build.gradle.kts`](../../runtime/hosted/build.gradle.kts)
 - [SemanticCallbackFactRead.kt](../../topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactRead.kt)
 - [CompleteTopologyGeneration.kt](../../topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/CompleteTopologyGeneration.kt)
 - [AdmittedSourceRootEnumerator.kt](../../topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/AdmittedSourceRootEnumerator.kt)

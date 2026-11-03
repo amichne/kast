@@ -90,6 +90,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt
   - id: openwiki-source-6699d194831006a24f8c790c
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - id: openwiki-source-9577b7564213b6b964c79590
+    resource: repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - id: openwiki-source-25b472ce8bd658b8f8006f96
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
   - id: openwiki-source-82cf2cb34e9f56bad15bc34f
@@ -108,6 +110,8 @@ sources:
     resource: repo://copilot/extension.mjs
   - id: openwiki-source-9202c39abfaacebb6448e73f
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt
+  - id: openwiki-source-4c3bfb0ba56fa265cf888602
+    resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
   - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
@@ -180,41 +184,150 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-89238fabaeb4e17c02186073
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+  - id: openwiki-source-2b629829f5e5fae7962e2e68
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Public intent tools
 
-The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Nullable DTO fields lower null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
+## Public request grammar and scope
 
-`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits exact impact producers, declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued output continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, binding rows, value paths, or impact witness sections according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Nullable run controls normalize before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
+Contract 18 gives RUN exactly one non-null `terminalStep`, tagged `EMIT` or `TRACE`.
+Its optional `steps` are ordered transformations before the terminal step.
+EMIT accepts compatible output variants. TRACE accepts only symbol output and owns `expansionScope` directly.
+Omitted or null output selects symbol names and locations.
+Explicit `SYMBOLS` needs `fields`. An empty list keeps identity and kind alone.
+RUN-level `output`, `traceOptions`, and TRACE inside `steps` reject.
+Other actions reject `terminalStep`. `READ_RESULT.output` belongs to that action.
+
+The four query actions are RUN, output-only RESUME, retained READ_RESULT, and anchored READ_SOURCE.
+READ_SOURCE accepts an issued candidate, exact symbol, or source selector as `candidateRef`.
+It checks the original source snapshot rather than reacquiring compiler identity.
+
+Discovery sources are `SEARCH_DECLARATIONS`, `SEARCH_TEXT`, `ALL_DECLARATIONS`, `AT_LOCATION`, `SYMBOL_REFS`, `RESULT`, and `IMPACT`.
+Declaration names match exact case unless fuzzy matching is explicit.
+SEARCH_TEXT admits one case-sensitive ASCII identifier word, without phrases, qualified literals, substrings, or regular expressions.
+ALL_DECLARATIONS includes supported nested Kotlin declarations and orders them by file path and source offset.
+AT_LOCATION selects the nearest containing named declaration at a UTF-16 offset, rather than a call target.
+Default discovery covers workspace subdirectories in `main` and `test`.
+Directory, package, source-set, and kind constraints restrict seeds.
+They do not restrict later relationship destinations.
+
+WHERE filters confirmed visibility or literal name, kind, and file values.
+DISTINCT_SYMBOLS keeps the first row for each canonical identity at its pipeline position.
+EXPAND_RELATION reads one hop. WALK requests the reachable graph unless an explicit depth limits it.
+CONCAT preserves order and duplicates. UNION, INTERSECT, and DIFFERENCE compare canonical identities.
+JOIN supplies INNER, SEMI, and ANTI forms. PROJECT_BINDING selects a named cell.
+Difference and anti join need complete right-hand coverage to prove absence.
+Omitted, null, and empty steps select no transformations.
+EMIT admits at most 1000 transformations. TRACE admits 999 before its canonical suffix.
+Output variants are SYMBOLS, OCCURRENCES, TRAVERSAL_RECORDS, BINDING_ROWS, VALUE_PATHS, and IMPACT_WITNESS.
+File-scoped import occurrences cannot become declaration endpoints for later expansion.
+
+TRACE includes seeds, reference owners, implementations or overrides, direct callers, and one further caller layer.
+Type seeds also supply direct callable members without inventing calls from the type.
+WORKSPACE is the default for TRACE, EXPAND_RELATION, and exhaustive WALK.
+An explicit WALK depth defaults to RETAINED_SEED.
+SOURCE_DOMAIN needs source sets, source policy, and generated-source policy.
+Its optional directory includes subdirectories by default.
+Explicit destination scope applies before native enumeration.
+An explicit maximum depth includes nodes at that depth without expanding from them.
+Resource exhaustion cannot shorten the requested extent into a complete answer.
+
+IMPACT uses exact whole-call UTF-16 producer anchors with enclosing and callable identities.
+It needs explicit declarations, domain, `KOTLIN_FORWARD_V1`, and reviewed models.
+An empty model array supplies none. Requested sites keep their declared formal indices rather than named-argument source order.
+Public sites do not accept retained execution-owner, value-path, or call-stack fields.
+IMPACT admits no transformation steps.
+Its witness sections are PRODUCERS, MODELS, NATIVE_READS, READ_REJECTIONS, FINDINGS, and SITE_ACCOUNTING.
+Before ledger finalization, witness reads reject with `RESULT_FIELD_UNAVAILABLE`.
+An empty preview does not prove that no paths exist.
+More presentation bytes expose existing paths without discharging their proof obligations.
+
+## Execution, retention, and finite failures
+
+RUN defaults to `RUNNER_CONTROLLED` without implicit semantic time, work, result, or internal retention quotas.
+Explicit `maxElapsedMs` includes model capture. Explicit `maxWorkUnits` rejects in this mode.
+Cancellation and disconnection stop execution. Presentation pages remain finite.
+`BOUNDED` selects configured grants and ceilings.
+
+| Bounded query field | Default |
+| --- | --- |
+| `maxElapsedMs` | 15,000 ms |
+| `maxWorkUnits` | 2,000,000 work units |
+| `maxResults` | 128 rows |
+| `maxReturnedBytes` | 49,152 bytes |
+
+Source reads default to 10,000 work units and 128 entities, with 15,000 ms and 49,152 bytes.
+The four execution ceilings default to 2,147,483,646.
+Operator ceilings, transport capacity, and remaining host time can lower the admitted grant.
+The host query deadline defaults to 30,000 ms.
+Time, work, result, and byte allowances remain separate.
+The response reports admission rather than merely echoing a requested value.
+
+Each bounded checkpoint defaults to 33,554,432 charged bytes.
+Each continuation store defaults to 134,217,728 charged bytes, 64 entries, and a 600,000 ms lifetime.
+The checkpoint allowance cannot exceed the store allowance.
+These conservative charges do not measure heap use.
+Runner-controlled quota bypass does not renew external token lifetimes or prove completion.
+Public RESUME only presents output, without continuing unfinished semantic work.
+
+Completion failures distinguish unsupported output, unproved completion, unproved investigation, unavailable retention, and unavailable result fields.
+They preserve original qualifications and finite causes.
+Expired or foreign retained state cannot recover through a larger grant.
+Clean file diagnostics do not prove every declaration identity.
+A missing write response, timeout, or cancellation does not prove absence of a source effect.
+Write recovery uses its plan and phase evidence before another write.
+
+Root `verbose` is a non-null boolean with default false.
+The installed catalog remains authoritative for an installed release.
+The [query reference](../../docs/public/reference/api.mdx) and [limit reference](../../docs/public/reference/limits.mdx) keep exact lookup tables and request examples.
+
+The authored tool bundle generates Kotlin request DTOs, executable normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. Its namespace description is shared by the generated App Server registration and the live Codex session projection. Every supplied public tagged variant requires a `type` discriminator; fixed records have no invented discriminator. Variant values use `CAPS_CASE`. The strict projection requires optional object keys and permits null for nullable controls; root `verbose` remains a non-null boolean in every projection. Each nullable DTO field lowers null and omission through the same generated defaults. Typed facade DTOs lower public output, predicate, and strategy variants into canonical types. The five published identities are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`, plus hosted-only `workspace_lifecycle`; the direct and hosted paths use the same admitted request and exact identity for the shared tools.
+
+`query_symbols` and `check_diagnostics` execute bounded canonical reads. The query tool takes one required `request` object with a closed `RUN`, `RESUME`, or `READ_RESULT` type. Run admits exact impact producers, declaration discovery, scoped indexed-word discovery into containing declarations, containing named declaration at workspace-relative file offset, exact-symbol references, or an immutable retained symbol-result reference with optional issued row IDs as its source, plus ordered steps, typed output, optional retention, and optional execution grant. Resume takes only an issued output continuation and optional grant. Read-result takes a result reference, optional presentation cursor, output matching the retained row type, and optional grant; it does not execute query stages. Run output selects `SYMBOLS` with selected fields, `OCCURRENCES` with individual relation facts, or `TRAVERSAL_RECORDS` with depth-bearing facts, plus inner-join `BINDING_ROWS`; read-result output accepts symbols, compiler-confirmed occurrences, depth-bearing traversal records, binding rows, value paths, or impact witness sections according to the retained row type. Omitted or null output defaults to symbols with name and location, while an empty symbol field list remains distinct. A new run from a retained result can present its occurrence or traversal-record facts. Diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Each nullable run control normalizes before canonical construction. Directory/package scopes carry `DIRECTORY` or `PACKAGE` tags, and duplicates and invalid lexical values reject.
 
 Every RUN requires `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. RUN has no completion selector; supplied retired completion fields reject. The sole public execution entry drains internal semantic pages under one admitted budget, then proves completion or returns a typed rejection. Retained rejection reads preserve the original question, coverage and finite cause as `EVIDENCE_ONLY`; row and evidence cursors perform no semantic work. Required storage failure reports `RETENTION_UNAVAILABLE` without relabeling completed enumeration as incomplete. Public semantic checkpoint tokens reject, while output continuation presents already-produced data.
 
-Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
+Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results keep their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
 The pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion can present related declarations or individual occurrence facts through the one query result. Occurrence rows preserve repeated call sites, exact endpoint references, use-site location and provenance. Structured result omissions keep the exact subject, relation kind and provider evidence beside known positive rows. Query items expose exact-symbol `ref` values. Exact-symbol references, retained-result references, execution continuations, and result presentation cursors are distinct typed values. No token spelling creates authority: runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Run can request `retention: "RETAIN"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. Issued `row_id` handles identify rows within that result. A qualified retained symbol result may seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Optional `row_ids` select rows in order; an empty list is valid and a proper subset retains incomplete-selection qualification. Row handles must belong to the supplied result. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` presents already-produced output without semantic execution.
+Run can request `retention: "RETAIN"`. The produced semantic rows, failures, coverage and producer progress are captured immutably under one bounded query-state lifetime. Issued `row_id` handles identify rows within that result. A qualified retained symbol result can seed a later run, including when its row set is empty; its original omissions and qualification remain attached. Optional `row_ids` select rows in order; an empty list is valid and a proper subset keeps incomplete-selection qualification.
 
-`where` admits a closed visibility or primitive predicate. Primitive predicates select compiler-grounded `name`, `kind`, or `file`, a finite comparison operator, and a nonblank literal bounded to 512 characters at public admission. The facade lowers a typed public predicate into the canonical predicate type. `concat` accepts the same exact-reference or retained-result input shapes used as query sources, preserves stream order and multiplicity, and revalidates exact references under the current authority and query budget. `intersect`, `union`, and `difference` require a retained result on the right and compare canonical semantic identity, not names or token spelling. `difference` requires complete right coverage and no right failures or producer progress before it can establish absence. `distinct_symbols` removes duplicates only at its explicit stage. `join` reads a retained symbol result on the right, keyed solely by canonical identity. Inner join emits one typed binding row per matching pair, preserving multiplicity and both cells' exact references, relation connections and proven occurrence facts. `project_binding` selects one named cell from binding rows before symbol stages resume. Semi and anti join keep the left symbol stream. Unknown projection names reject during admission. Anti join requires complete right membership and rejects incomplete right input. Joined binding rows retain and page under their own row type; they may seed later queries through typed projection, but cannot serve as a symbol join right input. A mismatched read-result output rejects. `walk` admits a relation, optional positive maximum depth, and optional breadth-first or bounded-fan-out strategy; it reuses the traversal domain operation under the query budget. Query walk observations retain expanded frontier, progress, strategy, partial expansions, and incomplete coverage, with no separate public traversal continuation.
+Row handles must belong to the supplied result. Result reuse rejects an unavailable or stale basis. Retention capacity failure is reported without erasing the run result. Read-result pages a retained result without semantic provider work, while `resume` presents already-produced output without semantic execution.
+
+`where` admits a closed visibility or primitive predicate. Primitive predicates select compiler-grounded `name`, `kind`, or `file`, a finite comparison operator, and a nonblank literal bounded to 512 characters at public admission. The facade lowers a typed public predicate into the canonical predicate type.
+
+`concat` accepts the same exact-reference or retained-result input shapes used as query sources. It preserves stream order and multiplicity. It makes sure that exact references remain valid under the current authority and query budget.
+
+`intersect`, `union`, and `difference` need a retained result on the right and compare canonical semantic identity, not names or token spelling. `difference` needs complete right coverage and no right failures or producer progress before it can establish absence. `distinct_symbols` removes duplicates only at its explicit stage.
+
+`join` reads a retained symbol result on the right, keyed solely by canonical identity. Inner join emits one typed binding row per matching pair, preserving multiplicity and both cells' exact references, relation connections and proven occurrence facts. `project_binding` selects one named cell from binding rows before symbol stages resume. Semi and anti join keep the left symbol stream. Unknown projection names reject during admission. Anti join needs complete right membership and rejects incomplete right input.
+
+Joined binding rows keep their own row type through presentation pages. They can seed later queries through typed projection. A binding-row result cannot serve as a symbol join's right input. A mismatched read-result output rejects.
+
+`walk` admits a relation, an optional positive maximum depth, and an optional breadth-first or bounded-fan-out strategy. It reuses the traversal domain operation under the query budget. Query walk observations keep expanded frontier, progress, strategy, partial expansions, and incomplete coverage, with no separate public traversal continuation.
 
 `query_symbols.request.output.fields` accepts `SOURCE` in symbol mode for a run. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text. Read-result can present a retained source window only when that evidence was captured in the original run.
 
-MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant disjointness in the generated provider schema.
+MCP `tools/list` and tool RPC `catalog` advertise the same generated input schema. Copilot registers the generated strict query union without merging alternatives into optional property bags. `CopilotInputSchemaCompatibilityTest` checks variant mutual exclusion in the generated provider schema.
 
 Installed output generation substitutes references to registry-owned serializer
 descriptors before expanding nested schemas, then attaches the existing named
 definitions. Descriptor names alone cannot admit a reference. Constrained
-properties remain inline, nullable descendants retain their null alternative,
+properties remain inline, nullable descendants keep their null alternative,
 and homogeneous array items expose the alternatives needed to reject mixed
 variants. Standalone request generation retains its full shape. The focused
 schema tests and callable reference verification preserve the encoded contract.
 
-The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests retain presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned cutover grammar. Declaration discovery, containing-declaration location discovery, and scoped indexed-word discovery resolve to exact rows inside query. File discovery has no public route. `add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body, preserves its signature and surrounding source, and rejects expression bodies, contracts, and unsupported targets.
+The installed projection derives its advertised hosted tools from the shared definitions. App Server qualifies the packaged hosted catalog directly; the CLI command projection omits `workspace_lifecycle` and both hosted mutations, `add_declaration` and `replace_body`. Private admitted requests keep presentation and schema identities, excluding cross-tool substitution. Old persisted catalogs reject the versioned transition grammar. Declaration discovery, containing-declaration location discovery, and scoped indexed-word discovery resolve to exact rows inside query. File discovery has no public route.
+
+`add_declaration` and `replace_body` compose private planning, application, verification and recovery into one call. Body replacement admits one exact existing non-inline named function with a block body. It preserves the function's signature and surrounding source. It rejects expression bodies, contracts, and unsupported targets.
 
 `SEARCH_TEXT` admits one case-sensitive ASCII `word` bounded to 256 characters,
 with the existing discovery scope and supported declaration kinds. Each supported
@@ -223,16 +336,16 @@ owner carries one verified lexical exemplar in `matches`, with `INDEXED_WORD`
 type, canonical file, UTF-16 range, a context excerpt bounded to 512 characters,
 context range, and one-based line. These matches preserve relevance separately
 from compiler-confirmed `OCCURRENCES`. Unsupported nearest owners qualify
-coverage. Phrases, qualified literals and regexes fail admission. Retained and
+coverage. Phrases, qualified literals and regular expressions fail admission. Retained and
 composed symbol rows preserve their owner-bound exemplars; relation destinations
 do not inherit the starting owner's lexical evidence.
 
-One exact row can retain at most 1000 distinct match exemplars through
+One exact row can keep at most 1000 distinct match exemplars through
 composition. A merge beyond that capacity rejects with
 `TEXT_MATCH_LIMIT_EXCEEDED`; it preserves the existing evidence and never turns
 overflow into an internal serialization failure.
 
-The rejection corpus, typed accepted-action fixtures, typed binding projection admission and path rejection, CLI wire parity and production provider routing are deterministic proofs. They cover retired step spellings, malformed predicate fields and literals, incompatible set operands, and malformed or duplicate row IDs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
+The rejection corpus, typed accepted-action fixtures, typed binding projection admission and path rejection, CLI wire parity and production provider routing are deterministic proofs. They cover retired step spellings, malformed predicate fields and literals, incompatible set operands, and malformed or duplicate row IDs. Codex schemas omit the Responses-only `strict` field and keep separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 
@@ -266,7 +379,7 @@ Public exact-reference syntax accepts hosted `exact:v5:` and `exact:v4:` handles
 
 The published agent policy delegates ordinary workspace preparation to the installed
 daemon. Agents do not orchestrate opening, polling, enablement or repair commands
-for semantic reads. Preparation blockers retain their cause and operation identity.
+for semantic reads. Preparation blockers keep their cause and operation identity.
 Installation authorization excludes cache invalidation, forced synchronization and
 unrelated IDE restarts. Mutation uses current native plan admission and the keyless change workflow.
 
@@ -288,31 +401,31 @@ source or stages. A `READ_RESULT` action carries a separate result reference and
 optional presentation cursor. Qualified query output retains its required closed qualification progress state; verbose output also derives the redundant `continuation` and `terminal_reason` fields from that state. The result payload separately reports retention outcome and an
 optional next result cursor. Exact items expose the scalar `ref` capability;
 canonical equality remains internal to set and distinct stages, and `symbol_id` has
-no public accessor.
+no public retrieval method.
 Query walk observations include progress, strategy and page-local partial expansions.
 Query occurrence output separates exact returned facts from bounded provider
 omission evidence, with measured or explicitly unmeasured page counts.
 
-Query reference rejection schemas retain the finite lookup and reacquisition
+Query reference rejection schemas keep the finite lookup and reacquisition
 reasons, including work/time exhaustion, missing retained locators, changed
 compiler identity and incompatible authority. Unknown reasons remain invalid.
-Fresh reads may perform bounded exact-handle reacquisition inside the invocation;
+Fresh reads can perform bounded exact-handle reacquisition inside the invocation;
 returned `reference_acquisitions` identifies the refreshed handles. When that
 lookup cannot establish current identity, rejection retains its specific cause.
 Continuations and source snapshots remain strict. See
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
 
-Installed source rejection schemas enumerate their canonical finite reasons. Query relation expansion and walk retain finite per-item failures and structured omissions. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
+Installed source rejection schemas enumerate their canonical finite reasons. Query relation expansion and walk keep finite per-item failures and structured omissions. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
 
 The query and source output schemas separately admit rejected outcomes with a required,
-nonnull `execution_budget` report. The existing reason string or query rejection
-object retains its shape. An omitted report describes an unadmitted rejection;
+non-null `execution_budget` report. The existing reason string or query rejection
+object retains its shape. An omitted report describes a rejection without an admitted grant;
 an explicit null does not satisfy either schema variant.
 
 Source output derives cursor availability from required qualified progress.
 `upstream` checkpoints resume the native source page owner; `retained_output`
 checkpoints drain detached entities while preserving original upstream coverage.
-Terminal qualifications retain a finite reason and all source limitations. These
+Terminal qualifications keep a finite reason and all source limitations. These
 states do not independently override canonical complete/qualified/rejected status.
 
 Canonical rejected query and source tool documents require the derived
@@ -328,7 +441,7 @@ The private invocation binding remains available to the harness, while root help
 and public local-command metadata omit it. Ordinary semantic requests prepare
 the exact workspace without a separate lifecycle call.
 
-`workspace_lifecycle` is a hosted effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.
+`workspace_lifecycle` is a hosted tool with external effects with action-specific tagged inputs for inspect, open, present, sync, `configure_sync`, release, close, `request_user_close` and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use.
 
 The public-contract generator also owns the supported version constant in the
 single-file Copilot and Pi adapters. Each adapter validates the entire catalog
@@ -353,13 +466,15 @@ support selects one invocation-owned child for sequential query/output requests.
 only the preceding reply's retained reference or output checkpoint after the first request;
 a second RUN is rejected before execution. Missing capability keeps the one-shot path.
 
-Lifecycle results retain their full state and ownership evidence in both modes;
+Lifecycle results keep their full state and ownership evidence in both modes;
 its tool-only boolean never enters canonical lifecycle requests or close approvals.
 
 
-An `IMPACT` source declares producer invocation anchors with exact enclosing and callable references, an expansion domain, `KOTLIN_FORWARD_V1` semantics, a declaration inventory, and explicit representation or boundary models. Native admission revalidates the exact sites and model positions under current authority before execution. `VALUE_PATHS` reports compiler transfers, reviewed model applications and terminal obligations without inferring representation from names.
+An `IMPACT` source declares producer invocation anchors with exact enclosing and callable references, an expansion domain, `KOTLIN_FORWARD_V1` semantics, a declaration inventory, and explicit representation or boundary models. Before execution, native admission makes sure that the exact sites and model positions remain valid under current authority. `VALUE_PATHS` reports compiler transfers, reviewed model applications and terminal obligations without inferring representation from names.
 
-Public relation and walk steps accept `expansionScope` through the same closed `ExpansionScope` union used by `IMPACT.domain`. `EXPAND_RELATION` and exhaustive `WALK` default to `WORKSPACE`. A `WALK` with an explicit depth bound defaults to `RETAINED_SEED`. Omission and explicit null retain those defaults. `SOURCE_DOMAIN` selects source sets, directory containment, production/test policy and generated-source inclusion, and lowers to the existing canonical expansion owner independently of producer selection or later row filters.
+Public relation and walk steps accept `expansionScope` through the same closed `ExpansionScope` union used by `IMPACT.domain`. `EXPAND_RELATION` and exhaustive `WALK` default to `WORKSPACE`. A `WALK` with an explicit depth bound defaults to `RETAINED_SEED`. Omission and explicit null keep those defaults.
+
+`SOURCE_DOMAIN` selects source sets, directory containment, production/test policy, and generated-source inclusion. Kast lowers this scope through the existing canonical expansion owner. Producer selection and later row filters do not change that scope.
 
 `READ_RESULT` with `IMPACT_WITNESS` selects `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS` or `SITE_ACCOUNTING` from the same retained investigation ledger. These pages use the existing result reference, presentation cursor and byte fitter; they do not start semantic providers. Original question, basis, requested domain, counts and unresolved closure remain attached even when a page or selection displays fewer paths. A reusable source recipe must reacquire current references after epoch movement; retained tokens do not become a recipe.
 
@@ -367,7 +482,9 @@ Public relation and walk steps accept `expansionScope` through the same closed `
 
 Before an impact ledger is finalized, a qualified, empty `EVIDENCE_ONLY` value-path snapshot can be retained alongside its unchanged upstream checkpoint. `READ_RESULT` returns that qualified empty page without executing semantic work or consuming the checkpoint. Impact witness output returns the finite `RESULT_FIELD_UNAVAILABLE` rejection until an investigation ledger exists. The original checkpoint remains historical evidence; public resume cannot advance unfinished semantic routes.
 
-An `IMPACT` source may supply up to 128 exact `requestedSites`; omitted or null public input lowers to an empty universe. Each selected site is revalidated natively under the admitted basis and retains its admission grant and observed work. The investigated response requires the original requested-site universe even when empty. `SITE_ACCOUNTING` reports one finite `REACHED`, `EXCLUDED` or `RELATIONSHIP_UNPROVEN` outcome per original target. Reached paths and exclusions link to original path ordinals and row IDs; an unmatched target preserves required unresolved relationship closure. Selection proves site identity, not a producer relationship. These pages use the existing retained store and presentation cursor without repeating native reads.
+An `IMPACT` source can supply up to 128 exact `requestedSites`; omitted or null public input lowers to an empty universe. Each selected site is revalidated natively under the admitted basis and keeps its admission grant and observed work. The investigated response needs the original requested-site universe even when empty.
+
+`SITE_ACCOUNTING` reports one finite `REACHED`, `EXCLUDED` or `RELATIONSHIP_UNPROVEN` outcome per original target. Reached paths and exclusions link to original path ordinals and row IDs; an unmatched target preserves required unresolved relationship closure. Selection proves site identity, not a producer relationship. These pages use the existing retained store and presentation cursor without repeating native reads.
 
 A guarded cross-root continuation uses the existing reviewed `CONTINUATION` input. The target must be independently admitted from an already registered peer root. Path and finding output use `UNRESOLVED_PEER_CONTINUATION` with required target admission and fixed `PEER_FLOW_NOT_INVESTIGATED` reason. The original `MODELS` row uses `PEER_BOUNDARY_MODEL`, retaining the reviewed rule and the same completed acquisition and site receipts. Raw accounting rejects foreign ordinary source claims and inconsistent peer receipts; decoding these documents does not grant live authority.
 
@@ -392,15 +509,15 @@ configuration admission without accepting unknown product settings.
 Local declarations use closed `LOCAL_FUNCTION` or `LOCAL_PROPERTY` signatures
 with required declaration addresses. The address retains a compiler-confirmed
 kind, containing declaration identity and range, exact file and declaration
-range, and bounded lexical ownership ranges. Function signatures retain callable
-facts; property signatures retain type and `VAL` or `VAR` mutability. Unknown
+range, and bounded lexical ownership ranges. Function signatures keep callable
+facts; property signatures keep type and `VAL` or `VAR` mutability. Unknown
 variants, missing discriminators and inconsistent address/signature facts reject
 before domain construction. Names remain presentation and search constraints.
 
 ## Anonymous objects and declared dependency contracts
 
-`ANONYMOUS_OBJECT` signatures retain the compiler-owned local address and actual
-supertypes. The object and its members keep distinct local compiler identities;
+`ANONYMOUS_OBJECT` signatures keep the compiler-owned local address and actual
+`supertypes`. The object and its members keep distinct local compiler identities;
 a display label supplies no qualified declaration identity.
 
 Callback `DEPENDENCY_CONTRACT` evidence retains the semantic read basis, actual
@@ -414,7 +531,7 @@ activation obligations before domain construction.
 Deferred `DEFERRED_DEPENDENCY` evidence keeps the source supplier, exact formal position, compiler target, and six class digests.
 The required model is `KOTLIN_LAZY_JVM_V1`.
 The binding has no invocation-kind field.
-Its `execution` variant keeps declaration, accessor, initializer, or ordered direct-invocation evidence.
+Its `execution` variant keeps declaration, property getter or setter, initializer, or ordered direct-invocation evidence.
 Document admission rejects inconsistent source sites, incomplete scans, and invented body invocations.
 
 Direct routes must preserve each parent, anonymous body, SEMANTIC BASIS, and source occurrence.

@@ -32,12 +32,10 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt
   - id: openwiki-source-492a0ca28ef350e203697356
     resource: repo://config/README.md
-generated:
-  by: codex
-  at: '2026-10-15T00:59:49.803Z'
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T06:44:31.206Z
 ---
 
 
@@ -64,7 +62,7 @@ Retired module entries cannot enter the active graph through a production depend
 
 ## Structural and generated-source gates
 
-The shared quality convention applies ktfmt, Detekt, and Kotlin file-length gates.
+The shared quality convention applies `ktfmt`, `detekt`, and Kotlin file-length gates.
 Production files use a 400-line limit. Test files use a 600-line limit.
 Reviewed baselines keep exact existing debt and per-file ceilings.
 New findings, new oversized files, and growth past those ceilings reject.
@@ -92,13 +90,13 @@ Use domain tests and native qualification for those separate claims.
 
 ## Source owners
 
-- [settings.gradle.kts](../../settings.gradle.kts)
-- [kast.architecture.gradle.kts](../../build-logic/src/main/kotlin/kast.architecture.gradle.kts)
+- [`settings.gradle.kts`](../../settings.gradle.kts)
+- [`kast.architecture.gradle.kts`](../../build-logic/src/main/kotlin/kast.architecture.gradle.kts)
 - [ArchitectureTasks.kt](../../build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt)
 - [ModulePolicyValidator.kt](../../build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt)
 - [KastCleanSlateModules.kt](../../build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt)
 - [JvmEffectRules.kt](../../build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt)
-- [kast.kotlin-quality.gradle.kts](../../build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts)
+- [`kast.kotlin-quality.gradle.kts`](../../build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts)
 - [validation_scope.py](../../.github/scripts/ci/validation_scope.py)
 - [README.md](../../config/README.md)
 

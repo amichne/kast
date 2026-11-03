@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:43e1fe305d7a432a1d2ff0d87b502dbc3bb923f1b6ca7a64b7873f2a0c0c1d52",
+  "pageVersion": "sha256:aee55621eb317a47d944921132d862150ebefd01074f0091b195900b4c8cfaed",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -52,7 +52,7 @@
     },
     {
       "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-      "statement": "Generated default Codex and Copilot plugins select the canonical CLI skill without hooks or MCP. Explicit MCP composition contains the complete transport. Authored legacy hook resources are not selected automatically.",
+      "statement": "Generated default Codex and Copilot plugins select the canonical CLI skill and native preparation hooks without automatic MCP or Python scripts. Explicit MCP composition contains the complete transport. Legacy Python hooks remain outside the default composition.",
       "evidence": [
         {
           "resource": "repo://agent-tools/skills/kast/SKILL.md",
@@ -60,21 +60,21 @@
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:63192b73621d69224301e9658aa30f7c4fd192304924389c5e19e3a4249c6a23"
+          "version": "repo-file-v1:sha256:a1bc58727a1a8ec61b1a39890cfbeafe68f9051f2740f4e156d9262b1e6f202d"
         }
       ]
     },
     {
       "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-      "statement": "Explicit Pi MCP setup selects the native extension, which registers Kast and reads bounded bundled context with Node. Context rejection emits one warning while later turns and MCP remain available. Context delivery starts no Python or uv process.",
+      "statement": "Explicit Pi MCP setup selects its native extension, which prepares the exact workspace through kast hook session-start, registers Kast and reads bounded context with Node. Preparation and context rejection keep warnings distinct from later MCP availability.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt",
-          "version": "repo-file-v1:sha256:651a1cbe099c92f102872d7a28f8bd2bdcf67c772ed59bee4b2e6ebe33c71050"
+          "version": "repo-file-v1:sha256:569cbb3f9408be606a3f2180d129ba00ee4b40ec15e16e09303d4d57a4547a25"
         },
         {
           "resource": "repo://pi/mcp-extension.ts",
-          "version": "repo-file-v1:sha256:2ac0e87c568d530d1ba4aabc7466b450c77296e6aeb7024e21e05c1ddbd97ed5"
+          "version": "repo-file-v1:sha256:8c042a411145e73e8605b91cb0313e65229db952b89a48380e82ea2f0835c39e"
         }
       ]
     },
@@ -95,6 +95,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T05:45:59.282Z"
   }
 }

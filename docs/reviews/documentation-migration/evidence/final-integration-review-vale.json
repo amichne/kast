@@ -1,0 +1,42 @@
+{
+  "docs/reviews/documentation-migration/evidence/final-integration-review.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 10.17 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        30,
+        36
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'untyped'?",
+      "Severity": "error",
+      "Match": "untyped",
+      "Line": 87
+    }
+  ]
+}

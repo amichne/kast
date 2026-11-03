@@ -81,10 +81,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-10-31T07:55:41.140Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-31T09:13:30.169Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Protocol
@@ -106,7 +106,7 @@ Semantic-read admission and projection live in the separate
 [`query:protocol` module](query-protocol.md). Hosts supply current authority and
 domain operations to that reusable boundary.
 
-An exact query can project a bounded source window with normalized text and an inclusive one-based line range. The canonical contract and wire DTO retain finite source failures; the installed output schema admits the optional window.
+An exact query can project a bounded source window with normalized text and an inclusive one-based line range. The canonical contract and wire DTO keep finite source failures; the installed output schema admits the optional window.
 
 Successful wire envelopes preserve the distinction between a published
 generation and live IDE provenance. Decoding rejects a success envelope with
@@ -124,8 +124,8 @@ endpoint schema is version 3 and advertises the three canonical read routes plus
 change planning, apply and recovery. Version-2 endpoint
 descriptors reject. `change.apply.v3` distinguishes `Verified`,
 `AppliedUnverified` and `RecoveryRequired`; only the first carries a receipt.
-Qualified effects retain their finite reason and exact plan identity.
-Hosted rejection schemas retain their transitive definitions when embedded in
+Qualified effects keep their finite reason and exact plan identity.
+Hosted rejection schemas keep their transitive definitions when embedded in
 installed output schemas, preserving bounded module/root evidence for selected-build
 source-scope failures.
 Installed output schemas reuse equal compiler-signature, receiver, source-range,
@@ -135,7 +135,7 @@ reads preserve a required report alongside their existing finite reason; wire
 decoding distinguishes missing metadata from invalid or null reports. The CLI schema regression retains its independent output budget. App Server reads
 the packaged catalog with a 1,048,576-byte file bound and rejects malformed UTF-8,
 missing files, symlinks, incompatible metadata, and drift before provider startup. Hosted read admission now also has a closed
-`CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain
+`CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas keep their existing identities. Schema compatibility and native execution remain
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final default-route CLI matrix and actual provider invocation.
 
@@ -143,12 +143,12 @@ The current [public tool contracts](../contracts/public-tools.md) distinguish pr
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
 
-Query occurrence rows retain individual relation facts or independent compiler-confirmed reference occurrences. Reference targets retain their identity, source range, context, provenance, coverage, and closed declaration-owned, file-scoped, or unavailable ownership. Discovery and reference observations are required success-document collections, independent of emitted row count. The public tool contract is revision 5 and the installed schema revision is 18; canonical read schema identities reject older incompatible peers before effects. Structured omissions
-retain subject, relation kind, provider reason, measurement, samples, and finite
-remediation. Traversal may embed a relation-domain continuation while one node's
-relation read remains unfinished; it does not expose a standalone relation route. Direct expansion and a depth-one traversal retain the same detailed omission measurement, provider/version, bounded sample, and remediation; historical expansion provenance remains separate from the current page.
+Query occurrence rows keep individual relation facts or independent compiler-confirmed reference occurrences. Reference targets keep their identity, source range, context, provenance, coverage, and closed declaration-owned, file-scoped, or unavailable ownership. Discovery and reference observations are required success-document collections, independent of emitted row count. The public tool contract is revision 5 and the installed schema revision is 18; canonical read schema identities reject older incompatible peers before effects. Structured omissions
+keep subject, relation kind, provider reason, measurement, samples, and finite
+remediation. Traversal can embed a relation-domain continuation while one node's
+relation read remains unfinished; it does not expose a standalone relation route. Direct expansion and a depth-one traversal keep the same detailed omission measurement, provider/version, bounded sample, and remediation. Historical expansion provenance stays separate from the current page.
 
-Query binding rows retain two named exact-symbol cells and proven occurrence
+Query binding rows keep two named exact-symbol cells and proven occurrence
 facts. The wire decoder rejects pairs with different canonical symbol IDs or
 occurrence facts absent from a cell's established relation connections.
 
@@ -164,13 +164,15 @@ This internal policy is independent of semantic read-result allowances; schema
 detail and finite enums remain intact. The process reader rejects combined
 stdout/stderr above its allowance rather than truncating or weakening a schema.
 
-Hosted endpoint and hosted read rejection projections preserve an optional execution report from an actually admitted grant. The report shape matches the canonical serializer descriptor; CLI admission also checks its semantic dimension and clamping rules. Failure causes and stages retain their existing finite meanings.
+Hosted endpoint and hosted read rejection projections preserve an optional execution report from an actually admitted grant. The report shape matches the canonical serializer descriptor; CLI admission also checks its semantic dimension and clamping rules. Failure causes and stages keep their existing finite meanings.
 
-Hosted configuration rejections retain three closed detail shapes: an unknown parameter cause, an invalid-value cause with its parameter, or inconsistent bounds with their inner and outer parameters. The packaged schema binds parameter identities to the exact `ReadLimitParameter.environmentKey` set. Configuration details cannot appear under an unrelated failure code. Checked-in typed fixture documents are byte-compared with actual workspace and endpoint encoders, then validated against packaged and installed schemas; unknown causes, missing/null fields, unknown parameter keys and extra fields reject. Each producing test declares those shared fixture bytes as an input, so changes invalidate its cached result.
+Hosted configuration rejections keep three closed detail shapes. These shapes distinguish an unknown-parameter cause, an invalid-value cause with its parameter, and inconsistent bounds with their inner and outer parameters. The packaged schema binds parameter identities to the exact `ReadLimitParameter.environmentKey` set. Configuration details cannot appear under an unrelated failure code.
 
-Exact symbol resolution preserves native failure, genuine index unavailability and unsupported declaration as distinct finite query rejections. Hosted `AddDeclaration` planning failures retain all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
+Actual workspace and endpoint encoders produce documents that are byte-compared with the checked-in typed fixtures. The same documents must satisfy the packaged and installed schemas. Unknown causes, missing or null fields, unknown parameter keys, and extra fields reject. Each producing test declares those shared fixture bytes as an input, so changes invalidate its cached result.
 
-The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the local control route rather than a semantic endpoint. It has no CLI invocation; it remains hosted-only. Blocked lifecycle outcomes retain their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes retain their distinct discriminants.
+Exact symbol resolution preserves native failure, genuine index unavailability and unsupported declaration as distinct finite query rejections. Hosted `AddDeclaration` planning failures keep all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
+
+The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the local control route rather than a semantic endpoint. It has no CLI invocation; it remains hosted-only. Blocked lifecycle outcomes keep their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes keep their distinct discriminants.
 
 The canonical agent policy delegates preparation for ordinary semantic requests to
 the installed coordinator. Preparation rejection is a broker failure with typed
@@ -194,11 +196,11 @@ Ordinary settlement remains independent of reload preparation.
 The response carries the settled runtime identity. Loaded replacement identity remains separate evidence.
 
 
-Impact documents retain exact value-site basis, callable identity, source range and role; reviewed model identity/version/provenance; compiler transfers; boundary positions and obligations; original question; and investigation accounting. Required discriminators and closed causes survive canonical wire and CLI projections. Complete projection validates conserved impact closure, while qualified projection validates accounting without discharging unresolved obligations.
+Impact documents keep exact value-site basis, callable identity, source range, and role. They also keep reviewed model identity, version, and provenance. Their compiler transfers, boundary positions and obligations, original question, and investigation accounting stay attached. Required discriminators and closed causes survive canonical wire and CLI projections. Complete projection validates conserved impact closure, while qualified projection validates accounting without discharging unresolved obligations.
 
 The installed query output schema is derived from the actual complete, qualified and rejected CLI serializers. Item, failure and qualification schemas reuse the same serializer owners. The former independent source-window/query field lists have been removed, so schema admission and typed encoded output share one owner. Encoded-shape, schema and generation checks remain distinct from native qualification.
 
-Keyless mutation uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay may retain admitted historical v1 evidence without granting current mutation authority.
+Mutation without a key uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay can keep admitted historical v1 evidence without granting current mutation authority.
 
 Compact retained reference pages use typed `reference-edge` rows and a result-scoped `relation_graph`.
 Retained SYMBOLS pages use typed `exact-symbol-node` rows through the same projection.

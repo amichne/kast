@@ -21,6 +21,7 @@ from okf_public import (
     Manifest,
     Projection,
     View,
+    output_paths,
     parse_manifest,
     project,
     run,
@@ -29,6 +30,19 @@ from okf_public import (
 PAGE = "openwiki/contracts/example.md"
 CLAIMS = "openwiki/.claims/contracts/example.json"
 SOURCE = "src/example.txt"
+
+
+def test_output_paths_exclude_authored_content_and_instructions() -> None:
+    manifest = Manifest(
+        (View("reference/example", 'title: "Example"', (PAGE,), (), (), ()),),
+        (Authored("start", "reader-navigation"),),
+    )
+    assert output_paths(manifest).paths == (
+        "docs/public/snippets/okf",
+        "docs/public/reference/example.mdx",
+    )
+
+
 BODY = """# Example
 
 ## Source facts

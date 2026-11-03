@@ -41,10 +41,10 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
   - id: openwiki-source-cc6a899b4b43717488dde542
     resource: repo://config/json-contracts/README.md
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 
@@ -55,7 +55,7 @@ verified:
 The protocol contract defines operation identities, request documents, result variants, and finite failures.
 `CanonicalOperationDefinitions` supplies authoritative definitions, grants, classifications, and schema inputs.
 `CanonicalAgentToolDefinitions` projects tool descriptions from that registry.
-`OperationWireTable` binds operations to their wire codecs.
+`OperationWireTable` binds operations to their wire encoding and decoding adapters.
 Public display text does not replace the admitted operation identity.
 
 The public query schema is an authored interface in App Server.
@@ -101,11 +101,11 @@ Then examine the focused encoded-shape cases and the affected contract consumers
 - [CanonicalAgentToolDefinitions.kt](../../protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt)
 - [OperationWireTable.kt](../../protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt)
 - [CanonicalQueryCliDocuments.kt](../../protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt)
-- [kast.public-query-contract.gradle.kts](../../build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts)
+- [`kast.public-query-contract.gradle.kts`](../../build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts)
 - [JsonContractVerification.kt](../../build-logic/src/main/kotlin/conventions/JsonContractVerification.kt)
 - [VerifyJsonContractsTask.kt](../../build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt)
 - [generate-public-query.py](../../packaging/generate-public-query.py)
-- [build.gradle.kts](../../cli/build.gradle.kts)
+- [`build.gradle.kts`](../../cli/build.gradle.kts)
 - [InstalledServerProjectionDocuments.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt)
 - [MintlifyCallableSchemaProjection.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt)
 - [README.md](../../config/json-contracts/README.md)

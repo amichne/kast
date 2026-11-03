@@ -1,7 +1,7 @@
 ---
 type: Kotlin Module Group
 title: Semantic change
-description: Supported source changes move through closed intent, pure planning, exact admission, effectful application, verification, and recovery.
+description: Supported source changes move through closed intent, pure planning, exact admission, application with external effects, verification, and recovery.
 resource: file://change
 tags: [kotlin, mutation, verification, recovery]
 code_sources:
@@ -38,10 +38,10 @@ sources:
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - id: openwiki-source-23a518e99c7e7bac85c836ca
     resource: repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Semantic change
@@ -56,7 +56,7 @@ evidence. Body replacement retains the exact block and all surrounding source.
 source preconditions and the exact admitted plan before admitting a write.
 Neither detached plan basis grants current authority.
 
-Planning is pure. Application first derives a deterministic postimage from the
+Planning is pure. Application first derives a deterministic source after the change from the
 observed preimage and rejects stale roots, generations or live evidence, content,
 provenance, overlaps, or mismatched expected text. Published verification
 establishes the resulting semantic state before successor publication. Hosted
@@ -84,4 +84,4 @@ incomplete observations reject. Legacy empty preimages remain ambiguous because
 the record cannot distinguish an absent file from an existing empty file. The
 default observation port is unavailable, so unobserved records fail closed.
 
-The hosted resource factory retains one initialized SQLite connection source across live plans, attempt history, recovery and receipts. Open and lookup observations retain closed failure causes, including `CORRUPT_RECORD` and `VERSION_UNSUPPORTED`; `HOST_REJECTED.detail` preserves those causes through the shared endpoint schema.
+The hosted resource factory keeps one initialized SQLite connection source across live plans, attempt history, recovery and receipts. Open and lookup observations keep closed failure causes, including `CORRUPT_RECORD` and `VERSION_UNSUPPORTED`; `HOST_REJECTED.detail` preserves those causes through the shared endpoint schema.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:45872c7c2f19ad1c51d891aa1581c10ae335ea18c1e19bcde854865daa4e31c8",
+  "pageVersion": "sha256:59c8dd2752120944a68ce81d3224b88fb8a5d272b4d1aefe2a5629a8f07af6d1",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -38,7 +38,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8706ea450fa047d710d3e2381f28b39e7de63a4723bafeaa7993709ad49c92ab"
+          "version": "repo-file-v1:sha256:f4590c2be5828bc52ccd35d728d3f33f2d7ee073fb29e33f19701f462d3f35e7"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt",
@@ -72,7 +72,7 @@
     },
     {
       "id": "claim_e2b2979ce09943fe8713c9c5e04141db",
-      "statement": "Private existing-IDE response activity records bounded frame, body and finite admission outcomes; an over-limit frame is rejected before body reading or decoding.",
+      "statement": "Private existing-IDE response activity emits bounded frame, body and finite admission outcomes only when debug configuration is enabled; an over-limit frame rejects before body reading or decoding.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseCause.kt",
@@ -80,7 +80,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
-          "version": "repo-file-v1:sha256:ea827caee7329908e7e6a2869840eb2a8043d75e0e88fdafba37567b7c45a635"
+          "version": "repo-file-v1:sha256:9fac46c6a7e5b0fe9c0e103958b904a3f7387e9784deab7eb58ec77931617f0e"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
@@ -337,6 +337,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T06:09:31.584Z"
   }
 }

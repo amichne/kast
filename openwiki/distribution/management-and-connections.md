@@ -18,6 +18,8 @@ code_sources:
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfigurationContractTest.kt
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallationTest.kt
 sources:
+  - id: openwiki-source-20e85ee434d9dedec13e85f7
+    resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
     resource: repo://cli/build.gradle.kts
   - id: openwiki-source-f2c689f11ca37c5559bce314
@@ -36,14 +38,16 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
   - id: openwiki-source-1d4cdf342ee112e0d9d87924
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt
+  - id: openwiki-source-552a7d3faff1f8e990a51c96
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-656a2bd4859ff8a64d431829
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
-generated: { by: "codex", at: "2026-11-02T17:14:13.237Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:46:24.113Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Native management and harness connections
@@ -54,7 +58,7 @@ verified:
 Its finite command model selects query dispatch, status, versions, guidance installation, lifecycle operations, upgrades, disconnect, or uninstall.
 The `cli` module composes management and the private transport entry points in one native executable.
 Thin private launchers select their existing command and lifecycle owners without a JVM.
-Their internal command families do not add public semantic subcommands.
+Their internal command families do not add public semantic commands.
 
 Passive status reads installed receipts and available runtime evidence.
 The output separates installed and loaded identities, update policy, pending recovery, registrations, workspaces, and in-flight requests.
@@ -64,7 +68,8 @@ Status does not start Java, prepare a workspace, or contact a release server to 
 ## Guidance installation and ownership
 
 `kast install codex`, `kast install copilot`, and `kast install pi` install CLI guidance by default.
-The default bundle contains no automatic MCP server or hooks. It does not prepare a Python environment.
+The default bundle includes CLI guidance and preparation hooks without an automatic MCP server.
+It does not prepare a Python environment.
 The explicit `--mcp` option selects the complete optional transport composition and its dependency preparation.
 The retired `connect` and `plugin` setup syntax directs callers to `kast install`.
 Legacy connection variants remain available for receipt admission and exact cleanup.
@@ -76,7 +81,8 @@ A repeated setup repairs a stale owned cache and admits an unchanged selected bu
 After success, Kast removes only exact receipt-owned legacy registrations.
 Foreign registrations and conflicting plugin sources reject before replacement.
 
-Pi receives the canonical skill through native skill discovery and the optional extension only for `--mcp`.
+Pi receives the canonical skill through native skill discovery.
+CLI-only composition installs its preparation extension. Explicit MCP composition selects the complete MCP extension.
 Its receipt records exact owned paths and digests. Changed owned files and reserved foreign paths reject replacement.
 `kast install skill --output <parent>` exports the complete canonical skill directory without provider configuration.
 An identical directory succeeds without replacement. Extra, changed, or symbolic-link entries reject.
@@ -113,7 +119,7 @@ These mechanisms alone do not establish that a running IDEA loaded the selected 
 - [ManagementStatus.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)
 - [ConnectionConfiguration.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt)
 - [PluginInstallation.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt)
-- [codex-mcp-registration.py](../../packaging/codex-mcp-registration.py)
+- [`codex-mcp-registration.py`](../../packaging/codex-mcp-registration.py)
 - [ConfigurationSchemaDocument.kt](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt)
 
 ## Read next

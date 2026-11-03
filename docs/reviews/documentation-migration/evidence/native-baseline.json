@@ -1,0 +1,2171 @@
+{
+  "status": "completed",
+  "scope": "public",
+  "sourceRevision": "eabdb2e88eab1f3d91e9ff31c189eaffb1080ccc",
+  "producer": {
+    "adapter": "kast-native-claims-v1",
+    "openwiki": "0.6.1",
+    "lockDigest": "sha256:101abe97610ab50aaaab570b62c6442b1dc1dfac18c02b7d553f332b19039d22"
+  },
+  "inputsDigest": "sha256:4eb0ed813cf4e4cf344ae6687cbec61e0d6a36a9e0e70ce2e56aa2311b08b1f1",
+  "inputs": [
+    {
+      "resource": ".openwikiignore:effective-patterns",
+      "digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "resource": "{\"resource\":\"repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt\",\"previousVersion\":\"repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570\"}",
+      "digest": "sha256:095cf635de99efc7ccd2456a91b98becf3744e7e71b4696f2449aa83f6cbd937"
+    },
+    {
+      "resource": "{\"resource\":\"repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt\",\"previousVersion\":\"repo-file-v1:sha256:5aceec734dcf5d1f2d4df673ff5554051b2d8fe9e07519f93f4246996fe91767\"}",
+      "digest": "sha256:1accbdf9b809b7aad531cd84db9fd35879734a19d30ca1e9ddcb8087a7906772"
+    },
+    {
+      "resource": "{\"resource\":\"repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt\",\"previousVersion\":\"repo-file-v1:sha256:4f5e06e50436c587eef84a642e85e684076fe51089bb919fdac8425dc93a4d69\"}",
+      "digest": "sha256:536eeaadf266e71f0130570165697898956a8f44a080990e79592d4bf54f2b73"
+    },
+    {
+      "resource": "{\"resource\":\"repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt\",\"previousVersion\":\"repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243\"}",
+      "digest": "sha256:6dbd62234acde1c6c38999922a0885ee9c7e6024c9730f8f13292173559eef4e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt#L3-L49\",\"previousVersion\":\"repo-lines-v1:sha256:63f267fa7ad47810b55f06b2de4c3286fa0f961e4ba9b4caae54f58e5264d850:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ\"}",
+      "digest": "sha256:54b3c11541ff76a32490dc7c555eb92d15f3727fdc4e32b20be56a522d5ae058"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt\",\"previousVersion\":\"repo-file-v1:sha256:5523485566421f84eb25ff86a1b8ccb28520d1eebdbeac252668f223d61ac7e1\"}",
+      "digest": "sha256:df1163fb39a7224120d415583ec46da77d0b9eaa0201ff09b8122a367508bcb8"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L465-L476\",\"previousVersion\":\"repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ\"}",
+      "digest": "sha256:108cc8c840f4af623e421d74d4ea94557bc742cf1ccf66aa1adadc0c3bf86229"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt\",\"previousVersion\":\"repo-file-v1:sha256:e58359e73d8d46983b465e3febeb1c2b74dfd2d0fb8b365c296db46990bb9455\"}",
+      "digest": "sha256:eace9cc505883fb6613c3e5fcc5f9f2bd6d5e997b4fbe65a6a6f61ed94286a4e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt\",\"previousVersion\":\"repo-file-v1:sha256:12e27674a2a1f6ef2b813416321419c648d6753e095bd14ddc5398ce456452a8\"}",
+      "digest": "sha256:7316a43e5d7c9cca31129c63a378babdaa8476e3228ea484193b4fcd6a67bc67"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build-logic/src/test/kotlin/support/architecture/WorkspaceRefreshEffectBoundaryTest.kt#L15-L47\",\"previousVersion\":\"repo-lines-v1:sha256:e30a5dbaa4697055afb92edc597476eea73689d0df33713e9ee404dcd5a201f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZGY0ZWNlNWUxNGU0ODg5ZTE2MDVkZGM0M2I3ZTJiNDhjMTJhNmI5ZDRkZTQ1MmViM2M3NDlhODg2OWU5MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhMDI4NTk1NmQxZWNiMDQyY2MxNzk5ZGZmNTJlN2M0ZTM2ZTc1NDRlNWUxZGNjNDM3Y2M3MDgwNGRmODYxODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyZDY1Y2M5NjJkN2MxMzczZjdmOGI3OGJkOWY1MzU1ZWQ0NDY1NDVhZDczZTY2NWUwMmUyYTFmNWRlZjY4NjMifQ\"}",
+      "digest": "sha256:bf713e3b962743f871ea9461f0b39fb61d742947953bcc44c53f2fa76c1cdb99"
+    },
+    {
+      "resource": "{\"resource\":\"repo://build.gradle.kts\",\"previousVersion\":\"repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d\"}",
+      "digest": "sha256:b1edc20a12d4de6182462cd50e19878a63842c40e40ec53bf7b404ca32a4fd4b"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt\",\"previousVersion\":\"repo-file-v1:sha256:4dc797b8e08692e4892d9ab74bc8b0d61fce53a82ff1edaf28c11cc3f67a53af\"}",
+      "digest": "sha256:4e5a596aba039cbe9b56a50ad93151e2ebbecad76393af02ca7dc3aa511b3aea"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L47-L137\",\"previousVersion\":\"repo-lines-v1:sha256:7ee7be99e9f0854116295741a02f0f27e1b91c109a9b5706871300369b886252:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTJjYTMyYmYxMjFmMGNhZDIxNGI5NDVjMjA0ZDVhZGFjMzQ3OTQwNjcyOGUxYzRmMzhlNzIxMjFjYjg3YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2NDk1YzM2NGU4MjM4ZTQyNGUzMGE1YTYzYzk5MmU3ZmRlMTI1NDEyYTFmMDFkMGYwOGU2ZTc1NTc5ODExMTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkMzliMGJmYTc0OGE2ZmMwMGM4YjAwYzdlNTBlZDhkMjZhMGE3OTUwMjVkMGQxMjhjYjU5M2E3ODVhOGQzNWIifQ\"}",
+      "digest": "sha256:b4a53daa3d89d4aaffeba7a4ad82e1aab7f72668646a51fe6990b8313d7ac34e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:c90d0809fd2d3dcfd501704dd63ba50429c08bdbf950f25ae3c63d160bb0ac6f\"}",
+      "digest": "sha256:1c0cc2e2d97c9688298dd4a6e987c2e29342da2f19617d860c34e41294e18819"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt\",\"previousVersion\":\"repo-file-v1:sha256:8d70d7f66a6a06add33c18d6b3be596fcaa18e331872a0dc8d325f6181701c36\"}",
+      "digest": "sha256:5f125b700a4368ae9137efa716602a07cfb48ebf0b841acaefab7af078748bbf"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt\",\"previousVersion\":\"repo-file-v1:sha256:23164ff36ef3cae5bb9afaa62456d5c2ac22c7c5ba9250ebedde86610088798e\"}",
+      "digest": "sha256:2a434e4c1ce27663f2ee34aa93a2bf3eda6b0138e8c9c8b0310628db8d05ca07"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/recovery/src/main/kotlin/io/github/amichne/kast/change/recovery/AddDeclarationRecoveryService.kt\",\"previousVersion\":\"repo-file-v1:sha256:c4720c305aed0b7e12c0808fde3ad726ca062ec7195a6bdf5e3981f071045680\"}",
+      "digest": "sha256:9e1256c6228748e5c4c8508295a957a5dce66d14395a3c23b7958453a76d1d07"
+    },
+    {
+      "resource": "{\"resource\":\"repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationVerification.kt\",\"previousVersion\":\"repo-file-v1:sha256:0c87e14d5adde7f58c1d9000cab9c9024523ffdb6477a202b8d16b2595266840\"}",
+      "digest": "sha256:f1a9f2d6ac11ebec790785c6becf99a4870575787a6b99678795b497a976ad41"
+    },
+    {
+      "resource": "{\"resource\":\"repo://cli/build.gradle.kts\",\"previousVersion\":\"repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c\"}",
+      "digest": "sha256:913ec55f0aac1d35cac9fda0ca909c959bde2efdbdc9577d08fedb019750d2dd"
+    },
+    {
+      "resource": "{\"resource\":\"repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:3be1ea90bed8dfdda7e6f7b2d3b6c310d1cce68c02623e07a26e3987e96e13cf\"}",
+      "digest": "sha256:cd57d98a5973a943f7d7b2d566845f20321579674b6621cbf61adb1bc13d5e9e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt\",\"previousVersion\":\"repo-file-v1:sha256:165a5fd16a9d60b960a1fc7c8d44e93b6041629348712c9ab30cb79d3f36371e\"}",
+      "digest": "sha256:eea02737c7f51820465bfed06a053f2061f7569b181391469e32a7f876d0619d"
+    },
+    {
+      "resource": "{\"resource\":\"repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt\",\"previousVersion\":\"repo-file-v1:sha256:3706f0683b09bf7439c5d5b277a17bd79baa2bac2a95c60f2f8f9713216171f0\"}",
+      "digest": "sha256:f568d2a9a501e7bc5d13edeab5d6a027e9610114eb224fbdc85c91af3ed28f63"
+    },
+    {
+      "resource": "{\"resource\":\"repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L132-L178\",\"previousVersion\":\"repo-lines-v1:sha256:3ac80e42341f13547313b8e283339d8501c1b8e297e9cc0656733291d81bb1d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNmM3YjVkZWJjNTY1ZDQ5ODIzM2UwNWY4OWFiMTc2MmNlNDZhZjUwMDIwNmZjZThiOTE3YjhiNGE5YThiYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhZjRjZWM2YjNhMjc5YTA4MjhjODJlOTQ4OWIxNjU2N2MwMWZkNzUwYWNmOWI4ZjhmNjNkNjMyZDkwY2EwMzEifQ\"}",
+      "digest": "sha256:063171b48eaeebc28eda0f033d856982aac403bb5c5a68c10f3efc2c4349331d"
+    },
+    {
+      "resource": "{\"resource\":\"repo://distribution/cli/build.gradle.kts\",\"previousVersion\":\"repo-file-v1:sha256:41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1\"}",
+      "digest": "sha256:dfffdde08a41d8f3f1ad6931f8294e080eb8753bc0294bfaca8ddd39aba379e4"
+    },
+    {
+      "resource": "{\"resource\":\"repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/MutationRecoveryRecord.kt\",\"previousVersion\":\"repo-file-v1:sha256:f7cd0716e26bc4a6828a2755d3b44120e6766834b651d78a68931bfe14302208\"}",
+      "digest": "sha256:362452d17d2198bfc09fbc9d9af53ec06b3c34978900f66e834953b975c1b64c"
+    },
+    {
+      "resource": "{\"resource\":\"repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt\",\"previousVersion\":\"repo-file-v1:sha256:f94ba165c8309c8ad8d07ea78611e8685fc0189c7b257840232f49c172da6c86\"}",
+      "digest": "sha256:ff9ee146f93bd9f8b56e625d20879fc1f733f19c3050a4e45739991ada962353"
+    },
+    {
+      "resource": "{\"resource\":\"repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt#L29-L82\",\"previousVersion\":\"repo-lines-v1:sha256:8f239513bb3669fe549ea029dedffa5aab876ce0eee8d1b7601eacc99fce396e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlNjYzYWJmNTQ2NTBkZGJlMGE1YmQwYWRlNDk0ZWM4OTBjZWVjZTZkNjljOTcyYTc4ZTNlZWE3ZWZmOGJhMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1NzJiNmU4NzMzY2YyZGZmY2Q3Mzg5MmMzYzEyYjExNWM0NmE5ODVmNGY0ZjI5ODJmYTkxNWM5YzQ3ZDM3OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxOTIzYzRmODQ5NWY2ZDEzMDRkYTI3MzZiMmRkY2Q0YjkwYzlhODgyNDdmNDA3MjdhYmQ3MTZkODgyNGI4ZDMifQ\"}",
+      "digest": "sha256:adc1d9e132c989ec4ffc2274cafa954539d179e7666b9707eceeb77cf57b0ec1"
+    },
+    {
+      "resource": "{\"resource\":\"repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt\",\"previousVersion\":\"repo-file-v1:sha256:1a6e91f13c80c03ba05bbb6781b4d689ae2cee24e2e48cf959364c0c23eb6967\"}",
+      "digest": "sha256:4de66c3e2cd3f5210a31dc083d37d4990a8d12ed2f04ec8ea8e27293930f0fa4"
+    },
+    {
+      "resource": "{\"resource\":\"repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt#L3-L18\",\"previousVersion\":\"repo-lines-v1:sha256:46fe0278aafb49770cfa9d4ce724c14c2d24c1a8e429a8d47d4606960d3bcc3a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4Y2RkYTBjMDFkOWU2ZDMwZDFiMjgwMjhiMmExM2Y0NmI0NmFiNmFkZThkYzIyOTFiNTU3OGZlMzczMDljMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ\"}",
+      "digest": "sha256:b5a8e79353a28284a48fd9d1d14877d9bd9a5dcc49280e45024184b14f8e7a15"
+    },
+    {
+      "resource": "{\"resource\":\"repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt\",\"previousVersion\":\"repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd\"}",
+      "digest": "sha256:e856d58ee00c8972ae3dca8f1d9c052b2dca77e4a1b46b9d57f5537b15961356"
+    },
+    {
+      "resource": "{\"resource\":\"repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryInvocationDocument.kt\",\"previousVersion\":\"repo-file-v1:sha256:e4a82ec6995e43f75dc9975b7ecb438896da9a211a08b779344e80f9bdd6c351\"}",
+      "digest": "sha256:8b8de14a892b09ffd64c8818711b0b2975a00a428734223456516b30159ee6a2"
+    },
+    {
+      "resource": "{\"resource\":\"repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L104\",\"previousVersion\":\"repo-lines-v1:sha256:5b05731b4dcfbd35c7ccb764a8149f405fe9842b2d2d59722f792cfb2b4af364:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ\"}",
+      "digest": "sha256:42b85dad02ab3a47c934f82eb5fe918899b1f21ea0e48a527a486728eded86cc"
+    },
+    {
+      "resource": "{\"resource\":\"repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryCompletionRejectionCliDocument.kt\",\"previousVersion\":\"repo-file-v1:sha256:277498b0f018db7c6b554a74d22a02b4d883fb17b495c733f776eae6d4c05c57\"}",
+      "digest": "sha256:08491992c43be6259e23919e4e692b7a682b02624f6ea6678d4e22cff9318970"
+    },
+    {
+      "resource": "{\"resource\":\"repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt\",\"previousVersion\":\"repo-file-v1:sha256:4a722cd7020b5d245cb286504071ad6469f8eb12538fa473bca592845ebcd420\"}",
+      "digest": "sha256:656ad494f861c6633e7560abbd52c5bf38524b466149d36755a7462deace806f"
+    },
+    {
+      "resource": "{\"resource\":\"repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultCliDocuments.kt\",\"previousVersion\":\"repo-file-v1:sha256:2e02e1720f07c7c0234fd644318669d4c2ba63fb8b6f4fe979c2ec345878d06a\"}",
+      "digest": "sha256:d63863fdc8d0c9b05028e4376b0d54a5fa53ce420693d5376da1ca9eeb4dac4e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt\",\"previousVersion\":\"repo-file-v1:sha256:5e823ccf2a63a1cf786689892826daf1a4a057afa801cf6d70bafd9997d361a7\"}",
+      "digest": "sha256:5cfceb04d7cfa3338965c793f0f8df6c255d23cac7f417f4f1b5ee210c8d5ead"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt\",\"previousVersion\":\"repo-file-v1:sha256:f77c0a78f06f3fe16ef2104f7f210d4cf9c2082d4955e8fdd9e45b148fb7230a\"}",
+      "digest": "sha256:0ac56666f493665f745f9e2e39b17cb7a626bce3dc09cb1a2790117fa2f40361"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt\",\"previousVersion\":\"repo-file-v1:sha256:7d5322f302cc389dd36246e1f5bfbbdf050c04910270762336913eba98b7fb8f\"}",
+      "digest": "sha256:a1ae03612fe2da5bc73f0c62bf0c0d697167d155cf79f7aca07f71ba1f0d0db3"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt\",\"previousVersion\":\"repo-file-v1:sha256:a83996f26811cdec25e5b9084424963f0fbc0bf7912ab4ccd31ab83632af7191\"}",
+      "digest": "sha256:6ce522eb9908b90af3f9c409e59bb65e1b29df32ae3696bd6b0845a753e031dc"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt\",\"previousVersion\":\"repo-file-v1:sha256:bf434da0a104f53da1983e4a112ca111a142cda769158cbc2fc1d18ab3814048\"}",
+      "digest": "sha256:9d072cc2461e224b1f60c085b99ab0b4255fed63d81ca1eafc985e7fbec0d263"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt\",\"previousVersion\":\"repo-file-v1:sha256:63c9651426f0983788c77b61627b9f2a5d22acf8ad566f1d59614e65c7d3a585\"}",
+      "digest": "sha256:b82151aea80aeb562e1b764be67af11336e123aad71d9af5b613fd9511d6f438"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRowAdmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:b141322b2473c5c42bc438adfa0d1dadfee8b2cd580cbb7116807c5375789177\"}",
+      "digest": "sha256:50cb0916bc54260d613c47704511ab0354ae89773df7aec4ee7627f42ae551b9"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt\",\"previousVersion\":\"repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295\"}",
+      "digest": "sha256:845cca8b723a8bbb98083186ee9b981864de97d201f1e32032b0a9c40b5467c1"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:11d1c26a2af0572961a8a3f049360bb23344dcc4ebd3aba171bede6385a8df7a\"}",
+      "digest": "sha256:4c4cb2592b6f2f4bbc8376f50c81ed39c31b5deb920d485ee6a2429a182b61d5"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt\",\"previousVersion\":\"repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02\"}",
+      "digest": "sha256:cfd965ffc5dcfb17fe83dbd56b62eb315c8354fc6267770c2df3802ad933e44e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPublication.kt\",\"previousVersion\":\"repo-file-v1:sha256:9ebb9da244bcd4b01496fe2849de82189e7a7ea69543c5a71ae47828941da030\"}",
+      "digest": "sha256:6a5ad47aacece21f20adeb53a76d023bc395c5f58a2bbe67a500544639d47bd6"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt\",\"previousVersion\":\"repo-file-v1:sha256:019c6db38af05865705494db6c9f16585965831af54c5792d82193c84c8323e6\"}",
+      "digest": "sha256:a90c48347a99eeefd88391cd10cd9bcb513af5d7ee9bcf1c6f5cd52c8defdd51"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt\",\"previousVersion\":\"repo-file-v1:sha256:e314d5a31ea0018ea48f6a34d5f3ce0fa73393904d6835df798dd3fa9c1a2959\"}",
+      "digest": "sha256:929eb57b75e144881a508fb723836dc934a01e3c7c533cac41c35974e83fbe95"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt\",\"previousVersion\":\"repo-file-v1:sha256:1adcc8b0a6880d00df01c0da8989cd312c47d9f8a364a096a2b1c5d9b88a1d82\"}",
+      "digest": "sha256:543408cf670ef7994b5871378c90b13fcf6db6e6c378cdec2dfeb34ec78a9262"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt\",\"previousVersion\":\"repo-file-v1:sha256:4436a9094582430c668b7802a7641f6c2a73b0b09a608e97bd906ade5c79499a\"}",
+      "digest": "sha256:c16b3afc040f308e70ce9f50390a7f20487242c4c351012f41c743ada29efc35"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt\",\"previousVersion\":\"repo-file-v1:sha256:9dd8ec156d1071075bb3672d5f49170688279b2efa0bc82b19c999d7b36625d2\"}",
+      "digest": "sha256:8bfe91990884bd98a9c25dd6d993dea239df88d675f18990da02e08eaf1c5608"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt\",\"previousVersion\":\"repo-file-v1:sha256:f9b8e744045400ca762f09efeaebb0a94bb53e2acb95fdae4bf76e6e5484486b\"}",
+      "digest": "sha256:163fd3222e6ea10975e039553bdccf6d0f59014bc74f47d622ca2312b3439b46"
+    },
+    {
+      "resource": "{\"resource\":\"repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt\",\"previousVersion\":\"repo-file-v1:sha256:d394faa95619919027d4edd8301cb9689752d9b1265c0ed69139d06499c10ded\"}",
+      "digest": "sha256:4f6098aa9fcc2990b49370559b592bf09389419a05c711cf213713267ff7464b"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt\",\"previousVersion\":\"repo-file-v1:sha256:477b2a0eac61b6638ecc9d70673af182833de958e690b496538733937693470f\"}",
+      "digest": "sha256:216b0ef82b1f27180ed8d22e3b48d45b32d07b8582b669b475f2ba1642cee047"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackEvidenceDomain.kt\",\"previousVersion\":\"repo-file-v1:sha256:31b2455fd659e70ba4dc4375477925515167bcadd340ad8abc666479f55ef4dc\"}",
+      "digest": "sha256:bc3c9af68ba46fe4c2386e67f31b6c210402944d9848f39cf9100e01f3478013"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackResultProjection.kt\",\"previousVersion\":\"repo-file-v1:sha256:b790da9efb578a7d6a0c69bcf9a65af803303943e3d7123915f7199ce6d9e3a0\"}",
+      "digest": "sha256:429b997e0bbfe69dbf542333ab2d2660d0a1abf4f5ecbcf1578d0369978c8460"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt\",\"previousVersion\":\"repo-file-v1:sha256:3e7b1950349306ab766caedf11eaf38848bc0afb485fa2eac8f623d864241110\"}",
+      "digest": "sha256:e9dc660274003c695eb0793960c3b264e2fe7d0c0ec5cafec595393d20536353"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt\",\"previousVersion\":\"repo-file-v1:sha256:baf555f15edc021cc709a58f0a2c18ba5ca1378400c0f7ddb5c0b7ecebd10ceb\"}",
+      "digest": "sha256:23f4af23de308b8793ef8ad161f84fe333cdfde324790163105a025247d35fc5"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackBindingReader.kt\",\"previousVersion\":\"repo-file-v1:sha256:3956d2fd2a4f5423d0cab98e005a995814e7a07e12abb04b536741c799c916da\"}",
+      "digest": "sha256:1595e94dca7368cc34eeea38d16875876a759a46fd32ecb4f5d30b3a22111ef3"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt\",\"previousVersion\":\"repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7\"}",
+      "digest": "sha256:4a3ea3220e89294d63d26a7cf5861272830d9ce286ad0712b5f4851f93993a41"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt\",\"previousVersion\":\"repo-file-v1:sha256:c3e47a72f70d14a8166542ee8620c943f9b19944786fc1251b1440a2593dd9bd\"}",
+      "digest": "sha256:539c63d38366aaf78a2b19b80ddfa645c14154ca65cdc838e8a9fc0d2ca61d23"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackResultProjection.kt\",\"previousVersion\":\"repo-file-v1:sha256:a55cf5dac63649a9aec02641373a6d214c887f4711fb9dfae520229180a8f38e\"}",
+      "digest": "sha256:a8a12c1f0d2538cdf23559794d4b1a2a70e3478d9c8fe33615401d29ebe8e16f"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:22b497376d8d555388044741b87ffdd6244e06a4eaca47810e9f003567a8c1c5\"}",
+      "digest": "sha256:21fca16937a74df04b0e3de3839f49021bd76ebe214783ccdce799cc4fb9eab7"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt\",\"previousVersion\":\"repo-file-v1:sha256:a8143184d701e960f05ca9bd2eef8735860f2c6902b5f5af3be99d8606916fb1\"}",
+      "digest": "sha256:fa932c997ee038d302fb5170732a9a3d0497e97bf568e5b0a82ab81be8150224"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt\",\"previousVersion\":\"repo-file-v1:sha256:692c7475a19b3caaa54f3be6b47c2005eeedd000707901e8f469fc13759dc4c7\"}",
+      "digest": "sha256:998668ec6c5666ef8897b4af51f577bd4c9b3eb0ade3db4f02174905920d4d96"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackEvidenceAccessTest.kt\",\"previousVersion\":\"repo-file-v1:sha256:71d57e8fb14615cdaf5f325e1e80d03a00f26c49e259a4f7c55fe64058f88309\"}",
+      "digest": "sha256:43a28dbe25b2c379204886fe634df2b3ab1065db145d49e86726a14479390afc"
+    },
+    {
+      "resource": "{\"resource\":\"repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt\",\"previousVersion\":\"repo-file-v1:sha256:5ae59808ca6f275539558b45a8161a61ecc10bc0d895ec6fc8e6fac90743f22c\"}",
+      "digest": "sha256:a2dad9518db292ba2497b46f07835a1b5952a12a8ba18abab72c295440a740ab"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/build.gradle.kts\",\"previousVersion\":\"repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1\"}",
+      "digest": "sha256:91b2e942f4b92a8d6acdd4c34586657fc771ef03459c73d09d33d411b30eb80e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:7980ac96d67f35a82d84fef7f33e3d9b25383958ea574d36308c1ffd1ae1ad1f\"}",
+      "digest": "sha256:9ed47a93af69c56ddb441d647bacaf4f3da8dd58d2e8da9f59245009871125af"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt\",\"previousVersion\":\"repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536\"}",
+      "digest": "sha256:d2a2bb9fc83a7d147cb83258cb3bb07e88f0a39d58a7fa4e5a870dedf3708333"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt\",\"previousVersion\":\"repo-file-v1:sha256:5e4d434f12b0575cc088a766af2981a35170a0e27f36a458a08fa76d7a0ee4a5\"}",
+      "digest": "sha256:de9447f9be5478db2456ecfb304ccfc339377d33b5f7b9e70bf86f905813db4e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt\",\"previousVersion\":\"repo-file-v1:sha256:c60d21c3c571d8bd3a48431af4f88f0367e98efbe53362581452f89f9cf35673\"}",
+      "digest": "sha256:c6b26f5ff0495e690e665b61bef5855b2efd37c89df3ed39dd1d4f03f5f3fdee"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt\",\"previousVersion\":\"repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43\"}",
+      "digest": "sha256:677d16ca5f9d2fa5f9185b81151edc385ff09b86da2fec4909279a6a34a76294"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt\",\"previousVersion\":\"repo-file-v1:sha256:6eec798f28b236295e16d866bdf1a4e4ad961b8f076a0388281888a6d67bf0fb\"}",
+      "digest": "sha256:ec21a948cc92af71b01dec5814de1878df3874da107cb70053d3660166f2c0ca"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt\",\"previousVersion\":\"repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e\"}",
+      "digest": "sha256:24dbffe0fd01c092cb00eb462cf17888db186cb50854494384f13ea2c9c6247b"
+    },
+    {
+      "resource": "{\"resource\":\"repo://runtime/hosted/src/main/resources/META-INF/plugin.xml\",\"previousVersion\":\"repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6\"}",
+      "digest": "sha256:b1181d49c411e89631d36b59d525a9d66cd5e27455adb6261aff3955b4794f7e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://settings.gradle.kts\",\"previousVersion\":\"repo-file-v1:sha256:a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5\"}",
+      "digest": "sha256:43d794198d8dcdc755ad2bb7d0b9a5356a0ab210e631c35a3b9a1773ca11d4a4"
+    },
+    {
+      "resource": "{\"resource\":\"repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt\",\"previousVersion\":\"repo-file-v1:sha256:ee88167947a20685c20b30b0fef48753db01e324ad7f107c51fa8062fccbc621\"}",
+      "digest": "sha256:8a71406d9c1b7ddfd2909620e3dadd7fffd9696f338cd960ffb2a57c510bfc67"
+    },
+    {
+      "resource": "{\"resource\":\"repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt\",\"previousVersion\":\"repo-file-v1:sha256:6d930d9bd54e0111f9fda593c5af8d1c0abd6c7e2c1f57ffd105f635158063a1\"}",
+      "digest": "sha256:821a7149eee57d019cc0341cae8cd3e34a93346c39ca35244b87a03726960341"
+    },
+    {
+      "resource": "{\"resource\":\"repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt#L31-L85\",\"previousVersion\":\"repo-lines-v1:sha256:e442a60ad923d477cb96c118a6dbe9b209f68210cf1d80bf10b7fa1d06da4d38:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYTdjMjA2OWY4ZDZkYThkYmUzNzMzZThjNmZjZGE1M2RmOTgzNTJiY2ZiYWI3Y2ZmNTEzODkxZmUyZDU3OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZmFlNjMwOGQ1ZTQxNzY1YjM1OWM2NGUxNmM0NDc1MGYzYzYyOWEyMmYwMDRmZTVhZmMwNjdiZDZiY2YzM2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxN2MwM2UxOTk4YjliNGI1Mzc5YTdiMWM0NzA1YWFlZGYyNDU1MGNjNzU0MDY0MzVhMjE3ZTJmM2RkOTNjOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4NjlhZDY2OTRkMzViOGY2MzQ5ZTdkNzVlNTU2OWJhYjllYjk4YjgyZTA3N2ZlY2ZkOGMwNzU1ZWNlZTFhNTMifQ\"}",
+      "digest": "sha256:5040450af01fe2fbdd379d31e590c21970cdd12d0a5fd805afcdaae9656e454a"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt\",\"previousVersion\":\"repo-file-v1:sha256:6e8417369106fd7d75c6c8af34650cc8ec9c07971137b8bebe8bcb0b21e46aed\"}",
+      "digest": "sha256:15c28d6cd3a7bbbbca779c545cf41d98beb0b2df1110a4dbd4db090f96643b1c"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt\",\"previousVersion\":\"repo-file-v1:sha256:6b61fe9f812d24676bde4bb28867a6333de19f4b739013071617bf0f7ca35bab\"}",
+      "digest": "sha256:108eafc7ea8185ae584b645987e89f06a78c0c870396776b7f5f862bcfbee366"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt\",\"previousVersion\":\"repo-file-v1:sha256:e966d06a82ca37b3b4ea8d52026ce1935a91101b037edf5b5e56bad6a4e0e618\"}",
+      "digest": "sha256:1f1c8e98bfd10abac769df20b920c5d0320a525fb42ab198eeb4665e01403048"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt\",\"previousVersion\":\"repo-file-v1:sha256:c146c8b996a5713d3375d0f98c0e850d111b21bb6b88c0683f6bf4de9a4190e7\"}",
+      "digest": "sha256:d8c2c1d39c498d78fcbfea3ff417b92e9627acaab47c95651185bafd358f5f68"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt\",\"previousVersion\":\"repo-file-v1:sha256:35e61f6c1617c5842be7f437f0916559471df6885f3bd3288cc1dfd15067d3c4\"}",
+      "digest": "sha256:471e91da867603ab9a314f3e72622e14a2e84dbed01c01399b7bc1bdd420ab61"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt\",\"previousVersion\":\"repo-file-v1:sha256:120c44788382c43d79d03bf3a8a847e3486bbfb95ab8b7ba5a4de636928b2f86\"}",
+      "digest": "sha256:b0a39ae09be99171bd7e1484bd40b1280f5831acde371f5753cc78f7ce29dab7"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt\",\"previousVersion\":\"repo-file-v1:sha256:993d3657f58ca657420e6a8132944a38f0e15e5970bd2ccbd440b3aefa919cea\"}",
+      "digest": "sha256:ec25a319ce9b158af97f16cd08dd5c7b26f74e3d9492d66fc25f506f08798b97"
+    },
+    {
+      "resource": "{\"resource\":\"repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt\",\"previousVersion\":\"repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed\"}",
+      "digest": "sha256:92a91790cf82ef97da5ac0a0cab0cd6720c5eecc6e1247b22944ce91a75cabdc"
+    },
+    {
+      "resource": "{\"resource\":\"repo://topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt\",\"previousVersion\":\"repo-file-v1:sha256:20dca8b4e9e3c31ee4b9bd3a08f8ad99e6322949721a384f4aa336680561abcd\"}",
+      "digest": "sha256:8d0e715d81eb5c9c3a39655e9f8e13f6ff7abe5efa8cc985812532c13ab7c922"
+    },
+    {
+      "resource": "{\"resource\":\"repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt\",\"previousVersion\":\"repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd\"}",
+      "digest": "sha256:e77c8a4fd5fb647db1b158952a84e8c5be5c07ac83a4d759a6635b40441dcae0"
+    },
+    {
+      "resource": "{\"resource\":\"repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt\",\"previousVersion\":\"repo-file-v1:sha256:3f18628866cecb74acc5db4ec30c40e987663ae15b704bc4e544a69d7182e7d9\"}",
+      "digest": "sha256:b0c75419533e9757aa991ff4babe990eab76c19f653d7cd845b5bfcb84a65d5e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://topology/service/build.gradle.kts\",\"previousVersion\":\"repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb\"}",
+      "digest": "sha256:64e8adf402f07526265b1556c11b6f301ebed6308d3782c03f218a0a7fc296f3"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt\",\"previousVersion\":\"repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e\"}",
+      "digest": "sha256:1d753a5e397cbe42dc105bcfc6b874dbffe19d0d42ab83b6f7a4f48ad2487376"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L245-L280\",\"previousVersion\":\"repo-lines-v1:sha256:e915a860f67fa989c16304ea8cdb1602f0f9d6baaf3b43a3576dce8477a132ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NDljMjNkZTM2NTYwNzJhZWY1ZjI2MTIxZGY4ZmU0NTA1YWU3ZTRjMTIzYmM0YWE4Nzk2ZGVlODJhMTQyYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhNDJhNmFkYTA4ZjVkMGM2MTU1NTMzZjczMGJhZTc1NWZjYTY2ODE5ZjVkMjU5ZDkyZWYzZDM0MGJkOTdiMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmOGIxZDE1MWZlZjVjMjQ1YWZhYTJiMWU5ZDY3NThjMmYxMjY2MTE2ZjNkNjEwOWVmMDJiNWNjMGMyNDQ3ODAifQ\"}",
+      "digest": "sha256:1a60e9e8057a41ea41452580ba2e6974ffaf134afd500114caec6688211f1ef9"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L44-L143\",\"previousVersion\":\"repo-lines-v1:sha256:c519cfb50072b363f9ecf1c59e546256f1eaeded74a183f8d6704216d18d43ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYWYyMmNmMDczMjU5MmMyNDcxNDFjYmU2MWVmYTExMDEyNjEyZjVhMzEyMmI5YWY5YmJhZjUyZjU3MjRkMTk0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MGJkYzg1MzM1MmMzMmI4YzljN2U2YjFkY2E0YmFiYmJkZjcyYzhlMzE1ZjRjZTZlZjAxMmQwOGUwNTRiNGE2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjM2NjOTZmNmY3MjE0OGZmMzgwZWM0Nzg2ZDIxNjJmOTAyOTIwYWZiZDBiMzc3M2Q3OWE1MmE0NGIwYzc2NWY0In0\"}",
+      "digest": "sha256:5809012c0dfd4b21f683eee8214a0d8d6464c0a363800242c743cbc226991c58"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L6-L16\",\"previousVersion\":\"repo-lines-v1:sha256:aaa5dee760e6d1576d6845d263b96827494b3949d3223efdf6651667afc373f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNmFlMWMwYTBmNGM1MGRiNjMxZGUzZDZmMDQxNTEwZGZkODEzYWJiZTdhZmM0ZTMxYjA0NTllMTIzMGM0ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2N2NiMDZmZWE5ZGFhNGQyMjg2NTg0M2Y1ZDMzYWNiYzJkODAwZjFlZDgzMDIzNDIxYmNlNmEyY2Q1ZWI2ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYyMGQzYmJiN2I2MWM1NzFiZTVjNzczMThmMTJhODNlYThjZjI4OTk4ZWU2MmU4MjEzNzUzYjYzOGIxNTdjZjYifQ\"}",
+      "digest": "sha256:329d7a0c7ac180b025eca95fc97ec7afa075fbc7ebfbef33ed87fd875a240edc"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L6-L17\",\"previousVersion\":\"repo-lines-v1:sha256:6b6db196818aa8a0ab6fb01a1bc7cb914d0abbb262e25c932254399c199dca8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNmFlMWMwYTBmNGM1MGRiNjMxZGUzZDZmMDQxNTEwZGZkODEzYWJiZTdhZmM0ZTMxYjA0NTllMTIzMGM0ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2N2NiMDZmZWE5ZGFhNGQyMjg2NTg0M2Y1ZDMzYWNiYzJkODAwZjFlZDgzMDIzNDIxYmNlNmEyY2Q1ZWI2ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5ZmE0NzU1ZjcwMGUwOWUxYTk0N2YxNzUyNTRlMDFmNzYxMTQ3MDYyNmY2OTNhNWY4ODBiZjY1ZWI3ZjFkNGQifQ\"}",
+      "digest": "sha256:aa7c06fb4c3fad38b60732ec4b35594f4e7a7b3f9ddacc5b874894e697a10036"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt\",\"previousVersion\":\"repo-file-v1:sha256:617a77dd698ecaa639c802fe02169626b5dc2032f31b588ba8fca9c9da3e975a\"}",
+      "digest": "sha256:66b52f98eb67410d779ef46748660be1d3d14868ef7ab720c6c37293bf68ae7c"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/execution/AdmittedProjectReadExecution.kt\",\"previousVersion\":\"repo-file-v1:sha256:403213a8d0dd02f4f034eac6ffe1ba85cca5184fbb397c7257aa71a8238b6f5c\"}",
+      "digest": "sha256:84118e577b98b20f274ed8961e3b856ed6b9f9ee41bbf4d9ffb7fce58b24ee8e"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt\",\"previousVersion\":\"repo-file-v1:sha256:d8adf4d2d9a76a973604afd06efdfb37fa54c316f9d033aabf80e05e1673889d\"}",
+      "digest": "sha256:4771a593fbdf98ca9cf50d8c58e6d1b7759a5203a0a0ad37d3ae04611de71d75"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt\",\"previousVersion\":\"repo-file-v1:sha256:48fb8df67d4987eba1ff0b150d467c1cd87ccca873f8efb6db90ef780192114d\"}",
+      "digest": "sha256:91775eec2db1ae8f6a54e1a329750c8cc7d4c56214670a50f9d55e73b084038a"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt\",\"previousVersion\":\"repo-file-v1:sha256:f32da97a8099656b1705681bdf3500140f8c4f46182f3722621d17362e36e623\"}",
+      "digest": "sha256:482439383f750ced6cfd437de01faf26c0bf40fc8def698631809ee91917a7ce"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt\",\"previousVersion\":\"repo-file-v1:sha256:b3aba114de92ebad961ba2a6c7ce788cd30d74d072d4832c9790eac425bc6141\"}",
+      "digest": "sha256:7010342f6b97a0cd61a4eef0efdaf1aa0024c02185a6b498cb9cb9f5b2c08d5c"
+    },
+    {
+      "resource": "{\"resource\":\"repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt\",\"previousVersion\":\"repo-file-v1:sha256:373e53e5d774d51cf13e34c6a29bdf9e1eff7f5b04dda845970ea67e3d1daea5\"}",
+      "digest": "sha256:0dcd2447d3166aa0c038e3e52ca65ccba129d715d7fee05dbede06409ca4e773"
+    },
+    {
+      "resource": "docs/okf-public.json",
+      "digest": "sha256:9fe505b4ea46cd0861d8b5f02c8dba787824d1da15b8fced770b8bf0ec486916"
+    },
+    {
+      "resource": "docs/tooling/markdown/evidence-native.ts",
+      "digest": "sha256:4f8189a33a22f52abb791f6261276f6bf695aa25a6e3f1c70b04a4b59d6c8a16"
+    },
+    {
+      "resource": "docs/tooling/markdown/package-lock.json",
+      "digest": "sha256:101abe97610ab50aaaab570b62c6442b1dc1dfac18c02b7d553f332b19039d22"
+    },
+    {
+      "resource": "openwiki:native-inventory",
+      "digest": "sha256:63a17a3c10d1ef033208edd45b18ef7bea51bd36353ebd3f872e2624b97ade63"
+    },
+    {
+      "resource": "openwiki/.claims/changes/planning-and-write-admission.json",
+      "digest": "sha256:c533ba93702d950a5708ae3a922e6a0e1fb9fae72709279ab25d8b416b9d6069"
+    },
+    {
+      "resource": "openwiki/.claims/changes/receipts-and-recovery.json",
+      "digest": "sha256:2b827fa960e80e2dc9729e9cdbfa91d5b1bb9289b4b86a8d1929b9c4545f84e5"
+    },
+    {
+      "resource": "openwiki/.claims/contracts/operation-outcomes.json",
+      "digest": "sha256:a94ed1414c00aba95f4d9253fccb76fa85ca83613ff78b04035560958737f66e"
+    },
+    {
+      "resource": "openwiki/.claims/contracts/source-identity.json",
+      "digest": "sha256:68723517c717f86f9cef6a56b2d436113f7fa0a2a506d1f33f2a49f2aea89461"
+    },
+    {
+      "resource": "openwiki/.claims/glossary/evidence-authority.json",
+      "digest": "sha256:3ad4ba61620a5c1856a1b4c91ca664f511193d23e1f2f708fdae0dd327ca0459"
+    },
+    {
+      "resource": "openwiki/.claims/modules/architecture.json",
+      "digest": "sha256:c2aa35e5142d40bf6f916f02c5859d7226ed7803a91be5f58e371678272a05ce"
+    },
+    {
+      "resource": "openwiki/.claims/queries/execution-and-composition.json",
+      "digest": "sha256:df7271cd9b74cab9b478bffbcb05d6da5f0318a6a6fa1b644340768229cfc704"
+    },
+    {
+      "resource": "openwiki/.claims/queries/retention-and-presentation.json",
+      "digest": "sha256:819591dfecc11c6e99e38b25bde7eac2cc1093e498bdbda81fab6b49f3bd12a7"
+    },
+    {
+      "resource": "openwiki/.claims/runtime/hosted-composition-and-publication.json",
+      "digest": "sha256:5426936637f495039e229181aa5d79006d5f474eccbba72cfe0337910f9ca4a0"
+    },
+    {
+      "resource": "openwiki/.claims/runtime/idea-lifecycle-and-refresh.json",
+      "digest": "sha256:99f2a681946df5f4f5eff82708d4741d9386014b6afe139c70a449f549d02f1f"
+    },
+    {
+      "resource": "openwiki/.claims/semantics/relation/callback-reuse-and-completion.json",
+      "digest": "sha256:d7db38ad99fb910edcf595cb5200456b8b03c4ad78507c792cfbeb931b9476c6"
+    },
+    {
+      "resource": "openwiki/.claims/semantics/relation/callback-supply-and-binding.json",
+      "digest": "sha256:e02c817d523621e5bad2ef1a8294bef81da890e34fdd1a7f5cb44076743be797"
+    },
+    {
+      "resource": "openwiki/.claims/semantics/symbol/discovery-and-identity.json",
+      "digest": "sha256:f9ff2ed4c1f62a29ee9753833ed65017709d43512460fd1a03d1a9394333dad9"
+    },
+    {
+      "resource": "openwiki/.claims/semantics/workspace/model-and-freshness.json",
+      "digest": "sha256:eeb97127ca8ce4108c7fc741b42618a442d2f7b7243064029567db4c4faf8ebf"
+    },
+    {
+      "resource": "openwiki/.claims/semantics/workspace/read-authority.json",
+      "digest": "sha256:8018cf2299e66377844b0c375dbd09ac02f72b9d4a0bb5c8f1212ede0eb8aa13"
+    },
+    {
+      "resource": "openwiki/.claims/topology/live-dependencies-and-reuse.json",
+      "digest": "sha256:68695d2964be116102c94761732469e6a0b68086f8d27ee8a10a2710a9129a43"
+    },
+    {
+      "resource": "openwiki/.claims/transport/coordinator-and-workspace-preparation.json",
+      "digest": "sha256:ec842745e35fe3e155da95cc832396aeb819c1139f454c42e9e5586eeb0e3ef0"
+    },
+    {
+      "resource": "openwiki/changes/planning-and-write-admission.md",
+      "digest": "sha256:4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d"
+    },
+    {
+      "resource": "openwiki/changes/receipts-and-recovery.md",
+      "digest": "sha256:6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5"
+    },
+    {
+      "resource": "openwiki/contracts/operation-outcomes.md",
+      "digest": "sha256:99c88d1151868cceabf5cc575eda8c4fd248203fe3685ea28c7db27d9e21a660"
+    },
+    {
+      "resource": "openwiki/contracts/source-identity.md",
+      "digest": "sha256:229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5"
+    },
+    {
+      "resource": "openwiki/glossary/evidence-authority.md",
+      "digest": "sha256:f5f6597f1a2a921feb0f084ace6cdece5c5a70480b11cf3f9c637019048167d4"
+    },
+    {
+      "resource": "openwiki/modules/architecture.md",
+      "digest": "sha256:5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e"
+    },
+    {
+      "resource": "openwiki/queries/execution-and-composition.md",
+      "digest": "sha256:0f85d851777ab6ea3b27d74dd6b39b2cda787d0492a127a1de996b18ed46ad7e"
+    },
+    {
+      "resource": "openwiki/queries/retention-and-presentation.md",
+      "digest": "sha256:f8dc22c8b240f4fe8aa40ebc8bca438e909c3fed0ad3320917b31e8f04f6ce1a"
+    },
+    {
+      "resource": "openwiki/runtime/hosted-composition-and-publication.md",
+      "digest": "sha256:0b1cbcd645a4fb7377a73fd820e434afae8841a64e40b9b0ffc8c2b869cf4618"
+    },
+    {
+      "resource": "openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "digest": "sha256:e2e3b0473c5e79c021d614a7342f2d4efb2b60e080469461a3652c4a23cb617e"
+    },
+    {
+      "resource": "openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "digest": "sha256:51ab802f2fe3992f2c7ef4ad6173063286510ed8d8000c110b61656d8761c440"
+    },
+    {
+      "resource": "openwiki/semantics/relation/callback-supply-and-binding.md",
+      "digest": "sha256:ec89bf4f9eadf9721ccbae72fe258ac57992295b57d02b0a72f73af7ac218fef"
+    },
+    {
+      "resource": "openwiki/semantics/symbol/discovery-and-identity.md",
+      "digest": "sha256:258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50"
+    },
+    {
+      "resource": "openwiki/semantics/workspace/model-and-freshness.md",
+      "digest": "sha256:57566d07455e699038a5741716b26f7f50529320c2c4094722c727fab949a777"
+    },
+    {
+      "resource": "openwiki/semantics/workspace/read-authority.md",
+      "digest": "sha256:e04ba59a5a64c1ca6e17a127d7e836c2df86c587a5ff1763e252cf0f7b50a196"
+    },
+    {
+      "resource": "openwiki/topology/live-dependencies-and-reuse.md",
+      "digest": "sha256:0ed492fdcc4be9ee1362ee7c8d12b2fa22d1e4a0065bac1eed2a86e7bcd89a25"
+    },
+    {
+      "resource": "openwiki/transport/coordinator-and-workspace-preparation.md",
+      "digest": "sha256:b286e6d96ef39368d3fbfab19def5a0be7454b1481f26397d334cc833d42de6b"
+    }
+  ],
+  "pages": [
+    {
+      "page": "/openwiki/changes/planning-and-write-admission.md",
+      "pageVersion": "sha256:4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d",
+      "sidecarDigest": "sha256:c533ba93702d950a5708ae3a922e6a0e1fb9fae72709279ab25d8b416b9d6069",
+      "recordedPageVersion": "sha256:4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-15T00:33:05.932Z"
+      }
+    },
+    {
+      "page": "/openwiki/changes/receipts-and-recovery.md",
+      "pageVersion": "sha256:6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "sidecarDigest": "sha256:2b827fa960e80e2dc9729e9cdbfa91d5b1bb9289b4b86a8d1929b9c4545f84e5",
+      "recordedPageVersion": "sha256:6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-15T00:33:05.932Z"
+      }
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "pageVersion": "sha256:99c88d1151868cceabf5cc575eda8c4fd248203fe3685ea28c7db27d9e21a660",
+      "sidecarDigest": "sha256:a94ed1414c00aba95f4d9253fccb76fa85ca83613ff78b04035560958737f66e",
+      "recordedPageVersion": "sha256:99c88d1151868cceabf5cc575eda8c4fd248203fe3685ea28c7db27d9e21a660",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-11-03T05:07:02.262Z"
+      }
+    },
+    {
+      "page": "/openwiki/contracts/source-identity.md",
+      "pageVersion": "sha256:229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "sidecarDigest": "sha256:68723517c717f86f9cef6a56b2d436113f7fa0a2a506d1f33f2a49f2aea89461",
+      "recordedPageVersion": "sha256:229268d17e93f6efdebba404f1a78221d916d85563983e271eaaf0840fa5eaa5",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/glossary/evidence-authority.md",
+      "pageVersion": "sha256:f5f6597f1a2a921feb0f084ace6cdece5c5a70480b11cf3f9c637019048167d4",
+      "sidecarDigest": "sha256:3ad4ba61620a5c1856a1b4c91ca664f511193d23e1f2f708fdae0dd327ca0459",
+      "recordedPageVersion": "sha256:f5f6597f1a2a921feb0f084ace6cdece5c5a70480b11cf3f9c637019048167d4",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-08T02:33:12.078Z"
+      }
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "pageVersion": "sha256:5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "sidecarDigest": "sha256:c2aa35e5142d40bf6f916f02c5859d7226ed7803a91be5f58e371678272a05ce",
+      "recordedPageVersion": "sha256:5cd63cfd39525d614fb9412b64bd8ec3bfcf9c713135791123d743cf3cb7f77e",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-11-02T17:10:25.214Z"
+      }
+    },
+    {
+      "page": "/openwiki/queries/execution-and-composition.md",
+      "pageVersion": "sha256:0f85d851777ab6ea3b27d74dd6b39b2cda787d0492a127a1de996b18ed46ad7e",
+      "sidecarDigest": "sha256:df7271cd9b74cab9b478bffbcb05d6da5f0318a6a6fa1b644340768229cfc704",
+      "recordedPageVersion": "sha256:622e1f4de318414d4088e86f5b9576de9739ee3eb5dbad31c56fbd509df7680d",
+      "digestAgreement": "mismatched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/queries/retention-and-presentation.md",
+      "pageVersion": "sha256:f8dc22c8b240f4fe8aa40ebc8bca438e909c3fed0ad3320917b31e8f04f6ce1a",
+      "sidecarDigest": "sha256:819591dfecc11c6e99e38b25bde7eac2cc1093e498bdbda81fab6b49f3bd12a7",
+      "recordedPageVersion": "sha256:f8dc22c8b240f4fe8aa40ebc8bca438e909c3fed0ad3320917b31e8f04f6ce1a",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/runtime/hosted-composition-and-publication.md",
+      "pageVersion": "sha256:0b1cbcd645a4fb7377a73fd820e434afae8841a64e40b9b0ffc8c2b869cf4618",
+      "sidecarDigest": "sha256:5426936637f495039e229181aa5d79006d5f474eccbba72cfe0337910f9ca4a0",
+      "recordedPageVersion": "sha256:0b1cbcd645a4fb7377a73fd820e434afae8841a64e40b9b0ffc8c2b869cf4618",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-11-02T17:10:25.214Z"
+      }
+    },
+    {
+      "page": "/openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "pageVersion": "sha256:e2e3b0473c5e79c021d614a7342f2d4efb2b60e080469461a3652c4a23cb617e",
+      "sidecarDigest": "sha256:99f2a681946df5f4f5eff82708d4741d9386014b6afe139c70a449f549d02f1f",
+      "recordedPageVersion": "sha256:46b0c62630050e3b63e51245a4b85b2a38821860dc8342c54932a98a0e0c58e3",
+      "digestAgreement": "mismatched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "pageVersion": "sha256:51ab802f2fe3992f2c7ef4ad6173063286510ed8d8000c110b61656d8761c440",
+      "sidecarDigest": "sha256:d7db38ad99fb910edcf595cb5200456b8b03c4ad78507c792cfbeb931b9476c6",
+      "recordedPageVersion": "sha256:51ab802f2fe3992f2c7ef4ad6173063286510ed8d8000c110b61656d8761c440",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-supply-and-binding.md",
+      "pageVersion": "sha256:ec89bf4f9eadf9721ccbae72fe258ac57992295b57d02b0a72f73af7ac218fef",
+      "sidecarDigest": "sha256:e02c817d523621e5bad2ef1a8294bef81da890e34fdd1a7f5cb44076743be797",
+      "recordedPageVersion": "sha256:351658c812124caa5fa4bf8b4e93dbc9c16a42cbd15365874fb9dc0aa6cc7073",
+      "digestAgreement": "mismatched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/semantics/symbol/discovery-and-identity.md",
+      "pageVersion": "sha256:258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50",
+      "sidecarDigest": "sha256:f9ff2ed4c1f62a29ee9753833ed65017709d43512460fd1a03d1a9394333dad9",
+      "recordedPageVersion": "sha256:258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-15T00:33:05.932Z"
+      }
+    },
+    {
+      "page": "/openwiki/semantics/workspace/model-and-freshness.md",
+      "pageVersion": "sha256:57566d07455e699038a5741716b26f7f50529320c2c4094722c727fab949a777",
+      "sidecarDigest": "sha256:eeb97127ca8ce4108c7fc741b42618a442d2f7b7243064029567db4c4faf8ebf",
+      "recordedPageVersion": "sha256:57566d07455e699038a5741716b26f7f50529320c2c4094722c727fab949a777",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/semantics/workspace/read-authority.md",
+      "pageVersion": "sha256:e04ba59a5a64c1ca6e17a127d7e836c2df86c587a5ff1763e252cf0f7b50a196",
+      "sidecarDigest": "sha256:8018cf2299e66377844b0c375dbd09ac02f72b9d4a0bb5c8f1212ede0eb8aa13",
+      "recordedPageVersion": "sha256:e04ba59a5a64c1ca6e17a127d7e836c2df86c587a5ff1763e252cf0f7b50a196",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/topology/live-dependencies-and-reuse.md",
+      "pageVersion": "sha256:0ed492fdcc4be9ee1362ee7c8d12b2fa22d1e4a0065bac1eed2a86e7bcd89a25",
+      "sidecarDigest": "sha256:68695d2964be116102c94761732469e6a0b68086f8d27ee8a10a2710a9129a43",
+      "recordedPageVersion": "sha256:0ed492fdcc4be9ee1362ee7c8d12b2fa22d1e4a0065bac1eed2a86e7bcd89a25",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    },
+    {
+      "page": "/openwiki/transport/coordinator-and-workspace-preparation.md",
+      "pageVersion": "sha256:b286e6d96ef39368d3fbfab19def5a0be7454b1481f26397d334cc833d42de6b",
+      "sidecarDigest": "sha256:ec842745e35fe3e155da95cc832396aeb819c1139f454c42e9e5586eeb0e3ef0",
+      "recordedPageVersion": "sha256:b286e6d96ef39368d3fbfab19def5a0be7454b1481f26397d334cc833d42de6b",
+      "digestAgreement": "matched",
+      "claims": "present",
+      "verification": {
+        "by": "openwiki/0.6.1",
+        "at": "2026-10-30T23:25:02.193Z"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "page": "/openwiki/changes/planning-and-write-admission.md",
+      "id": "claim_ff1f6ede0c994f92bbe64a21db0bea0b",
+      "statement": "Live mutation admission compares the current basis, exact source, writable preimage, and derived postimage before it permits a source write.",
+      "statementDigest": "sha256:d41df79065e2e90345f307308dedcb04cdc2a0b4f61e222a3955fbd6dc28518e",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt",
+          "version": "repo-file-v1:sha256:4dc797b8e08692e4892d9ab74bc8b0d61fce53a82ff1edaf28c11cc3f67a53af"
+        },
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt",
+          "version": "repo-file-v1:sha256:c90d0809fd2d3dcfd501704dd63ba50429c08bdbf950f25ae3c63d160bb0ac6f"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/changes/planning-and-write-admission.md",
+      "id": "claim_3fdbf46103494028ab4de6c13029a442",
+      "statement": "Live mutation preparation permanently claims the plan application before recovery preparation and returns a distinct claimed-without-recovery outcome on failure.",
+      "statementDigest": "sha256:9e42f5f5d9e645192e8fdbc391d7f267ffe3ca6ef622b94a0b95509aeeeb5281",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt",
+          "version": "repo-file-v1:sha256:4dc797b8e08692e4892d9ab74bc8b0d61fce53a82ff1edaf28c11cc3f67a53af"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/changes/planning-and-write-admission.md",
+      "id": "claim_3fedc63a3fb24fdb8a95089e5f6555e1",
+      "statement": "The pure live declaration planner produces detached plan proof without granting a published lease or native write authority.",
+      "statementDigest": "sha256:0e454172123f8c1021dd64b0f942e681a08e456d8b7c71bae5732839a7dbff6b",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt",
+          "version": "repo-file-v1:sha256:8d70d7f66a6a06add33c18d6b3be596fcaa18e331872a0dc8d325f6181701c36"
+        },
+        {
+          "resource": "repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt",
+          "version": "repo-file-v1:sha256:23164ff36ef3cae5bb9afaa62456d5c2ac22c7c5ba9250ebedde86610088798e"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/changes/receipts-and-recovery.md",
+      "id": "claim_dc2d49cf58b747fc88ba662decc24659",
+      "statement": "The hosted mutation stores share one admitted SQLite database while preserving distinct database, plan, and receipt failure causes.",
+      "statementDigest": "sha256:f6ce0ea21d066c44214fcec3bc020e6aacc5ba53d4b0c6a5051e1a49de3c6ddb",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt",
+          "version": "repo-file-v1:sha256:f94ba165c8309c8ad8d07ea78611e8685fc0189c7b257840232f49c172da6c86"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/changes/receipts-and-recovery.md",
+      "id": "claim_5080f028d52a42a8a215549e2b5ff473",
+      "statement": "Recovery persists exact pre-write evidence and distinguishes preparation from independently observed application and rollback.",
+      "statementDigest": "sha256:5baa88521c6ca3844f9987fdfb3af8133e28e57078332488db6cfe0885c291fe",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://change/recovery/src/main/kotlin/io/github/amichne/kast/change/recovery/AddDeclarationRecoveryService.kt",
+          "version": "repo-file-v1:sha256:c4720c305aed0b7e12c0808fde3ad726ca062ec7195a6bdf5e3981f071045680"
+        },
+        {
+          "resource": "repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/MutationRecoveryRecord.kt",
+          "version": "repo-file-v1:sha256:f7cd0716e26bc4a6828a2755d3b44120e6766834b651d78a68931bfe14302208"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/changes/receipts-and-recovery.md",
+      "id": "claim_4b7e03c805ff49edb4b21a94cde8c734",
+      "statement": "Live declaration verification replays retained relation, traversal, and diagnostic requests with their original scopes and grants under a fresh compiler anchor.",
+      "statementDigest": "sha256:04bf9195fd87111f3c97c1d88d5625ed7269593baa1a0b598fba575908221ae3",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationVerification.kt",
+          "version": "repo-file-v1:sha256:0c87e14d5adde7f58c1d9000cab9c9024523ffdb6477a202b8d16b2595266840"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_55bbe06398c44272b3f13d3df179d4ee",
+      "statement": "Complete and Qualified semantic outcomes carry an EvidenceEnvelope, while Rejected carries only the operation-owned reason and no successful payload.",
+      "statementDigest": "sha256:c09d38971d2de16389bcb148fa16493d8e7780d7291dc687856b1938807531ce",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt#L3-L18",
+          "version": "repo-lines-v1:sha256:46fe0278aafb49770cfa9d4ce724c14c2d24c1a8e429a8d47d4606960d3bcc3a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4Y2RkYTBjMDFkOWU2ZDMwZDFiMjgwMjhiMmExM2Y0NmI0NmFiNmFkZThkYzIyOTFiNTU3OGZlMzczMDljMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_172e1c17cbde47ffbe32d66a0997d250",
+      "statement": "Read recovery actions are finite directions derived exhaustively from rejection data; they grant no retry, refresh or mutation capability.",
+      "statementDigest": "sha256:36a557b8b4bcb8aad16817f8162619a1129552ee13813b9b35f18e4eac00ef8a",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L104",
+          "version": "repo-lines-v1:sha256:5b05731b4dcfbd35c7ccb764a8149f405fe9842b2d2d59722f792cfb2b4af364:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_8b10df95e6a84fc49c4d604e2e83e30c",
+      "statement": "LiveReadEvidence is detached provenance and cannot acquire or restore live execution authority.",
+      "statementDigest": "sha256:89f1eb0863d95b7843d7ce64cb47621db617f0788fa29be8f2e5186fead75bad",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt#L29-L82",
+          "version": "repo-lines-v1:sha256:8f239513bb3669fe549ea029dedffa5aab876ce0eee8d1b7601eacc99fce396e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlNjYzYWJmNTQ2NTBkZGJlMGE1YmQwYWRlNDk0ZWM4OTBjZWVjZTZkNjljOTcyYTc4ZTNlZWE3ZWZmOGJhMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1NzJiNmU4NzMzY2YyZGZmY2Q3Mzg5MmMzYzEyYjExNWM0NmE5ODVmNGY0ZjI5ODJmYTkxNWM5YzQ3ZDM3OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxOTIzYzRmODQ5NWY2ZDEzMDRkYTI3MzZiMmRkY2Q0YjkwYzlhODgyNDdmNDA3MjdhYmQ3MTZkODgyNGI4ZDMifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_e33e1df867cd458cb285276411f1490d",
+      "statement": "One-shot tool RPC rejects stopped or unproven installation admission with INSTALLATION_STOPPED before argument admission, workspace discovery, preparation or semantic dispatch.",
+      "statementDigest": "sha256:9d2e4a2aba89917af44dae5ba9c747c6ce1cfccf9acc6f54d60f80baef3e4620",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt",
+          "version": "repo-file-v1:sha256:3be1ea90bed8dfdda7e6f7b2d3b6c310d1cce68c02623e07a26e3987e96e13cf"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L132-L178",
+          "version": "repo-lines-v1:sha256:3ac80e42341f13547313b8e283339d8501c1b8e297e9cc0656733291d81bb1d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNmM3YjVkZWJjNTY1ZDQ5ODIzM2UwNWY4OWFiMTc2MmNlNDZhZjUwMDIwNmZjZThiOTE3YjhiNGE5YThiYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhZjRjZWM2YjNhMjc5YTA4MjhjODJlOTQ4OWIxNjU2N2MwMWZkNzUwYWNmOWI4ZjhmNjNkNjMyZDkwY2EwMzEifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_a08eb2ac670c4b6ab516620eaf4a1c02",
+      "statement": "Impact ledger construction accounts for every admitted seed, observed native branch and applicable reviewed model alternative before deriving closure; native branch accounting preserves exact origin history and preceding model steps, while required path obligations or weaker producer identity retain unresolved closure.",
+      "statementDigest": "sha256:45e90db19a1a30814d8b93da12c1095df038746c4570e10b873d0d9cbf4f1840",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
+          "version": "repo-file-v1:sha256:5e823ccf2a63a1cf786689892826daf1a4a057afa801cf6d70bafd9997d361a7"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt",
+          "version": "repo-file-v1:sha256:f77c0a78f06f3fe16ef2104f7f210d4cf9c2082d4955e8fdd9e45b148fb7230a"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt",
+          "version": "repo-file-v1:sha256:7d5322f302cc389dd36246e1f5bfbbdf050c04910270762336913eba98b7fb8f"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_47becf179c554e15bc0216134e4a4848",
+      "statement": "Every independently native-admitted requested site retains reached original paths, exact site and domain exclusions, or an unproven relationship; unmatched requested sites add a required relationship obligation that prevents semantic completion.",
+      "statementDigest": "sha256:b7af2cf548a47914965454be3321b5b5491fac7d59ba9d7d50609f146f610ed1",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
+          "version": "repo-file-v1:sha256:5e823ccf2a63a1cf786689892826daf1a4a057afa801cf6d70bafd9997d361a7"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt",
+          "version": "repo-file-v1:sha256:bf434da0a104f53da1983e4a112ca111a142cda769158cbc2fc1d18ab3814048"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_ae8da1bfc7784218bfe179e3dc517496",
+      "statement": "A guarded peer continuation retains its independently completed target read and reviewed model edge, ends with PEER_FLOW_NOT_INVESTIGATED and a required BOUNDARY obligation, and does not admit peer flow observations into the source investigation.",
+      "statementDigest": "sha256:7604d89b8b98fe85d4dc8acd4749e07a4ca3a74f9622372ce43469f0e09c912a",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt",
+          "version": "repo-file-v1:sha256:7d5322f302cc389dd36246e1f5bfbbdf050c04910270762336913eba98b7fb8f"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt",
+          "version": "repo-file-v1:sha256:a83996f26811cdec25e5b9084424963f0fbc0bf7912ab4ccd31ab83632af7191"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_6a9da81ab0b44487af6a7b5a396f6cc6",
+      "statement": "Public RUN uses the fixed COMPLETE_ONLY model COMPILER_RESOLVED_STATIC_V1; source-symbol TRACE can retain SOURCE_RELATIONSHIPS with callbackEffects EVIDENCE_ONLY, while explicit relation, traversal, composition and retained-source paths keep stricter callback proof.",
+      "statementDigest": "sha256:1513b6c5afe88268b0650e46aef9a051f7885ab84d590c4541461ce7e4e31246",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt",
+          "version": "repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_ec090c6dca2b4bfc866b20afe87b6671",
+      "statement": "Completion rejection retains original coverage and typed causes; retained evidence supplies public nextQuery arguments and EVIDENCE_ONLY interpretation without granting semantic replay.",
+      "statementDigest": "sha256:5b964a32f15cfbe9ff17acbaf3be25588a371d5896fa4a62648a42b9d72325bf",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryCompletionRejectionCliDocument.kt",
+          "version": "repo-file-v1:sha256:277498b0f018db7c6b554a74d22a02b4d883fb17b495c733f776eae6d4c05c57"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_14261ee3b78c4757b083a54c780f88d4",
+      "statement": "Public result projection keeps accumulated logical row counts, INLINE or PREFIX preview, typed stops, independent row and evidence positions, and retained output without strengthening original coverage.",
+      "statementDigest": "sha256:8b7893476b36b642bc7a919138120084384d4f0a0c0ffde08e9928002a77496d",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryInvocationDocument.kt",
+          "version": "repo-file-v1:sha256:e4a82ec6995e43f75dc9975b7ecb438896da9a211a08b779344e80f9bdd6c351"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultCliDocuments.kt",
+          "version": "repo-file-v1:sha256:2e02e1720f07c7c0234fd644318669d4c2ba63fb8b6f4fe979c2ec345878d06a"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_bd777dbb84624bea9c2679825916066f",
+      "statement": "Compact relation graph node, connection and witness IDs belong to their retained basis; exact selectors remain separate, and the detail request retrieves verbose retained evidence without granting live declaration authority.",
+      "statementDigest": "sha256:7f5ef5509548d76da5d8080e59ceb278f073cc8bf5d7c3fc237afd54d63cfe77",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt",
+          "version": "repo-file-v1:sha256:4a722cd7020b5d245cb286504071ad6469f8eb12538fa473bca592845ebcd420"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/operation-outcomes.md",
+      "id": "claim_770132c0072344e8b04bab69aea754ea",
+      "statement": "MCP semantic documents remain distinct from MCP_REJECTED transport errors; overlapping invocation admission returns INVOCATION_IN_PROGRESS without claiming failure of the active semantic query.",
+      "statementDigest": "sha256:ef9c536feacefdd2a41ef312b2470136c5c2512c5e4be4b58a6d7ba18b2e2538",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt",
+          "version": "repo-file-v1:sha256:165a5fd16a9d60b960a1fc7c8d44e93b6041629348712c9ab30cb79d3f36371e"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt",
+          "version": "repo-file-v1:sha256:3706f0683b09bf7439c5d5b277a17bd79baa2bac2a95c60f2f8f9713216171f0"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/source-identity.md",
+      "id": "claim_f7d072d0792940888833dd8e689c0570",
+      "statement": "SemanticReadAuthority distinguishes published leases from original-owner live admissions, and requiring published authority from a live admission rejects.",
+      "statementDigest": "sha256:9b8aa333190c37ebc2530b04afb8cb485a4ee002576dd813f2fa1899247a1c32",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L6-L16",
+          "version": "repo-lines-v1:sha256:aaa5dee760e6d1576d6845d263b96827494b3949d3223efdf6651667afc373f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNmFlMWMwYTBmNGM1MGRiNjMxZGUzZDZmMDQxNTEwZGZkODEzYWJiZTdhZmM0ZTMxYjA0NTllMTIzMGM0ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2N2NiMDZmZWE5ZGFhNGQyMjg2NTg0M2Y1ZDMzYWNiYzJkODAwZjFlZDgzMDIzNDIxYmNlNmEyY2Q1ZWI2ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYyMGQzYmJiN2I2MWM1NzFiZTVjNzczMThmMTJhODNlYThjZjI4OTk4ZWU2MmU4MjEzNzUzYjYzOGIxNTdjZjYifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/source-identity.md",
+      "id": "claim_3a7c98edb40b4f4c8dc699e2fea2629a",
+      "statement": "Decoded live read references prove representation validity only; the original host must re-admit the current epoch, and live authority cannot be copied, parsed or used to manufacture a generation.",
+      "statementDigest": "sha256:77101650fcece96cb66c8b5eb8788d436c8a2ce51e48827890ae05042d3cccdf",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L245-L280",
+          "version": "repo-lines-v1:sha256:e915a860f67fa989c16304ea8cdb1602f0f9d6baaf3b43a3576dce8477a132ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NDljMjNkZTM2NTYwNzJhZWY1ZjI2MTIxZGY4ZmU0NTA1YWU3ZTRjMTIzYmM0YWE4Nzk2ZGVlODJhMTQyYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhNDJhNmFkYTA4ZjVkMGM2MTU1NTMzZjczMGJhZTc1NWZjYTY2ODE5ZjVkMjU5ZDkyZWYzZDM0MGJkOTdiMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmOGIxZDE1MWZlZjVjMjQ1YWZhYTJiMWU5ZDY3NThjMmYxMjY2MTE2ZjNkNjEwOWVmMDJiNWNjMGMyNDQ3ODAifQ"
+        },
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L44-L143",
+          "version": "repo-lines-v1:sha256:c519cfb50072b363f9ecf1c59e546256f1eaeded74a183f8d6704216d18d43ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYWYyMmNmMDczMjU5MmMyNDcxNDFjYmU2MWVmYTExMDEyNjEyZjVhMzEyMmI5YWY5YmJhZjUyZjU3MjRkMTk0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MGJkYzg1MzM1MmMzMmI4YzljN2U2YjFkY2E0YmFiYmJkZjcyYzhlMzE1ZjRjZTZlZjAxMmQwOGUwNTRiNGE2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjM2NjOTZmNmY3MjE0OGZmMzgwZWM0Nzg2ZDIxNjJmOTAyOTIwYWZiZDBiMzc3M2Q3OWE1MmE0NGIwYzc2NWY0In0"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/source-identity.md",
+      "id": "claim_d1317c30fae7495492b8f212baad9101",
+      "statement": "SourceReadService admits its context before reading, admits it again before publication and rejects a changed context or contradictory snapshot.",
+      "statementDigest": "sha256:f356cdcd199a61d810a8dbe127c9f5fc40436d25459674bfa454e0f437f801f0",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt#L31-L85",
+          "version": "repo-lines-v1:sha256:e442a60ad923d477cb96c118a6dbe9b209f68210cf1d80bf10b7fa1d06da4d38:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYTdjMjA2OWY4ZDZkYThkYmUzNzMzZThjNmZjZGE1M2RmOTgzNTJiY2ZiYWI3Y2ZmNTEzODkxZmUyZDU3OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZmFlNjMwOGQ1ZTQxNzY1YjM1OWM2NGUxNmM0NDc1MGYzYzYyOWEyMmYwMDRmZTVhZmMwNjdiZDZiY2YzM2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxN2MwM2UxOTk4YjliNGI1Mzc5YTdiMWM0NzA1YWFlZGYyNDU1MGNjNzU0MDY0MzVhMjE3ZTJmM2RkOTNjOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4NjlhZDY2OTRkMzViOGY2MzQ5ZTdkNzVlNTU2OWJhYjllYjk4YjgyZTA3N2ZlY2ZkOGMwNzU1ZWNlZTFhNTMifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/source-identity.md",
+      "id": "claim_3dddf619b10443e2b3a5052be6356eb9",
+      "statement": "Local exact references preserve admitted local addresses and require ORIGINAL_DOCUMENT unchanged whole owning-file content plus saved committed PSI and fresh compiler confirmation for reacquisition; edited locals require rediscovery rather than name rebinding.",
+      "statementDigest": "sha256:783ca315b69febe48156f8c07a2c8abc129b43d48d6b9cc0702b4d47d4e6ad93",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt",
+          "version": "repo-file-v1:sha256:e966d06a82ca37b3b4ea8d52026ce1935a91101b037edf5b5e56bad6a4e0e618"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "version": "repo-file-v1:sha256:6b61fe9f812d24676bde4bb28867a6333de19f4b739013071617bf0f7ca35bab"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt",
+          "version": "repo-file-v1:sha256:c146c8b996a5713d3375d0f98c0e850d111b21bb6b88c0683f6bf4de9a4190e7"
+        },
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
+          "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/contracts/source-identity.md",
+      "id": "claim_9babc3fd9980444bad0bb3181d31bc43",
+      "statement": "Anonymous objects and their members preserve compiler-owned local addresses; source lookup selects actual object-literal PSI and revalidates exact ranges and compiler evidence without inventing qualified identity.",
+      "statementDigest": "sha256:2f9e8a015b8cead1baf6ab3bb9ea4015a5aa5c0cd8eb132fa1abf3664cd780a5",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt",
+          "version": "repo-file-v1:sha256:ee88167947a20685c20b30b0fef48753db01e324ad7f107c51fa8062fccbc621"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt",
+          "version": "repo-file-v1:sha256:6d930d9bd54e0111f9fda593c5af8d1c0abd6c7e2c1f57ffd105f635158063a1"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt",
+          "version": "repo-file-v1:sha256:6e8417369106fd7d75c6c8af34650cc8ec9c07971137b8bebe8bcb0b21e46aed"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/glossary/evidence-authority.md",
+      "id": "claim_9eeea62d677a4b40b7d9c6496402165e",
+      "statement": "Semantic read authority is closed over published leases and original-owner live IDE admission; requirePublished explicitly rejects live authority.",
+      "statementDigest": "sha256:8de27977008c0192f27a5a28808b174f1655520ebdd5f7e7c3b7c96761e7e195",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L6-L17",
+          "version": "repo-lines-v1:sha256:6b6db196818aa8a0ab6fb01a1bc7cb914d0abbb262e25c932254399c199dca8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNmFlMWMwYTBmNGM1MGRiNjMxZGUzZDZmMDQxNTEwZGZkODEzYWJiZTdhZmM0ZTMxYjA0NTllMTIzMGM0ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2N2NiMDZmZWE5ZGFhNGQyMjg2NTg0M2Y1ZDMzYWNiYzJkODAwZjFlZDgzMDIzNDIxYmNlNmEyY2Q1ZWI2ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5ZmE0NzU1ZjcwMGUwOWUxYTk0N2YxNzUyNTRlMDFmNzYxMTQ3MDYyNmY2OTNhNWY4ODBiZjY1ZWI3ZjFkNGQifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/glossary/evidence-authority.md",
+      "id": "claim_46e93ec31a774f5e9b3938c03a637ddc",
+      "statement": "A decoded live reference proves representation validity only; its original owner must re-admit the current epoch and selectors must recheck scope, declaration, and content.",
+      "statementDigest": "sha256:64647f3e734438e4537cdc047bee3fafd1bc21bac067cdcf9670a4d9dd879719",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L245-L280",
+          "version": "repo-lines-v1:sha256:e915a860f67fa989c16304ea8cdb1602f0f9d6baaf3b43a3576dce8477a132ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NDljMjNkZTM2NTYwNzJhZWY1ZjI2MTIxZGY4ZmU0NTA1YWU3ZTRjMTIzYmM0YWE4Nzk2ZGVlODJhMTQyYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhNDJhNmFkYTA4ZjVkMGM2MTU1NTMzZjczMGJhZTc1NWZjYTY2ODE5ZjVkMjU5ZDkyZWYzZDM0MGJkOTdiMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmOGIxZDE1MWZlZjVjMjQ1YWZhYTJiMWU5ZDY3NThjMmYxMjY2MTE2ZjNkNjEwOWVmMDJiNWNjMGMyNDQ3ODAifQ"
+        },
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L44-L143",
+          "version": "repo-lines-v1:sha256:c519cfb50072b363f9ecf1c59e546256f1eaeded74a183f8d6704216d18d43ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYWYyMmNmMDczMjU5MmMyNDcxNDFjYmU2MWVmYTExMDEyNjEyZjVhMzEyMmI5YWY5YmJhZjUyZjU3MjRkMTk0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MGJkYzg1MzM1MmMzMmI4YzljN2U2YjFkY2E0YmFiYmJkZjcyYzhlMzE1ZjRjZTZlZjAxMmQwOGUwNTRiNGE2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjM2NjOTZmNmY3MjE0OGZmMzgwZWM0Nzg2ZDIxNjJmOTAyOTIwYWZiZDBiMzc3M2Q3OWE1MmE0NGIwYzc2NWY0In0"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/glossary/evidence-authority.md",
+      "id": "claim_0fc3967c800144349c8092b362bfbf00",
+      "statement": "LiveMutationAuthority retains the current admitted observation, exact plan, saved preimage and derived postimage only after permanent application claim and durable recovery preparation; it contains no verified signing approval.",
+      "statementDigest": "sha256:e81cd0c6ed613d13d69a6a75bb9779d16bfd76117e4f8224f207857fc2a3480d",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L47-L137",
+          "version": "repo-lines-v1:sha256:7ee7be99e9f0854116295741a02f0f27e1b91c109a9b5706871300369b886252:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTJjYTMyYmYxMjFmMGNhZDIxNGI5NDVjMjA0ZDVhZGFjMzQ3OTQwNjcyOGUxYzRmMzhlNzIxMjFjYjg3YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2NDk1YzM2NGU4MjM4ZTQyNGUzMGE1YTYzYzk5MmU3ZmRlMTI1NDEyYTFmMDFkMGYwOGU2ZTc1NTc5ODExMTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkMzliMGJmYTc0OGE2ZmMwMGM4YjAwYzdlNTBlZDhkMjZhMGE3OTUwMjVkMGQxMjhjYjU5M2E3ODVhOGQzNWIifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
+      "statement": "The active Gradle graph includes the existing-IDE hosted runtime and retained topology modules, but does not include the retired importer, coordinator, indexer, isolated server or composition modules.",
+      "statementDigest": "sha256:5320b84c6a4063e0fa7f9e12f72168af5e4a66f646cb37e19b9ccad3a379cbcf",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://settings.gradle.kts",
+          "version": "repo-file-v1:sha256:a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_8fbe8cf0364241bd9c44e5851da8c409",
+      "statement": "The hosted runtime composes live topology contracts, build logic, and IntelliJ dependency capture while historical graph service and SQLite capture remain separate.",
+      "statementDigest": "sha256:979085584ede79c11c75f55ad216d027d90abedd737476a1616d03badd278412",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+        },
+        {
+          "resource": "repo://topology/service/build.gradle.kts",
+          "version": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_f07a20a2117e4b2fb43be348f260d2a4",
+      "statement": "Control and Host use the existing process boundary and domain modules, but package their own runtime dependencies under independent artifact and release owners; Control metadata has no host archive dependency.",
+      "statementDigest": "sha256:38d32e160ac0d22c47a64328f7a2e6dddc669aa484d229e4d3073eeb99e6e515",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt",
+          "version": "repo-file-v1:sha256:12e27674a2a1f6ef2b813416321419c648d6753e095bd14ddc5398ce456452a8"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+        },
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_2463c1ec8e3446d58d5316a6d6d78248",
+      "statement": "When semantic fixtures are enabled, root check enforces reviewed resource identity, FIR inventory accounting, and exact successful execution of declared native cases.",
+      "statementDigest": "sha256:1e6c7c7e082576af8fda4df41140b13dcbabe4b138fc534dec16f73c4f8ecb0e",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+        },
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_54f2a2e4c8df43fdae34c80ce389e8c6",
+      "statement": "The hosted runtime directly composes topology contract, build, and IntelliJ modules for live semantic dependencies, while historical graph services and topology SQLite remain separate.",
+      "statementDigest": "sha256:5e7fad0f0ecd7fe4b27c041b6650564b3ef7f48134037ef5a94f99bf510718d1",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+        },
+        {
+          "resource": "repo://topology/service/build.gradle.kts",
+          "version": "repo-file-v1:sha256:a561f0853469051985f0abaa9ddda5ee34f1b2a3168004b11acd02587a1253bb"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
+      "statement": "Managed Host bundle refresh admits only NativeHostBundleRefreshRoot.submit with its exact method descriptor and the exact VfsUtil.markDirty and LocalFileSystem.refreshFiles signatures. Other callers, overloads, Gradle import, workspace refresh entry points, and passive-read modules remain rejected.",
+      "statementDigest": "sha256:3779e1f493dd684cb7077c9571e043ac0d052077345294581b8aefdb55ac2741",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt#L3-L49",
+          "version": "repo-lines-v1:sha256:63f267fa7ad47810b55f06b2de4c3286fa0f961e4ba9b4caae54f58e5264d850:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L465-L476",
+          "version": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ"
+        },
+        {
+          "resource": "repo://build-logic/src/test/kotlin/support/architecture/WorkspaceRefreshEffectBoundaryTest.kt#L15-L47",
+          "version": "repo-lines-v1:sha256:e30a5dbaa4697055afb92edc597476eea73689d0df33713e9ee404dcd5a201f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZGY0ZWNlNWUxNGU0ODg5ZTE2MDVkZGM0M2I3ZTJiNDhjMTJhNmI5ZDRkZTQ1MmViM2M3NDlhODg2OWU5MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhMDI4NTk1NmQxZWNiMDQyY2MxNzk5ZGZmNTJlN2M0ZTM2ZTc1NDRlNWUxZGNjNDM3Y2M3MDgwNGRmODYxODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyZDY1Y2M5NjJkN2MxMzczZjdmOGI3OGJkOWY1MzU1ZWQ0NDY1NDVhZDczZTY2NWUwMmUyYTFmNWRlZjY4NjMifQ"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/modules/architecture.md",
+      "id": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
+      "statement": "The cli module composes the distribution:cli management implementation through an exact architecture-policy edge and produces the shared native Control executable. The management module keeps no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.",
+      "statementDigest": "sha256:6340cd50ecddd8a5bc10c871411587fbff8d96cde2f8bfd24b8c7c45c1234cc3",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+          "version": "repo-file-v1:sha256:5523485566421f84eb25ff86a1b8ccb28520d1eebdbeac252668f223d61ac7e1"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
+          "version": "repo-file-v1:sha256:e58359e73d8d46983b465e3febeb1c2b74dfd2d0fb8b365c296db46990bb9455"
+        },
+        {
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c"
+        },
+        {
+          "resource": "repo://distribution/cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/queries/execution-and-composition.md",
+      "id": "claim_b7f827aae9f340ae985ef5bf0eb5ab82",
+      "statement": "Query row admission proves legal stage and output transitions before effects and rejects incomplete right inputs for difference and anti join.",
+      "statementDigest": "sha256:14f2b511ae7c8bc82ba44a63faacf43ed157208b90ffc9a73e7f6fe80d68ef67",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRowAdmission.kt",
+          "version": "repo-file-v1:sha256:b141322b2473c5c42bc438adfa0d1dadfee8b2cd580cbb7116807c5375789177"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/queries/execution-and-composition.md",
+      "id": "claim_569154d22af340b2b29ebdaa0d7d1139",
+      "statement": "QueryService keeps stage work, output evidence, accounting, and checkpoint construction in one ordered task interpreter.",
+      "statementDigest": "sha256:adb9f4551fb0c6657620962748b65aabb81cf34af7bd3476eb51afa3cb08c028",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
+          "version": "repo-file-v1:sha256:4436a9094582430c668b7802a7641f6c2a73b0b09a608e97bd906ade5c79499a"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt",
+          "version": "repo-file-v1:sha256:d394faa95619919027d4edd8301cb9689752d9b1265c0ed69139d06499c10ded"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/queries/execution-and-composition.md",
+      "id": "claim_7e2a2a463c8f4852a2961334c0fa9d2a",
+      "statement": "Inner joins keep both named symbol cells and their evidence, while join build and probe work remains inside the existing query interpreter.",
+      "statementDigest": "sha256:778272c14e0780377ca14808e1d83f07696fd521b5f0111e7854a46e0c03d223",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoinStage.kt",
+          "version": "repo-file-v1:sha256:f9b8e744045400ca762f09efeaebb0a94bb53e2acb95fdae4bf76e6e5484486b"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt",
+          "version": "repo-file-v1:sha256:9dd8ec156d1071075bb3672d5f49170688279b2efa0bc82b19c999d7b36625d2"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/queries/retention-and-presentation.md",
+      "id": "claim_bb06b67472e44dc29cb85a5a8e577cda",
+      "statement": "QueryStateStore keeps checkpoints, immutable results, output pages, and publication claims under one bounded lifetime and quota.",
+      "statementDigest": "sha256:c4de798f126b329c4e9df0f26665f5c8eeef17c50670eec02e6f723b9dfae4e5",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPublication.kt",
+          "version": "repo-file-v1:sha256:9ebb9da244bcd4b01496fe2849de82189e7a7ea69543c5a71ae47828941da030"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt",
+          "version": "repo-file-v1:sha256:019c6db38af05865705494db6c9f16585965831af54c5792d82193c84c8323e6"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/queries/retention-and-presentation.md",
+      "id": "claim_1c51ce3a5cfb4785a933fb6f5115d4a8",
+      "statement": "Retained presentation preserves original authority, qualification, and separate row and evidence cursor progress without semantic replay.",
+      "statementDigest": "sha256:830f5328264c9a4eebad012c82cd75cd5a460144815c8087e92d643f188805f7",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt",
+          "version": "repo-file-v1:sha256:63c9651426f0983788c77b61627b9f2a5d22acf8ad566f1d59614e65c7d3a585"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
+          "version": "repo-file-v1:sha256:e314d5a31ea0018ea48f6a34d5f3ce0fa73393904d6835df798dd3fa9c1a2959"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/queries/retention-and-presentation.md",
+      "id": "claim_0c122f79c5894ee89772574a12ccca56",
+      "statement": "Hosted query publication binds fitted encoded output to an owned commit or cancellation release rather than publishing uncommitted retained state.",
+      "statementDigest": "sha256:3c95beac2b0cf525a25a8d8bcf74f0386548c3f8a581b914ac3b6fa1e4a99bdd",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
+          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt",
+          "version": "repo-file-v1:sha256:5e4d434f12b0575cc088a766af2981a35170a0e27f36a458a08fa76d7a0ee4a5"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/runtime/hosted-composition-and-publication.md",
+      "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
+      "statement": "HostedEndpointService owns the existing IDEA project's endpoint, explicit lifecycle composition, and retirement under the plugin service registration.",
+      "statementDigest": "sha256:5fce2c97ae5d453963c4e01acccb28afc38df8b34a25cf66ac4347cfe8ae0a03",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
+          "version": "repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
+          "version": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/runtime/hosted-composition-and-publication.md",
+      "id": "claim_ee41761235244553bcf1a058d83d8d5c",
+      "statement": "Hosted connection admission bounds concurrent jobs with configured permits. After accept, the listener waits for a permit before another dispatch. Each connection releases its permit in finally.",
+      "statementDigest": "sha256:1dd59ff1965535429259beaa1b661bf6e7676c835935845c09401c2f0fb5bc16",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
+          "version": "repo-file-v1:sha256:7980ac96d67f35a82d84fef7f33e3d9b25383958ea574d36308c1ffd1ae1ad1f"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/runtime/hosted-composition-and-publication.md",
+      "id": "claim_26f95245a9504d42b7eff20050887f4d",
+      "statement": "The read executor and hosted publication session preserve admitted budgets, cancellation settlement, full-envelope fitting, and owned publication commit.",
+      "statementDigest": "sha256:559121d96389e1a24f63e8df973745b7b282363d3bb20a7970fe09a8cb30cd2b",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt",
+          "version": "repo-file-v1:sha256:5e4d434f12b0575cc088a766af2981a35170a0e27f36a458a08fa76d7a0ee4a5"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt",
+          "version": "repo-file-v1:sha256:d8adf4d2d9a76a973604afd06efdfb37fa54c316f9d033aabf80e05e1673889d"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt",
+          "version": "repo-file-v1:sha256:f32da97a8099656b1705681bdf3500140f8c4f46182f3722621d17362e36e623"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
+      "statement": "IDE lifecycle state binds projects and bounded operations to host, root, ownership, client, and request identities while keeping native effects outside its monitor.",
+      "statementDigest": "sha256:0d553bc05dff53d52e87b08a7325ada564d77c991ac1674ae4e93c1bc22f8e2d",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt",
+          "version": "repo-file-v1:sha256:c60d21c3c571d8bd3a48431af4f88f0367e98efbe53362581452f89f9cf35673"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "id": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
+      "statement": "Hosted workspace refresh uses one service for explicit queued effects and status, with task completion and imported-model evidence under separate admitted owners.",
+      "statementDigest": "sha256:714307006f25942e7c6586d66e54d809d4c9bd1d87e2796d35d2476965dabb34",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
+          "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt",
+          "version": "repo-file-v1:sha256:6eec798f28b236295e16d866bdf1a4e4ad961b8f076a0388281888a6d67bf0fb"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt",
+          "version": "repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/runtime/idea-lifecycle-and-refresh.md",
+      "id": "claim_fb51b4c2d102485aa991583169b152e7",
+      "statement": "The passive read refresh path requests file comparison and maps only terminal outcomes into read readiness without granting arbitrary import authority.",
+      "statementDigest": "sha256:38ea770e683e3856c8ebed605f95a205124a40186ac9cbf4048bbb02018f0e1d",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
+          "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "id": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
+      "statement": "Callback fact reuse needs complete dependency continuity under the original live owner and fresh compiler admission of retained endpoints.",
+      "statementDigest": "sha256:51b9df68dd366ec521e042e7bad3982f1d865885caa2828c1ffc5ba8a669c8e9",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt",
+          "version": "repo-file-v1:sha256:22b497376d8d555388044741b87ffdd6244e06a4eaca47810e9f003567a8c1c5"
+        },
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
+          "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "id": "claim_416ed2f733024f8eb95a5f2dc4bc3809",
+      "statement": "Callback summary capture needs an exhaustive scan, while optional storage follows final flow and owner-binding admission.",
+      "statementDigest": "sha256:affa09329b1ea359d36c9ae29d6fe2bcb5b4fd0c53de5872587eed615cbb8210",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt",
+          "version": "repo-file-v1:sha256:baf555f15edc021cc709a58f0a2c18ba5ca1378400c0f7ddb5c0b7ecebd10ceb"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "id": "claim_2e766e540ddd49919e14d6fb6d7d0438",
+      "statement": "Complete static callback graph admission rejects unresolved or unsupported invocation evidence before query completion can use it.",
+      "statementDigest": "sha256:46901a9027435d529bf7efd6723050615730f11a206f9e12b10587e94169d450",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
+          "version": "repo-file-v1:sha256:11d1c26a2af0572961a8a3f049360bb23344dcc4ebd3aba171bede6385a8df7a"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
+          "version": "repo-file-v1:sha256:3e7b1950349306ab766caedf11eaf38848bc0afb485fa2eac8f623d864241110"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "id": "claim_b93136febc7c413dbd55c462e3a64943",
+      "statement": "Subject restoration keeps the scope that admitted the exact subject. Callback evidence uses owned production, test, and generated workspace sources, excludes library bodies, and keeps the original read authority and shared work and time limits.",
+      "statementDigest": "sha256:732db1f43fcb6b53a6b8f5aa42a9afef171cd443d002743a344bce958684cd90",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackEvidenceDomain.kt",
+          "version": "repo-file-v1:sha256:31b2455fd659e70ba4dc4375477925515167bcadd340ad8abc666479f55ef4dc"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt",
+          "version": "repo-file-v1:sha256:a8143184d701e960f05ca9bd2eef8735860f2c6902b5f5af3be99d8606916fb1"
+        },
+        {
+          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackEvidenceAccessTest.kt",
+          "version": "repo-file-v1:sha256:71d57e8fb14615cdaf5f325e1e80d03a00f26c49e259a4f7c55fe64058f88309"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "id": "claim_44c39bf99ef1406faef53910d9a5f170",
+      "statement": "Callback result membership keeps the subject, authority, selected result domain, relationship direction, and exact graph site. A complete callback graph without this membership cannot produce a complete answer. Existing graph failures keep their original cause.",
+      "statementDigest": "sha256:5bde644eccd90266e1d938f181ac051a71e648cd656190e74bb77a40ceb58835",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
+          "version": "repo-file-v1:sha256:11d1c26a2af0572961a8a3f049360bb23344dcc4ebd3aba171bede6385a8df7a"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt",
+          "version": "repo-file-v1:sha256:1adcc8b0a6880d00df01c0da8989cd312c47d9f8a364a096a2b1c5d9b88a1d82"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackResultProjection.kt",
+          "version": "repo-file-v1:sha256:b790da9efb578a7d6a0c69bcf9a65af803303943e3d7123915f7199ce6d9e3a0"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackResultProjection.kt",
+          "version": "repo-file-v1:sha256:a55cf5dac63649a9aec02641373a6d214c887f4711fb9dfae520229180a8f38e"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-reuse-and-completion.md",
+      "id": "claim_436d90cff7ba4d1eabf50dc0f1a54150",
+      "statement": "Callback evidence inventory reuse shares the original retention slot and separates its purpose and evidence domain from ordinary REFERENCES and other callback evidence domains.",
+      "statementDigest": "sha256:9845ea1982e5e3ad302f072649b9854ab46586e358d1e895371ab7bcbc24c118",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt",
+          "version": "repo-file-v1:sha256:692c7475a19b3caaa54f3be6b47c2005eeedd000707901e8f469fc13759dc4c7"
+        },
+        {
+          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt",
+          "version": "repo-file-v1:sha256:5ae59808ca6f275539558b45a8161a61ecc10bc0d895ec6fc8e6fac90743f22c"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-supply-and-binding.md",
+      "id": "claim_1c2e0b7673bd4f38bdb1b7ebfc49034b",
+      "statement": "Callback argument binding uses compiler-mapped callable and formal parameter identity and rejects invocations or parameters outside their admitted owners.",
+      "statementDigest": "sha256:ab47635f0c1a61383f4a539320aba217e0eaf3c88b009aca58f90e1ba16420ed",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt",
+          "version": "repo-file-v1:sha256:477b2a0eac61b6638ecc9d70673af182833de958e690b496538733937693470f"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-supply-and-binding.md",
+      "id": "claim_6d1407bb491244049bfd778d3c1b5807",
+      "statement": "Callback invocation flow preserves lexical and anonymous-body ownership instead of treating containment as a named caller edge.",
+      "statementDigest": "sha256:cc82d75c9830dc1bfbacf73e1451abd6a2ff9b12fdfc45826cd2b87a1c3b5cda",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackBindingReader.kt",
+          "version": "repo-file-v1:sha256:3956d2fd2a4f5423d0cab98e005a995814e7a07e12abb04b536741c799c916da"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt",
+          "version": "repo-file-v1:sha256:c3e47a72f70d14a8166542ee8620c943f9b19944786fc1251b1440a2593dd9bd"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/relation/callback-supply-and-binding.md",
+      "id": "claim_904d48e1835d43179ec27ad16a73f1c7",
+      "statement": "Dependency callback admission uses declared effects or the exact reviewed kotlin.lazy model and does not derive external behavior from dependency PSI bodies.",
+      "statementDigest": "sha256:e329ddbea02958d97cf6746dc7a48aaacf427ddc248ee05982e217881687fc0e",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
+          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/symbol/discovery-and-identity.md",
+      "id": "claim_8c0d2193cfc6423db92d99f0cda80e68",
+      "statement": "Scoped discovery applies cheap source and declaration constraints before native enumeration and expensive compiler refinement.",
+      "statementDigest": "sha256:9fb49916fb4cc183a3b1f7129d0cf702f78ba447ae1ea5bf02fedc72fe56eff7",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt",
+          "version": "repo-file-v1:sha256:35e61f6c1617c5842be7f437f0916559471df6885f3bd3288cc1dfd15067d3c4"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
+          "version": "repo-file-v1:sha256:993d3657f58ca657420e6a8132944a38f0e15e5970bd2ccbd440b3aefa919cea"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/symbol/discovery-and-identity.md",
+      "id": "claim_0854a24bb81f45f6a6a4ad96e132e890",
+      "statement": "Exact PSI lookup stays within the selected file, excludes filesystem containers, and preserves stale, ambiguous, and unsupported matching declarations.",
+      "statementDigest": "sha256:496bb080f5ced5354d81d196f420fc8e2b7b579a1a8b5565abad29ab75ff755b",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt",
+          "version": "repo-file-v1:sha256:120c44788382c43d79d03bf3a8a847e3486bbfb95ab8b7ba5a4de636928b2f86"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/symbol/discovery-and-identity.md",
+      "id": "claim_a065ffb60d3e421b83203c92205fff20",
+      "statement": "Exact revalidation needs current live authority from the original root and host, fresh compiler confirmation, policy-specific identity equality, and final authority admission.",
+      "statementDigest": "sha256:690dd3f316d11aac08515d59b901e7ece41f30aa810494fe11ccc7753f655eb9",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
+          "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/workspace/model-and-freshness.md",
+      "id": "claim_74d7122619d54a03bab3bd3cb1810841",
+      "statement": "Workspace model capture uses the existing IDEA imported model and preserves named Gradle source ownership rather than starting a second importer.",
+      "statementDigest": "sha256:5583a48720fb6d2fece38ac119fa4746502ac6a2350f31719945d32edfbe3239",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt",
+          "version": "repo-file-v1:sha256:617a77dd698ecaa639c802fe02169626b5dc2032f31b588ba8fca9c9da3e975a"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt",
+          "version": "repo-file-v1:sha256:373e53e5d774d51cf13e34c6a29bdf9e1eff7f5b04dda845970ea67e3d1daea5"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/workspace/model-and-freshness.md",
+      "id": "claim_bb4d6ccd18304f0b85cf4d2c3b7cfcdc",
+      "statement": "The hosted read transaction runs the full evaluator between freshness checks without a surrounding platform read lock.",
+      "statementDigest": "sha256:a7af89000fb6ec7cece04c650d1d4a965c763f8ca49365258900705625184565",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt",
+          "version": "repo-file-v1:sha256:b3aba114de92ebad961ba2a6c7ce788cd30d74d072d4832c9790eac425bc6141"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/workspace/model-and-freshness.md",
+      "id": "claim_b0f8e75e7552464384086eae0e9bffb2",
+      "statement": "Semantic dependency reuse needs current original-owner environment continuity and matching source and resolution inventories beyond a matching epoch signal.",
+      "statementDigest": "sha256:9219c77104e924bb481891f1d5fd8317365ca847c7ce3d47d6f211fa9bf28456",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
+          "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt",
+          "version": "repo-file-v1:sha256:48fb8df67d4987eba1ff0b150d467c1cd87ccca873f8efb6db90ef780192114d"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/workspace/read-authority.md",
+      "id": "claim_fcdb3f93b2664084afe3b3d46c1e4c2f",
+      "statement": "SemanticReadAuthority separates published leases from original-owner live IDEA admission and rejects live authority at effects that need publication.",
+      "statementDigest": "sha256:e19a52629a28ab803d945f8f166c0e08978248bd7caf91a3adcc250f8cda53ef",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
+          "version": "repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/workspace/read-authority.md",
+      "id": "claim_f043a05a5f6149e1a038629ff8c32bf6",
+      "statement": "A detached live reference proves representation validity only, while the private original owner must admit current epoch evidence before selectors recheck source and compiler identity.",
+      "statementDigest": "sha256:ba5f51ec84b4a0ec5e783e8fb6962f6946ee1f6713baa32b361f39244226982d",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
+          "version": "repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/execution/AdmittedProjectReadExecution.kt",
+          "version": "repo-file-v1:sha256:403213a8d0dd02f4f034eac6ffe1ba85cca5184fbb397c7257aa71a8238b6f5c"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/semantics/workspace/read-authority.md",
+      "id": "claim_f6cda0f6be964f169da4b3b71c4345fb",
+      "statement": "Admitted execution budgets keep requested, default, ceiling, effective, and clamp facts for each resource while respecting deadline and transport capacity.",
+      "statementDigest": "sha256:bd8ef9c1105a89daf268ea5eb3d5e5cf427f95bf6f8fc06244ec8ac1527fb11b",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt",
+          "version": "repo-file-v1:sha256:1a6e91f13c80c03ba05bbb6781b4d689ae2cee24e2e48cf959364c0c23eb6967"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/topology/live-dependencies-and-reuse.md",
+      "id": "claim_8b4558b4ee2349efad79e24bde383051",
+      "statement": "Live dependency snapshots compare current-owner environment continuity, complete resolution inputs, dependency domains, and source content before fact reuse.",
+      "statementDigest": "sha256:f14dc68b56216879e2ad20508d659c47c0feea83fbbdb361dabce1ff611dfa08",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
+          "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/topology/live-dependencies-and-reuse.md",
+      "id": "claim_439475de0ac34ee89ca96df3005ca8fe",
+      "statement": "The native dependency capture scope charges preparation cost even when reuse eligibility fails and releases native carriers before return.",
+      "statementDigest": "sha256:b5fbb750f59f83c36ea36690d36058ea52bb962e7768a53868cc980458262e40",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt",
+          "version": "repo-file-v1:sha256:3f18628866cecb74acc5db4ec30c40e987663ae15b704bc4e544a69d7182e7d9"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/topology/live-dependencies-and-reuse.md",
+      "id": "claim_4d5ab6a0127b41a68061cdfde9ec3fc2",
+      "statement": "SemanticCallbackFactStore keeps bounded complete facts under one original authority and permanent retirement.",
+      "statementDigest": "sha256:1e8d428cb656ba7d0e42f672575ac7e7eaa7ad43b58e0cf75107bbcb905c2b73",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt",
+          "version": "repo-file-v1:sha256:20dca8b4e9e3c31ee4b9bd3a08f8ad99e6322949721a384f4aa336680561abcd"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/transport/coordinator-and-workspace-preparation.md",
+      "id": "claim_9afc4ce3301b4badb9651eeb2f54f674",
+      "statement": "WorkspacePreparations owns one native preparation sequence per canonical root and separates passive historical observation from authorized retries.",
+      "statementDigest": "sha256:56b8c60bcef93073bb4e80f9d684907006f247dc68ef47be425c3d67448a30c9",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
+          "version": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/transport/coordinator-and-workspace-preparation.md",
+      "id": "claim_e26a437aa26b41068e118b49725d068c",
+      "statement": "PreparedWorkspaceDemand inspects exact current host identity before dispatch and limits recovery to explicit presemantic cases.",
+      "statementDigest": "sha256:ef9fbacad70a0600351b7cc9bc83ffd50edd4e5d29b109fbf0b422b5d91b2887",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
+          "version": "repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570"
+        }
+      ]
+    },
+    {
+      "page": "/openwiki/transport/coordinator-and-workspace-preparation.md",
+      "id": "claim_3132b601e00a4c51b5f58ddd167fc71f",
+      "statement": "WorkspaceExecution gives each workspace one active semantic permit, bounded queue admission, and one aggregate interaction budget.",
+      "statementDigest": "sha256:03d48eb778f828c52451988f8920c960e4353beb9860c6c085e6d162f5a28094",
+      "status": "current",
+      "resources": [],
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
+          "version": "repo-file-v1:sha256:5aceec734dcf5d1f2d4df673ff5554051b2d8fe9e07519f93f4246996fe91767"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt",
+          "version": "repo-file-v1:sha256:4f5e06e50436c587eef84a642e85e684076fe51089bb919fdac8425dc93a4d69"
+        }
+      ]
+    }
+  ],
+  "orphanSidecars": [],
+  "notAssessed": [
+    {
+      "page": "/openwiki/architecture/functional-packages.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/contracts/configuration.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/contracts/installed-knowledge.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/contracts/operation-registry.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/contracts/public-tools.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/contracts/source-failures.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/development/build-and-architecture.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/development/contracts-and-generation.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/development/knowledge-upkeep.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/development/testing-and-native-qualification.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/distribution/installation-and-managed-files.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/distribution/management-and-connections.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/distribution/release-candidates-and-promotion.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/distribution/upgrades-shutdown-and-reset.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/flows/change-lifecycle.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/flows/host-observation.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/flows/hosted-query.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/flows/request-dispatch.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/flows/semantic-query.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/flows/workspace-publication.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/glossary/compiler-identity.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/glossary/evidence-generation.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/glossary/refinement.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/knowledge/installed-projection-and-retrieval.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/change.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/distribution.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/kernel.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/protocol.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/query-protocol.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/runtime-hosts.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/semantic-reads.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/topology-evidence.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/modules/workspace.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/queries/impact-and-peer-proof.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/queries/public-admission.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/queries/trace-and-completion.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/quickstart.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/semantics/diagnostics/scans-and-progress.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/semantics/relation/named-relations.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/semantics/relation/value-flow-and-models.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/semantics/source/anchors-and-paging.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/semantics/traversal/frontiers-and-continuations.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/topology/graph-queries.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/topology/historical-capture-and-storage.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/transport/codex-hosts-and-framing.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/transport/direct-mcp-and-tool-rpc.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/transport/harness-delivery.md",
+      "reason": "outside-public-scope"
+    },
+    {
+      "page": "/openwiki/transport/invocations-and-durable-records.md",
+      "reason": "outside-public-scope"
+    }
+  ],
+  "summary": {
+    "current": 69,
+    "stale": 0,
+    "unresolved": 0
+  }
+}

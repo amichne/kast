@@ -45,10 +45,10 @@ sources:
     resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt
   - id: openwiki-source-3be5d9cf3fcc7a7b479b3444
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
-generated: { by: "codex", at: "2026-10-16T21:29:39.165Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Callback reuse and graph completion
@@ -90,7 +90,7 @@ This source access excludes library bodies and keeps the original read authority
 Result eligibility still uses the caller's selected scope and filters.
 `CallbackResultMembership` binds an admitted result site to the subject, authority, result domain, and relationship direction.
 CALLERS uses a source occurrence or an actual callback invocation.
-CALLEES uses the named target or anonymous body of an exhaustive supplier inventory.
+`CALLEES` uses the named target or anonymous body of an exhaustive supplier inventory.
 
 Callback evidence outside that result scope can prove an invocation inside it.
 An exhaustive graph with no eligible result site permits exclusion.

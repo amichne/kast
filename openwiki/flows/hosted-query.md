@@ -275,10 +275,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Existing-IDE semantic query
@@ -356,14 +356,14 @@ through query and source read admission.
 
 `HostedConnectionAdmission` admits up to `HOST_CONNECTIONS` concurrent frame exchanges
 and dispatches (default 16); the native accept backlog is `HOST_ACCEPT_BACKLOG`
-(default 64). One further connection may receive a bounded capacity rejection
+(default 64). One further connection can receive a bounded capacity rejection
 without semantic admission. There is no whole-request semantic mutex or semantic
 queue. A blocked frame occupies one connection slot without blocking other reads.
 `HostedQueryLifetime` independently bounds live read permits by `HOST_READERS` (default 2),
 including direct in-process callers. Each request owns its progress,
 deadline and cancellation cleanup; its permit remains occupied until its work drains.
 Cancellation of one request neither releases nor cancels another request's permit.
-Mutation application and recovery retain their coordinator's exclusive admission,
+Mutation application and recovery keep their coordinator's exclusive admission,
 and IDEA retains native write exclusion.
 
 Parallel readers can overlap evaluation. Epoch authority admission, store rotation,
@@ -383,7 +383,7 @@ connection release after the admission permit is returned.
 These records contain no source, request payload, or opaque reference.
 
 `HostedPeerCancellation` races request dispatch against peer disconnection or
-additional input after the one admitted frame. Both jobs are cancelled and joined
+more input after the one admitted frame. Both jobs are cancelled and joined
 before the request leaves its scope. The semantic executor separately drains its
 work before releasing the permit, so cancellation cannot leave an earlier request
 running beside its replacement.
@@ -397,10 +397,10 @@ decoding reject contradictory evidence before CLI projection.
 It rejects a publication envelope on this path. Typed host rejection remains
 available when admission fails before operation authority exists.
 
-The private existing-IDE response activity records the announced frame size and
+With debug configuration enabled, private existing-IDE response activity records the announced frame size and
 configured limit, body drain outcome, and finite decoding/admission stage and
 cause. An over-limit frame is rejected before body reading or decoding. These
-bounded stderr records retain the host process and operation, without recording
+bounded stderr records keep the host process and operation, without recording
 payloads, paths, anchors or references; they explain transport outcomes without
 creating semantic evidence.
 
@@ -473,15 +473,15 @@ remains available for the manual acceptance harness.
 
 The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
 is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
-Unix socket and retain the same packaged compatibility policy and admitted epoch
+Unix socket and keep the same packaged compatibility policy and admitted epoch
 authority across requests. The native acceptance client rejects missing hosts
 without opening an isolated workspace. Public semantic discovery uses the
 canonical provider operations; the duplicate `kast ide classes` and
 `kast ide supertype` commands have been retired.
-After an IDE crash, the next endpoint owner may reclaim the paired socket and
+After an IDE crash, the next endpoint owner can reclaim the paired socket and
 descriptor while holding the exclusive ownership lock. Reclamation requires the
 recorded PID to be absent, the descriptor to name this root and exact socket,
-and both protected artifacts to retain their admitted physical identities.
+and both protected artifacts to keep their admitted physical identities.
 Protocol, schema and operation catalogs are capabilities rather than ownership
 proof, so a dead endpoint from an older plugin can be retired after upgrade.
 Live or reused PIDs, malformed owner identity, symlinks and unpaired artifacts
@@ -535,14 +535,14 @@ the planning epoch or publish a workspace generation.
 
 ## Corrected native discovery and relation expansion
 
-The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic-reproduction.md) records complete fixture `ALL` queries under unchanged default budgets. Scoped Kotlin file indexes supply declarations directly; exact names retain their direct indexes and project-only fuzzy discovery uses the same scoped file enumeration. Constructor properties refine through their generated K2 property symbol. Query `EXPAND` retains the original selected subject while admitting related endpoints in the workspace search boundary. Java references resolve through K2 identity, and explicitly excluded library calls do not make project-only callee coverage incomplete. The earlier acceptance limitations above remain historical evidence.
+The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic-reproduction.md) records complete fixture `ALL` queries under unchanged default budgets. Scoped Kotlin file indexes supply declarations directly; exact names keep their direct indexes and project-only fuzzy discovery uses the same scoped file enumeration. Constructor properties refine through their generated K2 property symbol. Query `EXPAND` keeps the original selected subject while admitting related endpoints in the workspace search boundary. Java references resolve through K2 identity, and explicitly excluded library calls do not make project-only callee coverage incomplete. The earlier acceptance limitations above remain historical evidence.
 
 The read policy is immutable per host service and rejects invalid settings. CLI/provider transport capacities use the same typed parameter catalogue. See [read configuration](../../docs/hosted-read-configuration.md).
 
 
 The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.
 
-The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 5 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence. It records the first entry to each native phase before an opaque call, plus cumulative phase durations after drainage: source-partition preparation, declaration scan, exact refinement, reference inventory/partition/confirmation, diagnostic scope admission/enumeration/K2 analysis, freshness validation, retention, encoding, and cancellation drainage. Counters distinguish candidate and semantic work from retained-state accounting; the latter is a quota estimate rather than process heap measurement.
+The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain available to compile for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 5 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence. It records the first entry to each native phase before an opaque call, plus cumulative phase durations after drainage: source-partition preparation, declaration scan, exact refinement, reference inventory/partition/confirmation, diagnostic scope admission/enumeration/K2 analysis, freshness validation, retention, encoding, and cancellation drainage. Counters distinguish candidate and semantic work from retained-state accounting; the latter is a quota estimate rather than process heap measurement.
 
 The host defaults to 30,000 ms and derives positive semantic and diagnostic-scope
 allowances from the time remaining after admission and model capture. A bounded
@@ -552,9 +552,9 @@ after freshness revalidation. Receipts distinguish configured limits from effect
 allowances. Work that exceeds the hard deadline still cancels and drains.
 Configuration also requires client exchange time to strictly exceed host connection
 time, and both provider invocation deadlines to strictly exceed client exchange
-time. These outer boundaries retain positive IPC slack even when operators lower
+time. These outer boundaries keep positive IPC slack even when operators lower
 their settings; semantic/host configuration equality still uses the completion reserve.
-An indexing transition rejected before semantic evaluation may wait for smart mode
+An indexing transition rejected before semantic evaluation can wait for smart mode
 and retry once at hosted dispatch. Once admitted, a canonical read evaluates against
 one epoch. A moved epoch rejects the result; dispatch does not replay evaluation
 against another epoch. The caller reruns the original request. Continuations and
@@ -562,7 +562,7 @@ compact references do not migrate between epochs.
 
 Typed request decoding rejects a supplied returned-byte allowance below the wire
 owner's serialized schema/operation identity size before semantic dispatch. This is
-a necessary lower bound, not an exact sufficient envelope size. The original
+a necessary lower bound. It does not prove the exact size of an envelope that fits. The original
 encoder still fits bodies, reports and continuations against the admitted allowance.
 
 `HostedQueryContinuations` owns one `QueryStateStore` for detached query execution
@@ -580,7 +580,7 @@ query projection returns them with its rows. A composed run can select issued
 symbol rows without turning their IDs into exact-symbol references; binding
 rows remain readable as typed retained results.
 
-Transport output cursors are replayable until expiry or eviction. Equal retained requests
+Kast can replay transport output cursors until expiry or eviction. Equal retained requests
 and outcomes have equal child identities; replay does not refresh expiry. The
 request identity retains the semantic request while excluding caller execution
 controls. Changed authority or semantic request is rejected. Each of the
@@ -599,25 +599,27 @@ semantic identity.
 
 Reissuing an equal detached query checkpoint returns its existing token without
 renewing its expiry or consuming another entry. Admission claims one unfinished token exclusively, while published pages replay their facts and successor without semantic execution. Concurrent use returns a finite in-use rejection. Allocations remain hidden until the fitted page commits after final host validation and native drainage. Cancellation, rejection, moved-read restart, and retired authority discard only the current attempt's allocations. Query, source and diagnostic owners check original token age independently of physical retention. Live pages pin dependencies against capacity eviction under the same quota; their validity ends at the oldest referenced dependency's deadline. Active claims preserve physical storage until release without renewing expiry, admitting an expired token, or publishing an expired dependency. Replay never renews page age.
-Query checkpoints and immutable results share one quota but retain distinct typed
+Query checkpoints and immutable results share one quota but keep distinct typed
 references. Query pipeline checkpoints and output suffixes exclude caller execution
 controls from semantic identity. Query page result limits also constrain retained
 output; every page preserves known item failures. A query `take` stage is not
-admitted. Source and traversal caller controls retain the same admitted report;
+admitted. Source and traversal caller controls keep the same admitted report;
 traversal evidence is scheduled in bounded structural and occurrence units before encoded fitting.
 
-Source entity cursors retain typed token keys and exact snapshot, region,
+Source entity cursors keep typed token keys and exact snapshot, region,
 selection identity, and detached structural frontier. Their binding excludes entity/text page allowances; an equal
 source cursor position reuses its token. The native cursor proof and encoded
 suffix share one hosted state owner; native entity collection retains no registry.
 
-The source owner applies shared entry, charged-byte, and original-age bounds to detached cursor proofs, suffixes, published pages, and claims. Admission, deduplication and publication validate the complete dependency closure against the same semantic request and authority. A running cursor cannot become another attempt's deduplicated successor. Expiry preserves active claims' physical dependency storage, then removes expired entries and broken dependent pages that no active claim owns. A retained expired dependency rejects publication as `EXPIRED`; an absent or unavailable dependency rejects as `DEPENDENCY_UNAVAILABLE`. Oversized entries fail before issuance; retirement clears every entry.
+The source owner applies shared entry, charged-byte, and original-age bounds to detached cursor proofs, suffixes, published pages, and claims. Admission, deduplication and publication validate the complete dependency closure against the same semantic request and authority. A running cursor cannot become another attempt's successor through deduplication. Expiry preserves active claims' physical dependency storage, then removes expired entries and broken dependent pages that no active claim owns. A retained expired dependency rejects publication as `EXPIRED`; an absent or unavailable dependency rejects as `DEPENDENCY_UNAVAILABLE`. Oversized entries fail before issuance; retirement clears every entry.
 
-Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the smaller of hosted `QUERY_CONTINUATION_*` and native `SOURCE_CONTINUATION_*` bounds in the same owner. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.
+Source requests need an explicit resource grant. Hosted source admission keeps the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read. If admission fails, Kast keeps the pipeline task before it starts. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not.
+
+Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor keeps the detached suffix and original upstream qualification under the smaller of hosted `QUERY_CONTINUATION_*` and native `SOURCE_CONTINUATION_*` bounds in the same owner. Source output identity keeps anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page keeps requested text; an indivisible item or necessary envelope that cannot fit is rejected without an empty unchanged cursor.
 
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 
-Canonical source, traversal, and query semantic rejections now retain
+Canonical source, traversal, and query semantic rejections now keep
 the current hosted grant in operation-owned admitted failure variants. Their
 wire/CLI documents preserve the original finite reason and add a sibling
 `execution_budget`; clearing retained output payload reports cannot erase an
@@ -668,7 +670,7 @@ Execution-limit reports refine positive numeric amounts and validate caller/defa
 Native source enumeration admits declaration kinds before deferred visibility and
 candidate projection. Excluded containers preserve eligible descendants. The
 source cursor owns detached sibling/child tasks, provider descriptors, parent
-proofs, a same-node parameter phase, and proven lookahead. Each successor
+proofs, a same-node parameter phase, and proven next entity. Each successor
 reacquires those locators directly instead of replaying delivered PSI or compiler
 projection. Structural revision advances even when a page has no newly eligible
 entity; emitted ordinals never decrease. Semantic omissions remain in the
@@ -679,17 +681,19 @@ its allowance. Physical PSI regressions cover 121 declarations at result limits
 1, 5 and 20 under work 32, excluded-container progress and same-node phases;
 installed K2 execution remains a separate qualification boundary.
 
-Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
+Decoded execution reports keep separate rules for each dimension. Elapsed limits admit deadline clamps. Result and byte limits admit transport clamps. Work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
 
 Hosted RUN enters the sole complete-only query executor. Internal page continuations drain under one admitted budget; public RESUME accepts only already-produced output. Missing completion proof returns a typed rejection with retained proven facts, the original question, coverage and historical progress. Retained reads preserve that verdict as evidence-only data without provider work. Required storage failure has the finite `RETENTION_UNAVAILABLE` cause and preserves completed enumeration separately.
 
-Internal query-page qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An upstream page that advances retained work can resume under the same grant even when downstream filtering emits no rows. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. Verbose CLI fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Internal query-page qualification owns necessary closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An upstream page that advances retained work can resume under the same grant even when downstream filtering emits no rows.
+
+`QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. Verbose CLI fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable, retention-unavailable, or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;
 retained output preserves original complete, resumable, or terminal coverage.
 Legacy cursor availability is derived from that authority. Empty native pages
-may resume structural progress under the same grant. A retention-unavailable
+can resume structural progress under the same grant. A retention-unavailable
 page preserves its fitting facts and original upstream coverage without a token. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
@@ -705,7 +709,7 @@ There is no independent output-suffix quota or native source registry alongside
 these owners. Charged bytes estimate detached retention; they do not measure JVM
 heap use. Requests, locators, semantic rows, omission evidence, claims, cached
 pages, and output suffixes contribute to their owner's accounting. Source and
-diagnostic gauges retain independent current bytes, entry counts and maximum
+diagnostic gauges keep independent current bytes, entry counts and maximum
 byte high-water marks rather than adding snapshots as work counters.
 
 A retained published page pins the work it advertises. Attempt claims isolate
@@ -715,7 +719,7 @@ closure, and prunes unadvertised children. Cancellation releases
 only that attempt's allocations after drainage. Replaying an available published
 page returns its immutable successor without native prefix work or renewing its
 creation time. Query entries expire strictly after TTL; source and diagnostic
-entries retain their exact-boundary expiry policy. Capacity eviction must preserve
+entries keep their exact-boundary expiry policy. Capacity eviction must preserve
 active ownership and live page dependencies. Retirement clears all three owners.
 Focused tests prove quota refusal, expiry, replay, conflict, cancellation release,
 and page/successor publication together. Retained values contain detached proof
@@ -729,7 +733,7 @@ listener health. Saturation uses the staged configuration catalog and actual
 request-read observations, then requires the finite capacity rejection. The
 endpoint emits `CONNECTION_RELEASE` after releasing the admitted connection's
 permit; the macOS native harness waits on log-change notifications for those
-correlated release records before its single health request. Reports retain
+correlated release records before its single health request. Reports keep
 bounded stage/outcome duration and byte totals, first attempts, and finite witness
 failures without source, responses, descriptors, or connection identities. The
 peer checks establish exact rejection shapes and host authority fields; the full
@@ -753,9 +757,9 @@ the same detached outcome and reissues the same token. Query checkpoint resume
 supplies only the issued token and new grant; the store restores the original
 plan. Workspace, published generation, live host lifetime and live epoch changes
 reject. Absent and empty execution-budget controls normalize alike; omitted
-traversal strategy and explicit breadth-first retain the same semantic choice.
-Query `take` steps and query fanout fields are unsupported and reject at the
-public wire boundary; traversal bounded fanout remains a supported strategy
+traversal strategy and explicit breadth-first keep the same semantic choice.
+Query `take` steps and query fan-out fields are unsupported and reject at the
+public wire boundary; traversal bounded fan-out remains a supported strategy
 whose value participates in continuation identity.
 
 A shared-owner test configures one entry per exercised store, retains four
@@ -769,8 +773,8 @@ hosted-runtime tests own the current production rules for paging, continuation,
 schema admission and finite failures. An installed native parity claim requires
 a separate runtime observation.
 
-Relation pages retain canonical order within each page. Cross-grant drains
-preserve the full occurrence multiset; changing page boundaries does not promise
+Relation pages keep canonical order within each page. Cross-grant drains
+preserve the full occurrence collection with duplicates; changing page boundaries does not promise
 global fingerprint order. A resumable budget stop retains unmeasured work evidence
 until the final complete drain; it never becomes an invented zero omitted count.
 
@@ -790,9 +794,9 @@ The `WORKSPACE_REFRESH` control request is dispatched separately from semantic r
 Fresh exact-symbol reads use the request-local acquisition wrapper described in
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
 Recovery shares the semantic work/time grant and can return refreshed-handle
-metadata with qualified results. Graph hop failures retain their distinct scope,
+metadata with qualified results. Graph hop failures keep their distinct scope,
 index, compiler and contract causes. Hosted time exhaustion and cancellation
-produce separate recovery guidance; neither turns an unvalidated accumulator
+produce separate recovery guidance; neither turns an accumulator without established validity
 into successful evidence.
 
 Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch. For an existing project, application opening waits for any active import and requests one linked model reload on first attach, after tracked Gradle changes, or when the cached model is missing. Subsequent clean openings reuse the admitted model. Its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.
@@ -840,7 +844,7 @@ inclusive traversal span nor CPU time.
 
 Compact impact `FINDINGS` follows this same retained presentation path. The existing retained owner admits a slice of original path row IDs alongside the witness window. `QueryOutcomeProjection` passes that identity context into the shared item projector before constructing required finding links. The existing envelope, result window, byte fitter and publication owner then bound the presentation. No summary operation invokes the semantic query evaluator or creates a separate retained result lifetime. Original unresolved closure remains attached, so fitting a compact page cannot establish semantic completion.
 
-`QueryInvocationProjection` is the sole retained-result capture and issuance owner. It captures proven incomplete facts for completion rejection and completed snapshots for successful retained output through the existing `QueryStateStore`. Issued valid upstream checkpoints remain protected, and finalized investigations retain their original ledger and path row IDs. Capture rejection preserves the finite impact selection cause. Internal evaluator pages project rows and progress without issuing retained results.
+`QueryInvocationProjection` is the sole retained-result capture and issuance owner. It captures proven incomplete facts for completion rejection and completed snapshots for successful retained output through the existing `QueryStateStore`. Issued valid upstream checkpoints remain protected, and finalized investigations keep their original ledger and path row IDs. Capture rejection preserves the finite impact selection cause. Internal evaluator pages project rows and progress without issuing retained results.
 
 The hosted retention adapter records one owner's capture start and success, finite capture rejection, and issuance outcomes through the existing `RETENTION` phase and bounded counters. Its exhaustive mappings carry no payloads, paths, anchors, or handles and supply runtime observation only.
 
@@ -848,7 +852,7 @@ Requested-site accounting follows the existing retained presentation branch. Bef
 
 Each hosted read initializes both value-site revalidation attempts and rejections to explicit zero. A provider-free retained read can therefore report both measurements without relying on absent fields. Actual attempt and rejection increments survive completed or rejected receipt publication. These bounded counts supply runtime work evidence, not compiler or relationship authority.
 
-Guarded peer-site acquisition precedes source impact admission. The existing application registry passively selects an already registered exact peer; the query does not open, import or trust a root. One child `HostedQueryService` read revalidates the target under its own authority, uses single evaluation and final freshness validation, and returns a completed receipt. The parent's original accounting owner debits the child's aggregate work and whole wall time once. Source admission reserves the retained peer payload before native source work. Resume and retained presentation do not repeat peer acquisition.
+Guarded peer-site acquisition precedes source impact admission. The existing application registry passively selects an already registered exact peer; the query does not open, import or trust a root. One child `HostedQueryService` read makes sure that the target remains valid under its own authority, uses single evaluation and final freshness validation, and returns a completed receipt. The parent's original accounting owner debits the child's aggregate work and whole wall time once. Source admission reserves the retained peer payload before native source work. Resume and retained presentation do not repeat peer acquisition.
 
 `PEER_SITE_ADMISSION` and explicit `PEER_SITE_READS_STARTED`, `PEER_SITE_READS_COMPLETED` and `PEER_SITE_READS_REJECTED` counters observe this boundary. A completed child receipt is historical target evidence; later source publication does not create a shared atomic epoch or investigate target flow.
 

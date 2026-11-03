@@ -18,9 +18,6 @@ code_sources:
 - path: evidence/sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStoresTest.kt
 - path: evidence/sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournalTest.kt
 - path: evidence/sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStoreTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-8425182c27f5ffccaa2cb5cc
     resource: repo://change/recovery/src/main/kotlin/io/github/amichne/kast/change/recovery/AddDeclarationRecoveryService.kt
@@ -30,7 +27,10 @@ sources:
     resource: repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/MutationRecoveryRecord.kt
   - id: openwiki-source-6f467c39d3cd5a49a04bafa6
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Mutation receipts and recovery
@@ -39,7 +39,7 @@ generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 
 `SqliteHostedChangeStores.open` admits one mutation database for the plan, journal, and receipt stores.
 The location proof carries the selected workspace into the persistence adapter.
-Path, schema, plan codec, and receipt failures remain distinct outcomes.
+Path, schema, plan encoding and decoding adapter, and receipt failures remain distinct outcomes.
 The adapter does not replace an incompatible database to manufacture an empty success state.
 
 Stored plans keep their exact identity and application history.
@@ -49,7 +49,7 @@ The coordinator must inspect the durable history before it decides which recover
 
 ## Receipts need post-effect evidence
 
-Live verification reobserves the current original owner, imported model, saved postimage, and compiler anchor.
+Live verification examines again the current original owner, imported model, saved source after the change, and compiler anchor.
 `LiveAddDeclarationVerificationReplay` repeats the retained semantic requests with their original budgets and scopes.
 Relations, traversals, and diagnostics remain independent evidence inputs.
 A matching source hash alone does not discharge semantic obligations.
@@ -64,11 +64,11 @@ The resulting receipt records what the exact operation established, including qu
 `AddDeclarationRecoveryService.prepare` persists the exact preimage before the source effect.
 The journal distinguishes durable preparation, durable applied writes, rollback, and recovery-needed states.
 A pre-write record does not prove that no write occurred during an interruption.
-Independent source examination can establish the known postimage without a repeated mutation.
+Independent source examination can establish the known source after the change without a repeated mutation.
 
 Rollback consumes the exact persisted write set through `AddDeclarationRollbackPort`.
 An unavailable target, diverged content, or rejected write remains a finite failure.
-The service keeps undurable or terminal-persistence failures explicit when it cannot persist a stronger recovery result.
+The service keeps failures to persist or terminal-persistence failures explicit when it cannot persist a stronger recovery result.
 The hosted coordinator owns the order of write, verification, receipt, recovery, and final response.
 
 SQLite restart tests establish durable storage behavior under owned files.

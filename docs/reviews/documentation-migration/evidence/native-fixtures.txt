@@ -1,0 +1,33 @@
+
+> kast-documentation-markdown@1.0.0 test:evidence
+> node --test evidence-native.test.ts
+
+✔ unchanged evidence is current and assessment preserves files and verification (235.841042ms)
+✔ changed whole-file evidence is stale and binds different candidate bytes (208.069125ms)
+✔ native uniquely relocated range remains current (139.836959ms)
+✔ ambiguous relocated range is unresolved (138.43075ms)
+✔ unresolved evidence takes precedence over stale within one claim (133.612041ms)
+✔ native containment refusal stays unresolved (146.603833ms)
+✔ native invalid resource rejects assessment: repo://../outside.kt (108.327125ms)
+✔ native invalid resource rejects assessment: repo://.git/config (111.041333ms)
+✔ native invalid resource rejects assessment: repo://source.kt#nonsense (112.639042ms)
+✔ native ignore refusal remains failed instead of an empty completed assessment (107.418042ms)
+✔ operational read error fails assessment without zero-finding success (103.930458ms)
+✔ missing claims stay explicit and reject admission (131.472042ms)
+✔ empty claims stay explicit and reject admission (161.466833ms)
+✔ orphan sidecars stay explicit (158.227375ms)
+✔ canonical prose mismatch rejects pre-update admission without a digest refresh (162.989916ms)
+✔ public scope identifies the unassessed canonical corpus (224.579542ms)
+✔ malformed native sidecar fails assessment instead of a missing-claims result (114.576833ms)
+✔ assessment rejects a relative repository root (0.245292ms)
+✔ public scope includes canonical Claim owners of authored consumers (144.549584ms)
+✔ unknown associated canonical owner rejects scope assessment (106.980375ms)
+✔ guarded native update admits a clean no-op without model work or semantic restamping (1245.327083ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4126.180125

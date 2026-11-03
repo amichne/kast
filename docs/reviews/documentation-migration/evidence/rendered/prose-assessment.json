@@ -1,0 +1,77 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 9.15 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 717,
+        "fleschKincaidGrade": 9.15,
+        "sentences": 41,
+        "words": 405,
+        "wordsPerSentence": 9.88
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/docs/tooling/rendered/README.md",
+      "sourceSha256": "64abe8bdb39723437f30d186daeb04591f6cb4d4976c29acba3f57ec5c6f28ca",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 8.86 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 697,
+        "fleschKincaidGrade": 8.86,
+        "sentences": 42,
+        "words": 396,
+        "wordsPerSentence": 9.43
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/docs/reviews/documentation-migration/evidence/rendered/README.md",
+      "sourceSha256": "2d7527eee431e583045914dfc0f13640d5b3f7f611cc2061720abacd6771b781",
+      "terminology": {
+        "type": "OUT_OF_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "glossary": {
+    "entries": 23,
+    "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+    "type": "CHECKED"
+  },
+  "schemaVersion": 1,
+  "type": "ASSESSED"
+}

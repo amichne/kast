@@ -119,6 +119,7 @@ class MintlifyCallableReferenceTest {
             assertFalse("cliUsage" in kastMetadata)
             assertTrue(content.contains("MCP contract"))
             assertTrue(content.contains("tool RPC contract"))
+            assertTrue(content.contains("[Schemas and samples](/reference/schemas)"))
             assertFalse(content.contains("```bash"))
         }
         SupportToolIdentity.entries

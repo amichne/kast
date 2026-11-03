@@ -121,7 +121,8 @@ private fun SupportToolIdentity.supportOperationDocument(): MintlifyCallableOper
                 content =
                     "This callable is not an HTTP endpoint. It is available through direct MCP and tool RPC. " +
                         "See the [MCP contract](/reference/mcp-catalog) or " +
-                        "[tool RPC contract](/reference/rpc-catalog) for invocation envelopes.",
+                        "[tool RPC contract](/reference/rpc-catalog) for invocation envelopes. " +
+                        "Return to [Schemas and samples](/reference/schemas) for related contracts.",
             ),
     )
 }
@@ -208,7 +209,8 @@ private fun InstalledHostedBinding.mintDocument() =
             "This callable is not an HTTP endpoint. Its schemas describe the hosted tool. " +
                 "Direct MCP and tool RPC wrap the same semantic document differently. " +
                 "See the [MCP contract](/reference/mcp-catalog) or " +
-                "[tool RPC contract](/reference/rpc-catalog).",
+                "[tool RPC contract](/reference/rpc-catalog). " +
+                "Return to [Schemas and samples](/reference/schemas) for related contracts.",
     )
 
 private fun InstalledHostedBinding.requestComponentName(): MintlifyCallableComponentName =

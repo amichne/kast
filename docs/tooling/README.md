@@ -87,8 +87,56 @@ Their reports reside in `build/reports/validation/`.
 Gradle reuses unchanged reports and reruns consumers after an input change or a report deletion.
 
 The shared prose assessor remains a separate consumer.
-Its report v2 omits glossary fields and does not accept `--glossary`.
+Slopsentral revision `110e904fd8cf70c27d1f6547e21320dc569a91ea` supplies its current schema-v1 procedure with `--glossary`.
 Keep historical reports under `docs/reviews` unchanged at their recorded revision.
+
+## Candidate evidence
+
+`markdown/evidence-assess.ts` uses the locked native OpenWiki store, ignore policy, repository resolver, and preflight.
+It distinguishes completed current, stale, and unresolved Claims from failed assessment.
+Missing Claims, empty Claims, orphaned sidecars, and page-digest disagreement cannot establish currentness.
+The command neither finalizes nor advances semantic verification.
+
+```shell
+mise exec -- node docs/tooling/markdown/evidence-assess.ts --root "$PWD" --scope public
+mise exec -- node docs/tooling/markdown/evidence-assess.ts --root "$PWD" --scope canonical
+```
+
+The update workflow uses `--check-pages` before native update to reject unreconciled canonical prose.
+Its routine pull request includes only canonical knowledge and projector-owned outputs.
+Partial progress does not satisfy publication admission.
+
+`reader_contracts.py` reads page contracts from `docs/okf-public.json`.
+It derives navigation parents from `docs.json`, outgoing links from content, and incoming links from those edges.
+It counts imported content and hidden panels without treating static counts as rendered measurements.
+
+`publication.py` admits the exact candidate after the native, projection, reader, prose, contract, and rendered procedures complete.
+Reviewed associations bind imported authored bytes, canonical Claim statements, and contract-owner bytes.
+A change to either side needs a new review.
+The report preserves `failed`, `stale`, `unresolved`, `not-assessed`, and `mismatched` obligations separately.
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/reader_contracts.py --report build/reports/documentation/reader-contracts.json
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/publication.py --rendered-report build/reports/documentation/rendered/receipt.json --prose-report build/reports/documentation/prose/receipt.json --report build/reports/documentation/publication.json
+```
+
+Routine PR CI qualifies source inputs without a browser.
+It runs the same native, association, projection, reader, prose, and contract obligations.
+The source report records rendered behavior and publication as `not-assessed`.
+A qualified source report cannot supply a rendered receipt.
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/publication.py --source-only --prose-report build/reports/documentation/prose/receipt.json --report build/reports/documentation/source-qualification.json
+```
+
+Before publication, run the rendered procedure and the full publication command for the exact candidate.
+Source qualification does not grant publication authority.
+
+The [rendered runner](rendered/README.md) defines its browser, preview, interaction, and screenshot scope.
+The prose runner uses root Vale `3.24.0`.
+The reader audit uses Vale `3.25.1`.
+Its source-bound advisory dispositions preserve each rule, location, and review reason.
+Neither successful admission nor prose metrics prove reader comprehension or native task completion.
 
 ## Shared OKF projection
 
@@ -112,7 +160,7 @@ If projection fails, the workflow does not create that pull request.
 The provenance report keeps page and sidecar digests, Claim identities, resources, recorded versions, and current file digests.
 `MATCHED` means that a whole-file evidence digest matches current bytes.
 `CHANGED` means that those bytes differ. `NOT_ASSESSED` keeps opaque or range versions without a freshness claim.
-The public view qualifies changed and unassessed evidence.
+The public view qualifies changed evidence and evidence without assessment.
 No digest comparison proves semantic truth.
 
 Missing source files, untracked evidence, unreconciled page edits, parser failures, and undeclared public pages reject the projection.

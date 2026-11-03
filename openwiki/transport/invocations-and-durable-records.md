@@ -2,7 +2,7 @@
 type: System Explanation
 title: Invocation fences and durable thread records
 description: Explains durable invocation admission, uncertain outcomes, bounded active
-  work, private sharded records, and current thread ownership.
+  work, private partitioned records, and current thread ownership.
 tags:
 - kast
 - transport
@@ -17,9 +17,6 @@ code_sources:
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFileStoreTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFilesTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStoreTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-0271b35b2c019ff7a8e64073
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
@@ -34,6 +31,9 @@ sources:
   - id: openwiki-source-fdd04d06dee30d192ed4f4da
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Invocation fences and durable thread records

@@ -1,7 +1,7 @@
 ---
 type: Runtime Flow
 title: Semantic change lifecycle
-description: A supported semantic intent becomes a source effect only after pure planning and exact preimage admission, then must discharge verification or retain recovery evidence.
+description: A supported semantic intent becomes a source effect only after pure planning and exact preimage admission. It must then discharge verification or keep recovery evidence.
 resource: file://change
 tags: [change, mutation, verification, recovery]
 code_sources:
@@ -61,10 +61,10 @@ sources:
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt
   - id: openwiki-source-c664f45de26537caea2696fb
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Semantic change lifecycle
@@ -80,7 +80,7 @@ The installed published path retains `SemanticReadLease`, generation admission
 and publication after verification. The hosted path supports `AddDeclaration`
 and `ReplaceBody` in one existing authored Kotlin source file. A body plan binds
 one non-inline named function, its exact block, the surrounding source, and a
-deterministic postimage. Its `ChangePlanningBasis.Live`
+deterministic source after the change. Its `ChangePlanningBasis.Live`
 retains the original live reference and complete project model as historical
 evidence. It does not convert an epoch into a published generation or current
 write authority.
@@ -123,7 +123,7 @@ Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains
 that proof and the admitted write set. A pre-write observation guards the
 IntelliJ write command; the adapter receives only the admitted single-file effect.
-Durable pre-write and applied records retain recovery evidence across effects.
+Durable pre-write and applied records keep recovery evidence across effects.
 Pre-write and rollback document admission considers unsaved buffers under the
 selected project root, so unrelated IDE projects cannot block an authorized write.
 
@@ -132,9 +132,9 @@ and any local restoration share that group; separate admitted attempts have
 distinct group identities, so consecutive changes remain separate Undo steps.
 
 The IDE save can enqueue an asynchronous VFS write. Before reading the physical
-postimage, the adapter calls the pinned platform's per-file
+source after the change, the adapter calls the pinned platform's per-file
 `ManagingFS.flushPendingUpdates(file)` outside EDT. A failed completion prevents
-physical observation. Completion and exact postimage refinement emit typed
+physical observation. Completion and exact refinement of the source after the change emit typed
 success or finite rejection causes without source content, paths, or request
 payloads. Document save flags alone do not prove physical write completion.
 
@@ -164,10 +164,10 @@ A repeated verified apply returns its stored receipt without another write,
 including when the current IDE owner differs from the historical receipt.
 An attempted plan without a verified receipt cannot be applied again. Recovery
 requires fresh native admission and durable records. Qualified manual-recovery-required
-results may retain the original plan's historical live evidence when fresh read
+results can keep the original plan's historical live evidence when fresh read
 admission fails. They do not prove current source state; completed prior-state or
 rollback results still require the current owner's fresh source observation.
-Recovery can prove the exact prior state or roll back an exact matching postimage; divergence,
+Recovery can prove the exact prior state or roll back an exact matching source after the change; divergence,
 missing records or incomplete observation cannot establish success. Legacy empty
 preimages remain ambiguous because they cannot distinguish absence from an
 existing empty file.
@@ -187,7 +187,7 @@ and rejects trailing input, syntax errors, expression bodies, contracts, inline
 functions, and targets outside the supported named-function family. Verification
 checks the entire expected source image, signature, surrounding text, exact
 compiler identity, and complete diagnostics for the changed file. Outgoing calls
-may change. Only a verified receipt returns a fresh exact reference.
+can change. Only a verified receipt returns a fresh exact reference.
 
 A daemon preparation rejection is a known pre-execution failure: the requested
 semantic operation was not sent. Its finite cause and preparation identity survive
@@ -207,9 +207,9 @@ and receipt persistence. The source adapter observes document commit and explici
 save; the existing transport trace observes encoding and reply delivery. A
 phase returning is effect-boundary evidence, not verification success. The outer
 admitted connection budget remains unchanged. Thin adapters distinguish timeout,
-cancellation, overflow and child failure, retain only bounded phase/plan evidence,
+cancellation, overflow and child failure, keep only bounded phase/plan evidence,
 and report unknown mutation state when no response proves the outcome. They do
 not replay a write. Compact and inline references keep their existing authority
-checks; durable receipts retain canonical reference material.
+checks; durable receipts keep canonical reference material.
 
-Durable live-plan row envelopes use storage version 1 independently of each embedded plan document codec. Issuance and reload check the same storage owner before checksum, document decoding and exact plan identity checks. Add-declaration plan codec version 2 retains explicit traversal expansion scope; replacement-body codec version 1 remains independently supported. A current embedded plan does not admit an unknown storage-row version, and an old embedded add-declaration plan does not become valid merely because its row envelope is supported.
+Durable live-plan row envelopes use storage version 1 independently of each embedded plan document format. Issuance and reload check the same storage owner before checksum, document decoding and exact plan identity checks. Add-declaration plan format version 2 retains explicit traversal expansion scope; replacement-body plan format version 1 remains independently supported. A current embedded plan does not admit an unknown storage-row version, and an old embedded add-declaration plan does not become valid merely because its row envelope is supported.

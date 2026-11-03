@@ -47,10 +47,10 @@ sources:
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Agent context and harness delivery
@@ -61,7 +61,7 @@ The canonical `skills/kast` directory supplies native CLI guidance and its local
 Codex and Copilot plugins expose that skill through their native plugin discovery.
 Pi uses its native skill directory.
 `kast install <harness>` admits only the selected manifest-owned installed bundle.
-The default generated composition contains no automatic MCP registration, hooks, or Python scripts.
+The default generated composition includes preparation hooks without automatic MCP registration or Python scripts.
 
 `--mcp` selects the complete optional composition and prepares its Python dependency environment explicitly.
 CLI and MCP use the same persistent IDEA Host and semantic contracts.
@@ -71,9 +71,12 @@ After setup or a core update, start a fresh agent session and obey the result's 
 
 `onboarding.template.md` owns the optional MCP brief.
 The public-query generator derives enum lists, the schema, and the example array from `tools.schema.json`.
-Authored legacy hook resources remain source material. The generated compositions do not select those hooks automatically.
+The generated compositions select native preparation hooks.
+Legacy Python hook resources remain source material outside that default composition.
 
 The optional Pi extension registers Kast through native `registerMcpServer`.
+Its session-start event first calls `kast hook session-start` for the exact workspace.
+Preparation failure emits a bounded warning.
 It reads bounded local context directly with Node and adds that brief before model requests.
 A rejected resource produces one warning while later turns and native MCP remain available.
 Its context path starts no Python or uv process. The explicitly selected MCP server uses its separate transport process.
@@ -135,7 +138,7 @@ A successful fixture or tool catalog does not prove a real Copilot or Pi session
 - [extension.ts](../../pi/extension.ts)
 - [session_start.py](../../agent-tools/hooks/session_start.py)
 - [onboarding.template.md](../../agent-tools/onboarding.template.md)
-- [mcp-extension.ts](../../pi/mcp-extension.ts)
+- [`mcp-extension.ts`](../../pi/mcp-extension.ts)
 - [CopilotFixtureProjection.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/copilot/CopilotFixtureProjection.kt)
 
 ## Read next

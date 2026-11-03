@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cdce05245acafdf3626ad7182215f6697fb6a4739489a93bff9e6b69c58e62cd",
+  "pageVersion": "sha256:1cf8493de617f396d5bdaa8058d6ed8b9ec617bd0a3382c75418600c9fbaeecd",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:affecd2cf07e0a63b32eea1d5bc58041eee148a643c08d208b3b81327a4df1df"
+          "version": "repo-file-v1:sha256:43b706f081841771af02a46c46277c8c0004a542ed7d2f1991453020969630e4"
         }
       ]
     },
@@ -32,13 +32,61 @@
       "evidence": [
         {
           "resource": "repo://AGENTS.md",
-          "version": "repo-file-v1:sha256:3f1ffba350f73cf24430a90c8ea9493cf023d73c4a0d54d8befe2fa652e92fb9"
+          "version": "repo-file-v1:sha256:0030ac50ee9489e4765459d22a6b0f1d98e50e6d167d13a2fe37d9eb5da2e8fa"
+        }
+      ]
+    },
+    {
+      "id": "claim_40d5b9ef94c14157953df48b56baa7bc",
+      "statement": "The read-only native evidence adapter reuses OpenWiki 0.6.1 store, ignore policy, repository resolver and preflight, distinguishes completed current/stale/unresolved assessment from operational failure, and preserves page agreement and snapshot identity without finalization.",
+      "evidence": [
+        {
+          "resource": "repo://docs/tooling/markdown/evidence-assess.ts",
+          "version": "repo-file-v1:sha256:05bc615ed313f7e67b11d4a12656b96c09a5db54e6610dc8db1a3042822b9418"
+        },
+        {
+          "resource": "repo://docs/tooling/markdown/evidence-native.ts",
+          "version": "repo-file-v1:sha256:8dd883249d81458121c391b4387ac237c9ee65bade0dcd0d013daf5afaf12ab2"
+        }
+      ]
+    },
+    {
+      "id": "claim_d25ab5b445604a04964cb769e023ac87",
+      "statement": "The OpenWiki update workflow rejects canonical prose/sidecar disagreement before native update and restricts routine pull-request paths to canonical knowledge and projector-owned derived outputs while retaining partial progress as incomplete.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/openwiki-update.yml",
+          "version": "repo-file-v1:sha256:43b706f081841771af02a46c46277c8c0004a542ed7d2f1991453020969630e4"
+        },
+        {
+          "resource": "repo://docs/tooling/okf_public.py",
+          "version": "repo-file-v1:sha256:b21d0b63009aa99da4ba0dc108d9fe53b7303597cf3ae9bec0120ed637345c2e"
+        }
+      ]
+    },
+    {
+      "id": "claim_70160b760843444b9c2ec5e7fc6ea7e7",
+      "statement": "Reader contracts derive navigation parents and both link directions from actual navigation and imported content, keep static footprint limits, and distinguish author review from reader evaluation and native task execution.",
+      "evidence": [
+        {
+          "resource": "repo://docs/tooling/reader_contracts.py",
+          "version": "repo-file-v1:sha256:0e01d60af116d2946fa3514a1daf54e7cd977f2fc9dab04267923ae8754fc98d"
+        }
+      ]
+    },
+    {
+      "id": "claim_4fd39fe148aa4e84b09c469020f3f48a",
+      "statement": "Publication admission binds imported authored bytes and canonical Claim statements or generated owner digests, assesses native scope and projection parity, and rejects missing, stale, unresolved, unassessed, mismatched or failed candidate obligations.",
+      "evidence": [
+        {
+          "resource": "repo://docs/tooling/publication.py",
+          "version": "repo-file-v1:sha256:3e5952dcee965fccae5c606d5f417142d914a0a9d1037158281837943075f863"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:10:25.214Z"
+    "at": "2026-11-03T14:13:30.978Z"
   }
 }

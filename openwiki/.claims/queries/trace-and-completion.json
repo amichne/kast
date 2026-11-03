@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ce5c8f778257078106a12dc1536d2248a6794a9a97b110b5c67abfa3597c6b7a",
+  "pageVersion": "sha256:308ecf0fff110afd99fc6ba6554036ae6469fa1d9b707c1403cbae23e82d040f",
   "claims": [
     {
       "id": "claim_dce9b1010e3841d895b0ab00b6bd1625",
@@ -43,10 +43,84 @@
           "version": "repo-file-v1:sha256:050c38062d95df445e006aa47572adb3a4a26d5714bfcc0587364c5a287819cf"
         }
       ]
+    },
+    {
+      "id": "claim_405359a71fe7488b920de4c8e614f1ed",
+      "statement": "The three public tracing contracts distinguish declaration relationships, callback supply-and-invocation observations, and exact producer value flow; none establishes runtime execution, call counts or path feasibility.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt",
+          "version": "repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt",
+          "version": "repo-file-v1:sha256:588e6fc362dc5d20e5dcc74ca11d0902619668a3e6ee4c1a7813f5d534e210bd"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueStateEvidence.kt",
+          "version": "repo-file-v1:sha256:b045f3e8dbe9596abe6ff8a8cfce0034a7e289badf09122b329ace4993d04ec2"
+        }
+      ]
+    },
+    {
+      "id": "claim_bb321d9d3275498b934bad180df60f2c",
+      "statement": "Callback return flow distinguishes exact supplier and matching invocation context from Unit coercion that discards a value, and keeps nullable Unit as a value; discarded results do not supply a constant wrapper return.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackReturn.kt",
+          "version": "repo-file-v1:sha256:2fa7ff358815d5aa14ff472cfe297178dd50a7652db871728b03d27e913e1717"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackReturnSemantics.kt",
+          "version": "repo-file-v1:sha256:018e805ec4cb16c1e67c9da0a5237409838b1ba2c1b3777bb8cbb16db0ced432"
+        }
+      ]
+    },
+    {
+      "id": "claim_d19d611cabf142458a2ed5b769de4ef3",
+      "statement": "Public source-symbol TRACE accepts explicit callback execution gaps under SOURCE_RELATIONSHIPS, while explicit CALLERS requires callback graph proof and both paths preserve source identity, membership and execution completion obligations.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt",
+          "version": "repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
+          "version": "repo-file-v1:sha256:11d1c26a2af0572961a8a3f049360bb23344dcc4ebd3aba171bede6385a8df7a"
+        }
+      ]
+    },
+    {
+      "id": "claim_aa1f199d2efa4800a8fd9239b7bfe51b",
+      "statement": "RUNNER_CONTROLLED has no implicit semantic deadline or work quota, accepts optional model-capture-inclusive timeout, rejects explicit maxWorkUnits and limits each output page without renewing retained handles.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
+          "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
+        },
+        {
+          "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
+          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+        }
+      ]
+    },
+    {
+      "id": "claim_87ad2e1119b34bbdad08cec3f28f0f31",
+      "statement": "The native dependency and directory-isolation fixtures encode declared calls-in-place expectations for selected with/apply/let cases and missing-effect expectations for map; those fixtures do not establish effects for arbitrary installed dependency binaries or runtime callback execution.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackDirectoryIsolationTest.kt",
+          "version": "repo-file-v1:sha256:20f6f454c979f4527cf421283735b9a9ecaa6446f571ed4039efb0f542b17b44"
+        },
+        {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt",
+          "version": "repo-file-v1:sha256:3ffe0cbf673fa8910f5f54a6cf24982cc83a91f954e21fad56b429ae9b49349d"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T05:45:59.282Z"
   }
 }

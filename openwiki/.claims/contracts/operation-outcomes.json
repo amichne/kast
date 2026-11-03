@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:42324726c80a30f0cf07a92615e7fcb01b5e2f2d120ab9d95467ab1279a327e9",
+  "pageVersion": "sha256:d66d2d797710e948e03766404f343495e3827cb27c0e417165f3c936d37d8127",
   "claims": [
     {
       "id": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -91,10 +91,114 @@
           "version": "repo-file-v1:sha256:a83996f26811cdec25e5b9084424963f0fbc0bf7912ab4ccd31ab83632af7191"
         }
       ]
+    },
+    {
+      "id": "claim_6a9da81ab0b44487af6a7b5a396f6cc6",
+      "statement": "Public RUN uses the fixed COMPLETE_ONLY model COMPILER_RESOLVED_STATIC_V1; source-symbol TRACE can retain SOURCE_RELATIONSHIPS with callbackEffects EVIDENCE_ONLY, while explicit relation, traversal, composition and retained-source paths keep stricter callback proof.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt",
+          "version": "repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295"
+        }
+      ]
+    },
+    {
+      "id": "claim_ec090c6dca2b4bfc866b20afe87b6671",
+      "statement": "Completion rejection retains original coverage and typed causes; retained evidence supplies public nextQuery arguments and EVIDENCE_ONLY interpretation without granting semantic replay.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryCompletionRejectionCliDocument.kt",
+          "version": "repo-file-v1:sha256:277498b0f018db7c6b554a74d22a02b4d883fb17b495c733f776eae6d4c05c57"
+        }
+      ]
+    },
+    {
+      "id": "claim_14261ee3b78c4757b083a54c780f88d4",
+      "statement": "Public result projection keeps accumulated logical row counts, INLINE or PREFIX preview, typed stops, independent row and evidence positions, and retained output without strengthening original coverage.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryInvocationDocument.kt",
+          "version": "repo-file-v1:sha256:e4a82ec6995e43f75dc9975b7ecb438896da9a211a08b779344e80f9bdd6c351"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultCliDocuments.kt",
+          "version": "repo-file-v1:sha256:2e02e1720f07c7c0234fd644318669d4c2ba63fb8b6f4fe979c2ec345878d06a"
+        }
+      ]
+    },
+    {
+      "id": "claim_bd777dbb84624bea9c2679825916066f",
+      "statement": "Compact relation graph node, connection and witness IDs belong to their retained basis; exact selectors remain separate, and the detail request retrieves verbose retained evidence without granting live declaration authority.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt",
+          "version": "repo-file-v1:sha256:4a722cd7020b5d245cb286504071ad6469f8eb12538fa473bca592845ebcd420"
+        }
+      ]
+    },
+    {
+      "id": "claim_770132c0072344e8b04bab69aea754ea",
+      "statement": "MCP semantic documents remain distinct from MCP_REJECTED transport errors; overlapping invocation admission returns INVOCATION_IN_PROGRESS without claiming failure of the active semantic query.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt",
+          "version": "repo-file-v1:sha256:165a5fd16a9d60b960a1fc7c8d44e93b6041629348712c9ab30cb79d3f36371e"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt",
+          "version": "repo-file-v1:sha256:3706f0683b09bf7439c5d5b277a17bd79baa2bac2a95c60f2f8f9713216171f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_30509bf0f92d42e9bc59f07f8677ea62",
+      "statement": "Impact classification monotonically preserves DERIVED relationships and the first NOT_ESTABLISHED modeled step; later exact steps cannot restore missing correspondence, and compiler, reviewed-library and model authority remain distinct.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathClassificationDocument.kt",
+          "version": "repo-file-v1:sha256:8eb2554c3d26f654157064029c04797de4f019914c68bacbfa0172e9c38b089d"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactClassification.kt",
+          "version": "repo-file-v1:sha256:4d79ea59d31a7946bb998d46c1cc5bfc7ca407ed791a24d8833b96d2ed2ac00b"
+        }
+      ]
+    },
+    {
+      "id": "claim_40402a2ed108471e952bea8317b73394",
+      "statement": "String-template content retains each exact entry and conditional nullable-String contribution, records null constants separately, and resolves implicit conversion through the applicable Any.toString member or override while preserving unsupported selected-member evidence.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringContent.kt",
+          "version": "repo-file-v1:sha256:fcf299ab3bd3f0b1c0d57ec27e93f0b90c2a8a1ee111fd7ecc74d40f0650a423"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringConversion.kt",
+          "version": "repo-file-v1:sha256:4abc112d597fbb61fa42e10540a5578bfb60255c36deb06f19f3e491a09d29cc"
+        }
+      ]
+    },
+    {
+      "id": "claim_ba8e32ac6ea44054aeb88e260d10f277",
+      "statement": "CallbackFlowRetention admits proof records under the result allowance while keeping conservative retained-byte estimates as diagnostics independent of serialized output and any separate byte quota; a result-limit rejection preserves the admitted prefix.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackFlowRetention.kt",
+          "version": "repo-file-v1:sha256:fe73967d908a1a5d45bb06c7a75b988754fa82142bd024fbbca85ae9257fd5c3"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T06:27:58.730Z"
   }
 }

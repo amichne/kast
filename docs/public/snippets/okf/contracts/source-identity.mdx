@@ -10,10 +10,14 @@ Recorded evidence differs from current source or needs further assessment. This 
 
 ## Source and workspace identity
 
+<a id="okf-contracts-source-identity-local-declaration-addresses" />
+
+## Local declaration addresses
+
 Local `val`, `var`, named functions and anonymous objects carry a compiler-admitted declaration
 address with exact file/range, containing compiler declaration and bounded
 lexical ownership anchors. A local address establishes positive identity without
-fabricating a qualified name. Exact selectors retain this address through reads,
+fabricating a qualified name. Exact selectors keep this address through reads,
 references and composition.
 
 Local reacquisition requires `ORIGINAL_DOCUMENT` content proof for the whole
@@ -22,6 +26,10 @@ moved, shadowed or replaced declaration requires rediscovery; an old local
 reference never rebinds by name. Qualified declaration reacquisition keeps its
 existing supported policy. Mutable variable identity does not prove assignment
 flow, and deferred execution remains independently qualified.
+
+<a id="okf-contracts-source-identity-source-read-identity" />
+
+## Source-read identity
 
 A source read is not identified by path text alone. The contract combines:
 
@@ -33,18 +41,22 @@ A source read is not identified by path text alone. The contract combines:
 
 `SourceReadContext.Published` retains a `SemanticReadLease` and the published
 `WorkspaceStateIdentity`. `SourceReadContext.Live` retains the live authority and
-its saved, PSI-committed content view. Both snapshots also retain the actual text
+its saved, PSI-committed content view. Both snapshots also keep the actual text
 identity and UTF-16 length. Live context has no synthetic publication generation
 or source-state identity. `SourceReadService` admits the context before the read
-and revalidates it afterward before returning detached output.
+and makes sure that it remains valid afterward before returning detached output.
 
-Declaration selections and exact selectors retain their original scope,
+<a id="okf-contracts-source-identity-selector-scope-and-issuance" />
+
+## Selector scope and issuance
+
+Declaration selections and exact selectors keep their original scope,
 directory and package restrictions, declaration kinds, and exact named Gradle
 source sets. These fields participate in selector fingerprints. Their kind and
 source-set collections are defensive immutable snapshots, so retained proof
 cannot change after fingerprinting. Candidate-to-exact issuance checks that
 compiler evidence satisfies the candidate's declaration-kind restriction;
-relation-derived exact targets retain their separate issuance path.
+relation-derived exact targets keep their separate issuance path.
 
 Source-owned declaration candidates preserve discovery scope and constraints.
 Relation and diagnostic locations issue range candidates with explicit exact-file
@@ -57,7 +69,11 @@ and restrictions into the source snapshot. Source selectors bind this scope in
 their fingerprints and reject revalidation against a changed scope. The
 `ExactFile` variant remains available for legacy stored source snapshots.
 
-Legacy published exact-file source tokens retain version 1. Live or constrained
+<a id="okf-contracts-source-identity-token-restoration-and-visibility" />
+
+## Token restoration and visibility
+
+Legacy published exact-file source tokens keep version 1. Live or constrained
 source tokens use version 2. Live restoration requires the current authority
 from the original owner and compares root, host, epoch, version, and content
 view. A valid token still requires native scope and content revalidation before
@@ -77,19 +93,23 @@ Direct-child source containment keeps its existing meaning.
 
 See [query protocol](https://github.com/amichne/kast/blob/main/openwiki/modules/query-protocol.md), [compiler identity](https://github.com/amichne/kast/blob/main/openwiki/glossary/compiler-identity.md), and [workspace publication](https://github.com/amichne/kast/blob/main/openwiki/flows/workspace-publication.md).
 
+<a id="okf-contracts-source-identity-hosted-handles-and-canonical-identity" />
+
+## Hosted handles and canonical identity
+
 Hosted version-5 symbol handles use bounded short lookup keys; version 4 remains
 accepted. The project-owned table retains detached full tokens for the current
-live read reference. Short-digest collisions retain the existing mapping and
+live read reference. Short-digest collisions keep the existing mapping and
 return the new selector inline. Lookup must succeed before canonical restoration
-validates the current authority. Unknown handles retain an unavailable cause in source reads; malformed
+validates the current authority. Unknown handles keep an unavailable cause in source reads; malformed
 handles reject as malformed.
 
 `CanonicalSymbolId` separately hashes the full compiler evidence and semantic
 snapshot with SHA-256. It excludes discovery scope so equal declarations reached
 through different admitted scopes share an internal canonical identity. Public query
-results expose only `ref`; `symbol_id` has no public accessor. Exact selectors still bind
+results expose only `ref`; `symbol_id` has no public retrieval method. Exact selectors still bind
 the original scope and constraints; the equality key cannot restore or broaden a
-read capability. Native revalidation remains mandatory after lookup.
+read capability. Native revalidation remains necessary after lookup.
 
 <a id="okf-contracts-source-identity-source-output-format" />
 
@@ -100,6 +120,7 @@ existing anchor callers. The public hosted v6 exact-symbol shortcut uses an admi
 `ExactSymbolSelector` and defaults to `compact`, declaration region, complete
 text, no entities, and the first page. Its typed request normalizes to the same
 canonical source read; a malformed or wrong-family selector fails admission.
+
 Selecting `compact` changes
 representation without changing source enumeration or reference authority.
 The hosted public source intent accepts an unchanged exact `anchor.symbolRef`,
@@ -109,6 +130,7 @@ For an exact declaration reference, the public `declaration` region selects
 that reference's anchor. Internal source wire encoding still includes the
 default entity limit, text byte limit, and first page for installed host
 compatibility; these fields are not required in the public request.
+
 Compact responses return each distinct source selector once in a response-local
 selection table. Integer IDs join selections, parents, callees, and local targets
 to that table; they are not valid follow-up selectors. Pass the table entry's
@@ -138,7 +160,7 @@ Native entity continuations preserve the selected snapshot, exact region and
 semantic request together with a detached structural frontier. The emitted
 ordinal records delivered entities; an independent revision proves unfinished
 input advanced even when no new entity matched. Locator ranges, provider
-descriptors, parent/depth proofs and proven lookahead stay in that snapshot.
+descriptors, parent/depth proofs and proven next entity stay in that snapshot.
 Restoration cannot change filters, containment, format, anchor or authority.
 Source cursors are owned by the same hosted state store as fitted output suffixes
 and immutable successor pages; no live PSI or compiler session is retained.
@@ -159,7 +181,7 @@ current declaration, not restoration of the prior source snapshot. Source-anchor
 and continuation reads keep their original snapshot checks. See
 [automatic acquisition](https://github.com/amichne/kast/blob/main/openwiki/modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
 
-Anonymous objects retain their actual compiler supertypes and owner-relative
-address. Their members retain that anonymous compiler owner. Source lookup uses
-the label only for actual object-literal PSI, then revalidates the exact range
-and compiler evidence; it does not manufacture a qualified name.
+Anonymous objects keep their actual compiler `supertypes` and owner-relative
+address. Their members keep that anonymous compiler owner. Source lookup uses the label only for actual object-literal PSI.
+It makes sure that the exact range and compiler evidence remain valid.
+It does not manufacture a qualified name.

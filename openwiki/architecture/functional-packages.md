@@ -109,7 +109,7 @@ code_sources:
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T17:10:25.214Z
+    at: 2026-11-03T05:45:59.282Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -119,7 +119,7 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 ---
 
 # Functional package coverage
@@ -181,25 +181,25 @@ The retired indexer does not become an active semantic host because its director
 | `change/protocol` | `io.github.amichne.kast.change.protocol` | [planning and write admission](../changes/planning-and-write-admission.md) |
 | `change/recovery` | `io.github.amichne.kast.change.recovery` | [receipts and recovery](../changes/receipts-and-recovery.md) |
 | `change/verify` | `io.github.amichne.kast.change.verify` | [receipts and recovery](../changes/receipts-and-recovery.md) |
-| `cli` | `io.github.amichne.kast.cli` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.bootstrap` | [contracts and generation](../development/contracts-and-generation.md) |
-| `cli` | `io.github.amichne.kast.cli.command` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.appserver` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.change` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.codex` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.ide` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.appserver` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.change` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.codex` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.command.knowledge` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
-| `cli` | `io.github.amichne.kast.cli.command.product` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.source` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.tool` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.workspace` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.direct` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.ide` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.product` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.source` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.tool` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.workspace` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.direct` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.installation` | [installation and managed files](../distribution/installation-and-managed-files.md) |
 | `cli` | `io.github.amichne.kast.cli.knowledge` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
-| `cli` | `io.github.amichne.kast.cli.mcp` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.mcp` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.projection` | [contracts and generation](../development/contracts-and-generation.md) |
-| `cli` | `io.github.amichne.kast.cli.rpc` | [direct mcp and tool rpc](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.rpc` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `diagnostic/contract` | `io.github.amichne.kast.diagnostic.contract` | [scans and progress](../semantics/diagnostics/scans-and-progress.md) |
 | `diagnostic/intellij` | `io.github.amichne.kast.diagnostic.intellij` | [scans and progress](../semantics/diagnostics/scans-and-progress.md) |
 | `diagnostic/service` | `io.github.amichne.kast.diagnostic.service` | [scans and progress](../semantics/diagnostics/scans-and-progress.md) |
@@ -269,8 +269,8 @@ Directory indexes belong to OpenWiki and regenerate at finalization.
 
 ## Source owners
 
-- [settings.gradle.kts](../../settings.gradle.kts)
-- [build.gradle.kts](../../runtime/hosted/build.gradle.kts)
+- [`settings.gradle.kts`](../../settings.gradle.kts)
+- [`build.gradle.kts`](../../runtime/hosted/build.gradle.kts)
 - [KastCleanSlateModules.kt](../../build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt)
 - [AppServerManagement.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt)
 - [AgentSessionBootstrap.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt)

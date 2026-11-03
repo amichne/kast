@@ -18,10 +18,10 @@ sources:
     resource: repo://topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/GraphIndex.kt
   - id: openwiki-source-e80fc4972b493f50257598c0
     resource: repo://topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/TopologyGraphService.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Detached topology graph queries
@@ -36,7 +36,7 @@ This service accepts no live compiler, Gradle, module-model, or workspace capabi
 `GraphIndex` orders symbols and edges by canonical identities before it creates adjacency lists.
 Traversal uses a breadth-first frontier and visits each reachable symbol once.
 An unknown start and a depth overflow remain distinct outcomes.
-Reachability returns a shortest path, an unknown endpoint, or an unreachable result.
+The reachability operation returns a shortest path, an unknown endpoint, or an unreachable result.
 A known symbol reaches itself through a zero-edge path.
 
 ## Graph algorithms preserve snapshot meaning

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:132c2576c3e12dee4665ff826d65aff5d0328b10d94342103f80e8f38befc90d",
+  "pageVersion": "sha256:aa09bc07b30575d834b0da749d7ca8eed88e69c6fc0326d43605ec06ed26d0c6",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -132,7 +132,7 @@
         },
         {
           "resource": "repo://packaging/install-local.sh",
-          "version": "repo-file-v1:sha256:f96143c9c2d4a45101f533e52f6f3976ac79d91cb2f8dbfd9bc291b43419d371"
+          "version": "repo-file-v1:sha256:3c3f2fda9a5103d287442454dae1a910be838803d4e92cb564f657db72ca08de"
         }
       ]
     },
@@ -146,7 +146,7 @@
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
-          "version": "repo-file-v1:sha256:983c6b33c0685f117642778e766ea8d89edf8785d77e1b669431242efb2a9960"
+          "version": "repo-file-v1:sha256:ea3dd9e6c71446bb58a226d26fa83e8016ad373c8fa094397d395db0cb8cf1f8"
         },
         {
           "resource": "repo://packaging/install-checkout.sh#L41-L72",
@@ -179,6 +179,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:10:25.214Z"
+    "at": "2026-11-03T06:09:31.584Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0e068acede1d627b9636a877594de6eb2c80e7622bd2a6108cdf0f1d55f81171",
+  "pageVersion": "sha256:7d907dd7560a05ade786541241e6da1549dc8048a33141cf7e7cec7a5415f5d7",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -32,7 +32,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8706ea450fa047d710d3e2381f28b39e7de63a4723bafeaa7993709ad49c92ab"
+          "version": "repo-file-v1:sha256:f4590c2be5828bc52ccd35d728d3f33f2d7ee073fb29e33f19701f462d3f35e7"
         }
       ]
     },
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:8706ea450fa047d710d3e2381f28b39e7de63a4723bafeaa7993709ad49c92ab"
+          "version": "repo-file-v1:sha256:f4590c2be5828bc52ccd35d728d3f33f2d7ee073fb29e33f19701f462d3f35e7"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
@@ -66,7 +66,7 @@
     },
     {
       "id": "claim_94a73b3385e448fbb2429d1da6274423",
-      "statement": "The existing-IDE client emits bounded private response activity for frame, body, strict JSON, canonical wire, live-basis and prepared-completion admission while preserving existing finite public rejections.",
+      "statement": "With debug configuration enabled, the existing-IDE client emits bounded private response activity for frame, body, strict JSON, canonical wire, live-basis and prepared-completion admission while preserving finite public rejections.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt",
@@ -74,7 +74,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
-          "version": "repo-file-v1:sha256:ea827caee7329908e7e6a2869840eb2a8043d75e0e88fdafba37567b7c45a635"
+          "version": "repo-file-v1:sha256:9fac46c6a7e5b0fe9c0e103958b904a3f7387e9784deab7eb58ec77931617f0e"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
@@ -131,6 +131,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T06:09:31.584Z"
   }
 }

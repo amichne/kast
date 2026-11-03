@@ -1,0 +1,145 @@
+{
+  "type": "RENDERED_CONTROL_INVESTIGATION",
+  "sourceRevisionAtSchemaCapture": "cbf13253648ad7fef8dd977162e507465b344623",
+  "schemaInputSha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46",
+  "pinnedNativeReducer": {
+    "clientVersion": "0.0.3547",
+    "path": "apps/client/.next/server/chunks/_10ffbaf0._.js",
+    "sha256": "b3199390f3bdf47ef8a8af45d31191a2ae9d539f33684151cbe7148c01621744",
+    "probeMethod": "A disposable module copy exposes the unchanged native reducer. Its catch records the existing JSON pointer and depth. Repository files and installed client files remain unchanged.",
+    "observedCombinationProduct": [
+      10,
+      12,
+      2,
+      3,
+      2
+    ],
+    "product": 1440,
+    "firstFailingComponent": "query_symbolsResponse_queryResultItem",
+    "firstFailingPath": [
+      "anyOf",
+      4,
+      "properties",
+      "item",
+      "properties",
+      "witness",
+      "anyOf",
+      8,
+      "properties",
+      "rejection",
+      "anyOf",
+      0,
+      "properties",
+      "domain",
+      "anyOf",
+      1,
+      "properties",
+      "domain",
+      "properties",
+      "directory",
+      "anyOf",
+      0,
+      "properties",
+      "path"
+    ]
+  },
+  "controls": [
+    {
+      "candidate": "original",
+      "node": "24.21.0",
+      "cli": "4.2.841",
+      "client": "0.0.3547",
+      "home": {
+        "status": 200,
+        "bytes": 206543
+      },
+      "query": {
+        "status": "timeout",
+        "limitSeconds": 25,
+        "bytes": 0
+      },
+      "diagnostics": {
+        "errorSignals": 281705,
+        "samples": [
+          "Error processing schema: ",
+          "Error processing schema: ",
+          "Error processing schema: "
+        ],
+        "schemaErrorCount": 281705,
+        "heapOutcome": "no-exhaustion-signal",
+        "heapSignals": []
+      }
+    },
+    {
+      "candidate": "lossless-conjunction-relocation",
+      "node": "24.21.0",
+      "cli": "4.2.841",
+      "client": "0.0.3547",
+      "home": {
+        "status": 200,
+        "bytes": 206543
+      },
+      "query": {
+        "status": "timeout",
+        "limitSeconds": 25,
+        "bytes": 0
+      },
+      "diagnostics": {
+        "errorSignals": 1,
+        "samples": [
+          "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+        ],
+        "schemaErrorCount": 0,
+        "heapOutcome": "exhausted",
+        "heapSignals": [
+          "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+        ]
+      }
+    },
+    {
+      "candidate": "original-successor",
+      "node": "24.21.0",
+      "nodeExecutable": "/Users/amichne/.local/share/mise/installs/node/24.21.0/bin/node",
+      "cli": "4.2.1189",
+      "client": "0.0.4050",
+      "home": {
+        "status": 200,
+        "bytes": 144325
+      },
+      "query": {
+        "status": "timeout",
+        "elapsedMilliseconds": 25006,
+        "bytes": 0
+      },
+      "diagnostics": {
+        "errorSignals": 63161,
+        "samples": [
+          "Error processing schema: impossible schema combination",
+          "Error processing schema: impossible schema combination",
+          "Error processing schema: impossible schema combination"
+        ],
+        "schemaErrorCount": 63161,
+        "heapOutcome": "no-exhaustion-signal",
+        "heapSignals": []
+      }
+    }
+  ],
+  "liveHistoricalControl": {
+    "deploymentRevisionReportedByCoordinator": "d79fceffa9ae3617a4d215d87260908ea657dc88",
+    "url": "https://kast.michne.com/reference/callables/query-symbols",
+    "status": "not-assessed",
+    "pageTitle": "Vercel Security Checkpoint",
+    "text": "Failed to verify your browser / Code 21",
+    "evidence": "live-vercel-checkpoint.png"
+  },
+  "excludedControls": [
+    "Earlier disposable parent-Node24 wrapper runs spawned ambient Node26 children. Those runs exhausted the heap and do not qualify the Node24 comparison."
+  ],
+  "decision": "No generator change or dependency update. The lossless normalization removes reducer errors but does not establish rendered-page success.",
+  "limits": [
+    "The standalone JSON Schema controls do not prove an external effect.",
+    "The two pinned local query timeouts do not prove that the schema error caused the timeout.",
+    "The Vercel challenge prevents a hosted callable conclusion.",
+    "No unqualified renderer-wide defect claim follows from these controls."
+  ]
+}

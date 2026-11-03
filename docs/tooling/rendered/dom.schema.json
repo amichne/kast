@@ -1,0 +1,190 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "route": {
+      "type": "string"
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "initialViewport": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "initialViewport"
+        ]
+      }
+    },
+    "code": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "url",
+          "sha256"
+        ]
+      }
+    },
+    "browser": {
+      "type": "string"
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "deviceScaleFactor": {
+          "type": "number"
+        },
+        "visualScale": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "deviceScaleFactor",
+        "visualScale"
+      ]
+    },
+    "theme": {
+      "enum": [
+        "light",
+        "dark"
+      ]
+    },
+    "documentOverflow": {
+      "type": "boolean"
+    },
+    "headingCount": {
+      "type": "integer"
+    },
+    "missingImageAlternatives": {
+      "type": "integer"
+    },
+    "focus": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tag": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "visible": {
+              "type": "boolean"
+            },
+            "focusVisible": {
+              "type": "boolean"
+            },
+            "outline": {
+              "type": "string"
+            },
+            "boxShadow": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "tag",
+            "name",
+            "visible",
+            "focusVisible",
+            "outline",
+            "boxShadow"
+          ]
+        }
+      ]
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "pressed": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expanded": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "selected": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "pressed",
+          "expanded",
+          "selected"
+        ]
+      }
+    }
+  },
+  "required": [
+    "title",
+    "route",
+    "segments",
+    "code",
+    "fonts",
+    "browser",
+    "viewport",
+    "theme",
+    "documentOverflow",
+    "headingCount",
+    "missingImageAlternatives",
+    "focus",
+    "controls"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

@@ -21,9 +21,6 @@ code_sources:
 - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationPhysicalPsiTest.kt
 - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/DiscoveryDirectoryWorkTest.kt
 - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-031dda37f86087dbac51fa2d
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
@@ -33,7 +30,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
   - id: openwiki-source-d3e7e4c127d3b87501a5acd5
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Declaration discovery and exact identity
@@ -71,7 +71,7 @@ The selected policy compares either original-document evidence or current declar
 The service repeats current-authority admission before it issues the reacquired selector.
 A matching detached epoch number cannot bypass that sequence.
 
-The classlike AST path has an admitted parser and source binding.
+The class-like AST path has an admitted parser and source binding.
 Its qualification assumes trusted bundled parser behavior, as the runtime qualification report states.
 A configured Java agent selects the existing fallback policy rather than proving arbitrary transformed parser equivalence.
 

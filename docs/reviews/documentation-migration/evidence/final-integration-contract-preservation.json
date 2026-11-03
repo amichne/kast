@@ -1,0 +1,47 @@
+{
+  "evidence": "STRUCTURAL_COMPARISON",
+  "baselineRevision": "7de04069e2a4a781a603ff51b3f9016b66108790",
+  "examinedRevision": "cbf13253648ad7fef8dd977162e507465b344623",
+  "path": "docs/public/reference/callables.openapi.json",
+  "baselineSha256": "aa42bd4e3e373fb4725ac0f2bc09b4aa14d284797b874dc5ecedacf465d657cc",
+  "examinedSha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46",
+  "components": "passed",
+  "operations": [
+    {
+      "path": "/callables/workspace_lifecycle",
+      "method": "post",
+      "requestBody": "passed",
+      "responses": "passed"
+    },
+    {
+      "path": "/callables/query_symbols",
+      "method": "post",
+      "requestBody": "passed",
+      "responses": "passed"
+    },
+    {
+      "path": "/callables/check_diagnostics",
+      "method": "post",
+      "requestBody": "passed",
+      "responses": "passed"
+    },
+    {
+      "path": "/callables/add_declaration",
+      "method": "post",
+      "requestBody": "passed",
+      "responses": "passed"
+    },
+    {
+      "path": "/callables/replace_body",
+      "method": "post",
+      "requestBody": "passed",
+      "responses": "passed"
+    },
+    {
+      "path": "/callables/health_check",
+      "method": "post",
+      "requestBody": "passed",
+      "responses": "passed"
+    }
+  ]
+}

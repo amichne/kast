@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0129cf210dc135fb446b1483ebc1b1b0d2f80eb4238de62d3b57a87924d3a07c",
+  "pageVersion": "sha256:cfc733c0c5e2ff407270085a6ee265e28f705f964015ae1dbf5fe922077923a2",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -387,10 +387,80 @@
           "version": "repo-lines-v1:sha256:df9eea9ed32fb7ec65db17b853b13a34d3028ed6f1c4c0975a1379cb0a17ac39:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MzU1NjhlNTZhZDYyZGFkMzFmZTg0YmYxYWI2NjhmZWZmNGE2MGE4ODliOGFmZWY0NDg5YTllYzc1YTBhZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkOWZlODFlNmJlYTVhNGQwZTM2YWMwZmUzZmJlZTg4ZTExMTk4OTNlM2JlYzY1ZTEyNTdjM2IzYzlhYjMxODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5Njk3OTBkNDJjNjFlMGEwNTI0MDgwZTg3NjVlNzhiODY3ZDBiNjA5NGI0ZTQxZTEyZGYyNTM5N2U1NDExYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5MmI2NzQ1YzFjNTFjMDA5OTI5YTc1YWE4YmNjNDdjNTczNzc2ZGRkNWI2ZTFiZDNmZDJjZjdhYzJlOTIxNjEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_2882712e6d974207b2b4d13b9387d926",
+      "statement": "Contract 18 RUN requires one EMIT or TRACE terminalStep after at most 1000 or 999 nonterminal transformations respectively; terminal output and expansion options remain variant-owned, while retired RUN-level output and TRACE steps reject.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
+          "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
+        },
+        {
+          "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
+          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+        }
+      ]
+    },
+    {
+      "id": "claim_39f37224af4f491093effa1c758885de",
+      "statement": "Public query discovery preserves exact-name, indexed-word, declaration-family, path, source-set and UTF-16 location constraints, while relation destinations use their independent expansion scope before enumeration.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt",
+          "version": "repo-file-v1:sha256:203977373ad95f414ba56ce5ac32298ada0017e8d3a3def2fa658a7229f4e4e7"
+        },
+        {
+          "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
+          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+        }
+      ]
+    },
+    {
+      "id": "claim_7202bc682896427dbbd2accea1464caa",
+      "statement": "RUN defaults to RUNNER_CONTROLLED with optional model-capture-inclusive timeout, rejects explicit maxWorkUnits, and keeps finite output-page controls; explicit BOUNDED retains configured grants and ceilings.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
+          "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
+        },
+        {
+          "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
+          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+        }
+      ]
+    },
+    {
+      "id": "claim_d0106323c2f94cd9a3f73699b1de682a",
+      "statement": "Bounded query defaults are 15000 milliseconds, 2000000 work units, 128 results and 49152 returned bytes; source work defaults to 10000 units, continuation policy uses 33554432 checkpoint bytes, 134217728 store bytes, 64 entries and 600000 milliseconds, and execution ceilings default to 2147483646.",
+      "evidence": [
+        {
+          "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt",
+          "version": "repo-file-v1:sha256:0849ffd74a4b5ab59090875d59f4f8bf60a66fb864dd4542b6bfc86d7dd67f0b"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt",
+          "version": "repo-file-v1:sha256:848748efe4c61bdefb2e186e7fbeeae049d58e9b591a5b9e4e4de4cc78f572e4"
+        }
+      ]
+    },
+    {
+      "id": "claim_165960ce0a07410a94c6f67c15c560aa",
+      "statement": "Public IMPACT admits exact producer anchors, explicit domain and model inputs without transformation steps; witness sections and requested-site accounting describe the original retained investigation and never grant new semantic execution.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
+          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
+          "version": "repo-file-v1:sha256:888e3c86a5e8aa16e1343c758392c335eea9cceca95edee890c5b73ccfe069ce"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:10:25.214Z"
+    "at": "2026-11-03T06:09:31.584Z"
   }
 }

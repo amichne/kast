@@ -16,7 +16,7 @@ Recorded evidence matches current file bytes. This comparison does not prove beh
 
 `SqliteHostedChangeStores.open` admits one mutation database for the plan, journal, and receipt stores.
 The location proof carries the selected workspace into the persistence adapter.
-Path, schema, plan codec, and receipt failures remain distinct outcomes.
+Path, schema, plan encoding and decoding adapter, and receipt failures remain distinct outcomes.
 The adapter does not replace an incompatible database to manufacture an empty success state.
 
 Stored plans keep their exact identity and application history.
@@ -28,7 +28,7 @@ The coordinator must inspect the durable history before it decides which recover
 
 ## Receipts need post-effect evidence
 
-Live verification reobserves the current original owner, imported model, saved postimage, and compiler anchor.
+Live verification examines again the current original owner, imported model, saved source after the change, and compiler anchor.
 `LiveAddDeclarationVerificationReplay` repeats the retained semantic requests with their original budgets and scopes.
 Relations, traversals, and diagnostics remain independent evidence inputs.
 A matching source hash alone does not discharge semantic obligations.
@@ -45,11 +45,11 @@ The resulting receipt records what the exact operation established, including qu
 `AddDeclarationRecoveryService.prepare` persists the exact preimage before the source effect.
 The journal distinguishes durable preparation, durable applied writes, rollback, and recovery-needed states.
 A pre-write record does not prove that no write occurred during an interruption.
-Independent source examination can establish the known postimage without a repeated mutation.
+Independent source examination can establish the known source after the change without a repeated mutation.
 
 Rollback consumes the exact persisted write set through `AddDeclarationRollbackPort`.
 An unavailable target, diverged content, or rejected write remains a finite failure.
-The service keeps undurable or terminal-persistence failures explicit when it cannot persist a stronger recovery result.
+The service keeps failures to persist or terminal-persistence failures explicit when it cannot persist a stronger recovery result.
 The hosted coordinator owns the order of write, verification, receipt, recovery, and final response.
 
 SQLite restart tests establish durable storage behavior under owned files.

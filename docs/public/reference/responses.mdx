@@ -178,13 +178,15 @@ Each node keeps its exact reference in `node.symbol.selector`. For a fresh `SYMB
 
 ### Byte limits and callback proof
 
-The final response has a limit on encoded bytes. Kast uses a distinct, conservative count for the storage held by detached callback proof.
+The final response has a limit on encoded bytes. Detached callback proof uses the admitted result grant.
+Its retained-byte and required-byte estimates supply diagnostics. They do not impose a separate byte quota or consume the output-byte allowance.
 
-A small row count does not prove that either allowance has enough capacity. A byte rejection keeps its scan state and proof still needed.
+A small row count does not prove that the result grant or output allowance has enough capacity.
+A result-limit rejection keeps the admitted proof prefix and the proof still needed.
 
-The IDEA `kast_semantic_read` receipt reports retention allowances and what storage was admitted or required. It also reports specific decision counters.
+The IDEA `kast_semantic_read` receipt reports diagnostic estimates for required and retained proof, plus decision counters.
 
-That receipt counts proof storage with a conservative charge. It does not measure heap use or encoded output bytes.
+Those estimates do not measure heap use or encoded output bytes. Separate retention owners keep separate estimates.
 
 ## Value-path relationships
 

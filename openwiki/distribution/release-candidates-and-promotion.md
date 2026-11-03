@@ -34,10 +34,10 @@ sources:
     resource: repo://distribution/release/component-release.schema.json
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-02T18:25:53.935Z
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Release candidates and promotion
@@ -126,7 +126,7 @@ Keep publication permission, artifact integrity, and installed semantic qualific
 - [build_candidate.py](../../.github/scripts/release/build_candidate.py)
 - [component_release.py](../../distribution/release/component_release.py)
 - [component-release.schema.json](../../distribution/release/component-release.schema.json)
-- [plugin-release.gradle.kts](../../distribution/release/plugin-release.gradle.kts)
+- [`plugin-release.gradle.kts`](../../distribution/release/plugin-release.gradle.kts)
 - [release-component.yml](../../.github/workflows/release-component.yml)
 
 ## Read next

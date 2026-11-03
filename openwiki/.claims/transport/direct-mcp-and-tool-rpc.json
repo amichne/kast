@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:84f58f8b795dd3316fce13b100e0310566566b4f0a5dff7a588b343c7194d8b8",
+  "pageVersion": "sha256:09fdba06d0da0c82bd44752fcc9e13349b8ea7e9de19c67e32c59a80cfaed2ba",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "version": "repo-file-v1:sha256:1b7d56744a4b83ee2d6c12ad8a681abd2cac426cb8d2174c23a6f58b0c5201a0"
+          "version": "repo-file-v1:sha256:a51e529cf43e7b9d36daa1594ede426bb1fa9b25a81c406d668c451cd2a3e48e"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
@@ -61,6 +61,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "at": "2026-11-03T05:16:29.521Z"
   }
 }

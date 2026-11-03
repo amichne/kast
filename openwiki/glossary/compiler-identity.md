@@ -37,19 +37,19 @@ sources:
     resource: repo://symbol/contract/src/test/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationIdentityTest.kt
   - id: openwiki-source-bf5d180cb375453831c662fa
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt
-generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Compiler identity
 
 Names and text matches are discovery inputs, not declaration authority. Compiler identity is the exact selector/signature established after candidate refinement, including the information required to distinguish overloads and preserve source/workspace binding.
 
-Relations, source reads, traversal, diagnostics, and changes should consume the refined identity. They must not fall back to a display name when exact resolution fails.
+Relations, source reads, traversal, diagnostics, and changes must consume the refined identity. If exact resolution fails, they must not use a display name.
 
-Exact selectors retain published or live read authority and the selected scope
+Exact selectors keep published or live read authority and the selected scope
 and discovery constraints. Their fingerprint covers those facts and the canonical
 compiler identity. Candidate refinement rejects evidence outside the retained
 declaration kinds. A relation target can carry a different declaration kind
@@ -61,13 +61,13 @@ requires a fresh matching live preimage, a permanent attempt claim and durable
 recovery preparation before `LiveMutationAuthority` admits the write. An epoch
 alone supplies neither identity nor mutation authority.
 
-Canonical signatures retain an explicit qualified or local declaration address.
+Canonical signatures keep an explicit qualified or local declaration address.
 Qualified signatures preserve their existing canonical bytes and identity
 digests. Local signatures use the versioned `local-function-v1` or
 `local-property-v1` encoding: exact file/range,
 compiler containing declaration identity/range and bounded lexical ownership
-anchors. Local functions retain callable facts and result type; local properties
-retain type and mutability. Names constrain search and presentation without
+anchors. Local functions keep callable facts and result type; local properties
+keep type and mutability. Names constrain search and presentation without
 establishing equality. A local address is positive compiler identity evidence,
 separate from unavailable qualified-name evidence.
 
@@ -79,7 +79,7 @@ same proof as symbol discovery. This local-owner path preserves the existing
 qualified signature facts and does not broaden global qualified admission.
 
 Anonymous object signatures use `anonymous-object-v1` with the same compiler-owned
-local address and actual ordered supertypes. Members retain the anonymous
+local address and actual ordered `supertypes`. Members keep the anonymous
 containing symbol even when K2 classifies the member's location as `CLASS`.
 Distinct lexical owners produce distinct object and member identities. The
 `<anonymous-object>` label is presentation, not qualified identity.

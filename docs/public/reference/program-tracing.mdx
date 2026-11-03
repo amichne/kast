@@ -83,8 +83,10 @@ Reviewed calls-in-place contracts keep their declared call kind. Missing effects
 
 ### Library calls need their own evidence
 
-The `inline` modifier alone does not prove a callback route. Standard-library `with`, `apply`, and `let` declare `callsInPlace` effects.
-Collection `map` and `forEach` do not declare those effects. Their inline modifier supplies no such proof. Missing dependency effects remain explicit proof gaps.
+Native fixtures expect declared `callsInPlace` effects for `with`, `apply`, and `let` in their selected standard library.
+They expect `map` to keep missing-effect proof gaps.
+The `inline` modifier alone supplies no declared effect.
+For `forEach` and other dependencies, inspect the admitted formal's actual effect and qualified binary identity.
 
 The reviewed `kotlin.lazy` model records the initializer supplied for later use. It does not prove that the property was read or that the initializer ran.
 

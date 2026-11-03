@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8bae3ae86873885fe891ef1cc0f05b18c2ae20a6aa60ea542210fe7a6c3b30a0",
+  "pageVersion": "sha256:8de2be71ccebe66eb3bbda2742b60d572771e3e9c4b216dc6c83d7c7d688285e",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
+          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -102,7 +102,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:fd5660e9b5bf613a696cc53363bc5423aec31052cc78e6433d721ac0a5e9d57d"
+          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
         }
       ]
     },
@@ -130,7 +130,7 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:1a389b64405e0ec5990d68f1900345de41caacbc154a8b3ff2485201058359dd"
+          "version": "repo-file-v1:sha256:51eb78851f13e80049617c07556063697e3c4cfd128eb0eb7070f8f5c9c07968"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -149,6 +149,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:46:24.113Z"
+    "at": "2026-11-03T05:45:59.282Z"
   }
 }

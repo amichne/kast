@@ -1,0 +1,28 @@
+{
+  "status": "failed",
+  "sourceRevision": "7de04069e2a4a781a603ff51b3f9016b66108790",
+  "producer": {
+    "mint": "4.2.841",
+    "validation": "0.1.842",
+    "node": "24.21.0",
+    "agentBrowser": "0.39.1",
+    "chrome": "155.0.8059.84"
+  },
+  "command": "mint dev --no-open --port 3337",
+  "route": "/reference/callables/query-symbols",
+  "symptoms": [
+    "Agent Browser navigation did not settle before the preview process stopped.",
+    "curl -I --max-time 15 returned exit 28 after 15006 milliseconds with zero bytes."
+  ],
+  "boundedPreviewDiagnostic": "Error processing schema: impossible schema combination\nschema 1: [{\"type\":\"any\"}]\nschema 2: [{\"type\":\"string\",\"minLength\":1,\"maxLength\":1048576}]",
+  "limits": [
+    "The exact schema pointer and first responsible cause remain unproved.",
+    "The failure does not authorize schema relaxation.",
+    "The first failure did not preserve a source-input snapshot. The later owned-preview report keeps before and after inputs."
+  ],
+  "inputCapturedAfterFailure": {
+    "path": "docs/public/reference/callables.openapi.json",
+    "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+  },
+  "originalInputDigest": null
+}

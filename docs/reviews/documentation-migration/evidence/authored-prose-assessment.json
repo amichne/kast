@@ -1,0 +1,147 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 8.92 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 124,
+          "message": "Long sentence: 31 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            1,
+            3
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 2171,
+        "fleschKincaidGrade": 8.92,
+        "sentences": 126,
+        "words": 1239,
+        "wordsPerSentence": 9.83
+      },
+      "path": "docs/tooling/README.md",
+      "sourceSha256": "c78fca0842012ac51b358325837b2e548db1fa33c9d0260d1f723dcf9222ba70",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 9.09 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 769,
+        "fleschKincaidGrade": 9.09,
+        "sentences": 44,
+        "words": 436,
+        "wordsPerSentence": 9.91
+      },
+      "path": "docs/tooling/rendered/README.md",
+      "sourceSha256": "812c0d2ad382376c4189b5aa174fd2ff5ab59ef6b3b7cb4f5cd86873426c4fc4",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 11.53 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 2178,
+        "fleschKincaidGrade": 11.53,
+        "sentences": 103,
+        "words": 1124,
+        "wordsPerSentence": 10.91
+      },
+      "path": "docs/reviews/documentation-migration/EXECUTION.md",
+      "sourceSha256": "e8a5e9c8188213daa4d9675083286d448a9367ae93bdb26073b982104116c706",
+      "terminology": {
+        "type": "OUT_OF_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 12.19 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 1148,
+        "fleschKincaidGrade": 12.19,
+        "sentences": 50,
+        "words": 583,
+        "wordsPerSentence": 11.66
+      },
+      "path": "docs/reviews/documentation-migration/reader-review.md",
+      "sourceSha256": "eaa83aa75b92de04f3101961be2a9a79228bee7453973c89d1d55c5d920053ba",
+      "terminology": {
+        "type": "OUT_OF_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "glossary": {
+    "entries": 23,
+    "sourceSha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b",
+    "type": "CHECKED"
+  },
+  "schemaVersion": 1,
+  "type": "ASSESSED"
+}

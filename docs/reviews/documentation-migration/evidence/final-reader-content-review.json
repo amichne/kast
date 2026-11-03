@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "reviewer": "independent reader/content agent",
+  "status": "ACCEPTED_WITH_EXPLICIT_LIMITS",
+  "sourceRevision": "cbf13253648ad7fef8dd977162e507465b344623",
+  "inputs": [
+    {
+      "path": "docs/okf-public.json",
+      "sha256": "1f9ae1032daddaf48664c12b03bcd873db80bd33a44bb26c32c5d03457ff3741"
+    },
+    {
+      "path": "docs/public/reference/evidence-boundaries.mdx",
+      "sha256": "c1eb19c562d85f22d9bed3b87a94c4b2f9daa1ce1a7eeb4786cadbc0d94bcadd"
+    },
+    {
+      "path": "docs/public/reference/responses.mdx",
+      "sha256": "10beb3f7f7794cde00f4fd00bdd174d7ebe9090266c64ba7e09de698f8f8ece6"
+    },
+    {
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "sha256": "d66d2d797710e948e03766404f343495e3827cb27c0e417165f3c936d37d8127"
+    },
+    {
+      "path": "openwiki/contracts/source-identity.md",
+      "sha256": "5656f59cb97ff664ed7da5a95d4a428b8c998b444ab003439a8e92417b24a889"
+    },
+    {
+      "path": "openwiki/modules/query-protocol.md",
+      "sha256": "9373bc845676be8895636d8f664eb207dd20a7317d7063742972b5fbe85547fe"
+    },
+    {
+      "path": "docs/reviews/documentation-migration/evidence/canonical-controlled-prose-proposals.json",
+      "sha256": "92487781297e0b5ad71ab0706f93726c31daf93237d085c4f784a3afb61b9afa"
+    }
+  ],
+  "passed": [
+    {
+      "criterion": "Applied controlled-prose proposal identity",
+      "evidence": "All 203 proposed literal replacements are present verbatim in their canonical owners."
+    },
+    {
+      "criterion": "Reader contracts and actual link graph",
+      "command": "mise exec -- uv run --locked --project docs/tooling python docs/tooling/reader_contracts.py --report /tmp/kast-final-reader-contracts.json",
+      "result": "PASSED",
+      "routes": 61,
+      "edges": 376
+    },
+    {
+      "criterion": "Canonical/public generation parity",
+      "command": "mise exec -- uv run --locked --project docs/tooling python docs/tooling/okf_public.py --check",
+      "result": "PASSED"
+    },
+    {
+      "criterion": "Evidence-page explicit anchor preservation",
+      "evidence": "Every 8 prior explicit anchor remains. Five prior imported operation-outcome scoped anchors remain as explicit anchors. The direct Results continuation exists."
+    },
+    {
+      "criterion": "Claim identity and statement preservation",
+      "evidence": "407 current claims retain their IDs and statement text from checkpoint cbf13253648ad7fef8dd977162e507465b344623. Source evidence versions and uniquely relocated ranges can differ after native reconciliation."
+    },
+    {
+      "criterion": "Native grammar and responsibility corrections",
+      "result": "PASSED",
+      "evidence": "All 10 proposed edits are present. The full source-identity body equals the reviewed preview after native application."
+    },
+    {
+      "criterion": "Restored public factual parity",
+      "result": "PASSED",
+      "evidence": "The evidence page again imports and renders operation-outcomes. TEXT_MATCH_LIMIT_EXCEEDED, execution_budget, wait_for_checkpoint, reduce_read_work, MISSING_BRANCH, and PEER_FLOW_NOT_INVESTIGATED are in its generated public snippet. Every prior explicit page anchor and scoped snippet anchor remains."
+    },
+    {
+      "criterion": "Native operation-outcome responsibility headings preserve meaningful bytes",
+      "result": "PASSED",
+      "nativeRun": "58c3ea3a",
+      "method": "Reconstructed the previously reviewed body from the checkpoint plus the exact accepted lexical/controlled/grammar corrections. Removed only the six new heading lines and their blank-line separators from the current body. Compared the remaining UTF-8 body bytes for equality.",
+      "meaningfulBodySha256": "eeafb7a2ae952ace4403370f0ae832e9e346509c42a94b0733bbdfa38aa16ce1",
+      "headings": [
+        "Finite query rejections",
+        "Evidence qualification",
+        "Transport projection",
+        "Recovery directions",
+        "Qualified execution",
+        "Impact completion"
+      ],
+      "anchorEvidence": "All five prior scoped operation-outcome anchors remain. The projector adds six heading-specific anchors. No prior anchor was removed.",
+      "limit": "The comparison excludes changing native metadata and proves byte preservation of the reviewed content. Fresh prose measurement still determines the current section-length advisory outcome."
+    }
+  ],
+  "findings": [
+    {
+      "priority": "P2",
+      "path": "openwiki/contracts/operation-outcomes.md",
+      "line": 240,
+      "issue": "The revised sentence uses \u201can result\u201d.",
+      "action": "Native correction in /tmp/kast-reader-prose-review.json.",
+      "status": "RESOLVED",
+      "resolution": "Applied through native run 94e57efe. All ten exact proposed edits are present. The source-identity body matches the reviewed combined preview."
+    },
+    {
+      "priority": "P2",
+      "path": "openwiki/contracts/source-identity.md",
+      "line": 233,
+      "issue": "The revised source-lookup sentence lacks a parallel predicate for compiler evidence.",
+      "action": "Native correction and responsibility headings in /tmp/kast-source-identity-reviewed.md.",
+      "status": "RESOLVED",
+      "resolution": "Applied through native run 94e57efe. All ten exact proposed edits are present. The source-identity body matches the reviewed combined preview."
+    },
+    {
+      "priority": "P2",
+      "path": "openwiki/modules/query-protocol.md",
+      "line": 304,
+      "issue": "A semicolon precedes a capitalized independent sentence.",
+      "action": "Use a period without changing the preserved walk qualifications.",
+      "status": "RESOLVED",
+      "resolution": "Applied through native run 94e57efe. All ten exact proposed edits are present. The source-identity body matches the reviewed combined preview."
+    },
+    {
+      "priority": "P1",
+      "path": "docs/okf-public.json",
+      "issue": "Removing the complete operation-outcomes import preserves canonical facts but removes previously public facts not covered by Results.",
+      "examples": [
+        "TEXT_MATCH_LIMIT_EXCEEDED and its recovery action",
+        "execution_budget for admitted rejection variants",
+        "wait_for_checkpoint recovery",
+        "reduce_read_work on hard deadline",
+        "MISSING_BRANCH ledger rejection",
+        "PEER_FLOW_NOT_INVESTIGATED and its unresolved peer obligation"
+      ],
+      "evidence": "rg over current docs/public MDX returns no occurrences for these exact contract identifiers. They exist in the removed projection source and remain canonical.",
+      "action": "Preserve the public facts through a public consumer or restore their projection before claiming public factual parity.",
+      "status": "RESOLVED",
+      "resolution": "Restored the complete operation-outcomes concept through the existing projector. All six demonstrated contract identifiers and prior scoped anchors are present again. The manifest explicitly accepts the larger density footprint to preserve public facts."
+    }
+  ],
+  "readabilityReview": {
+    "artifact": "/tmp/kast-reader-prose-review.json",
+    "acceptedProposals": 236,
+    "unresolvedIdentities": 7,
+    "correctionEdits": 10,
+    "status": "PROPOSED_IDENTITIES_REQUIRE_FRESH_SOURCE_BINDING_AFTER_NATIVE_CORRECTIONS",
+    "resolution": "The deferred grammar defects are now repaired. Coordinator must review current assessed finding identities and bind dispositions to the new bytes before publication."
+  },
+  "complexity": {
+    "scenario": {
+      "startingFacts": [
+        "The reader uses an Apple silicon Mac and IntelliJ IDEA 262 with Java 25 JBR.",
+        "The reader owns a Kotlin Gradle project and a known function with callers.",
+        "The reader already uses one supported agent CLI and Python 3.12 or 3.13.",
+        "The reader starts at Overview without a Kast installation."
+      ],
+      "outcome": "Install Kast, install guidance for the existing agent, and inspect caller source locations on Set up.",
+      "path": [
+        "/",
+        "/start"
+      ],
+      "unresolvedDecisions": [
+        "Select the function in the reader's project."
+      ],
+      "requiredConcepts": [],
+      "completionEvidence": "Compare the returned locations with known callers. Author review establishes the route and prerequisites. A real reader evaluation and native task execution remain separate evidence."
+    },
+    "D": 1,
+    "K": 0,
+    "H": 1,
+    "W": 464,
+    "L": 5,
+    "evidence": "AUTHOR_REVIEW",
+    "readerEvaluation": "NOT_RUN",
+    "nativeTask": "NOT_RUN"
+  },
+  "limits": [
+    "The first-use D/K/H profile is author-defined for the stated scenario. Actual reader evaluation and native task execution remain NOT_RUN.",
+    "Source W/L includes all static imported panels. JSX and recursive-schema expansion need bounded rendered-state evidence.",
+    "Word count and grade exceptions establish no complete complexity reduction or reader comprehension.",
+    "This source review does not admit publication associations after future native edits. Refresh exact content/claim bindings only after review.",
+    "The restored evidence page keeps its larger public footprint to preserve unique facts. This explicit density exception does not establish a reduction of C=(D,K,H;W,L)."
+  ],
+  "density": [
+    {
+      "route": "/reference/evidence-boundaries",
+      "footprint": {
+        "proseWords": 2177,
+        "codeLines": 0,
+        "scope": "STATIC_COMPLETE",
+        "limits": []
+      },
+      "disposition": {
+        "status": "ACCEPTED",
+        "reason": "Keep evidence authority and the canonical outcome projection together because the latter preserves unique public failure, recovery, and impact facts. Results supplies the reader-specific result reference. The threshold remains a review trigger, and no full complexity reduction is claimed."
+      }
+    },
+    {
+      "route": "/reference/internals/architecture",
+      "footprint": {
+        "proseWords": 425,
+        "codeLines": 0,
+        "scope": "STATIC_PARTIAL",
+        "limits": [
+          "JSX text and interaction states need the rendered assessment"
+        ]
+      },
+      "disposition": {
+        "status": "ACCEPTED",
+        "reason": "The public view now contains only read authority. Module architecture remains in Topology and ownership, with a direct link and preserved legacy anchors."
+      }
+    },
+    {
+      "route": "/architecture/topology",
+      "footprint": {
+        "proseWords": 1576,
+        "codeLines": 4,
+        "scope": "STATIC_PARTIAL",
+        "limits": [
+          "JSX text and interaction states need the rendered assessment"
+        ]
+      },
+      "disposition": {
+        "status": "ACCEPTED",
+        "reason": "Keep module responsibilities and Host publication together. This page owns composition and state ownership. Read authority remains a linked distinct explanation."
+      }
+    },
+    {
+      "route": "/reference/responses",
+      "footprint": {
+        "proseWords": 1664,
+        "codeLines": 8,
+        "scope": "STATIC_COMPLETE",
+        "limits": []
+      },
+      "disposition": {
+        "status": "ACCEPTED",
+        "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
+      }
+    }
+  ]
+}

@@ -16,9 +16,6 @@ code_sources:
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt
 - path: change/protocol/src/test/kotlin/io/github/amichne/kast/change/protocol/CanonicalChangePlanProtocolTest.kt
 - path: change/intellij/src/test/kotlin/io/github/amichne/kast/change/intellij/IntellijSourceWriteProtocolTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-432d05143d371dfe54d7f30d
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
@@ -28,7 +25,10 @@ sources:
     resource: repo://change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
   - id: openwiki-source-23a518e99c7e7bac85c836ca
     resource: repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-11-03T05:45:59.282Z
 ---
 
 # Change planning and write admission
@@ -49,7 +49,7 @@ The live plan keeps detached proof. It does not create a published workspace lea
 
 `LiveMutationAuthority.prepare` compares the plan's basis with the current original owner and imported model.
 It then examines the exact source identity, saved content, writable state, and planned write entry.
-`DerivedMutationPostimage` derives the postimage from the admitted preimage and the planned mutations.
+`DerivedMutationPostimage` derives the source after the change from the admitted preimage and the planned mutations.
 Overlap, out-of-range writes, stale content, and a mismatched write set reject before the native write.
 
 The authority permanently claims the exact plan's application before durable recovery preparation.

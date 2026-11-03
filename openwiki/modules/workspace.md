@@ -33,15 +33,15 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryService.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedEpochAdmission.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadReplayPolicy.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
 sources:
   - id: openwiki-source-903d531c5eecaec62a353b32
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt
   - id: openwiki-source-26adf1e57264a6d43e0f22c1
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-11-03T06:09:31.584Z
 ---
 
 # Workspace
@@ -50,9 +50,11 @@ The active workspace modules are `workspace:contract` and `workspace:intellij-re
 
 `SemanticReadAuthority` distinguishes historical published leases from `LiveSemanticReadAuthority`. Live authority retains an opaque IDE epoch and the original host identity. Its detached reference can be restored only by that owner against newly admitted freshness. Retirement is terminal; a moved epoch never revives an earlier reference. IDE counters do not become published generations.
 
-`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains each request before releasing its independently owned permit. Multiple reads may overlap within `HOST_CONNECTIONS`. Before epoch admission, the host may wait when IDEA preempts a sample or the sample moves. After model capture, the host acquires native read access, revalidates the expected epoch, and admits its authority in one synchronized transition. Canonical dispatch uses a single evaluation: epoch movement rejects the query rather than silently replacing its scope. A fresh request may admit the next epoch. Older requests cannot clear newer continuation or reference storage, and retirement cannot resurrect storage.
+`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains each request before releasing its independently owned permit. Multiple reads can overlap within `HOST_CONNECTIONS`. Before epoch admission, the host can wait when IDEA preempts a sample or the sample moves. After model capture, the host acquires native read access, makes sure that the expected epoch remains valid, and admits its authority in one synchronized transition.
 
-A live read epoch is an optimistic consistency boundary, not a frozen copy of files or an MVCC snapshot. Its signals include PSI modification, root-filtered VFS batches, project/workspace-model and root-model changes, indexing cycles, project/Gradle root identity and import timestamps. Saved documents and committed PSI remain admission requirements; disposal or unavailable/indexing state rejects observation. A change may invalidate the workspace's queries even when their selected files were untouched. Epoch revisions are owner-local admission identities, not a count of edits.
+Canonical dispatch uses a single evaluation: epoch movement rejects the query rather than silently replacing its scope. A fresh request can admit the next epoch. Older requests cannot clear newer continuation or reference storage, and retirement cannot resurrect storage.
+
+A live read epoch is an optimistic consistency boundary, not a frozen copy of files or an MVCC snapshot. Its signals include PSI modification, root-filtered VFS batches, project/workspace-model and root-model changes, indexing cycles, project/Gradle root identity and import timestamps. Saved documents and committed PSI remain admission requirements; disposal or unavailable/indexing state rejects observation. A change can invalidate queries in the workspace even when their selected files were untouched. Epoch revisions are owner-local admission identities, not a count of edits.
 
 `ProjectReadEpochDiagnostics` observes that same production sample boundary and
 emits `kast_project_read_epoch` records with the host identity and finite changed
@@ -62,7 +64,9 @@ rejection and unchanged recovery. No path, source text, raw counter or import
 timestamp crosses the log boundary. Diagnostic state cannot issue or renew an
 epoch; ordinary admission remains the authority.
 
-Successful publication proves that the observed epoch remained equal through final freshness validation. It does not freeze the workspace after that point: a later edit can invalidate delivered references and continuations. Query stages compose within one request's authority, model and scope; callers should rerun the original query after epoch movement. Existing explicit reference reacquisition can locate a current declaration, but it does not revive an old continuation or promise an old snapshot. Epoch movement returns the existing `restart_read` recovery guidance and retains any admitted execution budget. No epoch migration or background replay is introduced.
+Successful publication proves that the observed epoch remained equal through final freshness validation. It does not freeze the workspace after that point: a later edit can invalidate delivered references and continuations. Query stages compose within one request's authority, model and scope. After epoch movement, rerun the original query.
+
+Existing explicit reference reacquisition can locate a current declaration, but it does not revive an old continuation or promise an old snapshot. Epoch movement returns the existing `restart_read` recovery guidance and keeps any admitted execution budget. No epoch migration or background replay is introduced.
 
 Published lease and lifecycle types remain available for historical protocol contracts and tests. Their former `workspace:service` transition coordinator and `workspace:intellij` importer are retired and absent from the build. The retained topology publisher accepts complete generations but is not wired into the production plugin. See [historical publication](../flows/workspace-publication.md) and [existing-IDE reads](../flows/hosted-query.md).
 
@@ -76,6 +80,8 @@ The hosted workspace lifecycle boundary retains file refresh and Gradle model re
 
 The internal per-host task rule maps one exact IDE-observed successful single-task Gradle invocation to the same lifecycle service. New hosts default off; imports, unsuccessful tasks, other roots and other projects cannot trigger it. Gradle callbacks schedule the request without waiting for readiness. Existing epoch listeners remain the semantic freshness authority.
 
-Explicit application lifecycle opening uses ordinary new-frame project opening for one canonical root. Reuse does not activate the window. It observes admission, waits for a native import already in progress, and requests one linked Gradle model reload if the cached model is still missing or incomplete. New managed projects use the existing refresh/readiness owner: first linking and subsequent reloads share background import-data application with tool-window activation and error navigation disabled. A project-scoped initial-import operation suppresses native automatic imports during this sequence and restores its prior state afterward. Trust and global unsaved-document checks remain blockers. Background presentation is best effort.
+Explicit application lifecycle opening uses ordinary new-frame project opening for one canonical root. Reuse does not call `toFront()` on the window. It observes admission, then waits for a native import already in progress. If the cached model stays missing or incomplete, it requests one linked Gradle model reload.
+
+New managed projects use the existing refresh/readiness owner. The owner applies import data in the background for the first link operation and later reloads. It keeps tool-window activation and error navigation disabled. A project-scoped initial-import operation suppresses native automatic imports during this sequence and restores its prior state afterward. Trust and global unsaved-document checks remain blockers. Background presentation is best effort.
 
 Project use is recorded by coordinator thread identity. Presentation protects a managed project before activating its frame. Release only removes the caller's interest. Close fences new Kast work, rejects other users and in-flight native work, saves project-owned documents on the EDT, and invokes normal veto-respecting close/dispose. A veto restores admission. Success requires project disposal and retirement of that project's endpoint; its result survives at application scope. Borrowed/presented closure additionally requires a verified exact-target controller assertion. Reopening the root creates a distinct project incarnation.

@@ -35,7 +35,7 @@ from validation_scope import (
 DOCS = frozenset({Check.DOCUMENTATION})
 PRODUCT = frozenset({Check.SOURCE, Check.PRODUCT, Check.PORTABLE})
 SOURCE_ONLY = frozenset({Check.SOURCE, Check.PORTABLE})
-PAGE = "docs/public/reference/api.mdx"
+PAGE = "docs/public/index.mdx"
 SOURCE = "cli/src/main/kotlin/Management.kt"
 
 
@@ -528,20 +528,25 @@ class SourceInventoryTest(unittest.TestCase):
         for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
             self.assertIn(f"--tests '*{case}'", workflow)
 
-    def test_frozen_pr1130_diff_selects_documentation_without_qualification(self):
+    def test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand(self):
         # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).
         inventory = Path(__file__).parent / "fixtures/pr1130-paths.txt"
         paths = tuple(inventory.read_text().splitlines())
         self.assertEqual(113, len(paths))
         self.assertEqual(113, len(set(paths)))
         self.assertFalse(any(path.endswith((".kt", ".kts")) for path in paths))
-        self.assertEqual(DOCS, classify_paths(paths))
+        self.assertEqual(ALL_CHECKS, classify_paths(paths))
         raw = b"".join(
             f":100644 100644 {'a' * 40} {'b' * 40} M\0{path}\0".encode() for path in paths
         )
-        self.assertEqual(DOCS, classify_diff(raw))
+        self.assertEqual(ALL_CHECKS, classify_diff(raw))
         for unexpected in (SOURCE, "install.sh", "settings.gradle.kts", ".github/workflows/ci.yml"):
             self.assertEqual(ALL_CHECKS, classify_paths(paths + (unexpected,)))
+
+    def test_reconciled_public_contracts_keep_full_checks(self):
+        for page in ("api", "callback-observations", "lifecycles", "limits", "program-tracing"):
+            with self.subTest(page=page):
+                self.assertEqual(ALL_CHECKS, classify_paths((f"docs/public/reference/{page}.mdx",)))
 
     def test_documentation_allowlist_excludes_every_openwiki_referenced_path(self):
         root = Path(__file__).resolve().parents[3]
@@ -549,11 +554,11 @@ class SourceInventoryTest(unittest.TestCase):
 
     def test_new_openwiki_dependencies_and_unsupported_forms_cannot_pass_the_scope_gate(self):
         for reference in (
-            "[guide](../../docs/public/reference/api.mdx#anchor)",
-            "[guide](../../docs/public/%72eference/api.mdx)",
-            '<a href="../../docs/public/reference/api.mdx">guide</a>',
-            "[guide][api]\n[api]: ../../docs/public/reference/api.mdx",
-            "resource: repo://docs/public/reference/api.mdx",
+            "[guide](../../docs/public/index.mdx#anchor)",
+            "[guide](../../docs/public/%69ndex.mdx)",
+            '<a href="../../docs/public/index.mdx">guide</a>',
+            "[guide][api]\n[api]: ../../docs/public/index.mdx",
+            "resource: repo://docs/public/index.mdx",
         ):
             with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
