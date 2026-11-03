@@ -5309,7 +5309,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "51e9ba6d391d8112a9c8450902ac83e99f5b4338bda535630115902f2f0b23f8"
+          "sha256": "a7938fa848f741d64991fe3eb25894d9b9057f524fa73566fba2ade9619e23c3"
         }
       ],
       "claims": [
@@ -5677,9 +5677,13 @@
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+        },
+        {
+          "path": "packaging/configuration-schema.json",
+          "sha256": "ec40d027fcb0cdf0efced88cd117ece7768c090c96a90b4dbeec18a14dc1f61e"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d16fb8a2a04dc2cee2f0ce8dfb235cb81865d5e9"
     },
     {
       "route": "reference/compatibility",

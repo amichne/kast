@@ -83,7 +83,9 @@ Do not combine `--request` with semantic flags or `--verbose`.
 
 ## Read the outcome
 
-Semantic commands emit JSON on stdout. Progress and diagnostics use stderr.
+Semantic commands emit TOON on stdout by default.
+Set `KAST_OUTPUT_TOON=0` for JSON.
+Progress and diagnostics use stderr.
 Read the outer outcome and its qualifications before a semantic conclusion.
 An unfinished search with no matches does not prove absence.
 
