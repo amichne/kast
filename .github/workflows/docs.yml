@@ -82,7 +82,11 @@ jobs:
         run: sudo apt-get install --yes lsof procps
 
       - name: Install exact Chrome for rendered evidence
-        run: sudo "$(command -v node)" "$GITHUB_WORKSPACE/.github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js" install chrome@155.0.8059.84 --path "$GITHUB_WORKSPACE/build/documentation/browsers" --install-deps
+        run: |
+          kast_node="$(mise which node)"
+          printf 'Resolved Node: %s\n' "$kast_node"
+          "$kast_node" --version
+          sudo "$kast_node" "$GITHUB_WORKSPACE/.github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js" install chrome@155.0.8059.84 --path "$GITHUB_WORKSPACE/build/documentation/browsers" --install-deps
 
       - name: Assess rendered candidate
         id: rendered

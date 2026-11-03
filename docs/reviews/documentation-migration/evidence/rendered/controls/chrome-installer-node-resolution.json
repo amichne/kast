@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "KAST_CHROME_INSTALLER_TOOL_RESOLUTION_CONTROL",
+  "sourceRevision": "8f92c836990d84274bd09b1aefe998edf8e72971",
+  "platform": {
+    "system": "Darwin",
+    "machine": "arm64"
+  },
+  "scope": "Installed Node resolution before the privileged command. No root process or browser installation ran.",
+  "inputs": [
+    {
+      "path": ".github/workflows/docs.yml",
+      "sha256": "4a8ee18d1049151cf8d98ba18b03f99335be46e352abde856008727bb1e4c0bd"
+    },
+    {
+      "path": ".github/tools/mintlify/package-lock.json",
+      "sha256": "6876525c15ae0ef368a1e8cf29391968790d9e87146757916d1d68d07bbae7fd"
+    },
+    {
+      "path": ".github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js",
+      "sha256": "eb627aead9495783ee887d301cf6f2ba42b98f515cf5c3100af780bf53bcfb51"
+    },
+    {
+      "path": "/Users/amichne/.local/share/mise/installs/node/24.21.0/bin/node",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    }
+  ],
+  "lockedBrowserInstallerVersion": "2.7.1",
+  "environmentControl": {
+    "values": {
+      "HOME": "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-node-resolution-ia362ih0",
+      "PATH": "/usr/bin:/bin",
+      "XDG_CONFIG_HOME": "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-node-resolution-ia362ih0/config",
+      "XDG_DATA_HOME": "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-node-resolution-ia362ih0/data",
+      "XDG_CACHE_HOME": "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-node-resolution-ia362ih0/cache",
+      "XDG_STATE_HOME": "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-node-resolution-ia362ih0/state",
+      "MISE_YES": "0"
+    },
+    "effect": "The empty temporary home removes per-user mise trust. This models the changed user context. It does not model Linux root privileges."
+  },
+  "cases": [
+    {
+      "name": "untrusted-shim-negative",
+      "status": "passed",
+      "command": [
+        "/Users/amichne/.local/share/mise/shims/node",
+        "--version"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "mise ERROR error parsing config file: /Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/mise.toml\nmise ERROR Config files in /Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/mise.toml are not trusted.\nTrust them with `mise trust`. See https://mise.jdx.dev/cli/trust.html for more information.\nmise ERROR Version: 2026.9.1 macos-arm64 (2026-09-02)\nmise ERROR Run with --verbose or MISE_VERBOSE=1 for more information\n"
+    },
+    {
+      "name": "resolved-node-version",
+      "status": "passed",
+      "command": [
+        "/Users/amichne/.local/share/mise/installs/node/24.21.0/bin/node",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "v24.21.0\n",
+      "stderr": ""
+    },
+    {
+      "name": "locked-installer-entry",
+      "status": "passed",
+      "command": [
+        "/Users/amichne/.local/share/mise/installs/node/24.21.0/bin/node",
+        "/Users/amichne/.codex-workspaces/worktrees/ios-f955992f-79ba-45da-8679-c4674fe67e60/kast/.github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js",
+        "install",
+        "chrome@155.0.8059.84",
+        "--path",
+        "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-node-resolution-ia362ih0/browsers",
+        "--install-deps",
+        "--help"
+      ],
+      "exitCode": 0,
+      "stdout": "@puppeteer/browsers install <browser>\n\nDownload and install the specified browser. If successful, the command outputs the actual browser buildId that was installed and the absolute path to the browser executable (format: <browser>@<buildID> <path>).\n\nPositionals:\n  browser  Which browser to install <browser>[@<buildId|latest>]. `latest` will try to find the latest available build. `buildId` is a browser-specific identifier such as a version or a revision.  [string] [required]\n\nOptions:\n  --version       Show version number  [boolean]\n  --help          Show help  [boolean]\n  --platform      Platform that the binary needs to be compatible with.  [string] [choices: \"linux\", \"mac\", \"mac_arm\", \"win32\", \"win64\"] [default: Auto-detected]\n  --path          Path to the root folder for the browser downloads and installation. If a relative path is provided, it will be resolved relative to the current working directory. The installation folder structure is compatible with the cache structure used by Puppeteer.  [string] [default: Current working directory]\n  --base-url      Base URL to download from  [string]\n  --install-deps  Whether to attempt installing system dependencies (only supported on Linux, requires root privileges).  [boolean] [default: false]\n\nExamples:\n  @puppeteer/browsers install chrome                                Install the latest available build of the Chrome browser.\n  @puppeteer/browsers install chrome@latest                         Install the latest available build for the Chrome browser.\n  @puppeteer/browsers install chrome@stable                         Install the latest available build for the Chrome browser from the stable channel.\n  @puppeteer/browsers install chrome@beta                           Install the latest available build for the Chrome browser from the beta channel.\n  @puppeteer/browsers install chrome@dev                            Install the latest available build for the Chrome browser from the dev channel.\n  @puppeteer/browsers install chrome@canary                         Install the latest available build for the Chrome Canary browser.\n  @puppeteer/browsers install chrome@115                            Install the latest available build for Chrome 115.\n  @puppeteer/browsers install chromedriver@canary                   Install the latest available build for ChromeDriver Canary.\n  @puppeteer/browsers install chromedriver@115                      Install the latest available build for ChromeDriver 115.\n  @puppeteer/browsers install chromedriver@115.0.5790               Install the latest available patch (115.0.5790.X) build for ChromeDriver.\n  @puppeteer/browsers install chrome-headless-shell                 Install the latest available chrome-headless-shell build.\n  @puppeteer/browsers install chrome-headless-shell@beta            Install the latest available chrome-headless-shell build corresponding to the Beta channel.\n  @puppeteer/browsers install chrome-headless-shell@118             Install the latest available chrome-headless-shell 118 build.\n  @puppeteer/browsers install chromium@1083080                      Install the revision 1083080 of the Chromium browser.\n  @puppeteer/browsers install firefox                               Install the latest nightly available build of the Firefox browser.\n  @puppeteer/browsers install firefox@stable                        Install the latest stable build of the Firefox browser.\n  @puppeteer/browsers install firefox@beta                          Install the latest beta build of the Firefox browser.\n  @puppeteer/browsers install firefox@devedition                    Install the latest devedition build of the Firefox browser.\n  @puppeteer/browsers install firefox@esr                           Install the latest ESR build of the Firefox browser.\n  @puppeteer/browsers install firefox@nightly                       Install the latest nightly build of the Firefox browser.\n  @puppeteer/browsers install firefox@stable_111.0.1                Install a specific version of the Firefox browser.\n  @puppeteer/browsers install firefox --platform mac                Install the latest Mac (Intel) build of the Firefox browser.\n  @puppeteer/browsers install firefox --path /tmp/my-browser-cache  Install to the specified cache directory.\n",
+      "stderr": ""
+    }
+  ],
+  "observedHostedFailure": {
+    "log": "/tmp/kast-hosted-doc-job.log",
+    "lines": "3738-3762",
+    "command": "sudo \"$(command -v node)\" <locked-browser-installer> install chrome@155.0.8059.84 --path <candidate-browser-cache> --install-deps",
+    "result": "mise rejected the repository configuration as untrusted before the installer ran."
+  },
+  "decision": "The revised workflow resolves the installed executable with mise which node before sudo. The resolved executable starts Node24 and the locked installer under the same local untrusted-home control.",
+  "limits": [
+    "The --help command admits CLI arguments and starts the locked JavaScript entry. It does not install Chrome or Linux dependencies.",
+    "The local control runs on macOS arm64 without sudo. Actual hosted Linux root installation remains not-run for the revised workflow.",
+    "The hosted rerun must prove Chrome installation and then do the rendered and publication checks for the pushed candidate."
+  ]
+}

@@ -114,6 +114,15 @@ Native OpenWiki reconciled the unchanged CI Claim after source review.
 The canonical page body kept its exact digest.
 No test, schema, terminology policy, or measurement definition became weaker.
 
+## Hosted launcher correction
+
+Hosted run `41593562095` passed the documentation and prose procedures at `8f92c836`.
+Chrome installation then entered mise under sudo and rejected the untrusted root configuration.
+The launcher now resolves the installed Node executable with `mise which node` before privilege elevation.
+It records the resolved path and version before the privileged package installer.
+The repair grants no root trust and changes no browser, renderer, or dependency version.
+The next hosted run must establish this effect before its rendered procedures start.
+
 ## Commands and evidence
 
 The retained controls reside in `evidence/rendered/controls/report.json` and its linked files.
