@@ -16,6 +16,32 @@ def main_job():
 
 
 class SelfHostedGuardTest(unittest.TestCase):
+    def test_main_native_and_release_jobs_are_admitted(self):
+        for workflow, job, events in (
+            ("ci.yml", "native", ("push", "workflow_dispatch")),
+            ("release.yml", "release", ("workflow_dispatch",)),
+            ("release-component.yml", "release", ("workflow_dispatch",)),
+        ):
+            for event in events:
+                with self.subTest(workflow=workflow, job=job, event=event):
+                    self.assertEqual(Admission.ALLOWED, admit({
+                        **main_job(), "GITHUB_EVENT_NAME": event, "GITHUB_JOB": job,
+                        "GITHUB_WORKFLOW_REF": f"amichne/kast/.github/workflows/{workflow}@refs/heads/main",
+                    }))
+
+    def test_release_push_and_cross_workflow_job_identity_reject(self):
+        for workflow, job, event in (
+            ("release.yml", "release", "push"),
+            ("release-component.yml", "release", "push"),
+            ("release.yml", "native", "workflow_dispatch"),
+            ("ci.yml", "release", "workflow_dispatch"),
+        ):
+            with self.subTest(workflow=workflow, job=job, event=event):
+                self.assertNotEqual(Admission.ALLOWED, admit({
+                    **main_job(), "GITHUB_EVENT_NAME": event, "GITHUB_JOB": job,
+                    "GITHUB_WORKFLOW_REF": f"amichne/kast/.github/workflows/{workflow}@refs/heads/main",
+                }))
+
     def test_main_push_and_manual_main_dispatch_are_admitted(self):
         for event in ("push", "workflow_dispatch"):
             with self.subTest(event=event):

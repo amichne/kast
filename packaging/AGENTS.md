@@ -4,8 +4,8 @@ title: "Kast packaging"
 description: "Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
-timestamp: "2026-10-30T22:56:37Z"
-source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
+timestamp: "2026-11-02T16:47:01Z"
+source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
 code_sources:
   - path: packaging/generate-public-query.py
   - path: packaging/host-installation.py
@@ -61,7 +61,8 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
 - [test-host-installation.py](test-host-installation.py) - Host target and receipt protection.
 - [test-installer-entrypoint.py](test-installer-entrypoint.py) - published-channel selection and installer ingress.
-- For passive context hooks, run `python3 packaging/test-agent-onboarding.py`. MCP session tests own IntelliJ preparation evidence.
+- For hook envelopes and workspace preparation commands, run `python3 packaging/test-agent-onboarding.py`.
+- These cases examine configured commands and host envelopes. They do not establish live IntelliJ preparation.
 
 ## Navigation Hints
 

@@ -4,8 +4,8 @@ title: "Kast agent onboarding"
 description: "Defines the bundled skill, task service, shared brief, and host adapters."
 resource: "repo://agent-tools"
 tags: [kast, agents, plugins]
-timestamp: "2026-10-30T22:15:27Z"
-source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
+timestamp: "2026-11-02T16:16:42Z"
+source_revision: 0482f82ac2b2804a8d6bf0a429657aed3219a747
 code_sources:
   - path: agent-tools/mcp.json
   - path: agent-tools/skills/kast/SKILL.md
@@ -44,18 +44,20 @@ Its executable assertions stay in `cli/src/test/js/native-onboarding.test.mjs`.
 `hooks/session_start.py` owns context assembly and host envelopes.
 Keep its runtime passive, bounded, offline, and free of semantic calls or workspace writes.
 Keep its PEP 723 metadata and lock together.
-The context hooks use Python 3.9 or later with the standard library.
-Keep dependency downloads and workspace preparation outside these hooks.
+The legacy context helper uses Python 3.9 or later with the standard library. Generated plugins exclude this helper.
+`hooks/hooks.json`, `hooks/copilot.json`, and `hooks/pi.ts` call `kast hook session-start` for workspace preparation.
+The native query executable owns event admission, project selection, preparation, and typed rejection.
+Keep workspace decisions and IDE effects outside the harness adapters.
 The task service delegates preparation and semantic work to the installed tool RPC.
 `skills/kast/scripts/tasks.py` owns the catalog shared by MCP and the Copilot SDK adapter.
 Keep binary and wire contracts unchanged. Expose advanced operations through `schema` and `raw`.
-The default Codex and Copilot manifests select only the canonical CLI skill.
+The default Codex and Copilot manifests select the canonical CLI skill and session hook.
 `mcp.json` owns the optional MCP launcher input.
 The generator places optional MCP resources under `compositions/mcp`.
 Only that composition receives a root `.mcp.json`.
 No generated composition selects Python context hooks.
 Codex and Copilot own plugin configuration and cached resources.
-Pi default setup uses native skill discovery. Its optional adapter selects MCP explicitly.
+Pi default setup uses native skill discovery and its session hook. Its optional adapter selects MCP explicitly.
 The optional Pi adapter in `pi/mcp-extension.ts` reads the selected MCP composition with Node and uses native MCP support.
 
 Run `python3 packaging/test-agent-onboarding.py` for hook output, rejection, and host-command cases.

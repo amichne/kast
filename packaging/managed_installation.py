@@ -134,6 +134,7 @@ class Registration:
     destination: str
     payloadSha256: str
     directory: str | None = None
+    composition: Literal["CliOnly", "CliWithMcp"] = "CliWithMcp"
 
 
 @dataclass(frozen=True, slots=True)
@@ -376,18 +377,23 @@ def parse_management(raw: bytes) -> ManagementReceipt:
                 "destination",
                 "payloadSha256",
                 "directory",
+                "composition",
             }:
                 raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
             connection = item["connection"]
         if connection not in ("CODEX_MCP", "CODEX_APP_SERVER", "COPILOT", "PI"):
             raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
         directory = item.get("directory")
+        composition = item.get("composition", "CliWithMcp")
+        if composition not in ("CliOnly", "CliWithMcp"):
+            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
         parsed_registrations.append(
             Registration(
                 connection,
                 text_field(item["destination"]),
                 text_field(item["payloadSha256"]),
                 None if directory is None else text_field(directory),
+                composition,
             )
         )
     parsed_guidance: list[Guidance] = []

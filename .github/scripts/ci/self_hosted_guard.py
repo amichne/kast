@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Admit only the main Kotlin job before a local runner starts repository code."""
+"""Admit main CI and release jobs before a local runner starts repository code."""
 
 from __future__ import annotations
 
@@ -24,9 +24,19 @@ def admit(environment: Mapping[str, str]) -> Admission:
         return Admission.WRONG_REF
     if environment.get("GITHUB_EVENT_NAME") not in {"push", "workflow_dispatch"}:
         return Admission.UNSUPPORTED_EVENT
-    if environment.get("GITHUB_WORKFLOW_REF") != "amichne/kast/.github/workflows/ci.yml@refs/heads/main":
+    workflow = environment.get("GITHUB_WORKFLOW_REF")
+    if workflow == "amichne/kast/.github/workflows/ci.yml@refs/heads/main":
+        jobs = {"native", "kotlin"}
+    elif workflow in {
+        "amichne/kast/.github/workflows/release.yml@refs/heads/main",
+        "amichne/kast/.github/workflows/release-component.yml@refs/heads/main",
+    }:
+        if environment.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+            return Admission.UNSUPPORTED_EVENT
+        jobs = {"release"}
+    else:
         return Admission.WRONG_WORKFLOW
-    if environment.get("GITHUB_JOB") != "kotlin":
+    if environment.get("GITHUB_JOB") not in jobs:
         return Admission.WRONG_JOB
     return Admission.ALLOWED
 

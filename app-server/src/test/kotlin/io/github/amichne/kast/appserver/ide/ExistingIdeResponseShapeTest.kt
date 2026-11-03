@@ -60,7 +60,12 @@ class ExistingIdeResponseShapeTest {
                 UUID.fromString("00000000-0000-0000-0000-000000000001"),
             )
         PrintStream(output).use { stream ->
-            JsonLineExistingIdeResponseObserver(descriptor, ExistingIdeOperation.Status, stream)
+            JsonLineExistingIdeResponseObserver(
+                    descriptor,
+                    ExistingIdeOperation.Status,
+                    stream,
+                    io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.ENABLED,
+                )
                 .record(ExistingIdeResponseEvidence.Frame(80342, 65536, ExistingIdeResponseFrameOutcome.OVER_LIMIT))
         }
         assertEquals(

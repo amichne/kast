@@ -8,6 +8,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -37,7 +38,10 @@ internal class OneShotInvocationRecord private constructor(private val path: Pat
                     return null
                 val start = ProcessHandle.current().info().startInstant().orElse(null) ?: return null
                 val directory = installation.resolve(kind.directory)
-                Files.createDirectories(directory)
+                Files.createDirectories(
+                    directory,
+                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
+                )
                 if (directory.toRealPath() != directory) return null
                 val temporary = Files.createTempFile(directory, ".kast-", ".tmp")
                 try {

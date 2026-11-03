@@ -5,10 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" python3 \"${PLUGIN_ROOT}/hooks/session_start.py\" codex",
-            "timeout": 10,
-            "additionalContextLimit": 2000,
-            "statusMessage": "Load Kast context"
+            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast hook session-start",
+            "timeout": 3780,
+            "statusMessage": "Prepare the Kast workspace"
           }
         ]
       }

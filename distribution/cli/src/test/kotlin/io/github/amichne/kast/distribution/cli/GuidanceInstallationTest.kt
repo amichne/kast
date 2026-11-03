@@ -71,7 +71,7 @@ class GuidanceInstallationTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `Pi native skill repeats without an MCP extension or Python service`() {
+    fun `Pi native skill and preparation hook repeat without MCP or Python`() {
         val root = pluginFixture(temporary)
         val home = temporary.toRealPath().resolve("home")
         assertInstanceOf(
@@ -80,7 +80,7 @@ class GuidanceInstallationTest {
         )
         val skill = home.resolve(".pi/agent/skills/kast")
         assertTrue(Files.isRegularFile(skill.resolve("SKILL.md")))
-        assertTrue(Files.notExists(home.resolve(".pi/agent/extensions/kast.ts")))
+        assertTrue(Files.readString(home.resolve(".pi/agent/extensions/kast.ts")).contains("hook"))
         val prior = Files.readString(receiptPath(root))
         assertInstanceOf(
             ProvisionOutcome.AlreadyInstalled::class.java,

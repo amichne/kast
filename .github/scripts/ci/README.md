@@ -95,7 +95,8 @@ No build scan evidence is available for this change.
 
 ## CI native compilation switch
 
-CI enables native compilation by default.
+CI enables native compilation for main pushes and manual main runs by default.
+Pull requests and merge groups keep source, documentation, and portable-packaging checks without native compilation or product qualification.
 Set the GitHub repository variable `KAST_NATIVE_COMPILATION` to `false` to omit native compilation and its dependent product jobs:
 
 ```sh
@@ -149,18 +150,20 @@ The retained record keeps the original platform, toolchain, version, producer an
 
 A fresh candidate still needs macOS to exercise the assembled Mac product and seal its identity.
 Linux cannot execute those binaries.
-Pull requests and merge groups use hosted `macos-15`.
-Main pushes and manual main runs use the self-hosted `kast-main` runner when `KAST_SELF_HOSTED_RUNNER=true`.
-Otherwise they use hosted `macos-15`.
-The reused-candidate Linux route takes precedence over that variable.
+Main pushes and manual main runs use the self-hosted `kast-main` runner for native compilation and fresh product qualification.
+Both release workflows use that runner and accept only main dispatches.
+These jobs never select a GitHub-hosted Mac, even when `KAST_SELF_HOSTED_RUNNER` is absent or false.
+An unavailable self-hosted Mac leaves these jobs queued.
+The reused-candidate Linux route remains unchanged.
 
 The runner service keeps its checkout under its own work directory.
-Final product qualification consumes release archives and does not run Gradle.
+Final product qualification consumes release archives and runs native launcher cases through Gradle against the assembled executable.
 Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.
 This avoids the macOS `setup-python` installer's fixed `/Users/runner` prefix.
 The native Gradle task passes `-mmacosx-version-min=15.0` to the macOS linker.
 Before candidate sealing, it rejects a native binary whose deployment target differs from macOS 15.0.
 The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
+It accepts only main CI jobs named `native` or `kotlin`, plus manual main jobs named `release` in both release workflows.
 It rejects other repositories, refs, events, workflows, and jobs.
 Install the hook outside the runner application directory.
 Set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
@@ -168,7 +171,7 @@ Restart the service after a hook change.
 Keep the installed hook synchronized with its reviewed source.
 
 Reuse admission runs only after a main push.
-Product validation in pull-request and manual runs uses fresh candidates.
+Manual main runs use fresh candidates.
 Verify actual Linux retention with the successful main push job and its candidate artifact after merge.
 
 Run the focused checks from the repository root:
@@ -234,11 +237,13 @@ The native artifact also carries the compiler toolchain digest through assembly.
 Final qualification rejects a different toolchain before candidate sealing.
 A mismatched identity or digest rejects the next stage before compilation or assembly.
 Archive extraction rejects links and paths outside the destination.
-The Mac jobs run no Gradle tasks and compile no Kotlin sources.
+The native stage compiles transferred JVM inputs directly with Native Image.
+Mac adapter and launcher cases use Gradle.
 The native tests still need macOS because Linux cannot execute the Mac binary.
 Candidate reuse keeps the existing payload bytes and skips these stages.
 
-Qualification remains necessary for packaging, installation, native inputs, toolchains, and release policy before merge.
+Main CI qualifies packaging, installation, native inputs, toolchains, and release policy after merge.
+Pull-request source success does not prove native behavior.
 Unknown ownership and unavailable history select the full plan.
 Repository branch-protection settings remain unchanged.
 

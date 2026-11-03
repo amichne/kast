@@ -27,7 +27,17 @@ internal data class ManagedRegistration(
     val payloadSha256: String,
     // Receipts predating destination selection lack this routing proof.
     @EncodeDefault(EncodeDefault.Mode.NEVER) val directory: String? = null,
-)
+    // Pi registrations predating preparation-only hooks selected MCP.
+    @EncodeDefault val composition: HarnessComposition = HarnessComposition.CliWithMcp,
+) {
+    constructor(
+        connection: HarnessConnection,
+        destination: Path,
+        payloadSha256: String,
+        directory: ConnectionDirectory,
+        composition: HarnessComposition,
+    ) : this(connection, destination.toString(), payloadSha256, directory.path.toString(), composition)
+}
 
 @Serializable private data class ReceiptVersion(val schemaVersion: Int)
 

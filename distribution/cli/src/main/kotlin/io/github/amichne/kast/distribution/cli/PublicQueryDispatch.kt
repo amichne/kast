@@ -9,10 +9,12 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import sun.misc.Signal
 
-internal val publicQueryNamespaces = setOf("query", "result", "source", "describe")
+internal val publicQueryNamespaces = setOf("query", "result", "source", "describe", "hook")
 
-internal class PublicQueryNamespace(name: String) : ManagementNode(name) {
-    override fun help(context: Context) = "Use the public query CLI and its packaged contract."
+internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
+    override fun help(context: Context) =
+        if (namespace == "hook") "Prepare a supported workspace through the shared session hook."
+        else "Use the public query CLI and its packaged contract."
 
     override fun selection(): ManagementCommand? = null
 }

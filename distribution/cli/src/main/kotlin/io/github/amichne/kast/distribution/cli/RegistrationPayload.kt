@@ -11,12 +11,22 @@ internal sealed interface RegistrationPayload {
     data class Launcher(val content: String, override val digest: String) : RegistrationPayload
 }
 
-internal fun registrationSourceFor(installation: Path, connection: HarnessConnection): Path =
+internal fun registrationSourceFor(
+    installation: Path,
+    connection: HarnessConnection,
+    composition: HarnessComposition = HarnessComposition.CliWithMcp,
+): Path =
     when (connection) {
         HarnessConnection.CODEX_MCP -> installation.resolve("bin/kast-mcp-complete")
         HarnessConnection.CODEX_APP_SERVER -> installation.resolve("bin/kast-codex-complete")
         HarnessConnection.COPILOT -> installation.resolve("share/kast/adapters/copilot/extension.mjs")
-        HarnessConnection.PI -> installation.resolve("share/kast/adapters/pi/extension.ts")
+        HarnessConnection.PI ->
+            installation.resolve(
+                when (composition) {
+                    HarnessComposition.CliOnly -> "$AGENT_TOOLS_RELATIVE_PATH/plugins/kast/hooks/pi.ts"
+                    HarnessComposition.CliWithMcp -> "share/kast/adapters/pi/extension.ts"
+                }
+            )
     }
 
 internal fun registrationDestinationFor(root: Path, home: Path, connection: HarnessConnection): Path =

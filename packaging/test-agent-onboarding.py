@@ -148,9 +148,20 @@ class AgentOnboardingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary).resolve()
             home = workspace / "home"
-            binary = home / ".local/bin/python3"
+            binary = home / ".local/bin/kast"
             binary.parent.mkdir(parents=True)
-            binary.symlink_to(sys.executable)
+            binary.write_text(
+                f"#!{sys.executable}\n"
+                "import json, sys\n"
+                "from dataclasses import asdict, dataclass\n"
+                "@dataclass(frozen=True)\n"
+                "class HookAccepted:\n"
+                "    pass\n"
+                "assert sys.argv[1:] == ['hook', 'session-start']\n"
+                "assert json.load(sys.stdin)['cwd']\n"
+                "print(json.dumps(asdict(HookAccepted())))\n"
+            )
+            binary.chmod(0o755)
             environment = {
                 "HOME": str(home),
                 "PATH": "/usr/bin:/bin",
@@ -175,18 +186,19 @@ class AgentOnboardingTest(unittest.TestCase):
                     timeout=10,
                 )
                 self.assertEqual(0, result.returncode, result.stderr)
-                self.assertIn("additionalContext", result.stdout)
+                self.assertEqual({}, json.loads(result.stdout))
+                self.assertEqual("", result.stderr)
 
     def test_context_script_uses_python39_syntax_without_runtime_dependencies(self):
         source = (PLUGIN / "hooks/session_start.py").read_text()
         ast.parse(source, feature_version=(3, 9))
         self.assertNotIn("pydantic", source)
 
-    def test_codex_has_only_passive_context_hook(self):
+    def test_codex_uses_one_shared_preparation_command(self):
         hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text())["hooks"]["SessionStart"]
         self.assertEqual(1, len(hooks))
         self.assertEqual(1, len(hooks[0]["hooks"]))
-        self.assertNotIn("prepare_workspace", hooks[0]["hooks"][0]["command"])
+        self.assertTrue(hooks[0]["hooks"][0]["command"].endswith("kast hook session-start"))
 
 
 if __name__ == "__main__":

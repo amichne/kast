@@ -210,6 +210,7 @@ private fun sharedPluginDocuments(): Map<String, String> =
             ".github/plugin/plugin.json",
             "hooks/hooks.json",
             "hooks/copilot.json",
+            "hooks/pi.ts",
             "hooks/session_start.py",
             "hooks/session_start.py.lock",
             "references/query-schema.json",

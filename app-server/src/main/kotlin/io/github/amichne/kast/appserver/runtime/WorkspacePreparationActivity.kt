@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
@@ -53,12 +54,16 @@ internal fun interface WorkspacePreparationObserver {
     }
 }
 
-internal class JsonLineWorkspacePreparationObserver(private val output: PrintStream) : WorkspacePreparationObserver {
+internal class JsonLineWorkspacePreparationObserver(
+    private val output: PrintStream,
+    private val debug: ConfigurationSwitch = ConfigurationSwitch.DISABLED,
+) : WorkspacePreparationObserver {
     private val json = Json { encodeDefaults = true }
 
     @Synchronized
     override fun observe(activity: WorkspacePreparationActivity) {
-        output.println(json.encodeToString(WorkspacePreparationActivity.serializer(), activity))
+        if (debug == ConfigurationSwitch.ENABLED)
+            output.println(json.encodeToString(WorkspacePreparationActivity.serializer(), activity))
     }
 }
 
