@@ -232,6 +232,26 @@ A changed source tree or failed process cannot produce `SOURCE_VALIDATED`.
 This local execution record grants no publication authority.
 The separate workflow outcome also binds the exact producer and comparison base.
 
+The graph/configuration phase streams output to the console while Gradle writes directly to `task-graph.log`.
+Progress records report elapsed time and time since observed output every 15 seconds.
+The default graph deadline is 600 seconds, not an inactivity limit.
+`--graph-timeout-seconds <seconds>` accepts integers from 1 through 3600 for a slower cold configuration.
+The default is an initial feedback budget, not a measured cold-build percentile.
+Preflight, source task execution, product qualification, and native-input preparation keep their existing limits.
+
+An expired graph records `GRAPH_TIMED_OUT` with exit 124; SIGINT or SIGTERM records `GRAPH_CANCELLED` with exit 130 or 143.
+Neither outcome starts source execution, even when the partial log lists every required task.
+`task-graph-execution.json` retains the process outcome, elapsed time, diagnostic status, and cleanup status.
+Before stopping the client, the runner allows two seconds for a bounded process snapshot in `task-graph-process.txt`.
+That snapshot contains only client identity, state, elapsed time, CPU time, and RSS, not arguments or environment values.
+It does not include a daemon thread dump or establish the cause of a Gradle stall.
+
+Cleanup signals only the new client process group, with five seconds each for graceful exit and forced-exit observation.
+It never runs `gradle --stop` or kills shared daemons by name.
+`CLIENT_REAPED` proves client retirement, not completion of cancellation inside an existing Gradle daemon.
+`UNCONFIRMED` retains a failed cleanup observation rather than claiming retirement.
+Partial graph logs remain available; later attempts remove only the runner's prior reports.
+
 Each Kotlin owner contributes both `scopedCheck` and `check`.
 The task graph executes their common dependencies once.
 This preserves type-resolved analysis and obligations that `scopedCheck` alone omits.
