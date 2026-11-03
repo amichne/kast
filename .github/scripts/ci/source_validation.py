@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
 
+import gradle_graph
 import verification_plan
 from validation_scope import PRODUCT_MODULES, ROOT, select
 
@@ -100,6 +101,8 @@ FORBIDDEN = frozenset(
 class Outcome(str, Enum):
     SOURCE_VALIDATED = "SOURCE_VALIDATED"
     GRAPH_REJECTED = "GRAPH_REJECTED"
+    GRAPH_TIMED_OUT = "GRAPH_TIMED_OUT"
+    GRAPH_CANCELLED = "GRAPH_CANCELLED"
     PROCESS_FAILED = "PROCESS_FAILED"
     SOURCE_CHANGED = "SOURCE_CHANGED"
 
@@ -137,8 +140,10 @@ def skipped_semantic_tasks(root: Path) -> tuple[str, ...]:
     if value != "false":
         raise ValueError("KAST_SEMANTIC_FIXTURES must be true or false")
     tasks = tuple((root / "config/ci/semantic-fixture-tasks.txt").read_text().splitlines())
-    if not tasks or len(set(tasks)) != len(tasks) or not all(
-        re.fullmatch(r":[A-Za-z][A-Za-z0-9:]*", task) for task in tasks
+    if (
+        not tasks
+        or len(set(tasks)) != len(tasks)
+        or not all(re.fullmatch(r":[A-Za-z][A-Za-z0-9:]*", task) for task in tasks)
     ):
         raise ValueError("Invalid semantic fixture task inventory")
     return tasks
@@ -219,6 +224,8 @@ def run(
     destination: Path,
     plan: verification_plan.Plan | None = None,
     gradle_arguments: tuple[str, ...] = (),
+    *,
+    graph_budget: gradle_graph.Budget = gradle_graph.DEFAULT_BUDGET,
 ) -> Evidence:
     started = time.monotonic()
     revision, tree = source_identity(root)
@@ -231,7 +238,7 @@ def run(
     )
     skipped = skipped_semantic_tasks(root)
     required = (SOURCE_REQUIRED if plan is None else obligations(plan)) - frozenset(skipped)
-    for log_name in ("task-graph.log", "gradle.log"):
+    for log_name in (*gradle_graph.REPORTS, "gradle.log", "source-execution.json"):
         (destination / log_name).unlink(missing_ok=True)
     environment = os.environ.copy()
     environment["KAST_RELEASE_JDK_25"] = (
@@ -253,20 +260,18 @@ def run(
     invocations = 0
     if code == 0:
         graph_log = destination / "task-graph.log"
-        print("source-validation: task-graph started", flush=True)
-        with graph_log.open("w") as log:
-            planned = subprocess.run(
-                [*command, "--dry-run"],
-                cwd=root,
-                text=True,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                check=False,
-            )
-        print(f"source-validation: task-graph exited {planned.returncode}", flush=True)
-        graph = inspect_graph(graph_log.read_text(), required, skipped)
-        code = planned.returncode
-        outcome = Outcome.GRAPH_REJECTED
+        planned = gradle_graph.run((*command, "--dry-run"), root, destination, graph_budget)
+        graph = inspect_graph(graph_log.read_text(errors="replace"), required, skipped)
+        code = planned.exitCode
+        match planned.outcome:
+            case gradle_graph.Outcome.TIMED_OUT:
+                outcome = Outcome.GRAPH_TIMED_OUT
+            case gradle_graph.Outcome.CANCELLED:
+                outcome = Outcome.GRAPH_CANCELLED
+            case gradle_graph.Outcome.START_FAILED:
+                outcome = Outcome.PROCESS_FAILED
+            case gradle_graph.Outcome.SUCCEEDED | gradle_graph.Outcome.PROCESS_FAILED:
+                outcome = Outcome.GRAPH_REJECTED
     if code == 0 and graph.accepted:
         with (destination / "gradle.log").open("w") as log:
             process = subprocess.Popen(
@@ -309,6 +314,12 @@ def run(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report-directory", type=Path, default=ROOT / "build/reports/ci/source")
+    parser.add_argument(
+        "--graph-timeout-seconds",
+        type=int,
+        default=gradle_graph.DEFAULT_BUDGET.seconds,
+        help="graph/configuration deadline, 1..3600 seconds (default: %(default)s)",
+    )
     parser.add_argument("--affected", action="store_true")
     parser.add_argument("--base", default="")
     parser.add_argument(
@@ -318,6 +329,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     try:
+        graph_budget = gradle_graph.Budget(args.graph_timeout_seconds)
         plan = None
         if args.affected:
             revision, _ = source_identity(ROOT)
@@ -332,7 +344,7 @@ def main() -> None:
                     verification_plan.admit(document, plan), verification_plan.Failure
                 ):
                     raise ValueError(verification_plan.Failure.IDENTITY_MISMATCH.value)
-        evidence = run(ROOT, args.report_directory, plan)
+        evidence = run(ROOT, args.report_directory, plan, graph_budget=graph_budget)
     except (OSError, subprocess.CalledProcessError, ValueError, KeyError) as failure:
         raise SystemExit(f"source-validation: {failure}") from None
     print(f"source-validation: {evidence.outcome.value}", flush=True)
