@@ -465,10 +465,7 @@ class SourceInventoryTest(unittest.TestCase):
         runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
         self.assertEqual(
             "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
-            "github.ref == 'refs/heads/main' && "
-            "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
-            "vars.KAST_SELF_HOSTED_RUNNER == 'true' && "
-            "fromJSON('[\"self-hosted\", \"macOS\", \"ARM64\", \"kast-main\"]') || 'macos-15' }}",
+            "fromJSON('[\"self-hosted\", \"macOS\", \"ARM64\", \"kast-main\"]') }}",
             runner,
         )
         self.assertIn(
@@ -482,6 +479,25 @@ class SourceInventoryTest(unittest.TestCase):
                     f"- name: {step}\n        if: needs.source-work.outputs.candidate != 'REUSED'\n",
                     product,
                 )
+
+    def test_native_producers_have_no_hosted_runner_fallback(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        for filename, job in (("ci.yml", "native"), ("release.yml", "release"),
+                              ("release-component.yml", "release")):
+            with self.subTest(workflow=filename, job=job):
+                body = (workflows / filename).read_text().split(f"\n  {job}:\n", 1)[1]
+                body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+                runner = next(line.strip() for line in body.splitlines() if "runs-on:" in line)
+                self.assertEqual("runs-on: [self-hosted, macOS, ARM64, kast-main]", runner)
+
+    def test_native_compilation_is_main_only_before_scope_selection(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
+        self.assertIn(
+            "KAST_NATIVE_COMPILATION: ${{ github.ref == 'refs/heads/main' && "
+            "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
+            "(vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}",
+            workflow,
+        )
 
     def test_cache_producers_provision_validation_tools_before_gradle(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()

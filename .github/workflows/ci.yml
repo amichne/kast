@@ -26,7 +26,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   KAST_SEMANTIC_FIXTURES: ${{ vars.KAST_SEMANTIC_FIXTURES || 'false' }}
-  KAST_NATIVE_COMPILATION: ${{ vars.KAST_NATIVE_COMPILATION || 'true' }}
+  KAST_NATIVE_COMPILATION: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ inputs.rollout_case && inputs.rollout_case != 'all' && format('-{0}', inputs.rollout_case) || '' }}
@@ -223,7 +223,7 @@ jobs:
     name: Compile macOS native executable
     needs: [scope, source-work]
     if: needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -234,10 +234,14 @@ jobs:
         with:
           distribution: graalvm
           java-version: 25.0.2
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version-file: .python-version
-      - run: python3 -m pip install uv==0.12.9
+      - name: Set up local Python
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
+        run: |
+          uv python install "$(cat .python-version)"
+          uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
+          echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
       - name: Verify publication contracts on macOS
         run: python3 -m unittest discover -s .github/scripts/release -p 'test_*.py'
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
@@ -332,7 +336,7 @@ jobs:
     name: Kotlin product
     needs: [scope, source-work, native, assembly]
     if: always() && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
-    runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.KAST_SELF_HOSTED_RUNNER == 'true' && fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') || 'macos-15' }}
+    runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

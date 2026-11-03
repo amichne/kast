@@ -25,13 +25,17 @@ internal constructor(
     private val home: Path,
     private val limits: ReadLimits,
     private val exchangeMillis: Long,
+    private val debug: io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch =
+        io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.DISABLED,
     private val policyLoader: () -> Refinement<HostedCompatibilityRequirements, ExistingIdeFailure>,
 ) : ExistingIdeClient {
     constructor(
         home: Path,
         limits: ReadLimits = ReadLimits.Default,
         exchangeMillis: Long = limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong(),
-    ) : this(home, limits, exchangeMillis, ::requiredHostedCompatibilityPolicy)
+        debug: io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch =
+            io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.DISABLED,
+    ) : this(home, limits, exchangeMillis, debug, ::requiredHostedCompatibilityPolicy)
 
     private val observations = java.util.concurrent.ConcurrentHashMap<CanonicalRoot, HostedServiceObservation>()
     private val policyLock = Any()
@@ -76,7 +80,7 @@ internal constructor(
         when (val admitted = admitObservedHostedRoot(root.path)) {
             is Refinement.Rejected -> HostedServiceObservation.Unavailable(root, admitted.failure)
             is Refinement.Refined -> {
-                val client = ExistingIdeSocketClient(home, limits, exchangeMillis)
+                val client = ExistingIdeSocketClient(home, limits, exchangeMillis, debug = debug)
                 client.query(admitted.value, ExistingIdeOperation.Status)
                 client.latestObservation(admitted.value)
             }
@@ -289,7 +293,7 @@ internal constructor(
         return readExistingIdeResponse(
             input = java.io.DataInputStream(Channels.newInputStream(channel)),
             limits = limits,
-            observer = JsonLineExistingIdeResponseObserver(descriptor, operation, System.err),
+            observer = JsonLineExistingIdeResponseObserver(descriptor, operation, System.err, debug),
         ) { bytes ->
             ExistingIdeDocuments.responseWithEvidence(bytes, root, operation, descriptor)
         }

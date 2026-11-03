@@ -17,6 +17,18 @@ internal fun runtimeSocket(
     codexHome: String,
 ): Refinement<Path, RuntimeObservationFailure> {
     if (!validRuntimeHome(codexHome)) return Refinement.Rejected(RuntimeObservationFailure.MANIFEST_REJECTED)
+    return when (val mode = runtimeEndpointMode(installation)) {
+        is Refinement.Rejected -> mode
+        is Refinement.Refined ->
+            when (mode.value) {
+                BrokerPublicEndpointMode.CODEX_CONTROL ->
+                    Refinement.Refined(Path.of(codexHome).resolve("app-server-control/app-server-control.sock"))
+                BrokerPublicEndpointMode.PRIVATE -> privateRuntimeSocket(installation)
+            }
+    }
+}
+
+internal fun runtimeEndpointMode(installation: Path): Refinement<BrokerPublicEndpointMode, RuntimeObservationFailure> {
     val configuration = installation.resolve("config/environment")
     val bytes =
         if (Files.notExists(configuration, NOFOLLOW_LINKS)) byteArrayOf()
@@ -33,22 +45,15 @@ internal fun runtimeSocket(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return Refinement.Rejected(RuntimeObservationFailure.CONFIGURATION_REJECTED)
         }
-    val mode =
-        when (
-            val admitted =
-                BrokerPublicEndpointMode.admit(
-                    resolved
-                        .ownerInputs(ConfigurationOwner.APP_SERVER)[
-                            ConfigurationParameter.APP_SERVER_PUBLIC_ENDPOINT.key]
-                )
-        ) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return Refinement.Rejected(RuntimeObservationFailure.CONFIGURATION_REJECTED)
-        }
-    return when (mode) {
-        BrokerPublicEndpointMode.CODEX_CONTROL ->
-            Refinement.Refined(Path.of(codexHome).resolve("app-server-control/app-server-control.sock"))
-        BrokerPublicEndpointMode.PRIVATE -> privateRuntimeSocket(installation)
+    return when (
+        val admitted =
+            BrokerPublicEndpointMode.admit(
+                resolved
+                    .ownerInputs(ConfigurationOwner.APP_SERVER)[ConfigurationParameter.APP_SERVER_PUBLIC_ENDPOINT.key]
+            )
+    ) {
+        is Refinement.Refined -> admitted
+        is Refinement.Rejected -> Refinement.Rejected(RuntimeObservationFailure.CONFIGURATION_REJECTED)
     }
 }
 

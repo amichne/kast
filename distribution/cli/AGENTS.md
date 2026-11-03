@@ -4,8 +4,8 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and CLI guidance provisioning."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-11-02T17:46:02Z"
-source_revision: 55ec69174cde1a5a74fcb48be2620048d427ad84
+timestamp: "2026-11-02T18:08:11Z"
+source_revision: 92d0afc01de195880263c1012fa9e9c9fd6daed2
 code_sources:
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
@@ -31,7 +31,7 @@ code_sources:
 # Native management CLI
 
 This module owns management commands. `cli` composes them into the single native Control executable.
-Route `query`, `result`, `source`, and `describe` through the selected `bin/kast-query-complete` launcher with unchanged argv.
+Route `query`, `result`, `source`, `describe`, and `hook` through the selected `bin/kast-query-complete` launcher with unchanged argv.
 The query process mode owns semantic options, admission, output, and public-shell exit policy.
 Keep native dispatch thin and preserve management independence from JVM startup.
 Forward signals only to the owned query child and reap that child.
@@ -70,7 +70,8 @@ The exterior lock stays stable across directory deletion and later reset tries.
 
 `kast install codex|copilot|pi` selects canonical CLI guidance from the admitted installed bundle.
 The default composition is `CliOnly`. `--mcp` explicitly selects `CliWithMcp`.
-Codex and Copilot own their plugin resources. Pi uses native skill discovery.
+Codex and Copilot own their plugin resources. Pi uses native skill discovery and a session extension.
+All three harnesses call `kast hook session-start` for workspace preparation.
 Preserve foreign provider resources and reject unresolved conflicts before effects.
 Provisioning success describes installed resources. It does not describe an existing agent session.
 
@@ -101,6 +102,7 @@ Keep installed bytes, loaded Host identity, update policy, and unresolved replac
 `PassiveApplicationHost` reads the existing application advertisement and admits its exact process incarnation.
 It starts no Java process and sends no lifecycle request.
 A loaded Host does not establish workspace readiness or compatibility through version equality.
+`BROKER_NOT_OBSERVED` describes absent broker evidence for private endpoints. It does not describe a compiler epoch or workspace readiness.
 
 The current public `install.sh` remains active during candidate qualification.
 The candidate path does not establish stable publication or public bootstrap activation.

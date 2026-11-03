@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-11-02T16:49:19Z"
-source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
+timestamp: "2026-11-02T17:48:52Z"
+source_revision: 55ec69174cde1a5a74fcb48be2620048d427ad84
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -14,6 +14,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
@@ -97,6 +98,8 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - `assembleNativeControlLayout` supplies compatibility launchers and the `native-control-v1` marker.
 - The Control archive contains no `lib/` directory, JARs, or JVM bytecode.
 - Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
+- `PublicHook.kt` owns `kast hook session-start`. It admits host events and uses the existing workspace preparation owner.
+- Hook replies use JSON regardless of `KAST_OUTPUT_TOON`. Non-project directories skip preparation without IDE effects.
 - CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
 - `collectReachabilityMetadata` supplies resolved Native Image metadata for that archive. Keep module directories and the `logback-classic` exclusion.
 - Handoff qualification runs `--internal-entrypoint=query query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.

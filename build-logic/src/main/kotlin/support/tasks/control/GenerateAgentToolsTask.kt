@@ -46,12 +46,12 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         )
         val mcp = agentToolsJson.decodeFromString<AgentMcpDocument>(source.resolve("mcp.json").readText())
         val marketplace = agentToolsJson.decodeFromString<AgentMarketplace>(marketplaceFile.get().asFile.readText())
-        check(manifest.name == "kast" && manifest.hooks == null && manifest.mcpServers == null && manifest.skills == "./skills/") {
-            "The default Kast plugin must select CLI guidance without hooks or MCP"
+        check(manifest.name == "kast" && manifest.hooks == "./hooks/hooks.json" && manifest.mcpServers == null && manifest.skills == "./skills/") {
+            "The default Kast plugin must select CLI guidance and the shared preparation hook"
         }
         val copilot = agentToolsJson.decodeFromString<CopilotPluginManifest>(source.resolve(".github/plugin/plugin.json").readText())
-        check(copilot.name == "kast" && copilot.hooks == null && copilot.mcpServers == null && copilot.skills == "./skills/") {
-            "The default Copilot plugin must select CLI guidance without hooks or MCP"
+        check(copilot.name == "kast" && copilot.hooks == "./hooks/copilot.json" && copilot.mcpServers == null && copilot.skills == "./skills/") {
+            "The default Copilot plugin must select CLI guidance and the shared preparation hook"
         }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
             "-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp/plugins/kast}}/skills/kast/scripts/server.py\"",
@@ -75,7 +75,8 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("references/onboarding.md", "references/query-schema.json", "references/query-examples.json",
-            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
+            "skills/kast/SKILL.md", "skills/kast/public-cli.md", "hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts",
+            "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock",
             "skills/kast/scripts/service.py", "skills/kast/scripts/tasks.py",
             "skills/kast/scripts/access.py", "skills/kast/scripts/access.py.lock", "skills/kast/scripts/transport.py")
         check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
@@ -88,7 +89,8 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             val composition = if (withMcp) output.resolve("compositions/mcp") else output
             val plugin = composition.resolve("plugins/kast")
             source.copyRecursively(plugin, overwrite = false)
-            plugin.resolve("hooks").deleteRecursively()
+            plugin.resolve("hooks/session_start.py").delete()
+            plugin.resolve("hooks/session_start.py.lock").delete()
             plugin.resolve("mcp.json").delete()
             if (withMcp) source.resolve("mcp.json").copyTo(plugin.resolve(".mcp.json"))
             if (!withMcp) {

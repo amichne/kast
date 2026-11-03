@@ -172,9 +172,16 @@ private constructor(
                 if (
                     version.name != "kast" ||
                         !validPluginVersion(version.version) ||
-                        version.hooks != null ||
+                        version.hooks !in setOf(null, "./hooks/hooks.json") ||
                         version.skills != "./skills/" ||
                         version.mcpServers != if (composition == HarnessComposition.CliWithMcp) "./.mcp.json" else null
+                )
+                    return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
+                if (
+                    version.hooks != null &&
+                        listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts").any {
+                            "$prefix/plugins/kast/$it" !in relativeFiles
+                        }
                 )
                     return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
                 val mcp =

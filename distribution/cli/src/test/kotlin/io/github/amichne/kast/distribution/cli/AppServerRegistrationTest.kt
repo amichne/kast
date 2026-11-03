@@ -60,11 +60,12 @@ class AppServerRegistrationTest {
             val encoded =
                 managementJson.encodeToString(ManagedRegistration(connection, "/owned/launcher", "a".repeat(64)))
             val document = Json.parseToJsonElement(encoded).jsonObject
-            assertEquals(setOf("connection", "destination", "payloadSha256"), document.keys)
+            assertEquals(setOf("connection", "destination", "payloadSha256", "composition"), document.keys)
             assertTrue(document.values.all { it.jsonPrimitive.isString })
             assertEquals(expectedIdentity, document.getValue("connection").jsonPrimitive.content)
             assertEquals("/owned/launcher", document.getValue("destination").jsonPrimitive.content)
             assertEquals("a".repeat(64), document.getValue("payloadSha256").jsonPrimitive.content)
+            assertEquals("CliWithMcp", document.getValue("composition").jsonPrimitive.content)
         }
     }
 

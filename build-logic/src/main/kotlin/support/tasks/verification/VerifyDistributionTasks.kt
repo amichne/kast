@@ -103,10 +103,14 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "control native layout marker is unsupported"
         }
         val defaultPlugin = "share/kast/agent-tools/plugins/kast/"
-        val defaultEffects = listOf(".mcp.json", "mcp.json", "hooks", "skills/kast/scripts")
+        val defaultEffects = listOf(".mcp.json", "mcp.json", "skills/kast/scripts")
         check(entries.none { entry -> defaultEffects.any { effect ->
             entry == defaultPlugin + effect || entry.startsWith(defaultPlugin + effect + "/")
-        } }) { "default guidance contains automatic MCP, hooks, or Python transport" }
+        } }) { "default guidance contains automatic MCP or Python transport" }
+        val allowedHooks = setOf("hooks/hooks.json", "hooks/copilot.json", "hooks/pi.ts")
+        check(entries.none { entry ->
+            entry.startsWith(defaultPlugin + "hooks/") && entry.removePrefix(defaultPlugin) !in allowedHooks
+        }) { "default guidance contains an undeclared hook" }
         check(paths.none { isPrivateDistributionArtifact(root.relativize(it)) }) {
             "control product contains a private environment or Python cache"
         }
@@ -132,6 +136,7 @@ private fun guidanceDistributionEntries(): List<String> {
         ".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
         "plugins/kast/.codex-plugin/plugin.json", "plugins/kast/.github/plugin/plugin.json",
         "plugins/kast/skills/kast/SKILL.md", "plugins/kast/skills/kast/public-cli.md",
+        "plugins/kast/hooks/hooks.json", "plugins/kast/hooks/copilot.json", "plugins/kast/hooks/pi.ts",
         "plugins/kast/references/onboarding.md", "plugins/kast/references/query-examples.json",
     )
     val compositions = listOf("", "compositions/mcp/").flatMap { composition ->

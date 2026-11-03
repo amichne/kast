@@ -1,13 +1,16 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.mcpWorkspaceOperationClient
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.boundaryExit
+import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.rpc.InvocationRecordKind
@@ -35,6 +38,7 @@ import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlin.system.exitProcess
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -45,17 +49,19 @@ object KastPublicCliMain {
     fun main(args: Array<String>) {
         val output = Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel)
         val format =
-            when (val selected = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
-                is Refinement.Refined -> selected.value
-                is Refinement.Rejected -> {
-                    val failure =
-                        PublicPreparedOutput(
-                            cliOutputRejection(selected.failure, CliOutputFormat.JSON),
-                            PublicShellExit.INPUT,
-                        )
-                    exitProcess(runPublicCliInvocation({ failure }, output).code)
+            if (args.firstOrNull() == "hook") CliOutputFormat.JSON
+            else
+                when (val selected = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> {
+                        val failure =
+                            PublicPreparedOutput(
+                                cliOutputRejection(selected.failure, CliOutputFormat.JSON),
+                                PublicShellExit.INPUT,
+                            )
+                        exitProcess(runPublicCliInvocation({ failure }, output).code)
+                    }
                 }
-            }
         exitProcess(
             runPublicCliInvocation(
                     {
@@ -95,28 +101,30 @@ internal fun preparePublicCli(
     },
     invoke: (KastDirectToolSession, AdmittedPublicTool) -> PublicPreparedOutput = ::invokeInstalledPublic,
 ): PublicPreparedOutput =
-    when (val parsed = parsePublicCliArguments(argv)) {
-        is Refinement.Rejected -> publicFailure(ToolRpcFailure.INVALID_COMMAND)
-        is Refinement.Refined ->
-            when (val command = parsed.value) {
-                is PublicCliCommand.Help ->
-                    PublicPreparedOutput(
-                        publicCliHelp(command.command).trimEnd(),
-                        PublicShellExit.COMPLETE,
-                        PublicOutputContent.HELP,
-                    )
-                is PublicCliCommand.Describe ->
-                    PublicPreparedOutput(
-                        encodePublicCliDescriptor(describePublicCli(command)),
-                        PublicShellExit.COMPLETE,
-                    )
-                is PublicCliCommand.Query ->
-                    prepareQuery(command.input, command.catalog, input) { admitted ->
-                        prepareInstalledQuery(command, directory, admitted, session, invoke)
-                    }
-                is PublicCliCommand.Plan -> prepareQuery(command.input, command.catalog, input, ::preparePlan)
-            }
-    }
+    if (argv.firstOrNull() == "hook") preparePublicHook(argv, input)
+    else
+        when (val parsed = parsePublicCliArguments(argv)) {
+            is Refinement.Rejected -> publicFailure(ToolRpcFailure.INVALID_COMMAND)
+            is Refinement.Refined ->
+                when (val command = parsed.value) {
+                    is PublicCliCommand.Help ->
+                        PublicPreparedOutput(
+                            publicCliHelp(command.command).trimEnd(),
+                            PublicShellExit.COMPLETE,
+                            PublicOutputContent.HELP,
+                        )
+                    is PublicCliCommand.Describe ->
+                        PublicPreparedOutput(
+                            encodePublicCliDescriptor(describePublicCli(command)),
+                            PublicShellExit.COMPLETE,
+                        )
+                    is PublicCliCommand.Query ->
+                        prepareQuery(command.input, command.catalog, input) { admitted ->
+                            prepareInstalledQuery(command, directory, admitted, session, invoke)
+                        }
+                    is PublicCliCommand.Plan -> prepareQuery(command.input, command.catalog, input, ::preparePlan)
+                }
+        }
 
 private fun prepareInstalledQuery(
     command: PublicCliCommand.Query,
@@ -290,3 +298,25 @@ internal fun publicFailure(failure: ToolRpcFailure): PublicPreparedOutput =
     preparePublicReply(ToolRpcReply.Rejected(failure))
 
 private val publicShellJson = Json { encodeDefaults = true }
+
+internal fun prepareInstalledHook(root: CanonicalRoot): Refinement<Unit, HookPreparationFailure> =
+    when (val context = InstalledClientContext.current(System.getenv())) {
+        is Refinement.Rejected -> Refinement.Rejected(HookPreparationFailure.Installation(context.failure))
+        is Refinement.Refined ->
+            when (context.value.observe()) {
+                InstalledToolAdmission.STOPPED -> Refinement.Rejected(HookPreparationFailure.Stopped)
+                InstalledToolAdmission.UNPROVEN -> Refinement.Rejected(HookPreparationFailure.Unproven)
+                InstalledToolAdmission.AVAILABLE -> {
+                    val environment = context.value.environment
+                    val home = Path.of(environment["HOME"] ?: System.getProperty("user.home"))
+                    when (
+                        val outcome = runBlocking {
+                            mcpWorkspaceOperationClient(home, environment).awaitPreparation(root)
+                        }
+                    ) {
+                        is Refinement.Refined -> outcome
+                        is Refinement.Rejected -> Refinement.Rejected(HookPreparationFailure.Native(outcome.failure))
+                    }
+                }
+            }
+    }

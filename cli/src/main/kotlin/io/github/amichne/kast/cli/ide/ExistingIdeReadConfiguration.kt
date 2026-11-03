@@ -19,7 +19,7 @@ internal fun configuredExistingIdeClient(home: Path, environment: Map<String, St
             is SavedConfigurationIngress.Rejected -> return rejected
         }
     return when (val admitted = ResolvedKastConfiguration.resolve(sources)) {
-        is Refinement.Refined -> ExistingIdeSocketClient(home, admitted.value.readLimits)
+        is Refinement.Refined -> ExistingIdeSocketClient(home, admitted.value.readLimits, debug = admitted.value.debug)
         is Refinement.Rejected -> rejected
     }
 }

@@ -22,7 +22,8 @@ internal class InstalledWorkspacePreparation(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val lifecycle = installedWorkspaceLifecycleClient(options.userHome, options.configuration.selectedIdeHome)
-    private val native = ExistingIdeSocketClient(options.userHome, options.configuration.readLimits)
+    private val native =
+        ExistingIdeSocketClient(options.userHome, options.configuration.readLimits, debug = options.configuration.debug)
     private val registryPath = options.installationRoot.resolve("config/workspaces.json")
     private val registry = WorkspaceEnrollmentStore(registryPath)
 
@@ -33,7 +34,7 @@ internal class InstalledWorkspacePreparation(
         WorkspacePreparations(
             CoroutineScope(ioDispatcher),
             { request -> runInterruptible(ioDispatcher) { lifecycle.execute(request, owner.installationId.value) } },
-            observer = JsonLineWorkspacePreparationObserver(System.err),
+            observer = JsonLineWorkspacePreparationObserver(System.err, options.configuration.debug),
             budget = OperationExecutionBudget.WORKSPACE_READINESS.value.milliseconds,
         )
     val demand: WorkspaceDemand =

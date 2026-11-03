@@ -27,7 +27,8 @@ concurrency:
 jobs:
   release:
     name: Build and publish release
-    runs-on: macos-15
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
@@ -47,12 +48,14 @@ jobs:
           fi
           git checkout --detach "$GITHUB_SHA"
 
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version-file: ".python-version"
-          cache: pip
-          cache-dependency-path: experiments/host-observation/requirements-test.txt
+      - name: Set up local Python
+        env:
+          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
+        run: |
+          uv python install "$(cat .python-version)"
+          uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
+          echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
 
       - name: Resolve release version
         id: release_version

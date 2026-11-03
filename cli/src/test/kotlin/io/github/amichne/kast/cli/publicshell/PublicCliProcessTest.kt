@@ -25,6 +25,29 @@ class PublicCliProcessTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `session hook skips a non project with one empty host envelope`() {
+        val result = child(listOf("hook", "session-start", "--workspace", temporary.toString()))
+        assertEquals(0, result.first)
+        assertEquals(emptySet<String>(), Json.parseToJsonElement(result.second).jsonObject.keys)
+        val toon =
+            child(
+                listOf("hook", "session-start", "--workspace", temporary.toString()),
+                environment = mapOf("KAST_OUTPUT_TOON" to "1"),
+            )
+        assertEquals(result, toon)
+    }
+
+    @Test
+    fun `session hook preserves missing installation evidence`() {
+        Files.writeString(temporary.resolve("settings.gradle.kts"), "")
+        val result = child(listOf("hook", "session-start", "--workspace", temporary.toString()))
+        assertEquals(4, result.first)
+        val cause = Json.parseToJsonElement(result.second).jsonObject.getValue("cause").jsonObject
+        assertEquals("installation", cause.getValue("type").jsonPrimitive.content)
+        assertEquals("PAYLOAD", cause.getValue("failure").jsonPrimitive.content)
+    }
+
+    @Test
     fun `TOON switch preserves plans descriptors and rejected results with their exit codes`() {
         for (args in
             listOf(
