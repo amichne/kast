@@ -1,0 +1,392 @@
+{
+  "lifecycle": {
+    "effectiveLaunch": {
+      "browserLaunched": true,
+      "engine": "chrome",
+      "launchHash": 9954068799004895925
+    },
+    "launched": false,
+    "relaunchedBrowser": false,
+    "restartedBackground": false,
+    "restoreStatus": "not_configured",
+    "reused": true,
+    "saveStatus": "not_attempted"
+  },
+  "origin": "https://kast.michne.com/reference/callables/check-diagnostics",
+  "refs": {
+    "e100": {
+      "name": "Reference",
+      "role": "link"
+    },
+    "e101": {
+      "name": "Kast home page logo",
+      "role": "link"
+    },
+    "e102": {
+      "name": "Overview",
+      "role": "link"
+    },
+    "e103": {
+      "name": "Set up",
+      "role": "link"
+    },
+    "e104": {
+      "name": "Examples",
+      "role": "link"
+    },
+    "e105": {
+      "name": "Help",
+      "role": "link"
+    },
+    "e106": {
+      "name": "How Kast works",
+      "role": "link"
+    },
+    "e107": {
+      "name": "Reference",
+      "role": "link"
+    },
+    "e108": {
+      "name": "Security",
+      "role": "link"
+    },
+    "e109": {
+      "name": "github",
+      "role": "link"
+    },
+    "e110": {
+      "name": "Powered by This documentation is built and hosted on Mintlify, a developer documentation platform",
+      "role": "link"
+    },
+    "e111": {
+      "name": "Switch to system theme",
+      "role": "button"
+    },
+    "e112": {
+      "name": "Switch to light theme",
+      "role": "button"
+    },
+    "e113": {
+      "name": "Switch to dark theme",
+      "role": "button"
+    },
+    "e114": {
+      "name": "Kast home page logo",
+      "role": "link"
+    },
+    "e115": {
+      "name": "Pagination",
+      "role": "navigation"
+    },
+    "e116": {
+      "name": "Switch to system theme",
+      "role": "button"
+    },
+    "e117": {
+      "name": "Switch to light theme",
+      "role": "button"
+    },
+    "e118": {
+      "name": "Switch to dark theme",
+      "role": "button"
+    },
+    "e119": {
+      "name": "Open search",
+      "role": "button"
+    },
+    "e120": {
+      "name": "Overview and CLI",
+      "role": "heading"
+    },
+    "e121": {
+      "name": "Query contracts",
+      "role": "heading"
+    },
+    "e122": {
+      "name": "Client contracts",
+      "role": "heading"
+    },
+    "e123": {
+      "name": "Schemas and samples",
+      "role": "heading"
+    },
+    "e124": {
+      "name": "Source owners",
+      "role": "heading"
+    },
+    "e125": {
+      "name": "GitHub",
+      "role": "link"
+    },
+    "e126": {
+      "name": "Set up Kast",
+      "role": "link"
+    },
+    "e127": {
+      "name": "Breadcrumb",
+      "role": "navigation"
+    },
+    "e128": {
+      "name": "Previous: Query symbols",
+      "role": "link"
+    },
+    "e129": {
+      "name": "Add declaration Inputs and response fields for add_declaration. Next",
+      "role": "link"
+    },
+    "e130": {
+      "name": "Check diagnostics",
+      "role": "heading"
+    },
+    "e131": {
+      "name": "MCP contract",
+      "role": "link"
+    },
+    "e132": {
+      "name": "tool RPC contract",
+      "role": "link"
+    },
+    "e133": {
+      "name": "Schemas and samples",
+      "role": "link"
+    },
+    "e134": {
+      "name": "Body",
+      "role": "heading"
+    },
+    "e135": {
+      "name": "Response",
+      "role": "heading"
+    },
+    "e136": {
+      "name": "Reference overview",
+      "role": "link"
+    },
+    "e137": {
+      "name": "Native CLI",
+      "role": "link"
+    },
+    "e138": {
+      "name": "Glossary",
+      "role": "link"
+    },
+    "e139": {
+      "name": "Query forms",
+      "role": "link"
+    },
+    "e140": {
+      "name": "Results",
+      "role": "link"
+    },
+    "e141": {
+      "name": "Symbol identity and source fields",
+      "role": "link"
+    },
+    "e142": {
+      "name": "Program tracing",
+      "role": "link"
+    },
+    "e143": {
+      "name": "Callback observation fields",
+      "role": "link"
+    },
+    "e144": {
+      "name": "Composition contracts",
+      "role": "link"
+    },
+    "e145": {
+      "name": "Limits and failure categories",
+      "role": "link"
+    },
+    "e146": {
+      "name": "MCP contract",
+      "role": "link"
+    },
+    "e147": {
+      "name": "Tool RPC contract",
+      "role": "link"
+    },
+    "e148": {
+      "name": "Platform and compatibility",
+      "role": "link"
+    },
+    "e149": {
+      "name": "Schemas and samples",
+      "role": "link"
+    },
+    "e150": {
+      "name": "Query walkthrough",
+      "role": "link"
+    },
+    "e151": {
+      "name": "Detailed schemas",
+      "role": "button"
+    },
+    "e152": {
+      "name": "Source map for Kast contracts",
+      "role": "link"
+    },
+    "e153": {
+      "name": "Copy page",
+      "role": "button"
+    },
+    "e154": {
+      "name": "More actions",
+      "role": "button"
+    },
+    "e155": {
+      "name": "",
+      "role": "generic"
+    },
+    "e156": {
+      "name": "",
+      "role": "generic"
+    },
+    "e157": {
+      "name": "",
+      "role": "generic"
+    },
+    "e158": {
+      "name": "",
+      "role": "generic"
+    },
+    "e159": {
+      "name": "",
+      "role": "generic"
+    },
+    "e160": {
+      "name": "completed",
+      "role": "tab"
+    },
+    "e161": {
+      "name": "rejected",
+      "role": "tab"
+    },
+    "e162": {
+      "name": "",
+      "role": "generic"
+    },
+    "e163": {
+      "name": "",
+      "role": "generic"
+    },
+    "e164": {
+      "name": "complete",
+      "role": "tab"
+    },
+    "e165": {
+      "name": "complete \u00b7 live",
+      "role": "tab"
+    },
+    "e166": {
+      "name": "qualified",
+      "role": "tab"
+    },
+    "e167": {
+      "name": "qualified \u00b7 live",
+      "role": "tab"
+    },
+    "e168": {
+      "name": "rejected",
+      "role": "tab"
+    },
+    "e169": {
+      "name": "rejected",
+      "role": "tab"
+    },
+    "e170": {
+      "name": "transportRejected",
+      "role": "tab"
+    },
+    "e171": {
+      "name": "hostedReadRejection",
+      "role": "tab"
+    },
+    "e172": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e173": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e174": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e175": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e176": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e177": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e178": {
+      "name": "Navigate to header",
+      "role": "link"
+    },
+    "e179": {
+      "name": "Callable schemas",
+      "role": "button"
+    },
+    "e180": {
+      "name": "Transport results",
+      "role": "button"
+    },
+    "e181": {
+      "name": "Semantic results",
+      "role": "button"
+    },
+    "e182": {
+      "name": "Query symbols",
+      "role": "link"
+    },
+    "e183": {
+      "name": "Check diagnostics",
+      "role": "link"
+    },
+    "e184": {
+      "name": "Add declaration",
+      "role": "link"
+    },
+    "e185": {
+      "name": "Replace body",
+      "role": "link"
+    },
+    "e186": {
+      "name": "Workspace lifecycle",
+      "role": "link"
+    },
+    "e94": {
+      "name": "Hide navigation",
+      "role": "button"
+    },
+    "e95": {
+      "name": "Skip to main content",
+      "role": "link"
+    },
+    "e96": {
+      "name": "Pages",
+      "role": "navigation"
+    },
+    "e97": {
+      "name": "",
+      "role": "generic"
+    },
+    "e98": {
+      "name": "Guides",
+      "role": "link"
+    },
+    "e99": {
+      "name": "Architecture",
+      "role": "link"
+    }
+  },
+  "removedRefs": [],
+  "snapshot": "- link \"Skip to main content\" [ref=e95]\n- navigation \"Pages\" [ref=e96]\n  - generic \"Kast home pageSearch Kast\u2318KOverview and CLIReference overviewNative CLIGlossaryQuery contractsQuery\" [ref=e97] focusable [tabindex]\n    - link \"Kast home page logo\" [ref=e114]\n    - button \"Switch to system theme\" [ref=e116]\n    - button \"Switch to light theme\" [ref=e117]\n    - button \"Switch to dark theme\" [ref=e118]\n    - button \"Open search\" [ref=e119]\n    - heading \"Overview and CLI\" [level=3, ref=e120]\n    - link \"Reference overview\" [ref=e136]\n    - link \"Native CLI\" [ref=e137]\n    - link \"Glossary\" [ref=e138]\n    - heading \"Query contracts\" [level=3, ref=e121]\n    - link \"Query forms\" [ref=e139]\n    - link \"Results\" [ref=e140]\n    - link \"Symbol identity and source fields\" [ref=e141]\n    - link \"Program tracing\" [ref=e142]\n    - link \"Callback observation fields\" [ref=e143]\n    - link \"Composition contracts\" [ref=e144]\n    - link \"Limits and failure categories\" [ref=e145]\n    - heading \"Client contracts\" [level=3, ref=e122]\n    - link \"MCP contract\" [ref=e146]\n    - link \"Tool RPC contract\" [ref=e147]\n    - link \"Platform and compatibility\" [ref=e148]\n    - heading \"Schemas and samples\" [level=3, ref=e123]\n    - link \"Schemas and samples\" [ref=e149]\n    - link \"Query walkthrough\" [ref=e150]\n    - button \"Detailed schemas\" [expanded=true, ref=e151]\n    - button \"Callable schemas\" [expanded=true, ref=e179]\n    - link \"Query symbols\" [ref=e182]\n    - link \"Check diagnostics\" [ref=e183]\n    - link \"Add declaration\" [ref=e184]\n    - link \"Replace body\" [ref=e185]\n    - link \"Workspace lifecycle\" [ref=e186]\n    - button \"Transport results\" [expanded=false, ref=e180]\n    - button \"Semantic results\" [expanded=false, ref=e181]\n    - heading \"Source owners\" [level=3, ref=e124]\n    - link \"Source map for Kast contracts\" [ref=e152]\n  - link \"GitHub\" [ref=e125]\n  - link \"Set up Kast\" [ref=e126]\n- link \"Guides\" [ref=e98]\n- link \"Architecture\" [ref=e99]\n- link \"Reference\" [ref=e100]\n- navigation \"Breadcrumb\" [ref=e127]\n- heading \"Check diagnostics\" [level=1, ref=e130]\n- button \"Copy page\" [ref=e153]\n- button \"More actions\" [expanded=false, ref=e154]\n- link \"MCP contract\" [ref=e131]\n- link \"tool RPC contract\" [ref=e132]\n- link \"Schemas and samples\" [ref=e133]\n- heading \"Body\" [level=4, ref=e134]\n- link \"Navigate to header\" [ref=e172]\n- generic \"relativePath\" [ref=e155] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e173]\n- generic \"verbose\" [ref=e156] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e174]\n- generic \"maxDiagnostics\" [ref=e157] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e175]\n- generic \"continuation\" [ref=e158] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e176]\n- generic \"executionBudget\" [ref=e159] clickable [cursor:pointer, onclick]\n- heading \"Response\" [level=4, ref=e135]\n- tab \"completed\" [selected, ref=e160]\n- tab \"rejected\" [ref=e161]\n- link \"Navigate to header\" [ref=e177]\n- generic \"status\" [ref=e162] clickable [cursor:pointer, onclick]\n- link \"Navigate to header\" [ref=e178]\n- generic \"document\" [ref=e163] clickable [cursor:pointer, onclick]\n- tab \"complete\" [selected, ref=e164]\n- tab \"complete \u00b7 live\" [ref=e165]\n- tab \"qualified\" [ref=e166]\n- tab \"qualified \u00b7 live\" [ref=e167]\n- tab \"rejected\" [ref=e168]\n- tab \"rejected\" [ref=e169]\n- tab \"transportRejected\" [ref=e170]\n- tab \"hostedReadRejection\" [ref=e171]\n- navigation \"Pagination\" [ref=e115]\n  - link \"Previous: Query symbols\" [ref=e128]\n  - link \"Add declaration Inputs and response fields for add_declaration. Next\" [ref=e129]\n- link \"Kast home page logo\" [ref=e101]\n- link \"Overview\" [ref=e102]\n- link \"Set up\" [ref=e103]\n- link \"Examples\" [ref=e104]\n- link \"Help\" [ref=e105]\n- link \"How Kast works\" [ref=e106]\n- link \"Reference\" [ref=e107]\n- link \"Security\" [ref=e108]\n- link \"github\" [ref=e109]\n- link \"Powered by This documentation is built and hosted on Mintlify, a developer documentation platform\" [ref=e110]\n- button \"Switch to system theme\" [ref=e111]\n- button \"Switch to light theme\" [ref=e112]\n- button \"Switch to dark theme\" [ref=e113]\n- button \"Hide navigation\" [expanded=true, ref=e94]"
+}

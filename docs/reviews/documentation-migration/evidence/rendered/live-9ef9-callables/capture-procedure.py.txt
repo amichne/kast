@@ -1,0 +1,43 @@
+import hashlib,json,platform,subprocess,sys
+from dataclasses import asdict
+from pathlib import Path
+sys.path.insert(0,'docs/tooling/rendered')
+from run import Browser,BrowserFailure,environment,footprint,is_dom
+ROOT=Path.cwd(); DEPLOYED='9ef9e65825b09f5e031322ab98f310276e2eb51f'; ORIGIN='https://kast.michne.com'
+OUT=ROOT/'docs/reviews/documentation-migration/evidence/rendered/live-9ef9-callables'; OUT.mkdir(parents=True,exist_ok=True)
+source=ROOT/'docs/tooling/rendered/inspect.js'; raw=source.read_text(); diagnostic=raw.replace('#content','#api-playground-2-operation-page'); (OUT/'diagnostic-inspect.js').write_text(diagnostic)
+check=json.loads(subprocess.check_output(['gh','api','repos/amichne/kast/check-runs/125984267194'],text=True)); (OUT/'deployment-check.json').write_text(json.dumps(check,indent=2)+'\n')
+assert check['head_sha']==DEPLOYED and check['conclusion']=='success'
+assert subprocess.check_output(['git','show',DEPLOYED+':docs/tooling/rendered/inspect.js'])==source.read_bytes()
+browser=Browser('kast-live-9ef9-callables'); runtime=environment(browser); states=[]; routes=['check-diagnostics','add-declaration','replace-body','workspace-lifecycle']; snapshots=[]
+report={'schemaVersion':1,'kind':'KAST_PARTIAL_LIVE_CALLABLE_RENDERING','sourceRevision':DEPLOYED,'origin':ORIGIN,'deploymentCheckId':check['id'],'deploymentCompletedAt':check['completed_at'],'localTooling':runtime,'platform':{'system':platform.system(),'release':platform.release(),'machine':platform.machine()},'producer':{'canonicalInspectSha256':hashlib.sha256(source.read_bytes()).hexdigest(),'diagnosticInspectSha256':hashlib.sha256(diagnostic.encode()).hexdigest(),'selectorChange':'Replace #content with #api-playground-2-operation-page for the hosted callable layout. Keep the counting and visibility rules.'},'states':states,'limits':['This live evidence concerns the provider-declared deployed revision, not the dirty working tree or a local candidate preview.','The hosted framework version is unknown. Local Mintlify CLI/client pins do not identify the hosted renderer.','Every W/L value describes one exposed DOM state. Full prose across hidden tabs, closed schema details, and recursive expansion remains unknown.','These captures do not supply a full publication receipt, complete recursive scope, approved pixel baseline, reader evaluation, or native Kast task evidence.','The query-symbols route is excluded from this bounded four-route investigation. Its earlier timeout remains a separate unresolved obligation.']}
+def save(): (OUT/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+def capture(route,name):
+    try:
+        data=browser.evaluate(diagnostic)
+        if not is_dom(data) or data['route']!=route or data['headingCount']!=1: raise BrowserFailure('LIVE_DOM_ADMISSION_FAILED')
+        dom_path=OUT/(route.rsplit('/',1)[1]+'-'+name+'.json'); dom_path.write_text(json.dumps(data,indent=2)+'\n')
+        image=OUT/(route.rsplit('/',1)[1]+'-'+name+'.png'); browser.call('screenshot',str(image))
+        states.append({'route':route,'name':name,'status':'passed','footprint':asdict(footprint(data)),'dom':{'path':str(dom_path.relative_to(ROOT)),'sha256':hashlib.sha256(dom_path.read_bytes()).hexdigest()},'screenshot':{'path':str(image.relative_to(ROOT)),'sha256':hashlib.sha256(image.read_bytes()).hexdigest()},'viewport':data['viewport'],'theme':data['theme'],'documentOverflow':data['documentOverflow'],'missingImageAlternatives':data['missingImageAlternatives'],'focus':data['focus']})
+    except BrowserFailure as error: states.append({'route':route,'name':name,'status':'failed','reason':str(error)[:1000],'footprint':None})
+    save()
+try:
+    browser.call('open','about:blank'); browser.zoom(1)
+    for slug in routes:
+        route='/reference/callables/'+slug
+        try:
+            browser.call('open',ORIGIN+route); browser.call('wait','--fn','document.querySelector("#api-playground-2-operation-page") !== null')
+            for theme in ['light','dark']:
+                browser.call('set','media',theme,'reduced-motion'); browser.evaluate('document.documentElement.classList.toggle("dark",'+str(theme=='dark').lower()+')')
+                for width,height,label in [(1440,1000,'desktop'),(390,844,'mobile')]:
+                    browser.call('set','viewport',str(width),str(height),'1'); browser.evaluate('window.scrollTo(0,0)'); capture(route,label+'-'+theme)
+            browser.call('set','viewport','1440','1000','1'); browser.zoom(2); browser.evaluate('window.scrollTo(0,0)'); capture(route,'browser-zoom-200-dark'); browser.zoom(1)
+            browser.call('focus','#api-playground-2-operation-page a'); browser.call('press','Tab'); capture(route,'keyboard-focus')
+            snap=browser.call('snapshot','-i'); snapshot_path=OUT/(slug+'-snapshot.json'); snapshot_path.write_text(json.dumps(snap,indent=2)+'\n'); snapshots.append(str(snapshot_path.relative_to(ROOT)))
+        except BrowserFailure as error:
+            states.append({'route':route,'name':'route','status':'failed','reason':str(error)[:1000],'footprint':None}); save()
+        print(json.dumps({'route':route,'states':len(states),'failures':sum(x['status']=='failed' for x in states)}),flush=True)
+finally:
+    try: browser.zoom(1); browser.call('close')
+    except BrowserFailure as error: report['cleanupFailure']=str(error)[:1000]
+report['snapshots']=snapshots; report['status']='partial'; save(); print(str(OUT/'report.json'))

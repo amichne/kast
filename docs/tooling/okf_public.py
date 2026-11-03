@@ -73,9 +73,16 @@ class Authored:
 
 
 @dataclass(frozen=True, slots=True)
+class Asset:
+    source: str
+    destination: str
+
+
+@dataclass(frozen=True, slots=True)
 class Manifest:
     views: tuple[View, ...]
     authored: tuple[Authored, ...]
+    assets: tuple[Asset, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +91,13 @@ class OutputPaths:
 
 
 def output_paths(manifest: Manifest) -> OutputPaths:
-    return OutputPaths((OUTPUT, *(f"docs/public/{view.route}.mdx" for view in manifest.views)))
+    return OutputPaths(
+        (
+            OUTPUT,
+            *(f"docs/public/{view.route}.mdx" for view in manifest.views),
+            *(asset.destination for asset in manifest.assets),
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +214,7 @@ def parse_manifest(text: str) -> Manifest | Failure:
         "authored",
         "readerContracts",
         "associations",
+        "assets",
     }:
         return Failure(Code.INPUT, MANIFEST)
     if type(raw["schemaVersion"]) is not int or raw["schemaVersion"] != 1:
@@ -293,7 +307,27 @@ def parse_manifest(text: str) -> Manifest | Failure:
     routes = [view.route for view in views] + [item.route for item in authored]
     if len(set(routes)) != len(routes):
         return Failure(Code.INPUT, MANIFEST)
-    return Manifest(tuple(views), tuple(authored))
+    raw_assets = raw.get("assets", [])
+    if not _objects(raw_assets):
+        return Failure(Code.INPUT, MANIFEST)
+    assets: list[Asset] = []
+    for item in raw_assets:
+        if not _record(item) or set(item) != {"source", "destination"}:
+            return Failure(Code.INPUT, MANIFEST)
+        source, destination = item["source"], item["destination"]
+        if (
+            not isinstance(source, str)
+            or not _path(source, "docs/public/", ".json")
+            or not isinstance(destination, str)
+            or not _path(destination, "docs/public/examples/", ".json")
+        ):
+            return Failure(Code.INPUT, MANIFEST)
+        assets.append(Asset(source, destination))
+    sources = {asset.source for asset in assets}
+    destinations = [asset.destination for asset in assets]
+    if len(set(destinations)) != len(destinations) or sources.intersection(destinations):
+        return Failure(Code.INPUT, MANIFEST)
+    return Manifest(tuple(views), tuple(authored), tuple(assets))
 
 
 def _frontmatter(text: str, path: str) -> str | Failure:
@@ -461,6 +495,14 @@ def _public_routes(root: Path) -> tuple[str, ...] | Failure:
 
 
 def project(root: Path, manifest: Manifest, tracked: frozenset[str]) -> Projection | Failure:
+    artifacts: list[Artifact] = []
+    for asset in manifest.assets:
+        if asset.source not in tracked:
+            return Failure(Code.TRACKING, asset.source)
+        content = _read(root, asset.source)
+        if isinstance(content, Failure):
+            return content
+        artifacts.append(Artifact(asset.destination, content))
     concepts: list[_Concept] = []
     routes: dict[str, str] = {}
     for view in manifest.views:
@@ -474,7 +516,6 @@ def project(root: Path, manifest: Manifest, tracked: frozenset[str]) -> Projecti
     rendered = _render(tuple(concepts), routes)
     if isinstance(rendered, Failure):
         return rendered
-    artifacts: list[Artifact] = []
     for concept, document in zip(concepts, rendered, strict=True):
         claims_path = (
             "openwiki/.claims/"
@@ -567,6 +608,17 @@ def run(root: Path, write: bool) -> Report | Failure:
         return Failure(
             Code.INPUT, "public route inventory: " + ", ".join(sorted(invalid_missing | unexpected))
         )
+    try:
+        existing_assets = {
+            path.relative_to(root).as_posix()
+            for path in (root / "docs/public/examples").rglob("*.json")
+            if path.is_file()
+        }
+    except OSError:
+        return Failure(Code.IO, "docs/public/examples")
+    undeclared_assets = existing_assets - {asset.destination for asset in manifest.assets}
+    if undeclared_assets:
+        return Failure(Code.DRIFT, min(undeclared_assets))
     projection = project(root, manifest, tracked)
     if isinstance(projection, Failure):
         return projection
@@ -587,7 +639,7 @@ def run(root: Path, write: bool) -> Report | Failure:
             try:
                 destination = root / item.path
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_text(item.text, encoding="utf-8")
+                destination.write_bytes(item.text.encode("utf-8"))
             except OSError:
                 return Failure(Code.IO, item.path)
         elif isinstance(current, Failure) or current != item.text:

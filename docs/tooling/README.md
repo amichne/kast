@@ -145,6 +145,12 @@ Neither successful admission nor prose metrics prove reader comprehension or nat
 Code literals keep their original text. Shared concepts use one generated snippet across public routes.
 Presentation metadata and existing diagrams remain in the route manifest.
 
+The manifest's optional `assets` list projects static aliases under `docs/public/examples/` from canonical JSON files.
+Each alias keeps the exact source bytes, including historical revision qualifications.
+The projector rejects unsafe paths, missing sources, duplicate destinations, and a destination that overwrites a configured source.
+The parity procedure rejects changed or missing alias bytes.
+Keep the canonical file as the only authored source.
+
 From the repository root, regenerate the public views:
 
 For new OKF pages, stage the canonical pages and their Claim sidecars before this command.

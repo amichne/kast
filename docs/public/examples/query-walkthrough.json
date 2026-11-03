@@ -1,0 +1,3485 @@
+{
+  "metadata": {
+    "capturedCheckoutRevision": "81fb023c06f8dba63e3531f49632f465b5cc6b21",
+    "sourceRevision": "56df0912e46b182bb4ad8beabd1512823100fd72",
+    "sourceEquivalence": "The captured checkout differs from sourceRevision only under docs/public; verified before capture with git diff.",
+    "kastVersion": "0.20260928.121700",
+    "ideaBuild": "262.10315.125",
+    "kotlinPluginBuild": "262.10315.125-IJ",
+    "pluginSha256": "sha256:5e6a3054481cfdfea6d87236abdeece769d4f8d68b90c128aa70e42979b1f185",
+    "transport": "kast-tool-rpc-complete call query_symbols",
+    "workspace": "/workspace/kast",
+    "normalization": "Only the absolute checkout prefix is replaced with /workspace/kast in all string values. Issued handles, host identity, epochs, ranges, timestamps and payloads are otherwise unchanged.",
+    "outputDetail": "The matched installed CLI and IDEA plugin predate the verbose option and return detailed output. No compact-output claim is made by these captures.",
+    "reproduction": "Start at call 01 in the pinned source checkout. Reacquire every symbol/result/continuation from the preceding responses; recorded tokens are session-bound. Use each call.request as the Tool RPC stdin document. Pause builds and edits while composing retained results."
+  },
+  "calls": [
+    {
+      "id": "01-discovery",
+      "capturedAt": "2026-09-29T02:28:18.336693+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "QueryStepSyntax",
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "query/contract",
+              "sourceSetNames": [
+                "main"
+              ]
+            }
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE",
+              "SOURCE"
+            ]
+          },
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+              "kind": "classlike",
+              "name": "QueryStepSyntax",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2060,
+                  "endExclusive": 2959
+                }
+              },
+              "signature": {
+                "type": "class-like",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+              },
+              "connections": [],
+              "source": {
+                "text": "    NOT_EQUALS,\n    STARTS_WITH,\n    ENDS_WITH,\n}\n\nsealed interface QueryStepSyntax {\n    data class ProjectBinding(val name: QueryBindingName) : QueryStepSyntax\n\n    data class Where(val predicate: QueryPredicate) : QueryStepSyntax\n\n    data class Related(val meaning: RelationMeaning) : QueryStepSyntax\n\n    data class Walk(\n        val meaning: RelationMeaning,\n        val maximumDepth: TraversalDepthLimit,\n        val strategy: TraversalStrategy,\n    ) : QueryStepSyntax\n\n    data class Concat(val input: QueryCompositionInput) : QueryStepSyntax\n\n    data class Intersect(val right: QueryRetainedResult.Symbols) : QueryStepSyntax\n\n    data class Union(val right: QueryRetainedResult.Symbols) : QueryStepSyntax\n\n    data class Difference(val right: QueryRetainedResult.Symbols) : QueryStepSyntax\n\n    data class Join(val mode: QueryJoinMode, val right: QueryRetainedResult.Symbols) : QueryStepSyntax\n\n    data object Distinct : QueryStepSyntax\n}\n\n/** A proven result can retain evidence; exact references must be revalidated during execution. */\nsealed interface QueryCompositionInput {\n    data class ExactReferences(val references: QueryExactReferences) : QueryCompositionInput\n\n",
+                "startLine": 61,
+                "endLine": 95
+              }
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "not_requested"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "02-implementations-a",
+      "capturedAt": "2026-09-29T02:28:19.415221+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:AgYz3HppCCSw83_N6YkpQw"
+            ]
+          },
+          "steps": [
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "IMPLEMENTATIONS"
+            },
+            {
+              "type": "DISTINCT_SYMBOLS"
+            }
+          ],
+          "retention": "RETAIN",
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2491,
+                  "endExclusive": 2560
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                    "kind": "classlike",
+                    "name": "Concat",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:ac4e5de5-bea5-4615-b084-75f6c4c613ca"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:wAoCCHYT1Ou_bGy1bITUyA",
+              "kind": "classlike",
+              "name": "Distinct",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2919,
+                  "endExclusive": 2957
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:wAoCCHYT1Ou_bGy1bITUyA",
+                    "kind": "classlike",
+                    "name": "Distinct",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Distinct",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2919,
+                      "endExclusive": 2957
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|e8f655bdbba251fbc4ef35d9fec50c706ca318207b26af78f6bb47aeb2249f15",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Distinct"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:l45CIXVzuZW9NTDdV1Y2zA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2919,
+                      "endExclusive": 2957
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:bd53169a-0826-4d59-8b98-b61a6699243e"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:qF8AmG6JoffCQFKyDnu2xQ",
+              "kind": "classlike",
+              "name": "Related",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2247,
+                  "endExclusive": 2313
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:qF8AmG6JoffCQFKyDnu2xQ",
+                    "kind": "classlike",
+                    "name": "Related",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Related",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2247,
+                      "endExclusive": 2313
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|2e98e11b887d95a9bb448918d27d90bb7550617aa7eb3bd4435fde0d8396e0f8",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Related"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:Ij9L4XY6JfRb5azFaSL_WQ",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2247,
+                      "endExclusive": 2313
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:0fc850b0-0e43-4847-96a0-e8f304d4f34f"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:DN9Aidin6A3P_nm4rbVaXQ",
+              "kind": "classlike",
+              "name": "Union",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2650,
+                  "endExclusive": 2724
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:DN9Aidin6A3P_nm4rbVaXQ",
+                    "kind": "classlike",
+                    "name": "Union",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Union",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2650,
+                      "endExclusive": 2724
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|ece204f3de256f8f23ca06e71d623b143c2bf33622648ce2408f66998cec8234",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Union"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:lIL56wfDCjJJ304qmRbq_w",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2650,
+                      "endExclusive": 2724
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:9442a100-2f97-4a68-afaf-766caaef4f2e"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:1E9RI0uq0lnxbwiAy_61lA",
+              "kind": "classlike",
+              "name": "Join",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2815,
+                  "endExclusive": 2913
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:1E9RI0uq0lnxbwiAy_61lA",
+                    "kind": "classlike",
+                    "name": "Join",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Join",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2815,
+                      "endExclusive": 2913
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|9c76694d9be60ba554914b40806aac85786bc7108ef42f4e2c18e7e58c420233",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Join"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:kTL7b2AeatEXwuK9keQW6Q",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2815,
+                      "endExclusive": 2913
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:00c39d40-9995-4872-b5da-0273de9d15b8"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:Ken6I-vItQgRyggu3BV5WQ",
+              "kind": "classlike",
+              "name": "Walk",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2319,
+                  "endExclusive": 2485
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:Ken6I-vItQgRyggu3BV5WQ",
+                    "kind": "classlike",
+                    "name": "Walk",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Walk",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2319,
+                      "endExclusive": 2485
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|d78e224056ff6ccd82dcfe3fdba01b9d88a29080de745f5462083a68956535ed",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Walk"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:mxz6GXjuFHpsmqZESOzqGA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2319,
+                      "endExclusive": 2485
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:ac63ac5b-93e0-4db4-a58e-1dda4d86680c"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:GUFygQMVmk9DfmtqpKYpQg",
+              "kind": "classlike",
+              "name": "Where",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2176,
+                  "endExclusive": 2241
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:GUFygQMVmk9DfmtqpKYpQg",
+                    "kind": "classlike",
+                    "name": "Where",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Where",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2176,
+                      "endExclusive": 2241
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|3d39aadd670ef867569a3c1db0f127ba513f7dee7bf6c8b4281621bcf7ebb7ef",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Where"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:87F3i0H8hLYU-CRODOobEA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2176,
+                      "endExclusive": 2241
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:ceb67d12-f34e-4f25-874d-367d6a1f6562"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:cD8Oia5sd9bsbtWd_10QlQ",
+              "kind": "classlike",
+              "name": "ProjectBinding",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2099,
+                  "endExclusive": 2170
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:cD8Oia5sd9bsbtWd_10QlQ",
+                    "kind": "classlike",
+                    "name": "ProjectBinding",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.ProjectBinding",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2099,
+                      "endExclusive": 2170
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4b1bc8226abf866b80328d27b2fca4056865f478f35f5a56bcc50039c92e6486",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.ProjectBinding"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:_Sd6jBj4v2pgBtA1KfkaTg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2099,
+                      "endExclusive": 2170
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:48f435e8-fa86-432d-9dad-4ce37d2cbb26"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:M1-yWfOOGXaDa2CN3q_jyg",
+              "kind": "classlike",
+              "name": "Difference",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2730,
+                  "endExclusive": 2809
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:M1-yWfOOGXaDa2CN3q_jyg",
+                    "kind": "classlike",
+                    "name": "Difference",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Difference",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2730,
+                      "endExclusive": 2809
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|e1da89b02edc70b382a04888b022b0148cf25bbe4cb72a752a6a6d6f2b0d7123",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Difference"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:grlhhz2H7fX8Dey2hEQjnA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2730,
+                      "endExclusive": 2809
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:10a1282f-af40-4a00-9c1d-ca5260707850"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:XK8kjDGDxzl8lxnRo6kG8A",
+              "kind": "classlike",
+              "name": "Intersect",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2566,
+                  "endExclusive": 2644
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:XK8kjDGDxzl8lxnRo6kG8A",
+                    "kind": "classlike",
+                    "name": "Intersect",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Intersect",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2566,
+                      "endExclusive": 2644
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|272842cb80daa2b63ac7723c1a353fc717b581ae5905b7ae82ea4d6df1361940",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Intersect"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:DJO7oSD3GZHNH45q5TcFDQ",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2566,
+                      "endExclusive": 2644
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:14cc0599-3d6f-4d0b-866e-94eec845725f"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "03-concat-b",
+      "capturedAt": "2026-09-29T02:28:20.386352+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "Concat",
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "query/contract",
+              "sourceSetNames": [
+                "main"
+              ]
+            }
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:VmsgfGbMAExz5p7PbqOHag",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                "range": {
+                  "startInclusive": 2519,
+                  "endExclusive": 2615
+                }
+              },
+              "signature": {
+                "type": "class-like",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.ExactQueryStage.Concat"
+              },
+              "connections": [],
+              "row_id": "result-row:v1:e0f232dd-a1c2-4c66-9312-ab4850c5b460"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:ZyB30aGR7p_w5IoMZkLOqQ",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2491,
+                  "endExclusive": 2560
+                }
+              },
+              "signature": {
+                "type": "class-like",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+              },
+              "connections": [],
+              "row_id": "result-row:v1:8128e595-794e-4881-b605-16aee36ac99b"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:93ffd20d-94c3-4ca5-820c-b1f1b1efd5a6"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "04-union-filter",
+      "capturedAt": "2026-09-29T02:28:21.388973+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "RESULT",
+            "result": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "steps": [
+            {
+              "type": "UNION",
+              "right": {
+                "type": "RESULT",
+                "result": "result:v1:93ffd20d-94c3-4ca5-820c-b1f1b1efd5a6"
+              }
+            },
+            {
+              "type": "WHERE",
+              "predicate": {
+                "type": "PRIMITIVE",
+                "field": "NAME",
+                "operator": "EQUALS",
+                "value": "Concat"
+              }
+            }
+          ],
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2491,
+                  "endExclusive": 2560
+                }
+              },
+              "signature": {
+                "type": "class-like",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+              },
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                    "kind": "classlike",
+                    "name": "Concat",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ]
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:VmsgfGbMAExz5p7PbqOHag",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                "range": {
+                  "startInclusive": 2519,
+                  "endExclusive": 2615
+                }
+              },
+              "signature": {
+                "type": "class-like",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.ExactQueryStage.Concat"
+              },
+              "connections": []
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "not_requested"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "05-intersection",
+      "capturedAt": "2026-09-29T02:28:22.415446+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "RESULT",
+            "result": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "steps": [
+            {
+              "type": "INTERSECT",
+              "right": {
+                "type": "RESULT",
+                "result": "result:v1:93ffd20d-94c3-4ca5-820c-b1f1b1efd5a6"
+              }
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2491,
+                  "endExclusive": 2560
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                    "kind": "classlike",
+                    "name": "Concat",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ]
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "not_requested"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "06-join-c",
+      "capturedAt": "2026-09-29T02:28:23.397667+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "RESULT",
+            "result": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "steps": [
+            {
+              "type": "JOIN",
+              "mode": {
+                "type": "INNER",
+                "leftName": "step",
+                "rightName": "candidate"
+              },
+              "right": {
+                "type": "RESULT",
+                "result": "result:v1:93ffd20d-94c3-4ca5-820c-b1f1b1efd5a6"
+              }
+            }
+          ],
+          "output": {
+            "type": "BINDING_ROWS"
+          },
+          "retention": "RETAIN",
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "binding_row",
+              "left": {
+                "type": "occurrence",
+                "name": "step",
+                "symbol": {
+                  "ref": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                  "kind": "classlike",
+                  "name": "Concat",
+                  "location": {
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "signature": {
+                    "type": "class-like",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                  },
+                  "connections": [
+                    {
+                      "meaning": "implementations",
+                      "source": {
+                        "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                        "kind": "classlike",
+                        "name": "Concat",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                        "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                        "range": {
+                          "startInclusive": 2491,
+                          "endExclusive": 2560
+                        },
+                        "compilerEvidence": {
+                          "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                          "signature": {
+                            "type": "class-like",
+                            "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                          }
+                        }
+                      },
+                      "target": {
+                        "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                        "kind": "classlike",
+                        "name": "QueryStepSyntax",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                        "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                        "range": {
+                          "startInclusive": 2060,
+                          "endExclusive": 2959
+                        },
+                        "compilerEvidence": {
+                          "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                          "signature": {
+                            "type": "class-like",
+                            "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                          }
+                        }
+                      },
+                      "occurrence": {
+                        "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                        "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                        "range": {
+                          "startInclusive": 2491,
+                          "endExclusive": 2560
+                        }
+                      },
+                      "provenance": "k2-authored-source",
+                      "coverage": "exact-compiler-confirmed"
+                    }
+                  ]
+                },
+                "relation": {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                    "kind": "classlike",
+                    "name": "Concat",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              },
+              "right": {
+                "type": "symbol",
+                "name": "candidate",
+                "symbol": {
+                  "ref": "exact:v5:ZyB30aGR7p_w5IoMZkLOqQ",
+                  "kind": "classlike",
+                  "name": "Concat",
+                  "location": {
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "signature": {
+                    "type": "class-like",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                  },
+                  "connections": []
+                }
+              },
+              "row_id": "result-row:v1:e85ea4e5-2988-4b9d-ac44-ba1616424741"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:5f7d2f98-f897-4639-9a83-82c84659f2d3"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "07-project-references",
+      "capturedAt": "2026-09-29T02:28:25.397785+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "RESULT",
+            "result": "result:v1:5f7d2f98-f897-4639-9a83-82c84659f2d3"
+          },
+          "steps": [
+            {
+              "type": "PROJECT_BINDING",
+              "name": "step"
+            },
+            {
+              "type": "EXPAND_RELATION",
+              "relation": "REFERENCES"
+            }
+          ],
+          "output": {
+            "type": "OCCURRENCES"
+          },
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "occurrence",
+              "ref": "exact:v5:xL75KPwHEJzlXBezvZ1Tlw",
+              "relation": {
+                "meaning": "references",
+                "source": {
+                  "selector": "exact:v5:xL75KPwHEJzlXBezvZ1Tlw",
+                  "kind": "function",
+                  "name": "exactStage",
+                  "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.exactStage",
+                  "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                  "range": {
+                    "startInclusive": 5270,
+                    "endExclusive": 6814
+                  },
+                  "compilerEvidence": {
+                    "identity": "canonical-signature-sha256-v1|c24315451bf6d83a84c52b11e6b04f40b6afe4d4c7725edfbe20991e8107d587",
+                    "signature": {
+                      "type": "function",
+                      "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.exactStage",
+                      "receiver": {
+                        "type": "absent"
+                      },
+                      "contextReceivers": [],
+                      "valueParameters": [
+                        "kotlin/collections/List<io/github/amichne/kast/query/contract/QueryStepSyntax>",
+                        "io/github/amichne/kast/query/contract/QueryOutputSyntax"
+                      ],
+                      "typeParameterCount": 0
+                    }
+                  }
+                },
+                "target": {
+                  "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                  "kind": "classlike",
+                  "name": "Concat",
+                  "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                  "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                  "range": {
+                    "startInclusive": 2491,
+                    "endExclusive": 2560
+                  },
+                  "compilerEvidence": {
+                    "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                    "signature": {
+                      "type": "class-like",
+                      "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                    }
+                  }
+                },
+                "occurrence": {
+                  "candidateSelector": "candidate:v5:dN-SrCwe8gj5t8ru78YlMA",
+                  "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                  "range": {
+                    "startInclusive": 6088,
+                    "endExclusive": 6094
+                  }
+                },
+                "provenance": "k2-authored-source",
+                "coverage": "exact-compiler-confirmed"
+              }
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "not_requested"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "08-read-a",
+      "capturedAt": "2026-09-29T02:28:26.380004+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "result": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6",
+          "type": "READ_RESULT",
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2491,
+                  "endExclusive": 2560
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                    "kind": "classlike",
+                    "name": "Concat",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:ac4e5de5-bea5-4615-b084-75f6c4c613ca"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:wAoCCHYT1Ou_bGy1bITUyA",
+              "kind": "classlike",
+              "name": "Distinct",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2919,
+                  "endExclusive": 2957
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:wAoCCHYT1Ou_bGy1bITUyA",
+                    "kind": "classlike",
+                    "name": "Distinct",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Distinct",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2919,
+                      "endExclusive": 2957
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|e8f655bdbba251fbc4ef35d9fec50c706ca318207b26af78f6bb47aeb2249f15",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Distinct"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:l45CIXVzuZW9NTDdV1Y2zA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2919,
+                      "endExclusive": 2957
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:bd53169a-0826-4d59-8b98-b61a6699243e"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:qF8AmG6JoffCQFKyDnu2xQ",
+              "kind": "classlike",
+              "name": "Related",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2247,
+                  "endExclusive": 2313
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:qF8AmG6JoffCQFKyDnu2xQ",
+                    "kind": "classlike",
+                    "name": "Related",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Related",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2247,
+                      "endExclusive": 2313
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|2e98e11b887d95a9bb448918d27d90bb7550617aa7eb3bd4435fde0d8396e0f8",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Related"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:Ij9L4XY6JfRb5azFaSL_WQ",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2247,
+                      "endExclusive": 2313
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:0fc850b0-0e43-4847-96a0-e8f304d4f34f"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:DN9Aidin6A3P_nm4rbVaXQ",
+              "kind": "classlike",
+              "name": "Union",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2650,
+                  "endExclusive": 2724
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:DN9Aidin6A3P_nm4rbVaXQ",
+                    "kind": "classlike",
+                    "name": "Union",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Union",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2650,
+                      "endExclusive": 2724
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|ece204f3de256f8f23ca06e71d623b143c2bf33622648ce2408f66998cec8234",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Union"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:lIL56wfDCjJJ304qmRbq_w",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2650,
+                      "endExclusive": 2724
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:9442a100-2f97-4a68-afaf-766caaef4f2e"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:1E9RI0uq0lnxbwiAy_61lA",
+              "kind": "classlike",
+              "name": "Join",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2815,
+                  "endExclusive": 2913
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:1E9RI0uq0lnxbwiAy_61lA",
+                    "kind": "classlike",
+                    "name": "Join",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Join",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2815,
+                      "endExclusive": 2913
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|9c76694d9be60ba554914b40806aac85786bc7108ef42f4e2c18e7e58c420233",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Join"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:kTL7b2AeatEXwuK9keQW6Q",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2815,
+                      "endExclusive": 2913
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:00c39d40-9995-4872-b5da-0273de9d15b8"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:Ken6I-vItQgRyggu3BV5WQ",
+              "kind": "classlike",
+              "name": "Walk",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2319,
+                  "endExclusive": 2485
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:Ken6I-vItQgRyggu3BV5WQ",
+                    "kind": "classlike",
+                    "name": "Walk",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Walk",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2319,
+                      "endExclusive": 2485
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|d78e224056ff6ccd82dcfe3fdba01b9d88a29080de745f5462083a68956535ed",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Walk"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:mxz6GXjuFHpsmqZESOzqGA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2319,
+                      "endExclusive": 2485
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:ac63ac5b-93e0-4db4-a58e-1dda4d86680c"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:GUFygQMVmk9DfmtqpKYpQg",
+              "kind": "classlike",
+              "name": "Where",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2176,
+                  "endExclusive": 2241
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:GUFygQMVmk9DfmtqpKYpQg",
+                    "kind": "classlike",
+                    "name": "Where",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Where",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2176,
+                      "endExclusive": 2241
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|3d39aadd670ef867569a3c1db0f127ba513f7dee7bf6c8b4281621bcf7ebb7ef",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Where"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:87F3i0H8hLYU-CRODOobEA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2176,
+                      "endExclusive": 2241
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:ceb67d12-f34e-4f25-874d-367d6a1f6562"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:cD8Oia5sd9bsbtWd_10QlQ",
+              "kind": "classlike",
+              "name": "ProjectBinding",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2099,
+                  "endExclusive": 2170
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:cD8Oia5sd9bsbtWd_10QlQ",
+                    "kind": "classlike",
+                    "name": "ProjectBinding",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.ProjectBinding",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2099,
+                      "endExclusive": 2170
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4b1bc8226abf866b80328d27b2fca4056865f478f35f5a56bcc50039c92e6486",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.ProjectBinding"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:_Sd6jBj4v2pgBtA1KfkaTg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2099,
+                      "endExclusive": 2170
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:48f435e8-fa86-432d-9dad-4ce37d2cbb26"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:M1-yWfOOGXaDa2CN3q_jyg",
+              "kind": "classlike",
+              "name": "Difference",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2730,
+                  "endExclusive": 2809
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:M1-yWfOOGXaDa2CN3q_jyg",
+                    "kind": "classlike",
+                    "name": "Difference",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Difference",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2730,
+                      "endExclusive": 2809
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|e1da89b02edc70b382a04888b022b0148cf25bbe4cb72a752a6a6d6f2b0d7123",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Difference"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:grlhhz2H7fX8Dey2hEQjnA",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2730,
+                      "endExclusive": 2809
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:10a1282f-af40-4a00-9c1d-ca5260707850"
+            },
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:XK8kjDGDxzl8lxnRo6kG8A",
+              "kind": "classlike",
+              "name": "Intersect",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2566,
+                  "endExclusive": 2644
+                }
+              },
+              "signature": null,
+              "connections": [
+                {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:XK8kjDGDxzl8lxnRo6kG8A",
+                    "kind": "classlike",
+                    "name": "Intersect",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Intersect",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2566,
+                      "endExclusive": 2644
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|272842cb80daa2b63ac7723c1a353fc717b581ae5905b7ae82ea4d6df1361940",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Intersect"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:DJO7oSD3GZHNH45q5TcFDQ",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2566,
+                      "endExclusive": 2644
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              ],
+              "row_id": "result-row:v1:14cc0599-3d6f-4d0b-866e-94eec845725f"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "09-read-c",
+      "capturedAt": "2026-09-29T02:28:27.319225+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "result": "result:v1:5f7d2f98-f897-4639-9a83-82c84659f2d3",
+          "type": "READ_RESULT",
+          "output": {
+            "type": "BINDING_ROWS"
+          },
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "binding_row",
+              "left": {
+                "type": "occurrence",
+                "name": "step",
+                "symbol": {
+                  "ref": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                  "kind": "classlike",
+                  "name": "Concat",
+                  "location": {
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "signature": {
+                    "type": "class-like",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                  },
+                  "connections": [
+                    {
+                      "meaning": "implementations",
+                      "source": {
+                        "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                        "kind": "classlike",
+                        "name": "Concat",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                        "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                        "range": {
+                          "startInclusive": 2491,
+                          "endExclusive": 2560
+                        },
+                        "compilerEvidence": {
+                          "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                          "signature": {
+                            "type": "class-like",
+                            "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                          }
+                        }
+                      },
+                      "target": {
+                        "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                        "kind": "classlike",
+                        "name": "QueryStepSyntax",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                        "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                        "range": {
+                          "startInclusive": 2060,
+                          "endExclusive": 2959
+                        },
+                        "compilerEvidence": {
+                          "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                          "signature": {
+                            "type": "class-like",
+                            "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                          }
+                        }
+                      },
+                      "occurrence": {
+                        "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                        "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                        "range": {
+                          "startInclusive": 2491,
+                          "endExclusive": 2560
+                        }
+                      },
+                      "provenance": "k2-authored-source",
+                      "coverage": "exact-compiler-confirmed"
+                    }
+                  ]
+                },
+                "relation": {
+                  "meaning": "implementations",
+                  "source": {
+                    "selector": "exact:v5:W_YiADZQexoe6GZQVSKJxw",
+                    "kind": "classlike",
+                    "name": "Concat",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|4d832df76a4f8537d18779f2a68caf813335248efa71c30edeb3b08708db803a",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:AgYz3HppCCSw83_N6YkpQw",
+                    "kind": "classlike",
+                    "name": "QueryStepSyntax",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2060,
+                      "endExclusive": 2959
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|da6353feba10016e70b68af9f7da0386fb462e869b45f38a9f3ee843fae8b01f",
+                      "signature": {
+                        "type": "class-like",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax"
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:WP9EuNJjm1a0aAPjY-Lagg",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              },
+              "right": {
+                "type": "symbol",
+                "name": "candidate",
+                "symbol": {
+                  "ref": "exact:v5:ZyB30aGR7p_w5IoMZkLOqQ",
+                  "kind": "classlike",
+                  "name": "Concat",
+                  "location": {
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                    "range": {
+                      "startInclusive": 2491,
+                      "endExclusive": 2560
+                    }
+                  },
+                  "signature": {
+                    "type": "class-like",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryStepSyntax.Concat"
+                  },
+                  "connections": []
+                }
+              },
+              "row_id": "result-row:v1:e85ea4e5-2988-4b9d-ac44-ba1616424741"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:5f7d2f98-f897-4639-9a83-82c84659f2d3"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "10-incomplete-right",
+      "capturedAt": "2026-09-29T02:28:28.292904+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "Concat",
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "query/contract",
+              "sourceSetNames": [
+                "main"
+              ]
+            }
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 1
+          }
+        }
+      },
+      "response": {
+        "type": "qualified",
+        "document": {
+          "operation": "query.run",
+          "status": "qualified",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:VmsgfGbMAExz5p7PbqOHag",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                "range": {
+                  "startInclusive": 2519,
+                  "endExclusive": 2615
+                }
+              },
+              "signature": {
+                "type": "class-like",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.ExactQueryStage.Concat"
+              },
+              "connections": [],
+              "row_id": "result-row:v1:8c511801-b05d-40a2-a20a-b72a28cdf07a"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:f05dc77b-4f93-48c5-a235-fa7b2c4354a3"
+          },
+          "coverage": {
+            "exhaustive": false
+          },
+          "qualification": {
+            "knownMinimum": 1,
+            "limitations": [
+              "discovery-incomplete"
+            ],
+            "progress": {
+              "type": "terminal_incomplete",
+              "reason": "upstream-incomplete"
+            }
+          },
+          "continuation": null,
+          "terminal_reason": "upstream-incomplete",
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "caller",
+              "requested": 1,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 1,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "11-reject-difference",
+      "capturedAt": "2026-09-29T02:28:29.219085+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "RESULT",
+            "result": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "steps": [
+            {
+              "type": "DIFFERENCE",
+              "right": {
+                "type": "RESULT",
+                "result": "result:v1:f05dc77b-4f93-48c5-a235-fa7b2c4354a3"
+              }
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "rejected_document",
+        "document": {
+          "operation": "query.run",
+          "status": "rejected",
+          "rejection": {
+            "type": "execution-rejected",
+            "reason": "right-input-incomplete"
+          },
+          "next_action": "correct_request",
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "12-bounded-symbols",
+      "capturedAt": "2026-09-29T02:28:30.195962+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:VmsgfGbMAExz5p7PbqOHag",
+              "exact:v5:ZyB30aGR7p_w5IoMZkLOqQ"
+            ]
+          },
+          "retention": "RETAIN",
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 1
+          }
+        }
+      },
+      "response": {
+        "type": "qualified",
+        "document": {
+          "operation": "query.run",
+          "status": "qualified",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:VmsgfGbMAExz5p7PbqOHag",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                "range": {
+                  "startInclusive": 2519,
+                  "endExclusive": 2615
+                }
+              },
+              "signature": null,
+              "connections": [],
+              "row_id": "result-row:v1:23717b71-638d-412f-87f2-bdf72e31f411"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:3cbd73cb-f184-46ee-8102-0228a882734b"
+          },
+          "coverage": {
+            "exhaustive": false
+          },
+          "qualification": {
+            "knownMinimum": 1,
+            "limitations": [
+              "result-limit-reached"
+            ],
+            "progress": {
+              "type": "resumable",
+              "checkpoint": {
+                "type": "upstream",
+                "token": "query:v1:0b89fbb4-f1ca-4603-93a4-4f6fbe8cd0b6"
+              },
+              "next_action": "resume"
+            }
+          },
+          "continuation": "query:v1:0b89fbb4-f1ca-4603-93a4-4f6fbe8cd0b6",
+          "terminal_reason": null,
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "caller",
+              "requested": 1,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 1,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "13-resume",
+      "capturedAt": "2026-09-29T02:28:32.392723+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "continuation": "query:v1:0b89fbb4-f1ca-4603-93a4-4f6fbe8cd0b6",
+          "type": "RESUME",
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:ZyB30aGR7p_w5IoMZkLOqQ",
+              "kind": "classlike",
+              "name": "Concat",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt",
+                "range": {
+                  "startInclusive": 2491,
+                  "endExclusive": 2560
+                }
+              },
+              "signature": null,
+              "connections": [],
+              "row_id": "result-row:v1:a5694ac6-db49-4195-a0f1-4a2cea6e2d20"
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "retained",
+            "reference": "result:v1:72b8d93b-a891-41cc-9935-20a5e466c58c"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "14-function-discovery",
+      "capturedAt": "2026-09-29T02:28:33.686442+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SEARCH_DECLARATIONS",
+            "declarationName": "exactStage",
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "scope": {
+              "type": "DIRECTORY",
+              "relativeDirectoryPath": "query/contract",
+              "sourceSetNames": [
+                "main"
+              ]
+            }
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "exact-symbol",
+              "ref": "exact:v5:gnQi0PkLAAz1MfRnX8mDog",
+              "kind": "function",
+              "name": "exactStage",
+              "location": {
+                "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                "range": {
+                  "startInclusive": 5270,
+                  "endExclusive": 6814
+                }
+              },
+              "signature": {
+                "type": "function",
+                "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.exactStage",
+                "receiver": {
+                  "type": "absent"
+                },
+                "contextReceivers": [],
+                "valueParameters": [
+                  "kotlin/collections/List<io/github/amichne/kast/query/contract/QueryStepSyntax>",
+                  "io/github/amichne/kast/query/contract/QueryOutputSyntax"
+                ],
+                "typeParameterCount": 0
+              },
+              "connections": []
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [],
+          "retention": {
+            "kind": "not_requested"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "15-caller-walk",
+      "capturedAt": "2026-09-29T02:28:35.210860+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "exact:v5:gnQi0PkLAAz1MfRnX8mDog"
+            ]
+          },
+          "steps": [
+            {
+              "type": "WALK",
+              "relation": "CALLERS",
+              "maximumDepth": 2
+            }
+          ],
+          "output": {
+            "type": "TRAVERSAL_RECORDS"
+          },
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "complete",
+        "document": {
+          "operation": "query.run",
+          "status": "complete",
+          "items": [
+            {
+              "type": "traversal_record",
+              "ref": "exact:v5:gYTyRt1mpXhmBjUzDUqLFA",
+              "record": {
+                "depth": 1,
+                "relation": {
+                  "meaning": "callers",
+                  "source": {
+                    "selector": "exact:v5:gYTyRt1mpXhmBjUzDUqLFA",
+                    "kind": "function",
+                    "name": "admit",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.admit",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                    "range": {
+                      "startInclusive": 4027,
+                      "endExclusive": 5264
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|465d18730991d4dfa70c95efcb5c8060e3a725f1d9ca2b3a1057a290be95c6cb",
+                      "signature": {
+                        "type": "function",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.admit",
+                        "receiver": {
+                          "type": "absent"
+                        },
+                        "contextReceivers": [],
+                        "valueParameters": [
+                          "io/github/amichne/kast/query/contract/QueryPlanSyntax"
+                        ],
+                        "typeParameterCount": 0
+                      }
+                    }
+                  },
+                  "target": {
+                    "selector": "exact:v5:gnQi0PkLAAz1MfRnX8mDog",
+                    "kind": "function",
+                    "name": "exactStage",
+                    "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.exactStage",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                    "range": {
+                      "startInclusive": 5270,
+                      "endExclusive": 6814
+                    },
+                    "compilerEvidence": {
+                      "identity": "canonical-signature-sha256-v1|c24315451bf6d83a84c52b11e6b04f40b6afe4d4c7725edfbe20991e8107d587",
+                      "signature": {
+                        "type": "function",
+                        "qualifiedIdentity": "io.github.amichne.kast.query.contract.QueryPlanCompiler.exactStage",
+                        "receiver": {
+                          "type": "absent"
+                        },
+                        "contextReceivers": [],
+                        "valueParameters": [
+                          "kotlin/collections/List<io/github/amichne/kast/query/contract/QueryStepSyntax>",
+                          "io/github/amichne/kast/query/contract/QueryOutputSyntax"
+                        ],
+                        "typeParameterCount": 0
+                      }
+                    }
+                  },
+                  "occurrence": {
+                    "candidateSelector": "candidate:v5:P1zYlKP42vEKZxgGr5Ng7w",
+                    "file": "/workspace/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt",
+                    "range": {
+                      "startInclusive": 4698,
+                      "endExclusive": 4708
+                    }
+                  },
+                  "provenance": "k2-authored-source",
+                  "coverage": "exact-compiler-confirmed"
+                }
+              }
+            }
+          ],
+          "failures": [],
+          "omissions": [],
+          "walk_observations": [
+            {
+              "subject": "exact:v5:gnQi0PkLAAz1MfRnX8mDog",
+              "relation": "callers",
+              "maximum_depth": 2,
+              "expanded_frontier": 2,
+              "progress": {
+                "checkpointSequence": 1,
+                "totalReads": 2,
+                "totalEdges": 1,
+                "maximumDepthReached": 1
+              },
+              "strategy": {
+                "type": "breadth_first"
+              },
+              "partial_expansions": [],
+              "coverage": {
+                "kind": "complete"
+              }
+            }
+          ],
+          "retention": {
+            "kind": "not_requested"
+          },
+          "coverage": {
+            "exhaustive": true
+          },
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          },
+          "live": {
+            "root": "/workspace/kast",
+            "host": "3d40fbd3-bbcf-4ec7-91c4-360c9704d156",
+            "epoch": 7,
+            "contentView": "SAVED_PSI_COMMITTED",
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "16-reject-anti",
+      "capturedAt": "2026-09-29T02:28:59.250527+00:00",
+      "tool": "query_symbols",
+      "request": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "RESULT",
+            "result": "result:v1:215fbc6e-962a-425f-b4c9-4c21541eb2b6"
+          },
+          "steps": [
+            {
+              "type": "JOIN",
+              "mode": {
+                "type": "ANTI"
+              },
+              "right": {
+                "type": "RESULT",
+                "result": "result:v1:f05dc77b-4f93-48c5-a235-fa7b2c4354a3"
+              }
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000
+          }
+        }
+      },
+      "response": {
+        "type": "rejected_document",
+        "document": {
+          "operation": "query.run",
+          "status": "rejected",
+          "rejection": {
+            "type": "execution-rejected",
+            "reason": "right-input-incomplete"
+          },
+          "next_action": "correct_request",
+          "execution_budget": {
+            "max_elapsed_ms": {
+              "selection": "caller",
+              "requested": 15000,
+              "configuredDefault": 2000,
+              "operatorCeiling": 2147483646,
+              "effective": 15000,
+              "clamping": []
+            },
+            "max_work_units": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 100000,
+              "operatorCeiling": 2147483646,
+              "effective": 100000,
+              "clamping": []
+            },
+            "max_results": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 128,
+              "operatorCeiling": 2147483646,
+              "effective": 128,
+              "clamping": []
+            },
+            "max_returned_bytes": {
+              "selection": "configured_default",
+              "requested": null,
+              "configuredDefault": 49152,
+              "operatorCeiling": 2147483646,
+              "effective": 49152,
+              "clamping": []
+            }
+          }
+        }
+      }
+    }
+  ]
+}

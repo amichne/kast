@@ -1037,7 +1037,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/development/knowledge-upkeep.md",
-        "sourceSha256": "1cf8493de617f396d5bdaa8058d6ed8b9ec617bd0a3382c75418600c9fbaeecd",
+        "sourceSha256": "cb6ce4e086b80eb495ff970ba90efcd31a026974ea5c2c01287fdc918245cce6",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",

@@ -183,3 +183,49 @@ Focused separation procedures cover qualified source evidence, failed source evi
 The RED run reported three missing-function failures and 24 passes.
 The GREEN run passed all 28 publication procedures.
 The next action is independent review, required source gates, and the authorized merge after terminal green checks.
+
+## Published source and legacy asset repair
+
+PR #1163 merged as `9ef9e65825b09f5e031322ab98f310276e2eb51f` after every required hosted gate passed.
+The candidate and main share tree `445ab2812df2a4a8284422538b53b332d608e242`.
+Mintlify reports that exact merge live through check `125984267194`.
+The source-only hosted report qualifies all 70 obligations and keeps publication as `not-assessed`.
+
+The post-deployment HTTP sample covers 26 entry and legacy routes.
+Twenty-one route or redirect cases pass.
+Two JSON files return exact canonical bytes at their original paths instead of the configured external redirects.
+The query-symbols route and its legacy redirect time out.
+The legacy `/examples/query-walkthrough.json` returns 404 while its canonical reference file returns 200.
+The raw report resides at `build/reports/documentation/live-routes.json`.
+
+The follow-up projects a static alias through the existing public projector.
+`docs/okf-public.json` declares its source and destination.
+The destination stays under `docs/public/examples/` to protect the other content owners.
+The alias keeps every byte of the historical capture.
+A changed canonical file must regenerate the alias.
+A missing or changed alias rejects parity.
+The query-symbols renderer remains a separate unresolved obligation.
+
+The follow-up passes 73 projector cases and independent source review.
+Native run `b9e5b794-59f5-489d-8a86-2c0c1fb502bf` reconciles the unchanged projector Claim.
+The canonical body remains identical, so its grade-12 advisory keeps the same disposition and comprehension limit.
+The refreshed finding binds the new metadata bytes.
+
+The live browser report at `evidence/rendered/live-9ef9-callables/report.json` samples 24 states across four callable routes.
+Its sampled focus, zoom, and document overflow assertions pass.
+Hosted selectors differ from local preview selectors, so the diagnostic measurement records that substitution explicitly.
+Full recursive footprints remain unknown.
+The report creates no publication receipt and makes no full acceptance claim.
+
+## Durable review identity
+
+The first follow-up CI passes source obligations, packaging, prose, and every generated parity procedure.
+Source qualification rejects its review identity because commit `cbf13253648ad7fef8dd977162e507465b344623` is absent from the fresh clone.
+That commit belonged to the branch before the squash merge.
+The failure preserves the publication rule instead of admitting an unresolved identity.
+
+The repair changes only each association's reviewed revision to merged main `9ef9e65825b09f5e031322ab98f310276e2eb51f`.
+All 56 content closures, Claim statement hashes, and generated owner hashes remain unchanged.
+Every association passes explicit assessment against those accepted bytes.
+The merged main revision is an ancestor of the follow-up candidate.
+No parser, schema, test, or identity requirement changes.

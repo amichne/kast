@@ -1,0 +1,400 @@
+{
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "code": [
+    "{\n  \"status\": \"completed\",\n  \"document\": {\n    \"operation\": \"diagnostic.check\",\n    \"status\": \"complete\",\n    \"diagnostics\": [\n      {\n        \"severity\": \"error\",\n        \"code\": \"<string>\",\n        \"message\": \"<string>\",\n        \"location\": {\n          \"candidateSelector\": \"<string>\",\n          \"file\": \"<string>\",\n          \"range\": {\n            \"startInclusive\": 1,\n            \"endExclusive\": 1\n          }\n        }\n      }\n    ],\n    \"analysisKind\": \"IDE_FILE_DIAGNOSTICS\",\n    \"coverage\": {\n      \"requestedPath\": \"<string>\",\n      \"filesDiscovered\": 123,\n      \"filesAnalyzed\": 123,\n      \"filesSkipped\": 123,\n      \"exhaustive\": true\n    },\n    \"progress\": {\n      \"stage\": \"enumeration\",\n      \"inventory\": {\n        \"type\": \"enumerating\"\n      },\n      \"analyzedFiles\": [\n        \"<string>\"\n      ],\n      \"stop\": \"enumeration_work_limit\",\n      \"knownDiagnosticCount\": 1073741823,\n      \"execution_budget\": {\n        \"mode\": \"BOUNDED\",\n        \"max_elapsed_ms\": {\n          \"selection\": \"configured_default\",\n          \"requested\": 2,\n          \"configuredDefault\": 2,\n          \"operatorCeiling\": 2,\n          \"effective\": 2,\n          \"clamping\": [\n            \"operator_ceiling\"\n          ]\n        },\n        \"max_work_units\": {\n          \"selection\": \"configured_default\",\n          \"requested\": 2,\n          \"configuredDefault\": 2,\n          \"operatorCeiling\": 2,\n          \"effective\": 2,\n          \"clamping\": [\n            \"operator_ceiling\"\n          ]\n        },\n        \"max_results\": {\n          \"selection\": \"configured_default\",\n          \"requested\": 2,\n          \"configuredDefault\": 2,\n          \"operatorCeiling\": 2,\n          \"effective\": 2,\n          \"clamping\": [\n            \"operator_ceiling\"\n          ]\n        },\n        \"max_returned_bytes\": {\n          \"selection\": \"configured_default\",\n          \"requested\": 2,\n          \"configuredDefault\": 2,\n          \"operatorCeiling\": 2,\n          \"effective\": 2,\n          \"clamping\": [\n            \"operator_ceiling\"\n          ]\n        }\n      },\n      \"requestedPath\": \"<string>\"\n    }\n  }\n}"
+  ],
+  "controls": [
+    {
+      "expanded": null,
+      "label": "200",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "Copy the contents from the code block",
+      "pressed": null,
+      "selected": null
+    },
+    {
+      "expanded": null,
+      "label": "completed",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "rejected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "complete",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "complete \u00b7 live",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "qualified",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "qualified \u00b7 live",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "rejected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "rejected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "transportRejected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "hostedReadRejection",
+      "pressed": null,
+      "selected": "false"
+    }
+  ],
+  "documentOverflow": false,
+  "focus": {
+    "boxShadow": "none",
+    "focusVisible": false,
+    "name": "",
+    "outline": "rgb(255, 255, 255) none 3px",
+    "tag": "BODY",
+    "visible": true
+  },
+  "fonts": [
+    {
+      "sha256": "57b28aaaffc46f85ed5b5adeda22bc7bce0fcdbf3e6f84850c327765fe6fdc6b",
+      "url": "{origin}/_mintlify/assets/fonts/PaperMono-Variable.woff2"
+    },
+    {
+      "sha256": "f546c4f8b45bd7c37fe7b5c0312ac31483dc5ce23705bbd6cfc77282b3297abf",
+      "url": "{origin}/_mintlify/assets/fonts/google/s/suse/v4/MwQ5bhb078Wt2V9BPQ.woff2"
+    }
+  ],
+  "headingCount": 1,
+  "missingImageAlternatives": 0,
+  "route": "/reference/callables/check-diagnostics",
+  "segments": [
+    {
+      "initialViewport": true,
+      "text": "Check diagnostics"
+    },
+    {
+      "initialViewport": true,
+      "text": "Inputs and response fields for check_diagnostics."
+    },
+    {
+      "initialViewport": true,
+      "text": "200"
+    },
+    {
+      "initialViewport": false,
+      "text": "This callable is not an HTTP endpoint. Its schemas describe the hosted tool. Direct MCP and tool RPC wrap the same semantic document differently. See the"
+    },
+    {
+      "initialViewport": false,
+      "text": "MCP contract"
+    },
+    {
+      "initialViewport": false,
+      "text": "or"
+    },
+    {
+      "initialViewport": false,
+      "text": "tool RPC contract"
+    },
+    {
+      "initialViewport": false,
+      "text": ". Return to"
+    },
+    {
+      "initialViewport": false,
+      "text": "Schemas and samples"
+    },
+    {
+      "initialViewport": false,
+      "text": "for related contracts."
+    },
+    {
+      "initialViewport": false,
+      "text": "Body"
+    },
+    {
+      "initialViewport": false,
+      "text": "application/json"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "relativePath"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal."
+    },
+    {
+      "initialViewport": false,
+      "text": "Required string length:"
+    },
+    {
+      "initialViewport": false,
+      "text": "1 - 1048576"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "verbose"
+    },
+    {
+      "initialViewport": false,
+      "text": "boolean"
+    },
+    {
+      "initialViewport": false,
+      "text": "default:"
+    },
+    {
+      "initialViewport": false,
+      "text": "false"
+    },
+    {
+      "initialViewport": false,
+      "text": "Return execution diagnostics and redundant phase detail when true. Omitted or false returns compact semantic results, preserving qualifications, references, continuation and recovery evidence."
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "maxDiagnostics"
+    },
+    {
+      "initialViewport": false,
+      "text": "integer | null"
+    },
+    {
+      "initialViewport": false,
+      "text": "default:"
+    },
+    {
+      "initialViewport": false,
+      "text": "100"
+    },
+    {
+      "initialViewport": false,
+      "text": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+    },
+    {
+      "initialViewport": false,
+      "text": "Required range"
+    },
+    {
+      "initialViewport": false,
+      "text": ":"
+    },
+    {
+      "initialViewport": false,
+      "text": "1 <= x <= 1000"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "continuation"
+    },
+    {
+      "initialViewport": false,
+      "text": "string | null"
+    },
+    {
+      "initialViewport": false,
+      "text": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
+    },
+    {
+      "initialViewport": false,
+      "text": "Required string length:"
+    },
+    {
+      "initialViewport": false,
+      "text": "1 - 1048576"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "executionBudget"
+    },
+    {
+      "initialViewport": false,
+      "text": "ExecutionBudget \u00b7 object \u00b7 null \u00b7 null"
+    },
+    {
+      "initialViewport": false,
+      "text": "RUNNER_CONTROLLED has no implicit semantic work or time limit. It accepts an explicit timeout and output page controls. Legacy BOUNDED mode uses configured grants and ceilings."
+    },
+    {
+      "initialViewport": false,
+      "text": "Show"
+    },
+    {
+      "initialViewport": false,
+      "text": "child attributes"
+    },
+    {
+      "initialViewport": false,
+      "text": "Response"
+    },
+    {
+      "initialViewport": false,
+      "text": "200 - application/json"
+    },
+    {
+      "initialViewport": false,
+      "text": "Invocation envelope: completed contains a semantic document; rejected contains a boundary diagnostic. A completed invocation may still contain a qualified or rejected semantic outcome."
+    },
+    {
+      "initialViewport": false,
+      "text": "completed"
+    },
+    {
+      "initialViewport": false,
+      "text": "rejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "status"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "Process outcome."
+    },
+    {
+      "initialViewport": false,
+      "text": "Allowed value:"
+    },
+    {
+      "initialViewport": false,
+      "text": "\"completed\""
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "document"
+    },
+    {
+      "initialViewport": false,
+      "text": "complete \u00b7 object"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "complete"
+    },
+    {
+      "initialViewport": false,
+      "text": "complete \u00b7 live"
+    },
+    {
+      "initialViewport": false,
+      "text": "qualified"
+    },
+    {
+      "initialViewport": false,
+      "text": "qualified \u00b7 live"
+    },
+    {
+      "initialViewport": false,
+      "text": "rejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "rejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "transportRejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "hostedReadRejection"
+    },
+    {
+      "initialViewport": false,
+      "text": "Show"
+    },
+    {
+      "initialViewport": false,
+      "text": "child attributes"
+    }
+  ],
+  "theme": "dark",
+  "title": "Check diagnostics",
+  "viewport": {
+    "deviceScaleFactor": 2,
+    "height": 500,
+    "visualScale": 1,
+    "width": 720
+  }
+}

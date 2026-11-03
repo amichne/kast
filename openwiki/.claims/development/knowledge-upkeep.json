@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1cf8493de617f396d5bdaa8058d6ed8b9ec617bd0a3382c75418600c9fbaeecd",
+  "pageVersion": "sha256:cb6ce4e086b80eb495ff970ba90efcd31a026974ea5c2c01287fdc918245cce6",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -60,7 +60,7 @@
         },
         {
           "resource": "repo://docs/tooling/okf_public.py",
-          "version": "repo-file-v1:sha256:b21d0b63009aa99da4ba0dc108d9fe53b7303597cf3ae9bec0120ed637345c2e"
+          "version": "repo-file-v1:sha256:b7256b94941414dfe2bae0ba8ff03a5c57723be378a51adff7744784af4ed92d"
         }
       ]
     },
@@ -87,6 +87,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T14:13:30.978Z"
+    "at": "2026-11-03T14:47:54.256Z"
   }
 }

@@ -1,0 +1,474 @@
+{
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "code": [
+    "{\n  \"status\": \"completed\",\n  \"document\": {\n    \"type\": \"blocked\",\n    \"reason\": \"MODEL_RELOAD_REQUIRED\",\n    \"preparation\": {\n      \"stage\": \"OPENING\",\n      \"elapsedMillis\": 123,\n      \"limitMillis\": 123,\n      \"remainingMillis\": 123,\n      \"limitingOwner\": \"PREPARATION_OWNER\"\n    },\n    \"exchange\": {\n      \"command\": \"INSPECT\",\n      \"stage\": \"PATH_ADMISSION\",\n      \"cause\": \"SOCKET_MISSING\",\n      \"elapsedMillis\": 123,\n      \"limitMillis\": 123\n    }\n  }\n}"
+  ],
+  "controls": [
+    {
+      "expanded": null,
+      "label": "200",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "Copy the contents from the code block",
+      "pressed": null,
+      "selected": null
+    },
+    {
+      "expanded": null,
+      "label": "close",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "inspect",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "open",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "present",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "release",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "request_user_close",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "status",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "completed",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "rejected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "blocked",
+      "pressed": null,
+      "selected": "true"
+    },
+    {
+      "expanded": null,
+      "label": "closed",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "configured",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "host_refresh_requested",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "host_resumed",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "host_settled",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "host_settling",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "host_stop_requested",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "inspected",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "opened",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "pending",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "presented",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "released",
+      "pressed": null,
+      "selected": "false"
+    },
+    {
+      "expanded": null,
+      "label": "synced",
+      "pressed": null,
+      "selected": "false"
+    }
+  ],
+  "documentOverflow": false,
+  "focus": {
+    "boxShadow": "none",
+    "focusVisible": false,
+    "name": "",
+    "outline": "rgb(0, 0, 0) none 3px",
+    "tag": "BODY",
+    "visible": true
+  },
+  "fonts": [
+    {
+      "sha256": "57b28aaaffc46f85ed5b5adeda22bc7bce0fcdbf3e6f84850c327765fe6fdc6b",
+      "url": "{origin}/_mintlify/assets/fonts/PaperMono-Variable.woff2"
+    },
+    {
+      "sha256": "f546c4f8b45bd7c37fe7b5c0312ac31483dc5ce23705bbd6cfc77282b3297abf",
+      "url": "{origin}/_mintlify/assets/fonts/google/s/suse/v4/MwQ5bhb078Wt2V9BPQ.woff2"
+    }
+  ],
+  "headingCount": 1,
+  "missingImageAlternatives": 0,
+  "route": "/reference/callables/workspace-lifecycle",
+  "segments": [
+    {
+      "initialViewport": true,
+      "text": "Workspace lifecycle"
+    },
+    {
+      "initialViewport": true,
+      "text": "Inputs and response fields for workspace_lifecycle."
+    },
+    {
+      "initialViewport": true,
+      "text": "200"
+    },
+    {
+      "initialViewport": false,
+      "text": "This callable is not an HTTP endpoint. Its schemas describe the hosted tool. Direct MCP and tool RPC wrap the same semantic document differently. See the"
+    },
+    {
+      "initialViewport": false,
+      "text": "MCP contract"
+    },
+    {
+      "initialViewport": false,
+      "text": "or"
+    },
+    {
+      "initialViewport": false,
+      "text": "tool RPC contract"
+    },
+    {
+      "initialViewport": false,
+      "text": ". Return to"
+    },
+    {
+      "initialViewport": false,
+      "text": "Schemas and samples"
+    },
+    {
+      "initialViewport": false,
+      "text": "for related contracts."
+    },
+    {
+      "initialViewport": false,
+      "text": "Body"
+    },
+    {
+      "initialViewport": false,
+      "text": "application/json"
+    },
+    {
+      "initialViewport": false,
+      "text": "close"
+    },
+    {
+      "initialViewport": false,
+      "text": "inspect"
+    },
+    {
+      "initialViewport": false,
+      "text": "open"
+    },
+    {
+      "initialViewport": false,
+      "text": "present"
+    },
+    {
+      "initialViewport": false,
+      "text": "release"
+    },
+    {
+      "initialViewport": false,
+      "text": "request_user_close"
+    },
+    {
+      "initialViewport": false,
+      "text": "status"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "type"
+    },
+    {
+      "initialViewport": false,
+      "text": "enum<string>"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "Available options"
+    },
+    {
+      "initialViewport": false,
+      "text": ":"
+    },
+    {
+      "initialViewport": false,
+      "text": "close"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "target"
+    },
+    {
+      "initialViewport": false,
+      "text": "object"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "Show"
+    },
+    {
+      "initialViewport": false,
+      "text": "child attributes"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "requestId"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "verbose"
+    },
+    {
+      "initialViewport": false,
+      "text": "boolean"
+    },
+    {
+      "initialViewport": false,
+      "text": "Response"
+    },
+    {
+      "initialViewport": false,
+      "text": "200 - application/json"
+    },
+    {
+      "initialViewport": false,
+      "text": "Invocation envelope: completed contains a semantic document; rejected contains a boundary diagnostic. A completed invocation may still contain a qualified or rejected semantic outcome."
+    },
+    {
+      "initialViewport": false,
+      "text": "completed"
+    },
+    {
+      "initialViewport": false,
+      "text": "rejected"
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "status"
+    },
+    {
+      "initialViewport": false,
+      "text": "string"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "Process outcome."
+    },
+    {
+      "initialViewport": false,
+      "text": "Allowed value:"
+    },
+    {
+      "initialViewport": false,
+      "text": "\"completed\""
+    },
+    {
+      "initialViewport": false,
+      "text": "\u200b"
+    },
+    {
+      "initialViewport": false,
+      "text": "document"
+    },
+    {
+      "initialViewport": false,
+      "text": "blocked \u00b7 object"
+    },
+    {
+      "initialViewport": false,
+      "text": "required"
+    },
+    {
+      "initialViewport": false,
+      "text": "blocked"
+    },
+    {
+      "initialViewport": false,
+      "text": "closed"
+    },
+    {
+      "initialViewport": false,
+      "text": "configured"
+    },
+    {
+      "initialViewport": false,
+      "text": "host_refresh_requested"
+    },
+    {
+      "initialViewport": false,
+      "text": "host_resumed"
+    },
+    {
+      "initialViewport": false,
+      "text": "host_settled"
+    },
+    {
+      "initialViewport": false,
+      "text": "host_settling"
+    },
+    {
+      "initialViewport": false,
+      "text": "host_stop_requested"
+    },
+    {
+      "initialViewport": false,
+      "text": "inspected"
+    },
+    {
+      "initialViewport": false,
+      "text": "opened"
+    },
+    {
+      "initialViewport": false,
+      "text": "pending"
+    },
+    {
+      "initialViewport": false,
+      "text": "presented"
+    },
+    {
+      "initialViewport": false,
+      "text": "released"
+    },
+    {
+      "initialViewport": false,
+      "text": "synced"
+    },
+    {
+      "initialViewport": false,
+      "text": "Show"
+    },
+    {
+      "initialViewport": false,
+      "text": "child attributes"
+    }
+  ],
+  "theme": "light",
+  "title": "Workspace lifecycle",
+  "viewport": {
+    "deviceScaleFactor": 1,
+    "height": 844,
+    "visualScale": 1,
+    "width": 390
+  }
+}
