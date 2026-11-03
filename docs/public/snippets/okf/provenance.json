@@ -499,8 +499,8 @@
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
           "resource": "repo://cli/build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c",
-          "currentVersion": "repo-file-v1:sha256:cbd87241421d2400ac2f5f6e4c3b395ce33aab00da3d8f7c3c066ed3006b6b6c",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:f2998026d8da7a973648a0ddf55d7ba8f75da26cf5fdbd11f8a132f50d02521d",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
