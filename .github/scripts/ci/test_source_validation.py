@@ -44,16 +44,10 @@ def graph_output(tasks):
     return "\n".join(f"{task} SKIPPED" for task in sorted(tasks))
 
 
-def scripted_runs(results):
-    remaining = iter(results)
-
-    def run(command, **kwargs):
-        result = next(remaining)
-        output = kwargs.get("stdout")
-        if hasattr(output, "write"):
-            output.write(result.stdout)
-            return subprocess.CompletedProcess(command, result.returncode)
-        return result
+def graph_process(output, outcome=source.gradle_graph.Outcome.SUCCEEDED, code=0):
+    def run(_command, _root, destination, _budget):
+        (destination / "task-graph.log").write_text(output)
+        return source.gradle_graph.Result(outcome, code, 10)
 
     return run
 
@@ -91,10 +85,8 @@ class SourceValidationTest(unittest.TestCase):
                 tempfile.TemporaryDirectory() as temporary,
                 patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-                patch.object(source.subprocess, "run", side_effect=scripted_runs([
-                    subprocess.CompletedProcess([], 0, "preflight passed"),
-                    subprocess.CompletedProcess([], 0, graph_output(required)),
-                ])),
+                patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
+                patch.object(source.gradle_graph, "run", side_effect=graph_process(graph_output(required))),
                 patch.object(source.subprocess, "Popen") as executed,
                 redirect_stdout(io.StringIO()),
             ):
@@ -143,7 +135,8 @@ class SourceValidationTest(unittest.TestCase):
                 source.main()
             self.assertEqual(0, result.exception.code)
             select.assert_called_once_with(event, "b" * 40, "a" * 40, affected=True)
-            run.assert_called_once_with(ROOT, ROOT / "build/reports/ci/source", None)
+            run.assert_called_once_with(ROOT, ROOT / "build/reports/ci/source", None,
+                                        graph_budget=source.gradle_graph.Budget(600))
 
     def test_selected_command_keeps_complete_owner_population_and_manifest_fields(self):
         plan = verification_plan.plan(
@@ -227,10 +220,8 @@ class SourceValidationTest(unittest.TestCase):
                 with (
                     patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                     patch.object(source, "source_identity", side_effect=[identity, after]) as admitted,
-                    patch.object(source.subprocess, "run", side_effect=scripted_runs([
-                        subprocess.CompletedProcess([], 0, "preflight passed"),
-                        subprocess.CompletedProcess([], 0, graph_output(expected_obligations())),
-                    ])) as planned,
+                    patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
+                    patch.object(source.gradle_graph, "run", side_effect=graph_process(graph_output(expected_obligations()))),
                     patch.object(source.subprocess, "Popen", return_value=process) as executed,
                     redirect_stdout(io.StringIO()),
                 ):
@@ -239,9 +230,6 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertEqual(1, evidence.compilerInvocations)
                 self.assertEqual(expected is source.Outcome.SOURCE_VALIDATED, evidence.exitCode == 0)
                 self.assertEqual(2, admitted.call_count)
-                self.assertEqual(2, planned.call_count)
-                self.assertEqual([source.PREFLIGHT, [*COMMAND, "--dry-run"]],
-                                 [call.args[0] for call in planned.call_args_list])
                 executed.assert_called_once_with(COMMAND, cwd=ROOT, text=True,
                                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 process.wait.assert_called_once_with()
@@ -262,12 +250,13 @@ class SourceValidationTest(unittest.TestCase):
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
                 patch.object(source, "PREFLIGHT", (sys.executable, "-c", "print('preflight')")),
                 patch.object(source, "COMMAND", (sys.executable, "-c", child)),
-                redirect_stdout(io.StringIO()),
+                redirect_stdout(io.StringIO()) as console,
             ):
                 evidence = source.run(ROOT, destination)
             self.assertEqual(7, evidence.exitCode)
             self.assertEqual(source.Outcome.GRAPH_REJECTED, evidence.outcome)
             self.assertEqual("graph progress\n", graph_log.read_text())
+            self.assertIn("graph progress\n", console.getvalue())
             self.assertFalse((destination / "gradle.log").exists())
 
     def test_rejected_graph_never_starts_source_execution(self):
@@ -275,16 +264,57 @@ class SourceValidationTest(unittest.TestCase):
             patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             tempfile.TemporaryDirectory() as temporary,
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-            patch.object(source.subprocess, "run", side_effect=scripted_runs([
-                subprocess.CompletedProcess([], 0, "preflight passed"),
-                subprocess.CompletedProcess([], 0, "BUILD SUCCESSFUL"),
-            ])),
+            patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
+            patch.object(source.gradle_graph, "run", side_effect=graph_process("BUILD SUCCESSFUL")),
             patch.object(source.subprocess, "Popen") as executed,
         ):
             evidence = source.run(ROOT, Path(temporary))
         executed.assert_not_called()
         self.assertEqual(source.Outcome.GRAPH_REJECTED, evidence.outcome)
         self.assertNotEqual(0, evidence.exitCode)
+
+    def test_interrupted_complete_graph_never_starts_source_execution(self):
+        for status, code, expected in (
+            (source.gradle_graph.Outcome.TIMED_OUT, 124, "GRAPH_TIMED_OUT"),
+            (source.gradle_graph.Outcome.CANCELLED, 143, "GRAPH_CANCELLED"),
+            (source.gradle_graph.Outcome.START_FAILED, 1, "PROCESS_FAILED"),
+        ):
+            with (
+                self.subTest(status=status), tempfile.TemporaryDirectory() as temporary,
+                patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
+                patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
+                patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
+                patch.object(source.gradle_graph, "run", side_effect=graph_process(graph_output(expected_obligations()), status, code)),
+                patch.object(source.subprocess, "Popen") as executed,
+            ):
+                destination = Path(temporary)
+                evidence = source.run(ROOT, destination)
+                report = json.loads((destination / "source-execution.json").read_text())
+                self.assertFalse((destination / "gradle.log").exists())
+            executed.assert_not_called()
+            self.assertTrue(evidence.graph.accepted)
+            self.assertEqual(expected, report["outcome"])
+            self.assertEqual(code, report["exitCode"])
+            self.assertEqual("a" * 40, report["sourceRevision"])
+            self.assertEqual("b" * 40, report["sourceTree"])
+
+    def test_graph_deadline_admission_precedes_source_and_preserves_override(self):
+        for value in ("0", "-1", "3601", "nan", "1.5", "60"):
+            with (
+                self.subTest(value=value),
+                patch.object(sys, "argv", ["source_validation.py", "--graph-timeout-seconds", value]),
+                patch.object(source, "run", return_value=Mock(outcome=source.Outcome.GRAPH_TIMED_OUT, exitCode=124)) as run,
+                self.assertRaises(SystemExit) as result,
+                redirect_stdout(io.StringIO()),
+            ):
+                source.main()
+            if value == "60":
+                run.assert_called_once_with(ROOT, ROOT / "build/reports/ci/source", None,
+                                            graph_budget=source.gradle_graph.Budget(60))
+                self.assertEqual(124, result.exception.code)
+            else:
+                run.assert_not_called()
+                self.assertNotEqual(0, result.exception.code)
 
     def test_failed_offline_preflight_never_starts_gradle_execution(self):
         def run(command, **_):
@@ -303,11 +333,15 @@ class SourceValidationTest(unittest.TestCase):
             destination = Path(temporary)
             (destination / "task-graph.log").write_text("previous successful graph")
             (destination / "gradle.log").write_text("previous successful execution")
+            (destination / "task-graph-execution.json").write_text("previous graph result")
+            (destination / "task-graph-process.txt").write_text("previous process observation")
             (destination / "unrelated.log").write_text("keep this file")
             evidence = source.run(ROOT, destination)
             self.assertEqual("offline suite failed", (destination / "preflight.log").read_text())
             self.assertFalse((destination / "task-graph.log").exists())
             self.assertFalse((destination / "gradle.log").exists())
+            self.assertFalse((destination / "task-graph-execution.json").exists())
+            self.assertFalse((destination / "task-graph-process.txt").exists())
             self.assertEqual("keep this file", (destination / "unrelated.log").read_text())
             report = json.loads((destination / "source-execution.json").read_text())
         self.assertEqual("PROCESS_FAILED", report["outcome"])
