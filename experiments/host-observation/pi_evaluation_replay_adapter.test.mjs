@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { createReplayShell } from './pi_evaluation_replay_shell.mjs';
 import { replayOracleControls, gradeReplayDecision } from './pi_evaluation_replay_grading.mjs';
+import { replayTransition } from './pi_evaluation_replay_cases.mjs';
 
 const manifestPath=process.env.KAST_REPLAY_ADAPTER_MANIFEST;
 const integrationAvailable=process.platform==='darwin'&&typeof manifestPath==='string'&&path.isAbsolute(manifestPath)&&fs.existsSync(manifestPath);
@@ -18,19 +19,37 @@ function admission(request,format='JSON') {
  assert.equal(result.status,0,result.stderr);
  return JSON.parse(result.stdout);
 }
-async function shellTrial(command,{format='JSON'}={}) {
+async function shellTrial(command,{format='JSON',caseId}={}) {
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-replay-adapter-')));
  const directory=path.join(root,'fixture');
  let shellCalls=0,entries=0;
  const budget={shell:()=>++shellCalls<=1,invocation:()=>++entries<=1};
  const shell=await createReplayShell({directory,socket:path.join(root,'broker.sock'),budget,
-  admit:request=>admission(request,format),transition:()=>({stdout:'REPLAY_TRANSITION_UNAVAILABLE\n',stderr:'',exitStatus:69})});
+  admit:request=>admission(request,format),transition:receipt=>caseId?replayTransition(caseId,receipt):({stdout:'REPLAY_TRANSITION_UNAVAILABLE\n',stderr:'',exitStatus:69})});
  try {
   const result=await shell.operations.exec(command,directory,{onData:()=>{},signal:new AbortController().signal,timeout:10});
   return {result,invocations:structuredClone(shell.invocations),captures:structuredClone(shell.captures),shellCalls,entries,failed:shell.failed};
  } finally {await shell.dispose();fs.rmSync(root,{recursive:true});}
 }
 const integration={skip:integrationAvailable?false:'Set KAST_REPLAY_ADAPTER_MANIFEST to the prepared JVM adapter manifest on macOS'};
+
+test('production planning and foreign workspaces cannot supply successful fixture reads',integration,async()=>{
+ for(const caseId of ['C3','C6']) {
+  const original=replayOracleControls(caseId).accept[0].command;
+  for(const [command,dimension]of [[original.replace('kast query ','kast query plan '),'action'],[original+' --workspace /another-worktree','scope']]) {
+   const row=await shellTrial(command,{caseId});
+   const receipt=row.invocations[0].admission;
+   assert.equal(receipt.type,'ADMITTED');assert.equal(receipt.nativeCalls,0);
+   const grade=gradeReplayDecision(caseId,{kind:'invoke'},receipt);
+   assert.equal(grade.dimensions.arguments,'PASS');assert.equal(grade.dimensions.target,'PASS');
+   assert.equal(grade.dimensions[dimension],'FAIL');assert.equal(grade.correct,false);
+   assert.equal(row.captures[0].stdout,'');assert.equal(row.captures[0].exitStatus,2);
+   assert.equal(row.captures[0].stderr,'kast replay: FIXTURE_TRANSITION_UNAVAILABLE\n');
+  }
+  const current=await shellTrial(original+' --workspace .');
+  assert.equal(gradeReplayDecision(caseId,{kind:'invoke'},current.invocations[0].admission).correct,true);
+ }
+});
 
 test('restricted real shell preserves equivalent commands through production admission and independent grades',integration,async()=>{
  for(const caseId of ['C1','C2','C3','C4','C6'])for(const control of replayOracleControls(caseId).accept) {

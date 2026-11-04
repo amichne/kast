@@ -4,6 +4,19 @@ import { readFileSync } from 'node:fs';
 import { replayCases, replayCase, heldOutManifest, replayTransition } from './pi_evaluation_replay_cases.mjs';
 import { gradeReplayDecision, replayOracleControls } from './pi_evaluation_replay_grading.mjs';
 
+test('production admission preserves planning and workspace independently of request validity',()=>{
+ const request=replayOracleControls('C3').accept[0].admission.request;
+ const receipt={type:'ADMITTED',arguments:{request},invocation:{operation:'EXECUTE',workspace:{type:'fixture',root:'/fixture',selection:null}}};
+ assert.equal(gradeReplayDecision('C3',{kind:'invoke'},receipt).correct,true);
+ const planned=gradeReplayDecision('C3',{kind:'invoke'},{...receipt,invocation:{...receipt.invocation,operation:'PLAN'}});
+ assert.equal(planned.dimensions.arguments,'PASS');assert.equal(planned.dimensions.target,'PASS');assert.equal(planned.dimensions.action,'FAIL');
+ const foreign=gradeReplayDecision('C3',{kind:'invoke'},{...receipt,invocation:{...receipt.invocation,workspace:{type:'foreign',selection:'/another-worktree',resolved:'/another-worktree',root:'/fixture'}}});
+ assert.equal(foreign.dimensions.arguments,'PASS');assert.equal(foreign.dimensions.target,'PASS');assert.equal(foreign.dimensions.scope,'FAIL');
+ const missing=gradeReplayDecision('C3',{kind:'invoke'},{type:'ADMITTED',arguments:{request}});
+ assert.equal(missing.correct,false);
+ for(const invalid of [{...receipt,invocation:{...receipt.invocation,operation:'PLAN'}},{...receipt,invocation:{...receipt.invocation,workspace:{type:'foreign'}}},{type:'ADMITTED',arguments:{request}}])assert.equal(replayTransition('C3',invalid).type,'unsupported');
+});
+
 test('six case oracles accept independent controls and reject named misuses',()=>{
   assert.equal(replayCases().length,6);
   for(const item of replayCases()) {

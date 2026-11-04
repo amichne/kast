@@ -17,12 +17,36 @@ const syntheticReply=(text,incomplete=false)=>{
  return new Response(events.map(event=>`data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
 };
 const syntheticToolReply=command=>{
- const item={id:'synthetic-call-item',type:'function_call',call_id:'synthetic-repair-call',name:'bash',arguments:JSON.stringify({command}),status:'completed'};
- const events=[{type:'response.created',response:{id:'synthetic-tool-response'}},{type:'response.output_item.added',output_index:0,item:{...item,arguments:''}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-tool-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:20}}}}];
+ const items=(Array.isArray(command)?command:[command]).map((command,index)=>({id:`synthetic-call-item-${index}`,type:'function_call',call_id:`synthetic-repair-call-${index}`,name:'bash',arguments:JSON.stringify({command}),status:'completed'}));
+ const events=[{type:'response.created',response:{id:'synthetic-tool-response'}},...items.flatMap((item,index)=>[{type:'response.output_item.added',output_index:index,item:{...item,arguments:''}},{type:'response.output_item.done',output_index:index,item}]),{type:'response.completed',response:{id:'synthetic-tool-response',status:'completed',output:items,usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:20}}}}];
  return new Response(events.map(event=>`data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
 };
 const decodeBodyText=options=>new Headers(options.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body;
 const decodeBody=options=>JSON.parse(decodeBodyText(options));
+
+test('two SDK shell proposals remain unsuccessful after the first correct invocation',{skip:!planPath},async t=>{
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-replay-excess-proposal-')));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const source=JSON.parse(fs.readFileSync(planPath,'utf8'));
+ const plan={...source,executionProfile:'session',outputRoot:root,adapterManifestSha256:replaySha(fs.readFileSync(source.adapterManifest)),authPath:'/never-read-live-auth',modelsStorePath:'/never-read-live-models'};
+ const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
+ const sdk=await load('dist/index.js'),runtime=await syntheticRuntime(sdk,load);
+ const trial=expandReplayPlan(plan).find(item=>item.caseId==='C6'&&item.repetition===1&&item.format==='TOON');
+ assert.equal((await replayWorker('--preflight',plan,trial,{modelRuntime:runtime})).type,'projected');
+ let sends=0;
+ const report=await replayWorker('--trial',plan,trial,{modelRuntime:runtime,fetch:async()=>{
+  sends++;return syntheticToolReply([replayOracleControls('C6').accept[0].command,'kast query --name OtherService']);
+ }});
+ assert.equal(sends,1);assert.equal(report.providerSends,1);assert.equal(report.nativeCalls,0);
+ assert.equal(report.outcome.type,'incorrect',JSON.stringify(report));
+ assert.equal(report.grade.correct,false);assert.ok(report.grade.misuse.includes('RESOURCE_MISUSE'));
+ assert.equal(report.toolProposals,2);assert.equal(report.blockedToolProposals,1);
+ assert.equal(report.shellCalls,1);assert.equal(report.kastInvocations,1);
+ assert.equal(report.productionAdmission.type,'ADMITTED');
+ assert.equal(normalizeReplayUsage(report.usage).value.totalTokens,110);
+ const ledger=JSON.parse(fs.readFileSync(path.join(root,trial.trialId,'ledger.json')));
+ assert.equal(ledger.toolProposals,2);assert.equal(ledger.blockedToolProposals,1);
+});
 
 test('real SDK replay preserves complete format inputs once at synthetic transport and accounts for failed work', {skip:!planPath},async t=>{
  assert.ok(path.isAbsolute(planPath));

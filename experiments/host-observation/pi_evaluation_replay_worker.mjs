@@ -150,7 +150,7 @@ export async function replayWorker(mode,plan,trial,services={}) {
     return payload;
    });
    pi.on('tool_call',(event,ctx)=>{
-    if(proposal!==null){record({type:'excess_tool_proposal'});ctx.abort();return {block:true,reason:'SHELL_CALL_LIMIT'};}
+    if(!budget.proposal()){record({type:'excess_tool_proposal'});return {block:true,reason:'SHELL_CALL_LIMIT'};}
     proposal={toolName:event.toolName,input:event.input};record({type:'model_tool_proposal',...proposal});
     if(event.toolName!=='bash'){ctx.abort();return {block:true,reason:'WRONG_TOOL'};}
    });
@@ -180,7 +180,7 @@ export async function replayWorker(mode,plan,trial,services={}) {
   const admission=shell.invocations[0]?.admission??{type:'unavailable'};
   const evaluated=gradeReplayDecision(item.id,decision,admission);
   const counts=budget.report();
-  const excess=counts.kastInvocations>1||counts.blockedShellCalls>0||counts.blockedProviderSends>0;
+  const excess=counts.kastInvocations>1||counts.blockedShellCalls>0||counts.blockedProviderSends>0||counts.blockedToolProposals>0;
   const grade={...evaluated,correct:evaluated.correct&&!excess&&!shell.modelFailure,misuse:[...evaluated.reasons,...(excess?['RESOURCE_MISUSE']:[]),...(shell.modelFailure?[shell.modelFailure.reason]:[])],argumentCause:evaluated.productionCause??null,coverageCorrect:evaluated.dimensions.coverage==='PASS'?true:evaluated.dimensions.coverage==='FAIL'?false:null};
   let outcome;
   if(deadline)outcome={type:'incomplete',reasons:['DEADLINE']};

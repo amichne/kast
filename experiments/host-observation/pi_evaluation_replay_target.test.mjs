@@ -22,6 +22,13 @@ const assess=(baseline,candidate,extra={})=>{
  return accounting.assessReplayTarget({target,...extra,baseline,candidate});
 };
 
+test('a correct label cannot hide a recorded excess tool proposal',()=>{
+ const candidate=rows(300,300);
+ candidate[0]={...candidate[0],toolProposals:2,blockedToolProposals:1};
+ const result=assess(rows(900,900),candidate);
+ assert.equal(result.status,'INVALID_COMPARISON');assert.ok(result.reasons.includes('GRADE_CONTRADICTION'));
+});
+
 test('threefold acceptance needs both cost and speed without lost task correctness',()=>{
  const baseline=rows(900,900),candidate=rows(300,300),before=JSON.stringify({baseline,candidate});
  const result=assess(baseline,candidate);

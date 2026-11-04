@@ -41,7 +41,8 @@ test('request and tool budgets debit before effect and cannot admit a second ent
  assert.equal(budget.provider(),true);assert.equal(budget.provider(),false);
  assert.equal(budget.shell(),true);assert.equal(budget.shell(),false);
  assert.equal(budget.invocation(),true);assert.equal(budget.invocation(),false);
- assert.deepEqual(budget.report(),{providerSends:1,shellCalls:1,kastInvocations:2,blockedProviderSends:1,blockedShellCalls:1});
+ assert.equal(budget.proposal(),true);assert.equal(budget.proposal(),false);
+ assert.deepEqual(budget.report(),{providerSends:1,shellCalls:1,kastInvocations:2,blockedProviderSends:1,blockedShellCalls:1,toolProposals:2,blockedToolProposals:1});
 });
 
 test('dry replay planning needs no SDK installation credentials or output directory',async()=>{

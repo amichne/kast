@@ -84,7 +84,7 @@ export function replayTransition(caseId,admission) {
       &&request.terminalStep.output.fields.length===2&&request.terminalStep.output.fields.includes('NAME')&&request.terminalStep.output.fields.includes('SIGNATURE'),
   };
   if(!Object.hasOwn(supported,caseId))throw Error('UNKNOWN_REPLAY_CASE');
-  if(!supported[caseId])return freeze({type:'unsupported',stdout:'',stderr:'kast replay: FIXTURE_TRANSITION_UNAVAILABLE\n',exitStatus:2});
+  if(!supported[caseId]||admission?.type==='ADMITTED'&&(admission.invocation?.operation!=='EXECUTE'||admission.invocation?.workspace?.type!=='fixture'))return freeze({type:'unsupported',stdout:'',stderr:'kast replay: FIXTURE_TRANSITION_UNAVAILABLE\n',exitStatus:2});
   const canonicalPath=new URL(`./interface-replay/fixtures/${caseId}-transition.json`,import.meta.url).pathname;
   const canonicalResponse=readFileSync(canonicalPath,'utf8');
   return freeze({type:'supported',canonicalPath,canonicalResponse,stderr:'',exitStatus:0,fixtureSha256:sha(canonicalResponse)});

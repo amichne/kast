@@ -18,13 +18,14 @@ export function expandReplayPlan(plan) {
  }));
 }
 export class ReplayBudget {
- #provider=0;#shell=0;#invocations=0;#blockedProvider=0;#blockedShell=0;#changed;
+ #provider=0;#shell=0;#invocations=0;#blockedProvider=0;#blockedShell=0;#proposals=0;#blockedProposals=0;#changed;
  constructor(changed=()=>{}){this.#changed=changed;}
  provider(){if(this.#provider){this.#blockedProvider++;this.#changed();return false;}this.#provider++;this.#changed();return true;}
  shell(){if(this.#shell){this.#blockedShell++;this.#changed();return false;}this.#shell++;this.#changed();return true;}
  invocation(){const allowed=++this.#invocations===1;this.#changed();return allowed;}
+ proposal(){const allowed=++this.#proposals===1;if(!allowed)this.#blockedProposals++;this.#changed();return allowed;}
  report(){return {providerSends:this.#provider,shellCalls:this.#shell,kastInvocations:this.#invocations,
-  blockedProviderSends:this.#blockedProvider,blockedShellCalls:this.#blockedShell};}
+  blockedProviderSends:this.#blockedProvider,blockedShellCalls:this.#blockedShell,toolProposals:this.#proposals,blockedToolProposals:this.#blockedProposals};}
 }
 export function admitReplayPair(projections,maximumPayloadBytes) {
  if(projections.length!==2||projections.some(p=>p?.type!=='projected'||p.complete!==true

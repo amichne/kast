@@ -116,7 +116,7 @@ export function summarizeReplay(plans,receipts) {
     formats:Object.fromEntries(formats.map(format=>[format,formatSummary(rows.filter(row=>row.format===format))])),
     paired:{correctness,tokensBothCorrect:{count:tokenDeltas.length,deltas:tokenDeltas,medianDeltaJsonMinusToon:median(tokenDeltas.map(value=>value.tokensJsonMinusToon))},latency:{count:latencyDeltas.length,deltas:latencyDeltas,medianDeltaJsonMinusToon:median(latencyDeltas.map(value=>value.trialMsJsonMinusToon))}},
     exclusions,missingPairs,
-    ledger:{providerSends:measurement(rows,row=>field(row,'providerSends')),shellCalls:measurement(rows,row=>field(row,'shellCalls')),kastInvocations:measurement(rows,row=>field(row,'kastInvocations')),nativeCalls:measurement(rows,row=>field(row,'nativeCalls')),tokens:measurement(rows,row=>row.normalizedUsage.type==='known'?row.normalizedUsage.value.totalTokens:null),trials:rows.map(row=>({trialId:row.trialId,outcome:row.outcome,providerSends:field(row,'providerSends'),shellCalls:field(row,'shellCalls'),kastInvocations:field(row,'kastInvocations'),nativeCalls:field(row,'nativeCalls'),usage:row.normalizedUsage,latency:row.latency??null}))},
+    ledger:{toolProposals:measurement(rows,row=>field(row,'toolProposals')),blockedToolProposals:measurement(rows,row=>field(row,'blockedToolProposals')),providerSends:measurement(rows,row=>field(row,'providerSends')),shellCalls:measurement(rows,row=>field(row,'shellCalls')),kastInvocations:measurement(rows,row=>field(row,'kastInvocations')),nativeCalls:measurement(rows,row=>field(row,'nativeCalls')),tokens:measurement(rows,row=>row.normalizedUsage.type==='known'?row.normalizedUsage.value.totalTokens:null),trials:rows.map(row=>({trialId:row.trialId,outcome:row.outcome,toolProposals:field(row,'toolProposals'),blockedToolProposals:field(row,'blockedToolProposals'),providerSends:field(row,'providerSends'),shellCalls:field(row,'shellCalls'),kastInvocations:field(row,'kastInvocations'),nativeCalls:field(row,'nativeCalls'),usage:row.normalizedUsage,latency:row.latency??null}))},
     qualifications:['REPLAY_DECISIONS_GIVEN_FIXED_STATES','REPETITIONS_ARE_NOT_INDEPENDENT_TASKS','LATENCY_EXCLUDES_NATIVE_SEMANTIC_CLAIMS','NO_FORMAT_WINNER_REQUIRED'],
   };
 }
@@ -173,7 +173,7 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
    if(!projectionValid(row))issues.add('PAYLOAD_PROOF_UNAVAILABLE');
    if(row.providerSends!==1||row.nativeCalls!==0||!count(row.shellCalls)||row.shellCalls>1
     ||!count(row.kastInvocations)||row.kastInvocations>1)issues.add('EFFECT_COUNTS_UNAVAILABLE');
-   if(row.outcome.type==='correct'&&(row.grade?.correct!==true||gradeMisuse(row).length||coverage(row)===false))invalid.add('GRADE_CONTRADICTION');
+   if(row.outcome.type==='correct'&&(row.grade?.correct!==true||gradeMisuse(row).length||coverage(row)===false||row.toolProposals>1||row.blockedToolProposals>0))invalid.add('GRADE_CONTRADICTION');
   }
   if(control&&next){
    const left=modelIdentity(control),right=modelIdentity(next);

@@ -37,6 +37,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /** Test-only adapter: admission terminates before installation or semantic composition. */
 object PublicReplayAdapter {
@@ -321,6 +322,7 @@ internal data class ReplayAdmissionReceipt(
     val stderr: String = "",
     val exitStatus: Int = 0,
     val nativeCalls: Int = 0,
+    val invocation: ReplayInvocation? = null,
 )
 
 @Serializable
@@ -353,32 +355,26 @@ internal fun replayAdmission(
             is Refinement.Refined ->
                 when (val command = parsed.value) {
                     is PublicCliCommand.Query ->
-                        replayQueryAdmission(argv, stdin, directory, command.input, command.catalog)
-                    is PublicCliCommand.Plan ->
-                        replayQueryAdmission(argv, stdin, directory, command.input, command.catalog)
-                    is PublicCliCommand.Help,
-                    is PublicCliCommand.NamespaceHelp,
-                    is PublicCliCommand.Describe -> {
-                        val prepared =
-                            presentPublicOutput(
-                                preparePublicCli(
-                                    argv,
-                                    stdin.byteInputStream(),
-                                    directory,
-                                    session = { _, _ ->
-                                        error("REPLAY_NATIVE_COMPOSITION_FORBIDDEN")
-                                    },
-                                ),
-                                format,
-                            )
-                        ReplayAdmissionReceipt(
-                            ReplayAdmissionType.METADATA,
+                        replayQueryAdmission(
                             argv,
                             stdin,
-                            stdout = prepared.text,
-                            exitStatus = prepared.exit.code,
+                            directory,
+                            command.input,
+                            command.catalog,
+                            ReplayInvocation(ReplayOperation.EXECUTE, replayWorkspace(command.workspace, directory)),
                         )
-                    }
+                    is PublicCliCommand.Plan ->
+                        replayQueryAdmission(
+                            argv,
+                            stdin,
+                            directory,
+                            command.input,
+                            command.catalog,
+                            ReplayInvocation(ReplayOperation.PLAN, replayWorkspace(command.workspace, directory)),
+                        )
+                    is PublicCliCommand.Help,
+                    is PublicCliCommand.NamespaceHelp,
+                    is PublicCliCommand.Describe -> replayMetadata(argv, stdin, directory, format)
                 }
         },
         format,
@@ -400,6 +396,7 @@ private fun replayQueryAdmission(
     directory: Path,
     input: PublicCliInput,
     catalog: io.github.amichne.kast.protocol.registry.PublicToolCatalog,
+    invocation: ReplayInvocation,
 ): ReplayAdmissionReceipt {
     // The production reader accepts paths. The replay capability restricts those paths to fixture-owned files.
     val ownedInput =
@@ -431,26 +428,35 @@ private fun replayQueryAdmission(
                 replayInputReadFailure(loaded.failure),
                 publicCliInputDiagnostic(loaded.failure),
             )
-        is Refinement.Refined ->
-            when (val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, loaded.value, catalog)) {
-                is Refinement.Refined ->
-                    ReplayAdmissionReceipt(
-                        ReplayAdmissionType.ADMITTED,
-                        argv,
-                        stdin,
-                        arguments = PublicToolContract.encode(admitted.value),
-                    )
-                is Refinement.Rejected ->
-                    replayRejection(
-                        argv,
-                        stdin,
-                        ReplayAdmissionType.PUBLIC_REJECTED,
-                        publicCause(admitted.failure),
-                        preparePublicReply(ToolRpcReply.Rejected.publicInput(admitted.failure)),
-                    )
-            }
+        is Refinement.Refined -> replayPublicAdmission(argv, stdin, loaded.value, catalog, invocation)
     }
 }
+
+private fun replayPublicAdmission(
+    argv: List<String>,
+    stdin: String,
+    request: JsonObject,
+    catalog: io.github.amichne.kast.protocol.registry.PublicToolCatalog,
+    invocation: ReplayInvocation,
+): ReplayAdmissionReceipt =
+    when (val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, request, catalog)) {
+        is Refinement.Refined ->
+            ReplayAdmissionReceipt(
+                ReplayAdmissionType.ADMITTED,
+                argv,
+                stdin,
+                arguments = PublicToolContract.encode(admitted.value),
+                invocation = invocation,
+            )
+        is Refinement.Rejected ->
+            replayRejection(
+                argv,
+                stdin,
+                ReplayAdmissionType.PUBLIC_REJECTED,
+                publicCause(admitted.failure),
+                preparePublicReply(ToolRpcReply.Rejected.publicInput(admitted.failure)),
+            )
+    }
 
 private fun replayInputReadFailure(failure: PublicInputReadFailure): PublicPreparedOutput =
     when (failure) {

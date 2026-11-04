@@ -74,6 +74,10 @@ export function gradeReplayDecision(caseId,decision,admission) {
     dimensions.scope=dimension(decision.scope?.directory===oracle.directory&&setEqual(decision.scope?.sourceSets,oracle.sourceSets));
     dimensions.coverage=dimension(decision.conclusion===oracle.conclusion&&decision.exhaustive===oracle.exhaustive&&setEqual(decision.limitations,oracle.limitations));
   } else dimensions.action='FAIL';
+  if(decision.kind==='invoke'&&admission?.type==='ADMITTED') {
+    if(admission.invocation?.operation!=='EXECUTE')dimensions.action='FAIL';
+    if(admission.invocation?.workspace?.type!=='fixture')dimensions.scope='FAIL';
+  }
   const reasons=Object.entries(dimensions).filter(([,value])=>value==='FAIL').map(([name])=>reasonFor[name]);
   return Object.freeze({type:reasons.length===0?'GRADED_CORRECT':'GRADED_INCORRECT',correct:reasons.length===0,dimensions:Object.freeze(dimensions),reasons:Object.freeze(reasons),...(decision.kind==='invoke'&&admission?.type!=='DRIVER_INPUT_REJECTED'&&typeof admission?.cause==='string'?{productionCause:admission.cause}:{})});
 }

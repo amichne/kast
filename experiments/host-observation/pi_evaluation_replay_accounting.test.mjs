@@ -5,6 +5,19 @@ import { normalizeReplayUsage, summarizeReplay } from './pi_evaluation_replay_ac
 const trial=(pairId,format,caseId='C1')=>({trialId:`${pairId}-${format}`,pairId,caseId,format,repetition:1,armOrder:format==='TOON'?0:1});
 const receipt=(planned,type='correct',extra={})=>({...planned,outcome:{type,reasons:type==='correct'?[]:['DECLARED_FAILURE']},usage:{input:80,cacheRead:20,cacheWrite:0,output:10,reasoning:4,totalTokens:110},providerSends:1,shellCalls:1,kastInvocations:1,nativeCalls:0,latency:{trialMs:100,queueMs:30,providerMs:60,shellMs:10},grade:{misuse:[],argumentCause:null,coverageCorrect:true},...extra});
 
+test('blocked proposals remain visible with failed work and complete provider cost',()=>{
+ const plans=[trial('p1','TOON'),trial('p1','JSON')];
+ const rows=[receipt(plans[0],'incorrect',{toolProposals:2,blockedToolProposals:1,grade:{misuse:['RESOURCE_MISUSE']}}),receipt(plans[1],'correct',{toolProposals:1,blockedToolProposals:0})];
+ const report=summarizeReplay(plans,rows);
+ assert.deepEqual(report.formats.TOON.correctness,{correct:0,eligible:1,ratio:0});
+ assert.deepEqual(report.formats.TOON.misuse,{RESOURCE_MISUSE:1});
+ assert.equal(report.ledger.toolProposals.knownTotal,3);assert.equal(report.ledger.toolProposals.complete,true);
+ assert.equal(report.ledger.blockedToolProposals.knownTotal,1);assert.equal(report.ledger.tokens.knownTotal,220);
+ assert.equal(report.ledger.trials[0].blockedToolProposals,1);assert.equal(report.exclusions.length,0);
+ const legacy=summarizeReplay(plans,plans.map(plan=>receipt(plan)));
+ assert.equal(legacy.ledger.toolProposals.complete,false);assert.equal(legacy.ledger.trials[0].toolProposals,null);
+});
+
 test('SDK usage counts cache once and reasoning within output',()=>{
   assert.deepEqual(normalizeReplayUsage({input:80,cacheRead:20,cacheWrite:3,output:10,reasoning:4,totalTokens:113}),{type:'known',value:{input:80,cacheRead:20,cacheWrite:3,output:10,reasoning:4,totalTokens:113}});
   assert.equal(normalizeReplayUsage({input:80,cacheRead:20,output:10,totalTokens:130}).type,'unavailable');
