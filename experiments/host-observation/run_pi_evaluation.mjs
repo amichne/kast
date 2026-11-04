@@ -42,12 +42,13 @@ export async function main(args) {
     if(report.status!=='TARGET_MET')process.exitCode=report.status==='NOT_MET'?1:2;
     return;
   }
-  if(args[0]==='--prepare-replay'&&args.length>=2&&args.length<=4){
-    const options=args.slice(2),auth=options.filter(value=>value.startsWith('--auth='));
-    const cases=options.filter(value=>!value.startsWith('--auth='));
-    if(auth.length>1||cases.length>1||auth.some(value=>!['--auth=codex','--auth=pi'].includes(value)))throw Error('REPLAY_PREPARATION_REJECTED');
+  if(args[0]==='--prepare-replay'&&args.length>=2&&args.length<=6){
+    const options=args.slice(2),flags=options.filter(value=>value.startsWith('--')),cases=options.filter(value=>!value.startsWith('--'));
+    if(cases.length>1||flags.some(value=>!/^--(auth=(codex|pi)|instructions=(full|concise)|execution=(fresh|session))$/.test(value))
+      ||new Set(flags.map(value=>value.split('=')[0])).size!==flags.length)throw Error('REPLAY_PREPARATION_REJECTED');
+    const selected=name=>flags.find(value=>value.startsWith(`--${name}=`))?.split('=')[1];
     const root=fileURLToPath(new URL('../..',import.meta.url));
-    const plan=prepareReplayPlan(args[1],root,cases[0],{credentialSource:auth[0]==='--auth=codex'?'CODEX_CHATGPT':'PI_OAUTH'});
+    const plan=prepareReplayPlan(args[1],root,cases[0],{credentialSource:selected('auth')==='codex'?'CODEX_CHATGPT':'PI_OAUTH',instructionProfile:selected('instructions')??'full',executionProfile:selected('execution')??'fresh'});
     console.log(JSON.stringify({plan:args[1],trials:expandReplayPlan(plan),sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256},null,2));return;
   }
   if(args.length!==2||!['--plan','--execute'].includes(args[0])) throw Error('Usage: node run_pi_evaluation.mjs --plan|--execute /absolute/plan.json');

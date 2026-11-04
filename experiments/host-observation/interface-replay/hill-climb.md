@@ -1,7 +1,7 @@
 # Interface performance target
 
 The goal stays active. The first Codex-backed screen supplies measured evidence, but no 3× improvement exists yet.
-The v2 response contract declares exact limitation codes before the next baseline.
+The [v2 baseline](baseline-v2.md) records all twelve correct TOON decisions under explicit limitation-code instructions.
 The initial comparison and its failures remain historical evidence at their recorded source revisions.
 
 ## Acceptance contract
@@ -14,7 +14,10 @@ Billed cost remains unavailable. Provider tokens supply a work measure, not an i
 
 Each cohort declares its case IDs and two repetitions before inference.
 The two repetitions do not create independent tasks.
-The comparison preserves the task, canonical evidence, contract, grader, model, effort, SDK files, and effect limits.
+The comparison preserves the task, canonical evidence, grader, model, effort, SDK files, and effect limits.
+An explicit `EXECUTION` variation keeps the same format and visible instructions.
+An explicit `INSTRUCTIONS` variation permits only the declared `full` to `concise` contract change.
+Both variations preserve the production public schema. An undeclared change rejects the comparison.
 It rejects a changed workload, changed settings, or a contradictory grade.
 Only `LIVE_MODEL` receipts with an exact provider projection can support `TARGET_MET`.
 Synthetic transport supplies deterministic tests of the arithmetic.
@@ -78,3 +81,23 @@ The runner can read the current Codex ChatGPT login with `--auth=codex`.
 The credential stays in memory during execution. Neither credential file changes.
 This uses the existing SDK runner and provider route. It does not launch another Codex agent loop.
 The experiment does not substitute another provider or weaken a grader to manufacture a gain.
+
+## Isolated adapter session
+
+The `session` execution profile starts one fresh JVM for each trial.
+Its typed JSON-line protocol permits one admission request and one render request.
+It keeps production parsing, lowering, input decoding, admission, and output bytes.
+The Node owner caps frames and stderr, obeys cancellation, and reaps its owned child.
+The Kotlin adapter rejects malformed UTF-8, excess requests, and oversized responses with finite causes.
+A model-triggered admission response limit remains an unsuccessful incomplete trial.
+An unavailable adapter supplies no performance proof.
+
+The worker reuses the exact presentation from its complete SDK preflight.
+The proof binds its canonical digest, adapter digest, format, presentation digest, and encoding equality.
+The live SDK projection must still match the preflight projection before transport.
+Independent SDK sessions keep distinct cache keys. The model-visible input and tool declaration remain identical across execution profiles.
+This reuse removes redundant rendering before the timed request. It does not shorten an input or share mutable semantic state.
+
+The `concise` instruction profile changes one global contract for all six cases.
+It keeps every task, preceding call, canonical value, command family, and finish schema.
+Its smaller byte count supplies no measured token or latency gain.

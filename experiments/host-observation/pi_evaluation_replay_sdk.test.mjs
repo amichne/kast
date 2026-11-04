@@ -21,7 +21,8 @@ const syntheticToolReply=command=>{
  const events=[{type:'response.created',response:{id:'synthetic-tool-response'}},{type:'response.output_item.added',output_index:0,item:{...item,arguments:''}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-tool-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:20}}}}];
  return new Response(events.map(event=>`data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
 };
-const decodeBody=options=>JSON.parse(new Headers(options.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body);
+const decodeBodyText=options=>new Headers(options.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body;
+const decodeBody=options=>JSON.parse(decodeBodyText(options));
 
 test('real SDK replay preserves complete format inputs once at synthetic transport and accounts for failed work', {skip:!planPath},async t=>{
  assert.ok(path.isAbsolute(planPath));
@@ -96,5 +97,112 @@ test('real SDK replay preserves complete format inputs once at synthetic transpo
  const events=JSON.parse(fs.readFileSync(path.join(invocationRoot,invocationTrial.trialId,'events.json')));
  assert.equal(events.filter(event=>event.type==='provider_followup_blocked').length,1);
  assert.equal(events.filter(event=>event.type==='actual_provider_send').length,1);
+ assert.equal(unexpectedNetwork,0);
+});
+
+// Execution profiles own different SDK cache keys. The comparison removes only
+// that isolated-session field, then compares every remaining wire byte.
+test('fresh and session profiles preserve normalized provider bytes and exact shell results',{skip:!planPath},async t=>{
+ assert.ok(path.isAbsolute(planPath));
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-replay-sdk-profiles-')));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const source=JSON.parse(fs.readFileSync(planPath,'utf8'));
+ const plan={...source,instructionProfile:'full',adapterManifestSha256:replaySha(fs.readFileSync(source.adapterManifest)),authPath:'/never-read-live-auth',modelsStorePath:'/never-read-live-models'};
+ const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
+ const sdk=await load('dist/index.js'),runtime=await syntheticRuntime(sdk,load);
+ const savedFetch=globalThis.fetch;let unexpectedNetwork=0,sends=0;
+ globalThis.fetch=async()=>{unexpectedNetwork++;throw Error('UNEXPECTED_NETWORK');};
+ t.after(()=>{globalThis.fetch=savedFetch;});
+ const trials=expandReplayPlan(plan).filter(trial=>['C5','C6'].includes(trial.caseId)&&trial.repetition===1);
+ assert.equal(trials.length,4);
+ for(const trial of trials){
+  const pair=[];
+  for(const executionProfile of ['fresh','session']){
+   const outputRoot=path.join(root,executionProfile);fs.mkdirSync(outputRoot,{mode:0o700,recursive:true});
+   const candidate={...plan,executionProfile,outputRoot};
+   const preflight=await replayWorker('--preflight',candidate,trial,{modelRuntime:runtime});
+   assert.equal(preflight.type,'projected',JSON.stringify(preflight));
+   assert.equal(preflight.presentationOccurrences,1);assert.equal(preflight.encodingEquivalent,true);
+   const preflightLedger=JSON.parse(fs.readFileSync(path.join(outputRoot,`preflight-${trial.trialId}`,'ledger.json')));
+   assert.equal(preflightLedger.providerSends,0);assert.equal(preflightLedger.nativeCalls,0);
+   let wire=null,payload=null,trialSends=0;
+   const report=await replayWorker('--trial',candidate,trial,{modelRuntime:runtime,fetch:async(_url,options)=>{
+    sends++;trialSends++;assert.equal(trialSends,1,'No automatic provider follow-up can reach transport');
+    wire=decodeBodyText(options);payload=JSON.parse(wire);
+    assert.equal(wire,JSON.stringify(payload),'The captured JSON serialization must survive comparison without normalization');
+    assert.equal(payload.max_output_tokens,2000);assert.equal(payload.model,'gpt-6.1-sol');assert.equal(payload.reasoning.effort,'high');
+    assert.equal(payload.input.filter(item=>item.type==='function_call_output').length,1);
+    assert.equal(typeof payload.prompt_cache_key,'string');assert.ok(payload.prompt_cache_key.length>0);
+    return trial.caseId==='C5'?syntheticReply(JSON.stringify(replayOracleControls('C5').accept[0].decision)):syntheticToolReply(replayOracleControls('C6').accept[0].command);
+   }});
+   assert.equal(report.measurement,'SYNTHETIC_TRANSPORT');assert.equal(report.outcome.type,'correct',JSON.stringify(report));
+   assert.equal(report.providerSends,1);assert.equal(trialSends,1);assert.equal(report.nativeCalls,0);assert.equal(report.grade.correct,true);
+   assert.equal(report.identity.instructionProfile,'full');assert.equal(report.identity.executionProfile,executionProfile);
+   assert.equal(report.projection.payloadSha256,preflight.payloadSha256);assert.equal(report.actualProviderProjection.payloadSha256,preflight.payloadSha256);
+   assert.equal(report.actualProviderProjection.presentationOccurrences,1);assert.equal(report.actualProviderProjection.complete,true);
+   assert.equal(normalizeReplayUsage(report.usage).value.totalTokens,110);
+   assert.equal(report.protectedFilesUnchanged,true);
+   const archive=JSON.parse(fs.readFileSync(path.join(outputRoot,trial.trialId,'shell.json')));
+   const events=JSON.parse(fs.readFileSync(path.join(outputRoot,trial.trialId,'events.json')));
+   assert.equal(events.filter(event=>event.type==='actual_provider_send').length,1);
+   if(trial.caseId==='C5'){
+    assert.equal(report.shellCalls,0);assert.equal(report.kastInvocations,0);assert.equal(report.latency.shellMs,0);
+    assert.deepEqual(archive.captures,[]);assert.deepEqual(archive.invocations,[]);
+    assert.equal(events.filter(event=>event.type==='provider_followup_blocked').length,0);
+   }else{
+    assert.equal(report.shellCalls,1);assert.equal(report.kastInvocations,1);assert.ok(report.latency.shellMs>0);
+    assert.equal(archive.captures.length,1);assert.equal(archive.invocations.length,1);
+    assert.equal(archive.captures[0].command,replayOracleControls('C6').accept[0].command);
+    assert.equal(archive.captures[0].exitStatus,0);assert.equal(archive.captures[0].stderr,'');
+    assert.equal(archive.invocations[0].admission.type,'ADMITTED');assert.equal(archive.invocations[0].admission.nativeCalls,0);
+    assert.equal(archive.invocations[0].request.stdin,'');
+    assert.equal(events.filter(event=>event.type==='provider_followup_blocked').length,1);
+   }
+   if(executionProfile==='fresh')assert.equal(report.adapterSession,null);
+   else{
+    assert.equal(report.adapterSession.type,'closed',JSON.stringify(report.adapterSession));
+    assert.equal(report.adapterSession.ownedChildReaped,true);assert.equal(report.adapterSession.spawned,true);
+    assert.equal(report.adapterSession.exitCode,0);assert.equal(report.adapterSession.signal,null);assert.equal(report.adapterSession.stderrBytes,0);
+   }
+   pair.push({report,payload,wire,archive});
+  }
+  const [fresh,session]=pair;
+  assert.notEqual(fresh.payload.prompt_cache_key,session.payload.prompt_cache_key,'SDK session identities stay isolated');
+  const withoutCache=payload=>JSON.stringify(Object.fromEntries(Object.entries(payload).filter(([key])=>key!=='prompt_cache_key')));
+  assert.equal(withoutCache(fresh.payload),withoutCache(session.payload),'Only the isolated SDK cache key can differ in provider wire bytes');
+  for(const field of ['input','instructions','tools'])assert.equal(JSON.stringify(fresh.payload[field]),JSON.stringify(session.payload[field]),field);
+  assert.equal(fresh.report.actualProviderProjection.payloadSha256,session.report.actualProviderProjection.payloadSha256);
+  assert.equal(fresh.report.presentationSha256,session.report.presentationSha256);
+  const result=archive=>archive.captures.map(({command,stdout,stderr,exitStatus})=>({command,stdout,stderr,exitStatus}));
+  assert.deepEqual(result(fresh.archive),result(session.archive));
+  assert.deepEqual(fresh.archive.invocations.map(row=>row.request.argv),session.archive.invocations.map(row=>row.request.argv));
+ }
+ assert.equal(sends,8);assert.equal(unexpectedNetwork,0);
+});
+
+test('SDK cancellation closes and reaps its prepared adapter without a shell or another request',{skip:!planPath},async t=>{
+ assert.ok(path.isAbsolute(planPath));
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-replay-sdk-cancel-')));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const source=JSON.parse(fs.readFileSync(planPath,'utf8'));
+ const plan={...source,instructionProfile:'full',executionProfile:'session',outputRoot:root,adapterManifestSha256:replaySha(fs.readFileSync(source.adapterManifest)),authPath:'/never-read-live-auth',modelsStorePath:'/never-read-live-models'};
+ const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
+ const sdk=await load('dist/index.js'),runtime=await syntheticRuntime(sdk,load);
+ const before={message:process.listenerCount('message'),SIGTERM:process.listenerCount('SIGTERM')};
+ const trial=expandReplayPlan(plan).find(trial=>trial.caseId==='C5'&&trial.repetition===1&&trial.format==='TOON');
+ assert.equal((await replayWorker('--preflight',plan,trial,{modelRuntime:runtime})).type,'projected');
+ const savedFetch=globalThis.fetch;let sends=0,unexpectedNetwork=0;
+ globalThis.fetch=async()=>{unexpectedNetwork++;throw Error('UNEXPECTED_NETWORK');};
+ t.after(()=>{globalThis.fetch=savedFetch;});
+ const report=await replayWorker('--trial',plan,trial,{modelRuntime:runtime,fetch:async()=>{
+  sends++;assert.equal(sends,1);process.emit('message',{type:'cancel'});
+  return syntheticReply(JSON.stringify(replayOracleControls('C5').accept[0].decision));
+ }});
+ assert.equal(report.measurement,'SYNTHETIC_TRANSPORT');assert.equal(report.outcome.type,'incomplete',JSON.stringify(report));
+ assert.deepEqual(report.outcome.reasons,['DEADLINE']);assert.equal(report.providerSends,1);assert.equal(sends,1);
+ assert.equal(report.shellCalls,0);assert.equal(report.kastInvocations,0);assert.equal(report.nativeCalls,0);
+ assert.equal(report.adapterSession.type,'failure');assert.equal(report.adapterSession.failure.reason,'CANCELLED');
+ assert.equal(report.adapterSession.ownedChildReaped,true);assert.equal(report.protectedFilesUnchanged,true);
+ assert.equal(process.listenerCount('message'),before.message);assert.equal(process.listenerCount('SIGTERM'),before.SIGTERM);
  assert.equal(unexpectedNetwork,0);
 });

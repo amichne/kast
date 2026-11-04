@@ -6,7 +6,7 @@ import * as accounting from './pi_evaluation_replay_accounting.mjs';
 const hash=character=>character.repeat(64);
 const target={factor:3,dimensions:'TOKENS_AND_LATENCY',caseIds:['C5','C6'],repetitions:2};
 const rows=(tokens,millis)=>target.caseIds.flatMap(caseId=>[1,2].map(repetition=>({
- trialId:`${caseId}-r${repetition}-JSON`,caseId,repetition,format:'JSON',outcome:{type:'correct',reasons:[]},
+ trialId:`${caseId}-r${repetition}-JSON`,caseId,repetition,format:'JSON',presentationSha256:caseId==='C5'?hash('6'):hash('7'),outcome:{type:'correct',reasons:[]},
  measurement:'LIVE_MODEL',protectedFilesUnchanged:true,providerSends:1,nativeCalls:0,shellCalls:caseId==='C5'?0:1,kastInvocations:caseId==='C5'?0:1,
  usage:{input:tokens-10,output:10,cacheRead:0,cacheWrite:0,totalTokens:tokens},
  latency:{trialMs:millis,queueMs:0,providerMs:millis-1,shellMs:0},
@@ -110,5 +110,102 @@ test('excess or unavailable effects cannot support a goal claim',()=>{
  for(const [field,value]of [['providerSends',2],['nativeCalls',1],['shellCalls',2],['kastInvocations',null]]){
   const candidate=rows(300,300);candidate[0][field]=value;
   const result=assess(rows(900,900),candidate);assert.equal(result.status,'UNMEASURED');assert.ok(result.reasons.includes('EFFECT_COUNTS_UNAVAILABLE'));
+ }
+});
+
+const executionVariation={type:'EXECUTION'};
+const instructionVariation={type:'INSTRUCTIONS',baselineProfile:'full',candidateProfile:'concise'};
+const withProfiles=(records,{instructionProfile='full',executionProfile='fresh',contractSha256=hash('d'),publicContractSha256=hash('3')}={})=>records.map(row=>({...row,identity:{...row.identity,instructionProfile,executionProfile,contractSha256,publicContractSha256}}));
+
+test('explicit execution comparison permits fresh to session while exact visible input identities stay fixed',()=>{
+ const baseline=withProfiles(rows(900,900)),candidate=withProfiles(rows(300,300),{executionProfile:'session'});
+ const result=assess(baseline,candidate,{target:{...target,variation:executionVariation}});
+ assert.equal(result.status,'TARGET_MET');assert.equal(result.tokens.speedup,3);assert.equal(result.latency.speedup,3);
+ assert.equal(assess(baseline,candidate).status,'INVALID_COMPARISON');
+ for(const field of ['format','promptSha256','contractSha256','canonicalSha256','publicContractSha256','instructionProfile']){
+  const changed=structuredClone(candidate);
+  if(field==='format')changed[0].format='TOON';else changed[0].identity[field]=field==='instructionProfile'?'concise':hash('4');
+  assert.equal(assess(baseline,changed,{target:{...target,variation:executionVariation}}).status,'INVALID_COMPARISON',field);
+ }
+});
+
+test('legacy execution comparison records absent schema and profile evidence without fabricating fields',()=>{
+ const baseline=rows(900,900),candidate=rows(300,300),before=JSON.stringify({baseline,candidate});
+ const result=assess(baseline,candidate,{target:{...target,variation:executionVariation}});
+ assert.equal(result.status,'TARGET_MET');
+ assert.ok(result.qualifications.includes('LEGACY_EXECUTION_PUBLIC_SCHEMA_UNRECORDED'));
+ assert.ok(result.qualifications.includes('LEGACY_EXECUTION_INSTRUCTION_PROFILE_UNRECORDED'));
+ assert.ok(result.qualifications.includes('LEGACY_EXECUTION_PROFILE_UNRECORDED'));
+ assert.equal(JSON.stringify({baseline,candidate}),before);
+ const oneMissing=withProfiles(candidate);delete oneMissing[0].identity.publicContractSha256;
+ const incomplete=assess(withProfiles(baseline),oneMissing,{target:{...target,variation:executionVariation}});
+ assert.equal(incomplete.status,'UNMEASURED');assert.equal(incomplete.tokens.speedup,null);assert.equal(incomplete.latency.speedup,null);
+});
+
+test('explicit full to concise comparison permits only the declared instruction contract change',()=>{
+ const baseline=withProfiles(rows(900,900),{executionProfile:'session'});
+ const candidate=withProfiles(rows(300,300),{executionProfile:'session',instructionProfile:'concise',contractSha256:hash('4')});
+ const result=assess(baseline,candidate,{target:{...target,variation:instructionVariation}});
+ assert.equal(result.status,'TARGET_MET');assert.equal(result.tokens.speedup,3);
+ assert.equal(assess(baseline,candidate).status,'INVALID_COMPARISON');
+ for(const field of ['format','promptSha256','canonicalSha256','graderSha256','model','budgetSha256','publicContractSha256','executionProfile','instructionProfile']){
+  const changed=structuredClone(candidate);
+  if(field==='format')changed[0].format='TOON';else changed[0].identity[field]=field==='executionProfile'?'fresh':field==='instructionProfile'?'full':hash('5');
+  assert.equal(assess(baseline,changed,{target:{...target,variation:instructionVariation}}).status,'INVALID_COMPARISON',field);
+ }
+});
+
+test('instruction comparison needs actual recorded schema and declared profiles in both arms',()=>{
+ for(const field of ['publicContractSha256','instructionProfile','executionProfile']){
+  const baseline=withProfiles(rows(900,900),{executionProfile:'session'}),candidate=withProfiles(rows(300,300),{executionProfile:'session',instructionProfile:'concise',contractSha256:hash('4')});
+  delete baseline[0].identity[field];delete candidate[0].identity[field];
+  const result=assess(baseline,candidate,{target:{...target,variation:instructionVariation}});
+  assert.equal(result.status,'UNMEASURED',field);assert.equal(result.tokens.speedup,null,field);
+ }
+ for(const variation of [{type:'INSTRUCTIONS'},{type:'INSTRUCTIONS',baselineProfile:'concise',candidateProfile:'full'},{type:'EXECUTION',contractSha256:'allow'},{type:'UNKNOWN'}])
+  assert.equal(assess(rows(900,900),rows(300,300),{target:{...target,variation}}).status,'INVALID_COMPARISON');
+});
+
+test('default format comparison stays compatible while new modes reject undeclared format or profile drift',()=>{
+ const baseline=withProfiles(rows(900,900)),candidate=withProfiles(rows(300,300));
+ for(const row of candidate)row.format='TOON';
+ assert.equal(assess(baseline,candidate).status,'TARGET_MET');
+ assert.equal(assess(baseline,candidate,{target:{...target,variation:executionVariation}}).status,'INVALID_COMPARISON');
+ const reversed=withProfiles(rows(900,900),{executionProfile:'session'});
+ assert.equal(assess(reversed,withProfiles(rows(300,300)),{target:{...target,variation:executionVariation}}).status,'INVALID_COMPARISON');
+ for(const field of ['instructionProfile','executionProfile']){
+  const missing=withProfiles(rows(300,300));delete missing[0].identity[field];
+  assert.equal(assess(baseline,missing,{target:{...target,variation:executionVariation}}).status,'UNMEASURED');
+ }
+ const disguised=Object.assign(Object.create({type:'EXECUTION'}),{undeclared:true});
+ assert.equal(assess(baseline,candidate,{target:{...target,variation:disguised}}).status,'INVALID_COMPARISON');
+});
+
+test('execution variation needs the exact same wrapped provider payload across cohorts',()=>{
+ const baseline=withProfiles(rows(900,900)),candidate=withProfiles(rows(300,300),{executionProfile:'session'});
+ candidate[0].projection.payloadSha256=hash('8');candidate[0].actualProviderProjection.payloadSha256=hash('8');
+ const result=assess(baseline,candidate,{target:{...target,variation:executionVariation}});
+ assert.equal(result.status,'INVALID_COMPARISON');assert.ok(result.reasons.includes('PAYLOAD_MISMATCH'));
+ assert.equal(result.tokens.speedup,null);assert.equal(result.latency.speedup,null);
+ for(const value of [undefined,'short','A'.repeat(64),'g'.repeat(64)]){
+  const changed=withProfiles(rows(300,300),{executionProfile:'session'});
+  changed[0].projection.payloadSha256=value;changed[0].actualProviderProjection.payloadSha256=value;
+  const unavailable=assess(baseline,changed,{target:{...target,variation:executionVariation}});
+  assert.equal(unavailable.status,'UNMEASURED');assert.equal(unavailable.tokens.speedup,null);
+ }
+});
+
+test('instruction variation needs identical issued presentation bytes with recorded lowercase digests',()=>{
+ const baseline=withProfiles(rows(900,900),{executionProfile:'session'});
+ const candidate=withProfiles(rows(300,300),{executionProfile:'session',instructionProfile:'concise',contractSha256:hash('4')});
+ candidate[0].presentationSha256=hash('8');
+ const result=assess(baseline,candidate,{target:{...target,variation:instructionVariation}});
+ assert.equal(result.status,'INVALID_COMPARISON');assert.ok(result.reasons.includes('PRESENTATION_MISMATCH'));
+ assert.equal(result.tokens.speedup,null);assert.equal(result.latency.speedup,null);
+ for(const value of [undefined,'short','A'.repeat(64),'g'.repeat(64)]){
+  const changed=withProfiles(rows(300,300),{executionProfile:'session',instructionProfile:'concise',contractSha256:hash('4')});
+  changed[0].presentationSha256=value;
+  const unavailable=assess(baseline,changed,{target:{...target,variation:instructionVariation}});
+  assert.equal(unavailable.status,'UNMEASURED');assert.equal(unavailable.tokens.speedup,null);
  }
 });

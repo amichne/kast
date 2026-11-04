@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.publicshell
 
 import com.lukelast.ktoon.Ktoon
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
@@ -146,6 +147,154 @@ class PublicReplayAdapterTest {
     }
 
     @Test
+    fun `stdio accepts one render and one admission and preserves exact strings`() {
+        val document = fixtureText("unrestricted-integer.json")
+        val stdin = "λ\n\"quoted\" 1234567890123456789012345678901234567890"
+        val replies =
+            stdio(
+                ReplayStdioRequest.Render(document, ReplayStdioFormat.TOON),
+                ReplayStdioRequest.Admit(listOf("query", "--request", "-"), stdin, "/fixture"),
+            )
+        assertEquals(0, replies.first)
+        assertEquals(
+            listOf("ready", "rendered", "admission"),
+            replies.second.map { it.getValue("type").jsonPrimitive.content },
+        )
+        assertEquals(
+            "n: 1234567890123456789012345678901234567890",
+            replies.second[1].getValue("text").jsonPrimitive.content,
+        )
+        val receipt = replies.second[2].getValue("receipt").jsonObject
+        assertEquals(stdin, receipt.getValue("stdin").jsonPrimitive.content)
+        assertEquals("INPUT_REJECTED", receipt.getValue("type").jsonPrimitive.content)
+        assertEquals("0", receipt.getValue("nativeCalls").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `stdio retains production invalid command cause and supports admission before rendering`() {
+        val document = Json.encodeToString(ReplayLiteralArrays(listOf(ReplayLiteralConnection("λ\n\"x\""))))
+        val replies =
+            stdio(
+                ReplayStdioRequest.Admit(listOf("query", "--name", "A", "--fields", "name, signature"), "", "/fixture"),
+                ReplayStdioRequest.Render(document, ReplayStdioFormat.JSON),
+            )
+        assertEquals(0, replies.first)
+        assertEquals(
+            listOf("ready", "admission", "rendered"),
+            replies.second.map { it.getValue("type").jsonPrimitive.content },
+        )
+        val receipt = replies.second[1].getValue("receipt").jsonObject
+        assertEquals("ARGUMENT_REJECTED", receipt.getValue("type").jsonPrimitive.content)
+        assertEquals("INVALID_FIELDS", receipt.getValue("cause").jsonPrimitive.content)
+        assertEquals("2", receipt.getValue("exitStatus").jsonPrimitive.content)
+        assertEquals(document, replies.second[2].getValue("text").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `stdio rejects repeated or third requests before production effects`() {
+        val render = ReplayStdioRequest.Render(fixtureText("unrestricted-integer.json"), ReplayStdioFormat.TOON)
+        val admit = ReplayStdioRequest.Admit(listOf("query", "--name", "A"), "", "/fixture")
+        val third = stdio(render, admit, render)
+        assertEquals(2, third.first)
+        assertEquals(
+            listOf("ready", "rendered", "admission", "rejected"),
+            third.second.map { it.getValue("type").jsonPrimitive.content },
+        )
+        assertEquals("REQUEST_LIMIT", third.second.last().getValue("cause").jsonPrimitive.content)
+        val repeated = stdio(admit, admit.copy(directory = "\u0000"))
+        assertEquals(2, repeated.first)
+        assertEquals("REQUEST_LIMIT", repeated.second.last().getValue("cause").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `stdio rejects malformed unknown oversized invalid UTF8 and unterminated frames`() {
+        val unknown = Json.encodeToString(ReplayUnknownStdioRequest("unknown")) + "\n"
+        val cases =
+            listOf(
+                unknown.toByteArray() to "INVALID_REQUEST",
+                "not-json\n".toByteArray() to "INVALID_REQUEST",
+                (Json.encodeToString(ReplayUnknownRenderRequest("render", "not-json", "YAML")) + "\n").toByteArray() to
+                    "INVALID_REQUEST",
+                byteArrayOf(0xff.toByte(), 10) to "INVALID_UTF8",
+                ByteArray(io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH + 1) { 'a'.code.toByte() } to
+                    "FRAME_TOO_LARGE",
+                unknown.removeSuffix("\n").toByteArray() to "INCOMPLETE_FRAME",
+            )
+        for ((input, cause) in cases) {
+            val output = ByteArrayOutputStream()
+            assertEquals(2, runReplayStdio(input.inputStream(), output), cause)
+            val replies =
+                output
+                    .toString(Charsets.UTF_8)
+                    .lineSequence()
+                    .filter(String::isNotEmpty)
+                    .map { Json.parseToJsonElement(it).jsonObject }
+                    .toList()
+            assertEquals(2, replies.size, cause)
+            assertEquals("rejected", replies.last().getValue("type").jsonPrimitive.content)
+            assertEquals(cause, replies.last().getValue("cause").jsonPrimitive.content)
+            assertTrue(output.size() < 256)
+        }
+        val empty = ByteArrayOutputStream()
+        assertEquals(0, runReplayStdio(ByteArray(0).inputStream(), empty))
+        assertEquals(1, empty.toString(Charsets.UTF_8).lineSequence().filter(String::isNotEmpty).count())
+    }
+
+    @Test
+    fun `stdio keeps explicit JSON precedence and bounds serialized replies`() {
+        val request =
+            ReplayStdioRequest.Admit(
+                listOf("query", "--name", "A", "--fields", "name, signature", "--json"),
+                "",
+                "/fixture",
+            )
+        val input = Json.encodeToString(ReplayStdioRequest.serializer(), request) + "\n"
+        val output = ByteArrayOutputStream()
+        assertEquals(0, runReplayStdio(input.byteInputStream(), output, CliOutputFormat.TOON))
+        val receipt =
+            output
+                .toString(Charsets.UTF_8)
+                .lineSequence()
+                .filter(String::isNotEmpty)
+                .map { Json.parseToJsonElement(it).jsonObject }
+                .toList()[1]
+                .getValue("receipt")
+                .jsonObject
+        assertEquals(
+            "INVALID_COMMAND",
+            Json.parseToJsonElement(receipt.getValue("stdout").jsonPrimitive.content)
+                .jsonObject
+                .getValue("failure")
+                .jsonPrimitive
+                .content,
+        )
+        val oversized =
+            request.copy(
+                argv = listOf("query", "--name", "A"),
+                stdin = " ".repeat(io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH - 256),
+            )
+        assertTrue(
+            Json.encodeToString(ReplayStdioRequest.serializer(), oversized).toByteArray().size <=
+                io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
+        )
+        val bounded = stdio(oversized)
+        assertEquals(2, bounded.first)
+        assertEquals("RESPONSE_TOO_LARGE", bounded.second.last().getValue("cause").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `stdio stops after an encoding failure before later admission`() {
+        val replies =
+            stdio(
+                ReplayStdioRequest.Render("{", ReplayStdioFormat.JSON),
+                ReplayStdioRequest.Admit(emptyList(), "", "\u0000"),
+            )
+        assertEquals(2, replies.first)
+        assertEquals(listOf("ready", "rejected"), replies.second.map { it.getValue("type").jsonPrimitive.content })
+        assertEquals("ENCODING_REJECTED", replies.second.last().getValue("cause").jsonPrimitive.content)
+    }
+
+    @Test
     fun `production rendering keeps exact large integers escaping omission and token bytes`() {
         val document = Json {
             encodeDefaults = true
@@ -197,3 +346,21 @@ private data class ReplayEncodingEvidence(
 @Serializable private data class ReplayLiteralArrays(val items: List<ReplayLiteralConnection>)
 
 @Serializable private data class ReplayLiteralConnection(val connections: String)
+
+private fun stdio(vararg requests: ReplayStdioRequest): Pair<Int, List<kotlinx.serialization.json.JsonObject>> {
+    val input =
+        requests.joinToString("", transform = { Json.encodeToString(ReplayStdioRequest.serializer(), it) + "\n" })
+    val output = ByteArrayOutputStream()
+    val status = runReplayStdio(input.byteInputStream(), output)
+    return status to
+        output
+            .toString(Charsets.UTF_8)
+            .lineSequence()
+            .filter(String::isNotEmpty)
+            .map { Json.parseToJsonElement(it).jsonObject }
+            .toList()
+}
+
+@Serializable private data class ReplayUnknownStdioRequest(val type: String)
+
+@Serializable private data class ReplayUnknownRenderRequest(val type: String, val document: String, val format: String)

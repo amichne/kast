@@ -11,7 +11,7 @@ export function replaySourceIdentity(root) {
  const files=[...paths].sort().map(file=>({path:file,sha256:fs.existsSync(path.join(root,file))?sha(fs.readFileSync(path.join(root,file))):'DELETED'}));
  return {sourceRevision:git('rev-parse','HEAD'),diffSha256:sha(JSON.stringify(files)),files};
 }
-export function prepareReplayPlan(planPath,root,caseId,{credentialSource='PI_OAUTH'}={}) {
+export function prepareReplayPlan(planPath,root,caseId,{credentialSource='PI_OAUTH',instructionProfile='full',executionProfile='fresh'}={}) {
  if(!['PI_OAUTH','CODEX_CHATGPT'].includes(credentialSource))throw Error('CREDENTIAL_SOURCE_REJECTED');
  if(!path.isAbsolute(planPath))throw Error('ABSOLUTE_PLAN_PATH_REQUIRED');
  const home=os.homedir(),install=path.join(home,'.pi/agent/install');
@@ -19,8 +19,9 @@ export function prepareReplayPlan(planPath,root,caseId,{credentialSource='PI_OAU
  if(!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(version))throw Error('SDK_VERSION_REJECTED');
  const piPackageRoot=path.join(install,'releases',version,'node_modules/@earendil-works/pi-coding-agent');
  const adapterManifest=path.join(root,'cli/build/replay-adapter/manifest.json');
- const identity=replaySourceIdentity(root),cases=replayCases(),sdkFiles=['package.json','dist/core/sdk.js','dist/core/session-manager.js','dist/core/tools/bash.js','dist/core/extensions/runner.js','../pi-ai/package.json','../pi-ai/dist/api/openai-codex-responses.js','../pi-ai/dist/api/openai-responses-shared.js','../pi-agent-core/package.json','../pi-agent-core/dist/agent.js'];
- const plan={mode:'replay',workers:8,repetitions:2,caseIds:caseId?[caseId]:cases.map(item=>item.id),maximumProviderRequests:caseId?4:24,wallSeconds:60,
+ if(!['fresh','session'].includes(executionProfile))throw Error('REPLAY_EXECUTION_PROFILE_REJECTED');
+ const identity=replaySourceIdentity(root),cases=replayCases(instructionProfile),sdkFiles=['package.json','dist/core/sdk.js','dist/core/session-manager.js','dist/core/tools/bash.js','dist/core/extensions/runner.js','../pi-ai/package.json','../pi-ai/dist/api/openai-codex-responses.js','../pi-ai/dist/api/openai-responses-shared.js','../pi-agent-core/package.json','../pi-agent-core/dist/agent.js'];
+ const plan={mode:'replay',instructionProfile,executionProfile,publicContractSha256:sha(fs.readFileSync(path.join(root,'agent-tools/references/query-schema.json'))),workers:8,repetitions:2,caseIds:caseId?[caseId]:cases.map(item=>item.id),maximumProviderRequests:caseId?4:24,wallSeconds:60,
   piPackageRoot,piVersion:version,credentialSource,authPath:credentialSource==='CODEX_CHATGPT'?path.join(process.env.CODEX_HOME??path.join(home,'.codex'),'auth.json'):path.join(home,'.pi/agent/auth.json'),modelsStorePath:path.join(home,'.pi/agent/models-store.json'),
   adapterManifest,adapterManifestSha256:sha(fs.readFileSync(adapterManifest)),outputRoot:planPath+'.run',
   ...identity,sdkIdentity:sdkFiles.map(file=>({file,sha256:sha(fs.readFileSync(path.join(piPackageRoot,file)))})),
@@ -35,7 +36,8 @@ export function examineReplayPins(plan) {
  const manifest=JSON.parse(fs.readFileSync(plan.adapterManifest));
  for(const artifact of manifest.artifacts)if(sha(fs.readFileSync(artifact.path))!==artifact.sha256)throw Error('ADAPTER_ARTIFACT_CHANGED');
  for(const entry of plan.sdkIdentity??[])if(sha(fs.readFileSync(path.join(plan.piPackageRoot,entry.file)))!==entry.sha256)throw Error('SDK_ARTIFACT_CHANGED');
- for(const item of replayCases()){
+ if(plan.publicContractSha256&&sha(fs.readFileSync(new URL('../../agent-tools/references/query-schema.json',import.meta.url)))!==plan.publicContractSha256)throw Error('PUBLIC_CONTRACT_CHANGED');
+ for(const item of replayCases(plan.instructionProfile??'full')){
   const expected=plan.cases.find(c=>c.id===item.id);
   if(!expected||expected.canonicalSha256!==item.canonicalSha256||expected.promptSha256!==sha(item.task)||expected.contractSha256!==sha(item.visibleContract))throw Error('CASE_IDENTITY_CHANGED');
  }

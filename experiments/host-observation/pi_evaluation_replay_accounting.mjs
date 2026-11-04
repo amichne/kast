@@ -125,14 +125,18 @@ export function summarizeReplay(plans,receipts) {
 // Synthetic receipts exercise this arithmetic but cannot establish model gains.
 export function assessReplayTarget({target,baseline,candidate}={}) {
  const rejected=reason=>({type:'REPLAY_TARGET_ASSESSMENT',status:'INVALID_COMPARISON',reasons:[reason]});
- if(!target||Object.keys(target).some(key=>!['factor','dimensions','caseIds','repetitions'].includes(key))||!Number.isFinite(target.factor)||target.factor<=1||target.repetitions!==2
+ const variation=target?.variation;
+ const variationValid=variation===undefined||variation!==null&&typeof variation==='object'&&!Array.isArray(variation)&&(
+  variation.type==='EXECUTION'&&Object.keys(variation).length===1&&Object.hasOwn(variation,'type')
+  ||variation.type==='INSTRUCTIONS'&&Object.keys(variation).length===3&&['type','baselineProfile','candidateProfile'].every(key=>Object.hasOwn(variation,key))&&variation.baselineProfile==='full'&&variation.candidateProfile==='concise');
+ if(!target||!variationValid||Object.keys(target).some(key=>!['factor','dimensions','caseIds','repetitions','variation'].includes(key))||!Number.isFinite(target.factor)||target.factor<=1||target.repetitions!==2
   ||!['TOKENS_AND_LATENCY','TOKENS','LATENCY'].includes(target.dimensions)
   ||!Array.isArray(target.caseIds)||!target.caseIds.length||new Set(target.caseIds).size!==target.caseIds.length
   ||target.caseIds.some(id=>!/^C[1-6]$/.test(id))||!Array.isArray(baseline)||!Array.isArray(candidate))return rejected('TARGET_REJECTED');
  if([...baseline,...candidate].some(row=>!row||typeof row!=='object'||typeof row.trialId!=='string'
   ||!Array.isArray(row.outcome?.reasons)))return rejected('RECEIPT_REJECTED');
  const expected=target.caseIds.flatMap(caseId=>[1,2].map(repetition=>({caseId,repetition,key:`${caseId}-r${repetition}`})));
- const keys=new Set(expected.map(item=>item.key)),issues=new Set(),invalid=new Set();
+ const keys=new Set(expected.map(item=>item.key)),issues=new Set(),invalid=new Set(),variationQualifications=new Set();
  const index=records=>{
   const byKey=new Map();
   for(const row of records){
@@ -144,7 +148,7 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
  };
  const controls=index(baseline),candidates=index(candidate);
  if(invalid.size)return rejected('COHORT_REJECTED');
- const identityFields=['provider','model','effort','piVersion','fixtureVersion','canonicalSha256','promptSha256','contractSha256','graderSha256','sdkIdentity','budgetSha256','timingMethod','credentialSource','principalSha256'];
+ const identityFields=['provider','model','effort','piVersion','fixtureVersion','canonicalSha256','promptSha256','contractSha256','graderSha256','sdkIdentity','budgetSha256','timingMethod','credentialSource','principalSha256'].filter(key=>variation?.type!=='INSTRUCTIONS'||key!=='contractSha256');
  const modelIdentity=row=>{
   const value=row?.identity;
   if(!value)return null;
@@ -172,6 +176,40 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
    if(!left||!right||identityFields.some(key=>left[key]===undefined||right[key]===undefined))issues.add('IDENTITY_UNAVAILABLE');
    else{
     if(identityFields.some(key=>JSON.stringify(left[key])!==JSON.stringify(right[key])))invalid.add('IDENTITY_MISMATCH');
+    if(variation!==undefined){
+     if(!formats.includes(control.format)||!formats.includes(next.format))issues.add('IDENTITY_UNAVAILABLE');
+     else if(control.format!==next.format)invalid.add('FORMAT_MISMATCH');
+    }
+    if(variation?.type==='EXECUTION'||variation?.type==='INSTRUCTIONS'){
+     const digests=variation.type==='EXECUTION'
+      ?[control.projection?.payloadSha256,next.projection?.payloadSha256]
+      :[control.presentationSha256,next.presentationSha256];
+     if(digests.some(value=>typeof value!=='string'||! /^[a-f0-9]{64}$/.test(value)))issues.add('IDENTITY_UNAVAILABLE');
+     else if(digests[0]!==digests[1])invalid.add(variation.type==='EXECUTION'?'PAYLOAD_MISMATCH':'PRESENTATION_MISMATCH');
+    }
+    const schema=[left.publicContractSha256,right.publicContractSha256];
+    if(schema.every(value=>value===undefined)&&variation?.type==='EXECUTION')variationQualifications.add('LEGACY_EXECUTION_PUBLIC_SCHEMA_UNRECORDED');
+    if(variation?.type==='INSTRUCTIONS'||schema.some(value=>value!==undefined)){
+     if(schema.some(value=>typeof value!=='string'||! /^[a-f0-9]{64}$/.test(value)))issues.add('IDENTITY_UNAVAILABLE');
+     else if(schema[0]!==schema[1])invalid.add('PUBLIC_SCHEMA_MISMATCH');
+    }
+    const profiles=(field,allowed,legacy)=>{
+     const values=[left[field],right[field]];
+     if(values.every(value=>value===undefined)){
+      if(variation?.type==='INSTRUCTIONS')issues.add('IDENTITY_UNAVAILABLE');
+      else if(variation?.type==='EXECUTION')variationQualifications.add(legacy);
+      return null;
+     }
+     if(values.some(value=>value===undefined)){issues.add('IDENTITY_UNAVAILABLE');return null;}
+     if(values.some(value=>!allowed.includes(value))){invalid.add('PROFILE_MISMATCH');return null;}
+     return values;
+    };
+    const instructions=profiles('instructionProfile',['full','concise'],'LEGACY_EXECUTION_INSTRUCTION_PROFILE_UNRECORDED');
+    if(instructions&&(variation?.type==='INSTRUCTIONS'
+     ?instructions[0]!==variation.baselineProfile||instructions[1]!==variation.candidateProfile
+     :instructions[0]!==instructions[1]))invalid.add('PROFILE_MISMATCH');
+    const execution=profiles('executionProfile',['fresh','session'],'LEGACY_EXECUTION_PROFILE_UNRECORDED');
+    if(execution&&execution[0]!==execution[1]&&(variation?.type!=='EXECUTION'||execution[0]!=='fresh'||execution[1]!=='session'))invalid.add('PROFILE_MISMATCH');
     const sourceFields=['canonicalSha256','promptSha256','contractSha256','graderSha256','budgetSha256','principalSha256'];
     for(const identity of [left,right])if(sourceFields.some(key=>! /^[a-f0-9]{64}$/.test(identity[key]))
      ||!Array.isArray(identity.sdkIdentity)||!identity.sdkIdentity.length
@@ -222,7 +260,7 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
  const ledger=records=>({sends:records.every(row=>count(row.providerSends))?sum(records.map(row=>row.providerSends)):null,
   invalid:records.filter(row=>!eligible(row)).map(row=>({trialId:row.trialId,reasons:row.outcome.reasons}))});
  return {type:'REPLAY_TARGET_ASSESSMENT',status:invalid.size?'INVALID_COMPARISON':proofMissing?'UNMEASURED':notMet?'NOT_MET':'TARGET_MET',
-  target:{...target,caseIds:[...target.caseIds]},cases:target.caseIds.length,pairs,quality:{noAccuracyLoss,supported,perCase,baseline:totals([...controls.values()]),candidate:totals([...candidates.values()])},
+  target:{...target,caseIds:[...target.caseIds],...(variation?{variation:{...variation}}:{})},cases:target.caseIds.length,pairs,quality:{noAccuracyLoss,supported,perCase,baseline:totals([...controls.values()]),candidate:totals([...candidates.values()])},
   tokens,latency,accounting:{baseline:ledger(baseline),candidate:ledger(candidate)},costUnit:'PROVIDER_TOKENS',billedCost:{status:'UNAVAILABLE'},
-  reasons:[...invalid,...issues],qualifications:['DECLARED_CASES_ONLY','REPETITIONS_ARE_NOT_INDEPENDENT_TASKS','TOKENS_ARE_NOT_BILLED_COST','SYNTHETIC_INPUTS_DO_NOT_PROVE_MODEL_PERFORMANCE']};
+  reasons:[...invalid,...issues],qualifications:['DECLARED_CASES_ONLY','REPETITIONS_ARE_NOT_INDEPENDENT_TASKS','TOKENS_ARE_NOT_BILLED_COST','SYNTHETIC_INPUTS_DO_NOT_PROVE_MODEL_PERFORMANCE',...variationQualifications]};
 }

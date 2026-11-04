@@ -1,0 +1,33 @@
+{
+  "run": "interface-codex-baseline-v2",
+  "sourceCommit": "e6b08bd8b8a840c74602104a54e6f713fa854557",
+  "diffSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "adapterManifestSha256": "040197df123a9d19c80502b0e2c58e155ada69bdfaaff67ad016bf85fb158d8f",
+  "planSha256": "0b26a4da9d4899762fadec7caaafb02839d08d357e84f98a6ebb58bf32718625",
+  "model": {
+    "provider": "openai-codex",
+    "id": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  "caps": {
+    "maximumProviderPayloadBytes": 262144,
+    "maximumProviderResponseBytes": 65536,
+    "maximumOutputTokens": 2000,
+    "maximumShellCalls": 1,
+    "maximumInvocations": 1,
+    "maximumNativeCalls": 0
+  },
+  "settings": {
+    "retries": 0,
+    "compaction": false,
+    "cacheWarming": "off",
+    "transport": "sse"
+  },
+  "credentialSource": "CODEX_CHATGPT",
+  "privateRun": "build/interface-codex-baseline-v2.json.run",
+  "caseVersion": "interface-replay-v2",
+  "actualProviderSends": 24,
+  "plannedPairs": 12,
+  "baselineArm": "TOON",
+  "baselineSelection": "The complete 12/12 TOON arm supplies the fixed quality baseline. Both original arms and every failed decision remain recorded."
+}

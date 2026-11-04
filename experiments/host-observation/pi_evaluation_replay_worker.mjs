@@ -12,6 +12,7 @@ import { loadReplayCredential } from './pi_evaluation_replay_auth.mjs';
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
 import { createEvaluationSession,disposeEvaluationSession,publishWorkerResult } from './pi_evaluation_worker.mjs';
 import { withPrivateReplaySession } from './pi_evaluation_records.mjs';
+import { startReplayAdapter } from './pi_evaluation_replay_adapter_session.mjs';
 import { createReplayShell } from './pi_evaluation_replay_shell.mjs';
 
 export const replaySha=value=>crypto.createHash('sha256').update(value).digest('hex');
@@ -21,6 +22,23 @@ export function adapterCommand(manifest,mode,input,format) {
   env:{PATH:path.dirname(manifest.command[0]),HOME:os.tmpdir(),KAST_OUTPUT_TOON:format==='TOON'?'1':'0'}});
  if(result.error||result.status!==0)throw Error('PRODUCTION_ADAPTER_FAILED');
  return result.stdout;
+}
+export function readPreparedReplayInput(directory,expected) {
+ const rejected=reason=>({type:'unavailable',reason});
+ try{
+  const input=path.join(directory,'input.json'),proof=path.join(directory,'projection.json');
+  if([input,proof].some(file=>{const stat=fs.lstatSync(file);return !stat.isFile()||stat.isSymbolicLink()||stat.size>4194304;}))return rejected('PREFLIGHT_RENDERING_UNAVAILABLE');
+  const data=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(fs.readFileSync(input)));
+  const metadata=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(fs.readFileSync(proof)));
+  if(typeof data.presentation!=='string'||metadata.type!=='projected'||metadata.complete!==true||metadata.encodingEquivalent!==true
+   ||['canonicalSha256','artifactSha256','format'].some(key=>metadata[key]!==expected[key])
+   ||replaySha(data.presentation)!==metadata.presentationSha256)return rejected('PREFLIGHT_RENDERING_REJECTED');
+  return Object.freeze({type:'prepared',presentation:data.presentation});
+ }catch{return rejected('PREFLIGHT_RENDERING_UNAVAILABLE');}
+}
+export function replayAdapterOutcome(failure) {
+ if(failure?.trigger==='MODEL_ADMISSION'&&failure.failure?.operation==='ADMIT'&&failure.failure?.reason==='ADAPTER_REJECTED'&&failure.failure?.cause==='RESPONSE_TOO_LARGE')return {type:'incomplete',reasons:['ADAPTER_OUTPUT_BUDGET']};
+ return {type:'invalid',reasons:['ADAPTER_SESSION_UNAVAILABLE']};
 }
 export function replayMessages(item,presentation) {
  const id=item.prefixCall.toolCallId;
@@ -47,22 +65,29 @@ export async function syntheticRuntime(sdk,load) {
  return sdk.ModelRuntime.create({credentials:AuthStorage.inMemory({'openai-codex':{type:'oauth',access,refresh:'synthetic-never-refresh',expires:Date.now()+86400000}}),modelsStore,modelsPath:null,allowModelNetwork:false,refreshOnCreate:false});
 }
 export async function replayWorker(mode,plan,trial,services={}) {
- const started=performance.now(),preflight=mode==='--preflight',item=replayCase(trial.caseId),budget=new ReplayBudget(()=>ledger());
+ const started=performance.now(),preflight=mode==='--preflight',item=replayCase(trial.caseId,plan.instructionProfile??'full'),budget=new ReplayBudget(()=>ledger());
  const directory=path.join(plan.outputRoot,preflight?`preflight-${trial.trialId}`:trial.trialId);
  fs.mkdirSync(directory,{mode:0o700});
  const write=(name,value)=>fs.writeFileSync(path.join(directory,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});
  let responseLimit=false;
- let usage=null,projection=null,providerStarted=null,providerMs=null,assistant=null,proposal=null,session,shell,transportFailure=false,deadline=false,setupComplete=false,setupMs=null;
+ let usage=null,projection=null,providerStarted=null,providerMs=null,assistant=null,proposal=null,session,shell,transportFailure=false,deadline=false,setupComplete=false,setupMs=null,adapterSession=null,adapterFailure=null,adapterClose=null;
  const measurement=preflight?'NO_INFERENCE':services.modelRuntime||services.fetch?'SYNTHETIC_TRANSPORT':'LIVE_MODEL';
  const events=[],record=value=>{events.push({...value,atMs:performance.now()-started});return {type:'recorded'};};
  const ledger=()=>write('ledger.json',{...budget.report(),measurement,usage,nativeCalls:0});ledger();
  const manifestBytes=fs.readFileSync(plan.adapterManifest);
  if(replaySha(manifestBytes)!==plan.adapterManifestSha256)throw Error('ADAPTER_IDENTITY_CHANGED');
  const manifest=JSON.parse(manifestBytes);
- const stdout=adapterCommand(manifest,['render-raw',item.canonicalPath],undefined,trial.format);
- let encodingEquivalent=true;try{adapterCommand(manifest,['render',item.canonicalPath],undefined,trial.format);}catch{encodingEquivalent=false;}
+ let encodingEquivalent=true,presentation;
+ if(!preflight&&plan.executionProfile==='session'){
+  const reused=readPreparedReplayInput(path.join(plan.outputRoot,`preflight-${trial.trialId}`),{canonicalSha256:item.canonicalSha256,artifactSha256:manifest.sha256,format:trial.format});
+  if(reused.type!=='prepared')throw Error(reused.reason);
+  presentation=reused.presentation;
+ }else{
+  const stdout=adapterCommand(manifest,['render-raw',item.canonicalPath],undefined,trial.format);
+  try{adapterCommand(manifest,['render',item.canonicalPath],undefined,trial.format);}catch{encodingEquivalent=false;}
+  presentation=`stdout:\n${stdout}\nstderr:\n${item.stderr}exit_status: ${item.exitStatus}\n`;
+ }
  write('encoding.json',{encodingEquivalent,canonicalSha256:item.canonicalSha256,format:trial.format});
- const presentation=`stdout:\n${stdout}\nstderr:\n${item.stderr}exit_status: ${item.exitStatus}\n`;
  write('input.json',{task:item.task,presentation,messages:replayMessages(item,presentation)});
  const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
  if(JSON.parse(fs.readFileSync(path.join(plan.piPackageRoot,'package.json'))).version!==plan.piVersion)throw Error('SDK_IDENTITY_CHANGED');
@@ -95,18 +120,20 @@ export async function replayWorker(mode,plan,trial,services={}) {
  };
  const abort=new AbortController(),cancel=()=>{deadline=true;abort.abort();session?.agent.abort();};
  const onMessage=message=>{if(message?.type==='cancel')cancel();};process.on('message',onMessage);process.once('SIGTERM',cancel);
+ let adapterPrepared;
  try{
+  adapterPrepared=!preflight&&plan.executionProfile==='session'?startReplayAdapter(manifest,{signal:abort.signal,format:trial.format}):null;
   const socket=path.join(fs.realpathSync(os.tmpdir()),`kr-${process.pid}.sock`);
   shell=await createReplayShell({directory:path.join(directory,'fixture'),socket,budget,
-   admit:async request=>JSON.parse(adapterCommand(manifest,['admit'],JSON.stringify(request),trial.format)),
-   transition:admission=>{const transition=replayTransition(item.id,admission);return transition.type==='supported'?{stdout:adapterCommand(manifest,['render-raw',transition.canonicalPath],undefined,trial.format)+'\n',stderr:transition.stderr,exitStatus:transition.exitStatus}:transition;}});
+   admit:async request=>{if(!adapterSession)return JSON.parse(adapterCommand(manifest,['admit'],JSON.stringify(request),trial.format));const result=await adapterSession.admit(request);if(result.type!=='admission'){adapterFailure={...result,trigger:'MODEL_ADMISSION'};throw Error('REPLAY_ADAPTER_SESSION_FAILED');}return result.receipt;},
+   transition:async admission=>{const transition=replayTransition(item.id,admission);if(transition.type!=='supported')return transition;const format=admission.argv?.includes('--json')?'JSON':trial.format;let text;if(adapterSession){const result=await adapterSession.render(transition.canonicalResponse,format);if(result.type!=='rendered'){adapterFailure=result;throw Error('REPLAY_ADAPTER_SESSION_FAILED');}text=result.text;}else text=adapterCommand(manifest,['render-raw',transition.canonicalPath],undefined,format);return {stdout:text+'\n',stderr:transition.stderr,exitStatus:transition.exitStatus};}});
   const shellTool=sdk.createBashToolDefinition(shellDirectory(directory),{operations:shell.operations,exposeSessionEnvironment:false});
   const guard=pi=>{
    pi.on('session_start',()=>pi.setActiveTools(['bash']));
    pi.on('before_provider_request',(event,ctx)=>{
     const payload={...event.payload,max_output_tokens:2000};
     if(budget.report().providerSends!==0){record({type:'provider_followup_blocked',reason:'MICROTRIAL_COMPLETE'});ctx.abort();return payload;}
-    projection={...inspectReplayProjection(payload,presentation),encodingEquivalent};expectedPayload=projection;
+    projection={...inspectReplayProjection(payload,presentation),encodingEquivalent,canonicalSha256:item.canonicalSha256,artifactSha256:manifest.sha256,format:trial.format};expectedPayload=projection;
     record({type:'provider_admission',projection});
     if(preflight||!encodingEquivalent||projection.type!=='projected'||budget.report().providerSends!==0){ctx.abort();}
     else{
@@ -128,12 +155,15 @@ export async function replayWorker(mode,plan,trial,services={}) {
    const created=await createEvaluationSession({sdk,plan:{workspaceRoot:shellDirectory(directory)},directory,modelRuntime:runtime,
     policy:{config:{finalPresentation:'canonical'}},record,manager,replay:{guard,shellTool}});
    if(created.type!=='session')throw Error(JSON.stringify(created));
-   session=created.session;setupComplete=true;setupMs=performance.now()-started;
-   await session.agent.continue();await session.agent.waitForIdle();
+   session=created.session;
+   if(adapterPrepared){const ready=await adapterPrepared;if(ready.type==='ready')adapterSession=ready.session;else adapterFailure=ready;}
+   setupComplete=!adapterFailure;setupMs=performance.now()-started;
+   if(!adapterFailure){await session.agent.continue();await session.agent.waitForIdle();}
    await disposeEvaluationSession(session,'WORKER_EXECUTION');session=null;
    return true;
   });
   if(archive.type!=='completed')throw Error(JSON.stringify(archive));
+  if(adapterSession){adapterClose=await adapterSession.close();adapterSession=null;if(adapterClose.type!=='closed')adapterFailure??=adapterClose;}
   write('events.json',events);write('shell.json',{captures:shell.captures,invocations:shell.invocations});
   if(preflight){write('projection.json',projection);return projection??{type:'invalid',failure:'PROJECTION_UNAVAILABLE'};}
   const inputValid=projection?.type==='projected'&&actualPayload!==null;
@@ -147,22 +177,24 @@ export async function replayWorker(mode,plan,trial,services={}) {
   const grade={...evaluated,correct:evaluated.correct&&!excess,misuse:[...evaluated.reasons,...(excess?['RESOURCE_MISUSE']:[])],argumentCause:evaluated.productionCause??null,coverageCorrect:evaluated.dimensions.coverage==='PASS'?true:evaluated.dimensions.coverage==='FAIL'?false:null};
   let outcome;
   if(deadline)outcome={type:'incomplete',reasons:['DEADLINE']};
+  else if(adapterFailure)outcome=replayAdapterOutcome(adapterFailure);
   else if(transportFailure||!inputValid||shell.failed)outcome={type:'invalid',reasons:[transportFailure?'PROVIDER_TRANSPORT_FAILURE':!inputValid?'INPUT_PROJECTION_FAILED':'SHELL_ADAPTER_FAILURE']};
   else if(responseLimit||assistant?.stopReason==='length')outcome={type:'incomplete',reasons:['OUTPUT_BUDGET']};
   else outcome={type:grade.correct?'correct':'incorrect',reasons:grade.misuse};
   const protectedFilesUnchanged=protectedPaths.every((file,index)=>replaySha(fs.readFileSync(file))===before[index]);
   if(!protectedFilesUnchanged)outcome={type:'invalid',reasons:['PROTECTED_FILE_CHANGED']};
   const report={...trial,measurement,outcome,usage,...budget.report(),nativeCalls:0,grade,decision,proposal,
-   productionAdmission:admission,providerHttpStatus,presentationBytes:Buffer.byteLength(presentation),presentationSha256:replaySha(presentation),
+   adapterSession:adapterClose,adapterFailure,productionAdmission:admission,providerHttpStatus,presentationBytes:Buffer.byteLength(presentation),presentationSha256:replaySha(presentation),
    projection,actualProviderProjection:inspectReplayProjection(actualPayload??{},presentation),
    latency:{trialMs:performance.now()-started,queueMs:0,setupMs,providerMs,shellMs:shell.captures.reduce((total,capture)=>total+capture.durationMs,0),method:'WORKER_MONOTONIC_V1'},
-   identity:{...authIdentity,sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:manifest.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,provider:'openai-codex',model:'gpt-6.1-sol',effort:'high',timingMethod:'WORKER_MONOTONIC_V1',fixtureVersion:item.version,canonicalSha256:item.canonicalSha256,contractSha256:replaySha(item.visibleContract),promptSha256:replaySha(item.task),graderSha256:replaySha(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))),sdkIdentity:plan.sdkIdentity??[],budgetSha256:replaySha(JSON.stringify({wallSeconds:60,workers:plan.workers,providerRequests:1,shellCalls:1,invocations:1,maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,outputCap:2000,retries:0,compaction:false,cacheWarming:'off',transport:'sse'}))},
+   identity:{...authIdentity,instructionProfile:plan.instructionProfile??'full',executionProfile:plan.executionProfile??'fresh',publicContractSha256:plan.publicContractSha256,sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:manifest.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,provider:'openai-codex',model:'gpt-6.1-sol',effort:'high',timingMethod:'WORKER_MONOTONIC_V1',fixtureVersion:item.version,canonicalSha256:item.canonicalSha256,contractSha256:replaySha(item.visibleContract),promptSha256:replaySha(item.task),graderSha256:replaySha(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))),sdkIdentity:plan.sdkIdentity??[],budgetSha256:replaySha(JSON.stringify({wallSeconds:60,workers:plan.workers,providerRequests:1,shellCalls:1,invocations:1,maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,outputCap:2000,retries:0,compaction:false,cacheWarming:'off',transport:'sse'}))},
    protectedFilesUnchanged,
    settings:{maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,transport:'sse',cacheWarming:'off',retries:0,compaction:false,outputCap:2000,outputCapEnforcement:'REQUESTED_BACKEND_ENFORCEMENT_UNPROVEN'}};
   write('report.json',report);return report;
  }finally{
   globalThis.fetch=savedFetch;process.removeListener('message',onMessage);process.removeListener('SIGTERM',cancel);
   if(session)await disposeEvaluationSession(session);
+  if(adapterSession)await adapterSession.close();else if(adapterPrepared){const ready=await adapterPrepared;if(ready.type==='ready'&&!adapterClose)await ready.session.close();}
   if(shell)await shell.dispose();
   record({type:'worker_end',setupComplete});
  }

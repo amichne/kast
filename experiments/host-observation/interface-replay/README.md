@@ -21,6 +21,8 @@ node experiments/host-observation/run_pi_evaluation.mjs --execute /absolute/init
 
 For one case, append `C6` to `--prepare-replay`.
 For the current Codex login, append `--auth=codex`. The default remains the Pi credential source.
+For one owned JVM per trial, append `--execution=session`. The default remains `fresh`.
+For the shorter global instruction contract, append `--instructions=concise`. The default remains `full`.
 This plan declares four trials and at most four provider sends.
 Each execution needs a new output directory.
 The planner reads artifact identities without credentials, SDK sessions, or network calls.
@@ -70,6 +72,7 @@ The original offline report used an expired Pi credential and has status `NOT_RU
 The first Codex-backed screen completed 24 measured trials.
 [The live report](first-live.md) keeps its original results and response-contract findings.
 The current hill climb uses the [performance target](hill-climb.md).
+The [clarified baseline](baseline-v2.md) records all twelve correct TOON decisions before performance candidates.
 The report selects no format winner.
 
 `JToon` 3.0.0 decodes a nested empty array as a string in a list-item object.

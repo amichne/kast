@@ -47,6 +47,7 @@ export async function runReplayPool(trials,workers,execute,signal,onReceipt=()=>
 }
 export function validateReplayPlan(plan) {
  expandReplayPlan(plan);
+ if(plan.instructionProfile!==undefined&&!['full','concise'].includes(plan.instructionProfile)||plan.executionProfile!==undefined&&!['fresh','session'].includes(plan.executionProfile))throw Error('REPLAY_PROFILE_REJECTED');
  if(plan.credentialSource!==undefined&&!['PI_OAUTH','CODEX_CHATGPT'].includes(plan.credentialSource))throw Error('CREDENTIAL_SOURCE_REJECTED');
  for(const name of ['outputRoot','piPackageRoot','authPath','modelsStorePath','adapterManifest'])
   if(typeof plan[name]!=='string'||!path.isAbsolute(plan[name]))throw Error(`ABSOLUTE_${name}_REQUIRED`);
@@ -66,7 +67,7 @@ export async function executeReplayPlan(planFile,plan) {
   cwd:plan.outputRoot,env:{...process.env,PI_OFFLINE:'1',PI_TELEMETRY:'0',KAST_TOOL_RPC_COMMAND:undefined},
   wallMillis:60000,graceMillis:1000,signal:controller.signal});
  const artifact=JSON.parse(fs.readFileSync(plan.adapterManifest));
- const withIdentity=receipt=>{const fixture=plan.cases.find(c=>c.id===receipt.caseId);return {...receipt,identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:artifact.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,sdkIdentity:plan.sdkIdentity,model:plan.model,fixtureVersion:fixture.version,canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,codec:'JToon-3.0.0',credentialSource:plan.credentialSource??'PI_OAUTH',graderSha256:createHash('sha256').update(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))).digest('hex'),planSha256:createHash('sha256').update(fs.readFileSync(planFile)).digest('hex'),...receipt.identity,timingMethod:'CONTROLLER_REAPED_WALL_V1'}};};
+ const withIdentity=receipt=>{const fixture=plan.cases.find(c=>c.id===receipt.caseId);return {...receipt,identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:artifact.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,sdkIdentity:plan.sdkIdentity,model:plan.model,fixtureVersion:fixture.version,canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,codec:'JToon-3.0.0',instructionProfile:plan.instructionProfile??'full',executionProfile:plan.executionProfile??'fresh',publicContractSha256:plan.publicContractSha256,credentialSource:plan.credentialSource??'PI_OAUTH',graderSha256:createHash('sha256').update(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))).digest('hex'),planSha256:createHash('sha256').update(fs.readFileSync(planFile)).digest('hex'),...receipt.identity,timingMethod:'CONTROLLER_REAPED_WALL_V1'}};};
  const published=new Set();
  const publishReceipt=receipt=>{if(published.has(receipt.trialId))return;fs.writeFileSync(path.join(plan.outputRoot,`${receipt.trialId}.receipt.json`),JSON.stringify(receipt,null,2)+'\n',{mode:0o600,flag:'wx'});published.add(receipt.trialId);};
  const write=(name,value)=>fs.writeFileSync(path.join(plan.outputRoot,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});

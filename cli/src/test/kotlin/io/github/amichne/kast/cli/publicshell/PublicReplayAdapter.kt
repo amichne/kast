@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.publicshell
 
 import com.lukelast.ktoon.Ktoon
+import com.lukelast.ktoon.KtoonException
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
@@ -15,11 +16,24 @@ import io.github.amichne.kast.distribution.output.renderCliOutput
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import java.io.ByteArrayOutputStream
+import java.io.FileDescriptor
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.security.MessageDigest
+import kotlin.system.exitProcess
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -29,6 +43,8 @@ object PublicReplayAdapter {
     @JvmStatic
     fun main(args: Array<String>) {
         when (args.toList()) {
+            listOf("stdio") ->
+                exitProcess(runReplayStdio(System.`in`, FileOutputStream(FileDescriptor.out), selectedReplayFormat()))
             listOf("manifest") -> print(replayJson.encodeToString(replayManifest()))
             listOf("admit") -> {
                 val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
@@ -71,6 +87,214 @@ object PublicReplayAdapter {
                 }
             }
         }
+    }
+}
+
+@Serializable
+internal sealed interface ReplayStdioRequest {
+    @Serializable
+    @SerialName("admit")
+    data class Admit(val argv: List<String>, val stdin: String, val directory: String) : ReplayStdioRequest
+
+    @Serializable
+    @SerialName("render")
+    data class Render(val document: String, val format: ReplayStdioFormat) : ReplayStdioRequest
+}
+
+@Serializable
+internal enum class ReplayStdioFormat {
+    JSON,
+    TOON;
+
+    fun production(): CliOutputFormat =
+        when (this) {
+            JSON -> CliOutputFormat.JSON
+            TOON -> CliOutputFormat.TOON
+        }
+}
+
+@Serializable
+private sealed interface ReplayStdioReply {
+    @Serializable @SerialName("ready") data object Ready : ReplayStdioReply
+
+    @Serializable @SerialName("admission") data class Admission(val receipt: ReplayAdmissionReceipt) : ReplayStdioReply
+
+    @Serializable @SerialName("rendered") data class Rendered(val text: String) : ReplayStdioReply
+
+    @Serializable @SerialName("rejected") data class Rejected(val cause: ReplayStdioFailure) : ReplayStdioReply
+}
+
+@Serializable
+private enum class ReplayStdioFailure {
+    INVALID_REQUEST,
+    INVALID_UTF8,
+    FRAME_TOO_LARGE,
+    INCOMPLETE_FRAME,
+    REQUEST_LIMIT,
+    ENCODING_REJECTED,
+    ADMISSION_UNAVAILABLE,
+    RESPONSE_TOO_LARGE,
+    INPUT_IO,
+}
+
+private enum class ReplayStdioAllowance {
+    BOTH,
+    ADMISSION_ONLY,
+    RENDER_ONLY,
+    NONE,
+}
+
+private enum class ReplayStdioDelivery {
+    DELIVERED,
+    REJECTED,
+    UNAVAILABLE,
+}
+
+private sealed interface ReplayStdioFrame {
+    data object End : ReplayStdioFrame
+
+    data class Content(val text: String) : ReplayStdioFrame
+
+    data class Rejected(val cause: ReplayStdioFailure) : ReplayStdioFrame
+}
+
+internal fun runReplayStdio(
+    input: InputStream,
+    output: OutputStream,
+    format: CliOutputFormat = CliOutputFormat.JSON,
+): Int {
+    if (deliverReplayStdio(output, ReplayStdioReply.Ready) != ReplayStdioDelivery.DELIVERED) return 1
+    val buffered = input.buffered()
+    var allowance = ReplayStdioAllowance.BOTH
+    while (true) {
+        val text =
+            when (val frame = readReplayStdioFrame(buffered)) {
+                ReplayStdioFrame.End -> return 0
+                is ReplayStdioFrame.Rejected -> return rejectReplayStdio(output, frame.cause)
+                is ReplayStdioFrame.Content -> frame.text
+            }
+        val request =
+            try {
+                replayJson.decodeFromString<ReplayStdioRequest>(text)
+            } catch (_: SerializationException) {
+                return rejectReplayStdio(output, ReplayStdioFailure.INVALID_REQUEST)
+            }
+        allowance =
+            when (val reserved = reserveReplayStdio(allowance, request)) {
+                is Refinement.Refined -> reserved.value
+                is Refinement.Rejected -> return rejectReplayStdio(output, reserved.failure)
+            }
+        when (deliverReplayStdio(output, replyReplayStdio(request, format))) {
+            ReplayStdioDelivery.DELIVERED -> Unit
+            ReplayStdioDelivery.REJECTED -> return 2
+            ReplayStdioDelivery.UNAVAILABLE -> return 1
+        }
+    }
+}
+
+private fun reserveReplayStdio(
+    allowance: ReplayStdioAllowance,
+    request: ReplayStdioRequest,
+): Refinement<ReplayStdioAllowance, ReplayStdioFailure> =
+    when (request) {
+        is ReplayStdioRequest.Admit ->
+            when (allowance) {
+                ReplayStdioAllowance.BOTH -> Refinement.Refined(ReplayStdioAllowance.RENDER_ONLY)
+                ReplayStdioAllowance.ADMISSION_ONLY -> Refinement.Refined(ReplayStdioAllowance.NONE)
+                ReplayStdioAllowance.RENDER_ONLY,
+                ReplayStdioAllowance.NONE -> Refinement.Rejected(ReplayStdioFailure.REQUEST_LIMIT)
+            }
+        is ReplayStdioRequest.Render ->
+            when (allowance) {
+                ReplayStdioAllowance.BOTH -> Refinement.Refined(ReplayStdioAllowance.ADMISSION_ONLY)
+                ReplayStdioAllowance.RENDER_ONLY -> Refinement.Refined(ReplayStdioAllowance.NONE)
+                ReplayStdioAllowance.ADMISSION_ONLY,
+                ReplayStdioAllowance.NONE -> Refinement.Rejected(ReplayStdioFailure.REQUEST_LIMIT)
+            }
+    }
+
+private fun replyReplayStdio(request: ReplayStdioRequest, format: CliOutputFormat): ReplayStdioReply =
+    when (request) {
+        is ReplayStdioRequest.Admit ->
+            try {
+                ReplayStdioReply.Admission(
+                    replayAdmission(
+                        request.argv,
+                        request.stdin,
+                        Path.of(request.directory),
+                        if ("--json" in request.argv) CliOutputFormat.JSON else format,
+                    )
+                )
+            } catch (_: IOException) {
+                ReplayStdioReply.Rejected(ReplayStdioFailure.ADMISSION_UNAVAILABLE)
+            } catch (_: InvalidPathException) {
+                ReplayStdioReply.Rejected(ReplayStdioFailure.ADMISSION_UNAVAILABLE)
+            }
+        is ReplayStdioRequest.Render ->
+            try {
+                ReplayStdioReply.Rendered(replayRender(request.document, request.format.production()))
+            } catch (_: SerializationException) {
+                ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
+            } catch (_: IllegalArgumentException) {
+                ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
+            } catch (_: KtoonException) {
+                ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
+            }
+    }
+
+private fun readReplayStdioFrame(input: InputStream): ReplayStdioFrame {
+    val bytes = ByteArrayOutputStream()
+    try {
+        while (true) {
+            val next = input.read()
+            if (next == -1)
+                return if (bytes.size() == 0) ReplayStdioFrame.End
+                else ReplayStdioFrame.Rejected(ReplayStdioFailure.INCOMPLETE_FRAME)
+            if (next == 10) break
+            if (bytes.size() == MAXIMUM_PROTOCOL_TEXT_LENGTH)
+                return ReplayStdioFrame.Rejected(ReplayStdioFailure.FRAME_TOO_LARGE)
+            bytes.write(next)
+        }
+    } catch (_: IOException) {
+        return ReplayStdioFrame.Rejected(ReplayStdioFailure.INPUT_IO)
+    }
+    return try {
+        val text =
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(bytes.toByteArray()))
+                .toString()
+        ReplayStdioFrame.Content(text)
+    } catch (_: CharacterCodingException) {
+        ReplayStdioFrame.Rejected(ReplayStdioFailure.INVALID_UTF8)
+    }
+}
+
+private fun rejectReplayStdio(output: OutputStream, cause: ReplayStdioFailure): Int =
+    when (deliverReplayStdio(output, ReplayStdioReply.Rejected(cause))) {
+        ReplayStdioDelivery.DELIVERED,
+        ReplayStdioDelivery.REJECTED -> 2
+        ReplayStdioDelivery.UNAVAILABLE -> 1
+    }
+
+private fun deliverReplayStdio(output: OutputStream, reply: ReplayStdioReply): ReplayStdioDelivery {
+    val bytes = replayJson.encodeToString(reply).toByteArray(Charsets.UTF_8)
+    val admitted =
+        if (bytes.size <= MAXIMUM_PROTOCOL_TEXT_LENGTH) bytes
+        else
+            replayJson
+                .encodeToString<ReplayStdioReply>(ReplayStdioReply.Rejected(ReplayStdioFailure.RESPONSE_TOO_LARGE))
+                .toByteArray(Charsets.UTF_8)
+    return try {
+        output.write(admitted)
+        output.write(10)
+        output.flush()
+        if (reply is ReplayStdioReply.Rejected || bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
+            ReplayStdioDelivery.REJECTED
+        else ReplayStdioDelivery.DELIVERED
+    } catch (_: IOException) {
+        ReplayStdioDelivery.UNAVAILABLE
     }
 }
 

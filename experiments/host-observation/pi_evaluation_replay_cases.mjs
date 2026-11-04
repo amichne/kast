@@ -7,19 +7,34 @@ const freeze=value=>{
 };
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fixturePath=id=>new URL(`./interface-replay/fixtures/${id}.json`,import.meta.url);
-const contract=[
-  'Use the bash tool for one next Kast command. The replay permits one shell call and one attempted Kast invocation.',
+const commandGrammar=[
   'kast query --name NAME [--in DIRECTORY] [--source-set main] [--kind class|function|property|type-alias] [--fields name,location,signature,source]',
   'kast query --ref EXACT_REFERENCE [--relation references|callers|callees|implementations|inheritors|overrides|type-uses]',
   'kast source read --ref EXACT_REFERENCE --region callable-body|file|anchor --text complete|none',
   'kast result read --ref RESULT_REFERENCE --cursor INTEGER',
   'kast result resume --continuation OUTPUT_CONTINUATION',
+];
+const finishJson='{"kind":"finish","conclusion":"insufficient-evidence"|"absent"|"present","scope":{"directory":"...","sourceSets":["..."]},"exhaustive":true|false,"limitations":["..."]}';
+const clarifyJson='{"kind":"clarify","question":"..."}';
+const contract=[
+  'Use the bash tool for one next Kast command. The replay permits one shell call and one attempted Kast invocation.',
+  ...commandGrammar,
   'The --request - form takes the public JSON request envelope on stdin instead of semantic flags.',
-  'A finish response uses JSON: {"kind":"finish","conclusion":"insufficient-evidence"|"absent"|"present","scope":{"directory":"...","sourceSets":["..."]},"exhaustive":true|false,"limitations":["..."]}.',
+  `A finish response uses JSON: ${finishJson}.`,
   'Copy only the issued qualification.limitations codes verbatim into finish limitations. Do not replace codes with prose or add other evidence fields.',
-  'A clarification uses JSON: {"kind":"clarify","question":"..."}. Only the task determines whether a final answer or clarification is justified.',
+  `A clarification uses JSON: ${clarifyJson}. Only the task determines whether a final answer or clarification is justified.`,
   'Choose the next decision for the original task. The last bash result belongs to the preceding call. References are synthetic and fixture-local.',
 ].join('\n');
+const conciseContract=[
+  'Use bash for at most one shell call and one attempted Kast invocation.',
+  ...commandGrammar.map(line=>line.replaceAll('EXACT_REFERENCE','REF').replaceAll('RESULT_REFERENCE','RESULT').replaceAll('OUTPUT_CONTINUATION','TOKEN').replaceAll('DIRECTORY','DIR').replaceAll('INTEGER','N')),
+  '--request -: public JSON request envelope on stdin instead of semantic flags.',
+  `Finish JSON: ${finishJson}.`,
+  'Finish limitations: copy only issued qualification.limitations codes verbatim. No prose or extra evidence fields.',
+  `Clarify JSON: ${clarifyJson}. Finish or clarify only if the original task supports it.`,
+  'Copy issued references and tokens exactly. References are synthetic and fixture-local. The bash result belongs to the preceding call.',
+].join('\n');
+const instructionContracts=Object.freeze({full:contract,concise:conciseContract});
 const metadata=[
   {id:'C1',name:'overload',task:'Find the callers of submit(id: Long) in services/orders/src/main/kotlin/Orders.kt. The declaration search already returned the overloads. Select that declaration with its issued reference.',command:'kast query --name submit --in services/orders --source-set main --kind function',permittedDecisions:['invoke']},
   {id:'C2',name:'source',task:'Read the complete callable body of submit(id: String, retries: Int). The declaration was selected in the previous result. Use its issued reference.',command:'kast query --ref exact:v5:AAAAAAAAAAAAAAAAAAAAAg',permittedDecisions:['invoke']},
@@ -31,14 +46,15 @@ const metadata=[
 
 // Canonical bytes cross this owner untouched. In particular, no JSON numeric
 // parse occurs before the production Kotlin renderer receives the document.
-export function replayCases() {
+export function replayCases(profile='full') {
+  if(typeof profile!=='string'||!Object.hasOwn(instructionContracts,profile))throw Error('REPLAY_INSTRUCTION_PROFILE_REJECTED');
   return freeze(metadata.map(item=>{
     const canonicalResponse=readFileSync(fixturePath(item.id),'utf8');
-    return {...item,version:'interface-replay-v2',canonicalResponse,canonicalSha256:sha(canonicalResponse),canonicalPath:fixturePath(item.id).pathname,producer:{type:'SYNTHETIC_PUBLIC_CONTRACT_FIXTURE',source:'protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt',sourceRevision:'0decbfa874a21fc70592992bc12eaa6939980af2'},visibleContract:contract,prefixCall:{toolName:'bash',toolCallId:`replay-prefix-${item.id}`,input:{command:item.command}},stderr:item.stderr??'',exitStatus:item.exitStatus??(item.id==='C3'||item.id==='C5'?10:0),limits:{providerRequests:1,shellCalls:1,kastInvocations:1,nativeCalls:0,wallSeconds:60}};
+    return {...item,version:'interface-replay-v2',instructionProfile:profile,canonicalResponse,canonicalSha256:sha(canonicalResponse),canonicalPath:fixturePath(item.id).pathname,producer:{type:'SYNTHETIC_PUBLIC_CONTRACT_FIXTURE',source:'protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt',sourceRevision:'0decbfa874a21fc70592992bc12eaa6939980af2'},visibleContract:instructionContracts[profile],prefixCall:{toolName:'bash',toolCallId:`replay-prefix-${item.id}`,input:{command:item.command}},stderr:item.stderr??'',exitStatus:item.exitStatus??(item.id==='C3'||item.id==='C5'?10:0),limits:{providerRequests:1,shellCalls:1,kastInvocations:1,nativeCalls:0,wallSeconds:60}};
   }));
 }
-export function replayCase(id) {
-  const item=replayCases().find(value=>value.id===id);
+export function replayCase(id,profile='full') {
+  const item=replayCases(profile).find(value=>value.id===id);
   if(!item)throw Error('UNKNOWN_REPLAY_CASE');
   return item;
 }

@@ -43,7 +43,7 @@ export async function createReplayShell({directory,socket,budget,admit,transitio
     }
     invocations.push({request});
     const admission=await admit(request);invocations.at(-1).admission=admission;
-    const result=admission.type==='ADMITTED'||admission.type==='admitted'?transition(admission):admission;
+    const result=admission.type==='ADMITTED'||admission.type==='admitted'?await transition(admission):admission;
     invocations.at(-1).result=result;client.end(JSON.stringify(result));
    }catch{failed=true;client.end(JSON.stringify({stdout:'',stderr:'REPLAY_ADAPTER_UNAVAILABLE\n',exitStatus:70}));}
   });client.on('error',()=>{failed=true;});
