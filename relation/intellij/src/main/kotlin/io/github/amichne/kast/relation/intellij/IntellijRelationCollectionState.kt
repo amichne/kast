@@ -36,6 +36,23 @@ internal enum class IntellijRelationCollectionState {
     CONTRACT_REJECTED,
 }
 
+internal fun IntellijRelationCollectionState.inventoryCompletion(
+    providerExhausted: Boolean,
+    admitExhausted: () -> IntellijRelationProviderEnumerationAdmission,
+): IntellijRelationInventoryCompletion =
+    when (this) {
+        IntellijRelationCollectionState.COLLECTING ->
+            when {
+                !providerExhausted -> IntellijRelationInventoryCompletion.PROVIDER_INCOMPLETE
+                admitExhausted() == IntellijRelationProviderEnumerationAdmission.READY ->
+                    IntellijRelationInventoryCompletion.EXHAUSTED
+                else -> IntellijRelationInventoryCompletion.STOPPED
+            }
+        IntellijRelationCollectionState.HALTED,
+        IntellijRelationCollectionState.ENUMERATION_LIMIT,
+        IntellijRelationCollectionState.CONTRACT_REJECTED -> IntellijRelationInventoryCompletion.STOPPED
+    }
+
 internal const val MAX_NATIVE_RELATION_CANDIDATES = 10_000
 
 internal fun RelationLimitation.observedTermination(): IntellijReadTermination =
