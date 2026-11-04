@@ -21,6 +21,48 @@ import java.util.concurrent.atomic.AtomicReference
 class NativeScopeExpiryTest : NativeReferenceFixtureTest() {
     override val fixtureSdkName = "scope-expiry-case-jdk"
 
+    fun testAlreadyExpiredInventoryDoesNotInvokeTheNativeProvider() {
+        val fixture = prepareReferenceFixture()
+        assertPositiveControl(fixture)
+        val now = AtomicLong()
+        val deadline = fixture.request.budget.resources.nativeBounded().elapsedTimeLimit.value * 1_000_000L
+        val observed = ExpireAtNativeScopeMembership(now, deadline)
+        val compiled = fixture.scope(observed)
+        val collector = IntellijRelationCollector(fixture.request, now::get, observed)
+        val cancellationCheck = { ProgressManager.checkCanceled() }
+        val locators =
+            IntellijRelationLocators(
+                project = project,
+                scope = compiled,
+                projection =
+                    IntellijK2RelationProjection(project, fixture.request.subject.lease.workspaceRoot, observed),
+                cancellationCheck = cancellationCheck,
+                observation = observed,
+            )
+        now.set(deadline)
+        val prepared =
+            IntellijReferenceInventory(
+                    scope = compiled,
+                    locators = locators,
+                    collector = collector,
+                    cancellationCheck = cancellationCheck,
+                    limits = ReadLimits.Default,
+                    observation = observed,
+                )
+                .prepare(fixture.target)
+        assertSame(RelationInventoryPreparation.Unavailable, prepared)
+        assertEquals(0, observed.searches.get())
+        assertEquals(0, observed.callbacks.get())
+        assertEquals(ScopeExpirySearchState.NOT_ENTERED, observed.state.get())
+        val result = collector.finish(IntellijRelationTermination.Terminal) as RelationCompilation.Qualified
+        assertEquals(setOf(RelationLimitation.TIME_LIMIT_REACHED), result.coverage.limitations)
+        assertTrue(
+            result.coverage is io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete
+        )
+        assertEquals(0L, result.batch.examinedWorkUnits.value)
+        assertTrue(result.batch.facts.isEmpty())
+    }
+
     fun testExcludedNativeScopeExpiryDrainsBeforeProviderDeliveryAndKeepsIncompleteCoverage() {
         val fixture = prepareReferenceFixture()
         assertPositiveControl(fixture)
@@ -65,7 +107,7 @@ class NativeScopeExpiryTest : NativeReferenceFixtureTest() {
         assertEquals(ScopeExpirySearchState.CANCELLED, observed.state.get())
         val result = collector.finish(IntellijRelationTermination.Terminal) as RelationCompilation.Qualified
         assertEquals(
-            setOf(RelationLimitation.TIME_LIMIT_REACHED, RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE),
+            setOf(RelationLimitation.TIME_LIMIT_REACHED),
             result.coverage.limitations,
         )
         assertEquals(0L, result.batch.examinedWorkUnits.value)

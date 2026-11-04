@@ -94,6 +94,21 @@ internal class IntellijRelationCollector(
             }
         }
 
+    /** Preserve an observed stop before consulting a later clock or interpreting the native Boolean. */
+    fun inventoryCompletion(providerExhausted: Boolean): IntellijRelationInventoryCompletion =
+        when (state) {
+            IntellijRelationCollectionState.COLLECTING ->
+                when {
+                    !providerExhausted -> IntellijRelationInventoryCompletion.PROVIDER_INCOMPLETE
+                    admitProviderEnumeration() == IntellijRelationProviderEnumerationAdmission.READY ->
+                        IntellijRelationInventoryCompletion.EXHAUSTED
+                    else -> IntellijRelationInventoryCompletion.STOPPED
+                }
+            IntellijRelationCollectionState.HALTED,
+            IntellijRelationCollectionState.ENUMERATION_LIMIT,
+            IntellijRelationCollectionState.CONTRACT_REJECTED -> IntellijRelationInventoryCompletion.STOPPED
+        }
+
     /** Bounds the native buffers independently of semantic per-page work and result budgets. */
     fun admitProviderCandidate(): IntellijRelationProviderEnumerationAdmission {
         if (admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {

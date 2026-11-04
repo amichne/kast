@@ -59,8 +59,10 @@ transport drainage.
 `NativeCallbackExpiryTest` uses the same positive control. At the delivered native
 callback, it advances the injected clock to the original semantic deadline.
 Production reference inventory must stop before site admission or candidate
-retention. The result must retain both `TIME_LIMIT_REACHED` and
-`PARTITION_INVENTORY_UNAVAILABLE`, with zero examined semantic work and no facts.
+retention. The terminal incomplete result retains `TIME_LIMIT_REACHED`, with
+zero examined semantic work and no facts. An owned deadline stop does not
+diagnose a provider failure. `NativeScopeExpiryTest` also checks expiry before
+the native provider is invoked and during native scope membership.
 The search closes after the callback returns the stop decision. This inventory
 case uses an eligible native reference and proves qualified incompleteness.
 

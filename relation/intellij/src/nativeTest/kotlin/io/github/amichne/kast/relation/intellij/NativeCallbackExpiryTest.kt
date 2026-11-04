@@ -66,7 +66,7 @@ class NativeCallbackExpiryTest : NativeReferenceFixtureTest() {
         val result =
             collector.finish(IntellijRelationTermination.Resumable(emptySet())) as RelationCompilation.Qualified
         assertEquals(
-            setOf(RelationLimitation.TIME_LIMIT_REACHED, RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE),
+            setOf(RelationLimitation.TIME_LIMIT_REACHED),
             result.coverage.limitations,
         )
         assertEquals(0L, result.batch.examinedWorkUnits.value)

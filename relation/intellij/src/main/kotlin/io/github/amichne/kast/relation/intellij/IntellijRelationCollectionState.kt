@@ -22,6 +22,13 @@ internal enum class IntellijRelationProviderEnumerationAdmission {
     HALTED,
 }
 
+/** A collector-owned stop already retains its cause; only an unexplained provider stop needs a diagnosis. */
+internal enum class IntellijRelationInventoryCompletion {
+    EXHAUSTED,
+    STOPPED,
+    PROVIDER_INCOMPLETE,
+}
+
 internal enum class IntellijRelationCollectionState {
     COLLECTING,
     HALTED,
