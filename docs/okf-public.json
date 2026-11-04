@@ -426,10 +426,10 @@
       {
         "route": "/",
         "role": "orientation",
-        "outcome": "Find callers and trace supported value paths with compiler analysis from IntelliJ IDEA. Choose the setup path for the existing agent.",
+        "outcome": "Understand the compiler-grounded capability Kast adds to ordinary agent work, then connect an existing agent.",
         "scope": [
-          "State product fit and a concrete outcome.",
-          "Route readers to setup, examples, or the value illustration."
+          "Explain compiler-grounded declaration identity and source relationships.",
+          "Lead directly to installation, with capabilities and evidence definitions available as supporting reading."
         ],
         "exclusions": "Installation steps, exhaustive features, and required theory.",
         "sourceOwner": "docs/public/index.mdx",
@@ -439,35 +439,35 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep one setup action, one caller question, its source-evidence limit, and direct recovery. The added result guidance increases prose without another first-use decision or page transition."
+          "reason": "Keep the product premise, one installation action, and a concise evidence contract. No special prompt or query exercise belongs in the default path."
         }
       },
       {
         "route": "/start",
         "role": "how-to",
-        "outcome": "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project.",
+        "outcome": "Install the latest Kast development build and connect Codex, Copilot, or Pi to a Kotlin Gradle project.",
         "scope": [
           "Complete ordinary installation and agent guidance.",
-          "Reach a useful answer with source locations and stated evidence limits."
+          "Continue normal development with the installed guidance and direct recovery links."
         ],
         "exclusions": "Required trips through reference, architecture, or the tutorial.",
         "sourceOwner": "docs/public/start.mdx",
         "densityProfile": "setup",
-        "completionEvidence": "The agent returns caller source locations. The reader compares them with known callers of the selected function.",
+        "completionEvidence": "The installer reports its outcome, IDEA loads the Host after restart, and the selected agent starts a fresh session with installed guidance. Installation alone does not prove live semantic readiness.",
         "primaryContinuation": "END",
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep all prerequisites, installer and upgrade commands, agent tabs, and a first useful question. Added result guidance belongs beside that question. No reference page becomes a prerequisite."
+          "reason": "Preserve all prerequisites, installer and upgrade commands, and agent tabs. Setup ends with ordinary development; no demonstration question or reference page is required."
         }
       },
       {
         "route": "/search",
         "role": "orientation",
-        "outcome": "Select a question for your agent about callers, value paths, or IDEA diagnostics in your Kotlin code.",
+        "outcome": "Understand the compiler-grounded evidence available to an agent during Kotlin development.",
         "scope": [
-          "Select a question for the reader\u2019s own code.",
-          "Expose task details and interface requirements when needed."
+          "Explain declaration identity, source relationships, value paths, diagnostics, and supported source edits.",
+          "Keep interface requirements and consequential evidence boundaries beside each capability."
         ],
         "exclusions": "A complete operation catalogue or another setup procedure.",
         "sourceOwner": "docs/public/search.mdx",
@@ -477,7 +477,7 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Each question keeps its prompt beside the expected evidence and its limit. Diagnostics keeps the optional MCP agent task distinct from the Tool RPC interface."
+          "reason": "Describe user outcomes without copied prompts. Keep diagnostics and source changes tied to their optional MCP or Tool RPC interfaces."
         }
       },
       {
@@ -638,13 +638,13 @@
         "outcome": "Install CLI guidance for Codex, Copilot, or Pi after Kast exists on your machine. Refresh the guidance after a core change.",
         "scope": [
           "Install or refresh guidance for the chosen agent.",
-          "Return to a useful question."
+          "Continue ordinary project work with the installed guidance."
         ],
         "exclusions": "The full export and optional integration contract.",
         "sourceOwner": "docs/public/agent-harnesses.mdx",
         "densityProfile": "task",
         "completionEvidence": "The reader compares the stated result with the procedure outcome and uses the named recovery destination after rejection.",
-        "primaryContinuation": "/start#3-ask-about-your-code",
+        "primaryContinuation": "/search",
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
@@ -730,7 +730,7 @@
       {
         "route": "/tutorials",
         "role": "orientation",
-        "outcome": "Complete a first query with a small Kotlin example and explicit expected evidence.",
+        "outcome": "Choose an optional fixture for checking source evidence against known Kotlin relationships.",
         "scope": [
           "Identify the controlled exercise.",
           "State its starting conditions."
@@ -749,10 +749,10 @@
       {
         "route": "/tutorials/first-query",
         "role": "tutorial",
-        "outcome": "Try Kast on a small Kotlin example with an answer you can inspect yourself.",
+        "outcome": "Compare declaration identity, caller evidence, and completed absence against an optional Kotlin fixture.",
         "scope": [
-          "Complete one controlled query exercise.",
-          "Compare expected source evidence and clean up."
+          "Check source relationships with an inspectable fixture.",
+          "Keep expected facts separate from captured native evidence."
         ],
         "exclusions": "Open-ended tasks or exhaustive alternatives.",
         "sourceOwner": "docs/public/tutorials/first-query.mdx",
@@ -768,7 +768,7 @@
       {
         "route": "/explanation",
         "role": "explanation",
-        "outcome": "Understand declarations, source relationships, value paths, and the limits of a completed query before exploring Kast's architecture.",
+        "outcome": "Understand compiler-grounded identity, the never-silently-wrong product standard, and the current completion contract.",
         "scope": [
           "Explain identity, relationships, completion, and qualifications.",
           "Route readers to the responsible mechanism."
@@ -1586,20 +1586,18 @@
     "firstUse": {
       "startingFacts": [
         "The reader uses an Apple silicon Mac and IntelliJ IDEA 262 with Java 25 JBR.",
-        "The reader owns a Kotlin Gradle project and a known function with callers.",
+        "The reader works in a Kotlin Gradle project.",
         "The reader already uses one supported agent CLI and Python 3.12 or 3.13.",
         "The reader starts at Overview without a Kast installation."
       ],
-      "outcome": "Install Kast, install guidance for the existing agent, and inspect caller source locations on Set up.",
+      "outcome": "Install Kast, connect the existing agent, and continue ordinary project work.",
       "path": [
         "/",
         "/start"
       ],
-      "unresolvedDecisions": [
-        "Select the function in the reader's project."
-      ],
+      "unresolvedDecisions": [],
       "requiredConcepts": [],
-      "completionEvidence": "Compare the returned locations with known callers. Author review establishes the route and prerequisites. A real reader evaluation and native task execution remain separate evidence."
+      "completionEvidence": "Author review establishes the installation route, prerequisites, and recovery links. Reported installation outcomes and a fresh agent session are setup evidence. Native semantic use and real reader evaluation remain separate evidence."
     }
   },
   "associations": [

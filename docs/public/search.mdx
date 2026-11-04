@@ -1,7 +1,7 @@
 ---
-title: "Ask about the code you work on"
-sidebarTitle: "Examples"
-description: "Use Kast with your coding agent to find callers, follow a function's result, or inspect IDEA diagnostics in the Kotlin code you work on."
+title: "What your agent gains"
+sidebarTitle: "Capabilities"
+description: "See how compiler-grounded declarations, source relationships, value paths, and diagnostics support your agent during Kotlin development."
 keywords:
   - "examples"
   - "callers"
@@ -13,50 +13,54 @@ hideFooterPagination: true
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-After [setup](/start), give your agent a function, file, or directory. Choose a question that matches your task.
+Kast gives your coding agent compiler-grounded evidence during ordinary Kotlin work.
+Describe the feature, bug, or change you want. The agent uses its installed guidance to select the supported operations.
 
-## What depends on this function?
+## Resolve the code you mean
 
-Give your agent the function's file and name.
+Your agent can find declarations, inspect their signatures and owners, and select an exact declaration before following its relationships.
+Identical names can refer to different declarations. Kast's issued references preserve the selected identity.
+[Declarations and relationships](/reference/search) explains discovery, callers, references, and implementations.
 
-<Prompt description="Find callers before an edit" actions={["copy"]}>
-Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
-</Prompt>
+<span id="what-depends-on-this-function" />
 
-Read the caller locations before an edit. Source relationships do not prove that a call ran.
+## Understand a change's source relationships
 
-## Where does this value go?
+Caller and reference locations show where code uses the selected declaration.
+Your agent can read that source as it plans a change.
+The relationships describe the queried source state and scope; they do not establish runtime execution.
 
-<Prompt description="Follow a function's result" actions={["copy"]}>
-Use the Kast CLI to trace this function's result. Show where it goes and where the evidence stops.
-</Prompt>
+<span id="where-does-this-value-go" />
 
-Read the reported source locations and evidence gaps. Keep the stated scope with your conclusion.
+## Follow a value through supported transfers
 
-## What problems does IDEA report?
+Value paths connect supported returns, arguments, and field reads.
+The result keeps the evidence for each connection and identifies unsupported transfers.
+[Program tracing](/reference/program-tracing) defines the relationships and their limits.
+The optional [value illustration](/explanation/value-journey) makes those distinctions visible.
 
-Use the optional [MCP composition](/reference/integrations#optional-mcp) for the `diagnostics` agent task.
-The [diagnostics guide](/how-to/inspect-diagnostics) also describes the Tool RPC interface.
+<span id="what-problems-does-idea-report" />
 
-<Prompt description="Inspect the code you changed" actions={["copy"]}>
-Use Kast to inspect IDEA diagnostics in the code we changed.
-</Prompt>
+## Inspect problems and make supported edits
 
-Read each problem's location and the reported coverage.
-An empty result with incomplete coverage does not prove that the scope has no problems.
+Kast also exposes IDEA diagnostics and controlled source changes through its [optional MCP composition](/reference/integrations#optional-mcp) and Tool RPC interfaces.
+The default native CLI guidance supports declaration and relationship queries and source reads.
+
+- [IDEA diagnostics](/how-to/inspect-diagnostics) carry source locations and reported coverage.
+- [Source changes](/reference/change) support adding a declaration to an existing file or replacing a supported function body, with a change receipt.
+
+These operations support your project's build and tests. A change receipt records a scoped source effect; it does not establish application behavior.
 
 <span id="which-implementation-matters" />
-
 <span id="can-we-change-this-body" />
-
-Find [implementations](/reference/search), [make a targeted change](/reference/change), or [explore a value journey](/explanation/value-journey).
-
 <span id="what-if-kast-cannot-finish" />
 
-If Kast cannot finish, ask your agent for the reported cause and recovery action. Use [Help](/troubleshooting) for setup problems.
+## Keep the evidence with the decision
 
-Use the [CLI reference](/reference/cli) for declaration, caller, source, and retained-result commands.
+Kast's completion status, scope, and qualifications travel with the result.
+An unfinished query or incomplete diagnostic scan cannot prove absence.
+[Understand the evidence](/explanation) explains how to interpret that evidence.
 
-Task procedures: [Task guides](/how-to), [Inspect IDEA diagnostics](/how-to/inspect-diagnostics).
+Use [Help](/troubleshooting) for a reported failure and [technical reference](/reference) for command and interface details.
 
 <DeeperReading />

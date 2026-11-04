@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Connect Kast to your coding agent. Find callers, trace supported value paths, and inspect problems in your Kotlin project.",
+  "description": "Give your coding agent compiler understanding for everyday work in Kotlin Gradle projects.",
   "colors": {
     "primary": "#3154C7",
     "light": "#8FA7FF",

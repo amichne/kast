@@ -1,29 +1,32 @@
 ---
-title: "How to understand a Kast answer"
-sidebarTitle: "Understand an answer"
+title: "Compiler understanding and guarantees"
+sidebarTitle: "Understanding and guarantees"
 description: "Understand declarations, source relationships, value paths, and the limits of a completed query before exploring Kast's architecture."
 icon: "workflow"
 hideFooterPagination: true
 ---
 
-Kast uses IntelliJ IDEA's compiler analysis to answer questions about your Kotlin source. A useful answer identifies code and explains its relationships, scope, and evidence limits.
+Kast gives your coding agent access to IntelliJ IDEA's compiler analysis of your Kotlin project.
+It resolves declarations and source relationships while your agent works on the task you describe.
 
-## Start with a declaration and a source question
+## From text to source meaning
 
-Suppose you want to change `message` and need its callers:
-
-```kotlin
-fun message(): String = "Ready"
-fun display(): String = message()
-fun unrelated(): String = "Ready"
-```
-
-The example declares three functions. `display` calls `message`. `unrelated` contains the same text but does not call `message`. Kast resolves the call to its declaration.
+Compiler analysis establishes which declaration a call resolves to, including its owner and signature.
+That identity lets your agent follow the selected code through callers, references, and supported value transfers.
 
 A symbol identifies a code element in compiler analysis.
-Kast issues an **exact reference** for a selected declaration, so the next query can use that identity.
-The name `message` alone cannot distinguish declarations with different owners or signatures.
-[Symbol identity](/reference/symbols) explains exact references and their source fields.
+Kast issues an **exact reference** for a selected declaration so later operations can preserve that identity.
+[Symbol identity](/reference/symbols) defines those references and their source fields.
+
+## Never silently wrong
+
+The product standard is exactness about what Kast knows: establish a fact with evidence, or expose the gap.
+This standard governs Kast's reported evidence, including explicit gaps. Your agent remains responsible for its reasoning and changes.
+
+The current query contract makes completion explicit and preserves limitations when the required proof is unavailable.
+A rejected or unfinished query with no matches cannot establish absence.
+A completed source relationship can still carry an explicit gap about callback execution.
+The result's interpretation says which claim the evidence supports.
 
 ## Relationships answer different questions
 
@@ -54,7 +57,9 @@ Read a result in this order:
 
 A preview can omit stored rows even when the query is complete. Reading every retained row after a rejection does not make the answer complete. [Results](/reference/responses) defines completion, presentation, and recovery.
 
-## What completion does and does not mean
+<span id="what-completion-does-and-does-not-mean" />
+
+## What completion establishes
 
 Public queries use `COMPLETE_ONLY` under the **compiler-static model**, named `COMPILER_RESOLVED_STATIC_V1` in the contract.
 Completion means that the query met that model's proof rules for its declared scope.
@@ -69,9 +74,7 @@ Compiler evidence, reviewed library rules, and admitted models keep their differ
 A modeled value transfer alone does not establish value correspondence.
 Evidence stops at an unsupported transfer. The connection remains unproved.
 
-For the small example, a completed caller query can establish the call from `display` to `message` within its scope.
-It does not prove that `display` ran.
-Your application's tests and runtime evidence answer different questions.
+Your application's tests and runtime evidence establish behavior beyond these source relationships.
 
 ## Use source changes with their receipts
 
@@ -110,6 +113,6 @@ These pages explain implementation decisions and result limits.
   </Card>
 </Columns>
 
-Try [your first query](/tutorials/first-query) on a small file. Use [Reference](/reference) for exact fields and result kinds.
+Use [Reference](/reference) for exact fields and result kinds. The optional [source-evidence check](/tutorials/first-query) gives a small fixture with expected relationships you can inspect.
 
 Related pages: [What an answer proves](/reference/evidence-boundaries), [Callback evidence](/reference/callbacks), [Illustration evidence](/explanation/value-journey-evidence), [Lifecycles](/reference/lifecycles), [Background preparation](/reference/internals/background-startup).

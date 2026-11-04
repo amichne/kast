@@ -1,7 +1,7 @@
 ---
 title: "Set up Kast"
 sidebarTitle: "Set up"
-description: "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project."
+description: "Install the latest Kast development build and connect Codex, Copilot, or Pi to compiler analysis for your Kotlin Gradle project."
 keywords:
   - "CLI"
   - "Codex"
@@ -14,7 +14,7 @@ hideFooterPagination: true
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Install Kast, add guidance for your existing agent, and find callers of a function in your Kotlin project.
+Install Kast and connect it to the agent you already use for your Kotlin Gradle project. After setup, continue your work naturally.
 
 ## Before you start
 
@@ -93,32 +93,20 @@ The default setup needs no MCP registration.
 Start a fresh agent session in the same Kotlin repository or worktree.
 If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
 
-## 3. Ask about your code
+## 3. Continue your work
 
+<span id="3-ask-about-your-code" />
 <span id="3-ask-your-agent" />
 <span id="4-establish-readiness" />
 <span id="what-your-first-result-establishes" />
 
-Give your agent the function's file and name.
+Work on your project as usual. The installed guidance tells your agent how to use Kast for supported Kotlin work.
 
-<Prompt description="Find the callers of your function" actions={["copy"]}>
-Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
-</Prompt>
+Kast can wait for Gradle import and indexing before supplying compiler evidence.
+If it cannot finish, the result carries the cause and recovery evidence. Use [Help](/troubleshooting) to resolve the reported problem.
 
-The first query can wait for Gradle import and indexing.
-
-### Inspect your first answer
-
-Open the returned source locations and compare them with the callers you know.
-The answer describes source relationships. It does not prove that those calls ran.
-
-If the query cannot finish, read its reported cause and recovery action.
-An unfinished query with no matches does not prove absence.
-Use [Help](/troubleshooting) for installation, agent, or query problems.
-
-After the first answer, try [example questions](/search) or read the [CLI reference](/reference/cli).
-
-For a controlled exercise, use the optional [first-query tutorial](/tutorials/first-query).
+[Agent capabilities](/search) describes the evidence available during your work.
+[Understand the evidence](/explanation) explains completion and evidence limits.
 
 Exact reference: [Compatibility](/reference/compatibility).
 
