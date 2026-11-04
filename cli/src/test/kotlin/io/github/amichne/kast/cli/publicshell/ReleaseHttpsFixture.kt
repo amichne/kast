@@ -25,10 +25,11 @@ internal class ReleaseHttpsFixture(
     private val directory: Path,
     private val replies: List<ReleaseHttpReply>,
     private val trusted: Boolean = true,
+    private val tunnelStatus: Int = 200,
 ) : AutoCloseable {
     private val password = "fixture-only".toCharArray()
     private val certificate = directory.resolve("server.p12")
-    private val context = serverContext()
+    private val context by lazy(::serverContext)
     private val server = ServerSocket(0, 8, InetAddress.getLoopbackAddress())
     private val executor = Executors.newSingleThreadExecutor()
     private val requests = mutableListOf<String>()
@@ -42,11 +43,19 @@ internal class ReleaseHttpsFixture(
     }
 
     fun versions(): NativeReleaseResult {
-        val trustStore = if (trusted) certificate else unrelatedTrustStore()
         return runReleaseVersions(
             directory,
-            "-Dhttps.proxyHost=localhost",
+            "-Dhttps.proxyHost=${if (tunnelStatus == 200) "localhost" else "127.0.0.1"}",
             "-Dhttps.proxyPort=${server.localPort}",
+            *prepareTlsProperties().toTypedArray(),
+        )
+    }
+
+    private fun prepareTlsProperties(): List<String> {
+        if (tunnelStatus != 200) return emptyList()
+        context // Provision the server certificate before starting the native client.
+        val trustStore = if (trusted) certificate else unrelatedTrustStore()
+        return listOf(
             "-Djavax.net.ssl.trustStore=$trustStore",
             "-Djavax.net.ssl.trustStoreType=PKCS12",
             "-Djavax.net.ssl.trustStorePassword=fixture-only",
@@ -62,7 +71,7 @@ internal class ReleaseHttpsFixture(
             executor.shutdownNow()
         }
         assertEquals(replies.size, tunnels, "Unconsumed or excess CONNECT requests")
-        assertEquals(if (trusted) replies.map { it.path } else emptyList<String>(), requests)
+        assertEquals(if (trusted && tunnelStatus == 200) replies.map { it.path } else emptyList<String>(), requests)
     }
 
     private fun serve(socket: Socket) {
@@ -71,9 +80,10 @@ internal class ReleaseHttpsFixture(
         assertEquals("CONNECT ${reply.authority}:443 HTTP/1.1", headers(socket.getInputStream()).first())
         tunnels++
         socket.getOutputStream().apply {
-            write("HTTP/1.1 200 Connection established\r\n\r\n".toByteArray())
+            write("HTTP/1.1 $tunnelStatus Fixture\r\nContent-Length: 0\r\n\r\n".toByteArray())
             flush()
         }
+        if (tunnelStatus != 200) return
         val tls = context.socketFactory.createSocket(socket, reply.authority, 443, false) as SSLSocket
         try {
             tls.use {
@@ -168,7 +178,7 @@ internal class ReleaseHttpsFixture(
 
 internal data class NativeReleaseResult(val exit: Int, val output: String, val errors: String)
 
-internal fun runReleaseVersions(directory: Path, vararg properties: String): NativeReleaseResult {
+private fun runReleaseVersions(directory: Path, vararg properties: String): NativeReleaseResult {
     val output = directory.resolve("stdout")
     val errors = directory.resolve("stderr")
     val child =

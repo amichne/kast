@@ -19,11 +19,12 @@ class NativeReleaseCatalogTest {
     }
 
     @Test
-    fun `native versions retains a real connection rejection`(@TempDir directory: Path) {
-        // A TCP listener bound to port zero receives a nonzero ephemeral port; port zero stays unserved.
-        val result = runReleaseVersions(directory, "-Dhttps.proxyHost=127.0.0.1", "-Dhttps.proxyPort=0")
-        assertRejected(result, "CATALOG_UNAVAILABLE")
-        assertEquals(listOf(unavailable("RESPONSE", "IO_FAILURE")), observations(result))
+    fun `native versions retains a real proxy refusal`(@TempDir directory: Path) {
+        ReleaseHttpsFixture(directory, listOf(stable()), tunnelStatus = 503).use { peer ->
+            val result = peer.versions()
+            assertRejected(result, "CATALOG_UNAVAILABLE")
+            assertEquals(listOf(unavailable("RESPONSE", "IO_FAILURE")), observations(result))
+        }
     }
 
     @Test
