@@ -145,3 +145,18 @@ Even zero output on those unchanged requests exceeds the 3× threshold of 3,889.
 This fact concerns the measured requests. It does not prove a universal limit on token counts.
 The local execution change preserves that input cost. The shorter instructions save only 32 input tokens per trial.
 A later field-selection or context experiment needs a separate scope because the original request explicitly excludes those interface experiments.
+
+## Remaining execution cost
+
+The [execution-cost audit](execution-cost-audit.json) examines the remaining local work without another provider request.
+It binds each calculation to the original baseline and session receipt hashes.
+The calculation holds the recorded provider durations fixed and sets all candidate local costs to zero.
+Under those conditions, the median of six per-case paired ratios reaches only 2.758×.
+This arithmetic supplies no measured speedup or future latency limit.
+It shows that local work alone cannot reach 3× on the recorded sample with those fixed provider durations.
+
+The unchanged baseline requests also consume 11,120 input tokens before their outputs.
+The target permits only 3,889.67 total tokens for twelve correct decisions.
+Another local execution change cannot reduce the input tokens of an identical provider payload.
+The pending scope question concerns a separate result-projection experiment.
+The first scope supplies no authorization to discard task evidence or implement that later factor.

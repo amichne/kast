@@ -1,0 +1,277 @@
+{
+  "type": "RECORDED_EXECUTION_COST_AUDIT",
+  "measurement": "COUNTERFACTUAL_ARITHMETIC",
+  "baselineSourceRevision": "e6b08bd8b8a840c74602104a54e6f713fa854557",
+  "candidateSourceRevision": "2a29147498efc94fc848aa441191472d0167b101",
+  "cases": [
+    {
+      "caseId": "C1",
+      "pairs": [
+        {
+          "trialId": "C1-r1-TOON",
+          "baselineTrialMs": 9048.499375,
+          "candidateTrialMs": 6273.842292,
+          "recordedProviderMs": 3942.5885829999997,
+          "removableLocalMs": 2331.2537090000005,
+          "conditionalZeroLocalRatio": 2.295065585594225
+        },
+        {
+          "trialId": "C1-r2-TOON",
+          "baselineTrialMs": 8174.145792000001,
+          "candidateTrialMs": 3993.5761249999996,
+          "recordedProviderMs": 2255.300042,
+          "removableLocalMs": 1738.2760829999997,
+          "conditionalZeroLocalRatio": 3.6244161041877025
+        }
+      ],
+      "conditionalMedianRatio": 2.9597408448909635
+    },
+    {
+      "caseId": "C2",
+      "pairs": [
+        {
+          "trialId": "C2-r1-TOON",
+          "baselineTrialMs": 8277.665792,
+          "candidateTrialMs": 4476.453624999999,
+          "recordedProviderMs": 2411.5173330000002,
+          "removableLocalMs": 2064.936291999999,
+          "conditionalZeroLocalRatio": 3.4325549639331574
+        },
+        {
+          "trialId": "C2-r2-TOON",
+          "baselineTrialMs": 8845.238625000002,
+          "candidateTrialMs": 5882.139040999999,
+          "recordedProviderMs": 3302.729291,
+          "removableLocalMs": 2579.4097499999993,
+          "conditionalZeroLocalRatio": 2.6781603472932054
+        }
+      ],
+      "conditionalMedianRatio": 3.0553576556131814
+    },
+    {
+      "caseId": "C3",
+      "pairs": [
+        {
+          "trialId": "C3-r1-TOON",
+          "baselineTrialMs": 45997.939,
+          "candidateTrialMs": 6270.772875000001,
+          "recordedProviderMs": 3681.432208,
+          "removableLocalMs": 2589.3406670000004,
+          "conditionalZeroLocalRatio": 12.494577219171218
+        },
+        {
+          "trialId": "C3-r2-TOON",
+          "baselineTrialMs": 7472.272958,
+          "candidateTrialMs": 4448.1081669999985,
+          "recordedProviderMs": 2219.878916,
+          "removableLocalMs": 2228.2292509999984,
+          "conditionalZeroLocalRatio": 3.3660723132882797
+        }
+      ],
+      "conditionalMedianRatio": 7.930324766229749
+    },
+    {
+      "caseId": "C4",
+      "pairs": [
+        {
+          "trialId": "C4-r1-TOON",
+          "baselineTrialMs": 6715.023125,
+          "candidateTrialMs": 5073.9270419999975,
+          "recordedProviderMs": 2992.712541,
+          "removableLocalMs": 2081.2145009999977,
+          "conditionalZeroLocalRatio": 2.243791554653027
+        },
+        {
+          "trialId": "C4-r2-TOON",
+          "baselineTrialMs": 6700.612917000002,
+          "candidateTrialMs": 4552.160458999999,
+          "recordedProviderMs": 2334.186167,
+          "removableLocalMs": 2217.974291999999,
+          "conditionalZeroLocalRatio": 2.870642030070776
+        }
+      ],
+      "conditionalMedianRatio": 2.5572167923619014
+    },
+    {
+      "caseId": "C5",
+      "pairs": [
+        {
+          "trialId": "C5-r1-TOON",
+          "baselineTrialMs": 7687.905500000001,
+          "candidateTrialMs": 7910.390875000001,
+          "recordedProviderMs": 6455.868042,
+          "removableLocalMs": 1454.522833000001,
+          "conditionalZeroLocalRatio": 1.1908399381748083
+        },
+        {
+          "trialId": "C5-r2-TOON",
+          "baselineTrialMs": 10780.894459000003,
+          "candidateTrialMs": 7105.03975,
+          "recordedProviderMs": 5837.5315,
+          "removableLocalMs": 1267.5082499999999,
+          "conditionalZeroLocalRatio": 1.846824202832996
+        }
+      ],
+      "conditionalMedianRatio": 1.518832070503902
+    },
+    {
+      "caseId": "C6",
+      "pairs": [
+        {
+          "trialId": "C6-r1-TOON",
+          "baselineTrialMs": 5384.807417,
+          "candidateTrialMs": 4063.561999999998,
+          "recordedProviderMs": 2482.432,
+          "removableLocalMs": 1581.1299999999983,
+          "conditionalZeroLocalRatio": 2.1691661310360164
+        },
+        {
+          "trialId": "C6-r2-TOON",
+          "baselineTrialMs": 5941.522958999998,
+          "candidateTrialMs": 4547.072790999999,
+          "recordedProviderMs": 2902.938375,
+          "removableLocalMs": 1644.1344159999985,
+          "conditionalZeroLocalRatio": 2.0467272092884157
+        }
+      ],
+      "conditionalMedianRatio": 2.107946670162216
+    }
+  ],
+  "conditionalZeroLocalPairedMedianRatio": 2.7584788186264326,
+  "fixedRequestTokens": {
+    "baselineInputTokens": 11120,
+    "baselineTotalTokens": 11669,
+    "threefoldTotalThresholdAtTwelveCorrect": 3889.6666666666665,
+    "unchangedInputsExceedTarget": true
+  },
+  "qualification": [
+    "RECORDED_PROVIDER_DURATIONS_HELD_FIXED",
+    "ALL_LOCAL_COST_SET_TO_ZERO_FOR_ARITHMETIC_ONLY",
+    "NOT_AN_OBSERVED_SPEEDUP",
+    "NOT_A_FUTURE_LATENCY_LIMIT",
+    "NOT_A_UNIVERSAL_TOKENIZER_PROOF",
+    "NO_NEW_INFERENCE_REQUESTS"
+  ],
+  "sourceReceipts": [
+    {
+      "run": "baseline",
+      "trialId": "C1-r1-TOON",
+      "receiptSha256": "79b88add6b7e00b3f7ca0e1a694a1bd065b80b7f31680113d91416defab1c632"
+    },
+    {
+      "run": "session",
+      "trialId": "C1-r1-TOON",
+      "receiptSha256": "1e2fe9fb357236be6e322c39ae496b35ec2414b46745fb8dafa8a539b0cda8a2"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C1-r2-TOON",
+      "receiptSha256": "5b5257136e7e0eeeb64eeed2b72b17f2ac25e91cbff8f2aa868c0ddabf198d20"
+    },
+    {
+      "run": "session",
+      "trialId": "C1-r2-TOON",
+      "receiptSha256": "6732954543e03c26ca022a30fb17b08146420675d058655381596fb03ab105b4"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C2-r1-TOON",
+      "receiptSha256": "397d88af9be1790b92172c7a9a9b9fb7174d8cc4325bbc09bcce80d0ebc81453"
+    },
+    {
+      "run": "session",
+      "trialId": "C2-r1-TOON",
+      "receiptSha256": "77335ab0ebc4ff02f1c3758121a451b44e905e52d362750c9ed5cdfaf6a1b86e"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C2-r2-TOON",
+      "receiptSha256": "eb41d34df1627c7d209ba02070bceae13d7aac081671b72999106e1667e4b729"
+    },
+    {
+      "run": "session",
+      "trialId": "C2-r2-TOON",
+      "receiptSha256": "6f9d0ce99a7c8476dc747ba3d1c332fe2637913bc4a59ecebd388f523a66323f"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C3-r1-TOON",
+      "receiptSha256": "fec703015e6b2ca432c2c88d38a21ac0aa12502bfd6495d7b0224a8475a427cb"
+    },
+    {
+      "run": "session",
+      "trialId": "C3-r1-TOON",
+      "receiptSha256": "b89c08ca9ee90ce811040df417f667ce4c18269c6a63b8583987e94611546d0b"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C3-r2-TOON",
+      "receiptSha256": "454f1446ab3907751e42921526168bd6681df925894a09cda4582e4ef23ced7d"
+    },
+    {
+      "run": "session",
+      "trialId": "C3-r2-TOON",
+      "receiptSha256": "d9d9f8a08de7e9957eb9b398711f1751dc15c69bc94395c6594ded4ff3d351eb"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C4-r1-TOON",
+      "receiptSha256": "84bc92286759ceb7eed8e4c2d6a1416ad28c5c478fe8b54796ce3a44cde56272"
+    },
+    {
+      "run": "session",
+      "trialId": "C4-r1-TOON",
+      "receiptSha256": "e2204f0a8f4d137e936712acc607cd6b836f9534f5b09b46c60472e38e6ebc7c"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C4-r2-TOON",
+      "receiptSha256": "f167df0f02c6aa80912cfb9d0495d5b708b3e2ef1b039de4bee574a12fe0a118"
+    },
+    {
+      "run": "session",
+      "trialId": "C4-r2-TOON",
+      "receiptSha256": "f23c0a939e4af3acf5c58bf3d6b709fdf4c59e8883ea8c660c91fc5599dc6131"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C5-r1-TOON",
+      "receiptSha256": "4301e1967cff3627ddb539d00071a59185ffe5b78540a0eb23613ee0695e868e"
+    },
+    {
+      "run": "session",
+      "trialId": "C5-r1-TOON",
+      "receiptSha256": "6ee2ba4cef6821a255b0a5e0aef47994aaac3bee48686a751f71924facf55104"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C5-r2-TOON",
+      "receiptSha256": "970bdd461078f6d8df71559ed11a8eba56e0a75dd6f9b0066e10ff04120ae0b6"
+    },
+    {
+      "run": "session",
+      "trialId": "C5-r2-TOON",
+      "receiptSha256": "6502969c802f3edbc3def0772fc1fcd99929e1225a45e728011cc631343e4d0e"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C6-r1-TOON",
+      "receiptSha256": "4cb1239ddea0af37b5eedace89321e25ec808ea58d494dd37ccee3cc785e7e3d"
+    },
+    {
+      "run": "session",
+      "trialId": "C6-r1-TOON",
+      "receiptSha256": "d80119384584abcbef637197d9ca08231682ecf7a29fea800a9380c366aa339c"
+    },
+    {
+      "run": "baseline",
+      "trialId": "C6-r2-TOON",
+      "receiptSha256": "e05a177ed9d2d8d66faa5cb550cd047acc54a42eff9dc7e4ee59e856adc73f23"
+    },
+    {
+      "run": "session",
+      "trialId": "C6-r2-TOON",
+      "receiptSha256": "90ecacfd8125853f50c62d972d67fe6b929f083fb33c6ecc14c2216175f892ad"
+    }
+  ]
+}
