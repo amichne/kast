@@ -215,31 +215,35 @@ private fun reserveReplayStdio(
 
 private fun replyReplayStdio(request: ReplayStdioRequest, format: CliOutputFormat): ReplayStdioReply =
     when (request) {
-        is ReplayStdioRequest.Admit ->
-            try {
-                ReplayStdioReply.Admission(
-                    replayAdmission(
-                        request.argv,
-                        request.stdin,
-                        Path.of(request.directory),
-                        if ("--json" in request.argv) CliOutputFormat.JSON else format,
-                    )
-                )
-            } catch (_: IOException) {
-                ReplayStdioReply.Rejected(ReplayStdioFailure.ADMISSION_UNAVAILABLE)
-            } catch (_: InvalidPathException) {
-                ReplayStdioReply.Rejected(ReplayStdioFailure.ADMISSION_UNAVAILABLE)
-            }
-        is ReplayStdioRequest.Render ->
-            try {
-                ReplayStdioReply.Rendered(replayRender(request.document, request.format.production()))
-            } catch (_: SerializationException) {
-                ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
-            } catch (_: IllegalArgumentException) {
-                ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
-            } catch (_: KtoonException) {
-                ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
-            }
+        is ReplayStdioRequest.Admit -> replyReplayStdioAdmission(request, format)
+        is ReplayStdioRequest.Render -> replyReplayStdioRendering(request)
+    }
+
+private fun replyReplayStdioAdmission(request: ReplayStdioRequest.Admit, format: CliOutputFormat): ReplayStdioReply =
+    try {
+        ReplayStdioReply.Admission(
+            replayAdmission(
+                request.argv,
+                request.stdin,
+                Path.of(request.directory),
+                if ("--json" in request.argv) CliOutputFormat.JSON else format,
+            )
+        )
+    } catch (_: IOException) {
+        ReplayStdioReply.Rejected(ReplayStdioFailure.ADMISSION_UNAVAILABLE)
+    } catch (_: InvalidPathException) {
+        ReplayStdioReply.Rejected(ReplayStdioFailure.ADMISSION_UNAVAILABLE)
+    }
+
+private fun replyReplayStdioRendering(request: ReplayStdioRequest.Render): ReplayStdioReply =
+    try {
+        ReplayStdioReply.Rendered(replayRender(request.document, request.format.production()))
+    } catch (_: SerializationException) {
+        ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
+    } catch (_: IllegalArgumentException) {
+        ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
+    } catch (_: KtoonException) {
+        ReplayStdioReply.Rejected(ReplayStdioFailure.ENCODING_REJECTED)
     }
 
 private fun readReplayStdioFrame(input: InputStream): ReplayStdioFrame {
@@ -247,9 +251,7 @@ private fun readReplayStdioFrame(input: InputStream): ReplayStdioFrame {
     try {
         while (true) {
             val next = input.read()
-            if (next == -1)
-                return if (bytes.size() == 0) ReplayStdioFrame.End
-                else ReplayStdioFrame.Rejected(ReplayStdioFailure.INCOMPLETE_FRAME)
+            if (next == -1) return endReplayStdioFrame(bytes)
             if (next == 10) break
             if (bytes.size() == MAXIMUM_PROTOCOL_TEXT_LENGTH)
                 return ReplayStdioFrame.Rejected(ReplayStdioFailure.FRAME_TOO_LARGE)
@@ -258,7 +260,14 @@ private fun readReplayStdioFrame(input: InputStream): ReplayStdioFrame {
     } catch (_: IOException) {
         return ReplayStdioFrame.Rejected(ReplayStdioFailure.INPUT_IO)
     }
-    return try {
+    return decodeReplayStdioFrame(bytes)
+}
+
+private fun endReplayStdioFrame(bytes: ByteArrayOutputStream): ReplayStdioFrame =
+    if (bytes.size() == 0) ReplayStdioFrame.End else ReplayStdioFrame.Rejected(ReplayStdioFailure.INCOMPLETE_FRAME)
+
+private fun decodeReplayStdioFrame(bytes: ByteArrayOutputStream): ReplayStdioFrame =
+    try {
         val text =
             Charsets.UTF_8.newDecoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
@@ -269,7 +278,6 @@ private fun readReplayStdioFrame(input: InputStream): ReplayStdioFrame {
     } catch (_: CharacterCodingException) {
         ReplayStdioFrame.Rejected(ReplayStdioFailure.INVALID_UTF8)
     }
-}
 
 private fun rejectReplayStdio(output: OutputStream, cause: ReplayStdioFailure): Int =
     when (deliverReplayStdio(output, ReplayStdioReply.Rejected(cause))) {
@@ -420,17 +428,7 @@ private fun replayQueryAdmission(
                 stdin,
                 ReplayAdmissionType.INPUT_REJECTED,
                 loaded.failure.name,
-                when (loaded.failure) {
-                    PublicInputReadFailure.IO ->
-                        preparePublicReply(
-                            presentToolRpcExit(
-                                PublicToolIdentity.QUERY_SYMBOLS.toolName,
-                                boundaryExit(CliBoundaryExitStatus.TRANSPORT, "request-input-io"),
-                            )
-                        )
-                    PublicInputReadFailure.INVALID -> publicFailure(ToolRpcFailure.INVALID_ARGUMENTS)
-                    PublicInputReadFailure.TOO_LARGE -> publicFailure(ToolRpcFailure.REQUEST_TOO_LARGE)
-                },
+                replayInputReadFailure(loaded.failure),
                 publicCliInputDiagnostic(loaded.failure),
             )
         is Refinement.Refined ->
@@ -453,6 +451,19 @@ private fun replayQueryAdmission(
             }
     }
 }
+
+private fun replayInputReadFailure(failure: PublicInputReadFailure): PublicPreparedOutput =
+    when (failure) {
+        PublicInputReadFailure.IO ->
+            preparePublicReply(
+                presentToolRpcExit(
+                    PublicToolIdentity.QUERY_SYMBOLS.toolName,
+                    boundaryExit(CliBoundaryExitStatus.TRANSPORT, "request-input-io"),
+                )
+            )
+        PublicInputReadFailure.INVALID -> publicFailure(ToolRpcFailure.INVALID_ARGUMENTS)
+        PublicInputReadFailure.TOO_LARGE -> publicFailure(ToolRpcFailure.REQUEST_TOO_LARGE)
+    }
 
 private fun fixtureOwnedFile(root: Path, selected: Path): Boolean {
     if (!selected.startsWith(root)) return false
