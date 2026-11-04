@@ -225,7 +225,9 @@ class ManagedUpgradeTest {
                 ManagedUpgradeExecution(
                     readRelease = {
                         reads++
-                        ReleaseDocumentRead.Unavailable
+                        ReleaseDocumentRead.Unavailable(
+                            ReleaseReadObservation.Unavailable(ReleaseReadStage.OPEN, ReleaseReadFailure.IO_FAILURE)
+                        )
                     },
                     installer = { argv, directory, environment ->
                         calls++

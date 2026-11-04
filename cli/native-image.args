@@ -1,5 +1,6 @@
 --no-fallback
 --enable-native-access=ALL-UNNAMED
+--enable-url-protocols=https
 -H:IncludeResources=management/bootstrap-install.sh
 --exact-reachability-metadata
 -Os
