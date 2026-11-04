@@ -1,0 +1,110 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { replayCases, replayCase, heldOutManifest, replayTransition } from './pi_evaluation_replay_cases.mjs';
+import { gradeReplayDecision, replayOracleControls } from './pi_evaluation_replay_grading.mjs';
+
+test('six case oracles accept independent controls and reject named misuses',()=>{
+  assert.equal(replayCases().length,6);
+  for(const item of replayCases()) {
+    const controls=replayOracleControls(item.id);
+    for(const positive of controls.accept) assert.equal(gradeReplayDecision(item.id,positive.decision,positive.admission).correct,true,`${item.id}: ${positive.name}`);
+    for(const negative of controls.reject) {
+      const grade=gradeReplayDecision(item.id,negative.decision,negative.admission);
+      assert.equal(grade.correct,false,`${item.id}: ${negative.name}`);
+      assert.ok(grade.reasons.includes(negative.reason),`${item.id}: ${negative.name}: ${grade.reasons}`);
+    }
+  }
+});
+
+test('admitted syntax remains distinct from target scope reference and coverage',()=>{
+  const dimensions=new Set();
+  for(const item of replayCases())for(const negative of replayOracleControls(item.id).reject) {
+    const grade=gradeReplayDecision(item.id,negative.decision,negative.admission);
+    if(negative.admission?.type==='admitted')assert.equal(grade.dimensions.arguments,'PASS');
+    for(const [dimension,result] of Object.entries(grade.dimensions))if(result==='FAIL')dimensions.add(dimension);
+  }
+  for(const dimension of ['target','scope','reference','coverage'])assert.ok(dimensions.has(dimension),dimension);
+});
+
+test('case preparation keeps oracle controls out of visible records and pins raw bytes',()=>{
+  for(const item of replayCases()) {
+    const json=JSON.stringify(item);
+    assert.equal(json.includes('expected'),false);
+    assert.equal(json.includes('oracle'),false);
+    assert.match(item.canonicalSha256,/^[a-f0-9]{64}$/);
+    assert.equal(typeof item.canonicalResponse,'string');
+    assert.equal(replayCase(item.id).canonicalSha256,item.canonicalSha256);
+    assert.deepEqual([...item.permittedDecisions],item.id==='C5'?['finish']:['invoke']);
+  }
+  assert.equal(heldOutManifest().length,4);
+  assert.deepEqual(heldOutManifest().map(item=>item.factor),['different-overloads','larger-table','nested-qualified','source-escaping']);
+});
+
+test('malformed decisions and unsupported clarification fail as model outcomes',()=>{
+  for(const item of replayCases()) {
+    assert.equal(gradeReplayDecision(item.id,null).correct,false);
+    assert.ok(gradeReplayDecision(item.id,{kind:'clarify',question:'Which one?'}).reasons.includes('WRONG_ACTION'));
+    assert.equal(gradeReplayDecision(item.id,{kind:'invoke'},{type:'rejected',cause:'INVALID_FIELDS'}).dimensions.arguments,'FAIL');
+  }
+});
+
+test('synthetic references map to independent source annotations rather than row position',()=>{
+  const root=new URL('./interface-replay/fixtures/',import.meta.url);
+  const annotations=JSON.parse(readFileSync(new URL('annotations.json',root),'utf8'));
+  const source=readFileSync(new URL('Orders.kt',root),'utf8').split('\n');
+  assert.equal(annotations.nativeAuthority,false);
+  for(const item of annotations.declarations) {
+    assert.match(item.reference,/^exact:v5:[A-Za-z0-9_-]{22}$/);
+    const line=source[item.line-1];
+    const parameterTypes=[...line.matchAll(/: (String|Long|Int)/g)].slice(0,-1).map(match=>match[1]);
+    assert.equal(`submit(${parameterTypes.join(',')})`,item.signature);
+    const rows=JSON.parse(replayCase('C1').canonicalResponse).items;
+    const row=rows.find(value=>value.ref===item.reference);
+    assert.deepEqual(row.signature.valueParameters,parameterTypes.map(value=>`kotlin.${value}`));
+    assert.equal(gradeReplayDecision('C1',{kind:'invoke'},replayOracleControls('C1').accept[0].admission).correct,true);
+    assert.equal(rows.toReversed().find(value=>value.ref===item.reference).ref,item.reference);
+  }
+});
+
+test('held-out significant source and integer bytes survive fixture loading without numeric conversion',()=>{
+  const heldout=heldOutManifest();
+  for(const id of ['H3','H4']) {
+    const bytes=readFileSync(heldout.find(item=>item.id===id).canonicalPath,'utf8');
+    assert.ok(bytes.includes('9223372036854775807'));
+    assert.equal(bytes.includes('9223372036854776000'),false);
+  }
+  const source=readFileSync(heldout.find(item=>item.id==='H4').canonicalPath,'utf8');
+  assert.ok(source.includes('✓'));
+  assert.ok(source.includes('\\n'));
+  assert.ok(source.includes('\\\\t'));
+});
+
+test('production-admitted null defaults preserve their documented default meaning',()=>{
+  for(const caseId of ['C3','C6']) {
+    const receipt=structuredClone(replayOracleControls(caseId).accept[0].admission);
+    receipt.request.source.nameMatch=null;
+    receipt.request.steps=null;
+    if(caseId==='C3')receipt.request.terminalStep.output=null;
+    assert.equal(gradeReplayDecision(caseId,{kind:'invoke'},receipt).correct,true);
+    receipt.request.source.nameMatch='FUZZY';
+    assert.ok(gradeReplayDecision(caseId,{kind:'invoke'},receipt).reasons.includes('WRONG_TARGET'));
+  }
+  const receipt=structuredClone(replayOracleControls('C4').accept[0].admission);
+  receipt.request.evidence_cursor=null;
+  assert.equal(gradeReplayDecision('C4',{kind:'invoke'},receipt).correct,true);
+  receipt.request.evidence_cursor=2;
+  assert.ok(gradeReplayDecision('C4',{kind:'invoke'},receipt).reasons.includes('WRONG_REFERENCE'));
+});
+
+test('declared fixture transitions preserve supported requests and reject unrecorded effects',()=>{
+  for(const item of replayCases()) {
+    for(const control of replayOracleControls(item.id).accept) {
+      const response=replayTransition(item.id,control.admission);
+      assert.equal(response.type,item.id==='C5'?'unsupported':'supported',item.id);
+      if(response.type==='supported')assert.match(response.fixtureSha256,/^[a-f0-9]{64}$/);
+    }
+    assert.equal(replayTransition(item.id,{type:'rejected',cause:'INVALID_FIELDS'}).type,'unsupported');
+  }
+  assert.equal(replayTransition('C1',{type:'admitted',request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:['exact:v5:AAAAAAAAAAAAAAAAAAAAAA']},steps:[{type:'EXPAND_RELATION',relation:'CALLERS'}],terminalStep:{type:'EMIT'}}}).type,'unsupported');
+});

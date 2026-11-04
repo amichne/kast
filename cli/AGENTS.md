@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-11-04T03:53:28Z"
-source_revision: 28de9ce670e25ae3dd514d6198226aac6a027bd4
+timestamp: "2026-11-04T14:30:00Z"
+source_revision: 0decbfa874a21fc70592992bc12eaa6939980af2
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -20,6 +20,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicReplayAdapter.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -99,6 +100,8 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 
 - Gradle project: `:cli`.
 - Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
+- Replay adapter: `mise exec -- ./gradlew :cli:prepareReplayAdapter` emits a digest-pinned JVM command for the interface experiment.
+- The test-only adapter owns rendering and public admission. It composes no Host, MCP connection, or semantic executor.
 - Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the native launcher, native query child, and local-peer composition.
 - `KastNativeMain` composes the existing command owners into one native Control executable.
 - `distribution/cli` owns management commands. `NativeControlInvocation` owns private mode admission.

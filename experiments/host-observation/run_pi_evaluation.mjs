@@ -2,10 +2,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateReplayPlan, expandReplayPlan, executeReplayPlan } from './pi_evaluation_replay.mjs';
+import { prepareReplayPlan } from './pi_evaluation_replay_identity.mjs';
 import { CasePolicy } from './pi_evaluation_policy.mjs';
 import { runOwnedWorker } from './pi_evaluation_controller.mjs';
 
 export function validatePlan(plan) {
+  if(plan.mode==='replay')return validateReplayPlan(plan);
   for(const name of ['piPackageRoot','kastAdapter','workspaceRoot','outputRoot','authPath','modelsStorePath']) {
     if(typeof plan[name]!=='string'||!path.isAbsolute(plan[name])) throw Error(`Explicit absolute ${name} required`);
   }
@@ -30,9 +33,19 @@ export function validatePlan(plan) {
 }
 
 export async function main(args) {
+  if(args[0]==='--prepare-replay'&&(args.length===2||args.length===3)){
+    const root=fileURLToPath(new URL('../..',import.meta.url));
+    const plan=prepareReplayPlan(args[1],root,args[2]);
+    console.log(JSON.stringify({plan:args[1],trials:expandReplayPlan(plan),sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256},null,2));return;
+  }
   if(args.length!==2||!['--plan','--execute'].includes(args[0])) throw Error('Usage: node run_pi_evaluation.mjs --plan|--execute /absolute/plan.json');
   const planFile=path.resolve(args[1]);
   const plan=validatePlan(JSON.parse(fs.readFileSync(planFile,'utf8')));
+  if(plan.mode==='replay'){
+    if(args[0]==='--plan')console.log(JSON.stringify({mode:'NO_INFERENCE',trials:expandReplayPlan(plan),maximumProviderRequests:plan.maximumProviderRequests,workers:plan.workers,wallSeconds:60,nativeCalls:0,adapterManifestSha256:plan.adapterManifestSha256},null,2));
+    else console.log(JSON.stringify(await executeReplayPlan(planFile,plan),null,2));
+    return;
+  }
   if(args[0]==='--plan') {
     console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,finalPresentation:c.finalPresentation??'canonical',work:c.work,delivery:c.delivery,bounds:new CasePolicy({...c,wallSeconds:Math.min(c.wallSeconds,c.mode==='received-result'?60:120),maximumProviderRequests:Math.min(c.maximumProviderRequests??(c.mode==='received-result'?1:3),c.mode==='received-result'?1:3)}).report().bounds,requestAdmissionMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',tokenAccountingQualification:'POST_RESPONSE_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',inputCalibrationReferences:(c.inputCalibrations??[]).length}))},null,2));return;
   }

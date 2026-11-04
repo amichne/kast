@@ -1,0 +1,35 @@
+{
+  "specSha256": "b592936c4411ffef7b8fe669e3ece8e40fd9e88a5e8a14971094bcb9baa4489a",
+  "specRevision": "0decbfa874a21fc70592992bc12eaa6939980af2",
+  "refreshedOriginMain": "0decbfa874a21fc70592992bc12eaa6939980af2",
+  "sourceDrift": [],
+  "slopsentralRevision": "6fff283313159abc5ec1ccd41ce3f410f18cbdf0",
+  "engineeringGuidanceSha256": "6115727dd4cb243c521d25eccb90b58a7eedafc37f026b8eba2a2c7e193738cd",
+  "preservedBaseline": [
+    "TOON default and semantic --json precedence",
+    "finite stderr causes and bounded schema pages",
+    "existing fresh and received-result semantics",
+    "canonical and compact projection separate from encoding"
+  ],
+  "changedAssumptions": [
+    {
+      "type": "DISCOVERED_CODEC_PROOF_LIMIT",
+      "owner": "JToon 3.0.0 decodeToJson",
+      "finding": "Nested object empty arrays and integers beyond supported Long range do not round-trip. The encoding pair must fail closed."
+    },
+    {
+      "type": "LIVE_ACCESS_UNAVAILABLE",
+      "finding": "Configured OAuth credential expired. No refresh or replacement provider occurred."
+    }
+  ],
+  "followUp": {
+    "type": "PLANNING_DIRECTION",
+    "topic": "Consider replacing JToon after this first scope",
+    "acceptanceInputs": [
+      "nested-empty-array",
+      "integer-beyond-Long",
+      "full six-case canonical fixture corpus"
+    ],
+    "implementationInThisScope": false
+  }
+}

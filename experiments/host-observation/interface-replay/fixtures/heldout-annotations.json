@@ -1,0 +1,33 @@
+{
+  "H1": {
+    "task": "Find callers of cancel(id: String, retries: Int) in services/orders/src/main/kotlin/Orders.kt. Select its issued reference from the supplied overloads.",
+    "action": "invoke",
+    "target": "exact:v5:AAAAAAAAAAAAAAAAAAAAAg",
+    "relation": "CALLERS"
+  },
+  "H2": {
+    "task": "Find callers of submit in services/orders/src/main/kotlin/Order23.kt. Use the issued reference from the larger declaration table.",
+    "action": "invoke",
+    "target": "exact:v5:BBBBBBBBBBBBBBBBBBBB23",
+    "relation": "CALLERS"
+  },
+  "H3": {
+    "task": "Does this nested qualified result prove that submit is absent from services/orders in main? Answer from this evidence without another command.",
+    "action": "finish",
+    "conclusion": "insufficient-evidence",
+    "directory": "services/orders",
+    "sourceSets": [
+      "main"
+    ],
+    "limitations": [
+      "byte-limit-reached"
+    ],
+    "exhaustive": false
+  },
+  "H4": {
+    "task": "Find callers of renderReceipt in services/orders/src/main/kotlin/Orders.kt. Preserve its issued reference despite the escaped source text.",
+    "action": "invoke",
+    "target": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+    "relation": "CALLERS"
+  }
+}

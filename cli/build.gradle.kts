@@ -450,3 +450,16 @@ val assembleNativeControlLayout =
 configurations.consumable("nativeControlLayoutElements") {
     outgoing.artifact(assembleNativeControlLayout.map { it.destinationDir })
 }
+
+// Test-only replay artifact. No installed launcher or semantic service belongs to this classpath entry.
+tasks.register<support.tasks.WriteJavaProcessOutputTask>("prepareReplayAdapter") {
+    group = "verification"
+    description = "Pins the test-only production renderer and public-admission replay adapter."
+    dependsOn(tasks.named("testClasses"))
+    classpath.from(sourceSets.test.get().runtimeClasspath)
+    mainClass.set("io.github.amichne.kast.cli.publicshell.PublicReplayAdapter")
+    arguments.set(listOf("manifest"))
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    outputFile.set(layout.buildDirectory.file("replay-adapter/manifest.json"))
+}

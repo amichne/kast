@@ -1,0 +1,100 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import zlib from 'node:zlib';
+import { pathToFileURL } from 'node:url';
+import { replayWorker, syntheticRuntime, replaySha, inspectReplayProjection } from './pi_evaluation_replay_worker.mjs';
+import { expandReplayPlan } from './pi_evaluation_replay.mjs';
+import { replayOracleControls } from './pi_evaluation_replay_grading.mjs';
+import { normalizeReplayUsage } from './pi_evaluation_replay_accounting.mjs';
+
+const planPath=process.env.KAST_REPLAY_TEST_PLAN;
+const syntheticReply=(text,incomplete=false)=>{
+ const item={id:'synthetic-message',type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text}]};
+ const events=[{type:'response.created',response:{id:'synthetic-response'}},{type:'response.output_item.added',output_index:0,item:{...item,content:[]}},{type:'response.output_item.done',output_index:0,item},{type:incomplete?'response.incomplete':'response.completed',response:{id:'synthetic-response',status:incomplete?'incomplete':'completed',...(incomplete?{incomplete_details:{reason:'max_output_tokens'}}:{}),output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:20},output_tokens_details:{reasoning_tokens:4}}}}];
+ return new Response(events.map(event=>`data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
+};
+const syntheticToolReply=command=>{
+ const item={id:'synthetic-call-item',type:'function_call',call_id:'synthetic-repair-call',name:'bash',arguments:JSON.stringify({command}),status:'completed'};
+ const events=[{type:'response.created',response:{id:'synthetic-tool-response'}},{type:'response.output_item.added',output_index:0,item:{...item,arguments:''}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-tool-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:20}}}}];
+ return new Response(events.map(event=>`data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
+};
+const decodeBody=options=>JSON.parse(new Headers(options.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body);
+
+test('real SDK replay preserves complete format inputs once at synthetic transport and accounts for failed work', {skip:!planPath},async t=>{
+ assert.ok(path.isAbsolute(planPath));
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-replay-sdk-')));fs.chmodSync(root,0o700);
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const source=JSON.parse(fs.readFileSync(planPath,'utf8'));
+ const plan={...source,outputRoot:root,adapterManifestSha256:replaySha(fs.readFileSync(source.adapterManifest)),authPath:'/never-read-live-auth',modelsStorePath:'/never-read-live-models'};
+ const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
+ const sdk=await load('dist/index.js'),runtime=await syntheticRuntime(sdk,load);
+ const savedFetch=globalThis.fetch;let unexpectedNetwork=0;
+ globalThis.fetch=async()=>{unexpectedNetwork++;throw Error('UNEXPECTED_NETWORK');};
+ t.after(()=>{globalThis.fetch=savedFetch;});
+ const all=expandReplayPlan(plan);
+ const rows=[...all.filter(trial=>trial.caseId==='C5'),all.find(trial=>trial.caseId==='C6'&&trial.repetition===1&&trial.format==='TOON')];
+ assert.equal(rows.length,5);
+ let sends=0;
+ for(const trial of rows){
+  const preflight=await replayWorker('--preflight',plan,trial,{modelRuntime:runtime});
+  assert.equal(preflight.type,'projected',JSON.stringify(preflight));
+  assert.equal(preflight.presentationOccurrences,1);assert.equal(preflight.complete,true);
+  const preflightLedger=JSON.parse(fs.readFileSync(path.join(root,`preflight-${trial.trialId}`,'ledger.json')));
+  assert.equal(preflightLedger.providerSends,0);assert.equal(preflightLedger.nativeCalls,0);
+  const presentation=JSON.parse(fs.readFileSync(path.join(root,`preflight-${trial.trialId}`,'input.json'))).presentation;
+  const kind=trial.caseId==='C6'?'incomplete':trial.repetition===1?'correct':trial.format==='TOON'?'malformed':'transport';
+  const report=await replayWorker('--trial',plan,trial,{modelRuntime:runtime,fetch:async(_url,options)=>{
+   sends++;
+   const payload=decodeBody(options),projection=inspectReplayProjection(payload,presentation);
+   assert.equal(projection.type,'projected');assert.equal(projection.presentationOccurrences,1);
+   assert.equal(projection.payloadSha256,preflight.payloadSha256);
+   assert.equal(payload.max_output_tokens,2000);
+   assert.equal(payload.model,'gpt-6.1-sol');assert.equal(payload.reasoning.effort,'high');
+   assert.equal(JSON.stringify(payload).includes('GRADED_CORRECT'),false);
+   assert.equal(payload.input.filter(item=>item.role==='user').length,1);
+   if(kind==='transport')throw Error('SYNTHETIC_TRANSPORT_FAILURE');
+   return syntheticReply(kind==='correct'?JSON.stringify(replayOracleControls('C5').accept[0].decision):'malformed decision',kind==='incomplete');
+  }});
+  assert.equal(report.providerSends,1);assert.equal(report.shellCalls,0);assert.equal(report.kastInvocations,0);assert.equal(report.nativeCalls,0);
+  assert.equal(report.outcome.type,kind==='correct'?'correct':kind==='malformed'?'incorrect':kind==='incomplete'?'incomplete':'invalid',JSON.stringify(report));
+  if(kind!=='transport'){
+   const usage=normalizeReplayUsage(report.usage);
+   assert.equal(usage.type,'known',JSON.stringify(report.usage));
+   assert.equal(usage.value.input,80);assert.equal(usage.value.cacheRead,20);assert.equal(usage.value.output,10);assert.equal(usage.value.totalTokens,110);
+  }else assert.equal(report.usage,null);
+  assert.equal(report.protectedFilesUnchanged,true);
+ }
+ assert.equal(sends,5);
+ // One synthetic model proposal traverses the actual SDK bash executor, shell,
+ // driver, production admission, and declared fixture transition.
+ const invocationRoot=path.join(root,'tool-invocation');fs.mkdirSync(invocationRoot,{mode:0o700});
+ const invocationPlan={...plan,outputRoot:invocationRoot};
+ const invocationTrial=all.find(trial=>trial.caseId==='C6'&&trial.repetition===1&&trial.format==='TOON');
+ const preflight=await replayWorker('--preflight',invocationPlan,invocationTrial,{modelRuntime:runtime});
+ assert.equal(preflight.type,'projected');
+ const command=replayOracleControls('C6').accept[0].command;
+ let toolSends=0;
+ const report=await replayWorker('--trial',invocationPlan,invocationTrial,{modelRuntime:runtime,fetch:async(_url,options)=>{
+  toolSends++;const payload=decodeBody(options);
+  assert.equal(payload.input.filter(item=>item.type==='function_call_output').length,1);
+  assert.equal(toolSends,1,'The SDK must block its automatic post-tool request before transport');
+  return syntheticToolReply(command);
+ }});
+ assert.equal(toolSends,1);assert.equal(report.providerSends,1);
+ assert.equal(report.shellCalls,1,JSON.stringify(report));assert.equal(report.kastInvocations,1,JSON.stringify(JSON.parse(fs.readFileSync(path.join(invocationRoot,invocationTrial.trialId,'shell.json')))));assert.equal(report.nativeCalls,0);
+ assert.equal(report.outcome.type,'correct',JSON.stringify(report));assert.equal(report.grade.correct,true);
+ assert.equal(normalizeReplayUsage(report.usage).value.totalTokens,110,'A blocked second request cannot erase finalized first-request usage');
+ const archive=JSON.parse(fs.readFileSync(path.join(invocationRoot,invocationTrial.trialId,'shell.json')));
+ assert.equal(archive.captures.length,1);assert.equal(archive.captures[0].command,command);
+ assert.equal(archive.captures[0].exitStatus,0);assert.equal(archive.captures[0].stderr,'');
+ assert.match(archive.captures[0].stdout,/OrderService/);
+ assert.equal(archive.invocations.length,1);assert.deepEqual(archive.invocations[0].request.argv,['query','--name','OrderService','--in','services/orders','--source-set','main','--fields','name,signature']);
+ assert.equal(archive.invocations[0].request.stdin,'');assert.equal(archive.invocations[0].admission.type,'ADMITTED');
+ const events=JSON.parse(fs.readFileSync(path.join(invocationRoot,invocationTrial.trialId,'events.json')));
+ assert.equal(events.filter(event=>event.type==='provider_followup_blocked').length,1);
+ assert.equal(events.filter(event=>event.type==='actual_provider_send').length,1);
+ assert.equal(unexpectedNetwork,0);
+});
