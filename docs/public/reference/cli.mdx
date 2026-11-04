@@ -122,6 +122,7 @@ The input document remains JSON with either output format.
 For pipelines, select `--json` explicitly and keep stderr separate.
 Use `--max-results`, `--max-returned-bytes`, and a narrow `--fields` selection before the query.
 These limits bound presentation without stripping completion or recovery evidence.
+Query byte limits measure canonical JSON presentation before TOON encoding. The outer envelope, newline, and stderr are outside that allowance.
 An explicit `--request` document owns its execution budget; do not add semantic budget flags beside it.
 Progress and diagnostics use stderr.
 Read the outer outcome and its qualifications before a semantic conclusion.
