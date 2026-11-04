@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:86cbe4c3fa6d8662e1a8d3a6b8b4e263c0bdff033d52a4f143c0affd43db8cbd",
+  "pageVersion": "sha256:0867ca90f3f8f46cbd9c61ad1ffe89138450368b9c6dca748a4059a4aa50c303",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -66,11 +66,11 @@
     },
     {
       "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-      "statement": "Explicit Pi MCP setup selects its native extension, which registers Kast, starts exact-workspace preparation asynchronously through kast hook session-start, and reads bounded context with Node. Preparation and context rejection keep warnings distinct from later MCP availability.",
+      "statement": "Explicit Pi MCP setup selects its native extension, which registers Kast, starts exact-workspace preparation asynchronously with kast hook session-start --wait none, and reads bounded context with Node. The extension adds observable preparation state before model requests, ignores stale-session replies, and keeps preparation or context warnings distinct from later MCP availability.",
       "evidence": [
         {
-          "resource": "repo://cli/src/test/js/native-onboarding.test.mjs#L90-L128",
-          "version": "repo-lines-v1:sha256:4777cfb36ebf27abe12ed70ea9798f5a708b25aac89122b7a15dacede8a4c32f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiMmNkYmVmZTRkYjU3OGI3M2VmODJlZGJmYjZkYTIyNDc3NjJmZjFmY2ZhMWEzODcyMDY1MzEzODczZjkxODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZjMjliZTkwODJkNjU2NjBkZDRiOTZjODRjNTQxOWM3MTNlNzBmNjAwNTJmYWE2ZDExODBhZDRkMzU4NWQ1YzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1YjhhZGMxZTYyMjJhYjVhMDdmZjU5MjdjZTI0OWEzNjYzOTI1ZmM1MDg1NTBkMWFiODZlNGM4ODVhMGJmMGMifQ"
+          "resource": "repo://cli/src/test/js/native-onboarding.test.mjs",
+          "version": "repo-file-v1:sha256:6f9ccd4e275f471fb57dced3a31973c7156d2e0d61f88fec758b55a3cbdef81a"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt",
@@ -78,7 +78,7 @@
         },
         {
           "resource": "repo://pi/mcp-extension.ts",
-          "version": "repo-file-v1:sha256:4c55fd57a6df285c30ad78f47b04f0b0e1a91fc23fd4ba36b2eb54b6c7efc8d3"
+          "version": "repo-file-v1:sha256:b46fa1114305609438fea653635ea28175c1b78b61824b8dc8b84dde3373e382"
         }
       ]
     },
@@ -95,10 +95,28 @@
           "version": "repo-file-v1:sha256:d2e9125cf6e2e862eca9b7a8a83818de38ef694c06491d69099e2be4ef02d1f1"
         }
       ]
+    },
+    {
+      "id": "claim_5ab459a5b80641d087b05a25d3c52ee6",
+      "statement": "Native session hooks return preparing, ready, or rejected workspace state and model context containing the selected preparation mode and explicit bounded or indefinite wait commands; background hooks return after admission rather than waiting for readiness.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
+          "version": "repo-file-v1:sha256:2c8623924a22e80f3d35d9669e9e9a23be113a306193942d6ae9b2310e97a5b9"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookArguments.kt",
+          "version": "repo-file-v1:sha256:a8272b053def17fdf84204d95bce3d9e6b485829a56c1e89a73c8717dbd8a75d"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
+          "version": "repo-file-v1:sha256:9424848e876a1ad4128943a09c7e62185a3cc918fa74fd32a9814e1703b26c07"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T17:39:06.252Z"
+    "at": "2026-11-04T23:27:44.986Z"
   }
 }

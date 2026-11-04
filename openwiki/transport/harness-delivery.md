@@ -35,6 +35,12 @@ sources:
     resource: repo://cli/src/main/js/query-delivery.mjs
   - id: openwiki-source-777e160a643777b302b4cc98
     resource: repo://cli/src/main/js/query-presentation.mjs
+  - id: openwiki-source-e1bc625b6dcbcb48924bf9b4
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
+  - id: openwiki-source-1ed2e320fcb442a426adfffa
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookArguments.kt
+  - id: openwiki-source-80668d86bee80c4df5797fa0
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt
   - id: openwiki-source-268c7ef978bdd77cf949ddc4
     resource: repo://cli/src/main/resources/query-delivery.schema.json
   - id: openwiki-source-d7ab95cd1102533a511cd820
@@ -49,10 +55,10 @@ sources:
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-11-03T17:39:06.252Z" }
+generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T17:39:06.252Z
+    at: 2026-11-04T23:27:44.986Z
 ---
 
 # Agent context and harness delivery
@@ -78,6 +84,9 @@ Legacy Python hook resources remain source material outside that default composi
 
 The optional Pi extension registers Kast through native `registerMcpServer`.
 Its session-start event starts `kast hook session-start` asynchronously for the exact workspace.
+The generated hooks select `--wait none` and return a preparing, ready, or rejected state.
+Their model context reports the preparation mode and commands for bounded or indefinite waiting.
+Pi includes this state before each model request and ignores replies from an older session.
 Preparation failure emits a bounded warning.
 It reads bounded local context directly with Node and adds that brief before model requests.
 A rejected resource produces one warning while later turns and native MCP remain available.

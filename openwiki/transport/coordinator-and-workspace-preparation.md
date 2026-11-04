@@ -23,6 +23,8 @@ code_sources:
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationWaitRecoveryTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionBudgetTest.kt
 sources:
+  - id: openwiki-source-a856ab1fe259496cbf44bc53
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - id: openwiki-source-775e1d6befa87f41b21c6f0b
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
   - id: openwiki-source-d5cbfb02164ed016b4a98505
@@ -31,10 +33,14 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt
   - id: openwiki-source-63714f19f4c87d1962b654ac
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+  - id: openwiki-source-eee64eb8ca3aa3550601ed99
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt
+  - id: openwiki-source-f93dd3d3556dacebc5dc9847
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmissionTest.kt
+generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-04T23:27:44.986Z
 ---
 
 # Coordinator and workspace preparation
@@ -62,7 +68,10 @@ Invalidation retires only the matching ready incarnation.
 An unknown historical identifier proves neither prior issuance nor an original outcome.
 Management preparation accepts the exact supplied canonical root and rejects an implicit containing workspace.
 
-`PreparedWorkspaceDemand` waits for terminal preparation and inspects the current host and exact target before semantic dispatch.
+`WorkspaceOperationAdmission` selects preparation for fresh name, text, or location discovery and diagnostics.
+Issued source and retained-reference operations use existing authority without another preparation effect.
+They still need current Host and reference admission.
+`PreparedWorkspaceDemand` waits for terminal preparation and inspects the current host and exact target before dispatch of an operation that needs preparation.
 A changed host permits one fresh preparation because no semantic operation reached the former target.
 Model-reload recovery also needs an explicit presemantic recovery result and an eligible operation.
 Ambiguous semantic effects cannot become an automatic retry.

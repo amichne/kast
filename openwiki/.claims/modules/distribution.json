@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aa2ca8986fb58fead4bf1411bd974ad8ed6d66b8a998e35ec929d174236ec59d",
+  "pageVersion": "sha256:f4cd89dba030df167844a44026bb66c386bd8dacc3e41bf73408cec1d3110c83",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -354,7 +354,7 @@
         },
         {
           "resource": "repo://cli/native-image.args",
-          "version": "repo-file-v1:sha256:8aabe6244ca61b8f71d175909ebd42a44d9859d6a256425ee200c9d640b9563c"
+          "version": "repo-file-v1:sha256:0eefa72b46cef5c8370a91e6f9da7b9f677254d985e97a0585d7938f18e96511"
         }
       ]
     },
@@ -483,6 +483,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T18:05:12.445Z"
+    "at": "2026-11-04T23:27:44.986Z"
   }
 }
