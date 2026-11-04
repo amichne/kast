@@ -102,6 +102,7 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - Focused public CLI cases: `mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*'`. This task excludes the native launcher suite.
 - Replay adapter: `mise exec -- ./gradlew :cli:prepareReplayAdapter` emits a digest-pinned JVM command for the interface experiment.
 - The test-only adapter owns rendering and public admission. It composes no Host, MCP connection, or semantic executor.
+- The production renderer owns TOON bytes. The test-only `Ktoon` decoder supplies an independent equality oracle.
 - Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the native launcher, native query child, and local-peer composition.
 - `KastNativeMain` composes the existing command owners into one native Control executable.
 - `distribution/cli` owns management commands. `NativeControlInvocation` owns private mode admission.

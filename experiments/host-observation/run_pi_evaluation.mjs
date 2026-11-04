@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateReplayPlan, expandReplayPlan, executeReplayPlan } from './pi_evaluation_replay.mjs';
 import { prepareReplayPlan } from './pi_evaluation_replay_identity.mjs';
+import { assessReplayTarget } from './pi_evaluation_replay_accounting.mjs';
 import { CasePolicy } from './pi_evaluation_policy.mjs';
 import { runOwnedWorker } from './pi_evaluation_controller.mjs';
 
@@ -33,9 +34,20 @@ export function validatePlan(plan) {
 }
 
 export async function main(args) {
-  if(args[0]==='--prepare-replay'&&(args.length===2||args.length===3)){
+  if(args[0]==='--assess-target'&&args.length===2){
+    const bytes=fs.readFileSync(path.resolve(args[1]));
+    if(bytes.length>4194304)throw Error('TARGET_INPUT_TOO_LARGE');
+    const report=assessReplayTarget(JSON.parse(bytes.toString('utf8')));
+    console.log(JSON.stringify(report,null,2));
+    if(report.status!=='TARGET_MET')process.exitCode=report.status==='NOT_MET'?1:2;
+    return;
+  }
+  if(args[0]==='--prepare-replay'&&args.length>=2&&args.length<=4){
+    const options=args.slice(2),auth=options.filter(value=>value.startsWith('--auth='));
+    const cases=options.filter(value=>!value.startsWith('--auth='));
+    if(auth.length>1||cases.length>1||auth.some(value=>!['--auth=codex','--auth=pi'].includes(value)))throw Error('REPLAY_PREPARATION_REJECTED');
     const root=fileURLToPath(new URL('../..',import.meta.url));
-    const plan=prepareReplayPlan(args[1],root,args[2]);
+    const plan=prepareReplayPlan(args[1],root,cases[0],{credentialSource:auth[0]==='--auth=codex'?'CODEX_CHATGPT':'PI_OAUTH'});
     console.log(JSON.stringify({plan:args[1],trials:expandReplayPlan(plan),sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256},null,2));return;
   }
   if(args.length!==2||!['--plan','--execute'].includes(args[0])) throw Error('Usage: node run_pi_evaluation.mjs --plan|--execute /absolute/plan.json');

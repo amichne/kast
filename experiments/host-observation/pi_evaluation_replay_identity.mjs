@@ -11,7 +11,8 @@ export function replaySourceIdentity(root) {
  const files=[...paths].sort().map(file=>({path:file,sha256:fs.existsSync(path.join(root,file))?sha(fs.readFileSync(path.join(root,file))):'DELETED'}));
  return {sourceRevision:git('rev-parse','HEAD'),diffSha256:sha(JSON.stringify(files)),files};
 }
-export function prepareReplayPlan(planPath,root,caseId) {
+export function prepareReplayPlan(planPath,root,caseId,{credentialSource='PI_OAUTH'}={}) {
+ if(!['PI_OAUTH','CODEX_CHATGPT'].includes(credentialSource))throw Error('CREDENTIAL_SOURCE_REJECTED');
  if(!path.isAbsolute(planPath))throw Error('ABSOLUTE_PLAN_PATH_REQUIRED');
  const home=os.homedir(),install=path.join(home,'.pi/agent/install');
  const version=fs.readFileSync(path.join(install,'current-version'),'utf8').trim();
@@ -20,7 +21,7 @@ export function prepareReplayPlan(planPath,root,caseId) {
  const adapterManifest=path.join(root,'cli/build/replay-adapter/manifest.json');
  const identity=replaySourceIdentity(root),cases=replayCases(),sdkFiles=['package.json','dist/core/sdk.js','dist/core/session-manager.js','dist/core/tools/bash.js','dist/core/extensions/runner.js','../pi-ai/package.json','../pi-ai/dist/api/openai-codex-responses.js','../pi-ai/dist/api/openai-responses-shared.js','../pi-agent-core/package.json','../pi-agent-core/dist/agent.js'];
  const plan={mode:'replay',workers:8,repetitions:2,caseIds:caseId?[caseId]:cases.map(item=>item.id),maximumProviderRequests:caseId?4:24,wallSeconds:60,
-  piPackageRoot,piVersion:version,authPath:path.join(home,'.pi/agent/auth.json'),modelsStorePath:path.join(home,'.pi/agent/models-store.json'),
+  piPackageRoot,piVersion:version,credentialSource,authPath:credentialSource==='CODEX_CHATGPT'?path.join(process.env.CODEX_HOME??path.join(home,'.codex'),'auth.json'):path.join(home,'.pi/agent/auth.json'),modelsStorePath:path.join(home,'.pi/agent/models-store.json'),
   adapterManifest,adapterManifestSha256:sha(fs.readFileSync(adapterManifest)),outputRoot:planPath+'.run',
   ...identity,sdkIdentity:sdkFiles.map(file=>({file,sha256:sha(fs.readFileSync(path.join(piPackageRoot,file)))})),
   cases:cases.map(item=>({id:item.id,version:item.version,canonicalSha256:item.canonicalSha256,promptSha256:sha(item.task),contractSha256:sha(item.visibleContract)})),heldOut:heldOutManifest(),

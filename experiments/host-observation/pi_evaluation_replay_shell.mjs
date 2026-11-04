@@ -53,7 +53,7 @@ export async function createReplayShell({directory,socket,budget,admit,transitio
  return {invocations,captures,get failed(){return failed;},
   operations:{exec:async(command,cwd,{onData,signal,timeout})=>{
    if(!budget.shell())return {exitCode:75};
-   const capture={command,stdout:'',stderr:'',exitStatus:null};captures.push(capture);
+   const capture={command,stdout:'',stderr:'',exitStatus:null,startedMs:performance.now(),durationMs:null};captures.push(capture);
    const env={PATH:directory,HOME:directory,TMPDIR:directory,LANG:'C.UTF-8',KAST_REPLAY_SOCKET:socket};
    const child=spawn('/usr/bin/sandbox-exec',['-p',replayShellProfile(directory,socket),'/bin/bash','--noprofile','--norc','-c',command],{cwd:directory,env,stdio:['ignore','pipe','pipe']});
    const stop=()=>child.kill('SIGKILL');signal?.addEventListener('abort',stop,{once:true});
@@ -61,7 +61,7 @@ export async function createReplayShell({directory,socket,budget,admit,transitio
    child.stdout.on('data',chunk=>{capture.stdout+=chunk;onData(chunk);if(Buffer.byteLength(capture.stdout)>65536)stop();});
    child.stderr.on('data',chunk=>{capture.stderr+=chunk;onData(chunk);if(Buffer.byteLength(capture.stderr)>65536)stop();});
    try{return await new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',code=>{capture.exitStatus=code;resolve({exitCode:code});});});}
-   finally{clearTimeout(timer);signal?.removeEventListener('abort',stop);}
+   finally{capture.durationMs=performance.now()-capture.startedMs;clearTimeout(timer);signal?.removeEventListener('abort',stop);}
   }},
   dispose:()=>new Promise(resolve=>server.close(resolve))};
 }

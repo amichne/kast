@@ -120,3 +120,109 @@ export function summarizeReplay(plans,receipts) {
     qualifications:['REPLAY_DECISIONS_GIVEN_FIXED_STATES','REPETITIONS_ARE_NOT_INDEPENDENT_TASKS','LATENCY_EXCLUDES_NATIVE_SEMANTIC_CLAIMS','NO_FORMAT_WINNER_REQUIRED'],
   };
 }
+
+// A campaign claim needs a fixed task cohort and complete live measurements.
+// Synthetic receipts exercise this arithmetic but cannot establish model gains.
+export function assessReplayTarget({target,baseline,candidate}={}) {
+ const rejected=reason=>({type:'REPLAY_TARGET_ASSESSMENT',status:'INVALID_COMPARISON',reasons:[reason]});
+ if(!target||Object.keys(target).some(key=>!['factor','dimensions','caseIds','repetitions'].includes(key))||!Number.isFinite(target.factor)||target.factor<=1||target.repetitions!==2
+  ||!['TOKENS_AND_LATENCY','TOKENS','LATENCY'].includes(target.dimensions)
+  ||!Array.isArray(target.caseIds)||!target.caseIds.length||new Set(target.caseIds).size!==target.caseIds.length
+  ||target.caseIds.some(id=>!/^C[1-6]$/.test(id))||!Array.isArray(baseline)||!Array.isArray(candidate))return rejected('TARGET_REJECTED');
+ if([...baseline,...candidate].some(row=>!row||typeof row!=='object'||typeof row.trialId!=='string'
+  ||!Array.isArray(row.outcome?.reasons)))return rejected('RECEIPT_REJECTED');
+ const expected=target.caseIds.flatMap(caseId=>[1,2].map(repetition=>({caseId,repetition,key:`${caseId}-r${repetition}`})));
+ const keys=new Set(expected.map(item=>item.key)),issues=new Set(),invalid=new Set();
+ const index=records=>{
+  const byKey=new Map();
+  for(const row of records){
+   const key=`${row?.caseId}-r${row?.repetition}`;
+   if(!keys.has(key)||byKey.has(key)||!outcomes.has(row?.outcome?.type)){invalid.add('COHORT_REJECTED');continue;}
+   byKey.set(key,row);
+  }
+  return byKey;
+ };
+ const controls=index(baseline),candidates=index(candidate);
+ if(invalid.size)return rejected('COHORT_REJECTED');
+ const identityFields=['provider','model','effort','piVersion','fixtureVersion','canonicalSha256','promptSha256','contractSha256','graderSha256','sdkIdentity','budgetSha256','timingMethod','credentialSource','principalSha256'];
+ const modelIdentity=row=>{
+  const value=row?.identity;
+  if(!value)return null;
+  return {...value,model:typeof value.model==='string'?value.model:value.model?.id,
+   provider:value.provider??value.model?.provider,effort:value.effort??value.model?.effort};
+ };
+ const projectionValid=row=>row?.projection?.type==='projected'&&row.projection.complete===true&&row.projection.encodingEquivalent===true
+  &&row.projection.presentationOccurrences===1&&row.actualProviderProjection?.type==='projected'
+  &&row.actualProviderProjection.complete===true&&row.actualProviderProjection.presentationOccurrences===1
+  &&typeof row.projection.payloadSha256==='string'&&row.projection.payloadSha256===row.actualProviderProjection.payloadSha256;
+ const pairs=expected.map(item=>{
+  const control=controls.get(item.key),next=candidates.get(item.key);
+  if(!control||!next)issues.add('MISSING_TRIAL');
+  for(const row of [control,next])if(row){
+   if(!eligible(row))issues.add('INVALID_TRIAL');
+   if(row.protectedFilesUnchanged!==true)issues.add('PROTECTED_STATE_UNAVAILABLE');
+   if(row.measurement!=='LIVE_MODEL')issues.add('LIVE_MEASUREMENT_UNAVAILABLE');
+   if(!projectionValid(row))issues.add('PAYLOAD_PROOF_UNAVAILABLE');
+   if(row.providerSends!==1||row.nativeCalls!==0||!count(row.shellCalls)||row.shellCalls>1
+    ||!count(row.kastInvocations)||row.kastInvocations>1)issues.add('EFFECT_COUNTS_UNAVAILABLE');
+   if(row.outcome.type==='correct'&&(row.grade?.correct!==true||gradeMisuse(row).length||coverage(row)===false))invalid.add('GRADE_CONTRADICTION');
+  }
+  if(control&&next){
+   const left=modelIdentity(control),right=modelIdentity(next);
+   if(!left||!right||identityFields.some(key=>left[key]===undefined||right[key]===undefined))issues.add('IDENTITY_UNAVAILABLE');
+   else{
+    if(identityFields.some(key=>JSON.stringify(left[key])!==JSON.stringify(right[key])))invalid.add('IDENTITY_MISMATCH');
+    const sourceFields=['canonicalSha256','promptSha256','contractSha256','graderSha256','budgetSha256','principalSha256'];
+    for(const identity of [left,right])if(sourceFields.some(key=>! /^[a-f0-9]{64}$/.test(identity[key]))
+     ||!Array.isArray(identity.sdkIdentity)||!identity.sdkIdentity.length
+     ||identity.sdkIdentity.some(item=>typeof item.file!=='string'||! /^[a-f0-9]{64}$/.test(item.sha256)))issues.add('IDENTITY_UNAVAILABLE');
+   }
+  }
+  return {caseId:item.caseId,repetition:item.repetition,key:item.key,baselineTrialId:control?.trialId??null,candidateTrialId:next?.trialId??null,
+   baselineOutcome:control?.outcome.type??'unavailable',candidateOutcome:next?.outcome.type??'unavailable',
+   latencyRatio:control&&next&&eligible(control)&&eligible(next)&&duration(control.latency?.trialMs)&&control.latency.trialMs>0
+    &&duration(next.latency?.trialMs)&&next.latency.trialMs>0?control.latency.trialMs/next.latency.trialMs:null};
+ });
+ const cost=records=>{
+  const usages=records.map(row=>({row,usage:normalizeReplayUsage(row.usage)}));
+  const missingUsage=usages.filter(item=>item.usage.type!=='known').map(item=>item.row.trialId);
+  const knownTotal=sum(usages.filter(item=>item.usage.type==='known').map(item=>item.usage.value.totalTokens));
+  const correct=records.filter(row=>row.outcome.type==='correct').length;
+  const complete=records.length===expected.length&&!missingUsage.length;
+  return {total:complete?knownTotal:null,knownTotal,correct,missingUsage,perCorrect:complete&&correct?knownTotal/correct:null};
+ };
+ const baselineCost=cost([...controls.values()]),candidateCost=cost([...candidates.values()]);
+ const totals=records=>({eligible:records.filter(eligible).length,correct:records.filter(row=>row.outcome.type==='correct').length});
+ const perCase=target.caseIds.map(caseId=>{
+  const left=[...controls.values()].filter(row=>row.caseId===caseId),right=[...candidates.values()].filter(row=>row.caseId===caseId);
+  const control=totals(left),next=totals(right);
+  return {caseId,baseline:control,candidate:next,noAccuracyLoss:control.eligible===2&&next.eligible===2&&next.correct>=control.correct,
+   supported:next.correct>0};
+ });
+ const noAccuracyLoss=perCase.every(item=>item.noAccuracyLoss);
+ const supported=perCase.every(item=>item.supported);
+ if(!noAccuracyLoss&&!issues.has('INVALID_TRIAL')&&!issues.has('MISSING_TRIAL'))issues.add('ACCURACY_REGRESSION');
+ if(!supported)issues.add('CASE_UNSUCCESSFUL');
+ const tokens={baseline:baselineCost,candidate:candidateCost,speedup:baselineCost.perCorrect!==null&&candidateCost.perCorrect!==null&&candidateCost.perCorrect>0?baselineCost.perCorrect/candidateCost.perCorrect:null};
+ if(tokens.speedup===null)issues.add('TOKEN_MEASUREMENT_UNAVAILABLE');
+ const caseRatios=target.caseIds.map(caseId=>{
+  const selected=pairs.filter(pair=>pair.caseId===caseId);
+  return {caseId,ratio:selected.length===2&&selected.every(pair=>pair.latencyRatio!==null)?median(selected.map(pair=>pair.latencyRatio)):null};
+ });
+ const latency={method:'MEDIAN_OF_CASE_MEDIAN_PAIRED_RATIOS',caseRatios,speedup:caseRatios.every(item=>item.ratio!==null)?median(caseRatios.map(item=>item.ratio)):null};
+ if(latency.speedup===null)issues.add('LATENCY_MEASUREMENT_UNAVAILABLE');
+ const wantedTokens=target.dimensions!=='LATENCY',wantedLatency=target.dimensions!=='TOKENS';
+ if(wantedTokens&&tokens.speedup!==null&&tokens.speedup<target.factor)issues.add('TOKEN_TARGET_NOT_MET');
+ if(wantedLatency&&latency.speedup!==null&&latency.speedup<target.factor)issues.add('LATENCY_TARGET_NOT_MET');
+ const proofMissing=[...issues].some(reason=>['MISSING_TRIAL','INVALID_TRIAL','LIVE_MEASUREMENT_UNAVAILABLE','PAYLOAD_PROOF_UNAVAILABLE','EFFECT_COUNTS_UNAVAILABLE','IDENTITY_UNAVAILABLE','PROTECTED_STATE_UNAVAILABLE'].includes(reason)
+  ||reason==='TOKEN_MEASUREMENT_UNAVAILABLE'&&wantedTokens||reason==='LATENCY_MEASUREMENT_UNAVAILABLE'&&wantedLatency);
+ const contextProofMissing=[...issues].some(reason=>['MISSING_TRIAL','INVALID_TRIAL','LIVE_MEASUREMENT_UNAVAILABLE','PAYLOAD_PROOF_UNAVAILABLE','EFFECT_COUNTS_UNAVAILABLE','IDENTITY_UNAVAILABLE','PROTECTED_STATE_UNAVAILABLE'].includes(reason));
+ if(invalid.size||contextProofMissing){tokens.speedup=null;latency.speedup=null;}
+ const notMet=!noAccuracyLoss||!supported||wantedTokens&&tokens.speedup<target.factor||wantedLatency&&latency.speedup<target.factor;
+ const ledger=records=>({sends:records.every(row=>count(row.providerSends))?sum(records.map(row=>row.providerSends)):null,
+  invalid:records.filter(row=>!eligible(row)).map(row=>({trialId:row.trialId,reasons:row.outcome.reasons}))});
+ return {type:'REPLAY_TARGET_ASSESSMENT',status:invalid.size?'INVALID_COMPARISON':proofMissing?'UNMEASURED':notMet?'NOT_MET':'TARGET_MET',
+  target:{...target,caseIds:[...target.caseIds]},cases:target.caseIds.length,pairs,quality:{noAccuracyLoss,supported,perCase,baseline:totals([...controls.values()]),candidate:totals([...candidates.values()])},
+  tokens,latency,accounting:{baseline:ledger(baseline),candidate:ledger(candidate)},costUnit:'PROVIDER_TOKENS',billedCost:{status:'UNAVAILABLE'},
+  reasons:[...invalid,...issues],qualifications:['DECLARED_CASES_ONLY','REPETITIONS_ARE_NOT_INDEPENDENT_TASKS','TOKENS_ARE_NOT_BILLED_COST','SYNTHETIC_INPUTS_DO_NOT_PROVE_MODEL_PERFORMANCE']};
+}

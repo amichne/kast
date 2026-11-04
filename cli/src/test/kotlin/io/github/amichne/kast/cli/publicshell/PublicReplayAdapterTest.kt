@@ -1,7 +1,9 @@
 package io.github.amichne.kast.cli.publicshell
 
+import com.lukelast.ktoon.Ktoon
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -9,7 +11,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -86,24 +87,62 @@ class PublicReplayAdapterTest {
     }
 
     @Test
-    fun `unsupported unrestricted integer decoding invalidates the encoding pair`() {
+    fun `unrestricted integer keeps every digit through the independent decoder`() {
         val document = fixtureText("unrestricted-integer.json")
         assertEquals(document, replayRender(document, CliOutputFormat.JSON))
-        val rejection =
-            assertThrows(IllegalArgumentException::class.java) {
-                replayRender(document, CliOutputFormat.TOON)
-            }
-        assertEquals("REPLAY_ENCODING_MISMATCH", rejection.message)
+        val rendered = replayRender(document, CliOutputFormat.TOON)
+        assertEquals("n: 1234567890123456789012345678901234567890", rendered)
+        assertEquals(Json.parseToJsonElement(document), Ktoon.Default.decodeToonToJson(rendered))
     }
 
     @Test
-    fun `nested empty array codec mismatch invalidates the pair without output repair`() {
+    fun `nested empty arrays survive without output repair`() {
         val document = Json.encodeToString(ReplayNestedArrays(listOf(ReplayConnections(emptyList()))))
-        val rejection =
-            assertThrows(IllegalArgumentException::class.java) {
-                replayRender(document, CliOutputFormat.TOON)
-            }
-        assertEquals("REPLAY_ENCODING_MISMATCH", rejection.message)
+        val rendered = replayRender(document, CliOutputFormat.TOON)
+        assertEquals("items[1]:\n  - connections: []", rendered)
+        assertEquals(Json.parseToJsonElement(document), Ktoon.Default.decodeToonToJson(rendered))
+    }
+
+    @Test
+    fun `literal array syntax remains a string instead of an empty array`() {
+        val document =
+            Json.encodeToString(
+                ReplayLiteralArrays(listOf(ReplayLiteralConnection(Json.encodeToString(emptyList<String>()))))
+            )
+        val rendered = replayRender(document, CliOutputFormat.TOON)
+        assertEquals("items[1]{connections}:\n  \"[]\"", rendered)
+        assertEquals(Json.parseToJsonElement(document), Ktoon.Default.decodeToonToJson(rendered))
+    }
+
+    @Test
+    fun `all declared replay documents preserve values through both independent codecs`() {
+        val names =
+            listOf(
+                "C1",
+                "C2",
+                "C3",
+                "C4",
+                "C5",
+                "C6",
+                "H1",
+                "H2",
+                "H3",
+                "H4",
+                "C1-transition",
+                "C2-transition",
+                "C3-transition",
+                "C4-transition",
+                "C6-transition",
+            )
+        assertEquals(15, names.size)
+        for (name in names) {
+            val document =
+                Files.readString(Path.of("../experiments/host-observation/interface-replay/fixtures/$name.json"))
+            assertEquals(document, replayRender(document, CliOutputFormat.JSON), name)
+            val rendered = replayRender(document, CliOutputFormat.TOON)
+            assertEquals(Json.parseToJsonElement(document), Ktoon.Default.decodeToonToJson(rendered), name)
+            assertEquals(dev.toonformat.jtoon.JToon.encodeJson(document), rendered, name)
+        }
     }
 
     @Test
@@ -126,7 +165,7 @@ class PublicReplayAdapterTest {
         assertEquals(document, json)
         assertEquals(
             Json.parseToJsonElement(document),
-            Json.parseToJsonElement(dev.toonformat.jtoon.JToon.decodeToJson(toon)),
+            Ktoon.Default.decodeToonToJson(toon),
         )
         assertTrue(toon.contains("9223372036854775807"))
         assertTrue(toon.contains("exact:v5:AAAAAAAAAAAAAAAAAAAAAA"))
@@ -154,3 +193,7 @@ private data class ReplayEncodingEvidence(
 @Serializable private data class ReplayNestedArrays(val items: List<ReplayConnections>)
 
 @Serializable private data class ReplayConnections(val connections: List<String>)
+
+@Serializable private data class ReplayLiteralArrays(val items: List<ReplayLiteralConnection>)
+
+@Serializable private data class ReplayLiteralConnection(val connections: String)

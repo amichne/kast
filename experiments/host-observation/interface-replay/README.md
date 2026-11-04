@@ -66,12 +66,15 @@ Missing usage remains unavailable. Cache tokens count once. Reasoning remains wi
 
 The initial run uses `openai-codex/gpt-6.1-sol` with high effort through Pi 1.4.0.
 The configured `OAuth` credential expired before inference. The initial live screen has status `NOT_RUN`.
+The current hill climb uses the [performance target](hill-climb.md).
 The report selects no format winner.
 
 `JToon` 3.0.0 decodes a nested empty array as a string in a list-item object.
 Its emitted empty-array syntax agrees with the [TOON specification](https://github.com/toon-format/spec/blob/main/SPEC.md#91-inline-primitive-arrays).
-This failure limits the current production-codec equality proof. It does not establish model-visible data loss.
-The harness preserves the complete inputs and invalidates the affected comparison pairs.
+The current test adapter uses the published `Ktoon` 6.0.0 decoder as an independent oracle.
+All six development inputs and the complete fixture corpus pass equality through that decoder.
+The old failure does not establish model-visible data loss.
+The initial report preserves its recorded decoder failure and invalid pairs.
 It changes no product default, schema, semantic algorithm, or reference authority.
 
 The smallest reproduction uses this canonical input:
@@ -88,9 +91,9 @@ items[1]:
 ```
 
 `JToon` decodes `connections` as the string `"[]"`.
-The guarded adapter reports `REPLAY_ENCODING_MISMATCH`.
-An integer beyond the supported `Long` range also fails the guarded equality proof.
-The named Kotlin regression cases preserve both failures.
+The old guarded adapter reported `REPLAY_ENCODING_MISMATCH`.
+The old decoder also returned an integer beyond the `Long` range as a string.
+Current Kotlin regression cases preserve exact arrays, strings, and integers with the independent decoder.
 The experiment does not repair decoded data or shorten an arm.
 
 ## Focused evidence

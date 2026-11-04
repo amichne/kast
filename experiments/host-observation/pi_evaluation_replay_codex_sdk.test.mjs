@@ -1,0 +1,31 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import zlib from 'node:zlib';
+import {replayWorker,replaySha} from './pi_evaluation_replay_worker.mjs';
+import {expandReplayPlan} from './pi_evaluation_replay.mjs';
+import {replayOracleControls} from './pi_evaluation_replay_grading.mjs';
+const planFile=process.env.KAST_REPLAY_TEST_PLAN;
+test('Codex login maps through the real SDK with exact payload and no credential-file mutation',{skip:!planFile},async t=>{
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-codex-sdk-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const source=JSON.parse(fs.readFileSync(planFile)),authPath=path.join(root,'auth.json'),modelsStorePath=path.join(root,'models.json');
+ const access=`header.${Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)+3600,'https://api.openai.com/auth':{chatgpt_account_id:'fixture-account'}})).toString('base64url')}.signature`;
+ fs.writeFileSync(authPath,JSON.stringify({auth_mode:'chatgpt',tokens:{access_token:access,refresh_token:'fixture-refresh-never-used',account_id:'fixture-account'}}),{mode:0o600});
+ fs.copyFileSync(source.modelsStorePath,modelsStorePath);
+ const plan={...source,outputRoot:root,authPath,modelsStorePath,credentialSource:'CODEX_CHATGPT',adapterManifestSha256:replaySha(fs.readFileSync(source.adapterManifest))};
+ const trial=expandReplayPlan(plan).find(item=>item.caseId==='C5'&&item.repetition===1&&item.format==='TOON');
+ const before=fs.readFileSync(authPath),savedFetch=globalThis.fetch;let unexpected=0,sends=0;
+ globalThis.fetch=async()=>{unexpected++;throw Error('UNEXPECTED_NETWORK');};t.after(()=>{globalThis.fetch=savedFetch;});
+ const projection=await replayWorker('--preflight',plan,trial);assert.equal(projection.type,'projected');assert.equal(projection.encodingEquivalent,true);
+ const report=await replayWorker('--trial',plan,trial,{fetch:async(_url,options)=>{
+  sends++;assert.equal(new Headers(options.headers).get('authorization'),`Bearer ${access}`);
+  const payload=JSON.parse(new Headers(options.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body);
+  assert.equal(payload.model,'gpt-6.1-sol');assert.equal(payload.reasoning.effort,'high');
+  const item={id:'fixture-message',type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:JSON.stringify(replayOracleControls('C5').accept[0].decision)}]};
+  const events=[{type:'response.created',response:{id:'fixture-response'}},{type:'response.output_item.added',output_index:0,item:{...item,content:[]}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'fixture-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:0}}}}];
+  return new Response(events.map(event=>`data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
+ }});
+ assert.equal(report.outcome.type,'correct',JSON.stringify(report));assert.equal(report.measurement,'SYNTHETIC_TRANSPORT');
+ assert.equal(report.identity.credentialSource,'CODEX_CHATGPT');assert.match(report.identity.principalSha256,/^[0-9a-f]{64}$/);
+ assert.equal(report.providerSends,1);assert.equal(sends,1);assert.equal(unexpected,0);assert.equal(report.protectedFilesUnchanged,true);
+ assert.equal(report.projection.payloadSha256,projection.payloadSha256);assert.equal(report.actualProviderProjection.payloadSha256,projection.payloadSha256);
+ assert.deepEqual(fs.readFileSync(authPath),before);
+});

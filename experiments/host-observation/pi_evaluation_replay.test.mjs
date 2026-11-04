@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { expandReplayPlan, runReplayPool, admitReplayPair, ReplayBudget } from './pi_evaluation_replay.mjs';
@@ -50,7 +51,7 @@ test('dry replay planning needs no SDK installation credentials or output direct
  const fake={...plan,piPackageRoot:'/not-installed/sdk',piVersion:'1.4.0',authPath:'/not-read/auth',modelsStorePath:'/not-read/models',adapterManifest:'/not-read/adapter',adapterManifestSha256:'a'.repeat(64),outputRoot:path.join(root,'not-created'),sourceRevision:'b'.repeat(40),diffSha256:'c'.repeat(64),sdkIdentity:[{file:'package.json',sha256:'d'.repeat(64)}],cases:Array.from({length:6},(_,i)=>({id:`C${i+1}`})),model:{provider:'openai-codex',id:'gpt-6.1-sol',effort:'high'}};
  const file=path.join(root,'plan.json');fs.writeFileSync(file,JSON.stringify(fake));
  try{
-  const result=spawnSync(process.execPath,['experiments/host-observation/run_pi_evaluation.mjs','--plan',file],{encoding:'utf8'});
+  const result=spawnSync(process.execPath,[fileURLToPath(new URL('run_pi_evaluation.mjs',import.meta.url)),'--plan',file],{encoding:'utf8'});
   assert.equal(result.status,0,result.stderr);const expanded=JSON.parse(result.stdout);
   assert.equal(expanded.mode,'NO_INFERENCE');assert.equal(expanded.trials.length,24);assert.equal(fs.existsSync(fake.outputRoot),false);
  }finally{fs.rmSync(root,{recursive:true});}

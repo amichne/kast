@@ -58,7 +58,7 @@ test('real SDK replay preserves complete format inputs once at synthetic transpo
    if(kind==='transport')throw Error('SYNTHETIC_TRANSPORT_FAILURE');
    return syntheticReply(kind==='correct'?JSON.stringify(replayOracleControls('C5').accept[0].decision):'malformed decision',kind==='incomplete');
   }});
-  assert.equal(report.providerSends,1);assert.equal(report.shellCalls,0);assert.equal(report.kastInvocations,0);assert.equal(report.nativeCalls,0);
+  assert.equal(report.measurement,'SYNTHETIC_TRANSPORT');assert.equal(report.latency.shellMs,0);assert.equal(report.providerSends,1);assert.equal(report.shellCalls,0);assert.equal(report.kastInvocations,0);assert.equal(report.nativeCalls,0);
   assert.equal(report.outcome.type,kind==='correct'?'correct':kind==='malformed'?'incorrect':kind==='incomplete'?'incomplete':'invalid',JSON.stringify(report));
   if(kind!=='transport'){
    const usage=normalizeReplayUsage(report.usage);
@@ -83,7 +83,7 @@ test('real SDK replay preserves complete format inputs once at synthetic transpo
   assert.equal(toolSends,1,'The SDK must block its automatic post-tool request before transport');
   return syntheticToolReply(command);
  }});
- assert.equal(toolSends,1);assert.equal(report.providerSends,1);
+ assert.equal(report.measurement,'SYNTHETIC_TRANSPORT');assert.ok(report.latency.shellMs>0);assert.ok(report.latency.setupMs>0);assert.equal(toolSends,1);assert.equal(report.providerSends,1);
  assert.equal(report.shellCalls,1,JSON.stringify(report));assert.equal(report.kastInvocations,1,JSON.stringify(JSON.parse(fs.readFileSync(path.join(invocationRoot,invocationTrial.trialId,'shell.json')))));assert.equal(report.nativeCalls,0);
  assert.equal(report.outcome.type,'correct',JSON.stringify(report));assert.equal(report.grade.correct,true);
  assert.equal(normalizeReplayUsage(report.usage).value.totalTokens,110,'A blocked second request cannot erase finalized first-request usage');

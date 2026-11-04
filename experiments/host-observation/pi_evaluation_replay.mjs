@@ -47,6 +47,7 @@ export async function runReplayPool(trials,workers,execute,signal,onReceipt=()=>
 }
 export function validateReplayPlan(plan) {
  expandReplayPlan(plan);
+ if(plan.credentialSource!==undefined&&!['PI_OAUTH','CODEX_CHATGPT'].includes(plan.credentialSource))throw Error('CREDENTIAL_SOURCE_REJECTED');
  for(const name of ['outputRoot','piPackageRoot','authPath','modelsStorePath','adapterManifest'])
   if(typeof plan[name]!=='string'||!path.isAbsolute(plan[name]))throw Error(`ABSOLUTE_${name}_REQUIRED`);
  if(!/^[a-f0-9]{64}$/.test(plan.adapterManifestSha256??'')||typeof plan.piVersion!=='string'
@@ -65,7 +66,7 @@ export async function executeReplayPlan(planFile,plan) {
   cwd:plan.outputRoot,env:{...process.env,PI_OFFLINE:'1',PI_TELEMETRY:'0',KAST_TOOL_RPC_COMMAND:undefined},
   wallMillis:60000,graceMillis:1000,signal:controller.signal});
  const artifact=JSON.parse(fs.readFileSync(plan.adapterManifest));
- const withIdentity=receipt=>{const fixture=plan.cases.find(c=>c.id===receipt.caseId);return {...receipt,identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:artifact.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,sdkIdentity:plan.sdkIdentity,model:plan.model,fixtureVersion:fixture.version,canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,codec:'JToon-3.0.0',planSha256:createHash('sha256').update(fs.readFileSync(planFile)).digest('hex'),...receipt.identity}};};
+ const withIdentity=receipt=>{const fixture=plan.cases.find(c=>c.id===receipt.caseId);return {...receipt,identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:artifact.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,sdkIdentity:plan.sdkIdentity,model:plan.model,fixtureVersion:fixture.version,canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,codec:'JToon-3.0.0',credentialSource:plan.credentialSource??'PI_OAUTH',graderSha256:createHash('sha256').update(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))).digest('hex'),planSha256:createHash('sha256').update(fs.readFileSync(planFile)).digest('hex'),...receipt.identity,timingMethod:'CONTROLLER_REAPED_WALL_V1'}};};
  const published=new Set();
  const publishReceipt=receipt=>{if(published.has(receipt.trialId))return;fs.writeFileSync(path.join(plan.outputRoot,`${receipt.trialId}.receipt.json`),JSON.stringify(receipt,null,2)+'\n',{mode:0o600,flag:'wx'});published.add(receipt.trialId);};
  const write=(name,value)=>fs.writeFileSync(path.join(plan.outputRoot,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});
@@ -85,12 +86,13 @@ export async function executeReplayPlan(planFile,plan) {
    if(!allowed.has(trial.pairId))return {outcome:{type:'invalid',reasons:[rejected.get(trial.pairId)]},usage:null,providerSends:0,shellCalls:0,kastInvocations:0,nativeCalls:0,projection:preflight.find(p=>p.trialId===trial.trialId)?.projection};
    if(scheduledSends>=plan.maximumProviderRequests)throw Error('BATCH_REQUEST_CAP');
    scheduledSends++;
-   const queued=performance.now()-started,result=await call(trial,'--trial');
-   if(result.type==='report')return {...result.report,latency:{...result.report.latency,queueMs:queued},controller:result};
+   const queued=performance.now()-started,launched=performance.now(),result=await call(trial,'--trial');
+   const controllerMs=performance.now()-launched;
+   if(result.type==='report')return {...result.report,latency:{...result.report.latency,workerMs:result.report.latency?.trialMs??null,trialMs:controllerMs,queueMs:queued,method:'CONTROLLER_REAPED_WALL_V1'},controller:result};
    // A killed worker has unknown incurred usage. Keep its incremental ledger.
    let ledger={providerSends:null,usage:null};
    try{ledger=JSON.parse(fs.readFileSync(path.join(plan.outputRoot,trial.trialId,'ledger.json'),'utf8'));}catch{}
-   return {...ledger,outcome:{type:result.type==='cancelled'&&ledger.providerSends===1?'incomplete':'invalid',reasons:[result.type==='cancelled'?'DEADLINE':'WORKER_REPORT_UNAVAILABLE']},controller:result};
+   return {...ledger,latency:{trialMs:controllerMs,workerMs:null,queueMs:queued,providerMs:null,shellMs:null,method:'CONTROLLER_REAPED_WALL_V1'},outcome:{type:result.type==='cancelled'&&ledger.providerSends===1?'incomplete':'invalid',reasons:[result.type==='cancelled'?'DEADLINE':'WORKER_REPORT_UNAVAILABLE']},controller:result};
   },controller.signal,receipt=>publishReceipt(withIdentity(receipt)))).map(withIdentity);
   for(const receipt of receipts)publishReceipt(receipt);
   const report={...summarizeReplay(trials,receipts),liveAcceptance:receipts.some(r=>r.providerSends>0)?'MEASURED':'NOT_RUN',preflight:{planned:trials.length,completeInputs:preflight.filter(r=>r.projection?.complete===true).length,qualifiedPairs:allowed.size},source:{revision:plan.sourceRevision,diffSha256:plan.diffSha256,adapterManifestSha256:plan.adapterManifestSha256},limits:{workers:plan.workers,maximumProviderRequests:plan.maximumProviderRequests,maximumRequestsPerTrial:1,wallSeconds:60}};write('report.json',report);

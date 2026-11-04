@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
-import dev.toonformat.jtoon.JToon
+import com.lukelast.ktoon.Ktoon
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
@@ -282,10 +282,10 @@ internal fun replayRender(document: String, format: CliOutputFormat): String {
     val rendered = rawReplayRender(document, format)
     val decoded =
         when (format) {
-            CliOutputFormat.JSON -> rendered
-            CliOutputFormat.TOON -> JToon.decodeToJson(rendered)
+            CliOutputFormat.JSON -> Json.parseToJsonElement(rendered)
+            CliOutputFormat.TOON -> Ktoon.Default.decodeToonToJson(rendered)
         }
-    require(Json.parseToJsonElement(document) == Json.parseToJsonElement(decoded)) { "REPLAY_ENCODING_MISMATCH" }
+    require(Json.parseToJsonElement(document) == decoded) { "REPLAY_ENCODING_MISMATCH" }
     return rendered
 }
 

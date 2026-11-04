@@ -8,6 +8,7 @@ import { pathToFileURL,fileURLToPath } from 'node:url';
 import { expandReplayPlan,ReplayBudget } from './pi_evaluation_replay.mjs';
 import { replayCase,replayTransition } from './pi_evaluation_replay_cases.mjs';
 import { gradeReplayDecision } from './pi_evaluation_replay_grading.mjs';
+import { loadReplayCredential } from './pi_evaluation_replay_auth.mjs';
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
 import { createEvaluationSession,disposeEvaluationSession,publishWorkerResult } from './pi_evaluation_worker.mjs';
 import { withPrivateReplaySession } from './pi_evaluation_records.mjs';
@@ -51,9 +52,10 @@ export async function replayWorker(mode,plan,trial,services={}) {
  fs.mkdirSync(directory,{mode:0o700});
  const write=(name,value)=>fs.writeFileSync(path.join(directory,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});
  let responseLimit=false;
- let usage=null,projection=null,providerStarted=null,providerMs=null,assistant=null,proposal=null,session,shell,transportFailure=false,deadline=false,setupComplete=false;
+ let usage=null,projection=null,providerStarted=null,providerMs=null,assistant=null,proposal=null,session,shell,transportFailure=false,deadline=false,setupComplete=false,setupMs=null;
+ const measurement=preflight?'NO_INFERENCE':services.modelRuntime||services.fetch?'SYNTHETIC_TRANSPORT':'LIVE_MODEL';
  const events=[],record=value=>{events.push({...value,atMs:performance.now()-started});return {type:'recorded'};};
- const ledger=()=>write('ledger.json',{...budget.report(),usage,nativeCalls:0});ledger();
+ const ledger=()=>write('ledger.json',{...budget.report(),measurement,usage,nativeCalls:0});ledger();
  const manifestBytes=fs.readFileSync(plan.adapterManifest);
  if(replaySha(manifestBytes)!==plan.adapterManifestSha256)throw Error('ADAPTER_IDENTITY_CHANGED');
  const manifest=JSON.parse(manifestBytes);
@@ -67,17 +69,20 @@ export async function replayWorker(mode,plan,trial,services={}) {
  const sdk=await load('dist/index.js');
  const protectedPaths=preflight||services.modelRuntime?[]:[plan.authPath,plan.modelsStorePath];
  const before=protectedPaths.map(file=>replaySha(fs.readFileSync(file)));
- let runtime;
+ let runtime,authIdentity;
  if(services.modelRuntime)runtime=services.modelRuntime;
  else if(preflight)runtime=await syntheticRuntime(sdk,load);
  else{
-  const {ReadOnlyAuthStorage}=await load('dist/core/auth-storage.js');
-  const credential=JSON.parse(fs.readFileSync(plan.authPath))['openai-codex'];
-  if(credential?.type!=='oauth'||credential.expires-Date.now()<15*60*1000)throw Error('CREDENTIAL_UNAVAILABLE');
-  runtime=await sdk.ModelRuntime.create({credentials:new ReadOnlyAuthStorage(plan.authPath),modelsPath:null,modelsStorePath:plan.modelsStorePath,allowModelNetwork:false,refreshOnCreate:false});
+  const auth=await load('dist/core/auth-storage.js');
+  const credential=loadReplayCredential(auth,plan,Date.now());
+  if(credential.type!=='ready'){
+   const report={...trial,measurement,outcome:{type:'invalid',reasons:[credential.reason]},...budget.report(),usage:null,nativeCalls:0};write('report.json',report);return report;
+  }
+  authIdentity={credentialSource:credential.source,principalSha256:credential.principalSha256};
+  runtime=await sdk.ModelRuntime.create({credentials:credential.storage,modelsPath:null,modelsStorePath:plan.modelsStorePath,allowModelNetwork:false,refreshOnCreate:false});
  }
  const savedFetch=globalThis.fetch,originalFetch=services.fetch??savedFetch;
- let expectedPayload=null,actualPayload=null;
+ let expectedPayload=null,actualPayload=null,providerHttpStatus=null;
  globalThis.fetch=async(url,options)=>{
   if(preflight)throw Error('PREFLIGHT_NETWORK_FORBIDDEN');
   const encoded=new Headers(options?.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body;
@@ -86,7 +91,7 @@ export async function replayWorker(mode,plan,trial,services={}) {
   if(actual.type!=='projected'||actual.payloadSha256!==expectedPayload?.payloadSha256){transportFailure=true;throw Error('PROVIDER_PAYLOAD_CHANGED');}
   if(!budget.provider()){ledger();throw Error('PROVIDER_REQUEST_LIMIT');}
   providerStarted=performance.now();ledger();
-  try{const response=await originalFetch(url,options);if(!response.ok)transportFailure=true;return response;}catch(error){transportFailure=true;throw error;}
+  try{const response=await originalFetch(url,options);providerHttpStatus=response.status;record({type:'provider_http_response',status:providerHttpStatus});if(!response.ok)transportFailure=true;return response;}catch(error){transportFailure=true;throw error;}
  };
  const abort=new AbortController(),cancel=()=>{deadline=true;abort.abort();session?.agent.abort();};
  const onMessage=message=>{if(message?.type==='cancel')cancel();};process.on('message',onMessage);process.once('SIGTERM',cancel);
@@ -116,15 +121,14 @@ export async function replayWorker(mode,plan,trial,services={}) {
     if(event.toolName!=='bash'){ctx.abort();return {block:true,reason:'WRONG_TOOL'};}
    });
    pi.on('message_update',(event,ctx)=>{if(event.message?.role==='assistant'&&Buffer.byteLength(JSON.stringify(event.message))>65536){responseLimit=true;ctx.abort();}});
-   pi.on('message_end',event=>{if(event.message.role==='assistant'){if(assistant===null)assistant=event.message;if(event.message.usage?.totalTokens>0)usage=event.message.usage;
-    providerMs=providerStarted===null?null:performance.now()-providerStarted;ledger();}});
+   pi.on('message_end',event=>{if(event.message.role==='assistant'){if(assistant===null){assistant=event.message;if(Buffer.byteLength(JSON.stringify(assistant))<=65536)write('assistant.json',assistant);else write('assistant-limit.json',{type:'RESPONSE_RECORD_LIMIT'});providerMs=providerStarted===null?null:performance.now()-providerStarted;}if(event.message.usage?.totalTokens>0)usage=event.message.usage;ledger();}});
   };
   const archive=await withPrivateReplaySession(sdk.SessionManager,{directory,workspaceRoot:shellDirectory(directory)},async manager=>{
    for(const message of replayMessages(item,presentation))manager.appendMessage(message);
    const created=await createEvaluationSession({sdk,plan:{workspaceRoot:shellDirectory(directory)},directory,modelRuntime:runtime,
     policy:{config:{finalPresentation:'canonical'}},record,manager,replay:{guard,shellTool}});
    if(created.type!=='session')throw Error(JSON.stringify(created));
-   session=created.session;setupComplete=true;
+   session=created.session;setupComplete=true;setupMs=performance.now()-started;
    await session.agent.continue();await session.agent.waitForIdle();
    await disposeEvaluationSession(session,'WORKER_EXECUTION');session=null;
    return true;
@@ -146,12 +150,14 @@ export async function replayWorker(mode,plan,trial,services={}) {
   else if(transportFailure||!inputValid||shell.failed)outcome={type:'invalid',reasons:[transportFailure?'PROVIDER_TRANSPORT_FAILURE':!inputValid?'INPUT_PROJECTION_FAILED':'SHELL_ADAPTER_FAILURE']};
   else if(responseLimit||assistant?.stopReason==='length')outcome={type:'incomplete',reasons:['OUTPUT_BUDGET']};
   else outcome={type:grade.correct?'correct':'incorrect',reasons:grade.misuse};
-  const report={...trial,outcome,usage,...budget.report(),nativeCalls:0,grade,decision,proposal,
-   productionAdmission:admission,presentationBytes:Buffer.byteLength(presentation),presentationSha256:replaySha(presentation),
+  const protectedFilesUnchanged=protectedPaths.every((file,index)=>replaySha(fs.readFileSync(file))===before[index]);
+  if(!protectedFilesUnchanged)outcome={type:'invalid',reasons:['PROTECTED_FILE_CHANGED']};
+  const report={...trial,measurement,outcome,usage,...budget.report(),nativeCalls:0,grade,decision,proposal,
+   productionAdmission:admission,providerHttpStatus,presentationBytes:Buffer.byteLength(presentation),presentationSha256:replaySha(presentation),
    projection,actualProviderProjection:inspectReplayProjection(actualPayload??{},presentation),
-   latency:{trialMs:performance.now()-started,queueMs:0,providerMs,shellMs:null},
-   identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:manifest.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,provider:'openai-codex',model:'gpt-6.1-sol',effort:'high',fixtureVersion:item.version,canonicalSha256:item.canonicalSha256,contractSha256:replaySha(item.visibleContract)},
-   protectedFilesUnchanged:protectedPaths.every((file,index)=>replaySha(fs.readFileSync(file))===before[index]),
+   latency:{trialMs:performance.now()-started,queueMs:0,setupMs,providerMs,shellMs:shell.captures.reduce((total,capture)=>total+capture.durationMs,0),method:'WORKER_MONOTONIC_V1'},
+   identity:{...authIdentity,sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:manifest.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,provider:'openai-codex',model:'gpt-6.1-sol',effort:'high',timingMethod:'WORKER_MONOTONIC_V1',fixtureVersion:item.version,canonicalSha256:item.canonicalSha256,contractSha256:replaySha(item.visibleContract),promptSha256:replaySha(item.task),graderSha256:replaySha(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))),sdkIdentity:plan.sdkIdentity??[],budgetSha256:replaySha(JSON.stringify({wallSeconds:60,workers:plan.workers,providerRequests:1,shellCalls:1,invocations:1,maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,outputCap:2000,retries:0,compaction:false,cacheWarming:'off',transport:'sse'}))},
+   protectedFilesUnchanged,
    settings:{maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,transport:'sse',cacheWarming:'off',retries:0,compaction:false,outputCap:2000,outputCapEnforcement:'REQUESTED_BACKEND_ENFORCEMENT_UNPROVEN'}};
   write('report.json',report);return report;
  }finally{
