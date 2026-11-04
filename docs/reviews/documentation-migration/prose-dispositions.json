@@ -3,6 +3,30 @@
   "dispositions": [
     {
       "finding": {
+        "stage": "reader-prose-3.25.1",
+        "path": "docs/public/reference/callables/query-symbols.mdx",
+        "sourceSha256": "8a984b0bfac3c121bf6c4ff2f254b33c5c2c11ecd12c2d2ac2d203ba329cee7b",
+        "rule": "Prose.ParagraphLength",
+        "line": 15,
+        "message": "This paragraph has 280.00 words. Look for a change of topic or a useful list.",
+        "severity": "suggestion"
+      },
+      "reason": "Keep the complete canonical query invocation description, including exact selectors, output continuations, source scope, completion, budgets, and recovery. It is available in an optional Invocation contract section on the schema reference page. The paragraph advisory remains unmet; projection parity and exact source text do not establish reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "reader-prose-3.25.1",
+        "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
+        "sourceSha256": "0f829498a8ed46d132afcbe6dc87b4e503a8f341de41e9ef2e59bd611a571fba",
+        "rule": "Prose.Complexity",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade is 15.00. Review sentence structure; preserve precise technical terms.",
+        "severity": "suggestion"
+      },
+      "reason": "The source uses focused sections for source-universe constraints, exact identity, and compiler reacquisition. Its precise identifiers include IntellijScopedDeclarationEnumeration, IntellijPsiExactDeclarationLookup, and ExactRevalidationService. The prose distinguishes candidate location from identity and detached epochs from current authority. Keep those necessary terms and qualifications. Grade15 remains an advisory and does not prove reader comprehension."
+    },
+    {
+      "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/.mintlify/product-brief.md",
         "sourceSha256": "b4b8de82e8f732d040068c5ef48edbf39429e117b213e3502c3688e46cd37fa0",
@@ -64,6 +88,18 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "docs/public/how-to.mdx",
+        "sourceSha256": "cb463a9d0e9eee0c334e80a3f8b6807e6738655dd6818bc7eb179cd522139346",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.18 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "This short index preserves precise destination labels for diagnostics, retained output, query composition, source changes, and installation management. The 8.18 grade narrowly exceeds the advisory on a small amount of linking prose. Keep the destination meanings; comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "docs/public/how-to/complete-engineering-task.mdx",
         "sourceSha256": "00ab554be9231bab0c1b79882cb17f34561bf878b8026df3813124fb89a9af1c",
         "rule": "Slopsentral.Grade",
@@ -72,6 +108,66 @@
         "severity": "warning"
       },
       "reason": "Keep exact-reference reacquisition, explicit grants, and source-preserving task procedures. Preserve exact identifiers `ref`, `RUNNER_CONTROLLED`, `BOUNDED`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/callables/check-diagnostics.mdx",
+        "sourceSha256": "ecb25fcb2fe8526cd91e976b105695d2eee1652947e6b44e572a9689310f597f",
+        "rule": "Slopsentral.Diction",
+        "line": 15,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Keep the canonical diagnostics instruction to retain aggregate coverage when filtering by path or severity. This is generated callable guidance, bound to the unchanged contract; its coverage obligation must remain explicit."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/callables/query-symbols.mdx",
+        "sourceSha256": "8a984b0bfac3c121bf6c4ff2f254b33c5c2c11ecd12c2d2ac2d203ba329cee7b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.59 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/callables/replace-body.mdx",
+        "sourceSha256": "fd3851425d68338b2b4df837f7719310a7de6cb841e8b74023776db1e01d41b3",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.13 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
+        "sourceSha256": "29c9987430e0cb0fb30b9c2d43d2befd5b3badf4164b448b4c31a19e4262c91d",
+        "rule": "Slopsentral.Claims",
+        "line": 15,
+        "message": "Avoid the unverifiable claim 'best'.",
+        "severity": "warning"
+      },
+      "reason": "The canonical workspace instruction prohibits treating close as best effort cleanup. It does not claim that Kast is best. Preserve this close-approval and cleanup boundary from the source-owned callable contract."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
+        "sourceSha256": "29c9987430e0cb0fb30b9c2d43d2befd5b3badf4164b448b4c31a19e4262c91d",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.87 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured."
     },
     {
       "finding": {
@@ -234,6 +330,18 @@
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/management.mdx",
         "sourceSha256": "293a9fd464a6194dad5486219b97f3a464344ff73cbc0ef21e816753c237f4bc",
+        "rule": "HowTo.Reference",
+        "line": 63,
+        "message": "7 table rows. Refer to the reference for the full list of options rather than carrying it here.",
+        "severity": "suggestion"
+      },
+      "reason": "The five outcome rows at lines65-69 define the terminal lifecycle result contract for the preceding upgrade command. They preserve zero versus nonzero exit semantics and distinguish activated, stopped, rejected, restored, and uncertain states. This page is the linked owner of that lookup table, so moving it to another reference can duplicate the same responsibility."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/management.mdx",
+        "sourceSha256": "293a9fd464a6194dad5486219b97f3a464344ff73cbc0ef21e816753c237f4bc",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
@@ -252,18 +360,6 @@
         "severity": "warning"
       },
       "reason": "Keep management phases, explicit restart behavior, and finite recovery states. Preserve exact identifiers `kast`, `PLANNED`, `--restart-ide`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "docs/public/reference/management.mdx",
-        "sourceSha256": "293a9fd464a6194dad5486219b97f3a464344ff73cbc0ef21e816753c237f4bc",
-        "rule": "HowTo.Reference",
-        "line": 63,
-        "message": "7 table rows. Refer to the reference for the full list of options rather than carrying it here.",
-        "severity": "suggestion"
-      },
-      "reason": "The five outcome rows at lines65-69 define the terminal lifecycle result contract for the preceding upgrade command. They preserve zero versus nonzero exit semantics and distinguish activated, stopped, rejected, restored, and uncertain states. This page is the linked owner of that lookup table, so moving it to another reference can duplicate the same responsibility."
     },
     {
       "finding": {
@@ -318,18 +414,6 @@
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/source-map.mdx",
         "sourceSha256": "5386f66aa77ece29daf00ad2e910719b019f92886672681948ac40825c9308e7",
-        "rule": "Slopsentral.Grade",
-        "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 10.07 exceeds the shared advisory target of 8.",
-        "severity": "warning"
-      },
-      "reason": "Keep literal implementation names and exact contract/test-owner destinations. Preserve exact identifiers `647fffc46f6247fac5b0fc632ae019d157bf9020`, `kast describe`, `KastManagementMain`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "docs/public/reference/source-map.mdx",
-        "sourceSha256": "5386f66aa77ece29daf00ad2e910719b019f92886672681948ac40825c9308e7",
         "rule": "Reference.Examples",
         "line": 1,
         "message": "Reference provides examples. There is no code block on this page.",
@@ -340,14 +424,14 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
-        "path": "docs/public/reference/staleness.mdx",
-        "sourceSha256": "03fdb9323179f8c188f87a3feb68c680b284f1f6da090625c374b4fca34c4dc1",
+        "path": "docs/public/reference/source-map.mdx",
+        "sourceSha256": "5386f66aa77ece29daf00ad2e910719b019f92886672681948ac40825c9308e7",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 10.84 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 10.07 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "This generated shell assembles freshness and dependency-reuse explanations with two source-owned diagrams. Keep its exact destination labels. The shell grade excludes imported explanations and rendered diagrams, so it cannot establish the complete reader profile."
+      "reason": "Keep literal implementation names and exact contract/test-owner destinations. Preserve exact identifiers `647fffc46f6247fac5b0fc632ae019d157bf9020`, `kast describe`, `KastManagementMain`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
     },
     {
       "finding": {
@@ -360,6 +444,18 @@
         "severity": "suggestion"
       },
       "reason": "The page projects model/freshness and live-reuse concepts plus retention and incremental-facts diagrams. It routes the actual retained-output procedure to /how-to/read-retained-evidence at line23. A standalone request example can mix a task with the state and invalidation explanation."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/staleness.mdx",
+        "sourceSha256": "03fdb9323179f8c188f87a3feb68c680b284f1f6da090625c374b4fca34c4dc1",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.84 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "This generated shell assembles freshness and dependency-reuse explanations with two source-owned diagrams. Keep its exact destination labels. The shell grade excludes imported explanations and rendered diagrams, so it cannot establish the complete reader profile."
     },
     {
       "finding": {
@@ -384,6 +480,18 @@
         "severity": "warning"
       },
       "reason": "Keep finite health states and explicit source/contract recovery destinations. Preserve exact identifiers `health_check`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/search.mdx",
+        "sourceSha256": "b681dbafdc1089a7e96a050da261603c35ead4d64e646fcd0ec172ea13217446",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.84 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the capability distinctions among declaration identity, source relationships, value paths, diagnostics, and controlled source edits, including native CLI versus optional MCP or Tool RPC requirements. This page explains the evidence available during ordinary work without copied prompts. Domain precision is retained; the grade target remains unmet and reader comprehension remains unmeasured."
     },
     {
       "finding": {
@@ -848,10 +956,10 @@
         "sourceSha256": "cfc733c0c5e2ff407270085a6ee265e28f705f964015ae1dbf5fe922077923a2",
         "rule": "Slopsentral.LongSentence",
         "line": 292,
-        "message": "Long sentence: 51 words.",
+        "message": "Long sentence: 44 words.",
         "severity": "warning"
       },
-      "reason": "Keep the exhaustive admitted-source list, optional issued row IDs, and independent optional run controls. This is a reference inventory, not a first-use prerequisite. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep RUN and READ_RESULT output inventories distinct and keep the retained-row-type constraint. Keep this as an assessed length exception, without a reader-comprehension claim."
     },
     {
       "finding": {
@@ -860,10 +968,10 @@
         "sourceSha256": "cfc733c0c5e2ff407270085a6ee265e28f705f964015ae1dbf5fe922077923a2",
         "rule": "Slopsentral.LongSentence",
         "line": 292,
-        "message": "Long sentence: 44 words.",
+        "message": "Long sentence: 51 words.",
         "severity": "warning"
       },
-      "reason": "Keep RUN and READ_RESULT output inventories distinct and keep the retained-row-type constraint. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the exhaustive admitted-source list, optional issued row IDs, and independent optional run controls. This is a reference inventory, not a first-use prerequisite. Keep this as an assessed length exception, without a reader-comprehension claim."
     },
     {
       "finding": {
@@ -2252,10 +2360,10 @@
         "sourceSha256": "667c784e76fdc9262e36ebe048678e3ad12afa4991d588c85a830849787d3369",
         "rule": "Slopsentral.LongSentence",
         "line": 407,
-        "message": "Long sentence: 30 words.",
+        "message": "Long sentence: 28 words.",
         "severity": "warning"
       },
-      "reason": "Keep application-only linking separate from passive semantic read admission and preceding native refresh. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep stale-model signaling, finite presemantic rejection, and exactly one safe post-import retry together. Keep this as an assessed length exception, without a reader-comprehension claim."
     },
     {
       "finding": {
@@ -2264,10 +2372,10 @@
         "sourceSha256": "667c784e76fdc9262e36ebe048678e3ad12afa4991d588c85a830849787d3369",
         "rule": "Slopsentral.LongSentence",
         "line": 407,
-        "message": "Long sentence: 28 words.",
+        "message": "Long sentence: 30 words.",
         "severity": "warning"
       },
-      "reason": "Keep stale-model signaling, finite presemantic rejection, and exactly one safe post-import retry together. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep application-only linking separate from passive semantic read admission and preceding native refresh. Keep this as an assessed length exception, without a reader-comprehension claim."
     },
     {
       "finding": {
@@ -2562,6 +2670,18 @@
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/workspace.md",
         "sourceSha256": "0477ddc9f3d71d7ba8d5ccfedb12b1f642070a783c53d16c98d6fd813b28aeb6",
+        "rule": "Slopsentral.Claims",
+        "line": 85,
+        "message": "Avoid the unverifiable claim 'best'.",
+        "severity": "warning"
+      },
+      "reason": "At workspace.md:85, best effort qualifies background presentation while trust and unsaved-document checks remain blockers. It describes a limited guarantee, not a comparative claim that Kast is best. Keep the qualification so background presentation cannot be read as guaranteed."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/workspace.md",
+        "sourceSha256": "0477ddc9f3d71d7ba8d5ccfedb12b1f642070a783c53d16c98d6fd813b28aeb6",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.82 exceeds the shared advisory target of 8.",
@@ -2580,18 +2700,6 @@
         "severity": "warning"
       },
       "reason": "Keep admitted reports through later failure without granting evaluator permission after deadline. Keep this as an assessed length exception, without a reader-comprehension claim."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "openwiki/modules/workspace.md",
-        "sourceSha256": "0477ddc9f3d71d7ba8d5ccfedb12b1f642070a783c53d16c98d6fd813b28aeb6",
-        "rule": "Slopsentral.Claims",
-        "line": 85,
-        "message": "Avoid the unverifiable claim 'best'.",
-        "severity": "warning"
-      },
-      "reason": "At workspace.md:85, best effort qualifies background presentation while trust and unsaved-document checks remain blockers. It describes a limited guarantee, not a comparative claim that Kast is best. Keep the qualification so background presentation cannot be read as guaranteed."
     },
     {
       "finding": {
@@ -3048,42 +3156,6 @@
         "severity": "warning"
       },
       "reason": "Keep invocation fences, durable thread identity, and finite recovery. Preserve exact identifiers `InvocationFence`, `invocationTransition`, `FileInvocationRecords`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
-    },
-    {
-      "finding": {
-        "stage": "reader-prose-3.25.1",
-        "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
-        "sourceSha256": "0f829498a8ed46d132afcbe6dc87b4e503a8f341de41e9ef2e59bd611a571fba",
-        "rule": "Prose.Complexity",
-        "line": 1,
-        "message": "Estimated Flesch-Kincaid grade is 15.00. Review sentence structure; preserve precise technical terms.",
-        "severity": "suggestion"
-      },
-      "reason": "The source uses focused sections for source-universe constraints, exact identity, and compiler reacquisition. Its precise identifiers include IntellijScopedDeclarationEnumeration, IntellijPsiExactDeclarationLookup, and ExactRevalidationService. The prose distinguishes candidate location from identity and detached epochs from current authority. Keep those necessary terms and qualifications. Grade15 remains an advisory and does not prove reader comprehension."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "docs/public/how-to.mdx",
-        "sourceSha256": "cb463a9d0e9eee0c334e80a3f8b6807e6738655dd6818bc7eb179cd522139346",
-        "rule": "Slopsentral.Grade",
-        "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 8.18 exceeds the shared advisory target of 8.",
-        "severity": "warning"
-      },
-      "reason": "This short index preserves precise destination labels for diagnostics, retained output, query composition, source changes, and installation management. The 8.18 grade narrowly exceeds the advisory on a small amount of linking prose. Keep the destination meanings; comprehension remains unmeasured."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "docs/public/search.mdx",
-        "sourceSha256": "b681dbafdc1089a7e96a050da261603c35ead4d64e646fcd0ec172ea13217446",
-        "rule": "Slopsentral.Grade",
-        "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 10.84 exceeds the shared advisory target of 8.",
-        "severity": "warning"
-      },
-      "reason": "Keep the capability distinctions among declaration identity, source relationships, value paths, diagnostics, and controlled source edits, including native CLI versus optional MCP or Tool RPC requirements. This page explains the evidence available during ordinary work without copied prompts. Domain precision is retained; the grade target remains unmet and reader comprehension remains unmeasured."
     }
   ]
 }
