@@ -5,6 +5,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -49,6 +51,19 @@ class ManagementToonProcessTest {
         val result = child(listOf("uninstall", "--force"), "typo")
         assertEquals(2, result.first)
         assertTrue(result.second.contains("INVALID_OUTPUT_FORMAT"))
+        assertTrue(Files.notExists(temporary.resolve(".local")))
+    }
+
+    @Test
+    fun `explicit semantic JSON precedes environment validation even before launcher admission`() {
+        for (namespace in listOf("query", "describe", "source", "result")) {
+            val rejected = child(listOf(namespace, "--json"), "invalid")
+            assertEquals(4, rejected.first)
+            val document = Json.parseToJsonElement(rejected.second).jsonObject
+            assertEquals(setOf("failure", "type"), document.keys)
+            assertEquals("CATALOG_UNAVAILABLE", document.getValue("failure").jsonPrimitive.content)
+            assertEquals("rejected", document.getValue("type").jsonPrimitive.content)
+        }
         assertTrue(Files.notExists(temporary.resolve(".local")))
     }
 

@@ -11,6 +11,7 @@ import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parsers.CommandLineParser
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFailure
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
 import io.github.amichne.kast.distribution.output.cliOutputRejection
@@ -23,7 +24,7 @@ fun main(arguments: Array<String>) {
         return
     }
     val output =
-        when (val format = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
+        when (val format = selectManagementEntryOutputFormat(arguments.toList(), System.getenv("KAST_OUTPUT_TOON"))) {
             is Refinement.Refined -> ManagementOutput(format.value)
             is Refinement.Rejected -> {
                 println(cliOutputRejection(format.failure, CliOutputFormat.JSON))
@@ -46,6 +47,15 @@ fun main(arguments: Array<String>) {
         }
     }
 }
+
+/** Semantic format flags also govern startup rejection before the query child is admitted. */
+internal fun selectManagementEntryOutputFormat(
+    arguments: List<String>,
+    environmentSetting: String?,
+): Refinement<CliOutputFormat, CliOutputFailure> =
+    if (arguments.firstOrNull() in publicQueryNamespaces && "--json" in arguments)
+        Refinement.Refined(CliOutputFormat.JSON)
+    else selectCliOutputFormat(environmentSetting)
 
 internal sealed interface ManagementParsing {
     data class Selected(val command: ManagementCommand) : ManagementParsing

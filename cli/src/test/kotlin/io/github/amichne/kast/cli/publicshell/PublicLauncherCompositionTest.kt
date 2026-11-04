@@ -65,12 +65,7 @@ class PublicLauncherCompositionTest {
                     Json.parseToJsonElement(JToon.decodeToJson(encoded)),
                 )
                 if (arguments.first() in setOf("query", "describe")) {
-                    val explicit = fixture.start("explicit-json-$index", arguments + "--json", environment = emptyMap())
-                    fixture.assertExit(explicit, exit, "explicit-json-$index")
-                    assertEquals(
-                        Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
-                        Json.parseToJsonElement(Files.readString(temporary.resolve("explicit-json-$index.stdout"))),
-                    )
+                    assertExplicitJson(fixture, index, arguments, exit)
                 }
             }
         }
@@ -226,6 +221,23 @@ class PublicLauncherCompositionTest {
                     assertInvocationRecordRemoved(fixture)
                 }
             }
+        }
+    }
+
+    private fun assertExplicitJson(fixture: NativePublicFixture, index: Int, arguments: List<String>, exit: Int) {
+        for ((settingIndex, setting) in listOf("1", "", "invalid").withIndex()) {
+            val label = "explicit-json-$index-$settingIndex"
+            val explicit =
+                fixture.start(
+                    label,
+                    arguments + "--json",
+                    environment = mapOf("KAST_OUTPUT_TOON" to setting),
+                )
+            fixture.assertExit(explicit, exit, label)
+            assertEquals(
+                Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
+                Json.parseToJsonElement(Files.readString(temporary.resolve("$label.stdout"))),
+            )
         }
     }
 

@@ -19,6 +19,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -137,7 +138,7 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
 - Schema discovery uses literal JSON Pointers and bounded direct-child pages. Keep full exports explicit, preserve exact scalar facts, and never imply that a page is a complete validation schema.
-- Public shell `--json` overrides `KAST_OUTPUT_TOON`. Request documents remain JSON with either output format.
+- Public shell `--json` overrides `KAST_OUTPUT_TOON`, including startup before the installed query launcher is admitted. Request documents remain JSON with either output format.
 - `source --help` and `result --help` list their commands without workspace preparation.
 - Keep parser diagnostics on stderr. Preserve the response contract and exclude request payloads and paths from those diagnostics.
 - Packaged discovery and request planning use installed contracts before workspace or host composition.
