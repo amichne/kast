@@ -42,10 +42,17 @@ internal class IntellijRelationInventory<Locator : RelationProviderLocator>(
     }
 
     fun finish(exhausted: Boolean, prepare: (List<Locator>) -> RelationProviderState): RelationInventoryPreparation {
-        if (!exhausted || collector.admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {
-            observeRequiredBytes(requiredBytes)
-            collector.blockPartition(RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE)
-            return RelationInventoryPreparation.Unavailable
+        when (collector.inventoryCompletion(exhausted)) {
+            IntellijRelationInventoryCompletion.EXHAUSTED -> Unit
+            IntellijRelationInventoryCompletion.STOPPED -> {
+                observeRequiredBytes(requiredBytes)
+                return RelationInventoryPreparation.Unavailable
+            }
+            IntellijRelationInventoryCompletion.PROVIDER_INCOMPLETE -> {
+                observeRequiredBytes(requiredBytes)
+                collector.blockPartition(RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE)
+                return RelationInventoryPreparation.Unavailable
+            }
         }
         val state = prepare(locators)
         observeRequiredBytes(state.retainedBytes)

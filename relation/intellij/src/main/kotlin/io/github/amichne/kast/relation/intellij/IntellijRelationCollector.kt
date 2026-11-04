@@ -94,6 +94,10 @@ internal class IntellijRelationCollector(
             }
         }
 
+    /** Preserve an observed stop before consulting a later clock or interpreting the native Boolean. */
+    fun inventoryCompletion(providerExhausted: Boolean): IntellijRelationInventoryCompletion =
+        state.inventoryCompletion(providerExhausted, ::admitProviderEnumeration)
+
     /** Bounds the native buffers independently of semantic per-page work and result budgets. */
     fun admitProviderCandidate(): IntellijRelationProviderEnumerationAdmission {
         if (admitProviderEnumeration() != IntellijRelationProviderEnumerationAdmission.READY) {

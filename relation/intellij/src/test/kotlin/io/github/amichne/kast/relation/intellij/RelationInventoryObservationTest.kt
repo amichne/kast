@@ -8,6 +8,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import kotlinx.coroutines.CancellationException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -95,6 +96,39 @@ class RelationInventoryObservationTest {
             observation.values[
                     IntellijReadCounter.NATIVE_RELATION_INVENTORIES_PREPARED to
                         IntellijReadContributor.RELATION_CALLERS],
+        )
+    }
+
+    @Test
+    fun `provider exception propagates unchanged and retains its interrupted observation`() {
+        val observation = Counts()
+        val request = RelationReadTest().request(RelationMeaning.References)
+        val collector = IntellijRelationCollector(request, { 0L }, observation)
+        val failure = IllegalStateException("Provider failed while preparing its inventory")
+        val thrown =
+            assertThrows(IllegalStateException::class.java) {
+                readRelationInventory(
+                    request,
+                    collector,
+                    { throw failure },
+                    { _, _ -> error("A failed provider cannot confirm a locator") },
+                    {},
+                    observation,
+                    { 0L },
+                )
+            }
+        assertSame(failure, thrown)
+        assertEquals(
+            1,
+            observation.values[
+                    IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INTERRUPTED to
+                        IntellijReadContributor.RELATION_REFERENCES],
+        )
+        assertEquals(
+            null,
+            observation.values[
+                    IntellijReadCounter.NATIVE_RELATION_INVENTORIES_PREPARED to
+                        IntellijReadContributor.RELATION_REFERENCES],
         )
     }
 

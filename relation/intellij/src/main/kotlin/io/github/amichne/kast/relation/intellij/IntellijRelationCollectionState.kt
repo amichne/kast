@@ -22,12 +22,36 @@ internal enum class IntellijRelationProviderEnumerationAdmission {
     HALTED,
 }
 
+/** A collector-owned stop already retains its cause; only an unexplained provider stop needs a diagnosis. */
+internal enum class IntellijRelationInventoryCompletion {
+    EXHAUSTED,
+    STOPPED,
+    PROVIDER_INCOMPLETE,
+}
+
 internal enum class IntellijRelationCollectionState {
     COLLECTING,
     HALTED,
     ENUMERATION_LIMIT,
     CONTRACT_REJECTED,
 }
+
+internal fun IntellijRelationCollectionState.inventoryCompletion(
+    providerExhausted: Boolean,
+    admitExhausted: () -> IntellijRelationProviderEnumerationAdmission,
+): IntellijRelationInventoryCompletion =
+    when (this) {
+        IntellijRelationCollectionState.COLLECTING ->
+            when {
+                !providerExhausted -> IntellijRelationInventoryCompletion.PROVIDER_INCOMPLETE
+                admitExhausted() == IntellijRelationProviderEnumerationAdmission.READY ->
+                    IntellijRelationInventoryCompletion.EXHAUSTED
+                else -> IntellijRelationInventoryCompletion.STOPPED
+            }
+        IntellijRelationCollectionState.HALTED,
+        IntellijRelationCollectionState.ENUMERATION_LIMIT,
+        IntellijRelationCollectionState.CONTRACT_REJECTED -> IntellijRelationInventoryCompletion.STOPPED
+    }
 
 internal const val MAX_NATIVE_RELATION_CANDIDATES = 10_000
 
