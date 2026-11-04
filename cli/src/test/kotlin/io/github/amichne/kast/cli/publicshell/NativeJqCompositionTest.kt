@@ -27,6 +27,16 @@ class NativeJqCompositionTest {
                 listOf(
                     NativeProjection(".request.output.fields", false, "[2]: name,location\n"),
                     NativeProjection(
+                        "[.request.output.fields[] | select(false)]",
+                        false,
+                        Json.encodeToString(emptyList<String>()) + "\n",
+                    ),
+                    NativeProjection(
+                        "{fields:.request.output.fields,empty:[],nil:null,flag:false}",
+                        false,
+                        "fields[2]: name,location\nempty: []\nnil: null\nflag: false\n",
+                    ),
+                    NativeProjection(
                         ".request.output.fields | map(ascii_upcase)",
                         true,
                         Json.encodeToString(listOf("NAME", "LOCATION")) + "\n",
