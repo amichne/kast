@@ -639,8 +639,8 @@
           "claim": "claim_cef6aa14cee14d75b0fedd02c53e9033",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
           "recordedVersion": "repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536",
-          "currentVersion": "repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:bacdc82c21c19caca7ad495c4074fada1d98ca8f026897d5542e7d13194456e4",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -695,7 +695,7 @@
           "claim": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
           "recordedVersion": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43",
-          "currentVersion": "repo-file-v1:sha256:6b944236f7831649794ed625cc85e34274de867d98fb7f23848dfd49b2030395",
+          "currentVersion": "repo-file-v1:sha256:a86d9c32723266e3313c819f212d1c37817fa19b5b9c312520caca2abf30ba55",
           "status": "CHANGED"
         },
         {
@@ -709,14 +709,14 @@
           "claim": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt",
           "recordedVersion": "repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e",
-          "currentVersion": "repo-file-v1:sha256:7cb06c65bbc66c775cd64716160b0eb5b9abddeb28912b4b583fbcb8cd18ca39",
+          "currentVersion": "repo-file-v1:sha256:0e7a0a35983d4353c2ccf7b373963869f28d5e8b62a0e6833e05f31f517e6226",
           "status": "CHANGED"
         },
         {
           "claim": "claim_fb51b4c2d102485aa991583169b152e7",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
           "recordedVersion": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43",
-          "currentVersion": "repo-file-v1:sha256:6b944236f7831649794ed625cc85e34274de867d98fb7f23848dfd49b2030395",
+          "currentVersion": "repo-file-v1:sha256:a86d9c32723266e3313c819f212d1c37817fa19b5b9c312520caca2abf30ba55",
           "status": "CHANGED"
         },
         {

@@ -36,12 +36,15 @@ class WorkspaceRefreshVfsOrderTest {
                                 ) {
                                     if (
                                         owner == "io/github/amichne/kast/runtime/hosted/HostedVfsRefreshOutcomeKt" &&
-                                            name == "awaitHostedVfsRefresh"
+                                            name.substringBefore('$') == "awaitHostedVfsRefresh"
                                     ) {
                                         assertEquals(
                                             "(Lcom/intellij/openapi/project/Project;" +
                                                 "Lkotlin/jvm/functions/Function1;" +
-                                                "Lkotlin/coroutines/Continuation;)Ljava/lang/Object;",
+                                                "Lio/github/amichne/kast/kernel/ElapsedTimeAllowance;" +
+                                                "Lkotlin/coroutines/Continuation;" +
+                                                (if (name.endsWith("\$default")) "ILjava/lang/Object;" else "") +
+                                                ")Ljava/lang/Object;",
                                             descriptor,
                                         )
                                         val caller =

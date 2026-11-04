@@ -144,7 +144,14 @@ internal class WorkspaceRefreshService(
 
     /** Incremental read preparation joins equivalent demand and leaves final semantic admission to the query owner. */
     @Synchronized
-    fun refreshForRead(complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit {
+    fun refreshForRead(complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit =
+        refreshForRead(pendingTimeoutNanos.nanoseconds, complete)
+
+    @Synchronized
+    fun refreshForRead(allowance: ElapsedTimeAllowance, complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit =
+        refreshForRead(allowance.duration, complete)
+
+    private fun refreshForRead(allowance: Duration, complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit {
         if (disposed) {
             complete(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED))
             return {}
@@ -173,7 +180,7 @@ internal class WorkspaceRefreshService(
                     }
                 }
         val waiter = WorkspaceRefreshWaiter.Read()
-        when (val added = add(waiter, work, complete, selectedAttempt = equivalent)) {
+        when (val added = add(waiter, work, complete, selectedAttempt = equivalent, allowance = allowance)) {
             is Refinement.Rejected -> {
                 complete(WorkspaceRefreshStatus.Rejected(added.failure))
                 return {}
@@ -284,10 +291,7 @@ internal class WorkspaceRefreshService(
     fun dispose() {
         disposed = true
         queue.clear()
-        entries.values.toList().forEach {
-            if (it.status is WorkspaceRefreshStatus.Pending)
-                it.transition(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED))
-        }
+        entries.retirePendingRefreshWaiters()
     }
 
     private fun expire() {

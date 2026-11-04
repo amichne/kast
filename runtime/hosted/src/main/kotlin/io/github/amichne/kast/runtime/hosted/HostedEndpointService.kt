@@ -112,9 +112,16 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             is RefreshOwner.Retired -> owner.value.readiness(root)
         }
 
-    internal suspend fun lifecycleVfsRefresh(): HostedVfsRefreshOutcome =
+    internal suspend fun lifecycleVfsRefresh(
+        allowance: io.github.amichne.kast.kernel.ElapsedTimeAllowance
+    ): HostedVfsRefreshOutcome =
         when (val owner = refreshOwner.get()) {
-            is RefreshOwner.Available -> awaitHostedVfsRefresh(project, owner.value::refreshForRead)
+            is RefreshOwner.Available ->
+                awaitHostedVfsRefresh(
+                    project,
+                    { complete -> owner.value.refreshForRead(allowance, complete) },
+                    allowance,
+                )
             else -> HostedVfsRefreshOutcome.FAILED
         }
 

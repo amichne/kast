@@ -8,6 +8,42 @@ import org.junit.jupiter.api.Test
 
 class WorkspaceRefreshDeadlineTest {
     @Test
+    fun `indefinite incremental lifecycle waiter survives the default and ends on disposal`() {
+        val port = WorkspaceRefreshTestPort()
+        var now = 0L
+        val service = WorkspaceRefreshService(port, { now })
+        val outcomes = mutableListOf<WorkspaceRefreshStatus>()
+        service.refreshForRead(io.github.amichne.kast.kernel.ElapsedTimeAllowance.Unlimited, outcomes::add)
+        now = 18 * 60_000_000_000L
+        service.inspection()
+        assertEquals(emptyList<WorkspaceRefreshStatus>(), outcomes)
+        assertEquals(1, port.incrementalEffects)
+        service.dispose()
+        assertEquals(listOf(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED)), outcomes)
+        port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
+        assertEquals(1, outcomes.size)
+    }
+
+    @Test
+    fun `incremental lifecycle waiter uses its finite allowance instead of the read default`() {
+        val port = WorkspaceRefreshTestPort()
+        var now = 0L
+        val service = WorkspaceRefreshService(port, { now }, pendingTimeoutNanos = 10_000_000_000)
+        val outcomes = mutableListOf<WorkspaceRefreshStatus>()
+        val allowance =
+            (io.github.amichne.kast.kernel.ElapsedTimeAllowance.admitMillis(30_000) as Refinement.Refined).value
+        service.refreshForRead(allowance, outcomes::add)
+        now = 20_000_000_000
+        service.inspection()
+        assertEquals(emptyList<WorkspaceRefreshStatus>(), outcomes)
+        now = 30_000_000_000
+        service.inspection()
+        assertEquals(listOf(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DEADLINE_EXCEEDED)), outcomes)
+        port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
+        assertEquals(1, outcomes.size)
+    }
+
+    @Test
     fun `indefinite refresh waiter retains the live attempt beyond the default deadline`() {
         val port = WorkspaceRefreshTestPort()
         var now = 0L

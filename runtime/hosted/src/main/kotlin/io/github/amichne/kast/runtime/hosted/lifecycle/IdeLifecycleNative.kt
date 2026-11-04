@@ -173,7 +173,7 @@ internal class IdeLifecycleNative(
         )
             return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
         if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
-        lifecycleVfsFailure(endpoint)?.let {
+        lifecycleVfsFailure(endpoint, operation)?.let {
             return blocked(it)
         }
         return awaitReady(project, target, operation)
@@ -200,7 +200,7 @@ internal class IdeLifecycleNative(
             )
                 return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
-            lifecycleVfsFailure(endpoint)?.let {
+            lifecycleVfsFailure(endpoint, operation)?.let {
                 return blocked(it)
             }
             state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)

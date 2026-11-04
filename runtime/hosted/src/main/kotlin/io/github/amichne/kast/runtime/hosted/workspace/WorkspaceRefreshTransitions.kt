@@ -44,6 +44,13 @@ internal fun WorkspaceRefreshWaiter.identity(): WorkspaceRefreshWaiterIdentity =
         is WorkspaceRefreshWaiter.Read -> WorkspaceRefreshWaiterIdentity.ReadPreparation
     }
 
+internal fun Map<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>.retirePendingRefreshWaiters() {
+    values.toList().forEach {
+        if (it.status is WorkspaceRefreshStatus.Pending)
+            it.transition(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED))
+    }
+}
+
 internal fun WorkspaceRefreshAttempt.inspection(
     entries: Map<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>
 ): WorkspaceRefreshAttemptInspection =

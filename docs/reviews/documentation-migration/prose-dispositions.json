@@ -617,13 +617,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/snippets/okf/runtime/hosted-composition-and-publication.mdx",
-        "sourceSha256": "d2c9713468b8da79f61fc18fa0b1996a946ce41481bef6c8147d6eaa303ace10",
+        "sourceSha256": "7f3d3ee83c1217880e56513af95684dfc0242f3cf7394c6e1d4a5f601b0d474d",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 13.59 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 13.55 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep request drainage, final freshness, and atomic publication ownership. Preserve exact identifiers `HostedEndpointService`, `Service`, `HostedConnectionAdmission`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep request drainage, final freshness, and atomic publication ownership. Preserve exact identifiers `HostedEndpointService`, `Service`, `HostedConnectionAdmission`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Reviewed the generated provenance warning after propagating lifecycle allowances through VFS and incremental refresh waits. The warning now reports source drift; retain that limitation and the exact grade advisory. This historical explanation does not establish the changed wait behavior."
     },
     {
       "finding": {
