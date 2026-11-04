@@ -7,6 +7,8 @@ const count=value=>Number.isSafeInteger(value)&&value>=0;
 const duration=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0;
 const unavailable=reason=>Object.freeze({type:'unavailable',reason});
 
+export const replayResourceMisuse=counts=>[['providerSends',1],['shellCalls',1],['kastInvocations',1],['toolProposals',1],['blockedProviderSends',0],['blockedShellCalls',0],['blockedToolProposals',0]].some(([name,maximum])=>count(counts[name])&&counts[name]>maximum);
+
 // Pi usage.input excludes cacheRead/cacheWrite. Reasoning is part of output.
 // Missing cache accounting cannot silently become zero.
 export function normalizeReplayUsage(raw) {
@@ -31,7 +33,11 @@ const sum=values=>{
 const tally=values=>values.reduce((acc,value)=>({...acc,[value]:(acc[value]??0)+1}),{});
 const eligible=row=>eligibleTypes.has(row.outcome.type);
 const misuseReasons=new Set(['WRONG_ACTION','WRONG_TOOL','WRONG_TARGET','WRONG_SCOPE','WRONG_REFERENCE','WRONG_COVERAGE','MALFORMED_DECISION']);
-const gradeMisuse=row=>Array.isArray(row.grade?.misuse)?row.grade.misuse:(row.grade?.reasons??[]).filter(reason=>misuseReasons.has(reason));
+const declaredMisuse=row=>Array.isArray(row.grade?.misuse)?row.grade.misuse:(row.grade?.reasons??[]).filter(reason=>misuseReasons.has(reason));
+const gradeMisuse=row=>{
+ const reasons=declaredMisuse(row);
+ return replayResourceMisuse(row)&&!reasons.includes('RESOURCE_MISUSE')?[...reasons,'RESOURCE_MISUSE']:reasons;
+};
 const argumentCause=row=>row.grade?.argumentCause??row.grade?.productionCause??null;
 const coverage=row=>typeof row.grade?.coverageCorrect==='boolean'?row.grade.coverageCorrect:
   row.grade?.dimensions?.coverage==='PASS'?true:row.grade?.dimensions?.coverage==='FAIL'?false:null;
@@ -173,7 +179,7 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
    if(!projectionValid(row))issues.add('PAYLOAD_PROOF_UNAVAILABLE');
    if(row.providerSends!==1||row.nativeCalls!==0||!count(row.shellCalls)||row.shellCalls>1
     ||!count(row.kastInvocations)||row.kastInvocations>1)issues.add('EFFECT_COUNTS_UNAVAILABLE');
-   if(row.outcome.type==='correct'&&(row.grade?.correct!==true||gradeMisuse(row).length||coverage(row)===false||row.toolProposals>1||row.blockedToolProposals>0))invalid.add('GRADE_CONTRADICTION');
+   if(row.outcome.type==='correct'&&(row.grade?.correct!==true||declaredMisuse(row).length||coverage(row)===false||row.toolProposals>1||row.blockedToolProposals>0))invalid.add('GRADE_CONTRADICTION');
   }
   if(control&&next){
    const left=modelIdentity(control),right=modelIdentity(next);

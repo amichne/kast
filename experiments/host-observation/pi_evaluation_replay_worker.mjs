@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL,fileURLToPath } from 'node:url';
 import { expandReplayPlan,ReplayBudget } from './pi_evaluation_replay.mjs';
 import { replayCase,replayTransition } from './pi_evaluation_replay_cases.mjs';
+import { replayResourceMisuse } from './pi_evaluation_replay_accounting.mjs';
 import { gradeReplayDecision } from './pi_evaluation_replay_grading.mjs';
 import { loadReplayCredential } from './pi_evaluation_replay_auth.mjs';
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
@@ -180,7 +181,7 @@ export async function replayWorker(mode,plan,trial,services={}) {
   const admission=shell.invocations[0]?.admission??{type:'unavailable'};
   const evaluated=gradeReplayDecision(item.id,decision,admission);
   const counts=budget.report();
-  const excess=counts.kastInvocations>1||counts.blockedShellCalls>0||counts.blockedProviderSends>0||counts.blockedToolProposals>0;
+  const excess=replayResourceMisuse(counts);
   const grade={...evaluated,correct:evaluated.correct&&!excess&&!shell.modelFailure,misuse:[...evaluated.reasons,...(excess?['RESOURCE_MISUSE']:[]),...(shell.modelFailure?[shell.modelFailure.reason]:[])],argumentCause:evaluated.productionCause??null,coverageCorrect:evaluated.dimensions.coverage==='PASS'?true:evaluated.dimensions.coverage==='FAIL'?false:null};
   let outcome;
   if(deadline)outcome={type:'incomplete',reasons:['DEADLINE']};

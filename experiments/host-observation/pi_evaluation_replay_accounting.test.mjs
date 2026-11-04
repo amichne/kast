@@ -18,6 +18,17 @@ test('blocked proposals remain visible with failed work and complete provider co
  assert.equal(legacy.ledger.toolProposals.complete,false);assert.equal(legacy.ledger.trials[0].toolProposals,null);
 });
 
+test('a partial worker ledger preserves known resource misuse without a final grade',()=>{
+ const plans=[trial('p1','TOON'),trial('p1','JSON')];
+ for(const counts of [{toolProposals:2,blockedToolProposals:1},{kastInvocations:2},{blockedShellCalls:1},{blockedProviderSends:1}]){
+  const rows=plans.map(plan=>receipt(plan,'incomplete',{...counts,grade:null}));
+  const report=summarizeReplay(plans,rows);
+  assert.deepEqual(report.formats.TOON.misuse,{RESOURCE_MISUSE:1});
+  assert.equal(report.formats.TOON.correctness.eligible,1);assert.equal(report.formats.TOON.correctness.correct,0);
+  assert.equal(report.ledger.tokens.knownTotal,220);assert.equal(report.exclusions.length,0);
+ }
+});
+
 test('SDK usage counts cache once and reasoning within output',()=>{
   assert.deepEqual(normalizeReplayUsage({input:80,cacheRead:20,cacheWrite:3,output:10,reasoning:4,totalTokens:113}),{type:'known',value:{input:80,cacheRead:20,cacheWrite:3,output:10,reasoning:4,totalTokens:113}});
   assert.equal(normalizeReplayUsage({input:80,cacheRead:20,output:10,totalTokens:130}).type,'unavailable');

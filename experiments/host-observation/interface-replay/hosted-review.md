@@ -14,6 +14,8 @@ Neither case receives a successful fixture transition.
 The worker counts each SDK tool proposal before tool effects.
 A second proposal stays blocked and appears in the persistent ledger.
 The first invocation can complete, but the final grade records `RESOURCE_MISUSE`.
+The worker and report share one pure rule for known resource misuse.
+A partial ledger keeps that misuse when the final grade is unavailable.
 Aggregate accounting keeps the failed work and its complete provider usage.
 The target gate rejects a correct label that contradicts recorded excess proposals.
 Missing historical counters remain unavailable.
@@ -43,7 +45,7 @@ The result keeps one shell call, one Kast invocation, zero native calls, complet
 This control supplies no model measurement.
 
 - **PASSED:** 94 public-shell Kotlin tests, including three new controls for command facts.
-- **PASSED:** 110 deterministic Node tests. Fourteen optional integrations skip without explicit SDK and adapter variables.
+- **PASSED:** 111 deterministic Node tests. Fourteen optional integrations skip without explicit SDK and adapter variables.
 - **PASSED:** All 34 opt-in integration tests, with zero skips.
 - **PASSED:** JSON contracts, Kotlin format, file length, and `:cli:detekt` checks.
 - **FAILED before repair:** Command-fact, planning-grade, proposal-accounting, and target-contradiction controls.
