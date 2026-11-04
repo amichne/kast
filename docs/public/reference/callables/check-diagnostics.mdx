@@ -1,0 +1,25 @@
+---
+title: "Check diagnostics"
+description: "Inputs and response fields for check_diagnostics."
+mode: "wide"
+icon: "square-terminal"
+keywords: ["Kast", "callable", "schema"]
+---
+
+import { CallableReference } from "/snippets/callable-reference.jsx";
+
+This callable is not an HTTP endpoint. Its schemas describe the hosted tool. Direct MCP and tool RPC wrap the same semantic document differently. See the [MCP contract](/reference/mcp-catalog) or [tool RPC contract](/reference/rpc-catalog). Return to [Schemas and samples](/reference/schemas) for related contracts.
+
+<Accordion title="Invocation contract">
+
+Check compiler diagnostics for a file or recursively beneath a directory in the session workspace. Use '.' explicitly for the workspace root. This is not symbol search and does not build the project. Results retain incomplete-coverage evidence; an incomplete empty result does not establish that the scope is clean. Requires the saved, indexed IntelliJ state.
+
+</Accordion>
+
+Expand a schema to inspect its fields, constraints, and variants. References open on demand, including recursive references.
+
+[Download the complete contract](/reference/callables.openapi.json). This file retains every schema assertion and transport envelope. [Download schema fields](/assets/callable-reference.txt) for the reference graph.
+
+<span id="body" /><span id="response" /><span id="200" />
+
+<CallableReference operation="check_diagnostics" />

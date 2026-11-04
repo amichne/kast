@@ -62,10 +62,12 @@ Keyboard Enter must select each declared connection.
 Each state reports rendered prose words, nonblank code lines, and prose in the initial viewport.
 These per-state measurements do not replace the complete source footprint across all panels.
 
-Recursive callable measurements need a finite, declared expansion scope.
-The current renderer failure leaves these measurements unknown.
-The runner rejects the `bounded-measurements` obligation until every callable supplies that scope.
-No successful page load substitutes for that obligation.
+Callable measurements expand every graph edge through depth two, including every variant at that depth.
+A reference counts as one edge. Deeper recursive fields remain outside this finite measurement.
+The runner derives expected nodes and exact fact text from the canonical OpenAPI artifact.
+It checks exposed DOM nodes, expanded controls, keyboard focus, and the artifact digest.
+Missing, duplicated, hidden, changed, or stale scope evidence rejects publication.
+A successful page load alone does not satisfy that obligation.
 
 Screenshots supply review evidence. Their capture does not prove an accepted visual comparison.
 Compare pixels only with equal platform, browser bytes, preview version, fonts, viewport, theme, and zoom.

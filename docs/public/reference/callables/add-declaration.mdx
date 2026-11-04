@@ -1,0 +1,25 @@
+---
+title: "Add declaration"
+description: "Inputs and response fields for add_declaration."
+mode: "wide"
+icon: "square-terminal"
+keywords: ["Kast", "callable", "schema"]
+---
+
+import { CallableReference } from "/snippets/callable-reference.jsx";
+
+This callable is not an HTTP endpoint. Its schemas describe the hosted tool. Direct MCP and tool RPC wrap the same semantic document differently. See the [MCP contract](/reference/mcp-catalog) or [tool RPC contract](/reference/rpc-catalog). Return to [Schemas and samples](/reference/schemas) for related contracts.
+
+<Accordion title="Invocation contract">
+
+Add one declaration at an exact top-level Kotlin target. A class or object target inserts into its existing body. A function, property, or type alias target inserts after that declaration. Kast plans and applies the change, examines the resulting source, and reports a verified receipt or finite failure with recovery evidence. Preserve the returned result. A cancelled or missing response does not prove that no write occurred.
+
+</Accordion>
+
+Expand a schema to inspect its fields, constraints, and variants. References open on demand, including recursive references.
+
+[Download the complete contract](/reference/callables.openapi.json). This file retains every schema assertion and transport envelope. [Download schema fields](/assets/callable-reference.txt) for the reference graph.
+
+<span id="body" /><span id="response" /><span id="200" />
+
+<CallableReference operation="add_declaration" />

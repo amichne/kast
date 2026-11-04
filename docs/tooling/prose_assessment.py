@@ -274,6 +274,7 @@ def plan(
         Step(
             "callable-parity",
             (
+                Command((sys.executable, "docs/tooling/callables/build.py", "--check")),
                 Command(
                     (
                         str(root / "gradlew"),

@@ -1,0 +1,25 @@
+---
+title: "Replace body"
+description: "Inputs and response fields for replace_body."
+mode: "wide"
+icon: "square-terminal"
+keywords: ["Kast", "callable", "schema"]
+---
+
+import { CallableReference } from "/snippets/callable-reference.jsx";
+
+This callable is not an HTTP endpoint. Its schemas describe the hosted tool. Direct MCP and tool RPC wrap the same semantic document differently. See the [MCP contract](/reference/mcp-catalog) or [tool RPC contract](/reference/rpc-catalog). Return to [Schemas and samples](/reference/schemas) for related contracts.
+
+<Accordion title="Invocation contract">
+
+Replace only the block body of one existing, non-inline named Kotlin function selected by an exact Kast symbol reference. Kast plans, applies, verifies, and reports a verified receipt or finite failure with recovery evidence. The signature and surrounding source are preserved.
+
+</Accordion>
+
+Expand a schema to inspect its fields, constraints, and variants. References open on demand, including recursive references.
+
+[Download the complete contract](/reference/callables.openapi.json). This file retains every schema assertion and transport envelope. [Download schema fields](/assets/callable-reference.txt) for the reference graph.
+
+<span id="body" /><span id="response" /><span id="200" />
+
+<CallableReference operation="replace_body" />

@@ -30,6 +30,8 @@ def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
         ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/markdown"),
         ("npm", "run", "check", "--prefix", "docs/tooling/markdown"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"),
+        ("python3", "docs/tooling/callables/build.py", "--check"),
+        ("node", "--test", "docs/tooling/callables/loader.test.mjs"),
         ("python3", "packaging/test-installer-entrypoint.py"),
         ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/value-journey"),
         ("npm", "run", "build", "--prefix", "docs/tooling/value-journey"),

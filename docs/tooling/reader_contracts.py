@@ -482,11 +482,7 @@ def content_inputs(root: Path, route: str) -> tuple[InputDigest, ...] | Failure:
     """Bind a page and its local imports without a second content store."""
     if not _route(route):
         return Failure(Code.INPUT, "Invalid content route")
-    first = (
-        SITE + "/reference/callables.openapi.json"
-        if route.startswith("/reference/callables/")
-        else SITE + ("/index.mdx" if route == "/" else route + ".mdx")
-    )
+    first = SITE + ("/index.mdx" if route == "/" else route + ".mdx")
     digests: dict[str, str] = {}
 
     def visit(path: str, stack: tuple[str, ...]) -> Failure | None:
@@ -514,6 +510,11 @@ def content_inputs(root: Path, route: str) -> tuple[InputDigest, ...] | Failure:
         return None
 
     failure = visit(first, ())
+    if failure is None and route.startswith("/reference/callables/"):
+        for resource in ("reference/callables.openapi.json", "assets/callable-reference.txt"):
+            failure = visit(SITE + "/" + resource, ())
+            if failure is not None:
+                break
     return (
         failure
         if failure is not None
@@ -571,7 +572,7 @@ def assess(root: Path, revision: str) -> Report | Failure:
         if "snippets" not in path.relative_to(root / SITE).parts
     }
     callable_routes = {route for route in routes if route.startswith("/reference/callables/")}
-    if actual | callable_routes != routes:
+    if actual != routes:
         return Failure(Code.INVENTORY, "Public MDX inventory differs from reader contracts")
     callable_text = read(SITE + "/reference/callables.openapi.json")
     if isinstance(callable_text, Failure):
@@ -582,9 +583,6 @@ def assess(root: Path, revision: str) -> Report | Failure:
         return Failure(Code.INPUT, "Invalid callable artifact")
     if not _record(callables) or not _record(callables.get("paths")):
         return Failure(Code.INPUT, "Missing callable paths")
-    callable_paths = callables["paths"]
-    if not _record(callable_paths):
-        return Failure(Code.INPUT, "Invalid callable paths")
     expanded: dict[str, str] = {}
     limits: dict[str, tuple[str, ...]] = {}
 
@@ -620,36 +618,13 @@ def assess(root: Path, revision: str) -> Report | Failure:
         if isinstance(closure, Failure):
             return closure
         inputs.update((item.path, item.sha256) for item in closure)
+        path = SITE + ("/index.mdx" if page.route == "/" else page.route + ".mdx")
+        document = expand(path, ())
+        if isinstance(document, Failure):
+            return document
+        expanded[page.route], limits[page.route] = document
         if page.route in callable_routes:
-            operation_path = "/callables/" + page.route.rsplit("/", 1)[1].replace("-", "_")
-            path = callable_paths.get(operation_path)
-            if not _record(path) or not _record(path.get("post")):
-                return Failure(Code.INVENTORY, "Missing callable operation: " + operation_path)
-            operation = path["post"]
-            if not _record(operation):
-                return Failure(Code.INPUT, operation_path)
-            mint = operation.get("x-mint")
-            if not _record(mint) or not isinstance(mint.get("content"), str):
-                return Failure(Code.INPUT, operation_path)
-            summary, description, content = (
-                operation.get("summary"),
-                operation.get("description"),
-                mint["content"],
-            )
-            if (
-                not isinstance(summary, str)
-                or not isinstance(description, str)
-                or not isinstance(content, str)
-            ):
-                return Failure(Code.INPUT, "Invalid callable prose: " + operation_path)
-            expanded[page.route] = summary + "\n" + description + "\n" + content
-            limits[page.route] = ("Schema expansion needs a bounded rendered state",)
-        else:
-            path = SITE + ("/index.mdx" if page.route == "/" else page.route + ".mdx")
-            document = expand(path, ())
-            if isinstance(document, Failure):
-                return document
-            expanded[page.route], limits[page.route] = document
+            limits[page.route] += ("Schema expansion needs a bounded rendered state",)
     edges = tuple(
         Edge(route, destination)
         for route, source in sorted(expanded.items())
@@ -657,7 +632,8 @@ def assess(root: Path, revision: str) -> Report | Failure:
     )
     for edge in edges:
         destination = unquote(urlsplit(edge.destination).path).rstrip("/") or "/"
-        if destination not in routes:
+        bound_resource = destination.endswith((".json", ".txt")) and SITE + destination in inputs
+        if destination not in routes and not bound_resource:
             return Failure(Code.LINK, edge.source + " -> " + edge.destination)
     reports = tuple(
         PageReport(

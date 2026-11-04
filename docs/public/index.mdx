@@ -1,7 +1,7 @@
 ---
-title: "Understand your Kotlin code before you change it"
+title: "Compiler understanding for your coding agent"
 sidebarTitle: "Overview"
-description: "Find callers and trace supported value paths with source locations you can inspect."
+description: "Give your coding agent compiler-grounded declarations, types, and source relationships for everyday work in Kotlin Gradle projects."
 keywords:
   - "Kotlin"
   - "coding agents"
@@ -15,45 +15,46 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <span id="what-kast-adds" />
 
-Use the native `kast` command with Codex, Copilot, or Pi.
-IntelliJ IDEA supplies compiler analysis for your Kotlin project.
+Kast connects your coding agent to IntelliJ IDEA's understanding of your Kotlin project.
+Declarations, types, and source relationships become facts the agent can work with.
+
+<span id="use-the-agent-you-already-use" />
+<span id="ask-about-your-code" />
+
+Keep working naturally. Ask about your code. Build a feature. Fix a bug. Refactor.
+Your agent uses Kast through its installed guidance.
 
 <span id="try-it-on-your-project" />
-
 <span id="choose-your-reader-track" />
 
 <Columns cols={1}>
-  <Card title="Set up Kast" icon="arrow-right" href="/start">
-    Install Kast, add agent guidance, and find callers in your own project.
+  <Card title="Add Kast to your agent" icon="arrow-right" href="/start">
+    Install Kast and connect Codex, Copilot, or Pi to your Kotlin Gradle project.
   </Card>
 </Columns>
 
 <span id="is-kast-for-you" />
 
-For Apple silicon Macs, Kotlin Gradle projects, and IntelliJ IDEA 262. [Setup requirements](/start#before-you-install).
-
-<span id="use-the-agent-you-already-use" />
-
-<span id="use-the-evidence-for-your-next-decision" />
-<span id="ask-about-your-code" />
-
-## Start with one function
-
-Give your agent the function's file and name.
-
-<Prompt description="Before you change a function" actions={["copy"]}>
-Use the Kast CLI to find the callers of this function. Show the source locations and explain how they use it.
-</Prompt>
-
-Use the returned source locations to inspect each caller before an edit.
-A caller result describes source relationships. It does not prove that those calls ran.
-
-For another task, choose [an example question](/search) or use the [CLI reference](/reference/cli) for terminal commands.
+The published setup supports Apple silicon Macs and IntelliJ IDEA 262. [Setup requirements](/start#before-you-install).
 
 <span id="a-name-match-does-not-explain-a-value-path" />
 
-To see how a value path differs from a name match, [follow a value through code](/explanation/value-journey).
+<span id="start-with-one-function" />
 
-If setup or a query stops, use [Help](/troubleshooting) to choose the next action.
+## Code has meaning beyond its text
+
+A name alone cannot identify a declaration. Matching words cannot establish which function a call resolves to.
+Kast gives your agent compiler-resolved identity and source relationships, with locations it can inspect as it works.
+See [what your agent gains](/search).
+
+<span id="use-the-evidence-for-your-next-decision" />
+
+## Evidence you can act on
+
+Kast reports what its source evidence establishes and where that evidence stops.
+Completion applies to the declared scope and semantic model. Incomplete evidence cannot establish that a result is absent.
+[How Kast establishes a fact](/explanation) explains the contract and the product standard: never silently wrong.
+
+For installation or agent problems, use [Help](/troubleshooting).
 
 <DeeperReading />

@@ -9,6 +9,11 @@
   if (roots.length < 2) throw new Error("RENDERED_CONTENT_MISSING");
   const visible = (element) => {
     if (element.closest('[hidden],[aria-hidden="true"]')) return false;
+    for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor);
+      const rect = ancestor.getBoundingClientRect();
+      if (style.display === "none" || style.visibility === "hidden" || (rect.height < 1 && /hidden|clip/.test(style.overflowY)) || (rect.width < 1 && /hidden|clip/.test(style.overflowX))) return false;
+    }
     const style = getComputedStyle(element);
     return style.visibility !== "hidden" && style.display !== "none" && element.getClientRects().length > 0;
   };

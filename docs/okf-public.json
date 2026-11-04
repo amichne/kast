@@ -245,20 +245,24 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "explanation/value-journey-evidence",
-      "purpose": "recorded-illustration"
+      "route": "explanation",
+      "purpose": "reader-navigation"
     },
     {
       "route": "explanation/value-journey",
       "purpose": "recorded-illustration"
     },
     {
-      "route": "explanation",
-      "purpose": "reader-navigation"
+      "route": "explanation/value-journey-evidence",
+      "purpose": "recorded-illustration"
     },
     {
       "route": "glossary",
       "purpose": "generated-glossary"
+    },
+    {
+      "route": "how-to",
+      "purpose": "reader-navigation"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -273,15 +277,35 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "how-to",
-      "purpose": "reader-navigation"
-    },
-    {
       "route": "index",
       "purpose": "reader-navigation"
     },
     {
+      "route": "reference",
+      "purpose": "reader-navigation"
+    },
+    {
       "route": "reference/api",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/add-declaration",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/check-diagnostics",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/query-symbols",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/replace-body",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/workspace-lifecycle",
       "purpose": "reader-task-or-contract"
     },
     {
@@ -397,10 +421,6 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "reference",
-      "purpose": "reader-navigation"
-    },
-    {
       "route": "search",
       "purpose": "reader-navigation"
     },
@@ -413,12 +433,12 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "tutorials/first-query",
-      "purpose": "reader-task-or-contract"
-    },
-    {
       "route": "tutorials",
       "purpose": "reader-navigation"
+    },
+    {
+      "route": "tutorials/first-query",
+      "purpose": "reader-task-or-contract"
     }
   ],
   "readerContracts": {
@@ -426,10 +446,10 @@
       {
         "route": "/",
         "role": "orientation",
-        "outcome": "Find callers and trace supported value paths with compiler analysis from IntelliJ IDEA. Choose the setup path for the existing agent.",
+        "outcome": "Understand the compiler-grounded capability Kast adds to ordinary agent work, then connect an existing agent.",
         "scope": [
-          "State product fit and a concrete outcome.",
-          "Route readers to setup, examples, or the value illustration."
+          "Explain compiler-grounded declaration identity and source relationships.",
+          "Lead directly to installation, with capabilities and evidence definitions available as supporting reading."
         ],
         "exclusions": "Installation steps, exhaustive features, and required theory.",
         "sourceOwner": "docs/public/index.mdx",
@@ -439,35 +459,35 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep one setup action, one caller question, its source-evidence limit, and direct recovery. The added result guidance increases prose without another first-use decision or page transition."
+          "reason": "Keep the product premise, one installation action, and a concise evidence contract. No special prompt or query exercise belongs in the default path."
         }
       },
       {
         "route": "/start",
         "role": "how-to",
-        "outcome": "Install the latest Kast development build, add CLI guidance for Codex, Copilot, or Pi, and find callers in your Kotlin project.",
+        "outcome": "Install the latest Kast development build and connect Codex, Copilot, or Pi to a Kotlin Gradle project.",
         "scope": [
           "Complete ordinary installation and agent guidance.",
-          "Reach a useful answer with source locations and stated evidence limits."
+          "Continue normal development with the installed guidance and direct recovery links."
         ],
         "exclusions": "Required trips through reference, architecture, or the tutorial.",
         "sourceOwner": "docs/public/start.mdx",
         "densityProfile": "setup",
-        "completionEvidence": "The agent returns caller source locations. The reader compares them with known callers of the selected function.",
+        "completionEvidence": "The installer reports its outcome, IDEA loads the Host after restart, and the selected agent starts a fresh session with installed guidance. Installation alone does not prove live semantic readiness.",
         "primaryContinuation": "END",
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Keep all prerequisites, installer and upgrade commands, agent tabs, and a first useful question. Added result guidance belongs beside that question. No reference page becomes a prerequisite."
+          "reason": "Preserve all prerequisites, installer and upgrade commands, and agent tabs. Setup ends with ordinary development; no demonstration question or reference page is required."
         }
       },
       {
         "route": "/search",
         "role": "orientation",
-        "outcome": "Select a question for your agent about callers, value paths, or IDEA diagnostics in your Kotlin code.",
+        "outcome": "Understand the compiler-grounded evidence available to an agent during Kotlin development.",
         "scope": [
-          "Select a question for the reader\u2019s own code.",
-          "Expose task details and interface requirements when needed."
+          "Explain declaration identity, source relationships, value paths, diagnostics, and supported source edits.",
+          "Keep interface requirements and consequential evidence boundaries beside each capability."
         ],
         "exclusions": "A complete operation catalogue or another setup procedure.",
         "sourceOwner": "docs/public/search.mdx",
@@ -477,7 +497,7 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Each question keeps its prompt beside the expected evidence and its limit. Diagnostics keeps the optional MCP agent task distinct from the Tool RPC interface."
+          "reason": "Describe user outcomes without copied prompts. Keep diagnostics and source changes tied to their optional MCP or Tool RPC interfaces."
         }
       },
       {
@@ -638,13 +658,13 @@
         "outcome": "Install CLI guidance for Codex, Copilot, or Pi after Kast exists on your machine. Refresh the guidance after a core change.",
         "scope": [
           "Install or refresh guidance for the chosen agent.",
-          "Return to a useful question."
+          "Continue ordinary project work with the installed guidance."
         ],
         "exclusions": "The full export and optional integration contract.",
         "sourceOwner": "docs/public/agent-harnesses.mdx",
         "densityProfile": "task",
         "completionEvidence": "The reader compares the stated result with the procedure outcome and uses the named recovery destination after rejection.",
-        "primaryContinuation": "/start#3-ask-about-your-code",
+        "primaryContinuation": "/search",
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
@@ -730,7 +750,7 @@
       {
         "route": "/tutorials",
         "role": "orientation",
-        "outcome": "Complete a first query with a small Kotlin example and explicit expected evidence.",
+        "outcome": "Choose an optional fixture for checking source evidence against known Kotlin relationships.",
         "scope": [
           "Identify the controlled exercise.",
           "State its starting conditions."
@@ -749,10 +769,10 @@
       {
         "route": "/tutorials/first-query",
         "role": "tutorial",
-        "outcome": "Try Kast on a small Kotlin example with an answer you can inspect yourself.",
+        "outcome": "Compare declaration identity, caller evidence, and completed absence against an optional Kotlin fixture.",
         "scope": [
-          "Complete one controlled query exercise.",
-          "Compare expected source evidence and clean up."
+          "Check source relationships with an inspectable fixture.",
+          "Keep expected facts separate from captured native evidence."
         ],
         "exclusions": "Open-ended tasks or exhaustive alternatives.",
         "sourceOwner": "docs/public/tutorials/first-query.mdx",
@@ -768,7 +788,7 @@
       {
         "route": "/explanation",
         "role": "explanation",
-        "outcome": "Understand declarations, source relationships, value paths, and the limits of a completed query before exploring Kast's architecture.",
+        "outcome": "Understand compiler-grounded identity, the never-silently-wrong product standard, and the current completion contract.",
         "scope": [
           "Explain identity, relationships, completion, and qualifications.",
           "Route readers to the responsible mechanism."
@@ -1586,20 +1606,18 @@
     "firstUse": {
       "startingFacts": [
         "The reader uses an Apple silicon Mac and IntelliJ IDEA 262 with Java 25 JBR.",
-        "The reader owns a Kotlin Gradle project and a known function with callers.",
+        "The reader works in a Kotlin Gradle project.",
         "The reader already uses one supported agent CLI and Python 3.12 or 3.13.",
         "The reader starts at Overview without a Kast installation."
       ],
-      "outcome": "Install Kast, install guidance for the existing agent, and inspect caller source locations on Set up.",
+      "outcome": "Install Kast, connect the existing agent, and continue ordinary project work.",
       "path": [
         "/",
         "/start"
       ],
-      "unresolvedDecisions": [
-        "Select the function in the reader's project."
-      ],
+      "unresolvedDecisions": [],
       "requiredConcepts": [],
-      "completionEvidence": "Compare the returned locations with known callers. Author review establishes the route and prerequisites. A real reader evaluation and native task execution remain separate evidence."
+      "completionEvidence": "Author review establishes the installation route, prerequisites, and recovery links. Reported installation outcomes and a fresh agent session are setup evidence. Native semantic use and real reader evaluation remain separate evidence."
     }
   },
   "associations": [
@@ -1608,7 +1626,7 @@
       "content": [
         {
           "path": "docs/public/agent-harnesses.mdx",
-          "sha256": "ea30832ef618dc0056d2f72cb04c0516906dbbb2e7634bd31e0823ed09a52d15"
+          "sha256": "6d934db52f09bb85e0f925a9d656141af4be407a63e4612b4d709b820103e4be"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -1717,7 +1735,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -2167,7 +2185,7 @@
       "content": [
         {
           "path": "docs/public/explanation.mdx",
-          "sha256": "4aa19d344cea5379386a9d9661a5493ac1eab05a36338827bf4e395f0717b074"
+          "sha256": "d2346f01ae69da32fa0424c148378622be4a7dae65b87ee8cde4e68f765c895a"
         }
       ],
       "claims": [
@@ -2502,7 +2520,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "explanation/query-lifecycle",
@@ -2593,7 +2611,7 @@
       "content": [
         {
           "path": "docs/public/explanation/value-journey.mdx",
-          "sha256": "984645816938a3e0f4609e19fbb9717c88c1a2ba5ed39fcb3a23724b6bc0a694"
+          "sha256": "29aaba65b436328f70e34ed8fd5dca26efa92d59dbfe14828e93c1553c26aef5"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -2690,7 +2708,7 @@
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "explanation/value-journey-evidence",
@@ -2866,7 +2884,7 @@
       "content": [
         {
           "path": "docs/public/how-to.mdx",
-          "sha256": "42266d176b87135e82ed5255b7bd0db45d59ea046d089920ccd18a81f2ac85a8"
+          "sha256": "cb463a9d0e9eee0c334e80a3f8b6807e6738655dd6818bc7eb179cd522139346"
         }
       ],
       "claims": [
@@ -3176,7 +3194,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -3879,7 +3897,7 @@
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "8842227698fdd7a5fe8182296ca4ec5e6336a9fff6f45dda08e895aff1ad6b4d"
+          "sha256": "8781c3ad8ed7f539ac00059804dee8b4088679b241ba38b0e8f0a8df7de73fae"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -4343,14 +4361,14 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "reference",
       "content": [
         {
           "path": "docs/public/reference.mdx",
-          "sha256": "4b0b98a1b99ae468ad438e6b09b825478fb69cead90207b90e6a4d1c47ab30c4"
+          "sha256": "9e463d65da4e310d53e854acb4ff5b682e4ef5c0f69d344248ba0d12380bee57"
         }
       ],
       "claims": [
@@ -4685,7 +4703,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "reference/api",
@@ -5043,6 +5061,211 @@
         }
       ],
       "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+    },
+    {
+      "route": "reference/callables/add-declaration",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/add-declaration.mdx",
+          "sha256": "29e01960c648e25feaeef022f246214229313368da10e4a7d3e6fd15f2ae2534"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/check-diagnostics",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/check-diagnostics.mdx",
+          "sha256": "ecb25fcb2fe8526cd91e976b105695d2eee1652947e6b44e572a9689310f597f"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/query-symbols",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/query-symbols.mdx",
+          "sha256": "8a984b0bfac3c121bf6c4ff2f254b33c5c2c11ecd12c2d2ac2d203ba329cee7b"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/replace-body",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/replace-body.mdx",
+          "sha256": "fd3851425d68338b2b4df837f7719310a7de6cb841e8b74023776db1e01d41b3"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/workspace-lifecycle",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
+          "sha256": "29c9987430e0cb0fb30b9c2d43d2befd5b3badf4164b448b4c31a19e4262c91d"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
     },
     {
       "route": "reference/callback-observations",
@@ -6322,7 +6545,7 @@
       "content": [
         {
           "path": "docs/public/reference/integrations.mdx",
-          "sha256": "02344004dee62b26a014622c20b50bb055440437728798f239f5998b7d77b581"
+          "sha256": "abeac0d98f21430f3c545336f1be24f2ef1dbfe497b6ae2b70186093617f81d2"
         }
       ],
       "claims": [
@@ -6427,7 +6650,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "reference/internals/architecture",
@@ -13830,7 +14053,7 @@
       "content": [
         {
           "path": "docs/public/reference/walkthrough.mdx",
-          "sha256": "2b80dff3f4b792a0e82037eb886bd494ba3ccc5b184169108c5ef829c4cc619a"
+          "sha256": "0fea15f5db89701f79327764534eb30f3f190d90147fd247cf5a9aaf19920c11"
         }
       ],
       "claims": [
@@ -14110,14 +14333,14 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "search",
       "content": [
         {
           "path": "docs/public/search.mdx",
-          "sha256": "a638a144d426a74387b9842d8d0f61d713e5c705fa765b03efa0441711badb1a"
+          "sha256": "b681dbafdc1089a7e96a050da261603c35ead4d64e646fcd0ec172ea13217446"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -14511,7 +14734,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "start",
@@ -14522,7 +14745,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "6a4dbe185118d0508fd1f6b2292593085909808876e7aaad903d6e2e946bb97e"
+          "sha256": "37aa97bf81dc649802fbfa11f995bbc7925f1b829c5235f3e1471a41488380ad"
         }
       ],
       "claims": [
@@ -15037,7 +15260,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "troubleshooting",
@@ -15305,7 +15528,7 @@
       "content": [
         {
           "path": "docs/public/tutorials.mdx",
-          "sha256": "c4ecbd1d60ebf8e41f286acd5b88bef70c9f2479c51230081cf40ca26c321065"
+          "sha256": "a6f303faa419d55cf33695a33b06577ea9d852129c8dd87147d74dcdd27cd2ab"
         }
       ],
       "claims": [
@@ -15585,7 +15808,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "tutorials/first-query",
@@ -15596,7 +15819,7 @@
         },
         {
           "path": "docs/public/tutorials/first-query.mdx",
-          "sha256": "37b6abb9343111e23905c489d5bd13845a94b0923cfb17e3d0d76275b89f39d9"
+          "sha256": "3121e2c6f37fddd1d1b40cbcb8655f4fad34639d01cf7f718af0f3322ab180ca"
         }
       ],
       "claims": [
@@ -15931,7 +16154,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     }
   ]
 }

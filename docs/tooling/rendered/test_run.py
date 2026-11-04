@@ -27,6 +27,7 @@ from run import (
     is_envelope,
     owned_preview,
     receipt,
+    schema_scopes_complete,
     stop_preview_group,
     wait_for_preview,
 )
@@ -336,3 +337,42 @@ def test_cleanup_stops_surviving_descendant_after_root_exit() -> None:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+
+
+def test_schema_scope_receipts_reject_stale_missing_or_duplicate_evidence() -> None:
+    from dataclasses import replace
+
+    from run import ROOT, ROUTES
+    from schema_scope import SchemaScope, expected_scope
+
+    source = (ROOT / "docs/public/reference/callables.openapi.json").read_bytes()
+    digest = hashlib.sha256(source).hexdigest()
+    snapshot: Snapshot = {
+        "type": "DOCUMENTATION_INPUTS",
+        "sourceRevision": "a" * 40,
+        "inputs": [{"path": "docs/public/reference/callables.openapi.json", "sha256": digest}],
+        "inputsDigest": "b" * 64,
+    }
+    states: list[State] = []
+    for route in ROUTES[4:]:
+        nodes = expected_scope(source, route.rsplit("/", 1)[1].replace("-", "_"))
+        scope = SchemaScope(2, digest, nodes, nodes)
+        states.append(
+            State(
+                route,
+                "schema-depth-2-all-variants",
+                "passed",
+                Footprint(1, 0, 1),
+                dom(),
+                None,
+                None,
+                scope,
+            )
+        )
+    assert schema_scopes_complete(snapshot, states)
+    assert not schema_scopes_complete(snapshot, states[:-1])
+    assert not schema_scopes_complete(snapshot, states + [states[0]])
+    original = states[0].schemaScope
+    assert original is not None
+    states[0] = replace(states[0], schemaScope=replace(original, sourceSha256="0" * 64))
+    assert not schema_scopes_complete(snapshot, states)

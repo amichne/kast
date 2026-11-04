@@ -2,7 +2,9 @@
 
 ## Description
 
-Kast gives coding agents source relationships from IntelliJ IDEA's compiler analysis.
+Kast extends coding agents working on Kotlin Gradle projects with IntelliJ IDEA's compiler analysis.
+The product shift is from inferring code meaning from text to working with compiler-grounded declaration identity and source relationships.
+Users describe their work naturally. The agent handles Kast's operations.
 The native `kast` command is the primary interface.
 
 ## Primary audience
@@ -14,7 +16,7 @@ An existing installation uses `kast upgrade --channel main --restart-ide`.
 
 ## Source authority
 
-The migration baseline is `7de04069e2a4a781a603ff51b3f9016b66108790`.
+The content revision was checked against `2e3feb6b3afd50b0ee90b52b092684ac83e3a879` and the user's revised content draft.
 `install.sh` owns the public bootstrap and developer-channel selection.
 The management CLI owns upgrades and agent guidance.
 `docs/public/start.mdx` owns the complete first-use procedure.
@@ -24,19 +26,25 @@ Keep commands and qualifications aligned with those source owners.
 
 1. Select a qualified development build.
 2. Install CLI guidance for the selected agent.
-3. Ask a useful question about the developer's own code.
+3. Continue ordinary development with compiler-grounded evidence available to the agent.
 
 ## Navigation and ownership
 
-Guides contains Overview, Set up, Examples, and Help.
+Guides contains Overview, Set up, Capabilities, and Help.
 Keep Architecture and Reference visible.
-The setup page owns the path from build selection to a first useful answer.
+The setup page owns installation and agent connection.
+Keep special prompts and a first-query exercise out of the default path.
+Optional fixtures belong in evidence checks; technical request syntax belongs in reference.
 The installation reference owns build policies and activation outcomes.
 The integration reference owns CLI guidance, skill export, and optional MCP.
 The CLI reference owns common command examples.
 Keep existing routes and anchors. Edit generated contracts through their generator.
 
 ## Claims and limits
+
+The product standard is never silently wrong: establish the fact with evidence or expose the gap.
+State this standard confidently without claiming current universal perfection or guaranteeing the agent's entire answer.
+Keep the current semantic model, completion policy, and consequential evidence limits beside their definitions.
 
 The default agent composition supplies CLI guidance.
 MCP needs an explicit `--mcp` selection.

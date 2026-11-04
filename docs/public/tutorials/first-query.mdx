@@ -1,14 +1,14 @@
 ---
-title: "Find a function and its caller"
-description: "Try Kast on a small Kotlin example with an answer you can inspect yourself."
+title: "Check declaration and caller evidence"
+description: "Compare Kast results with an optional Kotlin source fixture to check declaration identity, callers, and completed absence."
 icon: "graduation-cap"
 hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Find one function, identify its caller, and distinguish a completed empty search from an unfinished query.
-The source in this exercise supplies the expected answers. You do not need to understand compiler internals.
+This optional Kast check uses a small source fixture with known relationships. It helps you inspect integration behavior; it is not a required workflow for using Kast.
+The fixture supplies expected facts, not a captured result.
 
 [Select the development build](/start) and [install agent guidance](/agent-harnesses).
 Use an imported Kotlin/JVM Gradle project with a `main` source set.
@@ -43,7 +43,7 @@ Select that project in IDEA and your agent.
   <Step title="Find the function">
     <span id="2-find-the-target" />
 
-    > Use Kast to find kastTutorialMessage in the directory containing the example file, in main only. Show its signature, source location, and completion status.
+    Have your agent locate `kastTutorialMessage` in the example directory and `main` source set, with its signature, source location, and completion status.
 
     The result must identify `tutorial.kastTutorialMessage` in your file.
     Open the location and compare the source.
@@ -52,7 +52,7 @@ Select that project in IDEA and your agent.
   <Step title="Find its caller">
     <span id="3-find-the-caller" />
 
-    > Use Kast to find the callers of that exact function. Show each call location and report whether the query completed.
+    Have your agent inspect callers of the issued exact reference, keeping each call location and the completion status.
 
     The answer must include `kastTutorialCaller` and its call to `kastTutorialMessage()`.
     It must not identify `kastTutorialUnrelated` as a caller merely because both functions return `"Ready"`.
@@ -61,7 +61,7 @@ Select that project in IDEA and your agent.
   <Step title="Search for an absent name">
     <span id="4-inspect-an-absent-name" />
 
-    > Use Kast to find kastTutorialMissing in the same example directory, in main only. Report whether the search completed.
+    Have your agent look for `kastTutorialMissing` in the same directory and `main` source set, keeping the completion status.
 
     Your example has no function with that name. If that directory contains no other match, the completed search returns no matches.
     An unfinished search does not prove that the name is absent.
@@ -84,6 +84,6 @@ If a query stops, resolve the reported cause with [Troubleshoot Kast](/troublesh
 | Does the missing name exist? | No matches after a completed search of the stated directory and source set. | An unfinished query cannot establish absence. |
 
 These are expected facts for this exercise, not a captured response or an exact JSON response shape.
-Choose an [example question](/search) for your own code.
+Return to your own work with [agent capabilities](/search).
 
 <DeeperReading />
