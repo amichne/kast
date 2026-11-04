@@ -381,3 +381,39 @@ test("native rejection is kept in model context and produces a visible warning",
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0][1], "warning");
 });
+
+for (const composition of ['CLI', 'MCP']) {
+  for (const staleOutcome of ['rejected', 'launch-failed']) {
+    test('Pi ' + composition + ' ignores a prior session completion: ' + staleOutcome, async t => {
+      const pending = [], handlers = new Map(), notices = [];
+      const exec = () => {
+        const result = Promise.withResolvers();
+        pending.push(result);
+        return result.promise;
+      };
+      let ctx;
+      if (composition === 'MCP') {
+        const f = await fixture(t, 'Kast shared context\n', exec);
+        ctx = f.ctx;
+        ctx.ui.notify = (...args) => notices.push(args);
+        for (const event of ['session_start', 'before_agent_start']) handlers.set(event, f.handlers.get(event));
+      } else {
+        const hook = readFileSync(new URL('../../../../agent-tools/hooks/pi.ts', import.meta.url), 'utf8');
+        const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
+        register({ on: (event, handler) => handlers.set(event, handler), exec });
+        ctx = { cwd: '/workspace', ui: { notify: (...args) => notices.push(args) } };
+      }
+      handlers.get('session_start')({}, ctx);
+      handlers.get('session_start')({}, ctx);
+      pending[1].resolve({ code: 0, stdout: 'CURRENT_ADMISSION', stderr: '' });
+      await Promise.resolve();
+      if (staleOutcome === 'launch-failed') pending[0].reject(new Error('old launch failed'));
+      else pending[0].resolve({ code: 4, stdout: 'STALE_REJECTION', stderr: '' });
+      await Promise.resolve();
+      const prompt = handlers.get('before_agent_start')({ systemPrompt: 'original' }).systemPrompt;
+      assert.match(prompt, /CURRENT_ADMISSION/);
+      assert.doesNotMatch(prompt, /STALE_REJECTION|could not be observed/);
+      assert.equal(notices.length, 0);
+    });
+  }
+}

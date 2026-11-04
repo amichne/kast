@@ -106,10 +106,28 @@ internal constructor(
 }
 
 /** Session-owned MCP adapter. The existing IDEA lifecycle and compiler host retain semantic authority. */
+fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): McpWorkspaceOperationClient =
+    configuredMcpWorkspaceOperationClient(home, InstalledSavedConfigurationIngress.load(environment))
+
+/** Explicit workspace waiting includes that physical workspace's saved configuration overlay. */
+fun mcpWorkspaceOperationClient(
+    home: Path,
+    environment: Map<String, String>,
+    installation: Path,
+    workspace: CanonicalRoot,
+): McpWorkspaceOperationClient =
+    configuredMcpWorkspaceOperationClient(
+        home,
+        InstalledWorkspaceConfigurationIngress.load(installation, workspace.path, environment),
+    )
+
 @Suppress("LongMethod")
-fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): McpWorkspaceOperationClient {
+private fun configuredMcpWorkspaceOperationClient(
+    home: Path,
+    saved: SavedConfigurationIngress,
+): McpWorkspaceOperationClient {
     val sources =
-        when (val saved = InstalledSavedConfigurationIngress.load(environment)) {
+        when (saved) {
             is SavedConfigurationIngress.Loaded -> saved.sources
             is SavedConfigurationIngress.Rejected -> return rejectedMcpConfiguration()
         }

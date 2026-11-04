@@ -25,11 +25,16 @@ internal fun prepareInstalledHook(
                 InstalledToolAdmission.STOPPED -> Refinement.Rejected(HookPreparationFailure.Stopped)
                 InstalledToolAdmission.UNPROVEN -> Refinement.Rejected(HookPreparationFailure.Unproven)
                 InstalledToolAdmission.AVAILABLE ->
-                    prepareHookClient(root, wait, hookClient(wait, context.value.environment), diagnostic)
+                    prepareHookClient(root, wait, hookClient(root, wait, context.value), diagnostic)
             }
     }
 
-private fun hookClient(wait: HookWait, installed: Map<String, String>): McpWorkspaceOperationClient {
+private fun hookClient(
+    root: CanonicalRoot,
+    wait: HookWait,
+    context: InstalledClientContext,
+): McpWorkspaceOperationClient {
+    val installed = context.environment
     val environment =
         when (wait) {
             HookWait.Configured,
@@ -39,7 +44,7 @@ private fun hookClient(wait: HookWait, installed: Map<String, String>): McpWorks
                     ("KAST_WORKSPACE_PREPARATION_WAIT" to (wait.allowance.protocolMillis()?.toString() ?: "indefinite"))
         }
     val home = Path.of(environment["HOME"] ?: System.getProperty("user.home"))
-    return mcpWorkspaceOperationClient(home, environment)
+    return mcpWorkspaceOperationClient(home, environment, context.installation, root)
 }
 
 private fun prepareHookClient(

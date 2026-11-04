@@ -16,6 +16,7 @@ class WorkspaceRefreshCommandAdmissionTest {
             listOf(
                 WorkspaceRefreshCommand.Request("refresh", WorkspaceRefreshEffect.FILE_REFRESH),
                 WorkspaceRefreshCommand.Request("short-parent", WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, 300),
+                WorkspaceRefreshCommand.Request("indefinite-parent", WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, null),
                 WorkspaceRefreshCommand.Configure(
                     WorkspaceRefreshRule.TaskSuccess(":build", WorkspaceRefreshEffect.FILE_REFRESH)
                 ),
