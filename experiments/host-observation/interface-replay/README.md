@@ -74,6 +74,7 @@ The first Codex-backed screen completed 24 measured trials.
 The current hill climb uses the [performance target](hill-climb.md).
 The [clarified baseline](baseline-v2.md) records all twelve correct TOON decisions before performance candidates.
 The report selects no format winner.
+The [delivery report](completion.md) records current acceptance, measured candidates, exact commands, and remaining limits.
 
 `JToon` 3.0.0 decodes a nested empty array as a string in a list-item object.
 Its emitted empty-array syntax agrees with the [TOON specification](https://github.com/toon-format/spec/blob/main/SPEC.md#91-inline-primitive-arrays).

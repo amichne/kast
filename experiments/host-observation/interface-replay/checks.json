@@ -1,0 +1,72 @@
+{
+  "checks": [
+    {
+      "command": "mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*' :cli:spotlessCheck :cli:checkTestKotlinFileLength verifyJsonContracts verifyVerificationGraph knowledgeImpact verifyKnowledgeBase hostObservationTest --console=plain",
+      "status": "PASSED",
+      "log": "build/interface-session-gates.log",
+      "publicShellTests": 91,
+      "hostPythonTests": 332,
+      "logSha256": "fc781731b8bfd494c58f48d3fd3c862c564f010340a2931af58994f951de7689"
+    },
+    {
+      "command": "node --test experiments/host-observation/pi_evaluation_replay*.test.mjs",
+      "status": "PASSED",
+      "log": "build/interface-session-node-all.log",
+      "passed": 84,
+      "skipped": 10,
+      "skips": "Optional integration checks need explicit manifest and SDK plan variables.",
+      "logSha256": "a5cfae9f514ed200b4c1eea4af6006ce829e914f1be48d547061fbbc7224de14"
+    },
+    {
+      "command": "KAST_REPLAY_TEST_PLAN=\"$PWD/build/interface-session-test-plan.json\" KAST_REPLAY_ADAPTER_MANIFEST=\"$PWD/cli/build/replay-adapter/manifest.json\" node --test experiments/host-observation/pi_evaluation_replay_sdk.test.mjs experiments/host-observation/pi_evaluation_replay_adapter.test.mjs experiments/host-observation/pi_evaluation_replay_adapter_session.test.mjs experiments/host-observation/pi_evaluation_replay_codex_sdk.test.mjs",
+      "status": "PASSED",
+      "log": "build/interface-session-integration-final.log",
+      "passed": 27,
+      "skipped": 0,
+      "logSha256": "483c649c1964502086db6c9cce74de2b0c57c3cd80096404d15457b11814b073"
+    },
+    {
+      "command": "mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py",
+      "status": "PASSED",
+      "log": "build/interface-session-fast-checks.log",
+      "portableSuites": 23,
+      "platformSkips": 0,
+      "logSha256": "098e1df2742f22bf6ebb8d51480fa257ba9ce6b15d9657fccd3a4d5a66315f4c"
+    },
+    {
+      "command": "mise exec -- ./gradlew hostObservationTest verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=experiments/host-observation/interface-replay/README.md,experiments/host-observation/interface-replay/hill-climb.md,experiments/host-observation/interface-replay/baseline-v2.md --console=plain",
+      "status": "PASSED",
+      "log": "build/interface-session-final-guards.log",
+      "logSha256": "2ccd9a8944a31594acbe38afd2ac1ba37abea11ba3269208b30bf463eb8ca885"
+    },
+    {
+      "command": "mise exec -- ./gradlew verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=experiments/host-observation/interface-replay/completion.md,experiments/host-observation/interface-replay/README.md --console=plain",
+      "status": "PASSED",
+      "log": "build/interface-completion-prose-gates.log",
+      "logSha256": "c372bcfb42c7a9daf5d4c4a74bef4849dc1e229e347071638dce399529bb20cd"
+    },
+    {
+      "command": "mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/host-observation/interface-replay/completion.md experiments/host-observation/interface-replay/README.md",
+      "status": "PASSED_WITH_ADVISORIES",
+      "log": "build/interface-completion-vale.json",
+      "qualification": "Grade-8 readability advisories remain for necessary technical terms.",
+      "logSha256": "ae40e1fd22174917f441247088660eec0cc0b87a6420aee9a908fe4066562811"
+    },
+    {
+      "command": "mise exec -- uv run --locked --script /Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/4.0.8/skills/controlled-technical-writing/scripts/assess_text.py --glossary \"$PWD/docs/glossary.json\" experiments/host-observation/interface-replay/completion.md experiments/host-observation/interface-replay/README.md",
+      "status": "ASSESSED",
+      "exitStatus": 1,
+      "log": "build/interface-completion-prose.json",
+      "qualification": "Only grade advisories remain. Reader comprehension is NOT_ASSESSED.",
+      "logSha256": "71399294f14dd4657391f2861eb36c679d7facb20a726adb95d3cd4055468960"
+    }
+  ],
+  "notRun": [
+    "FULL_PRE_PUSH_PRODUCT_GATE",
+    "NATIVE_HOST_ACCEPTANCE",
+    "COMPILER_SEMANTIC_FIXTURES",
+    "PUBLICATION",
+    "DEPLOYMENT",
+    "BROADER_MODEL_SWEEP"
+  ]
+}
