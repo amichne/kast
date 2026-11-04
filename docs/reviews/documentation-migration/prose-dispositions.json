@@ -629,13 +629,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx",
-        "sourceSha256": "1c6dab3a335c45e645bc3bf1b04daa1ad9d5a3a866eb78529b7b626b854ffbc9",
+        "sourceSha256": "d9dd7d45eb5bbb2d0b2b80750096fea3e114597b2ccd5edd85004f05fc19d0a5",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.99 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep project readiness, passive read admission, and explicit lifecycle effects. Preserve exact identifiers `IdeLifecycleState`, `HostedWorkspaceRefresh`, `WorkspaceRefreshService`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep project readiness, passive read admission, and explicit lifecycle effects. Preserve exact identifiers `IdeLifecycleState`, `HostedWorkspaceRefresh`, `WorkspaceRefreshService`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Reviewed the changed provenance banner: it now reports source drift after the preparation allowance changes. Keep this limitation visible; the historical explanation does not establish current lifecycle behavior. The exact grade advisory remains unresolved."
     },
     {
       "finding": {
@@ -713,13 +713,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/snippets/okf/transport/coordinator-and-workspace-preparation.mdx",
-        "sourceSha256": "aebac3d8db8decdf11b608aefdb43ffaa7b276ddb017509515a702602fd5c7df",
+        "sourceSha256": "6226f9848930088f889d83df2e82c4e28b092732d6f1d4189e71e410cd107d18",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 13.87 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 13.83 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep exact prepared workspace demand and original process/host identity. Preserve exact identifiers `InstalledCoordinatorConfiguration`, `InstalledWorkspacePreparation`, `WorkspacePreparations`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep exact prepared workspace demand and original process/host identity. Preserve exact identifiers `InstalledCoordinatorConfiguration`, `InstalledWorkspacePreparation`, `WorkspacePreparations`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Reviewed the changed provenance banner: it now reports source drift after the preparation allowance changes. Keep this limitation visible; the historical explanation does not establish current lifecycle behavior. The exact grade advisory remains unresolved."
     },
     {
       "finding": {
