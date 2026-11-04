@@ -206,3 +206,72 @@ test('SDK cancellation closes and reaps its prepared adapter without a shell or 
  assert.equal(process.listenerCount('message'),before.message);assert.equal(process.listenerCount('SIGTERM'),before.SIGTERM);
  assert.equal(unexpectedNetwork,0);
 });
+
+// Synthetic provider replies enter the real SDK shell path. Invalid bytes and
+// exhausted output remain failed model work with finalized first-request usage.
+test('shell model failures retain failed spend through the real SDK and production adapter',{skip:!planPath},async t=>{
+ assert.ok(path.isAbsolute(planPath));
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'kast-replay-sdk-shell-failures-')));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const source=JSON.parse(fs.readFileSync(planPath,'utf8'));
+ const plan={...source,instructionProfile:'full',executionProfile:'session',adapterManifestSha256:replaySha(fs.readFileSync(source.adapterManifest)),authPath:'/never-read-live-auth',modelsStorePath:'/never-read-live-models'};
+ const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
+ const sdk=await load('dist/index.js'),runtime=await syntheticRuntime(sdk,load);
+ const savedFetch=globalThis.fetch;let unexpectedNetwork=0,totalSends=0;
+ globalThis.fetch=async()=>{unexpectedNetwork++;throw Error('UNEXPECTED_NETWORK');};
+ t.after(()=>{globalThis.fetch=savedFetch;});
+ const trial=expandReplayPlan(plan).find(value=>value.caseId==='C6'&&value.repetition===1&&value.format==='TOON');
+ const valid=replayOracleControls('C6').accept[0].command;
+ const cases=[
+  {name:'invalid stdin before production admission',command:`printf '\\377' | ${valid}`,reason:'STDIN_INVALID_UTF8',outcome:'incorrect',admitted:false},
+  {name:'invalid stdout after a correctly admitted target',command:`${valid}; printf '\\377'`,reason:'SHELL_STDOUT_INVALID_UTF8',outcome:'incorrect',admitted:true},
+  {name:'stdout budget after a correctly admitted target',command:`${valid}; printf '%*s' 70000 ''`,reason:'SHELL_OUTPUT_BUDGET',outcome:'incomplete',admitted:true},
+ ];
+ for(const [index,control]of cases.entries())await t.test(control.name,async()=>{
+  const outputRoot=path.join(root,String(index));fs.mkdirSync(outputRoot,{mode:0o700});
+  const candidate={...plan,outputRoot};
+  const preflight=await replayWorker('--preflight',candidate,trial,{modelRuntime:runtime});
+  assert.equal(preflight.type,'projected',JSON.stringify(preflight));assert.equal(preflight.encodingEquivalent,true);
+  const preflightLedger=JSON.parse(fs.readFileSync(path.join(outputRoot,`preflight-${trial.trialId}`,'ledger.json')));
+  assert.equal(preflightLedger.providerSends,0);assert.equal(preflightLedger.nativeCalls,0);
+  let sends=0;
+  const report=await replayWorker('--trial',candidate,trial,{modelRuntime:runtime,fetch:async()=>{
+   totalSends++;sends++;assert.equal(sends,1,'Failed model work cannot trigger another provider request');
+   return syntheticToolReply(control.command);
+  }});
+  assert.equal(report.measurement,'SYNTHETIC_TRANSPORT');assert.deepEqual(report.outcome,{type:control.outcome,reasons:[control.reason]},JSON.stringify(report));
+  assert.equal(report.providerSends,1);assert.equal(sends,1);assert.equal(report.shellCalls,1);assert.equal(report.kastInvocations,1);assert.equal(report.nativeCalls,0);
+  assert.equal(report.grade.correct,false);assert.ok(report.grade.misuse.includes(control.reason));assert.equal(report.grade.argumentCause,null);
+  assert.equal(report.shellModelFailure.reason,control.reason);assert.equal(report.adapterFailure,null);assert.equal(report.protectedFilesUnchanged,true);
+  const usage=normalizeReplayUsage(report.usage);assert.equal(usage.type,'known');assert.equal(usage.value.totalTokens,110);
+  assert.equal(usage.value.input,80);assert.equal(usage.value.cacheRead,20);assert.equal(usage.value.output,10);
+  const ledger=JSON.parse(fs.readFileSync(path.join(outputRoot,trial.trialId,'ledger.json')));
+  assert.equal(ledger.providerSends,1);assert.equal(normalizeReplayUsage(ledger.usage).value.totalTokens,110);
+  assert.equal(report.adapterSession.type,'closed',JSON.stringify(report.adapterSession));assert.equal(report.adapterSession.ownedChildReaped,true);assert.equal(report.adapterSession.exitCode,0);
+  const archive=JSON.parse(fs.readFileSync(path.join(outputRoot,trial.trialId,'shell.json')));
+  assert.equal(archive.modelFailure.reason,control.reason);assert.equal(archive.captures.length,1);assert.equal(archive.invocations.length,1);
+  const capture=archive.captures[0],invocation=archive.invocations[0];
+  assert.equal(capture.command,control.command);assert.equal(report.proposal.input.command,control.command);
+  assert.deepEqual(invocation.request.argv,replayOracleControls('C6').accept[0].argv);
+  if(control.admitted){
+   assert.equal(report.productionAdmission.type,'ADMITTED');assert.equal(invocation.admission.type,'ADMITTED');
+   assert.equal(report.grade.dimensions.arguments,'PASS');assert.equal(report.grade.dimensions.target,'PASS');assert.equal(report.grade.dimensions.scope,'PASS');
+   if(control.reason==='SHELL_STDOUT_INVALID_UTF8'){
+    assert.equal(capture.stdoutEncoding,'INVALID_UTF8');assert.equal(capture.stdout,'');
+    const raw=Buffer.from(capture.stdoutBytesBase64,'base64');assert.equal(raw.at(-1),0xff);assert.ok(raw.length>1);assert.equal(capture.stdoutTruncated,false);
+   }else{
+    assert.equal(capture.stdoutTruncated,true);assert.ok(capture.stdoutBytes>65536);
+    assert.ok(Buffer.from(capture.stdoutBytesBase64,'base64').length<=65537);
+   }
+  }else{
+   assert.equal(invocation.request.stdinEncoding,'INVALID_UTF8');assert.deepEqual(Buffer.from(invocation.request.stdinBytesBase64,'base64'),Buffer.from([0xff]));
+   assert.equal(report.productionAdmission.type,'DRIVER_INPUT_REJECTED');assert.equal(report.productionAdmission.nativeCalls,0);
+   assert.equal(report.productionAdmission.arguments,undefined);assert.equal(invocation.admission.arguments,undefined);
+   assert.equal(capture.stdout,'');assert.equal(capture.exitStatus,2);assert.match(capture.stderr,/REPLAY_DRIVER_STDIN_INVALID_UTF8/);
+   assert.doesNotMatch(capture.stderr,/kast:|INVALID_COMMAND|INVALID_ARGUMENTS|INVALID_FIELDS/);
+  }
+  const events=JSON.parse(fs.readFileSync(path.join(outputRoot,trial.trialId,'events.json')));
+  assert.equal(events.filter(event=>event.type==='actual_provider_send').length,1);
+ });
+ assert.equal(totalSends,3);assert.equal(unexpectedNetwork,0);
+});

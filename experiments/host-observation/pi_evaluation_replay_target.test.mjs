@@ -168,7 +168,7 @@ test('instruction comparison needs actual recorded schema and declared profiles 
 
 test('default format comparison stays compatible while new modes reject undeclared format or profile drift',()=>{
  const baseline=withProfiles(rows(900,900)),candidate=withProfiles(rows(300,300));
- for(const row of candidate)row.format='TOON';
+ for(const row of candidate){row.format='TOON';row.trialId=`${row.caseId}-r${row.repetition}-${row.format}`;}
  assert.equal(assess(baseline,candidate).status,'TARGET_MET');
  assert.equal(assess(baseline,candidate,{target:{...target,variation:executionVariation}}).status,'INVALID_COMPARISON');
  const reversed=withProfiles(rows(900,900),{executionProfile:'session'});
@@ -208,4 +208,32 @@ test('instruction variation needs identical issued presentation bytes with recor
   const unavailable=assess(baseline,changed,{target:{...target,variation:instructionVariation}});
   assert.equal(unavailable.status,'UNMEASURED');assert.equal(unavailable.tokens.speedup,null);
  }
+});
+
+
+test('each cohort rejects duplicate source trials even when repetition labels differ',()=>{
+ for(const side of ['baseline','candidate']){
+  const baseline=rows(900,900),candidate=rows(300,300),records=side==='baseline'?baseline:candidate;
+  records[1]={...records[0],repetition:2};
+  const result=assess(baseline,candidate);
+  assert.equal(result.status,'INVALID_COMPARISON',side);
+  assert.deepEqual(result.reasons,['COHORT_REJECTED']);
+ }
+});
+
+test('source trial IDs must match their declared case repetition format and optional pair',()=>{
+ for(const [field,value]of [['trialId','C6-r1-JSON'],['trialId','C5-r2-JSON'],['trialId',''],['format','TOON'],['format',undefined],['pairId','C5-r2'],['pairId',null],['pairId',undefined],['repetition','1']]){
+  const candidate=rows(300,300);candidate[0][field]=value;
+  const result=assess(rows(900,900),candidate);
+  assert.equal(result.status,'INVALID_COMPARISON',`${field}: ${String(value)}`);
+  assert.deepEqual(result.reasons,['COHORT_REJECTED']);
+ }
+});
+
+test('separate cohort runs can reuse matching trial IDs and omit legacy pair fields',()=>{
+ const baseline=rows(900,900),candidate=rows(300,300);
+ assert.deepEqual(baseline.map(row=>row.trialId),candidate.map(row=>row.trialId));
+ assert.equal(assess(baseline,candidate).status,'TARGET_MET');
+ for(const records of [baseline,candidate])for(const row of records)row.pairId=`${row.caseId}-r${row.repetition}`;
+ assert.equal(assess(baseline,candidate).status,'TARGET_MET');
 });

@@ -1,6 +1,7 @@
 # Interface replay delivery
 
-The specified first scope passes A1–A10. Codex credentials supplied actual provider access through the existing Pi SDK runner.
+The specified first scope passes A1–A10 after the [delivery review repairs](delivery-review.md).
+Codex credentials supplied actual provider access through the existing Pi SDK runner.
 The later 3× target remains `NOT_MET`. The tested candidates supply no 3× token or latency claim.
 No live acceptance criterion remains blocked by authentication.
 
@@ -102,7 +103,7 @@ node experiments/host-observation/run_pi_evaluation.mjs --assess-target "$PWD/bu
 - **ASSESSED:** Prose retains grade-8 advisories for exact technical terms. This status supplies no reader-comprehension proof.
 - **NOT_MET:** The target commands exit with status 1 because the measured candidates miss the declared goals.
 - **NOT RUN:** Native acceptance, compiler semantic fixtures, publication, deployment, and a broader model sweep.
-- **NOT RUN:** The full pre-push product gate. This local task performs no push or publication.
+- **NOT RUN at the initial local handoff:** The full pre-push product gate. The later delivery review records the separately authorized merge work.
 
 Private payloads, raw shell records, actual `argv`, `stdin`, `stdout`, `stderr`, exit statuses, and immutable receipts remain in each recorded `build/` run.
 The original first-screen and baseline commands also remain in their source-bound reports and plans.

@@ -138,11 +138,15 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
  const expected=target.caseIds.flatMap(caseId=>[1,2].map(repetition=>({caseId,repetition,key:`${caseId}-r${repetition}`})));
  const keys=new Set(expected.map(item=>item.key)),issues=new Set(),invalid=new Set(),variationQualifications=new Set();
  const index=records=>{
-  const byKey=new Map();
+  const byKey=new Map(),sourceTrials=new Set();
   for(const row of records){
    const key=`${row?.caseId}-r${row?.repetition}`;
-   if(!keys.has(key)||byKey.has(key)||!outcomes.has(row?.outcome?.type)){invalid.add('COHORT_REJECTED');continue;}
-   byKey.set(key,row);
+   if(!keys.has(key)||byKey.has(key)||sourceTrials.has(row.trialId)||!outcomes.has(row?.outcome?.type)
+    ||typeof row.caseId!=='string'||![1,2].includes(row.repetition)||!formats.includes(row.format)
+    ||row.trialId!==`${key}-${row.format}`||(Object.hasOwn(row,'pairId')&&row.pairId!==key)){
+    invalid.add('COHORT_REJECTED');continue;
+   }
+   sourceTrials.add(row.trialId);byKey.set(key,row);
   }
   return byKey;
  };

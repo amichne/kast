@@ -117,3 +117,34 @@ test('finish decisions declare exact issued limitation codes without exposing ex
  const grade=gradeReplayDecision('C5',{...control.decision,limitations:[]},{type:'unavailable'});
  assert.equal(grade.correct,false);assert.equal(grade.productionCause,undefined,'A finish decision never entered CLI admission');
 });
+
+test('directory scope keeps descendants and rejects only an explicit false restriction',()=>{
+ for(const caseId of ['C3','C6']) {
+  const control=replayOracleControls(caseId).accept[0];
+  for(const includeSubdirectories of [undefined,null,true,false]) {
+   const admission=structuredClone(control.admission);
+   if(includeSubdirectories!==undefined)admission.request.source.scope.includeSubdirectories=includeSubdirectories;
+   const grade=gradeReplayDecision(caseId,control.decision,admission);
+   assert.equal(grade.dimensions.arguments,'PASS');
+   assert.equal(grade.dimensions.scope,includeSubdirectories===false?'FAIL':'PASS',`${caseId}: ${includeSubdirectories}`);
+   assert.equal(grade.correct,includeSubdirectories!==false);
+   if(includeSubdirectories===false)assert.ok(grade.reasons.includes('WRONG_SCOPE'));
+  }
+ }
+});
+
+test('closed decisions reject unknown keys and conflicting coverage claims',()=>{
+ const control=replayOracleControls('C5').accept[0];
+ for(const extra of [{answer:'MissingOrder is absent everywhere, with exhaustive coverage.'},{exhaustiveCoverage:true},{unknown:'unused'}]) {
+  const grade=gradeReplayDecision('C5',{...control.decision,...extra});
+  assert.equal(grade.correct,false);assert.deepEqual([...grade.reasons],['MALFORMED_DECISION']);
+ }
+ const extraScope={...control.decision,scope:{...control.decision.scope,includeSubdirectories:false}};
+ assert.equal(gradeReplayDecision('C5',extraScope).correct,false);
+ for(const caseId of ['C1','C2','C3','C4','C6']) {
+  const accepted=replayOracleControls(caseId).accept[0];
+  const grade=gradeReplayDecision(caseId,{kind:'invoke',answer:'done'},accepted.admission);
+  assert.equal(grade.correct,false);assert.deepEqual([...grade.reasons],['MALFORMED_DECISION']);
+ }
+ assert.ok(gradeReplayDecision('C5',{kind:'clarify',question:'Which scope?',answer:'absent'}).reasons.includes('MALFORMED_DECISION'));
+});

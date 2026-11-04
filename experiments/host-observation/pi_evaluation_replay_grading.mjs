@@ -8,14 +8,23 @@ const OTHER_RESULT='result:v1:00000000-0000-0000-0000-000000000005';
 const ORACLES=Object.freeze({
   C1:Object.freeze({action:'RUN',target:REF_LONG,relation:'CALLERS'}),
   C2:Object.freeze({action:'READ_SOURCE',target:REF_RETRIES,region:'CALLABLE_BODY',text:'COMPLETE'}),
-  C3:Object.freeze({action:'RUN',name:'OrderService',directory:'services/orders',sourceSets:['main']}),
+  C3:Object.freeze({action:'RUN',name:'OrderService',directory:'services/orders',sourceSets:['main'],includeSubdirectories:true}),
   C4:Object.freeze({action:'READ_RESULT',target:RESULT,cursor:1}),
   C5:Object.freeze({action:'finish',directory:'services/orders',sourceSets:['main'],exhaustive:false,limitations:['byte-limit-reached'],conclusion:'insufficient-evidence'}),
-  C6:Object.freeze({action:'RUN',name:'OrderService',directory:'services/orders',sourceSets:['main'],fields:['NAME','SIGNATURE']}),
+  C6:Object.freeze({action:'RUN',name:'OrderService',directory:'services/orders',sourceSets:['main'],includeSubdirectories:true,fields:['NAME','SIGNATURE']}),
 });
 const arrayEqual=(a,b)=>Array.isArray(a)&&a.length===b.length&&a.every((value,index)=>value===b[index]);
 const setEqual=(a,b)=>Array.isArray(a)&&a.length===new Set(a).size&&a.length===b.length&&a.every(value=>b.includes(value));
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const exactKeys=(value,keys)=>plain(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+const decisionShape=decision=>{
+  switch(decision.kind) {
+    case 'invoke':return exactKeys(decision,['kind']);
+    case 'finish':return exactKeys(decision,['kind','conclusion','scope','exhaustive','limitations'])&&exactKeys(decision.scope,['directory','sourceSets']);
+    case 'clarify':return exactKeys(decision,['kind','question']);
+    default:return false;
+  }
+};
 const dimension=result=>result?'PASS':'FAIL';
 const reasonFor=Object.freeze({arguments:'ARGUMENT_REJECTED',action:'WRONG_ACTION',target:'WRONG_TARGET',scope:'WRONG_SCOPE',reference:'WRONG_REFERENCE',coverage:'WRONG_COVERAGE'});
 
@@ -23,7 +32,7 @@ export function gradeReplayDecision(caseId,decision,admission) {
   const oracle=ORACLES[caseId];
   if(!oracle)throw Error('UNKNOWN_REPLAY_CASE');
   const dimensions={arguments:'NOT_APPLICABLE',action:'NOT_APPLICABLE',target:'NOT_APPLICABLE',scope:'NOT_APPLICABLE',reference:'NOT_APPLICABLE',coverage:'NOT_APPLICABLE'};
-  const malformed=!plain(decision)||!['invoke','finish','clarify'].includes(decision.kind);
+  const malformed=!plain(decision)||!decisionShape(decision);
   if(malformed)return Object.freeze({type:'GRADED_INCORRECT',correct:false,dimensions:Object.freeze({...dimensions,action:'FAIL'}),reasons:Object.freeze(['MALFORMED_DECISION'])});
   if(decision.kind==='invoke') {
     const admitted=admission?.type==='admitted'||admission?.type==='ADMITTED';
@@ -45,7 +54,7 @@ export function gradeReplayDecision(caseId,decision,admission) {
         case 'C3':
         case 'C6':
           dimensions.target=dimension(request.source?.type==='SEARCH_DECLARATIONS'&&request.source.declarationName===oracle.name&&(request.source.nameMatch===undefined||request.source.nameMatch===null||request.source.nameMatch==='EXACT'));
-          dimensions.scope=dimension(request.source?.scope?.type==='DIRECTORY'&&request.source.scope.relativeDirectoryPath===oracle.directory&&setEqual(request.source.scope.sourceSetNames,oracle.sourceSets));
+          dimensions.scope=dimension(request.source?.scope?.type==='DIRECTORY'&&request.source.scope.relativeDirectoryPath===oracle.directory&&setEqual(request.source.scope.sourceSetNames,oracle.sourceSets)&&[undefined,null,oracle.includeSubdirectories].includes(request.source.scope.includeSubdirectories));
           dimensions.action=dimension(request.type==='RUN'&&request.terminalStep?.type==='EMIT'&&(!request.steps||request.steps.length===0)&&(request.terminalStep.output===undefined||request.terminalStep.output===null||request.terminalStep.output.type==='SYMBOLS'));
           if(caseId==='C6')dimensions.action=dimension(dimensions.action==='PASS'&&request.terminalStep.output?.type==='SYMBOLS'&&setEqual(request.terminalStep.output.fields,oracle.fields));
           break;
@@ -62,7 +71,7 @@ export function gradeReplayDecision(caseId,decision,admission) {
     dimensions.coverage=dimension(decision.conclusion===oracle.conclusion&&decision.exhaustive===oracle.exhaustive&&setEqual(decision.limitations,oracle.limitations));
   } else dimensions.action='FAIL';
   const reasons=Object.entries(dimensions).filter(([,value])=>value==='FAIL').map(([name])=>reasonFor[name]);
-  return Object.freeze({type:reasons.length===0?'GRADED_CORRECT':'GRADED_INCORRECT',correct:reasons.length===0,dimensions:Object.freeze(dimensions),reasons:Object.freeze(reasons),...(decision.kind==='invoke'&&typeof admission?.cause==='string'?{productionCause:admission.cause}:{})});
+  return Object.freeze({type:reasons.length===0?'GRADED_CORRECT':'GRADED_INCORRECT',correct:reasons.length===0,dimensions:Object.freeze(dimensions),reasons:Object.freeze(reasons),...(decision.kind==='invoke'&&admission?.type!=='DRIVER_INPUT_REJECTED'&&typeof admission?.cause==='string'?{productionCause:admission.cause}:{})});
 }
 
 // Independent controls are explicit annotations. No expected value is derived

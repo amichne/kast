@@ -58,7 +58,7 @@ export function validateReplayPlan(plan) {
  return plan;
 }
 export async function executeReplayPlan(planFile,plan) {
- examineReplayPins(plan);
+ examineReplayPins(plan,{planFile});
  const trials=expandReplayPlan(plan),controller=new AbortController();
  const cancel=()=>controller.abort();process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
  fs.mkdirSync(plan.outputRoot,{mode:0o700});

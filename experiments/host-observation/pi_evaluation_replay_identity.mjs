@@ -2,12 +2,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { replayCases,heldOutManifest } from './pi_evaluation_replay_cases.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-export function replaySourceIdentity(root) {
+export function replaySourceIdentity(root,ownedPlanFile) {
  const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8'}).trim();
- const paths=new Set([...git('diff','HEAD','--name-only').split('\n'),...git('ls-files','--others','--exclude-standard').split('\n')].filter(Boolean));
+ const excluded=ownedPlanFile?path.relative(root,path.resolve(ownedPlanFile)):null;
+ const tracked=git('diff','HEAD','--name-only').split('\n');
+ const untracked=git('ls-files','--others','--exclude-standard').split('\n').filter(file=>file!==excluded);
+ const paths=new Set([...tracked,...untracked].filter(Boolean));
  const files=[...paths].sort().map(file=>({path:file,sha256:fs.existsSync(path.join(root,file))?sha(fs.readFileSync(path.join(root,file))):'DELETED'}));
  return {sourceRevision:git('rev-parse','HEAD'),diffSha256:sha(JSON.stringify(files)),files};
 }
@@ -31,7 +35,9 @@ export function prepareReplayPlan(planPath,root,caseId,{credentialSource='PI_OAU
   settings:{retries:0,compaction:false,cacheWarming:'off',transport:'sse'}};
  fs.writeFileSync(planPath,JSON.stringify(plan,null,2)+'\n',{mode:0o600,flag:'wx'});return plan;
 }
-export function examineReplayPins(plan) {
+export function examineReplayPins(plan,{root=fileURLToPath(new URL('../..',import.meta.url)),planFile}={}) {
+ const current=replaySourceIdentity(root,planFile);
+ if(current.sourceRevision!==plan.sourceRevision||current.diffSha256!==plan.diffSha256)throw Error('REPLAY_SOURCE_CHANGED');
  if(sha(fs.readFileSync(plan.adapterManifest))!==plan.adapterManifestSha256)throw Error('ADAPTER_MANIFEST_CHANGED');
  const manifest=JSON.parse(fs.readFileSync(plan.adapterManifest));
  for(const artifact of manifest.artifacts)if(sha(fs.readFileSync(artifact.path))!==artifact.sha256)throw Error('ADAPTER_ARTIFACT_CHANGED');

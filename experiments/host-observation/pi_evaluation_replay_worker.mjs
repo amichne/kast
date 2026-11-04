@@ -40,6 +40,13 @@ export function replayAdapterOutcome(failure) {
  if(failure?.trigger==='MODEL_ADMISSION'&&failure.failure?.operation==='ADMIT'&&failure.failure?.reason==='ADAPTER_REJECTED'&&failure.failure?.cause==='RESPONSE_TOO_LARGE')return {type:'incomplete',reasons:['ADAPTER_OUTPUT_BUDGET']};
  return {type:'invalid',reasons:['ADAPTER_SESSION_UNAVAILABLE']};
 }
+export function replayShellFailureOutcome(failure) {
+ switch(failure?.reason){
+  case 'STDIN_INVALID_UTF8':case 'DRIVER_REQUEST_INVALID_UTF8':case 'DRIVER_REQUEST_REJECTED':case 'SHELL_STDOUT_INVALID_UTF8':case 'SHELL_STDERR_INVALID_UTF8':return {type:'incorrect',reasons:[failure.reason]};
+  case 'STDIN_BUDGET':case 'DRIVER_REQUEST_TOO_LARGE':case 'SHELL_OUTPUT_BUDGET':return {type:'incomplete',reasons:[failure.reason]};
+  default:return {type:'invalid',reasons:['SHELL_ADAPTER_FAILURE']};
+ }
+}
 export function replayMessages(item,presentation) {
  const id=item.prefixCall.toolCallId;
  const usage={input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}};
@@ -164,7 +171,7 @@ export async function replayWorker(mode,plan,trial,services={}) {
   });
   if(archive.type!=='completed')throw Error(JSON.stringify(archive));
   if(adapterSession){adapterClose=await adapterSession.close();adapterSession=null;if(adapterClose.type!=='closed')adapterFailure??=adapterClose;}
-  write('events.json',events);write('shell.json',{captures:shell.captures,invocations:shell.invocations});
+  write('events.json',events);write('shell.json',{captures:shell.captures,invocations:shell.invocations,rejections:shell.rejections??[],modelFailure:shell.modelFailure??null});
   if(preflight){write('projection.json',projection);return projection??{type:'invalid',failure:'PROJECTION_UNAVAILABLE'};}
   const inputValid=projection?.type==='projected'&&actualPayload!==null;
   let decision;
@@ -174,17 +181,18 @@ export async function replayWorker(mode,plan,trial,services={}) {
   const evaluated=gradeReplayDecision(item.id,decision,admission);
   const counts=budget.report();
   const excess=counts.kastInvocations>1||counts.blockedShellCalls>0||counts.blockedProviderSends>0;
-  const grade={...evaluated,correct:evaluated.correct&&!excess,misuse:[...evaluated.reasons,...(excess?['RESOURCE_MISUSE']:[])],argumentCause:evaluated.productionCause??null,coverageCorrect:evaluated.dimensions.coverage==='PASS'?true:evaluated.dimensions.coverage==='FAIL'?false:null};
+  const grade={...evaluated,correct:evaluated.correct&&!excess&&!shell.modelFailure,misuse:[...evaluated.reasons,...(excess?['RESOURCE_MISUSE']:[]),...(shell.modelFailure?[shell.modelFailure.reason]:[])],argumentCause:evaluated.productionCause??null,coverageCorrect:evaluated.dimensions.coverage==='PASS'?true:evaluated.dimensions.coverage==='FAIL'?false:null};
   let outcome;
   if(deadline)outcome={type:'incomplete',reasons:['DEADLINE']};
   else if(adapterFailure)outcome=replayAdapterOutcome(adapterFailure);
+  else if(shell.modelFailure)outcome=replayShellFailureOutcome(shell.modelFailure);
   else if(transportFailure||!inputValid||shell.failed)outcome={type:'invalid',reasons:[transportFailure?'PROVIDER_TRANSPORT_FAILURE':!inputValid?'INPUT_PROJECTION_FAILED':'SHELL_ADAPTER_FAILURE']};
   else if(responseLimit||assistant?.stopReason==='length')outcome={type:'incomplete',reasons:['OUTPUT_BUDGET']};
   else outcome={type:grade.correct?'correct':'incorrect',reasons:grade.misuse};
   const protectedFilesUnchanged=protectedPaths.every((file,index)=>replaySha(fs.readFileSync(file))===before[index]);
   if(!protectedFilesUnchanged)outcome={type:'invalid',reasons:['PROTECTED_FILE_CHANGED']};
   const report={...trial,measurement,outcome,usage,...budget.report(),nativeCalls:0,grade,decision,proposal,
-   adapterSession:adapterClose,adapterFailure,productionAdmission:admission,providerHttpStatus,presentationBytes:Buffer.byteLength(presentation),presentationSha256:replaySha(presentation),
+   adapterSession:adapterClose,adapterFailure,shellModelFailure:shell.modelFailure??null,productionAdmission:admission,providerHttpStatus,presentationBytes:Buffer.byteLength(presentation),presentationSha256:replaySha(presentation),
    projection,actualProviderProjection:inspectReplayProjection(actualPayload??{},presentation),
    latency:{trialMs:performance.now()-started,queueMs:0,setupMs,providerMs,shellMs:shell.captures.reduce((total,capture)=>total+capture.durationMs,0),method:'WORKER_MONOTONIC_V1'},
    identity:{...authIdentity,instructionProfile:plan.instructionProfile??'full',executionProfile:plan.executionProfile??'fresh',publicContractSha256:plan.publicContractSha256,sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:manifest.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,provider:'openai-codex',model:'gpt-6.1-sol',effort:'high',timingMethod:'WORKER_MONOTONIC_V1',fixtureVersion:item.version,canonicalSha256:item.canonicalSha256,contractSha256:replaySha(item.visibleContract),promptSha256:replaySha(item.task),graderSha256:replaySha(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))),sdkIdentity:plan.sdkIdentity??[],budgetSha256:replaySha(JSON.stringify({wallSeconds:60,workers:plan.workers,providerRequests:1,shellCalls:1,invocations:1,maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,outputCap:2000,retries:0,compaction:false,cacheWarming:'off',transport:'sse'}))},

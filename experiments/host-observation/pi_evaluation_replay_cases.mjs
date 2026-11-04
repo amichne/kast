@@ -68,6 +68,7 @@ export function replayTransition(caseId,admission) {
   const search=request?.type==='RUN'&&request.source?.type==='SEARCH_DECLARATIONS'&&request.source.declarationName==='OrderService'
     &&[undefined,null,'EXACT'].includes(request.source.nameMatch)&&request.source.scope?.type==='DIRECTORY'
     &&request.source.scope.relativeDirectoryPath==='services/orders'&&list(request.source.scope.sourceSetNames,['main'])
+    &&[undefined,null,true].includes(request.source.scope.includeSubdirectories)
     &&(!request.steps||request.steps.length===0)&&request.terminalStep?.type==='EMIT';
   const supported={
     C1:request?.type==='RUN'&&request.source?.type==='SYMBOL_REFS'&&list(request.source.symbolRefs,['exact:v5:AAAAAAAAAAAAAAAAAAAAAQ'])
