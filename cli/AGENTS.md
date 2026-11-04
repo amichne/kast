@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-11-04T14:30:00Z"
-source_revision: 0decbfa874a21fc70592992bc12eaa6939980af2
+timestamp: "2026-11-04T14:32:00Z"
+source_revision: 9b587586704b348a6310190d2e258f48e95df3b5
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt

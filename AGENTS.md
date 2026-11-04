@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-11-03T00:02:20Z"
-source_revision: 974ee2f06564da9532382a97aef401affb308700
+timestamp: "2026-11-04T14:32:00Z"
+source_revision: 9b587586704b348a6310190d2e258f48e95df3b5
 code_sources:
   - path: build.gradle.kts
   - path: .github/scripts/ci/fast_checks.py

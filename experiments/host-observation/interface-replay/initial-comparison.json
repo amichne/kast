@@ -1,0 +1,1148 @@
+{
+  "type": "REPLAY_COMPARISON",
+  "outcome": "INCONCLUSIVE",
+  "plannedTrials": 24,
+  "plannedPairs": 12,
+  "attemptedPairs": 0,
+  "distinctCases": 6,
+  "formats": {
+    "TOON": {
+      "planned": 12,
+      "outcomes": {
+        "invalid": 12
+      },
+      "correctness": {
+        "correct": 0,
+        "eligible": 0,
+        "ratio": null
+      },
+      "tokens": {
+        "knownTotal": 0,
+        "complete": true,
+        "missing": []
+      },
+      "tokensPerCorrectCompletion": {
+        "status": "UNDEFINED",
+        "value": null,
+        "knownTokens": 0,
+        "correct": 0,
+        "missingUsage": []
+      },
+      "argumentRejections": {},
+      "misuse": {},
+      "coverage": {
+        "correct": 0,
+        "incorrect": 0,
+        "notApplicable": 0,
+        "unavailable": []
+      },
+      "latency": {
+        "measurable": 0,
+        "medianTrialMs": null,
+        "queueMs": [
+          {
+            "trialId": "C1-r1-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C1-r2-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C2-r1-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C2-r2-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C3-r1-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C3-r2-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C4-r1-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C4-r2-TOON",
+            "value": null
+          },
+          {
+            "trialId": "C5-r1-TOON",
+            "value": 1.706083000000035
+          },
+          {
+            "trialId": "C5-r2-TOON",
+            "value": 4.233125000000655
+          },
+          {
+            "trialId": "C6-r1-TOON",
+            "value": 5.51995800000077
+          },
+          {
+            "trialId": "C6-r2-TOON",
+            "value": 6.050958000000719
+          }
+        ]
+      }
+    },
+    "JSON": {
+      "planned": 12,
+      "outcomes": {
+        "invalid": 12
+      },
+      "correctness": {
+        "correct": 0,
+        "eligible": 0,
+        "ratio": null
+      },
+      "tokens": {
+        "knownTotal": 0,
+        "complete": true,
+        "missing": []
+      },
+      "tokensPerCorrectCompletion": {
+        "status": "UNDEFINED",
+        "value": null,
+        "knownTokens": 0,
+        "correct": 0,
+        "missingUsage": []
+      },
+      "argumentRejections": {},
+      "misuse": {},
+      "coverage": {
+        "correct": 0,
+        "incorrect": 0,
+        "notApplicable": 0,
+        "unavailable": []
+      },
+      "latency": {
+        "measurable": 0,
+        "medianTrialMs": null,
+        "queueMs": [
+          {
+            "trialId": "C1-r1-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C1-r2-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C2-r1-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C2-r2-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C3-r1-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C3-r2-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C4-r1-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C4-r2-JSON",
+            "value": null
+          },
+          {
+            "trialId": "C5-r1-JSON",
+            "value": 2.565750000000662
+          },
+          {
+            "trialId": "C5-r2-JSON",
+            "value": 3.2746250000000146
+          },
+          {
+            "trialId": "C6-r1-JSON",
+            "value": 4.95220800000061
+          },
+          {
+            "trialId": "C6-r2-JSON",
+            "value": 6.575333000000683
+          }
+        ]
+      }
+    }
+  },
+  "paired": {
+    "correctness": {
+      "count": 0,
+      "toonWins": 0,
+      "jsonWins": 0,
+      "ties": 0,
+      "pairs": []
+    },
+    "tokensBothCorrect": {
+      "count": 0,
+      "deltas": [],
+      "medianDeltaJsonMinusToon": null
+    },
+    "latency": {
+      "count": 0,
+      "deltas": [],
+      "medianDeltaJsonMinusToon": null
+    }
+  },
+  "exclusions": [
+    {
+      "trialId": "C1-r1-TOON",
+      "pairId": "C1-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C1-r1-JSON",
+      "pairId": "C1-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C1-r2-JSON",
+      "pairId": "C1-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C1-r2-TOON",
+      "pairId": "C1-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C2-r1-JSON",
+      "pairId": "C2-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C2-r1-TOON",
+      "pairId": "C2-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C2-r2-TOON",
+      "pairId": "C2-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C2-r2-JSON",
+      "pairId": "C2-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C3-r1-TOON",
+      "pairId": "C3-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C3-r1-JSON",
+      "pairId": "C3-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C3-r2-JSON",
+      "pairId": "C3-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C3-r2-TOON",
+      "pairId": "C3-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C4-r1-JSON",
+      "pairId": "C4-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C4-r1-TOON",
+      "pairId": "C4-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C4-r2-TOON",
+      "pairId": "C4-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C4-r2-JSON",
+      "pairId": "C4-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "PAIR_ENCODING_MISMATCH"
+      ]
+    },
+    {
+      "trialId": "C5-r1-TOON",
+      "pairId": "C5-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C5-r1-JSON",
+      "pairId": "C5-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C5-r2-JSON",
+      "pairId": "C5-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C5-r2-TOON",
+      "pairId": "C5-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C6-r1-JSON",
+      "pairId": "C6-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C6-r1-TOON",
+      "pairId": "C6-r1",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C6-r2-TOON",
+      "pairId": "C6-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    },
+    {
+      "trialId": "C6-r2-JSON",
+      "pairId": "C6-r2",
+      "outcome": "invalid",
+      "reasons": [
+        "CREDENTIAL_UNAVAILABLE"
+      ]
+    }
+  ],
+  "missingPairs": [
+    {
+      "pairId": "C1-r1",
+      "arms": [
+        {
+          "trialId": "C1-r1-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C1-r1-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C1-r2",
+      "arms": [
+        {
+          "trialId": "C1-r2-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C1-r2-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C2-r1",
+      "arms": [
+        {
+          "trialId": "C2-r1-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C2-r1-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C2-r2",
+      "arms": [
+        {
+          "trialId": "C2-r2-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C2-r2-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C3-r1",
+      "arms": [
+        {
+          "trialId": "C3-r1-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C3-r1-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C3-r2",
+      "arms": [
+        {
+          "trialId": "C3-r2-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C3-r2-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C4-r1",
+      "arms": [
+        {
+          "trialId": "C4-r1-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C4-r1-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C4-r2",
+      "arms": [
+        {
+          "trialId": "C4-r2-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        {
+          "trialId": "C4-r2-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C5-r1",
+      "arms": [
+        {
+          "trialId": "C5-r1-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        {
+          "trialId": "C5-r1-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C5-r2",
+      "arms": [
+        {
+          "trialId": "C5-r2-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        {
+          "trialId": "C5-r2-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C6-r1",
+      "arms": [
+        {
+          "trialId": "C6-r1-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        {
+          "trialId": "C6-r1-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        }
+      ]
+    },
+    {
+      "pairId": "C6-r2",
+      "arms": [
+        {
+          "trialId": "C6-r2-TOON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        {
+          "trialId": "C6-r2-JSON",
+          "outcome": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        }
+      ]
+    }
+  ],
+  "ledger": {
+    "providerSends": {
+      "knownTotal": 0,
+      "complete": true,
+      "missing": []
+    },
+    "shellCalls": {
+      "knownTotal": 0,
+      "complete": true,
+      "missing": []
+    },
+    "kastInvocations": {
+      "knownTotal": 0,
+      "complete": true,
+      "missing": []
+    },
+    "nativeCalls": {
+      "knownTotal": 0,
+      "complete": true,
+      "missing": []
+    },
+    "tokens": {
+      "knownTotal": 0,
+      "complete": false,
+      "missing": [
+        "C1-r1-TOON",
+        "C1-r1-JSON",
+        "C1-r2-JSON",
+        "C1-r2-TOON",
+        "C2-r1-JSON",
+        "C2-r1-TOON",
+        "C2-r2-TOON",
+        "C2-r2-JSON",
+        "C3-r1-TOON",
+        "C3-r1-JSON",
+        "C3-r2-JSON",
+        "C3-r2-TOON",
+        "C4-r1-JSON",
+        "C4-r1-TOON",
+        "C4-r2-TOON",
+        "C4-r2-JSON",
+        "C5-r1-TOON",
+        "C5-r1-JSON",
+        "C5-r2-JSON",
+        "C5-r2-TOON",
+        "C6-r1-JSON",
+        "C6-r1-TOON",
+        "C6-r2-TOON",
+        "C6-r2-JSON"
+      ]
+    },
+    "trials": [
+      {
+        "trialId": "C1-r1-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C1-r1-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C1-r2-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C1-r2-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C2-r1-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C2-r1-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C2-r2-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C2-r2-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C3-r1-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C3-r1-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C3-r2-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C3-r2-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C4-r1-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C4-r1-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C4-r2-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C4-r2-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "PAIR_ENCODING_MISMATCH"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": null
+      },
+      {
+        "trialId": "C5-r1-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 1.706083000000035
+        }
+      },
+      {
+        "trialId": "C5-r1-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 2.565750000000662
+        }
+      },
+      {
+        "trialId": "C5-r2-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 3.2746250000000146
+        }
+      },
+      {
+        "trialId": "C5-r2-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 4.233125000000655
+        }
+      },
+      {
+        "trialId": "C6-r1-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 4.95220800000061
+        }
+      },
+      {
+        "trialId": "C6-r1-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 5.51995800000077
+        }
+      },
+      {
+        "trialId": "C6-r2-TOON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 6.050958000000719
+        }
+      },
+      {
+        "trialId": "C6-r2-JSON",
+        "outcome": {
+          "type": "invalid",
+          "reasons": [
+            "CREDENTIAL_UNAVAILABLE"
+          ]
+        },
+        "providerSends": 0,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "unavailable",
+          "reason": "USAGE_UNAVAILABLE"
+        },
+        "latency": {
+          "queueMs": 6.575333000000683
+        }
+      }
+    ]
+  },
+  "qualifications": [
+    "REPLAY_DECISIONS_GIVEN_FIXED_STATES",
+    "REPETITIONS_ARE_NOT_INDEPENDENT_TASKS",
+    "LATENCY_EXCLUDES_NATIVE_SEMANTIC_CLAIMS",
+    "NO_FORMAT_WINNER_REQUIRED"
+  ],
+  "liveAcceptance": "NOT_RUN",
+  "preflight": {
+    "planned": 24,
+    "completeInputs": 24,
+    "qualifiedPairs": 4
+  },
+  "source": {
+    "revision": "9b587586704b348a6310190d2e258f48e95df3b5",
+    "diffSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "adapterManifestSha256": "3173b89379cdd1bf975c55c5ba6727be569f8bdc724479ec627351e44ce25651"
+  },
+  "limits": {
+    "workers": 8,
+    "maximumProviderRequests": 24,
+    "maximumRequestsPerTrial": 1,
+    "wallSeconds": 60
+  }
+}

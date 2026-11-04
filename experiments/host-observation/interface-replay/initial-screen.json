@@ -1,0 +1,353 @@
+{
+  "sourceRevision": "9b587586704b348a6310190d2e258f48e95df3b5",
+  "diffSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "piVersion": "1.4.0",
+  "sdkIdentity": [
+    {
+      "file": "package.json",
+      "sha256": "df6883685382d6a914e5797232744c26579fe7db5576ea0e9c859d018ca2d54e"
+    },
+    {
+      "file": "dist/core/sdk.js",
+      "sha256": "992a539079e42f9dc577064e971afa9972a01dbffedb035f7cb68ab204d36964"
+    },
+    {
+      "file": "dist/core/session-manager.js",
+      "sha256": "046b6a1109ac3f0ed893bb85bf0648709362fa926a5da75761216cf2fcf9d926"
+    },
+    {
+      "file": "dist/core/tools/bash.js",
+      "sha256": "f32e87a42f66276b2eafaaf0848babf52523d37ab0fd448439586376747f03c4"
+    },
+    {
+      "file": "dist/core/extensions/runner.js",
+      "sha256": "0e659fb4338069d91c4d0a3b032b51bf8d179a99e6417bc3e39e59b672aaec76"
+    },
+    {
+      "file": "../pi-ai/package.json",
+      "sha256": "36df91142c18a5912eafab0f2783bb4d88cdd101c5c5e7fd9173d4387cc5cced"
+    },
+    {
+      "file": "../pi-ai/dist/api/openai-codex-responses.js",
+      "sha256": "339c75c5799ec3baca669114e3779988f819a5479e2b2c43dfa0b0f05b921c92"
+    },
+    {
+      "file": "../pi-ai/dist/api/openai-responses-shared.js",
+      "sha256": "eed025a4821b1e017dd024b930caf8fa11c7fe053a81efe11bd7d846fdc641d3"
+    },
+    {
+      "file": "../pi-agent-core/package.json",
+      "sha256": "3ee9a0f81587b917e7a010e4391fc10d2b04fa48091b693bffebe3b9b55e9f14"
+    },
+    {
+      "file": "../pi-agent-core/dist/agent.js",
+      "sha256": "f45ae001e2b14fced8ae151f0a00303b5fbdb5fc4b25418d45de6a5546f48a8c"
+    }
+  ],
+  "cases": [
+    {
+      "id": "C1",
+      "version": "interface-replay-v1",
+      "canonicalSha256": "009fbdfdbe5693c5583272c3e2e8b0b72ec5d3dd72ba419041eb8d0c37c35013",
+      "promptSha256": "3d8ef3a70cdf049f78aabf89eca7a63d1135cd240ce22005be08b48fab234b7b",
+      "contractSha256": "14311a4ccfe3e7e48dc82bef6258349d5658e1354fc0abb89fb8c3ddb4667d83"
+    },
+    {
+      "id": "C2",
+      "version": "interface-replay-v1",
+      "canonicalSha256": "44466d1e4e3e9f2cd582097596ec11c402ab27a47379750a5ab3904a07934813",
+      "promptSha256": "854e07c10c4d52b3800506a43fc23ab6ca5c86a6a6f80b6c36e48020fbeb0465",
+      "contractSha256": "14311a4ccfe3e7e48dc82bef6258349d5658e1354fc0abb89fb8c3ddb4667d83"
+    },
+    {
+      "id": "C3",
+      "version": "interface-replay-v1",
+      "canonicalSha256": "56b683456527b96af998c87c293691fb1eea58f965f406449a09b15267ff8edb",
+      "promptSha256": "e86d4f6641400191e0e83ec81a498858f031152b8c85dbd5606faa18b0ec9b10",
+      "contractSha256": "14311a4ccfe3e7e48dc82bef6258349d5658e1354fc0abb89fb8c3ddb4667d83"
+    },
+    {
+      "id": "C4",
+      "version": "interface-replay-v1",
+      "canonicalSha256": "3221d73adca04305ebe39bc7bf3bf74d254d2ac98a715186995d8451616cda8d",
+      "promptSha256": "4e6b7ded9947ac13198df5f91aae6edb3d9231df45d22688cf65392a9401b3d4",
+      "contractSha256": "14311a4ccfe3e7e48dc82bef6258349d5658e1354fc0abb89fb8c3ddb4667d83"
+    },
+    {
+      "id": "C5",
+      "version": "interface-replay-v1",
+      "canonicalSha256": "45b976fb37854635ab1a996021017c6603c528035d42f136f37ce2e64868af74",
+      "promptSha256": "86f9cabbc07d432abe95a448a7199c2e0969874370f70ca967f5d21fc0b2a649",
+      "contractSha256": "14311a4ccfe3e7e48dc82bef6258349d5658e1354fc0abb89fb8c3ddb4667d83"
+    },
+    {
+      "id": "C6",
+      "version": "interface-replay-v1",
+      "canonicalSha256": "f824d1bc9cdda76945580dc0b03c12d8ac5b4e4143e9357f48169b912cd94ca3",
+      "promptSha256": "d5c0a29273eacafc295a8e2189f2e321c66dbd830c77381fcc313354909620da",
+      "contractSha256": "14311a4ccfe3e7e48dc82bef6258349d5658e1354fc0abb89fb8c3ddb4667d83"
+    }
+  ],
+  "heldOut": [
+    {
+      "id": "H1",
+      "factor": "different-overloads",
+      "task": "Find callers of cancel(id: String, retries: Int) in services/orders/src/main/kotlin/Orders.kt. Select its issued reference from the supplied overloads.",
+      "version": "interface-heldout-v1",
+      "canonicalPath": "/Users/amichne/.codex-workspaces/worktrees/ios-d36860c4-7054-4b3f-bc5b-9a442fb8f9df/kast/experiments/host-observation/interface-replay/fixtures/H1.json",
+      "canonicalSha256": "7da70d2e48ad3e52ef3c9ec967389ad9cf300074ad79e5647cc41594473edb2b",
+      "status": "HELD_OUT_NOT_RUN"
+    },
+    {
+      "id": "H2",
+      "factor": "larger-table",
+      "task": "Find callers of submit in services/orders/src/main/kotlin/Order23.kt. Use the issued reference from the larger declaration table.",
+      "version": "interface-heldout-v1",
+      "canonicalPath": "/Users/amichne/.codex-workspaces/worktrees/ios-d36860c4-7054-4b3f-bc5b-9a442fb8f9df/kast/experiments/host-observation/interface-replay/fixtures/H2.json",
+      "canonicalSha256": "e9eacebf3896231483c5c8fa7a297eafcc1144cfc93d29f1ac8e2f5ff995f3e6",
+      "status": "HELD_OUT_NOT_RUN"
+    },
+    {
+      "id": "H3",
+      "factor": "nested-qualified",
+      "task": "Does this nested qualified result prove that submit is absent from services/orders in main? Answer from this evidence without another command.",
+      "version": "interface-heldout-v1",
+      "canonicalPath": "/Users/amichne/.codex-workspaces/worktrees/ios-d36860c4-7054-4b3f-bc5b-9a442fb8f9df/kast/experiments/host-observation/interface-replay/fixtures/H3.json",
+      "canonicalSha256": "605ed311555ebb0a3be06903728656cb5d77885b6daad924d10cbfdf30b66bcb",
+      "status": "HELD_OUT_NOT_RUN"
+    },
+    {
+      "id": "H4",
+      "factor": "source-escaping",
+      "task": "Find callers of renderReceipt in services/orders/src/main/kotlin/Orders.kt. Preserve its issued reference despite the escaped source text.",
+      "version": "interface-heldout-v1",
+      "canonicalPath": "/Users/amichne/.codex-workspaces/worktrees/ios-d36860c4-7054-4b3f-bc5b-9a442fb8f9df/kast/experiments/host-observation/interface-replay/fixtures/H4.json",
+      "canonicalSha256": "decd4a2cf268ac5220fef89697994c9cea8ea46519b60710b368c58ee74dc93b",
+      "status": "HELD_OUT_NOT_RUN"
+    }
+  ],
+  "model": {
+    "provider": "openai-codex",
+    "id": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  "caps": {
+    "maximumProviderPayloadBytes": 262144,
+    "maximumProviderResponseBytes": 65536,
+    "maximumOutputTokens": 2000,
+    "maximumShellCalls": 1,
+    "maximumInvocations": 1,
+    "maximumNativeCalls": 0
+  },
+  "settings": {
+    "retries": 0,
+    "compaction": false,
+    "cacheWarming": "off",
+    "transport": "sse"
+  },
+  "adapterManifestSha256": "3173b89379cdd1bf975c55c5ba6727be569f8bdc724479ec627351e44ce25651",
+  "artifactAggregateSha256": "278755cf6cc25ba14b6ae631faec93418fb8deeccd7a50b4566ca74c9b0dcba9",
+  "planSha256": "861421693c04e808f17ee091590f2d4c75ce464debea1142e69450de077256fe",
+  "schedule": {
+    "mode": "NO_INFERENCE",
+    "trials": [
+      {
+        "trialId": "C1-r1-TOON",
+        "pairId": "C1-r1",
+        "caseId": "C1",
+        "format": "TOON",
+        "repetition": 1,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C1-r1-JSON",
+        "pairId": "C1-r1",
+        "caseId": "C1",
+        "format": "JSON",
+        "repetition": 1,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C1-r2-JSON",
+        "pairId": "C1-r2",
+        "caseId": "C1",
+        "format": "JSON",
+        "repetition": 2,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C1-r2-TOON",
+        "pairId": "C1-r2",
+        "caseId": "C1",
+        "format": "TOON",
+        "repetition": 2,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C2-r1-JSON",
+        "pairId": "C2-r1",
+        "caseId": "C2",
+        "format": "JSON",
+        "repetition": 1,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C2-r1-TOON",
+        "pairId": "C2-r1",
+        "caseId": "C2",
+        "format": "TOON",
+        "repetition": 1,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C2-r2-TOON",
+        "pairId": "C2-r2",
+        "caseId": "C2",
+        "format": "TOON",
+        "repetition": 2,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C2-r2-JSON",
+        "pairId": "C2-r2",
+        "caseId": "C2",
+        "format": "JSON",
+        "repetition": 2,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C3-r1-TOON",
+        "pairId": "C3-r1",
+        "caseId": "C3",
+        "format": "TOON",
+        "repetition": 1,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C3-r1-JSON",
+        "pairId": "C3-r1",
+        "caseId": "C3",
+        "format": "JSON",
+        "repetition": 1,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C3-r2-JSON",
+        "pairId": "C3-r2",
+        "caseId": "C3",
+        "format": "JSON",
+        "repetition": 2,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C3-r2-TOON",
+        "pairId": "C3-r2",
+        "caseId": "C3",
+        "format": "TOON",
+        "repetition": 2,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C4-r1-JSON",
+        "pairId": "C4-r1",
+        "caseId": "C4",
+        "format": "JSON",
+        "repetition": 1,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C4-r1-TOON",
+        "pairId": "C4-r1",
+        "caseId": "C4",
+        "format": "TOON",
+        "repetition": 1,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C4-r2-TOON",
+        "pairId": "C4-r2",
+        "caseId": "C4",
+        "format": "TOON",
+        "repetition": 2,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C4-r2-JSON",
+        "pairId": "C4-r2",
+        "caseId": "C4",
+        "format": "JSON",
+        "repetition": 2,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C5-r1-TOON",
+        "pairId": "C5-r1",
+        "caseId": "C5",
+        "format": "TOON",
+        "repetition": 1,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C5-r1-JSON",
+        "pairId": "C5-r1",
+        "caseId": "C5",
+        "format": "JSON",
+        "repetition": 1,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C5-r2-JSON",
+        "pairId": "C5-r2",
+        "caseId": "C5",
+        "format": "JSON",
+        "repetition": 2,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C5-r2-TOON",
+        "pairId": "C5-r2",
+        "caseId": "C5",
+        "format": "TOON",
+        "repetition": 2,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C6-r1-JSON",
+        "pairId": "C6-r1",
+        "caseId": "C6",
+        "format": "JSON",
+        "repetition": 1,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C6-r1-TOON",
+        "pairId": "C6-r1",
+        "caseId": "C6",
+        "format": "TOON",
+        "repetition": 1,
+        "armOrder": 1
+      },
+      {
+        "trialId": "C6-r2-TOON",
+        "pairId": "C6-r2",
+        "caseId": "C6",
+        "format": "TOON",
+        "repetition": 2,
+        "armOrder": 0
+      },
+      {
+        "trialId": "C6-r2-JSON",
+        "pairId": "C6-r2",
+        "caseId": "C6",
+        "format": "JSON",
+        "repetition": 2,
+        "armOrder": 1
+      }
+    ],
+    "maximumProviderRequests": 24,
+    "workers": 8,
+    "wallSeconds": 60,
+    "nativeCalls": 0,
+    "adapterManifestSha256": "3173b89379cdd1bf975c55c5ba6727be569f8bdc724479ec627351e44ce25651"
+  }
+}
