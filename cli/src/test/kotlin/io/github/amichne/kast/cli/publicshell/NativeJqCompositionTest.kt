@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.publicshell
 import dev.toonformat.jtoon.JToon
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -25,7 +26,11 @@ class NativeJqCompositionTest {
             val cases =
                 listOf(
                     NativeProjection(".request.output.fields", false, "[2]: name,location\n"),
-                    NativeProjection(".request.output.fields | map(ascii_upcase)", true, "[\"NAME\",\"LOCATION\"]\n"),
+                    NativeProjection(
+                        ".request.output.fields | map(ascii_upcase)",
+                        true,
+                        Json.encodeToString(listOf("NAME", "LOCATION")) + "\n",
+                    ),
                     NativeProjection("false", false, "false\n"),
                     NativeProjection("null", false, "null\n"),
                     NativeProjection("1.2345678901234567890123456789", true, "1.2345678901234567890123456789\n"),
