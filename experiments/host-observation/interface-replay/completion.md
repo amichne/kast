@@ -1,6 +1,7 @@
 # Interface replay delivery
 
 The specified first scope passes A1–A10 after the [delivery review repairs](delivery-review.md).
+The later [hosted review repairs](hosted-review.md) add controls for command facts and tool proposals without changes to recorded verdicts.
 Codex credentials supplied actual provider access through the existing Pi SDK runner.
 The later 3× target remains `NOT_MET`. The tested candidates supply no 3× token or latency claim.
 No live acceptance criterion remains blocked by authentication.
