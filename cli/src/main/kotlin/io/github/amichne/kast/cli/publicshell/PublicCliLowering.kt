@@ -200,11 +200,11 @@ private fun parseOutput(arguments: LexicalArguments): Refinement<CliOutput?, Pub
             (fields.distinct().size != fields.size ||
                 fields.any { name -> CliField.entries.none { it.spelling == name } })
     )
-        return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
+        return Refinement.Rejected(PublicCliArgumentFailure.INVALID_FIELDS)
     return when (arguments[PublicCliFlag.OUTPUT]) {
         "occurrences" ->
             if (fields == null) Refinement.Refined(CliOutput.Occurrences)
-            else Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
+            else Refinement.Rejected(PublicCliArgumentFailure.FIELDS_WITH_OCCURRENCES)
         null ->
             Refinement.Refined(
                 fields?.let { CliOutput.Symbols(it.map { name -> CliField.entries.single { it.spelling == name } }) }

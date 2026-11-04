@@ -10,13 +10,16 @@ Use the installed package to discover the active interface:
 
 ```sh
 kast describe
-kast describe query --section input
-kast describe query --section output
+kast describe query --section input --pointer '' --json
+kast describe query --section output --pointer '' --json
 kast describe query --section examples
 kast query plan --name OrderService --in services/orders
 ```
 
 Discovery reads packaged contracts.
+Schema pages default to 16 entries and 16384 bytes. Follow returned JSON Pointers and cursors to inspect more.
+Omit `--pointer` to export the full schema into a file.
+Use `--json` for JSON pipelines; progress and diagnostics stay on stderr.
 Planning admits a request and reports `REQUEST_SHAPE_ONLY` advice with `NOT_MEASURED` estimates.
 These commands do not prepare a workspace or start the Host.
 A plan does not prove workspace readiness or semantic completion.
@@ -77,19 +80,19 @@ CLI result documents use [TOON](https://toonformat.dev/guide/getting-started) by
 
 ```sh
 kast query --name OrderService --in services/orders
-kast describe query --section input
+kast describe query --section input --pointer ''
 kast status
 ```
 
 The switch covers semantic results, descriptors, plans, startup rejections, and management results.
 Management commands select structured results without `--json` when TOON is selected.
-The switch also controls results from commands with `--json`.
+For semantic commands, plans, and discovery, `--json` selects JSON even when the switch selects TOON.
 Help, version text, and stderr diagnostics keep their existing formats.
 JSON requests, stored records, Host messages, MCP, and tool RPC keep their existing JSON contracts.
 
 Set `KAST_OUTPUT_TOON=0` to select JSON.
 An unset or empty variable selects TOON, as does `KAST_OUTPUT_TOON=1`.
-Other values reject before command effects with exit `2` and a JSON `INVALID_OUTPUT_FORMAT` result.
+Other values reject before command effects with exit `2` and a JSON `INVALID_OUTPUT_FORMAT` result, unless semantic `--json` selects JSON explicitly.
 `JToon` encodes the existing JSON projection, so the same result fields and qualifications remain present.
 An encoding rejection returns `OUTPUT_ENCODING_REJECTED` with exit `6` instead of a successful result.
 Installer results that exceed 16 MiB return `OUTPUT_LIMIT_EXCEEDED` with exit `5` before TOON encoding.
@@ -106,6 +109,7 @@ It does not authorize incomplete semantic proof.
 That allowance excludes the outer RPC envelope, newline, and stderr.
 The CLI does not truncate a result to fit an allowance.
 The allowance measures the canonical JSON presentation before TOON encoding.
+Schema page budgets count the entire stdout document in both JSON and TOON, including its final newline.
 
 An explicit `--max-elapsed-ms` supplies the canonical caller grant for `RUN`.
 Omission adds no CLI semantic timeout.
@@ -138,7 +142,7 @@ A selected row subset keeps its incomplete-input qualification.
 Semantic commands emit the existing RPC outcome in TOON with a final newline by default.
 The output shape stays the same in terminals and pipes.
 `KAST_OUTPUT_TOON=0` changes the encoding to JSON.
-`--json` preserves the existing result contract and does not override the environment switch.
+For semantic commands, `--json` preserves the result contract and overrides the environment switch.
 Progress and bounded diagnostics use stderr.
 
 Read the outer outcome and the canonical document together.

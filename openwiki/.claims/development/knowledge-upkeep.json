@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cb6ce4e086b80eb495ff970ba90efcd31a026974ea5c2c01287fdc918245cce6",
+  "pageVersion": "sha256:4cd23deb5cd4885928d612fbb8125a2bacd622ebe22bbd5cc9d19492f9c65eb6",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -70,7 +70,7 @@
       "evidence": [
         {
           "resource": "repo://docs/tooling/reader_contracts.py",
-          "version": "repo-file-v1:sha256:0e01d60af116d2946fa3514a1daf54e7cd977f2fc9dab04267923ae8754fc98d"
+          "version": "repo-file-v1:sha256:3fa9ba5a5726b14abb7e3feb9a70694e47db0d7980d1ea30280bc474aba4885e"
         }
       ]
     },
@@ -87,6 +87,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T14:47:54.256Z"
+    "at": "2026-11-04T06:05:09.838Z"
   }
 }

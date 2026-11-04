@@ -18,12 +18,39 @@ The persistent IntelliJ IDEA Host supplies compiler analysis. CLI queries need n
 
 ```shell
 kast describe
-kast describe query --section input
-kast describe query --section examples
+kast source --help
+kast result --help
+kast describe query
+kast describe query --section input --pointer '' --json
 ```
 
 These commands read packaged contracts without workspace preparation.
-Use the installed examples before unfamiliar arguments.
+Help lists commands and flags. `kast describe COMMAND` returns a contract summary.
+Add `--section input` or `--section output` with `--pointer ''` to browse the schema root.
+Each page lists direct children with their JSON Pointers, kinds, and child counts.
+Scalar values are exact. Containers and references do not expand automatically.
+
+Schema pages default to 16 entries and 16384 returned bytes, including the final newline in either output format.
+Set `--max-results` from 1 to 128 and `--max-returned-bytes` from 1024 to 65536.
+If `complete` is false, use `next_cursor` as `--cursor` with the same command, section, pointer, and catalog.
+Copy a returned pointer unchanged to inspect a child. Quote pointers so your shell preserves `$` and other special characters:
+
+```shell
+kast describe query --section input --pointer '/properties' --json
+kast describe source.read --section input --pointer '' --json
+kast describe result.read --section input --pointer '' --json
+```
+
+A schema page is an inspection view, not a standalone validation schema.
+References still point into the full section. A missing pointer or an entry larger than the byte budget rejects explicitly.
+For validation or archival use, omit `--pointer` and write the complete schema to a file:
+
+```shell
+kast describe query --section input --json > input-schema.json
+kast describe query --section examples --json > examples.json
+```
+
+Full exports can be large. Use schema pages for discovery and export only when you need the whole contract.
 
 ## Find a declaration
 
@@ -32,10 +59,12 @@ Run the command from the intended Kotlin repository or worktree:
 
 ```shell
 kast query --name submitOrder --in checkout --source-set main \
-  --fields name,signature,location --retain
+  --fields name,signature,location --max-results 20 --max-returned-bytes 8192 --retain
 ```
 
 Use `--workspace PATH` when your current directory differs from the target worktree.
+The `--fields` option accepts unique values from `name,location,signature,source` with `--output symbols`.
+For `--output occurrences`, omit `--fields`.
 
 Examine the owner, signature, and location before you select an exact reference.
 An exact name can match several overloads.
@@ -74,22 +103,48 @@ An expired or foreign reference rejects. Find the declaration again only when th
 Save a public argument document from the installed examples as `query.json`:
 
 ```shell
-kast query --request query.json
-kast query --request - < query.json
+kast query --request query.json --json
+kast query --request - --json < query.json
+cat query.json | kast query --request - --json > result.json
 ```
 
 The document contains the public `request` field, without an RPC envelope.
+The `--request` value names a file or selects stdin with `-`. It does not accept inline JSON.
 Do not combine `--request` with semantic flags or `--verbose`.
 
 ## Read the outcome
 
 Semantic commands emit TOON on stdout by default.
-Set `KAST_OUTPUT_TOON=0` for JSON.
+Use `--json` for JSON output from one command.
+This flag overrides `KAST_OUTPUT_TOON`.
+Set `KAST_OUTPUT_TOON=0` for JSON output across commands.
+The input document remains JSON with either output format.
+For pipelines, select `--json` explicitly and keep stderr separate.
+Use `--max-results`, `--max-returned-bytes`, and a narrow `--fields` selection before the query.
+These limits bound presentation without stripping completion or recovery evidence.
+Query byte limits measure canonical JSON presentation before TOON encoding. The outer envelope, newline, and stderr are outside that allowance.
+An explicit `--request` document owns its execution budget; do not add semantic budget flags beside it.
 Progress and diagnostics use stderr.
 Read the outer outcome and its qualifications before a semantic conclusion.
 An unfinished search with no matches does not prove absence.
 
 `--max-results` limits presentation. It does not establish semantic completion.
 A complete page can still have an issued continuation.
+
+If `COMPLETION_UNPROVEN` includes `UNRESOLVED_ARGUMENT_MAPPING`, Kast cannot prove the requested callback relationships.
+Keep the reported cause and original coverage with your conclusion.
+If the response supplies `nextQuery`, save that argument document as `evidence.json`:
+
+```shell
+kast query --request evidence.json --json
+```
+
+This request reads retained evidence. It does not establish a complete callee list or repeat semantic work.
+Use the issued result reference and both cursors for later pages.
+
+The `--max-elapsed-ms` option sets an explicit elapsed budget.
+If that budget expires, the CLI returns status `124`.
+A longer grant does not resolve missing callback proof.
+Keep the reported stage and readiness evidence before a new query.
 
 Use [query contracts](/reference/api), [result contracts](/reference/responses), and [source identity](/reference/symbols) for detailed evidence rules.

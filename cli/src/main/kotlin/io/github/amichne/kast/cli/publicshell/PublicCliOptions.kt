@@ -31,7 +31,8 @@ internal enum class PublicCliFlag(val spelling: String, val takesValue: Boolean 
     CONTINUATION("--continuation"),
     REGION("--region"),
     TEXT("--text"),
-    SECTION("--section");
+    SECTION("--section"),
+    POINTER("--pointer");
 
     fun accepts(command: PublicCliCommandId): Boolean = this in flagsFor(command)
 }
@@ -94,7 +95,16 @@ internal fun flagsFor(command: PublicCliCommandId): Set<PublicCliFlag> =
                     PublicCliFlag.VERBOSE,
                 )
         PublicCliCommandId.DESCRIBE ->
-            setOf(PublicCliFlag.CATALOG, PublicCliFlag.JSON, PublicCliFlag.HELP, PublicCliFlag.SECTION)
+            setOf(
+                PublicCliFlag.CATALOG,
+                PublicCliFlag.JSON,
+                PublicCliFlag.HELP,
+                PublicCliFlag.SECTION,
+                PublicCliFlag.POINTER,
+                PublicCliFlag.CURSOR,
+                PublicCliFlag.MAX_RESULTS,
+                PublicCliFlag.MAX_BYTES,
+            )
     }
 
 internal data class LexicalArguments(val words: List<String>, val options: Map<PublicCliFlag, List<String>>) {

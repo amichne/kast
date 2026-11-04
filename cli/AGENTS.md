@@ -4,18 +4,22 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-11-02T17:48:52Z"
-source_revision: 55ec69174cde1a5a74fcb48be2620048d427ad84
+timestamp: "2026-11-04T03:53:28Z"
+source_revision: 28de9ce670e25ae3dd514d6198226aac6a027bd4
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
   - path: cli/src/main/js/query-presentation.mjs
@@ -61,6 +65,9 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - [KastPublicCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt) - public semantic commands through shared admission and direct execution.
 - [PublicCliArguments.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt) - flags, JSON input modes, and exact catalog selection.
 - [PublicCliDiscovery.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt) - descriptors, schemas, and examples from packaged contracts.
+- [PublicCliSchemaPage.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt) - literal schema locations, direct-child pages, and exact output budgets.
+- [PublicCliHelp.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt) - command and namespace guidance.
+- [PublicCliDiagnostics.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt) - bounded stderr guidance for argument and input failures.
 - [PublicInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt) - public terminal-event precedence and output delivery.
 - [PublicShellExit.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt) - public shell status codes and outcome classification.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - the client-owned stdio MCP process.
@@ -130,6 +137,10 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before release qualification.
 
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
+- Schema discovery uses literal JSON Pointers and bounded direct-child pages. Keep full exports explicit, preserve exact scalar facts, and never imply that a page is a complete validation schema.
+- Public shell `--json` overrides `KAST_OUTPUT_TOON`, including startup before the installed query launcher is admitted. Request documents remain JSON with either output format.
+- `source --help` and `result --help` list their commands without workspace preparation.
+- Keep parser diagnostics on stderr. Preserve the response contract and exclude request payloads and paths from those diagnostics.
 - Packaged discovery and request planning use installed contracts before workspace or host composition.
 - Keep `publicshell` exit and signal policy separate from private RPC and MCP behavior.
 - `PublicInvocationOwner` accepts the first terminal event. `PublicCliInvocation` owns its worker and signal handling.

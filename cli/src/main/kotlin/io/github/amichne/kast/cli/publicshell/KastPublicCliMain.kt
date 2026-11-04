@@ -49,7 +49,7 @@ object KastPublicCliMain {
     fun main(args: Array<String>) {
         val output = Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel)
         val format =
-            if (args.firstOrNull() == "hook") CliOutputFormat.JSON
+            if (args.firstOrNull() == "hook" || "--json" in args) CliOutputFormat.JSON
             else
                 when (val selected = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
                     is Refinement.Refined -> selected.value
@@ -69,6 +69,7 @@ object KastPublicCliMain {
                             args.toList(),
                             Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
                             Path.of("").toAbsolutePath(),
+                            diagnostic = System.err::println,
                         )
                     },
                     output,
@@ -100,11 +101,15 @@ internal fun preparePublicCli(
         KastDirectToolSession.installed(root, home, environment, catalog)
     },
     invoke: (KastDirectToolSession, AdmittedPublicTool) -> PublicPreparedOutput = ::invokeInstalledPublic,
+    diagnostic: (String) -> Unit = {},
 ): PublicPreparedOutput =
     if (argv.firstOrNull() == "hook") preparePublicHook(argv, input)
     else
         when (val parsed = parsePublicCliArguments(argv)) {
-            is Refinement.Rejected -> publicFailure(ToolRpcFailure.INVALID_COMMAND)
+            is Refinement.Rejected -> {
+                diagnostic(publicCliArgumentDiagnostic(parsed.failure))
+                publicFailure(ToolRpcFailure.INVALID_COMMAND)
+            }
             is Refinement.Refined ->
                 when (val command = parsed.value) {
                     is PublicCliCommand.Help ->
@@ -113,18 +118,31 @@ internal fun preparePublicCli(
                             PublicShellExit.COMPLETE,
                             PublicOutputContent.HELP,
                         )
-                    is PublicCliCommand.Describe ->
+                    is PublicCliCommand.NamespaceHelp ->
                         PublicPreparedOutput(
-                            encodePublicCliDescriptor(describePublicCli(command)),
+                            publicCliHelp(command.namespace.commands).trimEnd(),
                             PublicShellExit.COMPLETE,
+                            PublicOutputContent.HELP,
                         )
+                    is PublicCliCommand.Describe -> preparePublicDescriptor(command)
                     is PublicCliCommand.Query ->
-                        prepareQuery(command.input, command.catalog, input) { admitted ->
+                        prepareQuery(command.input, command.catalog, input, diagnostic) { admitted ->
                             prepareInstalledQuery(command, directory, admitted, session, invoke)
                         }
-                    is PublicCliCommand.Plan -> prepareQuery(command.input, command.catalog, input, ::preparePlan)
+                    is PublicCliCommand.Plan ->
+                        prepareQuery(command.input, command.catalog, input, diagnostic, ::preparePlan)
                 }
         }
+
+private fun preparePublicDescriptor(command: PublicCliCommand.Describe): PublicPreparedOutput {
+    val descriptor = describePublicCli(command)
+    val rejected =
+        descriptor is PublicCliDescriptor.SchemaPage && descriptor.value.content is PublicSchemaPageReply.Rejected
+    return PublicPreparedOutput(
+        encodePublicCliDescriptor(descriptor),
+        if (rejected) PublicShellExit.INPUT else PublicShellExit.COMPLETE,
+    )
+}
 
 private fun prepareInstalledQuery(
     command: PublicCliCommand.Query,
@@ -165,12 +183,14 @@ private fun prepareQuery(
     input: PublicCliInput,
     catalog: PublicToolCatalog,
     stdin: InputStream,
+    diagnostic: (String) -> Unit,
     use: (AdmittedPublicTool) -> PublicPreparedOutput,
 ): PublicPreparedOutput {
     val arguments =
         when (val loaded = readPublicCliInput(input, stdin)) {
             is Refinement.Refined -> loaded.value
-            is Refinement.Rejected ->
+            is Refinement.Rejected -> {
+                diagnostic(publicCliInputDiagnostic(loaded.failure))
                 return when (loaded.failure) {
                     PublicInputReadFailure.IO ->
                         preparePublicReply(
@@ -182,6 +202,7 @@ private fun prepareQuery(
                     PublicInputReadFailure.INVALID -> publicFailure(ToolRpcFailure.INVALID_ARGUMENTS)
                     PublicInputReadFailure.TOO_LARGE -> publicFailure(ToolRpcFailure.REQUEST_TOO_LARGE)
                 }
+            }
         }
     return when (val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, arguments, catalog)) {
         is Refinement.Refined -> use(admitted.value)

@@ -31,9 +31,17 @@ internal sealed interface PublicCliCommand {
         val catalog: PublicToolCatalog,
         val command: PublicCliCommandId?,
         val section: PublicCliDescribeSection,
+        val selection: PublicSchemaSelection? = null,
     ) : PublicCliCommand
 
     data class Help(val command: PublicCliCommandId?) : PublicCliCommand
+
+    data class NamespaceHelp(val namespace: PublicCliNamespace) : PublicCliCommand
+}
+
+internal enum class PublicCliNamespace(val word: String, val commands: List<PublicCliCommandId>) {
+    SOURCE("source", listOf(PublicCliCommandId.SOURCE_READ)),
+    RESULT("result", listOf(PublicCliCommandId.RESULT_READ, PublicCliCommandId.RESULT_RESUME)),
 }
 
 @Serializable
@@ -64,6 +72,9 @@ internal enum class PublicCliArgumentFailure {
     MIXED_INPUT_MODES,
     INVALID_SOURCE,
     IRRELEVANT_OPTION,
+    INVALID_FIELDS,
+    FIELDS_WITH_OCCURRENCES,
+    INVALID_SCHEMA_SELECTION,
 }
 
 internal fun parsePublicCliArguments(argv: List<String>): Refinement<PublicCliCommand, PublicCliArgumentFailure> =
@@ -100,9 +111,16 @@ private fun findCommand(arguments: LexicalArguments): PublicCliCommandId? =
         .sortedByDescending { it.argv.size }
         .firstOrNull { arguments.words.take(it.argv.size) == it.argv }
 
-private fun missingCommand(arguments: LexicalArguments): Refinement<PublicCliCommand, PublicCliArgumentFailure> =
-    if (arguments.words.isEmpty() && arguments.has(PublicCliFlag.HELP)) Refinement.Refined(PublicCliCommand.Help(null))
-    else Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+private fun missingCommand(arguments: LexicalArguments): Refinement<PublicCliCommand, PublicCliArgumentFailure> {
+    val namespace = PublicCliNamespace.entries.singleOrNull { arguments.words == listOf(it.word) }
+    return when {
+        !arguments.has(PublicCliFlag.HELP) -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+        arguments.words.isEmpty() -> Refinement.Refined(PublicCliCommand.Help(null))
+        namespace != null && arguments.options.keys.all { it in processFlags } ->
+            Refinement.Refined(PublicCliCommand.NamespaceHelp(namespace))
+        else -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+    }
+}
 
 private fun executionCommand(
     command: PublicCliCommandId,
@@ -159,5 +177,35 @@ private fun describeCommand(
         }
     if (selected == null && section != PublicCliDescribeSection.INVENTORY)
         return Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
-    return Refinement.Refined(PublicCliCommand.Describe(catalog, selected, section))
+    return describeSelection(arguments, catalog, selected, section)
+}
+
+private fun describeSelection(
+    arguments: LexicalArguments,
+    catalog: PublicToolCatalog,
+    selected: PublicCliCommandId?,
+    section: PublicCliDescribeSection,
+): Refinement<PublicCliCommand, PublicCliArgumentFailure> {
+    val browseFlags =
+        setOf(PublicCliFlag.POINTER, PublicCliFlag.CURSOR, PublicCliFlag.MAX_RESULTS, PublicCliFlag.MAX_BYTES)
+    if (arguments.options.keys.none { it in browseFlags })
+        return Refinement.Refined(PublicCliCommand.Describe(catalog, selected, section))
+    if (
+        section !in setOf(PublicCliDescribeSection.INPUT, PublicCliDescribeSection.OUTPUT) ||
+            !arguments.has(PublicCliFlag.POINTER)
+    )
+        return Refinement.Rejected(PublicCliArgumentFailure.INVALID_SCHEMA_SELECTION)
+    return when (
+        val selection =
+            PublicSchemaSelection.parse(
+                requireNotNull(arguments[PublicCliFlag.POINTER]),
+                arguments[PublicCliFlag.CURSOR] ?: "0",
+                arguments[PublicCliFlag.MAX_RESULTS] ?: "16",
+                arguments[PublicCliFlag.MAX_BYTES] ?: "16384",
+            )
+    ) {
+        is Refinement.Rejected -> selection
+        is Refinement.Refined ->
+            Refinement.Refined(PublicCliCommand.Describe(catalog, selected, section, selection.value))
+    }
 }

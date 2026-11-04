@@ -64,6 +64,9 @@ class PublicLauncherCompositionTest {
                     Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
                     Json.parseToJsonElement(JToon.decodeToJson(encoded)),
                 )
+                if (arguments.first() in setOf("query", "describe")) {
+                    assertExplicitJson(fixture, index, arguments, exit)
+                }
             }
         }
     }
@@ -76,8 +79,20 @@ class PublicLauncherCompositionTest {
             val commands =
                 listOf(
                     listOf("query", "--help") to 0,
+                    listOf("source", "--help") to 0,
+                    listOf("result", "--help") to 0,
                     listOf("describe") to 0,
                     listOf("describe", "query", "--section", "input") to 0,
+                    listOf(
+                        "describe",
+                        "query",
+                        "--section",
+                        "input",
+                        "--pointer",
+                        "",
+                        "--max-returned-bytes",
+                        "1024",
+                    ) to 0,
                     listOf("describe", "query", "--section", "examples") to 0,
                     listOf("query", "plan", "--name", "OrderService") to 0,
                     listOf("query", "--name", "OrderService", "--max-returned-bytes", "4095") to 2,
@@ -90,7 +105,7 @@ class PublicLauncherCompositionTest {
                 fixture.assertExit(parent, exit, label)
                 val text = Files.readString(temporary.resolve("$label.stdout"))
                 if (arguments.contains("--help")) {
-                    assertTrue(text.contains("query"), text)
+                    assertTrue(text.contains("kast ${arguments.first()}"), text)
                 } else {
                     val document = oneDocument(text)
                     when {
@@ -206,6 +221,23 @@ class PublicLauncherCompositionTest {
                     assertInvocationRecordRemoved(fixture)
                 }
             }
+        }
+    }
+
+    private fun assertExplicitJson(fixture: NativePublicFixture, index: Int, arguments: List<String>, exit: Int) {
+        for ((settingIndex, setting) in listOf("1", "", "invalid").withIndex()) {
+            val label = "explicit-json-$index-$settingIndex"
+            val explicit =
+                fixture.start(
+                    label,
+                    arguments + "--json",
+                    environment = mapOf("KAST_OUTPUT_TOON" to setting),
+                )
+            fixture.assertExit(explicit, exit, label)
+            assertEquals(
+                Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
+                Json.parseToJsonElement(Files.readString(temporary.resolve("$label.stdout"))),
+            )
         }
     }
 
