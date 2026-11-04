@@ -18,6 +18,10 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
             "\nSchema page: kast describe ${selected.id} --section input --pointer '' --json"
     } +
         "\nUse --json for JSON stdout. Progress and diagnostics use stderr.\n" +
+        "--jq FILTER uses installed jq >=1.8.2,<2 before encoding, on successful documents only. " +
+        "Return exactly one JSON value; collect generators with [FILTER]. For streams use --json | jq.\n" +
+        "--jq-executable PATH selects an absolute executable. --jq-timeout-ms defaults to 5000 (1..60000); " +
+        "--jq-max-bytes defaults to 16777216 (1..67108864). Limits are independent of semantic work.\n" +
         "Schema pages default to 16 entries and 16384 bytes. Follow pointers and next_cursor for more.\n" +
         when {
             commands.any { it == PublicCliCommandId.QUERY || it == PublicCliCommandId.QUERY_PLAN } ->

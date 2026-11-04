@@ -80,15 +80,22 @@ object KastPublicCliMain {
     }
 }
 
-internal enum class PublicOutputContent {
-    DOCUMENT,
-    HELP,
+internal sealed interface PublicOutputContent {
+    data object DOCUMENT : PublicOutputContent
+
+    data class Projection(
+        val limits: PublicJqLimits,
+        val recovery: io.github.amichne.kast.protocol.wire.presentation.QueryCompletionPublicReadQuery? = null,
+    ) : PublicOutputContent
+
+    data object HELP : PublicOutputContent
 }
 
 internal data class PublicPreparedOutput(
     val text: String,
     val exit: PublicShellExit,
     val content: PublicOutputContent = PublicOutputContent.DOCUMENT,
+    val recovery: io.github.amichne.kast.protocol.wire.presentation.QueryCompletionPublicReadQuery? = null,
 )
 
 internal fun preparePublicCli(
@@ -102,6 +109,8 @@ internal fun preparePublicCli(
     },
     invoke: (KastDirectToolSession, AdmittedPublicTool) -> PublicPreparedOutput = ::invokeInstalledPublic,
     diagnostic: (String) -> Unit = {},
+    environment: Map<String, String> = System.getenv(),
+    jqExecutor: PublicJqExecutor = PublicJqProcess(directory, environment),
 ): PublicPreparedOutput =
     if (argv.firstOrNull() == "hook") preparePublicHook(argv, input)
     else
@@ -111,28 +120,57 @@ internal fun preparePublicCli(
                 publicFailure(ToolRpcFailure.INVALID_COMMAND)
             }
             is Refinement.Refined ->
-                when (val command = parsed.value) {
-                    is PublicCliCommand.Help ->
-                        PublicPreparedOutput(
-                            publicCliHelp(command.command).trimEnd(),
-                            PublicShellExit.COMPLETE,
-                            PublicOutputContent.HELP,
-                        )
-                    is PublicCliCommand.NamespaceHelp ->
-                        PublicPreparedOutput(
-                            publicCliHelp(command.namespace.commands).trimEnd(),
-                            PublicShellExit.COMPLETE,
-                            PublicOutputContent.HELP,
-                        )
-                    is PublicCliCommand.Describe -> preparePublicDescriptor(command)
-                    is PublicCliCommand.Query ->
-                        prepareQuery(command.input, command.catalog, input, diagnostic) { admitted ->
-                            prepareInstalledQuery(command, directory, admitted, session, invoke)
-                        }
-                    is PublicCliCommand.Plan ->
-                        prepareQuery(command.input, command.catalog, input, diagnostic, ::preparePlan)
+                prepareProjectedPublicCli(parsed.value, directory, environment, jqExecutor, diagnostic) {
+                    when (val command = parsed.value) {
+                        is PublicCliCommand.Help ->
+                            PublicPreparedOutput(
+                                publicCliHelp(command.command).trimEnd(),
+                                PublicShellExit.COMPLETE,
+                                PublicOutputContent.HELP,
+                            )
+                        is PublicCliCommand.NamespaceHelp ->
+                            PublicPreparedOutput(
+                                publicCliHelp(command.namespace.commands).trimEnd(),
+                                PublicShellExit.COMPLETE,
+                                PublicOutputContent.HELP,
+                            )
+                        is PublicCliCommand.Describe -> preparePublicDescriptor(command)
+                        is PublicCliCommand.Query ->
+                            prepareQuery(command.input, command.catalog, input, diagnostic) { admitted ->
+                                prepareInstalledQuery(command, directory, admitted, session, invoke)
+                            }
+                        is PublicCliCommand.Plan ->
+                            prepareQuery(command.input, command.catalog, input, diagnostic, ::preparePlan)
+                    }
                 }
         }
+
+private fun prepareProjectedPublicCli(
+    command: PublicCliCommand,
+    directory: Path,
+    environment: Map<String, String>,
+    executor: PublicJqExecutor,
+    diagnostic: (String) -> Unit,
+    prepare: () -> PublicPreparedOutput,
+): PublicPreparedOutput =
+    when (val projection = command.projection) {
+        PublicOutputProjection.Unfiltered -> prepare()
+        is PublicOutputProjection.Jq ->
+            when (val engine = PublicJqEngine.prepare(projection.options, directory, environment, executor)) {
+                is Refinement.Rejected -> {
+                    diagnostic("kast: ${engine.failure.failure}. ${engine.failure.guidance}")
+                    engine.failure.prepared()
+                }
+                is Refinement.Refined ->
+                    when (val projected = engine.value.project(prepare())) {
+                        is Refinement.Refined -> projected.value
+                        is Refinement.Rejected -> {
+                            diagnostic("kast: ${projected.failure.failure}. ${projected.failure.guidance}")
+                            projected.failure.prepared()
+                        }
+                    }
+            }
+    }
 
 private fun preparePublicDescriptor(command: PublicCliCommand.Describe): PublicPreparedOutput {
     val descriptor = describePublicCli(command)
@@ -312,7 +350,13 @@ internal fun preparePublicReply(
                 boundaryExit(CliBoundaryExitStatus.TRANSPORT, "response-output-limit"),
             )
         PublicPreparedOutput(publicShellJson.encodeToString(ToolRpcReply.serializer(), failure), PublicShellExit.IO)
-    } else PublicPreparedOutput(text, classified)
+    } else {
+        val recovery =
+            if (classified == PublicShellExit.COMPLETE && reply is ToolRpcReply.Complete)
+                retainedJqRecovery(reply.document)
+            else null
+        PublicPreparedOutput(text, classified, recovery = recovery)
+    }
 }
 
 internal fun publicFailure(failure: ToolRpcFailure): PublicPreparedOutput =
