@@ -49,7 +49,7 @@ internal suspend fun requestInitialWorkspaceImport(
                             WorkspaceRefreshCommand.Request(
                                 operation.requestId,
                                 WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
-                                remaining.value.value,
+                                remaining.value.protocolMillis(),
                             )
                         )
                 }

@@ -170,8 +170,7 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
         val root =
             observeDirectToolStage(DirectToolStage.WORKSPACE_DISCOVERY) { session.root() }
                 as? CanonicalRootDiscovery.Discovered ?: return ToolRpcReply.Rejected(ToolRpcFailure.OUT_OF_SCOPE)
-        // A rejected eager preparation does not erase the precise failure from the operation demand.
-        observeDirectToolStage(DirectToolStage.PREPARATION_START) { session.start(root.root) }
+        // The typed operation demand owns preparation. Eager lifecycle effects could invalidate issued read authority.
         val exit =
             try {
                 observeDirectToolStage(DirectToolStage.INVOCATION) {

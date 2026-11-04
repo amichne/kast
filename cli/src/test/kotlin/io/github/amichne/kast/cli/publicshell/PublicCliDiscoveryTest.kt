@@ -36,7 +36,15 @@ class PublicCliDiscoveryTest {
         )
         assertEquals("COMPLETE", result.getValue("catalog").jsonPrimitive.content)
         assertEquals(
-            listOf("query", "query.plan", "result.read", "result.resume", "source.read", "describe"),
+            listOf(
+                "query",
+                "query.plan",
+                "result.read",
+                "result.resume",
+                "source.read",
+                "diagnostic.check",
+                "describe",
+            ),
             result.getValue("content").jsonArray.map { it.jsonObject.getValue("command").jsonPrimitive.content },
         )
     }
@@ -68,8 +76,9 @@ class PublicCliDiscoveryTest {
             val examples = document(command, PublicCliDescribeSection.EXAMPLES, catalog).getValue("content").jsonArray
             for (example in examples) {
                 val value = example.jsonObject.getValue("value")
+                val identity = exampleIdentity(command)
                 assertTrue(
-                    PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, value, catalog) is Refinement.Refined,
+                    PublicToolContract.admit(identity, value, catalog) is Refinement.Refined,
                     "$catalog $command $example",
                 )
             }
@@ -177,3 +186,7 @@ private fun document(
             encodePublicCliDescriptor(describePublicCli(PublicCliCommand.Describe(catalog, command, section)))
         )
         .jsonObject
+
+private fun exampleIdentity(command: PublicCliCommandId): PublicToolIdentity =
+    if (command == PublicCliCommandId.DIAGNOSTIC_CHECK) PublicToolIdentity.CHECK_DIAGNOSTICS
+    else PublicToolIdentity.QUERY_SYMBOLS

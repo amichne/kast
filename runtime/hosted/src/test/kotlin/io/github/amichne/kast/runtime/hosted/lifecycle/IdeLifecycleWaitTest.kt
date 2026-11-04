@@ -19,6 +19,25 @@ import org.junit.jupiter.api.Test
 
 class IdeLifecycleWaitTest {
     @Test
+    fun `indefinite preparation remains pending beyond the previous policy and accepts cancellation`() = runTest {
+        val operation =
+            (NativeWorkspacePreparation.admit("request", null, { currentTime * 1_000_000 }) as Refinement.Refined).value
+        val waiter = async { awaitLifecycleCondition(operation.deadline, operation.nanoTime) { false } }
+        runCurrent()
+        advanceTimeBy(18 * 60_000L)
+        runCurrent()
+        assertTrue(waiter.isActive)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.WorkspacePreparationWaitMode.INDEFINITE,
+            operation.timing().waitMode,
+        )
+        org.junit.jupiter.api.Assertions.assertNull(operation.timing().remainingMillis)
+        waiter.cancel()
+        runCurrent()
+        assertTrue(waiter.isCancelled)
+    }
+
+    @Test
     fun `terminal propagation preserves the narrower refresh waiter attribution`() = runTest {
         val observations = mutableListOf<NativePreparationObservation>()
         val operation =

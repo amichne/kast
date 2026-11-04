@@ -9,6 +9,26 @@ import org.junit.jupiter.api.Test
 
 class KastConfigurationResolutionTest {
     @Test
+    fun `workspace wait admits saved indefinite and explicit bounded policies while rejecting malformed overrides`() {
+        val key = "KAST_WORKSPACE_PREPARATION_WAIT"
+        val indefinite = admitted(ConfigurationSources(savedWorkspace = listOf(key to "indefinite")))
+        assertEquals(io.github.amichne.kast.kernel.ElapsedTimeAllowance.Unlimited, indefinite.workspacePreparationWait)
+        val bounded =
+            admitted(
+                ConfigurationSources(savedWorkspace = listOf(key to "indefinite"), commandLine = listOf(key to "1250"))
+            )
+        assertEquals(1250, bounded.workspacePreparationWait.protocolMillis())
+        for (raw in listOf("", "0", "-1", "infinite", "99999999999999999999999")) {
+            val failure =
+                rejected(
+                    ConfigurationSources(environment = mapOf(key to raw), savedWorkspace = listOf(key to "indefinite"))
+                )
+            assertEquals(ConfigurationFailure.INVALID_VALUE, failure.reason)
+            assertEquals(key, failure.key)
+        }
+    }
+
+    @Test
     fun `semantic fixtures default off and remain a build setting without runtime children`() {
         val setting = KastConfigurationCatalogue.declarations.single { it.key == "KAST_SEMANTIC_FIXTURES" }
         assertEquals(ConfigurationScope.BUILD, setting.scope)

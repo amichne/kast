@@ -28,14 +28,14 @@ class PublicCliProcessTest {
         get() = PublicCliProcessFixture(temporary)
 
     @Test
-    fun `session hook skips a non project with one empty host envelope`() {
+    fun `session hook reports a skipped non project in model context`() {
         val result =
             children.child(
                 listOf("hook", "session-start", "--workspace", temporary.toString()),
                 environment = emptyMap(),
             )
         assertEquals(0, result.first)
-        assertEquals(emptySet<String>(), Json.parseToJsonElement(result.second).jsonObject.keys)
+        assertEquals(setOf("additionalContext"), Json.parseToJsonElement(result.second).jsonObject.keys)
         val toon =
             children.child(
                 listOf("hook", "session-start", "--workspace", temporary.toString()),

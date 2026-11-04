@@ -1,7 +1,7 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
@@ -92,7 +92,10 @@ internal class WorkspacePreparations(
         val id = newId()
         if (id in records) return Refinement.Rejected(WorkspacePreparationFailure.IDENTITY_REJECTED)
         val limit =
-            when (val admitted = ElapsedTimeLimitMillis.parse(budget.inWholeMilliseconds)) {
+            when (
+                val admitted =
+                    ElapsedTimeAllowance.admitMillis(if (budget.isInfinite()) null else budget.inWholeMilliseconds)
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> error("An admitted preparation budget lost its proof")
             }
@@ -161,7 +164,7 @@ internal class WorkspacePreparations(
                     is Refinement.Rejected ->
                         WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
                     is Refinement.Refined ->
-                        withTimeoutOrNull(remaining.value.value) { prepareNative(entry, previous) }
+                        withTimeoutOrNull(remaining.value.duration) { prepareNative(entry, previous) }
                             ?: WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
                 }
             publish(entry, result)
@@ -194,7 +197,8 @@ internal class WorkspacePreparations(
                 is Refinement.Rejected ->
                     return WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
             }
-        var response = exchange(WorkspaceLifecycleRequest.Open(entry.root.path.toString(), requestId, remaining.value))
+        var response =
+            exchange(WorkspaceLifecycleRequest.Open(entry.root.path.toString(), requestId, remaining.protocolMillis()))
         var progress: NativePreparationProgress? = null
         while (response is IdeLifecycleResult.Pending) {
             progress =

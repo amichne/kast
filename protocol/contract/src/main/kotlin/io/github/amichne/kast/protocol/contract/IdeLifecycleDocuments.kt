@@ -17,7 +17,7 @@ sealed interface IdeLifecycleCommand : OperationRequest {
         val requestId: String,
         val client: String,
         val root: String,
-        val preparationMillis: Long = WorkspacePreparationBudget.limit.value,
+        val preparationMillis: Long? = WorkspacePreparationBudget.limit.value,
     ) : IdeLifecycleCommand
 
     @Serializable

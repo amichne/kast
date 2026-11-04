@@ -8,6 +8,24 @@ import org.junit.jupiter.api.Test
 
 class WorkspaceRefreshDeadlineTest {
     @Test
+    fun `indefinite refresh waiter retains the live attempt beyond the default deadline`() {
+        val port = WorkspaceRefreshTestPort()
+        var now = 0L
+        val service = WorkspaceRefreshService(port, { now })
+        service.submit(
+            id(1),
+            WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
+            io.github.amichne.kast.kernel.ElapsedTimeAllowance.Unlimited,
+        )
+        now = 18 * 60_000_000_000L
+        assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT), service.status(id(1)))
+        assertEquals(1, port.effects.size)
+        port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
+        port.ready = true
+        assertEquals(WorkspaceRefreshStatus.Complete, service.status(id(1)))
+    }
+
+    @Test
     fun `inherited shorter allowance expires its waiter without cancelling native work and attributes the owner`() {
         val port = WorkspaceRefreshTestPort()
         var now = 0L

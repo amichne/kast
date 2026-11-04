@@ -20,6 +20,10 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
         "\nUse --json for JSON stdout. Progress and diagnostics use stderr.\n" +
         "Schema pages default to 16 entries and 16384 bytes. Follow pointers and next_cursor for more.\n" +
         when {
+            commands.singleOrNull() == PublicCliCommandId.DIAGNOSTIC_CHECK ->
+                "Select a file or directory with --path; use --path . explicitly for the workspace root.\n" +
+                    "Example: kast diagnostic check --path src/main/kotlin --max-diagnostics 100 --json\n" +
+                    "--request FILE or --request - accepts the packaged diagnostic input. Preserve incomplete coverage."
             commands.any { it == PublicCliCommandId.QUERY || it == PublicCliCommandId.QUERY_PLAN } ->
                 "--request FILE reads JSON from a file; --request - reads JSON from stdin.\n" +
                     "Example: kast query --request - --json < query.json\n" +

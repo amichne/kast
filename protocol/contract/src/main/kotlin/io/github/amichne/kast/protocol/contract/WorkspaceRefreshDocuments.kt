@@ -17,7 +17,7 @@ sealed interface WorkspaceRefreshCommand {
     data class Request(
         val requestId: String,
         val effect: WorkspaceRefreshEffect,
-        val preparationMillis: Long = WorkspacePreparationBudget.limit.value,
+        val preparationMillis: Long? = WorkspacePreparationBudget.limit.value,
     ) : WorkspaceRefreshCommand
 
     @Serializable @SerialName("status") data class Status(val requestId: String) : WorkspaceRefreshCommand

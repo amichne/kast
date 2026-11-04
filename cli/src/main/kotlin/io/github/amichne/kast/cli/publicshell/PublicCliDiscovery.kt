@@ -16,9 +16,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -148,13 +146,17 @@ internal fun encodePublicCliDescriptor(descriptor: PublicCliDescriptor): String 
     }
 
 private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCatalog): PublicCliCommandDescriptor {
-    val input = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS, catalog)
+    val input = PublicToolContract.parameters(command.toolIdentity(), catalog)
     return PublicCliCommandDescriptor(
         command,
         listOf("kast") + command.argv,
         if (command == PublicCliCommandId.QUERY_PLAN || command == PublicCliCommandId.DESCRIBE) PublicCliEffect.NONE
         else PublicCliEffect.READ,
-        if (command == PublicCliCommandId.QUERY || command == PublicCliCommandId.QUERY_PLAN) PublicCliInputMode.entries
+        if (
+            command in
+                setOf(PublicCliCommandId.QUERY, PublicCliCommandId.QUERY_PLAN, PublicCliCommandId.DIAGNOSTIC_CHECK)
+        )
+            PublicCliInputMode.entries
         else listOf(PublicCliInputMode.FLAGS),
         flagsFor(command).map { flag -> flagDescriptor(flag, input, catalog, command) },
         "kast.cli.${command.id}.input.v1:${catalog.name}",
@@ -171,86 +173,6 @@ private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCa
     )
 }
 
-private fun flagDescriptor(
-    flag: PublicCliFlag,
-    input: JsonObject,
-    catalog: PublicToolCatalog,
-    command: PublicCliCommandId,
-): PublicCliFlagDescriptor {
-    if (command == PublicCliCommandId.DESCRIBE) return describeFlag(flag)
-    val definitions = input.getValue("\$defs").jsonObject
-    fun property(complete: String, common: String, property: String): JsonObject? =
-        ((definitions[if (catalog == PublicToolCatalog.COMPLETE) complete else common] as? JsonObject)?.get(
-                "properties"
-            ) as? JsonObject)
-            ?.get(property) as? JsonObject
-    val schema =
-        when (flag) {
-            PublicCliFlag.NAME -> property("SearchSource", "Search", "declarationName")
-            PublicCliFlag.NAME_MATCH -> property("SearchSource", "Search", "nameMatch")
-            PublicCliFlag.KIND -> property("SearchSource", "Search", "declarationKinds")
-            PublicCliFlag.DIRECTORY -> property("DirectoryScope", "Scope", "relativeDirectoryPath")
-            PublicCliFlag.SOURCE_SET -> property("DirectoryScope", "Scope", "sourceSetNames")
-            PublicCliFlag.FIELDS -> property("SymbolsOutput", "Symbols", "fields")
-            PublicCliFlag.RELATION -> property("ExpandRelation", "Relation", "relation")
-            PublicCliFlag.RETAIN -> property("RunAction", "Run", "retention")
-            PublicCliFlag.MAX_RESULTS -> property("ExecutionBudget", "ExecutionBudget", "maxResults")
-            PublicCliFlag.MAX_BYTES -> property("ExecutionBudget", "ExecutionBudget", "maxReturnedBytes")
-            PublicCliFlag.MAX_ELAPSED -> property("ExecutionBudget", "ExecutionBudget", "maxElapsedMs")
-            PublicCliFlag.CURSOR ->
-                definitions["ResultCursor"] as? JsonObject ?: property("ReadResultAction", "ReadResultAction", "cursor")
-            PublicCliFlag.EVIDENCE_CURSOR ->
-                definitions["EvidenceCursor"] as? JsonObject
-                    ?: property("ReadResultAction", "ReadResultAction", "evidence_cursor")
-            PublicCliFlag.REGION -> property("ReadSourceAction", "ReadSource", "region")
-            PublicCliFlag.FILE -> property("LocationSource", "LocationSource", "file")
-            PublicCliFlag.OFFSET -> property("LocationSource", "LocationSource", "offset")
-            PublicCliFlag.CONTINUATION -> property("ResumeAction", "Resume", "continuation")
-            PublicCliFlag.VERBOSE -> input.getValue("properties").jsonObject["verbose"] as? JsonObject
-            PublicCliFlag.WORKSPACE,
-            PublicCliFlag.CATALOG,
-            PublicCliFlag.JSON,
-            PublicCliFlag.HELP,
-            PublicCliFlag.REQUEST,
-            PublicCliFlag.REF,
-            PublicCliFlag.TERMINAL,
-            PublicCliFlag.OUTPUT,
-            PublicCliFlag.TEXT,
-            PublicCliFlag.SECTION,
-            PublicCliFlag.POINTER -> null
-        }
-    val values =
-        when (flag) {
-            PublicCliFlag.CATALOG -> PublicToolCatalog.entries.map { it.name.lowercase() }
-            PublicCliFlag.TERMINAL -> listOf("emit", "trace")
-            PublicCliFlag.OUTPUT -> listOf("symbols", "occurrences")
-            PublicCliFlag.TEXT -> listOf("complete", "none")
-            PublicCliFlag.SECTION -> listOf("input", "output", "examples")
-            else -> enumSpellings(schema)
-        }
-    return PublicCliFlagDescriptor(flag.spelling, flag.takesValue, flag.repeated, schema, values)
-}
-
-private fun describeFlag(flag: PublicCliFlag): PublicCliFlagDescriptor =
-    PublicCliFlagDescriptor(
-        flag.spelling,
-        flag.takesValue,
-        flag.repeated,
-        valueSpellings =
-            when (flag) {
-                PublicCliFlag.SECTION -> listOf("input", "output", "examples")
-                PublicCliFlag.CATALOG -> PublicToolCatalog.entries.map { it.name.lowercase() }
-                else -> emptyList()
-            },
-    )
-
-private fun enumSpellings(schema: JsonObject?): List<String> {
-    val values = schema?.get("enum") as? JsonArray ?: (schema?.get("items") as? JsonObject)?.get("enum") as? JsonArray
-    return values.orEmpty().mapNotNull { value ->
-        (value as? JsonPrimitive)?.takeIf { it.isString }?.content?.lowercase()?.replace('_', '-')
-    }
-}
-
 private fun inputSchema(command: PublicCliCommandId, catalog: PublicToolCatalog): JsonObject =
     when (command) {
         PublicCliCommandId.DESCRIBE -> generatedRequestSchema(DescribeInput.serializer())
@@ -259,6 +181,8 @@ private fun inputSchema(command: PublicCliCommandId, catalog: PublicToolCatalog)
         PublicCliCommandId.RESULT_READ -> actionInputSchema("READ_RESULT", catalog)
         PublicCliCommandId.RESULT_RESUME -> actionInputSchema("RESUME", catalog)
         PublicCliCommandId.SOURCE_READ -> actionInputSchema("READ_SOURCE", catalog)
+        PublicCliCommandId.DIAGNOSTIC_CHECK ->
+            PublicToolContract.parameters(PublicToolIdentity.CHECK_DIAGNOSTICS, catalog)
     }
 
 private fun actionInputSchema(action: String, catalog: PublicToolCatalog): JsonObject {
@@ -293,11 +217,11 @@ private fun outputSchema(command: PublicCliCommandId): JsonObject =
                     )
                 )
                 .jsonObject
-        else -> semanticReplySchema()
+        else -> semanticReplySchema(command.toolIdentity())
     }
 
-private fun semanticReplySchema(): JsonObject {
-    val semantic = McpStructuredResults.semanticSchemaFor(PublicToolIdentity.QUERY_SYMBOLS.toolName)
+private fun semanticReplySchema(identity: PublicToolIdentity): JsonObject {
+    val semantic = McpStructuredResults.semanticSchemaFor(identity.toolName)
     val variants =
         listOf("complete", "qualified", "rejected_document").map { outcome ->
             val payload =
@@ -338,6 +262,11 @@ private fun examples(command: PublicCliCommandId, catalog: PublicToolCatalog): L
             PublicCliCommandId.RESULT_READ -> "READ_RESULT"
             PublicCliCommandId.RESULT_RESUME -> "RESUME"
             PublicCliCommandId.SOURCE_READ -> "READ_SOURCE"
+            PublicCliCommandId.DIAGNOSTIC_CHECK ->
+                return PublicToolContract.examples(PublicToolIdentity.CHECK_DIAGNOSTICS, catalog)
+                    .examples
+                    .values
+                    .toList()
             PublicCliCommandId.DESCRIBE -> return emptyList()
         }
     return PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS, catalog).examples.values.filter { example ->

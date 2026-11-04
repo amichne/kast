@@ -309,6 +309,14 @@ enum class ConfigurationParameter(
     ),
     ASCII("KAST_ASCII", ConfigurationSyntax.SWITCH, ConfigurationScope.INSTALLATION, defaultValue = "0"),
     OUTPUT_TOON("KAST_OUTPUT_TOON", ConfigurationSyntax.SWITCH, ConfigurationScope.REQUEST, defaultValue = "1"),
+    WORKSPACE_PREPARATION_WAIT(
+        "KAST_WORKSPACE_PREPARATION_WAIT",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.WORKSPACE,
+        ":app-server",
+        defaultValue = "1020000",
+        children = setOf(ConfigurationChild.BROKER),
+    ),
     DEBUG(
         "KAST_DEBUG",
         ConfigurationSyntax.SWITCH,
@@ -469,6 +477,15 @@ enum class ConfigurationParameter(
 
     fun declaration(): ConfigurationDeclaration {
         val base = baseDeclaration()
+        if (this == WORKSPACE_PREPARATION_WAIT)
+            return base.copy(
+                admittedRange =
+                    ConfigurationAdmittedRange(
+                        minimum = 1,
+                        finiteValues = listOf("indefinite"),
+                        ownerAdmission = "ElapsedTimeAllowance.parseSetting; positive milliseconds or indefinite",
+                    )
+            )
         if (this == OUTPUT_TOON)
             return base.copy(
                 admittedRange =

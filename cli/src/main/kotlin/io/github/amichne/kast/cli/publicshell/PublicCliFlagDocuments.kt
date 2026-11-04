@@ -8,6 +8,15 @@ import kotlinx.serialization.Serializable
 @Serializable internal data class CliEnvelope(val request: CliAction, val verbose: Boolean = false)
 
 @Serializable
+internal data class CliDiagnosticInput(
+    val relativePath: String,
+    val maxDiagnostics: Long?,
+    val continuation: String?,
+    val executionBudget: CliBudget?,
+    val verbose: Boolean,
+)
+
+@Serializable
 internal sealed interface CliAction {
     @Serializable
     @SerialName("RUN")

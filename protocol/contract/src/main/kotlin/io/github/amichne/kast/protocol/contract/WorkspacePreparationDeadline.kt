@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Serializable
@@ -28,21 +29,35 @@ enum class WorkspacePreparationDeadlineOwner {
 data class WorkspacePreparationTiming(
     val stage: IdeLifecycleStage,
     val elapsedMillis: Long,
-    val limitMillis: Long,
-    val remainingMillis: Long,
+    val limitMillis: Long?,
+    val remainingMillis: Long?,
     val limitingOwner: WorkspacePreparationDeadlineOwner,
+    val waitMode: WorkspacePreparationWaitMode = WorkspacePreparationWaitMode.BOUNDED,
 )
+
+@Serializable
+enum class WorkspacePreparationWaitMode {
+    BOUNDED,
+    INDEFINITE,
+}
 
 /** One monotonic observation domain. Passing a deadline to a child never restarts its allowance. */
 class WorkspacePreparationDeadline
 private constructor(
-    val limit: ElapsedTimeLimitMillis,
+    private val allowance: ElapsedTimeAllowance,
     private val startedNanos: Long,
 ) {
-    fun remaining(nowNanos: Long): Refinement<ElapsedTimeLimitMillis, WorkspacePreparationExpiry> =
-        when (val admitted = ElapsedTimeLimitMillis.parse((limit.value - elapsedMillis(nowNanos)).coerceAtLeast(0))) {
-            is Refinement.Refined -> admitted
-            is Refinement.Rejected -> Refinement.Rejected(WorkspacePreparationExpiry.DEADLINE_EXCEEDED)
+    fun remaining(nowNanos: Long): Refinement<ElapsedTimeAllowance, WorkspacePreparationExpiry> =
+        when (allowance) {
+            ElapsedTimeAllowance.Unlimited -> Refinement.Refined(allowance)
+            is ElapsedTimeAllowance.Bounded ->
+                when (
+                    val admitted =
+                        ElapsedTimeLimitMillis.parse((allowance.limit.value - elapsedMillis(nowNanos)).coerceAtLeast(0))
+                ) {
+                    is Refinement.Refined -> Refinement.Refined(ElapsedTimeAllowance.Bounded(admitted.value))
+                    is Refinement.Rejected -> Refinement.Rejected(WorkspacePreparationExpiry.DEADLINE_EXCEEDED)
+                }
         }
 
     fun timing(
@@ -51,7 +66,25 @@ private constructor(
         nowNanos: Long,
     ): WorkspacePreparationTiming {
         val elapsed = elapsedMillis(nowNanos)
-        return WorkspacePreparationTiming(stage, elapsed, limit.value, (limit.value - elapsed).coerceAtLeast(0), owner)
+        return when (allowance) {
+            is ElapsedTimeAllowance.Bounded ->
+                WorkspacePreparationTiming(
+                    stage,
+                    elapsed,
+                    allowance.limit.value,
+                    (allowance.limit.value - elapsed).coerceAtLeast(0),
+                    owner,
+                )
+            ElapsedTimeAllowance.Unlimited ->
+                WorkspacePreparationTiming(
+                    stage,
+                    elapsed,
+                    null,
+                    null,
+                    owner,
+                    WorkspacePreparationWaitMode.INDEFINITE,
+                )
+        }
     }
 
     private fun elapsedMillis(nowNanos: Long): Long {
@@ -61,7 +94,10 @@ private constructor(
 
     companion object {
         fun start(limit: ElapsedTimeLimitMillis, nowNanos: Long): WorkspacePreparationDeadline =
-            WorkspacePreparationDeadline(limit, nowNanos)
+            WorkspacePreparationDeadline(ElapsedTimeAllowance.Bounded(limit), nowNanos)
+
+        fun start(allowance: ElapsedTimeAllowance, nowNanos: Long): WorkspacePreparationDeadline =
+            WorkspacePreparationDeadline(allowance, nowNanos)
     }
 }
 

@@ -2,7 +2,7 @@
 
 The default plugin supplies canonical guidance for the native `kast` command.
 It does not register MCP or install Python hooks.
-Its session hook calls `kast hook session-start` to open and prepare supported Gradle projects in IntelliJ IDEA.
+Its session hook calls `kast hook session-start --wait none` to start preparing supported Gradle projects in IntelliJ IDEA.
 Non-project directories skip preparation. Invalid events and failed preparation return a nonzero status.
 The persistent IntelliJ IDEA Host owns Kotlin semantics for CLI and MCP.
 
@@ -19,15 +19,40 @@ kast install pi
 Codex and Copilot own their plugin resources and configuration.
 Pi discovers the copied skill through its native skill directory.
 Pi also installs the session extension that calls the same command.
-Pi starts preparation in the background without a wait during session startup.
-Preparation failures produce a warning after startup.
+Pi starts preparation in the background during session startup.
+Each harness gives the model context that distinguishes preparation from readiness and rejection.
+Pi includes that context before the next agent turn. Rejected preparation also produces a warning.
 Each command examines the selected installed release and the provider's actual resources.
 Start a fresh agent session after setup.
 Codex needs trust for the installed hook definition before it runs.
 
-Use `kast hook session-start --workspace /absolute/project/path` to request the same preparation from a terminal.
-Without `--workspace`, the command reads a host event with an absolute `cwd` from stdin.
-Successful hook replies contain one empty JSON object. Hook replies ignore `KAST_OUTPUT_TOON`.
+Use `kast hook session-start --workspace /absolute/project/path --wait none` to start preparation from a terminal.
+Without `--workspace`, the command reads a host event with an absolute `cwd` from standard input.
+Hook replies report `preparing` or `ready` and the selected preparation allowance. They ignore `KAST_OUTPUT_TOON`.
+Codex receives `hookSpecificOutput.additionalContext`; Copilot receives `additionalContext`.
+`--host codex` and `--host copilot` select those envelopes.
+
+Wait explicitly when a task needs a ready workspace:
+
+```sh
+kast workspace wait --workspace /absolute/project/path --wait 30000
+kast workspace wait --workspace /absolute/project/path --wait indefinite
+```
+
+The first command permits 30000 milliseconds. The second has no preparation deadline.
+Both report their wait mode before preparation. Cancellation, native failure, a changed host, and editor closure end the wait.
+A preparation timeout returns exit status 124. It does not prove that native import work stopped.
+Inspect current workspace state before repeating an uncertain lifecycle effect.
+
+Set `KAST_WORKSPACE_PREPARATION_WAIT` to positive milliseconds or `indefinite` for the default allowance.
+The setting also supports saved installation and workspace configuration. Explicit `--wait` takes precedence.
+Without a setting or flag, the existing 1020000-millisecond allowance applies.
+Background hooks return after native admission; their launch deadline does not bound an explicit workspace wait.
+
+Follow-up source reads, retained-result reads, and queries from issued references use the existing workspace.
+They preserve the original authority and reject stale references without causing a model reload.
+Use `kast diagnostic check --path src/main/kotlin --json` to inspect compiler diagnostics.
+Use `--path .` explicitly for the workspace root. Incomplete coverage does not establish a clean scope.
 Set `KAST_DEBUG=1` to send preparation and response diagnostics to stderr.
 Normal commands keep these diagnostics silent. Library logs report errors only.
 

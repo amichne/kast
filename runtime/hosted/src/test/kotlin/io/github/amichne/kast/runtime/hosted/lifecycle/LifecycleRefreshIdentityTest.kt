@@ -38,7 +38,7 @@ class LifecycleRefreshIdentityTest {
         assertEquals(listOf("child", "child"), calls)
         assertEquals(listOf(IdeLifecycleStage.ADMISSION), stages)
         assertEquals("parent", operation.requestId)
-        assertEquals(900, (operation.remaining() as Refinement.Refined).value.value)
+        assertEquals(900, (operation.remaining() as Refinement.Refined).value.protocolMillis())
         assertEquals(IdeLifecycleResult.Synced(target), result)
     }
 }

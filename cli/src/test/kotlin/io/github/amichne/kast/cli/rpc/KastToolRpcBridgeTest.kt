@@ -86,7 +86,7 @@ class KastToolRpcBridgeTest {
             bridge.call(name.value, publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")),
         )
         assertEquals(1, invocations)
-        assertEquals(1, preparations)
+        assertEquals(0, preparations)
     }
 
     @Test
@@ -254,10 +254,10 @@ class KastToolRpcBridgeTest {
         val complete = assertInstanceOf(ToolRpcReply.Complete::class.java, bridge.call("query_symbols", queryRequest))
         assertEquals("complete", complete.document.jsonObject.getValue("status").jsonPrimitive.content)
         assertEquals("query_symbols", invokedName)
-        assertEquals(1, preparationCount)
+        assertEquals(0, preparationCount)
         val changeRequest = publicExample(PublicToolIdentity.ADD_DECLARATION, "exactTarget")
         assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("add_declaration", changeRequest))
-        assertEquals(2, preparationCount)
+        assertEquals(0, preparationCount)
     }
 
     @Test

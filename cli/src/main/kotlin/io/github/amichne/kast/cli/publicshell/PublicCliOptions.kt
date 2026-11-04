@@ -12,6 +12,8 @@ internal enum class PublicCliFlag(val spelling: String, val takesValue: Boolean 
     NAME("--name"),
     REF("--ref", repeated = true),
     FILE("--file"),
+    PATH("--path"),
+    MAX_DIAGNOSTICS("--max-diagnostics"),
     OFFSET("--offset"),
     DIRECTORY("--in"),
     SOURCE_SET("--source-set", repeated = true),
@@ -61,6 +63,17 @@ private val queryFlags =
         PublicCliFlag.VERBOSE,
     )
 
+private val diagnosticFlags =
+    setOf(
+        PublicCliFlag.REQUEST,
+        PublicCliFlag.PATH,
+        PublicCliFlag.MAX_DIAGNOSTICS,
+        PublicCliFlag.CONTINUATION,
+        PublicCliFlag.MAX_ELAPSED,
+        PublicCliFlag.MAX_BYTES,
+        PublicCliFlag.VERBOSE,
+    )
+
 internal fun flagsFor(command: PublicCliCommandId): Set<PublicCliFlag> =
     when (command) {
         PublicCliCommandId.QUERY,
@@ -94,6 +107,7 @@ internal fun flagsFor(command: PublicCliCommandId): Set<PublicCliFlag> =
                     PublicCliFlag.MAX_BYTES,
                     PublicCliFlag.VERBOSE,
                 )
+        PublicCliCommandId.DIAGNOSTIC_CHECK -> processFlags + diagnosticFlags
         PublicCliCommandId.DESCRIBE ->
             setOf(
                 PublicCliFlag.CATALOG,

@@ -31,7 +31,7 @@ class WorkspacePreparationDocumentTest {
         val encoded = json.encodeToJsonElement(WorkspacePreparationActivity.serializer(), activity).jsonObject
         val preparation = encoded.getValue("preparation").jsonObject
         assertEquals(
-            setOf("stage", "elapsedMillis", "limitMillis", "remainingMillis", "limitingOwner"),
+            setOf("stage", "elapsedMillis", "limitMillis", "remainingMillis", "limitingOwner", "waitMode"),
             preparation.keys,
         )
         assertEquals("IMPORTING", preparation.getValue("stage").jsonPrimitive.content)

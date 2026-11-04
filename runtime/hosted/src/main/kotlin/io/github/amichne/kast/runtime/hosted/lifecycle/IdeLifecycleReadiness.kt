@@ -24,7 +24,7 @@ internal class IdeLifecycleReadiness(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             }
-        return withTimeoutOrNull(remaining.value) {
+        return withTimeoutOrNull(remaining.duration) {
             while (true) {
                 if (isDisposed()) return@withTimeoutOrNull blocked(IdeLifecycleFailure.DISPOSED)
                 when (val step = step()) {

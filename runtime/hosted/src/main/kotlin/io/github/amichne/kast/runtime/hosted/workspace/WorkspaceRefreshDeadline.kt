@@ -11,7 +11,7 @@ internal fun WorkspaceRefreshEntry.expire(
     observe: (WorkspaceRefreshDeadlineObservation) -> Unit,
 ) {
     val pending = status as? WorkspaceRefreshStatus.Pending ?: return
-    if (now - started < allowanceNanos) return
+    if (allowance.isInfinite() || now - started < allowance.inWholeNanoseconds) return
     val stage =
         when (pending.stage) {
             WorkspaceRefreshStage.QUEUED -> IdeLifecycleStage.OPENING
@@ -22,7 +22,7 @@ internal fun WorkspaceRefreshEntry.expire(
         WorkspacePreparationTiming(
             stage,
             (now - started).coerceAtLeast(0) / NANOS_PER_MILLI,
-            allowanceNanos / NANOS_PER_MILLI,
+            allowance.inWholeMilliseconds,
             0,
             WorkspacePreparationDeadlineOwner.REFRESH_WAITER,
         )

@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import sun.misc.Signal
 
-internal val publicQueryNamespaces = setOf("query", "result", "source", "describe", "hook")
+internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnostic", "describe", "hook", "workspace")
 
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =

@@ -303,7 +303,7 @@ internal class IdeLifecycleNative(
                         WorkspaceRefreshResult.Failed(requestId, WorkspaceRefreshFailure.DEADLINE_EXCEEDED)
                     is Refinement.Refined ->
                         endpoint.lifecycleRefresh(
-                            WorkspaceRefreshCommand.Request(requestId, effect, remaining.value.value)
+                            WorkspaceRefreshCommand.Request(requestId, effect, remaining.value.protocolMillis())
                         )
                 }
             },

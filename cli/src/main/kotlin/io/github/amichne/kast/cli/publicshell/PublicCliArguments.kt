@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -21,8 +22,12 @@ internal sealed interface PublicCliInput {
 }
 
 internal sealed interface PublicCliCommand {
-    data class Query(val catalog: PublicToolCatalog, val workspace: PublicCliWorkspace, val input: PublicCliInput) :
-        PublicCliCommand
+    data class Query(
+        val catalog: PublicToolCatalog,
+        val workspace: PublicCliWorkspace,
+        val input: PublicCliInput,
+        val identity: PublicToolIdentity = PublicToolIdentity.QUERY_SYMBOLS,
+    ) : PublicCliCommand
 
     data class Plan(val catalog: PublicToolCatalog, val workspace: PublicCliWorkspace, val input: PublicCliInput) :
         PublicCliCommand
@@ -42,6 +47,7 @@ internal sealed interface PublicCliCommand {
 internal enum class PublicCliNamespace(val word: String, val commands: List<PublicCliCommandId>) {
     SOURCE("source", listOf(PublicCliCommandId.SOURCE_READ)),
     RESULT("result", listOf(PublicCliCommandId.RESULT_READ, PublicCliCommandId.RESULT_RESUME)),
+    DIAGNOSTIC("diagnostic", listOf(PublicCliCommandId.DIAGNOSTIC_CHECK)),
 }
 
 @Serializable
@@ -51,6 +57,7 @@ internal enum class PublicCliCommandId(val argv: List<String>, val id: String) {
     @SerialName("result.read") RESULT_READ(listOf("result", "read"), "result.read"),
     @SerialName("result.resume") RESULT_RESUME(listOf("result", "resume"), "result.resume"),
     @SerialName("source.read") SOURCE_READ(listOf("source", "read"), "source.read"),
+    @SerialName("diagnostic.check") DIAGNOSTIC_CHECK(listOf("diagnostic", "check"), "diagnostic.check"),
     @SerialName("describe") DESCRIBE(listOf("describe"), "describe"),
 }
 
@@ -135,9 +142,13 @@ private fun executionCommand(
         }
     return Refinement.Refined(
         if (command == PublicCliCommandId.QUERY_PLAN) PublicCliCommand.Plan(catalog, workspace, input)
-        else PublicCliCommand.Query(catalog, workspace, input)
+        else PublicCliCommand.Query(catalog, workspace, input, command.toolIdentity())
     )
 }
+
+internal fun PublicCliCommandId.toolIdentity(): PublicToolIdentity =
+    if (this == PublicCliCommandId.DIAGNOSTIC_CHECK) PublicToolIdentity.CHECK_DIAGNOSTICS
+    else PublicToolIdentity.QUERY_SYMBOLS
 
 private fun commandInput(
     command: PublicCliCommandId,

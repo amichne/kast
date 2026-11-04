@@ -8,8 +8,6 @@ import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
-import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +33,7 @@ internal class InstalledWorkspacePreparation(
             CoroutineScope(ioDispatcher),
             { request -> runInterruptible(ioDispatcher) { lifecycle.execute(request, owner.installationId.value) } },
             observer = JsonLineWorkspacePreparationObserver(System.err, options.configuration.debug),
-            budget = OperationExecutionBudget.WORKSPACE_READINESS.value.milliseconds,
+            budget = options.configuration.workspacePreparationWait.duration,
         )
     val demand: WorkspaceDemand =
         PreparedWorkspaceDemand(
