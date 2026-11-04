@@ -1,0 +1,65 @@
+{
+  "specSha256": "b592936c4411ffef7b8fe669e3ece8e40fd9e88a5e8a14971094bcb9baa4489a",
+  "specRevision": "0decbfa874a21fc70592992bc12eaa6939980af2",
+  "refreshedOriginMain": "0decbfa874a21fc70592992bc12eaa6939980af2",
+  "sourceDrift": [],
+  "slopsentralRevision": "6fff283313159abc5ec1ccd41ce3f410f18cbdf0",
+  "engineeringGuidanceSha256": "6115727dd4cb243c521d25eccb90b58a7eedafc37f026b8eba2a2c7e193738cd",
+  "preservedBaseline": [
+    "TOON default and semantic --json precedence",
+    "finite stderr causes and bounded schema pages",
+    "existing fresh and received-result semantics",
+    "canonical and compact projection separate from encoding"
+  ],
+  "changedAssumptions": [
+    {
+      "type": "DISCOVERED_CODEC_PROOF_LIMIT",
+      "owner": "JToon 3.0.0 decodeToJson",
+      "finding": "Nested object empty arrays and integers beyond supported Long range do not round-trip. The encoding pair must fail closed."
+    },
+    {
+      "type": "LIVE_ACCESS_UNAVAILABLE",
+      "finding": "Configured OAuth credential expired. No refresh or replacement provider occurred."
+    },
+    {
+      "type": "DISCOVERED_PREFIX_OUTPUT_MISMATCH",
+      "source": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt:PublicToolDefaults.output",
+      "finding": "The public default includes NAME and LOCATION. C1 through C5 preserve canonical fixtures with SIGNATURE as well. Their preceding commands must explicitly request all three fields. Canonical values and original tasks remain unchanged.",
+      "followUp": "Record corrected state as interface-replay-v3 before inference. Preserve prior screen records as historical development evidence."
+    }
+  ],
+  "followUp": {
+    "type": "PLANNING_DIRECTION",
+    "topic": "Consider replacing JToon after this first scope",
+    "acceptanceInputs": [
+      "nested-empty-array",
+      "integer-beyond-Long",
+      "full six-case canonical fixture corpus"
+    ],
+    "implementationInThisScope": false
+  },
+  "deliveryReview": {
+    "mainIntegrated": "7d4d88f6aedd88aa4f19e8ae4d5cde38319e952c",
+    "changesSinceInspectedRevision": "The merged relation-inventory stop-cause and native release-catalog transport repairs remain unchanged. The latter changes management HTTPS transport and native-image support only. Replay cases, Kotlin rendering, public parsing, and admission remain identical to the measured implementation.",
+    "currentGuidanceVersion": "4.0.10",
+    "guidanceFiles": [
+      {
+        "path": "skills/git-change-flow/SKILL.md",
+        "sha256": "6d4971a8ccd7a6d5dda74d341200da51fa8be0a0827c1f86c9fa121b7a08ff41"
+      },
+      {
+        "path": "skills/pull-request-lifecycle/SKILL.md",
+        "sha256": "bd38492cc89e2a7ed8edd40db88543e9bd59f3036e4e07398fb011b4300ff683"
+      },
+      {
+        "path": "skills/github-ci-operations/SKILL.md",
+        "sha256": "4ad6272aacd6b8a00cb33e2dec0499ee7d6fbefb2c09457a3af39493f0255c61"
+      },
+      {
+        "path": "skills/github-ci-operations/references/event-driven-observation.md",
+        "sha256": "dfdaa5f7b0a8dae205a321b6e0ba01c1bffb6bb30b61a8045790f1a49c72d4b0"
+      }
+    ],
+    "liveAccess": "CODEX_CHATGPT through the existing Pi openai-codex route. Version-3 screen measured 24 sends. The original expired-Pi observation remains historical."
+  }
+}

@@ -1,0 +1,309 @@
+{
+  "type": "REPLAY_TARGET_ASSESSMENT",
+  "status": "NOT_MET",
+  "target": {
+    "factor": 3,
+    "dimensions": "TOKENS_AND_LATENCY",
+    "caseIds": [
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6"
+    ],
+    "repetitions": 2,
+    "variation": {
+      "type": "INSTRUCTIONS",
+      "baselineProfile": "full",
+      "candidateProfile": "concise"
+    }
+  },
+  "cases": 6,
+  "pairs": [
+    {
+      "caseId": "C1",
+      "repetition": 1,
+      "key": "C1-r1",
+      "baselineTrialId": "C1-r1-TOON",
+      "candidateTrialId": "C1-r1-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.7590275324233975
+    },
+    {
+      "caseId": "C1",
+      "repetition": 2,
+      "key": "C1-r2",
+      "baselineTrialId": "C1-r2-TOON",
+      "candidateTrialId": "C1-r2-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.2879867726128829
+    },
+    {
+      "caseId": "C2",
+      "repetition": 1,
+      "key": "C2-r1",
+      "baselineTrialId": "C2-r1-TOON",
+      "candidateTrialId": "C2-r1-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.40366684682661425
+    },
+    {
+      "caseId": "C2",
+      "repetition": 2,
+      "key": "C2-r2",
+      "baselineTrialId": "C2-r2-TOON",
+      "candidateTrialId": "C2-r2-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "incorrect",
+      "latencyRatio": 0.7433696681318971
+    },
+    {
+      "caseId": "C3",
+      "repetition": 1,
+      "key": "C3-r1",
+      "baselineTrialId": "C3-r1-TOON",
+      "candidateTrialId": "C3-r1-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.7369954550898654
+    },
+    {
+      "caseId": "C3",
+      "repetition": 2,
+      "key": "C3-r2",
+      "baselineTrialId": "C3-r2-TOON",
+      "candidateTrialId": "C3-r2-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.4359637747831382
+    },
+    {
+      "caseId": "C4",
+      "repetition": 1,
+      "key": "C4-r1",
+      "baselineTrialId": "C4-r1-TOON",
+      "candidateTrialId": "C4-r1-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "incorrect",
+      "latencyRatio": 1.056868163724741
+    },
+    {
+      "caseId": "C4",
+      "repetition": 2,
+      "key": "C4-r2",
+      "baselineTrialId": "C4-r2-TOON",
+      "candidateTrialId": "C4-r2-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.985236581417712
+    },
+    {
+      "caseId": "C5",
+      "repetition": 1,
+      "key": "C5-r1",
+      "baselineTrialId": "C5-r1-TOON",
+      "candidateTrialId": "C5-r1-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 2.4884804799742293
+    },
+    {
+      "caseId": "C5",
+      "repetition": 2,
+      "key": "C5-r2",
+      "baselineTrialId": "C5-r2-TOON",
+      "candidateTrialId": "C5-r2-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 1.9741428329499697
+    },
+    {
+      "caseId": "C6",
+      "repetition": 1,
+      "key": "C6-r1",
+      "baselineTrialId": "C6-r1-TOON",
+      "candidateTrialId": "C6-r1-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.5182839072185104
+    },
+    {
+      "caseId": "C6",
+      "repetition": 2,
+      "key": "C6-r2",
+      "baselineTrialId": "C6-r2-TOON",
+      "candidateTrialId": "C6-r2-TOON",
+      "baselineOutcome": "correct",
+      "candidateOutcome": "correct",
+      "latencyRatio": 0.43823362606612637
+    }
+  ],
+  "quality": {
+    "noAccuracyLoss": false,
+    "supported": true,
+    "perCase": [
+      {
+        "caseId": "C1",
+        "baseline": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "candidate": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "noAccuracyLoss": true,
+        "supported": true
+      },
+      {
+        "caseId": "C2",
+        "baseline": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "candidate": {
+          "eligible": 2,
+          "correct": 1
+        },
+        "noAccuracyLoss": false,
+        "supported": true
+      },
+      {
+        "caseId": "C3",
+        "baseline": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "candidate": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "noAccuracyLoss": true,
+        "supported": true
+      },
+      {
+        "caseId": "C4",
+        "baseline": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "candidate": {
+          "eligible": 2,
+          "correct": 1
+        },
+        "noAccuracyLoss": false,
+        "supported": true
+      },
+      {
+        "caseId": "C5",
+        "baseline": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "candidate": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "noAccuracyLoss": true,
+        "supported": true
+      },
+      {
+        "caseId": "C6",
+        "baseline": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "candidate": {
+          "eligible": 2,
+          "correct": 2
+        },
+        "noAccuracyLoss": true,
+        "supported": true
+      }
+    ],
+    "baseline": {
+      "eligible": 12,
+      "correct": 12
+    },
+    "candidate": {
+      "eligible": 12,
+      "correct": 10
+    }
+  },
+  "tokens": {
+    "baseline": {
+      "total": 11712,
+      "knownTotal": 11712,
+      "correct": 12,
+      "missingUsage": [],
+      "perCorrect": 976
+    },
+    "candidate": {
+      "total": 11549,
+      "knownTotal": 11549,
+      "correct": 10,
+      "missingUsage": [],
+      "perCorrect": 1154.9
+    },
+    "speedup": 0.8450948134037578
+  },
+  "latency": {
+    "method": "MEDIAN_OF_CASE_MEDIAN_PAIRED_RATIOS",
+    "caseRatios": [
+      {
+        "caseId": "C1",
+        "ratio": 0.5235071525181402
+      },
+      {
+        "caseId": "C2",
+        "ratio": 0.5735182574792557
+      },
+      {
+        "caseId": "C3",
+        "ratio": 0.5864796149365018
+      },
+      {
+        "caseId": "C4",
+        "ratio": 1.0210523725712264
+      },
+      {
+        "caseId": "C5",
+        "ratio": 2.2313116564620996
+      },
+      {
+        "caseId": "C6",
+        "ratio": 0.47825876664231837
+      }
+    ],
+    "speedup": 0.5799989362078788
+  },
+  "accounting": {
+    "baseline": {
+      "sends": 12,
+      "invalid": []
+    },
+    "candidate": {
+      "sends": 12,
+      "invalid": []
+    }
+  },
+  "costUnit": "PROVIDER_TOKENS",
+  "billedCost": {
+    "status": "UNAVAILABLE"
+  },
+  "reasons": [
+    "ACCURACY_REGRESSION",
+    "TOKEN_TARGET_NOT_MET",
+    "LATENCY_TARGET_NOT_MET"
+  ],
+  "qualifications": [
+    "DECLARED_CASES_ONLY",
+    "REPETITIONS_ARE_NOT_INDEPENDENT_TASKS",
+    "TOKENS_ARE_NOT_BILLED_COST",
+    "SYNTHETIC_INPUTS_DO_NOT_PROVE_MODEL_PERFORMANCE"
+  ]
+}

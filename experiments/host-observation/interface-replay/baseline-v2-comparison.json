@@ -1,0 +1,1197 @@
+{
+  "type": "REPLAY_COMPARISON",
+  "outcome": "INCONCLUSIVE",
+  "plannedTrials": 24,
+  "plannedPairs": 12,
+  "attemptedPairs": 12,
+  "distinctCases": 6,
+  "formats": {
+    "TOON": {
+      "planned": 12,
+      "outcomes": {
+        "correct": 12
+      },
+      "correctness": {
+        "correct": 12,
+        "eligible": 12,
+        "ratio": 1
+      },
+      "tokens": {
+        "knownTotal": 11669,
+        "complete": true,
+        "missing": []
+      },
+      "tokensPerCorrectCompletion": {
+        "status": "COMPLETE",
+        "value": 972.4166666666666,
+        "knownTokens": 11669,
+        "correct": 12,
+        "missingUsage": []
+      },
+      "argumentRejections": {},
+      "misuse": {},
+      "coverage": {
+        "correct": 2,
+        "incorrect": 0,
+        "notApplicable": 10,
+        "unavailable": []
+      },
+      "latency": {
+        "measurable": 12,
+        "medianTrialMs": 7931.025646000001,
+        "queueMs": [
+          {
+            "trialId": "C1-r1-TOON",
+            "value": 0.07762499999989814
+          },
+          {
+            "trialId": "C1-r2-TOON",
+            "value": 1.607875000000604
+          },
+          {
+            "trialId": "C2-r1-TOON",
+            "value": 2.351375000000189
+          },
+          {
+            "trialId": "C2-r2-TOON",
+            "value": 2.7100000000000364
+          },
+          {
+            "trialId": "C3-r1-TOON",
+            "value": 6804.332208000001
+          },
+          {
+            "trialId": "C3-r2-TOON",
+            "value": 8176.3766669999995
+          },
+          {
+            "trialId": "C4-r1-TOON",
+            "value": 8314.790417
+          },
+          {
+            "trialId": "C4-r2-TOON",
+            "value": 8848.679875000002
+          },
+          {
+            "trialId": "C5-r1-TOON",
+            "value": 12903.910792000002
+          },
+          {
+            "trialId": "C5-r2-TOON",
+            "value": 15340.821042
+          },
+          {
+            "trialId": "C6-r1-TOON",
+            "value": 15649.055792000003
+          },
+          {
+            "trialId": "C6-r2-TOON",
+            "value": 17040.63275
+          }
+        ]
+      }
+    },
+    "JSON": {
+      "planned": 12,
+      "outcomes": {
+        "correct": 11,
+        "incorrect": 1
+      },
+      "correctness": {
+        "correct": 11,
+        "eligible": 12,
+        "ratio": 0.9166666666666666
+      },
+      "tokens": {
+        "knownTotal": 11107,
+        "complete": true,
+        "missing": []
+      },
+      "tokensPerCorrectCompletion": {
+        "status": "COMPLETE",
+        "value": 1009.7272727272727,
+        "knownTokens": 11107,
+        "correct": 11,
+        "missingUsage": []
+      },
+      "argumentRejections": {
+        "INVALID_COMMAND": 1
+      },
+      "misuse": {
+        "ARGUMENT_REJECTED": 1,
+        "WRONG_ACTION": 1
+      },
+      "coverage": {
+        "correct": 2,
+        "incorrect": 0,
+        "notApplicable": 10,
+        "unavailable": []
+      },
+      "latency": {
+        "measurable": 12,
+        "medianTrialMs": 6589.429375,
+        "queueMs": [
+          {
+            "trialId": "C1-r1-JSON",
+            "value": 0.7941670000000158
+          },
+          {
+            "trialId": "C1-r2-JSON",
+            "value": 1.219625000000633
+          },
+          {
+            "trialId": "C2-r1-JSON",
+            "value": 1.9862499999999272
+          },
+          {
+            "trialId": "C2-r2-JSON",
+            "value": 3.4881670000004306
+          },
+          {
+            "trialId": "C3-r1-JSON",
+            "value": 6876.959167
+          },
+          {
+            "trialId": "C3-r2-JSON",
+            "value": 6950.76675
+          },
+          {
+            "trialId": "C4-r1-JSON",
+            "value": 8280.458417000002
+          },
+          {
+            "trialId": "C4-r2-JSON",
+            "value": 9049.373042000003
+          },
+          {
+            "trialId": "C5-r1-JSON",
+            "value": 13255.505167
+          },
+          {
+            "trialId": "C5-r2-JSON",
+            "value": 15030.489833
+          },
+          {
+            "trialId": "C6-r1-JSON",
+            "value": 15549.929500000002
+          },
+          {
+            "trialId": "C6-r2-JSON",
+            "value": 17438.657333000003
+          }
+        ]
+      }
+    }
+  },
+  "paired": {
+    "correctness": {
+      "count": 12,
+      "toonWins": 1,
+      "jsonWins": 0,
+      "ties": 11,
+      "pairs": [
+        {
+          "pairId": "C1-r1",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C1-r2",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C2-r1",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C2-r2",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C3-r1",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C3-r2",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C4-r1",
+          "toon": "correct",
+          "json": "incorrect",
+          "correctnessJsonMinusToon": -1
+        },
+        {
+          "pairId": "C4-r2",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C5-r1",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C5-r2",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C6-r1",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        },
+        {
+          "pairId": "C6-r2",
+          "toon": "correct",
+          "json": "correct",
+          "correctnessJsonMinusToon": 0
+        }
+      ]
+    },
+    "tokensBothCorrect": {
+      "count": 11,
+      "deltas": [
+        {
+          "pairId": "C1-r1",
+          "tokensJsonMinusToon": -90
+        },
+        {
+          "pairId": "C1-r2",
+          "tokensJsonMinusToon": -90
+        },
+        {
+          "pairId": "C2-r1",
+          "tokensJsonMinusToon": -45
+        },
+        {
+          "pairId": "C2-r2",
+          "tokensJsonMinusToon": -45
+        },
+        {
+          "pairId": "C3-r1",
+          "tokensJsonMinusToon": -45
+        },
+        {
+          "pairId": "C3-r2",
+          "tokensJsonMinusToon": -59
+        },
+        {
+          "pairId": "C4-r2",
+          "tokensJsonMinusToon": -53
+        },
+        {
+          "pairId": "C5-r1",
+          "tokensJsonMinusToon": -59
+        },
+        {
+          "pairId": "C5-r2",
+          "tokensJsonMinusToon": -29
+        },
+        {
+          "pairId": "C6-r1",
+          "tokensJsonMinusToon": 3
+        },
+        {
+          "pairId": "C6-r2",
+          "tokensJsonMinusToon": 2
+        }
+      ],
+      "medianDeltaJsonMinusToon": -45
+    },
+    "latency": {
+      "count": 12,
+      "deltas": [
+        {
+          "pairId": "C1-r1",
+          "trialMsJsonMinusToon": -2247.5794579999992,
+          "providerMsJsonMinusToon": -512.7507089999999,
+          "shellMsJsonMinusToon": -1403.2158330000002
+        },
+        {
+          "pairId": "C1-r2",
+          "trialMsJsonMinusToon": -1300.1765010000008,
+          "providerMsJsonMinusToon": 86.68795899999895,
+          "shellMsJsonMinusToon": -985.9181679999992
+        },
+        {
+          "pairId": "C2-r1",
+          "trialMsJsonMinusToon": -1329.5748750000002,
+          "providerMsJsonMinusToon": 12.942042000000583,
+          "shellMsJsonMinusToon": -1024.2474999999995
+        },
+        {
+          "pairId": "C2-r2",
+          "trialMsJsonMinusToon": -534.7909580000014,
+          "providerMsJsonMinusToon": 467.777458,
+          "shellMsJsonMinusToon": -555.8646669999998
+        },
+        {
+          "pairId": "C3-r1",
+          "trialMsJsonMinusToon": -39620.000167,
+          "providerMsJsonMinusToon": -38913.726666999995,
+          "shellMsJsonMinusToon": -14.778791999997338
+        },
+        {
+          "pairId": "C3-r2",
+          "trialMsJsonMinusToon": -1519.7239999999983,
+          "providerMsJsonMinusToon": -416.1590000000001,
+          "shellMsJsonMinusToon": -1132.2617069999997
+        },
+        {
+          "pairId": "C4-r1",
+          "trialMsJsonMinusToon": 2044.6740409999984,
+          "providerMsJsonMinusToon": 4056.4926670000004,
+          "shellMsJsonMinusToon": -1570.4886660000002
+        },
+        {
+          "pairId": "C4-r2",
+          "trialMsJsonMinusToon": -410.1734170000018,
+          "providerMsJsonMinusToon": 180.45599999999922,
+          "shellMsJsonMinusToon": -165.94616599999972
+        },
+        {
+          "pairId": "C5-r1",
+          "trialMsJsonMinusToon": -3505.4957090000025,
+          "providerMsJsonMinusToon": -3094.6657090000003,
+          "shellMsJsonMinusToon": 0
+        },
+        {
+          "pairId": "C5-r2",
+          "trialMsJsonMinusToon": 7819.0063329999975,
+          "providerMsJsonMinusToon": 8009.837666999998,
+          "shellMsJsonMinusToon": 0
+        },
+        {
+          "pairId": "C6-r1",
+          "trialMsJsonMinusToon": -212.6444589999992,
+          "providerMsJsonMinusToon": 305.84000000000015,
+          "shellMsJsonMinusToon": -234.04004199999963
+        },
+        {
+          "pairId": "C6-r2",
+          "trialMsJsonMinusToon": -480.9224589999976,
+          "providerMsJsonMinusToon": 391.8707509999999,
+          "shellMsJsonMinusToon": -565.6201239999996
+        }
+      ],
+      "medianDeltaJsonMinusToon": -917.4837295000011
+    }
+  },
+  "exclusions": [],
+  "missingPairs": [],
+  "ledger": {
+    "providerSends": {
+      "knownTotal": 24,
+      "complete": true,
+      "missing": []
+    },
+    "shellCalls": {
+      "knownTotal": 20,
+      "complete": true,
+      "missing": []
+    },
+    "kastInvocations": {
+      "knownTotal": 20,
+      "complete": true,
+      "missing": []
+    },
+    "nativeCalls": {
+      "knownTotal": 0,
+      "complete": true,
+      "missing": []
+    },
+    "tokens": {
+      "knownTotal": 22776,
+      "complete": true,
+      "missing": []
+    },
+    "trials": [
+      {
+        "trialId": "C1-r1-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 1191,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 36,
+            "reasoning": 0,
+            "totalTokens": 1227
+          }
+        },
+        "latency": {
+          "trialMs": 9048.499375,
+          "queueMs": 0.07762499999989814,
+          "setupMs": 2222.764584,
+          "providerMs": 2814.7589590000002,
+          "shellMs": 3769.4624999999996,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 8834.213083999999
+        }
+      },
+      {
+        "trialId": "C1-r1-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 1101,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 36,
+            "reasoning": 0,
+            "totalTokens": 1137
+          }
+        },
+        "latency": {
+          "trialMs": 6800.919917,
+          "queueMs": 0.7941670000000158,
+          "setupMs": 1906.175792,
+          "providerMs": 2302.0082500000003,
+          "shellMs": 2366.2466669999994,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 6607.941625
+        }
+      },
+      {
+        "trialId": "C1-r2-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 1101,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 36,
+            "reasoning": 0,
+            "totalTokens": 1137
+          }
+        },
+        "latency": {
+          "trialMs": 6873.969291,
+          "queueMs": 1.219625000000633,
+          "setupMs": 1896.1774580000001,
+          "providerMs": 2373.7315419999995,
+          "shellMs": 2361.6651660000007,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 6663.883707999999
+        }
+      },
+      {
+        "trialId": "C1-r2-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 1191,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 36,
+            "reasoning": 0,
+            "totalTokens": 1227
+          }
+        },
+        "latency": {
+          "trialMs": 8174.145792000001,
+          "queueMs": 1.607875000000604,
+          "setupMs": 2296.23925,
+          "providerMs": 2287.0435830000006,
+          "shellMs": 3347.583334,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 7956.294291
+        }
+      },
+      {
+        "trialId": "C2-r1-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 867,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 41,
+            "reasoning": 0,
+            "totalTokens": 908
+          }
+        },
+        "latency": {
+          "trialMs": 6948.0909169999995,
+          "queueMs": 1.9862499999999272,
+          "setupMs": 1905.4258330000002,
+          "providerMs": 2443.09025,
+          "shellMs": 2337.5624580000003,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 6713.0836659999995
+        }
+      },
+      {
+        "trialId": "C2-r1-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 912,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 41,
+            "reasoning": 0,
+            "totalTokens": 953
+          }
+        },
+        "latency": {
+          "trialMs": 8277.665792,
+          "queueMs": 2.351375000000189,
+          "setupMs": 2235.196958,
+          "providerMs": 2430.1482079999996,
+          "shellMs": 3361.809958,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 8056.41825
+        }
+      },
+      {
+        "trialId": "C2-r2-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 912,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 41,
+            "reasoning": 0,
+            "totalTokens": 953
+          }
+        },
+        "latency": {
+          "trialMs": 8845.238625000002,
+          "queueMs": 2.7100000000000364,
+          "setupMs": 2222.794,
+          "providerMs": 2769.539125,
+          "shellMs": 3580.060042,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 8607.262708999999
+        }
+      },
+      {
+        "trialId": "C2-r2-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 867,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 41,
+            "reasoning": 0,
+            "totalTokens": 908
+          }
+        },
+        "latency": {
+          "trialMs": 8310.447667,
+          "queueMs": 3.4881670000004306,
+          "setupMs": 1807.23775,
+          "providerMs": 3237.316583,
+          "shellMs": 3024.1953750000002,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 8097.4514580000005
+        }
+      },
+      {
+        "trialId": "C3-r1-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 957,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 35,
+            "reasoning": 0,
+            "totalTokens": 992
+          }
+        },
+        "latency": {
+          "trialMs": 45997.939,
+          "queueMs": 6804.332208000001,
+          "setupMs": 2827.523625,
+          "providerMs": 41972.394833,
+          "shellMs": 880.989416999997,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 45724.313875
+        }
+      },
+      {
+        "trialId": "C3-r1-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 905,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 42,
+            "reasoning": 0,
+            "totalTokens": 947
+          }
+        },
+        "latency": {
+          "trialMs": 6377.938833,
+          "queueMs": 6876.959167,
+          "setupMs": 2084.268167,
+          "providerMs": 3058.6681659999995,
+          "shellMs": 866.2106249999997,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 6037.9061249999995
+        }
+      },
+      {
+        "trialId": "C3-r2-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 905,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 35,
+            "reasoning": 0,
+            "totalTokens": 940
+          }
+        },
+        "latency": {
+          "trialMs": 5952.548958000001,
+          "queueMs": 6950.76675,
+          "setupMs": 1942.8020000000001,
+          "providerMs": 2694.8523330000003,
+          "shellMs": 859.3239590000003,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 5533.128666
+        }
+      },
+      {
+        "trialId": "C3-r2-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 957,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 42,
+            "reasoning": 0,
+            "totalTokens": 999
+          }
+        },
+        "latency": {
+          "trialMs": 7472.272958,
+          "queueMs": 8176.3766669999995,
+          "setupMs": 2092.747625,
+          "providerMs": 3111.0113330000004,
+          "shellMs": 1991.585666,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 7219.007334
+        }
+      },
+      {
+        "trialId": "C4-r1-JSON",
+        "outcome": {
+          "type": "incorrect",
+          "reasons": [
+            "ARGUMENT_REJECTED",
+            "WRONG_ACTION"
+          ]
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 951,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 52,
+            "reasoning": 0,
+            "totalTokens": 1003
+          }
+        },
+        "latency": {
+          "trialMs": 8759.697165999998,
+          "queueMs": 8280.458417000002,
+          "setupMs": 1588.7985,
+          "providerMs": 6658.196500000001,
+          "shellMs": 246.7634999999991,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 8524.509625
+        }
+      },
+      {
+        "trialId": "C4-r1-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 1004,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 51,
+            "reasoning": 0,
+            "totalTokens": 1055
+          }
+        },
+        "latency": {
+          "trialMs": 6715.023125,
+          "queueMs": 8314.790417,
+          "setupMs": 1997.146208,
+          "providerMs": 2601.7038330000005,
+          "shellMs": 1817.2521659999993,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 6443.660583
+        }
+      },
+      {
+        "trialId": "C4-r2-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 1004,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 51,
+            "reasoning": 0,
+            "totalTokens": 1055
+          }
+        },
+        "latency": {
+          "trialMs": 6700.612917000002,
+          "queueMs": 8848.679875000002,
+          "setupMs": 1601.194667,
+          "providerMs": 2891.0932920000005,
+          "shellMs": 1878.279375,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 6393.705125
+        }
+      },
+      {
+        "trialId": "C4-r2-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 951,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 51,
+            "reasoning": 0,
+            "totalTokens": 1002
+          }
+        },
+        "latency": {
+          "trialMs": 6290.4395,
+          "queueMs": 9049.373042000003,
+          "setupMs": 1187.4050000000002,
+          "providerMs": 3071.5492919999997,
+          "shellMs": 1712.3332090000004,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 5998.5595
+        }
+      },
+      {
+        "trialId": "C5-r1-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 883,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 66,
+            "reasoning": 20,
+            "totalTokens": 949
+          }
+        },
+        "latency": {
+          "trialMs": 7687.905500000001,
+          "queueMs": 12903.910792000002,
+          "setupMs": 1797.6656249999999,
+          "providerMs": 5676.284167,
+          "shellMs": 0,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 7512.830292
+        }
+      },
+      {
+        "trialId": "C5-r1-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 846,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 44,
+            "reasoning": 0,
+            "totalTokens": 890
+          }
+        },
+        "latency": {
+          "trialMs": 4182.409790999998,
+          "queueMs": 13255.505167,
+          "setupMs": 1385.4155409999998,
+          "providerMs": 2581.6184579999995,
+          "shellMs": 0,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 4007.5615
+        }
+      },
+      {
+        "trialId": "C5-r2-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 846,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 78,
+            "reasoning": 32,
+            "totalTokens": 924
+          }
+        },
+        "latency": {
+          "trialMs": 18599.900792,
+          "queueMs": 15030.489833,
+          "setupMs": 1015.393333,
+          "providerMs": 17321.32825,
+          "shellMs": 0,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 18353.50375
+        }
+      },
+      {
+        "trialId": "C5-r2-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 0,
+        "kastInvocations": 0,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 883,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 70,
+            "reasoning": 24,
+            "totalTokens": 953
+          }
+        },
+        "latency": {
+          "trialMs": 10780.894459000003,
+          "queueMs": 15340.821042,
+          "setupMs": 1228.5997080000002,
+          "providerMs": 9311.490583,
+          "shellMs": 0,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 10556.405458
+        }
+      },
+      {
+        "trialId": "C6-r1-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 615,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 41,
+            "reasoning": 0,
+            "totalTokens": 656
+          }
+        },
+        "latency": {
+          "trialMs": 5172.162958000001,
+          "queueMs": 15549.929500000002,
+          "setupMs": 855.659208,
+          "providerMs": 2713.84325,
+          "shellMs": 1414.262208,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 5002.5109999999995
+        }
+      },
+      {
+        "trialId": "C6-r1-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 613,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 40,
+            "reasoning": 0,
+            "totalTokens": 653
+          }
+        },
+        "latency": {
+          "trialMs": 5384.807417,
+          "queueMs": 15649.055792000003,
+          "setupMs": 1126.381042,
+          "providerMs": 2408.0032499999998,
+          "shellMs": 1648.3022499999997,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 5205.646707999999
+        }
+      },
+      {
+        "trialId": "C6-r2-TOON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 613,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 40,
+            "reasoning": 0,
+            "totalTokens": 653
+          }
+        },
+        "latency": {
+          "trialMs": 5941.522958999998,
+          "queueMs": 17040.63275,
+          "setupMs": 1035.3646660000002,
+          "providerMs": 2656.562708,
+          "shellMs": 2107.1807909999998,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 5818.411666
+        }
+      },
+      {
+        "trialId": "C6-r2-JSON",
+        "outcome": {
+          "type": "correct",
+          "reasons": []
+        },
+        "providerSends": 1,
+        "shellCalls": 1,
+        "kastInvocations": 1,
+        "nativeCalls": 0,
+        "usage": {
+          "type": "known",
+          "value": {
+            "input": 615,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "output": 40,
+            "reasoning": 0,
+            "totalTokens": 655
+          }
+        },
+        "latency": {
+          "trialMs": 5460.6005000000005,
+          "queueMs": 17438.657333000003,
+          "setupMs": 697.8614580000001,
+          "providerMs": 3048.433459,
+          "shellMs": 1541.5606670000002,
+          "method": "CONTROLLER_REAPED_WALL_V1",
+          "workerMs": 5311.441000000001
+        }
+      }
+    ]
+  },
+  "qualifications": [
+    "REPLAY_DECISIONS_GIVEN_FIXED_STATES",
+    "REPETITIONS_ARE_NOT_INDEPENDENT_TASKS",
+    "LATENCY_EXCLUDES_NATIVE_SEMANTIC_CLAIMS",
+    "NO_FORMAT_WINNER_REQUIRED"
+  ],
+  "liveAcceptance": "MEASURED",
+  "preflight": {
+    "planned": 24,
+    "completeInputs": 24,
+    "qualifiedPairs": 12
+  },
+  "source": {
+    "revision": "e6b08bd8b8a840c74602104a54e6f713fa854557",
+    "diffSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "adapterManifestSha256": "040197df123a9d19c80502b0e2c58e155ada69bdfaaff67ad016bf85fb158d8f"
+  },
+  "limits": {
+    "workers": 8,
+    "maximumProviderRequests": 24,
+    "maximumRequestsPerTrial": 1,
+    "wallSeconds": 60
+  }
+}

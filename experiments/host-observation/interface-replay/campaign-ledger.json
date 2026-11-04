@@ -1,0 +1,63 @@
+{
+  "actualProviderSends": 120,
+  "providerTokens": 113602,
+  "correct": 111,
+  "eligible": 120,
+  "runs": [
+    {
+      "run": "interface-codex-screen-002",
+      "sourceRevision": "d9559f40b0a740b7413298ff30a47f033df039a3",
+      "sends": 24,
+      "providerTokens": 22374,
+      "correct": 19,
+      "eligible": 24,
+      "invalidTrials": [],
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "sourceRevision": "e6b08bd8b8a840c74602104a54e6f713fa854557",
+      "sends": 24,
+      "providerTokens": 22776,
+      "correct": 23,
+      "eligible": 24,
+      "invalidTrials": [],
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "sourceRevision": "2a29147498efc94fc848aa441191472d0167b101",
+      "sends": 24,
+      "providerTokens": 22846,
+      "correct": 24,
+      "eligible": 24,
+      "invalidTrials": [],
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "sourceRevision": "2a29147498efc94fc848aa441191472d0167b101",
+      "sends": 24,
+      "providerTokens": 22600,
+      "correct": 22,
+      "eligible": 24,
+      "invalidTrials": [],
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
+    },
+    {
+      "run": "interface-codex-screen-v3",
+      "sourceRevision": "eaa4efbb528be4652409f2de32915e67ed8826a0",
+      "sends": 24,
+      "providerTokens": 23006,
+      "correct": 23,
+      "eligible": 24,
+      "invalidTrials": [],
+      "missingPairs": [],
+      "qualification": "CURRENT_V3_SCREEN"
+    }
+  ]
+}
