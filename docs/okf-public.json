@@ -5532,7 +5532,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "d2be95a558948b415cf9cb85d7eaeb30ef9fe9c651756de0d243f1784315043e"
+          "sha256": "9d87ea6105e64218de712a1b5a0474f1653db9eb43c1a97646f08296a14de739"
         }
       ],
       "claims": [
@@ -5938,7 +5938,7 @@
           "sha256": "ec40d027fcb0cdf0efced88cd117ece7768c090c96a90b4dbeec18a14dc1f61e"
         }
       ],
-      "reviewedSourceRevision": "28de9ce670e25ae3dd514d6198226aac6a027bd4"
+      "reviewedSourceRevision": "724de3bdb89da662f281aadab1f10a66b0f636ed"
     },
     {
       "route": "reference/compatibility",
