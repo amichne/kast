@@ -71,7 +71,10 @@ The initial run uses `openai-codex/gpt-6.1-sol` with high effort through Pi 1.4.
 The original offline report used an expired Pi credential and has status `NOT_RUN`.
 The first Codex-backed screen completed 24 measured trials.
 [The live report](first-live.md) keeps its original results and response-contract findings.
-The current hill climb uses the [performance target](hill-climb.md).
+The [corrected initial screen](screen-v3.md) supplies current version-3 acceptance.
+It preserves all tasks and canonical values, with explicit fields in their preceding calls.
+Earlier screens remain historical development evidence after the [state review](projection-review.md).
+The historical hill climb uses the [performance target](hill-climb.md).
 The [clarified baseline](baseline-v2.md) records all twelve correct TOON decisions before performance candidates.
 The report selects no format winner.
 The [delivery report](completion.md) records current acceptance, measured candidates, exact commands, and remaining limits.

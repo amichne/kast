@@ -1,167 +1,156 @@
 # Interface replay delivery
 
-The corrected first scope now uses case version 3.
-The [projection and state review](projection-review.md) records a preceding-command mismatch and the corrected inputs.
-The current bounded screen remains `NOT_RUN` until the required offline gate passes.
-Earlier acceptance and performance reports remain historical development evidence.
-The later [hosted review repairs](hosted-review.md) add controls for command facts and tool proposals without changes to recorded verdicts.
-Codex credentials supplied actual provider access through the existing Pi SDK runner.
-The later 3× target remains `NOT_MET`. The tested candidates supply no 3× token or latency claim.
-The local Codex credential check succeeds. Current provider access remains unproved until the version-3 screen.
+The required first scope passes A1–A10 on the corrected version-3 replay state.
+The [current screen](screen-v3.md) records 24 actual sends, complete usage, twelve pairs, and zero native semantic calls.
+TOON scored 11 of 12. JSON scored 12 of 12.
+The separate 3× token and latency goal remains `NOT_MET`.
+The screen selects no general format winner and changes no product default.
 
 ## Acceptance evidence
 
 | Criterion | Status | Evidence |
 | --- | --- | --- |
-| A1 | PENDING | Source commits, case digests, SDK digests, model settings, adapter artifacts, and plans appear in the versioned manifests. |
-| A2 | PASS | Six independent graders accept correct controls and reject changes to syntax, target, scope, reference, and coverage. |
-| A3 | PASS | The production renderer and independent decoder preserve complete canonical values, exact strings, arrays, and large integers. |
-| A4 | PASS | Real restricted Bash reaches production parsing, lowering, input decoding, and admission. Raw commands and effects remain unchanged. |
-| A5 | PASS | The replay path starts no Host, MCP connection, or native semantic call. |
+| A1 | PASS | The clean source, actual artifacts, SDK files, model settings, cases, preceding commands, and receipt hashes appear in the [manifest](screen-v3-manifest.json). |
+| A2 | PASS | Six independent graders accept correct controls and reject changes to syntax, action, target, scope, reference, and coverage. |
+| A3 | PASS | The production renderer and independent decoder preserve canonical values, exact strings, arrays, and large integers. |
+| A4 | PASS | Restricted Bash reaches production parsing, lowering, input decoding, and public admission. Raw commands and effects stay unchanged. |
+| A5 | PASS | The replay path starts no Host, MCP connection, or native semantic call. All 24 measured native-call counts equal zero. |
 | A6 | PASS | Deterministic pool and child tests cover isolation, request limits, cancellation, report delivery, and child cleanup. |
-| A7 | PENDING | Each measured screen admitted 24 complete SDK inputs before inference. Each actual payload contained the intended result exactly once. |
-| A8 | PASS | Every planned trial appears in its report. Failed work, cache tokens, missing usage, and excluded trials preserve separate meanings. |
-| A9 | NOT_RUN | Four declared screens produced 96 actual sends. Each screen kept six cases, two formats, two repetitions, and eight workers. |
-| A10 | PENDING | Focused Kotlin, Node, real-shell, SDK, contract, graph, knowledge, prose, and fast repository guards passed. |
+| A7 | PASS | All 24 complete SDK inputs passed before inference. Each actual provider payload contained the intended result exactly once. |
+| A8 | PASS | Every trial appears in the [comparison](screen-v3-comparison.json). Failed work, cache tokens, missing usage, and invalid trials keep separate meanings. |
+| A9 | PASS | The screen used six cases, two formats, two repetitions, eight workers, and 24 actual provider sends. |
+| A10 | PASS | Focused Kotlin, Node, restricted-shell, SDK, contract, graph, knowledge, prose, and full pre-push checks passed before inference. |
 
-The original offline report remains historical evidence of expired Pi access and a decoder failure.
-The [first live screen](first-live.md) preserves the original decisions and strict grades.
-The [clarified baseline](baseline-v2.md) declares exact limitation codes before its requests.
-The baseline fixes TOON quality at twelve correct decisions. No retrospective regrade creates an improvement.
+No live acceptance criterion remains blocked.
+The current screen excludes no invalid trial and misses no usage record or pair.
+The incorrect command remains unsuccessful in the correctness denominator.
+Repetitions cover six tasks and do not supply twelve independent tasks.
+The final delivery still needs the exact-head hosted checks before the authorized merge.
 
-## Measured candidates
+## Implementation and protected facts
 
-| Run and format | Correct | Provider tokens | Median trial duration |
-| --- | --- | --- | --- |
-| Baseline TOON | 12/12 | 11,669 | 7.93 seconds |
-| Baseline JSON | 11/12 | 11,107 | 6.59 seconds |
-| Session TOON | 12/12 | 11,712 | 4.81 seconds |
-| Session JSON | 12/12 | 11,134 | 4.92 seconds |
-| Concise TOON | 10/12 | 11,549 | 8.09 seconds |
-| Concise JSON | 12/12 | 11,051 | 7.04 seconds |
+The existing `experiments/host-observation/pi_evaluation*` owners contain the replay plan, pool, sessions, instrumentation, accounting, graders, and restricted shell.
+Fresh and received-result modes keep their original meanings.
+Replay composes no Host, MCP connection, or native semantic executor.
+Each trial owns its session, fixture, files, counters, and output.
+The controller alone writes aggregate reports.
 
-The session profile changes local execution only. Its model-visible inputs match the baseline exactly.
-The [TOON assessment](session-toon-target.json) records a 1.537× paired latency ratio and a 0.996× token ratio.
-These ratios use complete tokens per correct decision and the median of six per-case paired latency ratios.
-They do not equal the ratio between the table's cohort medians.
-The [JSON assessment](session-json-target.json) also rejects the 3× target.
+`PublicReplayAdapter` stays in the CLI test source set and calls the production owners.
+The driver counts each Kast entry before request decoding or production parsing.
+It blocks further entries and production executables.
+The shell keeps the raw command, actual `argv`, `stdin`, `stdout`, `stderr`, and exit status.
+The runner repairs no model output.
 
-The concise profile changes one global instruction contract and preserves every task and canonical result.
-It saves 32 input tokens per trial. More output tokens offset most of that decrease.
-The [TOON assessment](concise-toon-target.json) rejects its accuracy regression.
-The [JSON assessment](concise-json-target.json) records only a 1.008× token ratio and a 0.766× paired latency ratio.
-The concise profile supplies no accepted improvement.
-No failed trial received a hidden retry. No separate calibration or cache-warming request occurred.
+The [hosted review repairs](hosted-review.md) preserve execution intent, fixture-workspace selection, and blocked SDK proposals.
+The [projection review](projection-review.md) preserves caller scope, compatible retained output, and production text defaults.
+It also records a mismatch between captured signatures and preceding commands before the version-3 input repair.
+C1–C5 now explicitly request their three captured fields.
+Every original task and canonical value stays unchanged.
+A state digest blocks claims across different preceding calls.
 
-The [campaign ledger](campaign-ledger.json) includes all four screens, including the first contract with missing limitation-code instructions and every model failure.
-It records 96 actual sends, 90,596 provider tokens, and 88 correct decisions among 96 eligible decisions.
-These totals describe development work. They do not turn repeated tasks into independent samples.
-Each measured screen has complete usage, no excluded invalid trials, no missing pairs, and zero native calls.
-Provider tokens measure work. Billed cost remains unavailable.
+Production still defaults to TOON and honors semantic `--json`.
+The production renderer still uses `JToon` 3.0.0.
+The independent test decoder uses published `Ktoon` 6.0.0.
+This decoder change repairs the equality proof without a product migration or data repair.
+
+## Current comparison
+
+| Measure | TOON | JSON |
+| --- | --- | --- |
+| Correct decisions | 11/12 | 12/12 |
+| Provider tokens | 11,777 | 11,229 |
+| Tokens per correct decision | 1,070.64 | 935.75 |
+| Median trial duration | 12.22 seconds | 11.39 seconds |
+| Actual provider sends | 12 | 12 |
+| Native semantic calls | 0 | 0 |
+
+Paired correctness has one JSON win and eleven ties.
+Eleven pairs contain two correct decisions. Their median JSON-minus-TOON token difference is −53 tokens.
+The median paired duration difference is −1.10 seconds across twelve pairs.
+The [target assessment](screen-v3-target.json) records 1.144× fewer tokens per correct decision and a 1.140× paired latency ratio for JSON.
+The latency ratio uses the median of six per-case median paired ratios.
+It does not equal the ratio between the table's cohort medians.
+Neither measure reaches 3×. Billed cost remains unavailable.
+
+The [campaign ledger](campaign-ledger.json) counts 120 actual sends and 113,602 provider tokens across all five development screens.
+Historical version-1 and version-2 screens keep their original 96 receipts, 90,596 tokens, and 88 correct labels.
+Their preceding-command mismatch prevents current acceptance or performance claims from those records.
+The current cohort contains only the 24 version-3 trials.
+No failed trial received a hidden retry or separate calibration request.
 
 ## Source and artifacts
 
-The baseline source is `e6b08bd8b8a840c74602104a54e6f713fa854557`.
-Both candidate screens use clean source `2a29147498efc94fc848aa441191472d0167b101` with the same pinned model, effort, and Pi 1.4.0 SDK files.
-The [session manifest](session-manifest.json) and [concise manifest](concise-manifest.json) record full source, artifact, case, and plan digests.
-The [baseline derivation](baseline-v2-derivation.json) binds added comparison metadata to the exact original source and receipt hashes.
-It adds the known `full` and `fresh` profiles and the source-bound public schema digest.
-It changes no original decision, grade, payload, token count, or duration.
+The tested implementation source is `eaa4efbb528be4652409f2de32915e67ed8826a0`.
+The working-tree digest is `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` for the clean tree.
+The adapter aggregate digest is `4b5083255f505afc2682a6c69732c35c130249f07429cd2def97370eeab3fd4d`.
+The plan digest is `636180077f6a7885041230bdc8555db4b1c9a86a389efd5c7b14d1c287cb1a8c`.
+The [manifest](screen-v3-manifest.json) records every case digest and all pinned SDK file hashes.
+The model stays `openai-codex/gpt-6.1-sol`, with high effort through Pi 1.4.0.
+Codex ChatGPT access works through the existing Pi provider route and session owner.
+The runner changes no credential file and starts no separate Codex agent loop.
 
-The existing `pi_evaluation*` owners contain planning, scheduling, sessions, instrumentation, accounting, graders, and the restricted shell.
-`PublicReplayAdapter` remains test-only and calls the production owners.
-Its optional JSON-line mode owns one JVM per trial, one admission, and one render.
-It rejects excess requests, invalid UTF-8, and oversized frames with finite failures.
-The parent stops and reaps its child after success, failure, or cancellation.
-
-Production still defaults to TOON and honors semantic `--json`.
-The independent decoder uses published `Ktoon` 6.0.0. The production renderer still uses `JToon` 3.0.0.
-The decoder change repairs the experiment's equality proof without a product migration or data repair.
+Private payloads, complete SDK inputs, raw shell records, and immutable receipts remain under `build/interface-codex-screen-v3.json.run/`.
+The adapter manifest lists actual artifact paths and hashes under `cli/build/replay-adapter/manifest.json`.
+Run directories cannot overwrite earlier evidence.
+Historical reports remain linked through the [README](README.md), with their source identities and original verdicts.
 
 ## Exact commands and statuses
 
-All paths in these commands are relative to the task checkout unless `$PWD` supplies an absolute path.
-
 ```sh
-mise exec -- ./gradlew :cli:prepareReplayAdapter --console=plain
 node --test experiments/host-observation/pi_evaluation_replay*.test.mjs
 KAST_REPLAY_TEST_PLAN="$PWD/build/interface-session-test-plan.json" KAST_REPLAY_ADAPTER_MANIFEST="$PWD/cli/build/replay-adapter/manifest.json" node --test experiments/host-observation/pi_evaluation_replay_sdk.test.mjs experiments/host-observation/pi_evaluation_replay_adapter.test.mjs experiments/host-observation/pi_evaluation_replay_adapter_session.test.mjs experiments/host-observation/pi_evaluation_replay_codex_sdk.test.mjs
-mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*' :cli:spotlessCheck :cli:checkTestKotlinFileLength verifyJsonContracts verifyVerificationGraph knowledgeImpact verifyKnowledgeBase hostObservationTest --console=plain
-mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py
-node experiments/host-observation/run_pi_evaluation.mjs --prepare-replay "$PWD/build/interface-codex-session-v2.json" --auth=codex --execution=session
-node experiments/host-observation/run_pi_evaluation.mjs --plan "$PWD/build/interface-codex-session-v2.json"
-node experiments/host-observation/run_pi_evaluation.mjs --execute "$PWD/build/interface-codex-session-v2.json"
-node experiments/host-observation/run_pi_evaluation.mjs --prepare-replay "$PWD/build/interface-codex-concise-v2.json" --auth=codex --execution=session --instructions=concise
-node experiments/host-observation/run_pi_evaluation.mjs --plan "$PWD/build/interface-codex-concise-v2.json"
-node experiments/host-observation/run_pi_evaluation.mjs --execute "$PWD/build/interface-codex-concise-v2.json"
-node experiments/host-observation/run_pi_evaluation.mjs --assess-target "$PWD/build/interface-session-toon-target-input.json"
-node experiments/host-observation/run_pi_evaluation.mjs --assess-target "$PWD/build/interface-concise-toon-target-input.json"
+GRADLE_USER_HOME="$PWD/build/interface-gradle-home" mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*' :cli:detekt :cli:spotlessCheck :cli:checkTestKotlinFileLength verifyJsonContracts --console=plain
+GRADLE_USER_HOME="$PWD/build/interface-gradle-home" git -c 'core.sshCommand=ssh -o ServerAliveInterval=20 -o ServerAliveCountMax=30' push origin codex/interface-replay-evaluation
+GRADLE_USER_HOME="$PWD/build/interface-gradle-home" mise exec -- ./gradlew -Pversion=0.50.3 :cli:prepareReplayAdapter --console=plain
+node experiments/host-observation/run_pi_evaluation.mjs --prepare-replay "$PWD/build/interface-codex-screen-v3.json" --auth=codex --execution=fresh
+node experiments/host-observation/run_pi_evaluation.mjs --plan "$PWD/build/interface-codex-screen-v3.json"
+node experiments/host-observation/run_pi_evaluation.mjs --execute "$PWD/build/interface-codex-screen-v3.json"
+node build/interface-v3-report.mjs
 ```
 
-- **PASSED:** 91 public-shell Kotlin tests, including 15 focused adapter tests, with zero failures.
-- **PASSED:** 84 deterministic replay Node tests. Ten optional integration tests skipped without their explicit environment variables.
-- **PASSED:** All 27 opt-in real-JVM, restricted-shell, SDK, credential, parity, and cancellation tests, with zero skips.
-- **PASSED:** 332 host-experiment Python tests and the 23 portable fast-check suites, with zero platform skips.
-- **PASSED:** JSON contracts, graph fingerprints, knowledge impact, knowledge citations, formatting, and file-length guards.
+- **PASSED:** 94 focused public-shell Kotlin tests, including the production adapter controls.
+- **PASSED:** 118 deterministic Node tests. Sixteen optional integrations skip without explicit environment variables.
+- **PASSED:** All 36 opt-in integrations, with zero skips or failures.
+- **PASSED:** 332 host-experiment Python tests and 23 portable fast-check suites, with zero platform skips.
+- **PASSED:** JSON contracts, graph fingerprints, knowledge impact, knowledge citations, Kotlin format, file length, and `:cli:detekt` guards.
+- **PASSED:** The full pre-push product gate on the tested source. It completed 647 tasks before inference.
 - **PASSED:** Scoped glossary and prose guards. Pinned Vale and Repository Knowledge reports remain under `build/`.
-- **ASSESSED:** Prose retains grade-8 advisories for exact technical terms. This status supplies no reader-comprehension proof.
-- **NOT_MET:** The target commands exit with status 1 because the measured candidates miss the declared goals.
-- **NOT RUN:** Native acceptance, compiler semantic fixtures, publication, deployment, and a broader model sweep.
-- **NOT RUN at the initial local handoff:** The full pre-push product gate. The later delivery review records the separately authorized merge work.
+- **ASSESSED:** Prose keeps grade-8 advisories for necessary technical names. Experimental reports sit outside the glossary's declared terminology scope.
+- **NOT_MET:** The independently derived 3× assessment preserves all six cases and complete failed spend.
+- **NOT RUN:** Live Host qualification, compiler semantic fixtures, workflow confirmation, later interface experiments, deployment, release, or a broader model sweep.
 
-Private payloads, raw shell records, actual `argv`, `stdin`, `stdout`, `stderr`, exit statuses, and immutable receipts remain in each recorded `build/` run.
-The original first-screen and baseline commands also remain in their source-bound reports and plans.
-Run directories cannot overwrite an earlier result. A repeated screen needs a new plan and output root.
+Earlier failed runs record an expired Pi credential, the old decoder mismatch, and shared Gradle-cache damage.
+The task-owned Gradle home resolves the local cache problem without changes to shared caches.
+These failures do not count as product failures or unrecorded provider sends.
 
 ## Smallest failure reproductions
 
-The original independent `JToon` decoder misreads this production TOON result:
+The original independent `JToon` decoder returns a string instead of an empty array for this production TOON:
 
 ```text
 items[1]:
   - connections: []
 ```
 
-It returns the string `"[]"` instead of an empty array. The current independent decoder preserves the array.
+The current independent decoder preserves the array.
 The corpus also preserves a 40-digit integer without JavaScript numeric conversion.
+The [projection review](projection-review.md) records the omitted signature-field control and its repair.
 
-The concise screen preserved these two malformed model commands:
+The current screen preserves this exact model failure:
 
 ```sh
-kast source read --ref exact:v5:AAAAAAAAAAAAAAAAAAAAAg --region callable-body --text complete potable
-kast result read --ref result:v1:00000000-0000-0000-0000-000000000004 --cursor 1 w
+kast source read --ref exact:v5:AAAAAAAAAAAAAAAAAAAAAg --region callable-body --text complete construe
 ```
 
-Production admission rejects each as `INVALID_COMMAND`. The experiment removes neither trailing argument.
-The [baseline report](baseline-v2.md) preserves its separate trailing-`timeout` failure.
-The [first live report](first-live.md) preserves the incomplete limitation-code instructions and its original grades.
+Production admission rejects the command as `INVALID_COMMAND` with exit status 2.
+The runner removes no argument and sends no retry.
+The [historical reports](README.md) preserve their separate malformed commands and incomplete response-contract instructions.
 
 ## Remaining limits
 
-The implementation remains available for offline qualification. Version 3 needs its bounded screen. The 3× goal is not complete.
-The measured candidates supply no general performance evidence outside these six fixed synthetic states.
-The session candidate improves local replay latency. It supplies no faster native semantic query claim.
-The concise candidate loses accuracy and supplies no accepted improvement.
-Both encoding arms preserve every original fact, so neither comparison justifies discarding rows, qualifications, references, or source text.
-The experiment changes no product default and implements no later interface experiment.
-
-The measured baseline TOON requests consumed 11,120 input tokens before their 549 output tokens.
-Even zero output on those unchanged requests exceeds the 3× threshold of 3,889.67 tokens for twelve correct decisions.
-This fact concerns the measured requests. It does not prove a universal limit on token counts.
-The local execution change preserves that input cost. The shorter instructions save only 32 input tokens per trial.
-A later field-selection or context experiment needs a separate scope because the original request explicitly excludes those interface experiments.
-
-## Remaining execution cost
-
-The [execution-cost audit](execution-cost-audit.json) examines the remaining local work without another provider request.
-It binds each calculation to the original baseline and session receipt hashes.
-The calculation holds the recorded provider durations fixed and sets all candidate local costs to zero.
-Under those conditions, the median of six per-case paired ratios reaches only 2.758×.
-This arithmetic supplies no measured speedup or future latency limit.
-It shows that local work alone cannot reach 3× on the recorded sample with those fixed provider durations.
-
-The unchanged baseline requests also consume 11,120 input tokens before their outputs.
-The target permits only 3,889.67 total tokens for twelve correct decisions.
-Another local execution change cannot reduce the input tokens of an identical provider payload.
-The pending scope question concerns a separate result-projection experiment.
-The first scope supplies no authorization to discard task evidence or implement that later factor.
+The first scope supplies decision evidence for six fixed synthetic states.
+It supplies no general format preference, faster native query claim, billed-cost measurement, or 3× result.
+The optional session profile keeps one owned JVM per trial. Its historical timing does not establish current version-3 performance.
+The optional concise profile keeps its historical accuracy regression and supplies no accepted improvement.
+A later field-selection or context experiment needs a separate scope.
+This implementation discards no task evidence and changes no product default.

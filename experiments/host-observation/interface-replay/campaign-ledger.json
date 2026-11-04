@@ -1,8 +1,8 @@
 {
-  "actualProviderSends": 96,
-  "providerTokens": 90596,
-  "correct": 88,
-  "eligible": 96,
+  "actualProviderSends": 120,
+  "providerTokens": 113602,
+  "correct": 111,
+  "eligible": 120,
   "runs": [
     {
       "run": "interface-codex-screen-002",
@@ -12,7 +12,8 @@
       "correct": 19,
       "eligible": 24,
       "invalidTrials": [],
-      "missingPairs": []
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
     },
     {
       "run": "interface-codex-baseline-v2",
@@ -22,7 +23,8 @@
       "correct": 23,
       "eligible": 24,
       "invalidTrials": [],
-      "missingPairs": []
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
     },
     {
       "run": "interface-codex-session-v2",
@@ -32,7 +34,8 @@
       "correct": 24,
       "eligible": 24,
       "invalidTrials": [],
-      "missingPairs": []
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
     },
     {
       "run": "interface-codex-concise-v2",
@@ -42,7 +45,19 @@
       "correct": 22,
       "eligible": 24,
       "invalidTrials": [],
-      "missingPairs": []
+      "missingPairs": [],
+      "qualification": "HISTORICAL_PREFIX_STATE_MISMATCH_NOT_V3_ACCEPTANCE"
+    },
+    {
+      "run": "interface-codex-screen-v3",
+      "sourceRevision": "eaa4efbb528be4652409f2de32915e67ed8826a0",
+      "sends": 24,
+      "providerTokens": 23006,
+      "correct": 23,
+      "eligible": 24,
+      "invalidTrials": [],
+      "missingPairs": [],
+      "qualification": "CURRENT_V3_SCREEN"
     }
   ]
 }

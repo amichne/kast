@@ -55,7 +55,8 @@ The current deterministic Node suite passes 118 tests.
 Sixteen optional integrations skip without explicit environment variables.
 All 36 opt-in integration tests pass, with zero skips.
 The production Kotlin adapter remains unchanged from the prior 94-test qualification.
-The required full gate and a new bounded model screen remain pending for version 3.
+The required full gate passed on `eaa4efbb528be4652409f2de32915e67ed8826a0` before version-3 inference.
+The [corrected screen](screen-v3.md) completed 24 actual sends with complete usage and zero native calls.
 
 Historical provider records remain immutable.
 Their costs still belong in the development ledger.

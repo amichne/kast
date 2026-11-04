@@ -37,5 +37,29 @@
       "full six-case canonical fixture corpus"
     ],
     "implementationInThisScope": false
+  },
+  "deliveryReview": {
+    "mainIntegrated": "3fd593d3d05ce304c8b849787011d6e5222c730d",
+    "changesSinceInspectedRevision": "The merged relation-inventory stop-cause repair remains unchanged. Production defaults, renderer, public parser, and admission stay authoritative.",
+    "currentGuidanceVersion": "4.0.10",
+    "guidanceFiles": [
+      {
+        "path": "skills/git-change-flow/SKILL.md",
+        "sha256": "6d4971a8ccd7a6d5dda74d341200da51fa8be0a0827c1f86c9fa121b7a08ff41"
+      },
+      {
+        "path": "skills/pull-request-lifecycle/SKILL.md",
+        "sha256": "bd38492cc89e2a7ed8edd40db88543e9bd59f3036e4e07398fb011b4300ff683"
+      },
+      {
+        "path": "skills/github-ci-operations/SKILL.md",
+        "sha256": "4ad6272aacd6b8a00cb33e2dec0499ee7d6fbefb2c09457a3af39493f0255c61"
+      },
+      {
+        "path": "skills/github-ci-operations/references/event-driven-observation.md",
+        "sha256": "dfdaa5f7b0a8dae205a321b6e0ba01c1bffb6bb30b61a8045790f1a49c72d4b0"
+      }
+    ],
+    "liveAccess": "CODEX_CHATGPT through the existing Pi openai-codex route. Version-3 screen measured 24 sends. The original expired-Pi observation remains historical."
   }
 }
